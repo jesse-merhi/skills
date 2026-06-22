@@ -1,0 +1,4 @@
+interface:
+  display_name: Reduce Cognitive Load
+  short_description: Make code easier to maintain without empty wrappers.
+  default_prompt: Review this code for cognitive load, type reuse, and maintainability.

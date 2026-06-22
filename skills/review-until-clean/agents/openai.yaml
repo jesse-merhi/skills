@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Until Clean"
+  short_description: "Loop the native review to convergence"
+  default_prompt: "Use $review-until-clean to run the harness-native review (codex review here) until it gets three consecutive clean passes."

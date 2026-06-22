@@ -1,0 +1,48 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  skills:
+    name: Skills
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate skill metadata and helper behavior
+        run: ./tests/skills-test
+
+      - name: Check shell, Python, and JavaScript syntax
+        run: |
+          bash -n \
+            tests/skills-test \
+            skills/handoff/scripts/codex-handoff-tmux \
+            skills/openclaw/openclaw-local-test/scripts/openclaw-local-test \
+            skills/openclaw/openclaw-local-test/scripts/openclaw-dia-test \
+            skills/code-review/scripts/check-review-models \
+            skills/code-review/scripts/calibrate-structured-review \
+            skills/code-review/scripts/test-codex-review-helper
+          python3 -m py_compile skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py
+          node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
+

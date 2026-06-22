@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Rubbish Audit"
+  short_description: "Audit PR diffs for unrelated noise"
+  default_prompt: "Use $pr-rubbish-audit to audit this PR diff for unrelated rubbish while preserving real functionality; flag tests that only cover branch-local history, removed behavior, or additions with no verified reachable regression risk."

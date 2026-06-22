@@ -1,0 +1,1669 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+import os
+import queue
+import re
+import shutil
+import shlex
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import textwrap
+from pathlib import Path
+from typing import Any, Callable, TextIO
+
+
+# Adapted from an MIT-licensed autoreview helper. This wrapper intentionally
+# invokes bare `codex review`.
+
+
+FALSE_VALUES = {"0", "false", "no", "off"}
+STRUCTURED_ENGINES = ("codex", "claude")
+STRUCTURED_SCOPES = ("direct", "induced", "adjacent", "unrelated")
+STRUCTURED_BLOCKING_SCOPES = {"direct", "induced"}
+DEFAULT_CODEX_MODEL = "gpt-5.5"
+DEFAULT_CODEX_THINKING = "high"
+DEFAULT_CLAUDE_MODEL = "default"
+DEFAULT_CLAUDE_THINKING = "max"
+CODEX_REVIEW_THINKING_LEVELS = {"high", "xhigh"}
+THINKING_LEVELS_BY_ENGINE = {
+    "codex": CODEX_REVIEW_THINKING_LEVELS,
+    "claude": {"low", "medium", "high", "max"},
+}
+
+
+STRUCTURED_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "findings",
+        "overall_correctness",
+        "overall_explanation",
+        "overall_confidence",
+    ],
+    "properties": {
+        "findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "title",
+                    "body",
+                    "priority",
+                    "confidence",
+                    "category",
+                    "scope",
+                    "scope_reason",
+                    "code_location",
+                    "fix",
+                ],
+                "properties": {
+                    "title": {"type": "string", "minLength": 1, "maxLength": 140},
+                    "body": {"type": "string", "minLength": 1, "maxLength": 2000},
+                    "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "category": {
+                        "type": "string",
+                        "enum": ["bug", "security", "regression", "test_gap", "maintainability"],
+                    },
+                    "scope": {"type": "string", "enum": list(STRUCTURED_SCOPES)},
+                    "scope_reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+                    "code_location": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["file_path", "line"],
+                        "properties": {
+                            "file_path": {"type": "string", "minLength": 1},
+                            "line": {"type": "integer", "minimum": 1},
+                        },
+                    },
+                    "fix": {"type": "string", "minLength": 1, "maxLength": 1000},
+                },
+            },
+        },
+        "overall_correctness": {
+            "type": "string",
+            "enum": ["patch is correct", "patch is incorrect"],
+        },
+        "overall_explanation": {"type": "string", "minLength": 1, "maxLength": 3000},
+        "overall_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="codex-review",
+        description="Repo-agnostic wrapper for bare `codex review` closeout checks.",
+    )
+    parser.add_argument("--mode", choices=("auto", "whole", "local", "uncommitted", "branch", "commit"), default="auto")
+    parser.add_argument("--base", help="Base ref for branch review. Default: PR base, origin/HEAD, origin/main, or origin/master.")
+    parser.add_argument("--commit", default="HEAD", help="Commit ref for commit review. Default: HEAD.")
+    parser.add_argument("--codex-bin", default=os.environ.get("CODEX_BIN", "codex"), help="Codex binary. Default: codex.")
+    parser.add_argument("--claude-bin", default=os.environ.get("CLAUDE_BIN", "claude"), help="Claude binary for structured panel review. Default: claude.")
+    parser.add_argument("--full-access", dest="yolo", action="store_true", default=parse_bool(os.environ.get("CODEX_REVIEW_YOLO", "1")))
+    parser.add_argument("--no-yolo", dest="yolo", action="store_false", help="Run nested Codex review with normal sandbox prompts.")
+    parser.add_argument("--output", default=os.environ.get("CODEX_REVIEW_OUTPUT"), help="Also save review output to file.")
+    parser.add_argument("--json-output", default=os.environ.get("CODEX_REVIEW_JSON_OUTPUT"), help="Write normalized review ledger JSON.")
+    parser.add_argument("--structured", action="store_true", help="Run optional structured JSON reviewer instead of native `codex review`.")
+    parser.add_argument("--engine", choices=STRUCTURED_ENGINES, default=os.environ.get("CODEX_REVIEW_STRUCTURED_ENGINE", "codex"))
+    parser.add_argument("--reviewers", help="Comma-separated structured reviewers, e.g. codex,claude or codex:gpt-5.5:xhigh.")
+    parser.add_argument("--panel", action="store_true", help="Run an opt-in structured Codex/Claude panel.")
+    parser.add_argument(
+        "--model",
+        action="append",
+        help="Reviewer model for all reviewers or engine=model. Defaults: codex=gpt-5.5, claude=default. Repeatable.",
+    )
+    parser.add_argument(
+        "--thinking",
+        action="append",
+        help="Reviewer effort for all reviewers or engine=level. Defaults: codex=high, claude=max.",
+    )
+    parser.add_argument("--allow-partial-panel", action="store_true", help="Continue structured panel output when one reviewer fails.")
+    parser.add_argument("--prompt", action="append", help="Structured-review-only extra instruction text.")
+    parser.add_argument("--prompt-file", action="append", help="Structured-review-only extra instruction file.")
+    parser.add_argument("--dataset", action="append", help="Structured-review-only evidence file.")
+    parser.add_argument("--no-web-search", dest="web_search", action="store_false", default=True, help="Disable web search for structured reviewer engines.")
+    parser.add_argument(
+        "--stream-engine-output",
+        action="store_true",
+        default=parse_bool(os.environ.get("CODEX_REVIEW_STREAM_ENGINE_OUTPUT", "0")),
+        help="Stream filtered structured engine activity.",
+    )
+    parser.add_argument("--require-finding", action="append", default=[], help="Structured test helper: require finding text to contain this substring.")
+    parser.add_argument("--expect-findings", action="store_true", help="Structured test helper: treat blocking findings as success.")
+    parser.add_argument("--parallel-tests", help="Run review and test command concurrently.")
+    parser.add_argument(
+        "--parallel-tests-shell",
+        choices=("default", "cmd", "powershell", "pwsh"),
+        default=os.environ.get("CODEX_REVIEW_PARALLEL_TESTS_SHELL", "default"),
+        help="Shell for --parallel-tests. Default preserves Python shell=True platform behavior.",
+    )
+    parser.add_argument(
+        "--heartbeat-seconds",
+        type=int,
+        default=int(os.environ.get("CODEX_REVIEW_HEARTBEAT_SECONDS", "60")),
+        help="Print a progress line after this many seconds without review output.",
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Print selected commands, do not run.")
+    args = parser.parse_args()
+    if args.heartbeat_seconds < 1:
+        raise SystemExit("--heartbeat-seconds must be at least 1")
+    if args.engine not in STRUCTURED_ENGINES:
+        raise SystemExit(f"invalid --engine/CODEX_REVIEW_STRUCTURED_ENGINE: {args.engine}")
+    structured_implied = bool(args.panel or args.reviewers or args.prompt or args.prompt_file or args.dataset)
+    if structured_implied:
+        args.structured = True
+    if not args.structured and (args.prompt or args.prompt_file or args.dataset or args.stream_engine_output or args.expect_findings or args.require_finding):
+        raise SystemExit("--prompt, --dataset, --stream-engine-output, --expect-findings, and --require-finding require --structured")
+    return args
+
+
+def parse_bool(value: str) -> bool:
+    return value.strip().lower() not in FALSE_VALUES
+
+
+def run(
+    args: list[str],
+    cwd: Path,
+    *,
+    check: bool = True,
+    stdout: int = subprocess.PIPE,
+    stderr: int = subprocess.PIPE,
+) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(args, cwd=cwd, text=True, stdout=stdout, stderr=stderr)
+    if check and result.returncode != 0:
+        raise SystemExit(f"command failed ({result.returncode}): {shell_join(args)}\n{result.stderr or result.stdout}")
+    return result
+
+
+def run_bytes(
+    args: list[str],
+    cwd: Path,
+    *,
+    check: bool = True,
+    input_data: bytes | None = None,
+) -> subprocess.CompletedProcess[bytes]:
+    result = subprocess.run(args, cwd=cwd, input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if check and result.returncode != 0:
+        stderr = result.stderr.decode(errors="replace")
+        stdout = result.stdout.decode(errors="replace")
+        raise SystemExit(f"command failed ({result.returncode}): {shell_join(args)}\n{stderr or stdout}")
+    return result
+
+
+def discover_repo_root(start: Path) -> Path | None:
+    current = start
+    while True:
+        if (current / ".git").exists():
+            return current
+        if current.parent == current:
+            return None
+        current = current.parent
+
+
+def repo_root() -> tuple[Path, str]:
+    unsafe_root = discover_repo_root(Path.cwd().resolve()) or Path.cwd().resolve()
+    git_bin = resolve_command("git", unsafe_root)
+    result = run([git_bin, "rev-parse", "--show-toplevel"], unsafe_root, check=False)
+    if result.returncode != 0:
+        raise SystemExit("codex-review must run inside a git repository")
+    return Path(result.stdout.strip()).resolve(), git_bin
+
+
+def git(repo: Path, git_bin: str, *args: str, check: bool = True) -> str:
+    return run([git_bin, *args], repo, check=check).stdout
+
+
+def git_bytes(repo: Path, git_bin: str, *args: str, check: bool = True) -> bytes:
+    return run_bytes([git_bin, *args], repo, check=check).stdout
+
+
+def current_branch(repo: Path, git_bin: str) -> str:
+    return git(repo, git_bin, "branch", "--show-current", check=False).strip()
+
+
+def is_dirty(repo: Path, git_bin: str) -> bool:
+    return bool(git(repo, git_bin, "status", "--porcelain").strip())
+
+
+def default_base_ref(repo: Path, git_bin: str) -> str:
+    origin_head = git(
+        repo,
+        git_bin,
+        "symbolic-ref",
+        "--quiet",
+        "--short",
+        "refs/remotes/origin/HEAD",
+        check=False,
+    ).strip()
+    if origin_head:
+        return origin_head
+    if run([git_bin, "show-ref", "--verify", "--quiet", "refs/remotes/origin/main"], repo, check=False).returncode == 0:
+        return "origin/main"
+    if run([git_bin, "show-ref", "--verify", "--quiet", "refs/remotes/origin/master"], repo, check=False).returncode == 0:
+        return "origin/master"
+    return "origin/main"
+
+
+def default_branch_name(repo: Path, git_bin: str, base_ref: str) -> str:
+    if base_ref == "origin/HEAD":
+        target = git(repo, git_bin, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD", check=False).strip()
+        if target:
+            return target.removeprefix("origin/")
+    return base_ref.removeprefix("origin/")
+
+
+def detect_pr_base(repo: Path, gh_bin: str | None) -> tuple[str | None, str | None]:
+    if not gh_bin:
+        return None, None
+    result = run(
+        [gh_bin, "pr", "view", "--json", "baseRefName,url", "--jq", "[.baseRefName, .url] | @tsv"],
+        repo,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None, None
+    fields = result.stdout.rstrip("\n").split("\t")
+    if not fields or not fields[0]:
+        return None, None
+    return f"origin/{fields[0]}", fields[1] if len(fields) > 1 else None
+
+
+def choose_target(repo: Path, git_bin: str, gh_bin: str | None, mode: str, base_ref: str | None) -> tuple[str, str | None, str | None]:
+    mode = "local" if mode == "uncommitted" else mode
+    branch = current_branch(repo, git_bin)
+    dirty = is_dirty(repo, git_bin)
+    pr_url = None
+
+    if not base_ref and mode != "local":
+        base_ref, pr_url = detect_pr_base(repo, gh_bin)
+    if not base_ref:
+        base_ref = default_base_ref(repo, git_bin)
+
+    default_branch = default_branch_name(repo, git_bin, base_ref)
+    if mode == "local":
+        return "local", None, pr_url
+    if mode == "commit":
+        return "commit", None, pr_url
+    if mode == "whole" or mode == "auto":
+        if branch and branch != default_branch:
+            return ("whole" if dirty else "branch"), base_ref, pr_url
+        if dirty:
+            return "local", None, pr_url
+    if mode == "branch":
+        return "branch", base_ref, pr_url
+    raise SystemExit("no review target: clean default-branch checkout and no forced mode")
+
+
+def build_review_command(
+    codex_bin: str,
+    yolo: bool,
+    target: str,
+    target_ref: str | None,
+    commit_ref: str,
+    model: str,
+    thinking: str,
+) -> list[str]:
+    command = [codex_bin]
+    if yolo:
+        command.append("--dangerously-bypass-approvals-and-sandbox")
+    command.extend(["-c", f'model="{model}"', "-c", f'model_reasoning_effort="{thinking}"'])
+    command.append("review")
+    if target == "local":
+        command.append("--uncommitted")
+    elif target == "commit":
+        command.extend(["--commit", commit_ref])
+    else:
+        if not target_ref:
+            raise SystemExit("branch review requires a base ref")
+        command.extend(["--base", target_ref])
+    return command
+
+
+def create_review_snapshot(repo: Path, git_bin: str) -> tuple[Path, Path]:
+    snapshot_root = Path(tempfile.mkdtemp(prefix="codex-review-snapshot."))
+    snapshot = snapshot_root / "worktree"
+    try:
+        run([git_bin, "worktree", "add", "--detach", str(snapshot), "HEAD"], repo)
+        apply_patch_to_snapshot(repo, snapshot, git_bin, git_bytes(repo, git_bin, "diff", "--binary", "--cached"))
+        apply_patch_to_snapshot(repo, snapshot, git_bin, git_bytes(repo, git_bin, "diff", "--binary"))
+        copy_untracked_files(repo, snapshot, git_bin)
+        run([git_bin, "add", "-A"], snapshot)
+        run(
+            [
+                git_bin,
+                "-c",
+                "user.name=Review Snapshot",
+                "-c",
+                "user.email=review-snapshot@example.invalid",
+                "commit",
+                "--quiet",
+                "--no-verify",
+                "-m",
+                "review snapshot",
+            ],
+            snapshot,
+        )
+        return snapshot_root, snapshot
+    except BaseException:
+        cleanup_review_snapshot(repo, git_bin, snapshot_root, snapshot)
+        raise
+
+
+def apply_patch_to_snapshot(repo: Path, snapshot: Path, git_bin: str, patch: bytes) -> None:
+    if not patch:
+        return
+    run_bytes([git_bin, "apply", "--whitespace=nowarn", "-"], snapshot, input_data=patch)
+
+
+def copy_untracked_files(repo: Path, snapshot: Path, git_bin: str) -> None:
+    raw = git_bytes(repo, git_bin, "ls-files", "--others", "--exclude-standard", "-z")
+    for name in raw.split(b"\0"):
+        if not name:
+            continue
+        relative = Path(os.fsdecode(name))
+        source = repo / relative
+        destination = snapshot / relative
+        if not is_within(destination.resolve().parent, snapshot.resolve()):
+            raise SystemExit(f"refusing to copy untracked path outside snapshot: {relative}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_symlink():
+            if destination.exists() or destination.is_symlink():
+                destination.unlink()
+            os.symlink(os.readlink(source), destination)
+        elif source.is_file():
+            shutil.copy2(source, destination)
+
+
+def cleanup_review_snapshot(repo: Path, git_bin: str, snapshot_root: Path | None, snapshot: Path | None) -> None:
+    if snapshot is not None and snapshot.exists():
+        run([git_bin, "worktree", "remove", "--force", str(snapshot)], repo, check=False)
+    if snapshot_root is not None:
+        shutil.rmtree(snapshot_root, ignore_errors=True)
+
+
+def start_parallel_tests(command: str, repo: Path, shell_kind: str) -> tuple[subprocess.Popen[bytes], float]:
+    print(f"tests: {command}")
+    if shell_kind in {"default", "cmd"}:
+        return subprocess.Popen(command, cwd=repo, shell=True), time.time()
+    if shell_kind == "powershell":
+        powershell = resolve_command("powershell", repo)
+        return subprocess.Popen([powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], cwd=repo), time.time()
+    if shell_kind == "pwsh":
+        pwsh = resolve_command("pwsh", repo)
+        return subprocess.Popen([pwsh, "-NoProfile", "-Command", command], cwd=repo), time.time()
+    raise SystemExit(f"invalid parallel test shell: {shell_kind}")
+
+
+def finish_parallel_tests(proc: subprocess.Popen[bytes], started: float) -> int:
+    proc.wait()
+    print(f"tests exit: {proc.returncode} after {int(time.time() - started)}s")
+    return int(proc.returncode or 0)
+
+
+def run_review(command: list[str], repo: Path, output_path: Path, heartbeat_seconds: int) -> tuple[int, int]:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("")
+    started = time.time()
+    proc = subprocess.Popen(
+        command,
+        cwd=repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    events: queue.Queue[str | None] = queue.Queue()
+
+    def read_output() -> None:
+        assert proc.stdout is not None
+        try:
+            for line in proc.stdout:
+                events.put(line)
+        finally:
+            events.put(None)
+
+    reader = threading.Thread(target=read_output, daemon=True)
+    reader.start()
+    with output_path.open("a", encoding="utf-8") as handle:
+        stream_process_output(proc, events, handle, started, heartbeat_seconds)
+    reader.join(timeout=1)
+    status = proc.wait()
+    return int(status or 0), int(time.time() - started)
+
+
+def stream_process_output(
+    proc: subprocess.Popen[str],
+    events: "queue.Queue[str | None]",
+    output_file: TextIO,
+    started: float,
+    heartbeat_seconds: int,
+) -> None:
+    stream_open = True
+    while stream_open:
+        try:
+            line = events.get(timeout=heartbeat_seconds)
+        except queue.Empty:
+            if proc.poll() is None:
+                elapsed = int(time.time() - started)
+                print(f"review still running: codex elapsed={elapsed}s pid={proc.pid}", file=sys.stderr, flush=True)
+                continue
+            break
+        if line is None:
+            stream_open = False
+            continue
+        sys.stdout.write(line)
+        sys.stdout.flush()
+        output_file.write(line)
+        output_file.flush()
+
+
+def format_elapsed(seconds: int) -> str:
+    if seconds < 60:
+        return f"{seconds}s"
+    return f"{seconds // 60}m{seconds % 60}s"
+
+
+def review_output_empty(path: Path) -> bool:
+    if not path.exists() or path.stat().st_size == 0:
+        return True
+    return not bool(re.search(r"\S", native_review_text(path)))
+
+
+def review_output_has_findings(path: Path) -> bool:
+    return bool(re.search(r"\[P[0-3]\]", native_review_text(path)))
+
+
+def native_review_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    lines = path.read_text(errors="replace").splitlines()
+    assistant_markers = [index for index, line in enumerate(lines) if line.strip() == "codex"]
+    if not assistant_markers:
+        return "\n".join(lines)
+    return "\n".join(lines[assistant_markers[-1] + 1 :])
+
+
+def native_findings_from_output(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    findings: list[dict[str, Any]] = []
+    lines = native_review_text(path).splitlines()
+    for index, line in enumerate(lines):
+        match = re.search(r"\[(P[0-3])\]\s*(.+)", line)
+        if not match:
+            continue
+        body_lines: list[str] = []
+        for next_line in lines[index + 1 :]:
+            if re.search(r"\[(P[0-3])\]\s*", next_line):
+                break
+            if next_line.strip():
+                body_lines.append(next_line.strip())
+            if len(body_lines) >= 3:
+                break
+        findings.append(
+            {
+                "title": match.group(2).strip(),
+                "body": " ".join(body_lines).strip(),
+                "priority": match.group(1),
+                "confidence": None,
+                "category": "unknown",
+                "scope": "direct",
+                "scope_reason": "Native codex review output does not provide scope; treated as direct until verified.",
+                "code_location": None,
+                "fix": "",
+                "source": "native-codex-review",
+            }
+        )
+    return findings
+
+
+def report_clean_review_or_fail(output_path: Path, elapsed_seconds: int) -> int:
+    elapsed = format_elapsed(elapsed_seconds)
+    if review_output_has_findings(output_path):
+        print(f"codex-review complete after {elapsed}")
+        print("codex-review findings: accepted/actionable findings reported")
+        return 1
+    if review_output_empty(output_path):
+        print(f"codex-review complete after {elapsed}; no output")
+        return 1
+    print(f"codex-review complete after {elapsed}")
+    print("codex-review clean: no accepted/actionable findings reported")
+    return 0
+
+
+def has_directory_component(name: str, command: Path) -> bool:
+    separators = [separator for separator in (os.sep, os.altsep) if separator]
+    return command.is_absolute() or bool(command.drive) or any(separator in name for separator in separators)
+
+
+def resolve_command(name: str, repo: Path) -> str:
+    found = find_command(name, repo)
+    if found:
+        return found
+    raise SystemExit(f"executable not found: {name}. Install it or pass an explicit trusted path.")
+
+
+def find_command(name: str, repo: Path) -> str | None:
+    command = Path(name)
+    if has_directory_component(name, command):
+        base = command if command.is_absolute() else repo / command
+        return first_executable_candidate(base)
+
+    repo_root_resolved = repo.resolve()
+    for part in os.environ.get("PATH", "").split(os.pathsep):
+        if not part or part == ".":
+            continue
+        path_part = Path(part)
+        if not path_part.is_absolute():
+            continue
+        try:
+            resolved_part = path_part.resolve()
+        except OSError:
+            continue
+        if is_within(resolved_part, repo_root_resolved):
+            continue
+        found = first_executable_candidate(resolved_part / name, reject_root=repo_root_resolved)
+        if found:
+            return found
+    return None
+
+
+def first_executable_candidate(path: Path, *, reject_root: Path | None = None) -> str | None:
+    if os.name == "nt" and not path.suffix:
+        extensions = [ext for ext in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if ext]
+        candidates = [path.with_suffix(ext.lower()) for ext in extensions]
+        candidates.extend(path.with_suffix(ext.upper()) for ext in extensions)
+        candidates.append(path)
+    else:
+        candidates = [path]
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            if reject_root is not None:
+                try:
+                    if is_within(candidate.resolve(), reject_root):
+                        continue
+                except OSError:
+                    continue
+            return str(candidate)
+    return None
+
+
+def is_within(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def shell_join(args: list[str]) -> str:
+    return " ".join(shlex.quote(arg) for arg in args)
+
+
+def git_text(repo: Path, git_bin: str, *args: str, check: bool = True) -> str:
+    return git(repo, git_bin, *args, check=check)
+
+
+def bounded(text: str, limit: int = 180_000) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"\n\n[truncated at {limit} characters]\n"
+
+
+def bounded_field(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    suffix = "\n\n[truncated]"
+    return text[: max(0, limit - len(suffix))] + suffix
+
+
+def read_text(path: Path, limit: int = 40_000) -> str:
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        return f"[unreadable: {exc}]"
+    if b"\0" in data:
+        return "[binary file omitted]"
+    return bounded(data.decode("utf-8", errors="replace"), limit)
+
+
+def local_bundle(repo: Path, git_bin: str) -> str:
+    parts = [
+        "# Git Status",
+        git_text(repo, git_bin, "status", "--short"),
+        "# Staged Diff",
+        git_text(repo, git_bin, "diff", "--cached", "--stat"),
+        bounded(git_text(repo, git_bin, "diff", "--cached", "--patch", "--find-renames")),
+        "# Unstaged Diff",
+        git_text(repo, git_bin, "diff", "--stat"),
+        bounded(git_text(repo, git_bin, "diff", "--patch", "--find-renames")),
+    ]
+    untracked = [line for line in git_text(repo, git_bin, "ls-files", "--others", "--exclude-standard").splitlines() if line]
+    if untracked:
+        parts.append("# Untracked Files")
+        for rel in untracked:
+            parts.append(f"## {rel}\n{read_text(repo / rel)}")
+    return "\n\n".join(parts)
+
+
+def branch_bundle(repo: Path, git_bin: str, base_ref: str) -> str:
+    return "\n\n".join(
+        [
+            "# Branch Diff",
+            f"base: {base_ref}",
+            git_text(repo, git_bin, "diff", "--stat", f"{base_ref}...HEAD"),
+            bounded(git_text(repo, git_bin, "diff", "--patch", "--find-renames", f"{base_ref}...HEAD")),
+        ]
+    )
+
+
+def commit_bundle(repo: Path, git_bin: str, commit_ref: str) -> str:
+    return "\n\n".join(
+        [
+            "# Commit Diff",
+            f"commit: {commit_ref}",
+            git_text(repo, git_bin, "show", "--stat", "--format=fuller", commit_ref),
+            bounded(git_text(repo, git_bin, "show", "--patch", "--find-renames", "--format=fuller", commit_ref)),
+        ]
+    )
+
+
+def review_bundle(repo: Path, git_bin: str, target: str, target_ref: str | None, commit_ref: str) -> str:
+    if target == "local":
+        return local_bundle(repo, git_bin)
+    if target in {"branch", "whole"}:
+        if not target_ref:
+            raise SystemExit("branch review requires a base ref")
+        return branch_bundle(repo, git_bin, target_ref)
+    return commit_bundle(repo, git_bin, commit_ref)
+
+
+def review_paths(repo: Path, git_bin: str, target: str, target_ref: str | None, commit_ref: str) -> set[str]:
+    if target == "local":
+        sources = [
+            git_text(repo, git_bin, "diff", "--name-only", "--cached"),
+            git_text(repo, git_bin, "diff", "--name-only"),
+            git_text(repo, git_bin, "ls-files", "--others", "--exclude-standard"),
+        ]
+    elif target in {"branch", "whole"}:
+        if not target_ref:
+            raise SystemExit("branch review requires a base ref")
+        sources = [git_text(repo, git_bin, "diff", "--name-only", f"{target_ref}...HEAD")]
+    else:
+        sources = [git_text(repo, git_bin, "show", "--name-only", "--format=", commit_ref)]
+    paths: set[str] = set()
+    for source in sources:
+        for line in source.splitlines():
+            path = line.strip()
+            if path:
+                paths.add(path)
+    return paths
+
+
+def load_extra_prompt(args: argparse.Namespace) -> str:
+    chunks: list[str] = []
+    for value in args.prompt or []:
+        chunks.append(value)
+    for path in args.prompt_file or []:
+        chunks.append(Path(path).read_text())
+    return "\n\n".join(chunks)
+
+
+def load_datasets(args: argparse.Namespace) -> str:
+    chunks: list[str] = []
+    for spec in args.dataset or []:
+        path = Path(spec)
+        if path.is_dir():
+            raise SystemExit(f"--dataset must be a file, got directory: {path}")
+        chunks.append(f"# Dataset: {path}\n{read_text(path)}")
+    return "\n\n".join(chunks)
+
+
+def build_structured_prompt(
+    repo: Path,
+    target: str,
+    target_ref: str | None,
+    bundle: str,
+    changed_paths: set[str],
+    extra_prompt: str,
+    datasets: str,
+) -> str:
+    target_line = f"{target} {target_ref}" if target_ref else target
+    changed_list = "\n".join(f"- {path}" for path in sorted(changed_paths)) or "- <none>"
+    return textwrap.dedent(
+        f"""
+        You are a senior code reviewer. Review the provided git change bundle only.
+
+        Return exactly one JSON object and nothing else. The JSON object must match this schema exactly:
+        {json.dumps(STRUCTURED_SCHEMA, indent=2)}
+
+        Scope rules:
+        - direct: the finding points at a changed file.
+        - induced: the finding points at unchanged code, but this change creates a new path to it or changes its inputs.
+        - adjacent: a real nearby issue, but not caused or exposed by this change.
+        - unrelated: an old issue that this change does not cause, expose, or make worse.
+        Use direct or induced for findings that should block this review. Use adjacent or unrelated for nonblocking notes.
+
+        Hard rules:
+        - Do not modify files.
+        - Do not invoke nested reviewers or review tools. Forbidden commands include: codex review, codex-review, autoreview, claude review.
+        - You may use read-only tools and web search to inspect files, dependency contracts, upstream docs, current behavior, and security implications.
+        - Shell commands, if available, must be read-only inspection commands. Do not run tests, formatters, package installs, generators, network mutation commands, git mutation commands, or commands that write files.
+        - Report only actionable defects introduced or exposed by this change as direct or induced.
+        - Prefer high-signal findings over style feedback.
+        - Include security findings only when the patch creates a concrete exploitable risk, removes an important safety check, or lacks validation at a trust boundary.
+        - For each finding, use the smallest file/line location that demonstrates the issue.
+        - If there are no direct or induced findings, return an empty findings array or only adjacent/unrelated findings and mark the patch correct.
+
+        Review target: {target_line}
+        Repository: {repo}
+
+        Changed paths:
+        {changed_list}
+
+        {extra_prompt}
+
+        {datasets}
+
+        # Change Bundle
+        {bundle}
+        """
+    ).strip()
+
+
+def write_json_temp(data: dict[str, Any]) -> Path:
+    handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+    with handle:
+        json.dump(data, handle)
+    return Path(handle.name)
+
+
+def run_with_input_heartbeat(
+    command: list[str],
+    repo: Path,
+    *,
+    input_text: str | None,
+    label: str,
+    heartbeat_seconds: int,
+    stream_output: bool = False,
+    stream_display: Callable[[str, str], str | None] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    if stream_output:
+        return run_with_input_stream(
+            command,
+            repo,
+            input_text=input_text,
+            label=label,
+            heartbeat_seconds=heartbeat_seconds,
+            stream_display=stream_display,
+        )
+    started = time.time()
+    proc = subprocess.Popen(
+        command,
+        cwd=repo,
+        stdin=subprocess.PIPE if input_text is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    first = True
+    while True:
+        try:
+            stdout, stderr = proc.communicate(input=input_text if first else None, timeout=heartbeat_seconds)
+            return subprocess.CompletedProcess(command, int(proc.returncode or 0), stdout, stderr)
+        except subprocess.TimeoutExpired:
+            first = False
+            elapsed = int(time.time() - started)
+            print(f"review still running: {label} elapsed={elapsed}s pid={proc.pid}", file=sys.stderr, flush=True)
+
+
+def run_with_input_stream(
+    command: list[str],
+    repo: Path,
+    *,
+    input_text: str | None,
+    label: str,
+    heartbeat_seconds: int,
+    stream_display: Callable[[str, str], str | None] | None,
+) -> subprocess.CompletedProcess[str]:
+    started = time.time()
+    proc = subprocess.Popen(
+        command,
+        cwd=repo,
+        stdin=subprocess.PIPE if input_text is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+    events: queue.Queue[tuple[str, str | None]] = queue.Queue()
+    stdout_parts: list[str] = []
+    stderr_parts: list[str] = []
+
+    def read_stream(name: str, stream: TextIO | None) -> None:
+        if stream is None:
+            events.put((name, None))
+            return
+        try:
+            for line in stream:
+                events.put((name, line))
+        finally:
+            events.put((name, None))
+
+    def write_stdin() -> None:
+        if proc.stdin is None or input_text is None:
+            return
+        try:
+            proc.stdin.write(input_text)
+            proc.stdin.close()
+        except BrokenPipeError:
+            return
+
+    threads = [
+        threading.Thread(target=read_stream, args=("stdout", proc.stdout), daemon=True),
+        threading.Thread(target=read_stream, args=("stderr", proc.stderr), daemon=True),
+        threading.Thread(target=write_stdin, daemon=True),
+    ]
+    for thread in threads:
+        thread.start()
+    open_streams = 2
+    while open_streams:
+        try:
+            name, line = events.get(timeout=heartbeat_seconds)
+        except queue.Empty:
+            if proc.poll() is None:
+                elapsed = int(time.time() - started)
+                print(f"review still running: {label} elapsed={elapsed}s pid={proc.pid}", file=sys.stderr, flush=True)
+                continue
+            break
+        if line is None:
+            open_streams -= 1
+            continue
+        if name == "stdout":
+            stdout_parts.append(line)
+        else:
+            stderr_parts.append(line)
+        display = stream_display(name, line) if stream_display else line
+        if display:
+            target_stream = sys.stdout if name == "stdout" else sys.stderr
+            target_stream.write(display)
+            target_stream.flush()
+    for thread in threads:
+        thread.join(timeout=1)
+    returncode = proc.wait()
+    return subprocess.CompletedProcess(command, returncode, "".join(stdout_parts), "".join(stderr_parts))
+
+
+class CodexStreamDisplay:
+    def __init__(self, *, activity_seconds: int = 20) -> None:
+        self.activity_seconds = activity_seconds
+        self.hidden_events = 0
+        self.last_visible = time.time()
+
+    def __call__(self, name: str, line: str) -> str | None:
+        if name != "stdout":
+            return line
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            return self.visible(line)
+        event_type = event.get("type")
+        if event_type == "thread.started":
+            return self.visible(f"codex thread: {event.get('thread_id', '<unknown>')}\n")
+        if event_type == "turn.started":
+            return self.visible("codex turn started\n")
+        if event_type == "turn.completed":
+            usage = event.get("usage")
+            message = format_codex_usage(usage) + "\n" if isinstance(usage, dict) else "codex turn completed\n"
+            return self.visible(self.flush_hidden() + message)
+        item = event.get("item")
+        if isinstance(item, dict) and item.get("type") == "agent_message" and isinstance(item.get("text"), str):
+            return self.visible(self.flush_hidden() + item["text"].rstrip() + "\n")
+        return self.hidden_activity()
+
+    def hidden_activity(self) -> str | None:
+        self.hidden_events += 1
+        if time.time() - self.last_visible < self.activity_seconds:
+            return None
+        return self.visible(self.flush_hidden())
+
+    def flush_hidden(self) -> str:
+        if not self.hidden_events:
+            return ""
+        count = self.hidden_events
+        self.hidden_events = 0
+        return f"codex activity: {count} hidden tool/status events\n"
+
+    def visible(self, text: str) -> str:
+        self.last_visible = time.time()
+        return text
+
+
+class ClaudeStreamDisplay:
+    def __init__(self, *, activity_seconds: int = 20) -> None:
+        self.activity_seconds = activity_seconds
+        self.hidden_events = 0
+        self.last_visible = time.time()
+        self.started = False
+
+    def __call__(self, name: str, line: str) -> str | None:
+        if name != "stdout":
+            return line
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            return self.visible(line)
+        if event.get("type") == "system" and not self.started:
+            self.started = True
+            return self.visible("claude turn started\n")
+        if event.get("type") == "assistant":
+            message = event.get("message")
+            if isinstance(message, dict):
+                chunks: list[str] = []
+                for item in message.get("content", []):
+                    if isinstance(item, dict) and item.get("type") == "text" and isinstance(item.get("text"), str):
+                        chunks.append(item["text"].rstrip())
+                if chunks:
+                    return self.visible(self.flush_hidden() + "\n".join(chunks) + "\n")
+        if event.get("type") == "result":
+            return self.visible(self.flush_hidden() + "claude turn completed\n")
+        return self.hidden_activity()
+
+    def hidden_activity(self) -> str | None:
+        self.hidden_events += 1
+        if time.time() - self.last_visible < self.activity_seconds:
+            return None
+        return self.visible(self.flush_hidden())
+
+    def flush_hidden(self) -> str:
+        if not self.hidden_events:
+            return ""
+        count = self.hidden_events
+        self.hidden_events = 0
+        return f"claude activity: {count} hidden tool/status events\n"
+
+    def visible(self, text: str) -> str:
+        self.last_visible = time.time()
+        return text
+
+
+def format_codex_usage(usage: dict[str, Any]) -> str:
+    fields = ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens"]
+    parts = [f"{field}={usage[field]}" for field in fields if isinstance(usage.get(field), int)]
+    return "codex usage: " + " ".join(parts) if parts else "codex usage: unavailable"
+
+
+def extract_json(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    if not stripped:
+        raise SystemExit("review engine returned empty output")
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError as exc:
+        fenced = parse_json_candidate(stripped)
+        if isinstance(fenced, dict) and "findings" in fenced:
+            return fenced
+        jsonl = extract_json_from_jsonl(stripped)
+        if jsonl:
+            return jsonl
+        raise SystemExit(f"review engine returned non-JSON output: {exc}\n{stripped[:2000]}")
+    if isinstance(parsed, dict) and "findings" in parsed:
+        return parsed
+    if isinstance(parsed, dict) and isinstance(parsed.get("structured_output"), dict):
+        return parsed["structured_output"]
+    if isinstance(parsed, dict) and isinstance(parsed.get("result"), str):
+        result_json = parse_json_candidate(parsed["result"])
+        if isinstance(result_json, dict) and "findings" in result_json:
+            return result_json
+        raise SystemExit(f"review engine result was not structured JSON:\n{parsed['result'][:2000]}")
+    jsonl = extract_json_from_jsonl(stripped)
+    if jsonl:
+        return jsonl
+    raise SystemExit(f"review engine returned unexpected JSON shape:\n{json.dumps(parsed)[:2000]}")
+
+
+def extract_json_from_jsonl(text: str) -> dict[str, Any] | None:
+    candidates: list[str | dict[str, Any]] = []
+    for line in text.splitlines():
+        try:
+            event = json.loads(line.strip())
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        if isinstance(event.get("structured_output"), dict):
+            candidates.append(event["structured_output"])
+        if isinstance(event.get("result"), str):
+            candidates.append(event["result"])
+        part = event.get("part")
+        if isinstance(part, dict) and isinstance(part.get("text"), str):
+            candidates.append(part["text"])
+    for candidate in reversed(candidates):
+        if isinstance(candidate, dict):
+            if "findings" in candidate:
+                return candidate
+            continue
+        parsed = parse_json_candidate(candidate)
+        if isinstance(parsed, dict) and "findings" in parsed:
+            return parsed
+    return None
+
+
+def parse_json_candidate(text: str) -> Any | None:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```") and lines[-1].strip() == "```":
+            stripped = "\n".join(lines[1:-1]).strip()
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(parsed, str) and parsed != text:
+        nested = parse_json_candidate(parsed)
+        return nested if nested is not None else parsed
+    return parsed
+
+
+def validate_structured_report(report: dict[str, Any], changed_paths: set[str], required: list[str]) -> dict[str, Any]:
+    allowed_top = {"findings", "overall_correctness", "overall_explanation", "overall_confidence"}
+    extra_top = set(report) - allowed_top
+    if extra_top:
+        raise SystemExit(f"review JSON has unexpected top-level keys: {sorted(extra_top)}")
+    for key in STRUCTURED_SCHEMA["required"]:
+        if key not in report:
+            raise SystemExit(f"review JSON missing required key: {key}")
+    if not isinstance(report["findings"], list):
+        raise SystemExit("review JSON findings must be an array")
+    if report.get("overall_correctness") not in {"patch is correct", "patch is incorrect"}:
+        raise SystemExit(f"review JSON has invalid overall_correctness: {report.get('overall_correctness')}")
+    if not isinstance(report.get("overall_explanation"), str) or not report["overall_explanation"]:
+        raise SystemExit("review JSON overall_explanation must be a non-empty string")
+    if len(report["overall_explanation"]) > 3000:
+        raise SystemExit("review JSON overall_explanation is too long")
+    if not number_in_range(report.get("overall_confidence")):
+        raise SystemExit("review JSON overall_confidence must be numeric")
+
+    finding_text = ""
+    normalized: list[dict[str, Any]] = []
+    for index, finding in enumerate(report["findings"]):
+        normalized_finding = validate_structured_finding(index, finding, changed_paths)
+        normalized.append(normalized_finding)
+        finding_text += "\n" + json.dumps(normalized_finding, sort_keys=True)
+    for needle in required:
+        if needle.lower() not in finding_text.lower():
+            raise SystemExit(f"required finding text not found: {needle}")
+    validated = dict(report)
+    validated["findings"] = normalized
+    return validated
+
+
+def validate_structured_finding(index: int, finding: Any, changed_paths: set[str]) -> dict[str, Any]:
+    if not isinstance(finding, dict):
+        raise SystemExit(f"finding {index} must be an object")
+    allowed = {"title", "body", "priority", "confidence", "category", "scope", "scope_reason", "code_location", "fix"}
+    extra = set(finding) - allowed
+    if extra:
+        raise SystemExit(f"finding {index} has unexpected keys: {sorted(extra)}")
+    for key in allowed:
+        if key not in finding:
+            raise SystemExit(f"finding {index} missing required key: {key}")
+    title = finding.get("title")
+    if not isinstance(title, str) or not title or len(title) > 140:
+        raise SystemExit(f"finding {index} has invalid title")
+    body = finding.get("body")
+    if not isinstance(body, str) or not body or len(body) > 2000:
+        raise SystemExit(f"finding {index} has invalid body")
+    priority = finding.get("priority")
+    if priority not in {"P0", "P1", "P2", "P3"}:
+        raise SystemExit(f"finding {index} has invalid priority: {priority}")
+    if not number_in_range(finding.get("confidence")):
+        raise SystemExit(f"finding {index} has invalid confidence")
+    category = finding.get("category")
+    if category not in {"bug", "security", "regression", "test_gap", "maintainability"}:
+        raise SystemExit(f"finding {index} has invalid category: {category}")
+    scope = finding.get("scope")
+    if scope not in STRUCTURED_SCOPES:
+        raise SystemExit(f"finding {index} has invalid scope: {scope}")
+    scope_reason = finding.get("scope_reason")
+    if not isinstance(scope_reason, str) or not scope_reason or len(scope_reason) > 1000:
+        raise SystemExit(f"finding {index} has invalid scope_reason")
+    fix = finding.get("fix")
+    if not isinstance(fix, str) or not fix or len(fix) > 1000:
+        raise SystemExit(f"finding {index} has invalid fix")
+    location = finding.get("code_location")
+    if not isinstance(location, dict):
+        raise SystemExit(f"finding {index} missing code_location")
+    rel = str(location.get("file_path", "")).strip()
+    line = location.get("line")
+    if not rel or not isinstance(line, int) or line < 1:
+        raise SystemExit(f"finding {index} has invalid location: {location}")
+    rel_path = Path(rel)
+    if rel_path.is_absolute() or ".." in rel_path.parts:
+        raise SystemExit(f"finding {index} uses invalid file path: {rel}")
+    if scope == "direct" and rel not in changed_paths:
+        raise SystemExit(f"finding {index} uses direct scope for unchanged path: {rel}")
+    return dict(finding)
+
+
+def number_in_range(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value <= 1
+
+
+def parse_keyed_options(values: list[str] | None, option: str) -> tuple[str | None, dict[str, str]]:
+    global_value: str | None = None
+    per_engine: dict[str, str] = {}
+    for raw in values or []:
+        value = raw.strip()
+        if not value:
+            continue
+        if "=" in value:
+            engine, engine_value = value.split("=", 1)
+            engine = engine.strip()
+            engine_value = engine_value.strip()
+            if engine not in STRUCTURED_ENGINES:
+                raise SystemExit(f"--{option} uses unknown engine: {engine}")
+            if not engine_value:
+                raise SystemExit(f"--{option} for {engine} cannot be empty")
+            if engine in per_engine:
+                raise SystemExit(f"--{option} specified more than once for {engine}")
+            per_engine[engine] = engine_value
+            continue
+        if global_value is not None:
+            raise SystemExit(f"--{option} global value specified more than once")
+        global_value = value
+    return global_value, per_engine
+
+
+def codex_reviewer_config(args: argparse.Namespace) -> tuple[str, str]:
+    global_model, model_by_engine = parse_keyed_options(args.model, "model")
+    global_thinking, thinking_by_engine = parse_keyed_options(args.thinking, "thinking")
+    model = model_by_engine.get("codex") or global_model or DEFAULT_CODEX_MODEL
+    thinking = thinking_by_engine.get("codex") or global_thinking or DEFAULT_CODEX_THINKING
+    if thinking not in CODEX_REVIEW_THINKING_LEVELS:
+        valid = ", ".join(sorted(CODEX_REVIEW_THINKING_LEVELS))
+        raise SystemExit(f"invalid thinking level for codex review: {thinking} (valid: {valid})")
+    return model, thinking
+
+
+def parse_reviewer_token(token: str) -> tuple[str, str | None, str | None]:
+    parts = [part.strip() for part in token.split(":")]
+    if len(parts) > 3 or not parts[0]:
+        raise SystemExit(f"invalid reviewer token: {token}")
+    engine = parts[0]
+    if engine not in STRUCTURED_ENGINES:
+        raise SystemExit(f"unknown reviewer engine: {engine}")
+    model = parts[1] if len(parts) >= 2 and parts[1] else None
+    thinking = parts[2] if len(parts) == 3 and parts[2] else None
+    return engine, model, thinking
+
+
+def structured_reviewer_args(args: argparse.Namespace) -> list[argparse.Namespace]:
+    global_model, model_by_engine = parse_keyed_options(args.model, "model")
+    global_thinking, thinking_by_engine = parse_keyed_options(args.thinking, "thinking")
+    if args.reviewers:
+        tokens = [token.strip() for token in args.reviewers.split(",") if token.strip()]
+        if not tokens:
+            raise SystemExit("--reviewers did not include any reviewers")
+        reviewers = [parse_reviewer_token(token) for token in tokens]
+    elif args.panel:
+        engines = [args.engine]
+        for engine in ("codex", "claude"):
+            if engine not in engines:
+                engines.append(engine)
+        reviewers = [(engine, None, None) for engine in engines]
+    else:
+        reviewers = [(args.engine, None, None)]
+
+    seen: set[str] = set()
+    result: list[argparse.Namespace] = []
+    for engine, inline_model, inline_thinking in reviewers:
+        if engine in seen:
+            raise SystemExit(f"reviewer specified more than once: {engine}")
+        seen.add(engine)
+        clone = copy.copy(args)
+        clone.engine = engine
+        clone.model = inline_model or model_by_engine.get(engine) or global_model
+        if engine == "codex" and not clone.model:
+            clone.model = DEFAULT_CODEX_MODEL
+        if engine == "claude" and not clone.model:
+            clone.model = DEFAULT_CLAUDE_MODEL
+        engine_default_thinking = DEFAULT_CODEX_THINKING if engine == "codex" else DEFAULT_CLAUDE_THINKING
+        clone.thinking = inline_thinking or thinking_by_engine.get(engine) or global_thinking or engine_default_thinking
+        if clone.thinking not in THINKING_LEVELS_BY_ENGINE[engine]:
+            valid = ", ".join(sorted(THINKING_LEVELS_BY_ENGINE[engine]))
+            raise SystemExit(f"invalid thinking level for {engine}: {clone.thinking} (valid: {valid})")
+        result.append(clone)
+    return result
+
+
+def reviewer_label(args: argparse.Namespace) -> str:
+    parts = [args.engine]
+    if args.model:
+        parts.append(f"model={args.model}")
+    if args.thinking:
+        parts.append(f"thinking={args.thinking}")
+    return ":".join(parts)
+
+
+def run_structured_engine(args: argparse.Namespace, repo: Path, prompt: str) -> str:
+    if args.engine == "codex":
+        return run_structured_codex(args, repo, prompt)
+    if args.engine == "claude":
+        return run_structured_claude(args, repo, prompt)
+    raise SystemExit(f"unsupported structured engine: {args.engine}")
+
+
+def run_structured_codex(args: argparse.Namespace, repo: Path, prompt: str) -> str:
+    schema_path = write_json_temp(STRUCTURED_SCHEMA)
+    output_path = Path(tempfile.NamedTemporaryFile("w", suffix=".json", delete=False).name)
+    cmd = [resolve_command(args.codex_bin, repo), "--ask-for-approval", "never"]
+    if args.web_search:
+        cmd.append("--search")
+    if args.model:
+        cmd.extend(["--model", args.model])
+    if args.thinking:
+        cmd.extend(["-c", f'model_reasoning_effort="{args.thinking}"'])
+    cmd.append("exec")
+    if args.stream_engine_output:
+        cmd.append("--json")
+    cmd.extend(
+        [
+            "--ephemeral",
+            "-C",
+            str(repo),
+            "-s",
+            "read-only",
+            "--output-schema",
+            str(schema_path),
+            "--output-last-message",
+            str(output_path),
+            "-",
+        ]
+    )
+    result = run_with_input_heartbeat(
+        cmd,
+        repo,
+        input_text=prompt,
+        label="codex",
+        heartbeat_seconds=args.heartbeat_seconds,
+        stream_output=args.stream_engine_output,
+        stream_display=CodexStreamDisplay() if args.stream_engine_output else None,
+    )
+    try:
+        output = output_path.read_text()
+    finally:
+        schema_path.unlink(missing_ok=True)
+        output_path.unlink(missing_ok=True)
+    if result.returncode != 0:
+        raise SystemExit(f"codex structured engine failed ({result.returncode})\n{result.stderr or result.stdout}")
+    return output or result.stdout
+
+
+def run_structured_claude(args: argparse.Namespace, repo: Path, prompt: str) -> str:
+    cmd = [
+        resolve_command(args.claude_bin, repo),
+        "--print",
+        "--no-session-persistence",
+        "--output-format",
+        "stream-json" if args.stream_engine_output else "json",
+        "--json-schema",
+        json.dumps(STRUCTURED_SCHEMA),
+    ]
+    if args.model:
+        cmd.extend(["--model", args.model])
+    if args.thinking:
+        cmd.extend(["--effort", args.thinking])
+    result = run_with_input_heartbeat(
+        cmd,
+        repo,
+        input_text=prompt,
+        label="claude",
+        heartbeat_seconds=args.heartbeat_seconds,
+        stream_output=args.stream_engine_output,
+        stream_display=ClaudeStreamDisplay() if args.stream_engine_output else None,
+    )
+    if result.returncode != 0:
+        raise SystemExit(f"claude structured engine failed ({result.returncode})\n{result.stderr or result.stdout}")
+    return result.stdout
+
+
+def run_one_structured_reviewer(
+    args: argparse.Namespace,
+    repo: Path,
+    prompt: str,
+    changed_paths: set[str],
+) -> tuple[str, dict[str, Any]]:
+    raw = run_structured_engine(args, repo, prompt)
+    report = extract_json(raw)
+    validated = validate_structured_report(report, changed_paths, args.require_finding)
+    return reviewer_label(args), validated
+
+
+def merge_structured_reports(reports: list[tuple[str, dict[str, Any]]]) -> dict[str, Any]:
+    findings: list[dict[str, Any]] = []
+    explanations: list[str] = []
+    confidences: list[float] = []
+    for label, report in reports:
+        for finding in report["findings"]:
+            copied = dict(finding)
+            copied["reviewer"] = label
+            findings.append(copied)
+        explanations.append(f"{label}: {report['overall_explanation']}")
+        confidence = report.get("overall_confidence")
+        if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+            confidences.append(float(confidence))
+    blocking = [finding for finding in findings if finding.get("scope") in STRUCTURED_BLOCKING_SCOPES]
+    return {
+        "findings": findings,
+        "overall_correctness": "patch is incorrect" if blocking else "patch is correct",
+        "overall_explanation": bounded_field("\n".join(explanations) or "No reviewer explanation.", 3000),
+        "overall_confidence": min(confidences) if confidences else 0.5,
+    }
+
+
+def run_structured_review(
+    args: argparse.Namespace,
+    repo: Path,
+    git_bin: str,
+    target: str,
+    target_ref: str | None,
+    commit_ref: str,
+) -> dict[str, Any]:
+    changed_paths = review_paths(repo, git_bin, target, target_ref, commit_ref)
+    bundle = review_bundle(repo, git_bin, target, target_ref, commit_ref)
+    prompt = build_structured_prompt(
+        repo,
+        target,
+        target_ref,
+        bundle,
+        changed_paths,
+        load_extra_prompt(args),
+        load_datasets(args),
+    )
+    reviewers = structured_reviewer_args(args)
+    reports: list[tuple[str, dict[str, Any]]] = []
+    failures: list[str] = []
+    for reviewer in reviewers:
+        try:
+            reports.append(run_one_structured_reviewer(reviewer, repo, prompt, changed_paths))
+        except SystemExit as exc:
+            failures.append(f"{reviewer_label(reviewer)}: {exc}")
+            if not args.allow_partial_panel:
+                raise
+    if failures:
+        for failure in failures:
+            print(f"structured panel reviewer failed: {failure}", file=sys.stderr)
+    if not reports:
+        raise SystemExit("structured review produced no reports")
+    if len(reports) == 1:
+        label, report = reports[0]
+        for finding in report["findings"]:
+            finding["reviewer"] = label
+        return report
+    return merge_structured_reports(reports)
+
+
+def blocking_structured_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
+    return [finding for finding in report["findings"] if finding.get("scope") in STRUCTURED_BLOCKING_SCOPES]
+
+
+def nonblocking_structured_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
+    return [finding for finding in report["findings"] if finding.get("scope") not in STRUCTURED_BLOCKING_SCOPES]
+
+
+def render_structured_report(report: dict[str, Any]) -> str:
+    lines: list[str] = []
+    blocking = blocking_structured_findings(report)
+    nonblocking = nonblocking_structured_findings(report)
+    if blocking:
+        lines.append(f"structured review findings: {len(blocking)} blocking")
+    else:
+        lines.append("structured review clean: no direct or induced findings reported")
+    if nonblocking:
+        lines.append(f"structured review nonblocking findings: {len(nonblocking)}")
+    for finding in report["findings"]:
+        loc = finding["code_location"]
+        reviewer = f" reviewer={finding.get('reviewer')}" if finding.get("reviewer") else ""
+        lines.append(f"[{finding['priority']}] {finding['title']}")
+        lines.append(f"{loc['file_path']}:{loc['line']} scope={finding['scope']}{reviewer}")
+        lines.append(finding["body"])
+        lines.append(f"fix: {finding['fix']}")
+        lines.append(f"scope reason: {finding['scope_reason']}")
+        lines.append("")
+    lines.append(f"overall: {report['overall_correctness']} ({report['overall_confidence']})")
+    lines.append(report["overall_explanation"])
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def write_json_ledger(
+    path: Path,
+    *,
+    review_mode: str,
+    target: str,
+    target_ref: str | None,
+    commit_ref: str,
+    branch: str,
+    pr_url: str | None,
+    findings: list[dict[str, Any]],
+    blocking_count: int,
+    nonblocking_count: int,
+    raw_output_path: Path | None = None,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ledger = {
+        "schema_version": 1,
+        "tool": "codex-review",
+        "review_mode": review_mode,
+        "target": {
+            "kind": target,
+            "base": target_ref,
+            "commit": commit_ref if target == "commit" else None,
+            "branch": branch or "detached",
+            "pr_url": pr_url,
+        },
+        "summary": {
+            "blocking_findings": blocking_count,
+            "nonblocking_findings": nonblocking_count,
+            "total_findings": len(findings),
+        },
+        "raw_output_path": str(raw_output_path) if raw_output_path else None,
+        "findings": findings,
+    }
+    path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+
+
+def report_structured_review_or_fail(
+    args: argparse.Namespace,
+    report: dict[str, Any],
+    *,
+    target: str,
+    target_ref: str | None,
+    commit_ref: str,
+    branch: str,
+    pr_url: str | None,
+) -> int:
+    output = render_structured_report(report)
+    sys.stdout.write(output)
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(output)
+    blocking = blocking_structured_findings(report)
+    nonblocking = nonblocking_structured_findings(report)
+    if args.json_output:
+        write_json_ledger(
+            Path(args.json_output),
+            review_mode="structured",
+            target=target,
+            target_ref=target_ref,
+            commit_ref=commit_ref,
+            branch=branch,
+            pr_url=pr_url,
+            findings=report["findings"],
+            blocking_count=len(blocking),
+            nonblocking_count=len(nonblocking),
+            raw_output_path=Path(args.output) if args.output else None,
+        )
+    if args.expect_findings:
+        if blocking:
+            print("structured review expected findings observed")
+            return 0
+        print("structured review expected findings but none were reported")
+        return 1
+    return 1 if blocking else 0
+
+
+def print_selection(
+    target: str,
+    branch: str,
+    pr_url: str | None,
+    review_cmd: list[str],
+    structured: bool,
+    reviewers: list[str],
+    parallel_tests: str | None,
+    parallel_shell: str,
+    fetch_branch: bool,
+    output: str | None,
+    json_output: str | None,
+    heartbeat_seconds: int,
+) -> None:
+    print(f"codex-review target: {target}")
+    print(f"branch: {branch or 'detached'}")
+    if pr_url:
+        print(f"pr: {pr_url}")
+    if structured:
+        print("review: structured JSON reviewer")
+        print(f"reviewers: {', '.join(reviewers)}")
+    else:
+        print(f"review: {shell_join(review_cmd)}")
+    if target == "whole":
+        print("snapshot: temporary worktree with local overlay")
+    if parallel_tests:
+        print(f"tests: {parallel_tests}")
+        print(f"tests shell: {parallel_shell}")
+    if fetch_branch:
+        print("fetch: git fetch origin --quiet")
+    if output:
+        print(f"output: {output}")
+    if json_output:
+        print(f"json output: {json_output}")
+    print(f"heartbeat: {heartbeat_seconds}s")
+
+
+def run_model_gate(repo: Path) -> None:
+    script = Path(__file__).resolve().with_name("check-review-models.py")
+    command = [sys.executable or "python3", str(script)]
+    result = subprocess.run(command, cwd=repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.stdout:
+        sys.stdout.write(result.stdout)
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+    if result.returncode != 0:
+        raise SystemExit("review model gate failed; stop before Phase 1")
+
+
+def main() -> int:
+    args = parse_args()
+    repo, git_bin = repo_root()
+    codex_bin = resolve_command(args.codex_bin, repo)
+    gh_bin = find_command("gh", repo)
+    target, target_ref, pr_url = choose_target(repo, git_bin, gh_bin, args.mode, args.base)
+    branch = current_branch(repo, git_bin)
+    codex_model, codex_thinking = codex_reviewer_config(args)
+    review_cmd = build_review_command(codex_bin, args.yolo, target, target_ref, args.commit, codex_model, codex_thinking)
+    reviewers = [reviewer_label(reviewer) for reviewer in structured_reviewer_args(args)] if args.structured else []
+    print_selection(
+        target,
+        branch,
+        pr_url,
+        review_cmd,
+        args.structured,
+        reviewers,
+        args.parallel_tests,
+        args.parallel_tests_shell,
+        target in {"branch", "whole"},
+        args.output,
+        args.json_output,
+        args.heartbeat_seconds,
+    )
+    if args.dry_run:
+        return 0
+
+    run_model_gate(repo)
+
+    if target in {"branch", "whole"}:
+        fetch = run([git_bin, "fetch", "origin", "--quiet"], repo, check=False)
+        if fetch.returncode != 0:
+            print("warning: git fetch origin failed; reviewing with existing refs", file=sys.stderr)
+
+    output_is_temp = args.output is None
+    if args.output:
+        output_path = Path(args.output)
+    else:
+        handle = tempfile.NamedTemporaryFile(prefix="codex-review.", suffix=".out", delete=False)
+        handle.close()
+        output_path = Path(handle.name)
+
+    tests_proc: tuple[subprocess.Popen[bytes], float] | None = None
+    snapshot_root: Path | None = None
+    review_repo = repo
+    try:
+        if target == "whole":
+            snapshot_root, review_repo = create_review_snapshot(repo, git_bin)
+        if args.parallel_tests:
+            tests_proc = start_parallel_tests(args.parallel_tests, review_repo, args.parallel_tests_shell)
+        if args.structured:
+            report = run_structured_review(args, review_repo, git_bin, target, target_ref, args.commit)
+            review_status = report_structured_review_or_fail(
+                args,
+                report,
+                target=target,
+                target_ref=target_ref,
+                commit_ref=args.commit,
+                branch=branch,
+                pr_url=pr_url,
+            )
+        else:
+            review_status, elapsed_seconds = run_review(review_cmd, review_repo, output_path, args.heartbeat_seconds)
+            native_findings = native_findings_from_output(output_path)
+            if args.json_output:
+                write_json_ledger(
+                    Path(args.json_output),
+                    review_mode="native",
+                    target=target,
+                    target_ref=target_ref,
+                    commit_ref=args.commit,
+                    branch=branch,
+                    pr_url=pr_url,
+                    findings=native_findings,
+                    blocking_count=len(native_findings),
+                    nonblocking_count=0,
+                    raw_output_path=output_path if not output_is_temp else None,
+                )
+        tests_status = finish_parallel_tests(*tests_proc) if tests_proc else 0
+        if args.parallel_tests:
+            print(f"codex-review exit: {review_status}")
+        if review_status != 0 or tests_status != 0:
+            return 1 if args.parallel_tests else review_status
+        if args.structured:
+            return 0
+        return report_clean_review_or_fail(output_path, elapsed_seconds)
+    finally:
+        if snapshot_root is not None:
+            cleanup_review_snapshot(repo, git_bin, snapshot_root, review_repo)
+        if output_is_temp:
+            output_path.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

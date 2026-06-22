@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Proof Pack"
+  short_description: "Write self-contained, behavior-first PR proof."
+  default_prompt: "Use $pr-proof-pack to update this PR with a self-contained, behavior-first description backed by reviewer-checkable proof. Prefer concrete user actions, API request/response examples, state transitions, PR-visible screenshots, or diagrams over test-file inventories. For human-visible UI changes, upload screenshots through GitHub's PR UI with Computer Use in an agent-owned browser window, then embed the generated user-attachment Markdown in the PR body; do not use CLI upload helpers, gh-image, or browser cookie extraction. Keep CI/test command lists secondary and terse; avoid generic net-diff/proof/API tables, long command dumps, Codex thread context, local planning labels, decision logs, or unexplained task shorthand."

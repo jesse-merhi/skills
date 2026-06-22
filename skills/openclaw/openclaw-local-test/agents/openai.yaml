@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenClaw Local Test"
+  short_description: "Spin up leased OpenClaw test instances in a browser"
+  default_prompt: "Use $openclaw-local-test to start an isolated, auto-cleaned OpenClaw instance in a browser for manual testing."

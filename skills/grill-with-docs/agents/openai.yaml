@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grill With Docs"
+  short_description: "Grill plans against docs and code"
+  default_prompt: "Grill this plan one question at a time, checking the codebase, project glossary, and ADRs before asking anything the repo can answer."

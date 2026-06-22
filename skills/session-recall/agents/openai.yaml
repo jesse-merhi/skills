@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Recall"
+  short_description: "Find prior local agent sessions fast"
+  default_prompt: "Use $session-recall to find the local session where we handled this before."

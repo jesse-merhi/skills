@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Audit"
+  short_description: "Review whether changed or proposed tests earn their keep."
+  default_prompt: "Use $test-audit to review related test coverage and whether changed or proposed tests earn their keep; flag tests to add, change, remove, or skip when no verified reachable regression risk exists."

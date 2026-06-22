@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Surface Map"
+  short_description: "Map changed flows and review surfaces before judging a PR."
+  default_prompt: "Use $review-surface-map to map this PR or diff before reviewing it."
