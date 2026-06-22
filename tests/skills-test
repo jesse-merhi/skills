@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+fail() {
+  printf 'not ok - %s\n' "$1" >&2
+  exit 1
+}
+
+assert_contains() {
+  local file="$1"
+  local text="$2"
+  grep -Fq "$text" "$file" || {
+    printf '%s\n' "--- $file ---" >&2
+    sed -n '1,200p' "$file" >&2
+    fail "expected $file to contain: $text"
+  }
+}
+
+assert_output_contains() {
+  local output="$1"
+  local text="$2"
+  printf '%s' "$output" | grep -Fq -- "$text" || {
+    printf '%s\n' "--- command output ---" >&2
+    printf '%s\n' "$output" >&2
+    fail "expected command output to contain: $text"
+  }
+}
+
+test_skill_frontmatter_is_valid() {
+  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+from pathlib import Path
+import ast
+import os
+import sys
+
+
+def parse_scalar(value):
+    value = value.strip()
+    if value.startswith("'"):
+        if not value.endswith("'"):
+            raise ValueError("unterminated single-quoted value")
+        return value[1:-1].replace("''", "'")
+    if value.startswith('"'):
+        try:
+            parsed = ast.literal_eval(value)
+        except (SyntaxError, ValueError) as exc:
+            raise ValueError(f"invalid double-quoted value: {exc}") from exc
+        if not isinstance(parsed, str):
+            raise ValueError("double-quoted value is not a string")
+        return parsed
+    return value
+
+
+root = Path(os.environ["ROOT_DIR"])
+errors = []
+
+seen_names = {}
+
+skill_paths = []
+for dirpath, dirnames, filenames in os.walk(root / "skills", followlinks=True):
+    dirnames.sort()
+    if "SKILL.md" in filenames:
+        skill_paths.append(Path(dirpath) / "SKILL.md")
+
+for path in sorted(skill_paths):
+    lines = path.read_text().splitlines()
+    if not lines or lines[0] != "---":
+        errors.append(f"missing frontmatter: {path}")
+        continue
+
+    try:
+        end = lines[1:].index("---") + 1
+    except ValueError:
+        errors.append(f"unterminated frontmatter: {path}")
+        continue
+
+    metadata = {}
+    for line in lines[1:end]:
+        if not line.strip():
+            continue
+        if ":" not in line:
+            errors.append(f"invalid frontmatter line: {path}: {line!r}")
+            continue
+        key, raw_value = line.split(":", 1)
+        key = key.strip()
+        if not key:
+            errors.append(f"empty frontmatter key: {path}: {line!r}")
+            continue
+        try:
+            metadata[key] = parse_scalar(raw_value)
+        except ValueError as exc:
+            errors.append(f"invalid frontmatter value: {path}: {key}: {exc}")
+
+    expected_name = path.parent.name
+    if metadata.get("name") != expected_name:
+        errors.append(f"name mismatch: {path}: {metadata.get('name')!r}")
+    if not metadata.get("description"):
+        errors.append(f"missing description: {path}")
+    name = metadata.get("name")
+    if name:
+        previous = seen_names.get(name)
+        if previous is not None:
+            errors.append(f"duplicate skill name: {name}: {previous} and {path}")
+        seen_names[name] = path
+
+if errors:
+    print("\n".join(errors), file=sys.stderr)
+    sys.exit(1)
+PY
+}
+
+test_handoff_tmux_helper_builds_tmux_window_command() {
+  local tmp handoff output helper
+  tmp="$(mktemp -d)"
+  handoff="$tmp/handoff.md"
+  printf '# Handoff\n' > "$handoff"
+
+  helper="$ROOT_DIR/skills/handoff/scripts/codex-handoff-tmux"
+
+  output="$(
+    TMUX=/tmp/fake \
+      "$helper" \
+        --file "$handoff" \
+        --focus "next thing" \
+        --cd "$ROOT_DIR" \
+        --dry-run
+  )"
+
+  assert_output_contains "$output" "tmux new-window -c"
+  assert_output_contains "$output" "-n handoff"
+  assert_output_contains "$output" "codex-handoff-tmux"
+  assert_output_contains "$output" "--run-codex"
+  assert_output_contains "$output" "--file"
+  assert_output_contains "$output" "--focus"
+  assert_output_contains "$output" "--mode\\ new"
+
+  output="$(
+    TMUX=/tmp/fake \
+      TMUX_PANE=%123 \
+      "$helper" \
+        --file "$handoff" \
+        --focus "next thing" \
+        --cd "$ROOT_DIR" \
+        --pane \
+        --dry-run
+  )"
+
+  assert_output_contains "$output" "tmux split-window -h -c"
+  assert_output_contains "$output" "-t %123"
+  assert_output_contains "$output" "codex-handoff-tmux"
+  assert_output_contains "$output" "--run-codex"
+  assert_output_contains "$output" "--file"
+  assert_output_contains "$output" "--focus"
+
+  output="$(
+    env -u TMUX_PANE \
+      TMUX=/tmp/fake \
+      "$helper" \
+        --file "$handoff" \
+        --focus "next thing" \
+        --cd "$ROOT_DIR" \
+        --pane \
+        --tmux-target "0:9" \
+        --dry-run
+  )"
+
+  assert_output_contains "$output" "tmux split-window -h -c"
+  assert_output_contains "$output" "-t 0:9"
+
+  if env -u TMUX_PANE \
+      TMUX=/tmp/fake \
+      "$helper" \
+        --file "$handoff" \
+        --focus "next thing" \
+        --cd "$ROOT_DIR" \
+        --pane \
+        --dry-run >"$tmp/missing-target.out" 2>&1; then
+    fail "pane placement should require TMUX_PANE or --tmux-target"
+  fi
+
+  assert_contains "$tmp/missing-target.out" "Pane placement requires TMUX_PANE or --tmux-target"
+
+  output="$(
+    env -u TMUX \
+      "$helper" \
+        --file "$handoff" \
+        --focus "next thing" \
+        --cd "$ROOT_DIR"
+  )"
+
+  assert_output_contains "$output" "No tmux session detected"
+  assert_output_contains "$output" "$handoff"
+}
+
+test_skill_frontmatter_is_valid
+test_handoff_tmux_helper_builds_tmux_window_command
+
+printf 'ok - skills tests\n'

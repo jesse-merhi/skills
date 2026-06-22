@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript Discipline"
+  short_description: "Keep TypeScript strict and readable"
+  default_prompt: "Use $typescript-discipline to review this TypeScript change for type safety and maintainability."

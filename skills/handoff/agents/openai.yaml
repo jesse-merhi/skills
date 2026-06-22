@@ -1,0 +1,4 @@
+interface:
+  display_name: "Handoff"
+  short_description: "Prepare a next-agent handoff."
+  default_prompt: "Use $handoff to write a compact handoff for the next agent. For edit/PR/parallel workers, prepare a dedicated worktree instead of sharing the coordinator checkout. In Codex CLI, use tmux placement only when this session is running under tmux; inspect windows/panes and choose same-window pane, another-window pane, or a new tmux window based on task context."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ACP Frontend Delegation"
+  short_description: "Delegate Codex frontend work to Claude"
+  default_prompt: "Use $acpx-frontend-delegation to plan and implement frontend work through Claude via acpx."

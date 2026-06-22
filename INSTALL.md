@@ -1,0 +1,90 @@
+# Installation
+
+You are an AI coding agent. The user has cloned this skills repository and
+asked you to install it into your harness. Follow these steps in order.
+
+Throughout this file, `REPO` refers to the absolute path of this cloned
+repository.
+
+## 1. Identify Your Harness
+
+Figure out which harness you're running in:
+
+- **Claude Code**: `~/.claude/`, `CLAUDE.md`, a `skills/` directory,
+  `plugins/`
+- **Codex CLI**: `~/.codex/`, `config.toml`, a `skills/` directory
+- **opencode**: `~/.config/opencode/`, `AGENTS.md`, a `skills/` directory
+- **Pi**: `~/.pi/agent/`, a `skills/` directory, `settings.json`
+
+If you cannot determine the harness with confidence, ask the user before
+proceeding.
+
+## 2. Survey Existing Skills
+
+Before touching anything, inventory the target skills directory for the current
+harness:
+
+| Harness | Skills Target |
+| --- | --- |
+| Claude Code | `~/.claude/skills` |
+| Codex | `~/.codex/skills` |
+| opencode | `~/.config/opencode/skills` |
+| Pi | `~/.pi/agent/skills` |
+
+Classify existing entries:
+
+1. A matching skill from this repo: safe to replace with a symlink.
+2. A third-party skill not in this repo: leave it alone unless `external.md`
+   explicitly says to install, update, or replace it.
+3. A hand-written local skill not in this repo: ask before touching it.
+4. A dead symlink: safe to remove.
+5. Obvious junk: ask before deleting.
+
+## 3. Link Skills
+
+Always use per-skill symlinks. The target skills directory should remain a real
+directory; each repo skill gets its own symlink inside it.
+
+Discover every `SKILL.md` under `REPO/skills/`, recursively and following
+directory symlinks. Install by the frontmatter `name`, not by folder path. This
+allows grouped skills such as `skills/openclaw/clawhub-local-test/` to install
+as `<target>/clawhub-local-test`.
+
+Procedure:
+
+1. Create the target skills directory if it does not exist.
+2. If the target skills directory is a symlink, stop and ask unless it points at
+   an old whole-directory install of this repo.
+3. For each discovered skill:
+   - read `SKILL.md` frontmatter `name`
+   - stop if two repo skills have the same name
+   - create `<target>/<name>` as a symlink to the directory containing
+     `SKILL.md`
+   - if `<target>/<name>` already points there, skip it
+   - if `<target>/<name>` is a real directory, compare it before replacing and
+     ask when it contains user-authored changes
+   - if `<target>/<name>` is a symlink elsewhere, stop and ask
+
+## 4. Install Third-Party Skills
+
+Read `external.md`. For each entry, run only the command for the current
+harness. Skip entries that do not list your harness and report the skip.
+
+Do not symlink third-party skills from this repo. Their own installer owns
+those files.
+
+## 5. Verify
+
+Run:
+
+```sh
+./tests/skills-test
+```
+
+Report:
+
+- harness detected
+- skills linked
+- existing local skills preserved
+- third-party installs run or skipped
+- test result

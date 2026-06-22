@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finding Discipline"
+  short_description: "Write actionable findings without review noise."
+  default_prompt: "Use $finding-discipline to turn review observations into precise actionable findings."

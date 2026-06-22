@@ -1,0 +1,4 @@
+interface:
+  display_name: Parallel Slice Orchestration
+  short_description: Decompose PRD slices into parallel subagent TDD work.
+  default_prompt: Implement this PRD or slice plan with subagents using vertical-slice TDD, preserving AFK/HITL checkpoints.

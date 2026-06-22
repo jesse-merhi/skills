@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend UI Validation"
+  short_description: "Audit rendered UI layout"
+  default_prompt: "Validate this UI with screenshots and the layout audit script across mobile, tablet, and desktop widths."
