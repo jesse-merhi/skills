@@ -53,9 +53,6 @@ rationale:
 
 - Start with `review-surface-map`: identify changed flows, entrypoints,
   contracts, state, side effects, risk surfaces, and validation targets.
-- Apply `supply-chain-security-pass` when CI, dependencies, lockfiles,
-  permissions, secrets, release, generated/vendor, or code-execution surfaces
-  changed.
 - Apply `frontend-ui-validation` expectations when rendered UI changed; the
   reviewer may request browser validation if screenshots or computed styles
   would materially affect confidence.
