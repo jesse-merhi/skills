@@ -1,10 +1,12 @@
 # Skills
 
+![Abstract banner for a repository of agent skills](assets/skills-banner.png)
+
 These are my agent skills.
 
 That sounds more formal than it is. Really, this is the pile of prompts,
 checklists, helper scripts, and tiny workflows I kept reaching for while trying
-to ship code with AI without losing my mind.
+to build useful things with agents and still keep the work sharp.
 
 If I ask an agent to do something once, fine. If I ask it twice, maybe I am
 being lazy. If I ask it three times, something is up. Usually the answer is one
@@ -58,8 +60,8 @@ The skills snap together into the loop I actually run:
     getting noisy.
 
 None of this is sacred. Half the specific commands will probably be obsolete
-soon enough. The point is the shape: get annoyed, automate the annoyance, write
-the workflow down, and keep raising the bar at the review end of the loop.
+soon enough. The point is the shape: notice what keeps helping, turn it into a
+skill or script, keep the loop legible, and raise the bar at the review end.
 
 ## What Is In Here?
 
@@ -123,6 +125,10 @@ Run:
 
 The test checks skill frontmatter and the handoff tmux helper behavior. CI also
 checks shell, Python, and JavaScript syntax for the helper scripts.
+
+## License
+
+MIT, with bundled third-party assets retaining their own notices.
 
 ## Public Snapshot
 
