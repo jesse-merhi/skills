@@ -16,12 +16,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.x"
 
@@ -43,4 +43,3 @@ jobs:
             skills/code-review/scripts/test-codex-review-helper
           python3 -m py_compile skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
-
