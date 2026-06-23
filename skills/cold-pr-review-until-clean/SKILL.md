@@ -49,9 +49,8 @@ Before the first cold review:
 5. If `code-review` already ran `review-surface-map`, `pr-rubbish-audit`,
    `typescript-discipline`,
    `improve-codebase-architecture`, `reducing-cognitive-load`,
-   `supply-chain-security-pass`, `frontend-ui-validation`, or
-   `finding-discipline`, do not pass those results to the reviewer. Convert
-   them only into neutral checklist topics.
+   `frontend-ui-validation`, or `finding-discipline`, do not pass those
+   results to the reviewer. Convert them only into neutral checklist topics.
 
 If the repo is dirty, make sure fixes will land in the right checkout.
 For local CLI work, use the user's normal isolation rules before editing

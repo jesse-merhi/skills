@@ -77,4 +77,6 @@ Use short sections:
 - Do not review all files equally; small contract files can matter more than large generated diffs.
 - Keep suspected issues separate from confirmed findings.
 - When a file is only a leaf test, fixture, generated artifact, or style change, say what upstream behavior it validates or mirrors.
-- If the diff includes supply-chain or CI surfaces, hand off that portion to `supply-chain-security-pass`.
+- If the diff includes CI, dependency, publishing, generated/vendor,
+  permission, secret-handling, or code-execution surfaces, call those out
+  explicitly in the changed-surface map.
