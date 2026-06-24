@@ -49,6 +49,7 @@ time.
 review_tool: must invoke the selected engine's bare built-in review; do not substitute a self-review or ad hoc subagent
 prompt_policy: pass only the review target plus tracked-finding notices generated per review-guardrails; no other prompt, checklist, desired verdict, or rationale
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
+state_store: keep findings, commands, open queue, and stop reason in the findings CLI
 stop_condition: required_clean consecutive runs with zero actionable findings (codex: 3, claude: 1)
 counter_reset: any actionable finding resets consecutive_clean to 0
 no_early_exit: do not stop before the engine's required clean streak
@@ -203,8 +204,10 @@ Repeat:
 
 ```text
 1. If the wall-clock budget has expired:
+     Record stop reason `budget-expired` in the findings CLI or final report.
      STOP and report unresolved state honestly.
 2. iterations += 1
+   Track the phase, iteration, target, reviewed head, and current clean streak.
 3. Run the selected engine's bare review against the fixed target.
 4. Triage the findings:
    - reject only with recorded evidence
@@ -213,17 +216,21 @@ Repeat:
        fail -> consult queue (Class B), ask the user without waiting
    - findings matching an open queue entry -> match note, no new entry
    If open questions for the user have reached consult_cap ->
+     Record the open queue and stop reason `blocked-on-consult`.
      SUSPEND as blocked-on-consult: present all open questions and wait.
 5. Classify the run (see Classifying a Run):
    clean / clean-except-queue / has_findings / ambiguous
 6. If clean or clean-except-queue:
      consecutive_clean += 1
+     Track the run verdict and clean streak.
      If clean-except-queue and the engine cannot send tracked-finding
      notices (codex) -> SUSPEND as blocked-on-consult now; without
      notices, repeat passes on a tree with a known finding are degraded.
      If consecutive_clean >= required_clean:
-       If the consult queue is empty -> STOP, report success.
-       Else -> SUSPEND as blocked-on-consult: present the queue and wait
+      If the consult queue is empty -> record stop reason `clean-streak-met`,
+              then STOP and report success.
+      Else -> record stop reason `blocked-on-consult`,
+              then SUSPEND as blocked-on-consult: present the queue and wait
                for the user. Do not re-run the engine on this unchanged
                tree.
      Else -> go to step 1 without changing the reviewed tree.
@@ -235,13 +242,16 @@ Repeat:
      base/uncommitted target before the next review. Do not re-review an
      old immutable commit after fixes.
      Run relevant verification for the fixes.
+     Record each command, result, and reason with the findings CLI.
      Inspect the diff so the fix maps to the findings, then check the
      diff-growth budget.
+     Keep fixed-finding details in the findings CLI.
      Go to step 1.
 8. If ambiguous:
      consecutive_clean = 0
      Re-run once if the failure looks transient.
-     If ambiguity persists, STOP and report unresolved state honestly.
+     If ambiguity persists, record stop reason `ambiguous-review`, then STOP
+     and report unresolved state honestly.
 ```
 
 Resume after the user answers a suspended loop:
@@ -249,7 +259,7 @@ Resume after the user answers a suspended loop:
 - Any accepted finding -> fix it, close its queue entry, reset
   `consecutive_clean` to 0, and go to step 1 on the changed tree.
 - All open entries rejected -> record the decisions; the completed streak
-  already covered this exact tree, so STOP and report success citing those
+  already covered this exact tree, so STOP with success citing those
   rejections.
 
 Between consecutive clean reviews, **do not edit code**. A multi-run streak
@@ -262,6 +272,8 @@ is only meaningful if the engine reviews the same tree every time.
 - Do not bundle unrelated cleanup into the fix step.
 - Run the relevant tests, typechecks, linters, or UI validation for the changed
   surface before the next review.
+- Record why each added or changed test catches a reachable product, API,
+  workflow, security, or data regression in the related finding record.
 - Inspect the diff after fixing so you can confirm the next review sees the
   intended tree.
 - If a finding is invalid, document why and run another review. Do not count
@@ -298,8 +310,9 @@ On termination, report:
 - Last review summary and verdict
 - Findings fixed directly
 - Findings intentionally rejected as invalid, with rationale
-- Consult-queue findings awaiting the user, with their registry entries
+- Consult-queue findings awaiting the user, with their finding records
 - Verification commands and results
+- Review-state path and whether it was updated through the final stop reason
 
 ## Hard Rules
 
@@ -308,6 +321,8 @@ On termination, report:
 - Never claim success before the engine's required clean streak.
 - Never edit between clean passes.
 - Always reset the counter on any actionable finding or ambiguous review.
+- Record findings, fixes, verification commands, consult-queue changes, and
+  stop conditions in the findings CLI.
 - Do not replace the engine's review with `spawn_agent`, `cold-pr-review`,
   a repo-specific review command, or manual judgement.
 - Respect the wall-clock and diff-growth budgets from `review-guardrails`.

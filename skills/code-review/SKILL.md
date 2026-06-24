@@ -30,10 +30,11 @@ current expected Claude Code default model behind this policy is Opus 4.8
 (`opus[1m]`). Treat a different default model, or a Fable/Mythos-family model
 appearing in the Claude Code catalog, as a stop-and-update event.
 
-Before the first review phase in every `code-review` run, run:
+Before the first review phase in every `code-review` run, resolve
+`<skill-dir>` to the directory containing this `SKILL.md`, then run:
 
 ```sh
-scripts/check-review-models
+<skill-dir>/scripts/check-review-models
 ```
 
 The gate checks native model catalogs:
@@ -52,7 +53,7 @@ sending a prompt or running a paid completion.
 For manual inventory checks, run:
 
 ```sh
-scripts/check-review-models --check-api-inventory
+<skill-dir>/scripts/check-review-models --check-api-inventory
 ```
 
 That optional API path uses `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` when they
@@ -81,13 +82,13 @@ Maintain:
 iteration = 0
 last_reviewed_head = <current HEAD or PR head SHA>
 last_reviewed_target = <base + HEAD + dirty-tree/snapshot identity>
-repo_display_name = <readable repo name, such as example-app>
-decision_log_path = <Obsidian note or local fallback file>
+repo_display_name = <readable repo name, such as sample-app>
+findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
 review_started = <local timestamp>
 baseline_diff = <changed files and changed lines of the original target>
 scope_baseline = <request, target, intended behavior, owner boundary, files>
 consult_queue = []
-findings_ledger = []
+findings_registry = <SQLite findings database>
 ```
 
 Repeat:
@@ -95,18 +96,20 @@ Repeat:
 1. Run the one-time setup, including the model gate.
 2. Phase 1: load `review-until-clean` and run it until the native review is
    clean on the current target. Use `finding-discipline` throughout to accept,
-   reject, or scope findings before fixing. Record every triage decision in
-   the decision log.
+   reject, or scope findings before fixing. Record each finding with
+   the configured review-findings helper.
 3. After every Phase 1 fix, run affected validation and reset both phase clean
-   confirmation state to zero.
+   confirmation state to zero. Record the fix and validation in the findings
+   database.
 4. Phase 2: run `cold-pr-review-until-clean` in a subagent until cold review is
    clean on the same target. Give it the one-time setup summary and risk
    checklist.
 5. Use `finding-discipline` throughout Phase 2 to accept, reject, or scope
-   findings before fixing. Record every triage decision in the decision log.
+   findings before fixing. Record each finding with
+   the configured review-findings helper.
 6. After every Phase 2 fix, run affected validation and return to Phase 1,
    because the target changed. Reset both phase clean confirmation state to
-   zero.
+   zero before rerunning Phase 1.
 7. Run final validation, publish or update the PR when the target is
    PR-capable, run `pr-proof-pack`, and complete any end-of-process checks.
 8. Stop clean only when Phase 1 and Phase 2 each satisfy their own clean stop
@@ -138,9 +141,9 @@ Before patching a reviewer finding, classify it:
 - `Stop-and-consult`: requires a new shared contract, migration, API shape,
   storage shape, product/security judgment, or different owner boundary.
 
-Patch only in-scope blockers. Record follow-ups in the decision log and do
-not patch them in this PR. Put stop-and-consult findings in the consult queue
-with the scope reason.
+Patch only in-scope blockers. Record follow-ups in the findings database and
+do not patch them in this PR. Put stop-and-consult findings in the consult
+queue with the scope reason.
 
 ## Budgets and Consult Gates
 
@@ -153,14 +156,14 @@ the bound.
 
 Orchestrator specifics:
 
-- Record `review_started` and `baseline_diff` in both the loop state and the
-  decision log header.
-- Provisional fixes (Class A) are decision-log entries with status
-  `Provisional`; the user's keep-or-revert answer updates the entry to Adopted
-  or Rejected.
-- Keep the consult queue in the decision log: each entry carries its
-  fingerprint (file, code element, root cause), and review passes that
-  re-raise it get a one-line match note instead of a new entry.
+- Record `review_started` and `baseline_diff` in the loop state.
+- Provisional fixes (Class A) are findings with status `provisional`; the
+  review owner's keep-or-revert answer updates the finding to `fixed` or
+  `rejected`.
+- Keep the consult queue in the findings database: each entry carries its
+  fingerprint (file, code element, root cause). Review passes that re-raise a
+  queued finding get a one-line match note on that finding instead of a new
+  entry.
 - Generate tracked-finding notices for cold reviewers and the claude
   workflow from the currently open consult entries at every dispatch, per
   `review-guardrails`. Never reuse a previous pass's notice text.
@@ -177,47 +180,55 @@ Orchestrator specifics:
   is no "clean except" verdict: the result is clean only after the queue is
   resolved, otherwise it is blocked-on-consult.
 
-## Findings Ledger and Final Report
+## Findings Registry and Final Report
 
-Maintain a run-level `findings_ledger` for every finding raised by native
-review, cold review, required lenses, conditional lenses, structured reviewers,
-or the user. The decision log remains the source of truth; the ledger is the
-closeout index that makes the full review understandable after the final clean
-passes.
+The SQLite findings database is the durable finding registry for every finding
+raised by native review, cold review, required lenses, conditional lenses,
+structured reviewers, the review owner, or the user.
 
-For every finding, track:
+For every finding, record:
 
 - decision ID
-- origin: native review, cold review, named lens, structured reviewer, or user
+- source: native review, cold review, named lens, structured reviewer, review
+  owner, or user
 - severity or priority when available
-- scope class when available: direct, induced, adjacent, or unrelated
-- status: adopted, rejected, scoped, deferred, provisional, reopened, or
-  blocked-on-consult
+- scope class when useful: direct, induced, adjacent, or unrelated
+- status: `open`, `fixed`, `rejected`, `deferred`, `provisional`, or `reopened`
 - affected files or behavior
-- short reason and validation result
+- impact category: `ui`, `workflow`, `api-contract`, `permissions`,
+  `privacy`, `finance`, `data-correctness`, `audit`, `migration`, `schema`,
+  or `internal`
+- whether the finding is material to the review owner: mark material when it changes
+  visible behavior, workflow, who can see/do what, data correctness, audit
+  history integrity, billing/payroll/finance, schema/migrations, or API
+  contracts
+- user impact: one sentence explaining why a product/review owner should care
+- short decision, evidence, and validation result
 
-At closeout, summarize the whole ledger, not just the last clean run. Include
-counts by origin and status, call out adopted fixes with their validation, list
-scoped or deferred follow-ups, and list rejected findings only when the
-evidence is useful for reviewers or the user. If the final clean confirmations
-reported no remaining findings, say that as "the final pass had no remaining
-findings" after the ledger summary. Do not write a final report that only says
-`No findings` unless no reviewer, lens, or user-raised finding appeared
-anywhere in the whole run.
+At closeout, run the configured review-findings helper's `closeout` command and
+use its material sections first: `Material findings`,
+`User-visible or workflow changes`, `Security, data, and permission changes`,
+and `Lower-risk findings`. Then use its full sections for `Findings found`,
+`Changes made while reviewing`, `Verification run`, and `Still open`.
+Summarize the whole recorded run, not just the last clean pass.
+If the final clean confirmations reported no remaining findings, say that as
+"the final pass had no remaining findings" after the registry summary. Do not
+write a final report that only says `No findings` unless no reviewer, lens, or
+user-raised finding appeared anywhere in the whole run.
 
 ## One-Time Setup
 
 Do once before review loops, then redo only if the target, base, or dirty local
 overlay changes:
 
-1. Run `scripts/check-review-models`. Stop the whole review before Phase 1 if
+1. Run `<skill-dir>/scripts/check-review-models`. Stop the whole review before Phase 1 if
    a newer or better recommended Codex model than `gpt-5.5` is available, if a
    Claude Code default model changed, if a Fable/Mythos-family Claude model
    is available, or if the check cannot be completed.
 2. Map changed flows, entrypoints, contracts, side effects, state transitions,
    risk surfaces, and validation targets with `review-surface-map`.
 3. Load `review-guardrails`; record `review_started`, `baseline_diff`, and
-   `scope_baseline` in the loop state and decision log header.
+   `scope_baseline` in the loop state.
 4. Run the required review lenses before the first review phase:
    - `pr-rubbish-audit`: classify every changed file and flag unrelated churn,
      dangerous removals, generated drift, stale branch-history comments,
@@ -241,6 +252,10 @@ overlay changes:
      related tests should change and whether changed tests earn their keep,
      especially around removed APIs, impossible states, implementation details,
      or branch-local history.
+   - `supply-chain-security-pass`: mandatory when the diff touches CI, GitHub
+     Actions, package manifests, lockfiles, install/build/release scripts,
+     publish config, Docker/devcontainer, permissions, secrets handling,
+     generated/vendor code, or process execution.
    - `frontend-ui-validation`: mandatory when the diff changes visible UI,
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the
@@ -250,178 +265,179 @@ overlay changes:
    changed-surface map and required/conditional lenses. Include checklist
    topics, not prior findings, desired conclusions, implementation rationale,
    or earlier review results.
-6. Create the decision log:
-   - Resolve `repo_display_name` from the repository name in the git remote or
-     toplevel directory. Keep the human-readable name and casing, such as
-     `example-app`; do not use context keys like `github.com__owner__repo`
-     in Obsidian-facing paths.
-   - Prefer the user's real Obsidian vault when it is discoverable. Use a
-     neutral local-only note path such as:
+7. Use the findings database as the working registry:
+   - Prefer the installed Rust binary. If it is missing, resolve
+     `<skill-dir>` to the directory containing this `SKILL.md`, then install it
+     once:
 
-     ```text
-     ~/Documents/Obsidian/Reviews/Decision Logs/<repo-display-name>/<target-slug>-<YYYYMMDD-HHMMSS>.md
+     ```sh
+     <skill-dir>/scripts/install-review-findings
      ```
 
-   - If no real Obsidian vault is available, create a local fallback file
-     outside the product repo:
+     This writes `~/.local/bin/review-findings` by default. If
+     `AGENT_REVIEW_FINDINGS_BIN` is configured, prefer that absolute helper path
+     so an older `review-findings` earlier on `PATH` cannot be used by accident.
+     Resolve the helper once per session so stale earlier `PATH` entries cannot
+     shadow it:
 
-     ```text
-     ~/.local/state/agent-review-decision-logs/<repo-display-name>/<target-slug>-<YYYYMMDD-HHMMSS>.md
+     ```sh
+     review_findings_bin="${AGENT_REVIEW_FINDINGS_BIN:-<skill-dir>/scripts/review-findings}"
      ```
 
-   - Record the absolute path in `decision_log_path` and keep appending to the
-     same file for the whole review run.
-   - Do not write the decision log into the product repo, PR body, PR comment,
-     commit message, or issue unless the user explicitly asks.
-7. Note validation commands needed for affected surfaces: package scripts for
+     The checked-in `<skill-dir>/scripts/review-findings` launcher prefers a
+     stamped installed binary and falls back to building/running the bundled
+     Rust source when needed.
+   - Record each finding as soon as it is triaged:
+
+     ```sh
+     "$review_findings_bin" record \
+       --repo <repo-display-name> \
+       --repo-path <repo-root> \
+       --branch <branch-or-review-key> \
+       --target <PR-or-range> \
+       --base <base> \
+       --head <head> \
+       --decision-id D<N> \
+       --status <open|fixed|rejected|deferred|provisional|reopened> \
+       --source <native-review|cold-review|lens|user> \
+       --fingerprint "<file + code element + root cause>" \
+       --summary "<one-sentence finding>" \
+       --impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal> \
+       --priority <P0|P1|P2|P3|P4> \
+       --material \
+       --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
+       --decision "<owner or next action>" \
+       --text "<reason, evidence, impact, and validation notes>"
+     ```
+
+   - Query before dispatching subagents, resuming a review, or answering
+     "what did review find?":
+
+     ```sh
+     "$review_findings_bin" query --repo <repo> --repo-path <repo-root> --branch <branch> --target <current-target> "<search text>"
+     ```
+
+   - Record each validation command as soon as it finishes:
+
+     ```sh
+     "$review_findings_bin" record-command \
+       --repo <repo-display-name> \
+       --repo-path <repo-root> \
+       --branch <branch-or-review-key> \
+       --target <PR-or-range> \
+       --base <base> \
+       --command "<command>" \
+       --result "<passed|failed|blocked + key result>" \
+       --reason "<finding ID or risk this command checked>" \
+       --decision-id D<N>
+     ```
+
+   - Generate the final closeout sections from SQLite, then use that output in
+     the user-facing final answer:
+
+     ```sh
+     "$review_findings_bin" closeout \
+       --repo <repo> \
+       --repo-path <repo-root> \
+       --branch <branch> \
+       --base <base> \
+       --target <current-target>
+     ```
+
+     For a concise owner-facing overview, use the material view:
+
+     ```sh
+     "$review_findings_bin" closeout --material \
+       --repo <repo> \
+       --repo-path <repo-root> \
+       --branch <branch> \
+       --base <base> \
+       --target <current-target>
+     ```
+
+   - Prune stale low-use findings periodically:
+
+     ```sh
+     "$review_findings_bin" prune --older-than-days 90 --min-seen-count 1
+     ```
+
+   - Do not rely on chat history as the source of review state.
+8. Note validation commands needed for affected surfaces: package scripts for
    tests, typecheck, lint, build, UI/E2E, migrations, security, or generated
    artifacts.
-8. Propose durable context updates only when the diff changes long-lived
+9. Propose durable context updates only when the diff changes long-lived
    project facts and the update is evidence-backed.
 
-## Decision Log
+## Findings Database
 
-The decision log is the decision registry for the main agent and user to
-inspect locally after a long review. It should explain why findings were
-adopted, rejected, scoped, or reopened without polluting the PR or the reviewed
-repository.
+The findings database is the working registry. Use it for finding IDs,
+branch/review keys, current status, fingerprint, source, owner or next action,
+verification commands, closeout sections, search, and the current open queue.
 
-Write decision entries for a reader who has not seen the codebase, the PR, or
-the review output. Use plain language, name the concrete code or behavior, and
-explain project terms the first time they matter. Good: "The route checks the
-current user before loading the record." Bad: "Authorization is handled
-upstream." If a term is necessary, add a short example in the same sentence.
+Use the Rust `review-findings` binary as the local SQLite search index for
+review findings. If it is missing, resolve `<skill-dir>` to the directory
+containing this `SKILL.md`, then install it once with:
 
-Start the file with:
-
-```md
-# Review Decision Log
-
-- Target: <PR, branch, commit, or git range>
-- Base: <base branch or sha, when relevant>
-- Started: <local timestamp>
-- Baseline diff: <changed files and changed lines of the original target>
-- Main agent: <harness/model when known>
-- Decision log path: <absolute path>
+```sh
+<skill-dir>/scripts/install-review-findings
 ```
 
-Append one entry for every review finding, lens finding, user-requested change,
-and meaningful reopen decision. Use this template exactly, with these headings
-in this order. Do not rename, skip, or merge sections:
+It installs to `~/.local/bin/review-findings` by default. If
+`AGENT_REVIEW_FINDINGS_BIN` is configured, prefer that absolute helper path so
+an older `review-findings` earlier on `PATH` cannot be used by accident. If no
+configured path exists, use the skill-local launcher:
 
-```md
-## D<N>: <Adopted | Rejected | Scoped | Deferred | Provisional | Reopened>: <short title>
-
-#### Target Head
-<sha or local tree description>
-
-#### Decision
-<what the agent decided to do, written in one or two plain sentences>
-
-#### Reason
-<why this decision was made, including any tradeoff or scope boundary>
-
-#### Evidence
-<files, commands, docs, reviewer output summary, or invariant that proves the
-decision>
-
-#### Implementation
-<how the decision was implemented: files changed, behavior changed, no-op,
-follow-up, or blocker>
-
-#### Validation
-<what was checked, why it was checked, observed result, and why that result
-supports the decision>
+```sh
+review_findings_bin="${AGENT_REVIEW_FINDINGS_BIN:-<skill-dir>/scripts/review-findings}"
 ```
 
-Rules:
+The launcher prefers a stamped installed binary and otherwise builds/runs the
+bundled Rust source. The database stores records under:
 
-- Update the entry after the implementation or validation result changes.
-- Keep entries in decision order. Do not add a per-entry timestamp unless the
-  timing itself affects the decision.
-- Put the decision status in the title. Put the actual choice in `Decision`. If
-  the origin of the decision matters, include it in `Evidence`.
-- Link related decisions by ID when a later review reopens an earlier
-  rejection or narrows an earlier broad finding.
-- Keep entries concrete. A rejected finding needs evidence, such as an upstream
-  guard, a test, a type contract, product scope, or a dependency guarantee.
-- The `Implementation` section must say exactly how the decision was carried
-  out. For a no-op, explain why no code changed. For a fix, name the changed
-  file or function and the behavior that changed.
-- Do not use `Validation` as a generic list of commands. Explain the check and
-  the result in terms of the specific decision.
-- Do not include secrets, auth URLs, raw session logs, hidden prompts, browser
-  session data, or unnecessary tool output.
-- Do not feed the decision log to the native review engine.
-- Pass the decision-log path to cold reviewers so they can append their own
-  decisions after their review verdict is complete.
-- Do not pass decision-log contents or prior decisions to cold reviewers before
-  their verdict. In cold-review prompts, include this guard: "Do not open or
-  read the review decision log before giving your verdict. After your verdict is
-  complete, append your own adopted, rejected, scoped, deferred, or reopened
-  decisions to the log. If you cannot write to the log, return those entries to
-  the main agent."
-- Cold-review entries must use the exact decision-log template from this skill.
-
-### Decision Entry Examples
-
-Use these as shape examples, not as reusable wording. Keep real entries tied to
-the actual code and evidence in the review.
-
-```md
-## D1: Adopted: Pending refunds were not treated as active refunds
-
-#### Target Head
-abc1234
-
-#### Decision
-Fix the duplicate-refund guard so it blocks both pending and completed refunds.
-
-#### Reason
-The review found that two fast refund requests could both create a refund while
-the first refund was still pending. A pending refund is already active work, so
-the second request should stop.
-
-#### Evidence
-`src/refunds.ts` only checked `status === "succeeded"`. The refund provider can
-return `pending` before it later returns `succeeded`.
-
-#### Implementation
-Changed `src/refunds.ts` so the duplicate check treats `pending` and
-`succeeded` as active refund states. Added a test that sends a second request
-after a pending refund exists.
-
-#### Validation
-`pnpm test refunds` passed. The new test proves the second request now reuses
-the existing pending refund instead of creating another one.
+```text
+~/.local/state/agent-review-findings/reviews.sqlite
 ```
 
-```md
-## D2: Rejected: Admin route can expose another tenant's invoice
+Record findings as soon as they are triaged, so later agents can query them:
 
-#### Target Head
-abc1234
-
-#### Decision
-Do not change this route for the reported tenant leak.
-
-#### Reason
-The route only receives invoice IDs after the tenant filter has already run in
-the parent loader. "Tenant" means the customer workspace that owns the invoice.
-
-#### Evidence
-`src/routes/admin.ts` calls `loadTenantInvoiceIds(user.tenantId)` before this
-handler runs. `src/routes/admin.test.ts` has a cross-tenant invoice test that
-expects a 404.
-
-#### Implementation
-No code change. The existing parent loader and test already cover the reported
-case.
-
-#### Validation
-`pnpm test admin` passed, including the cross-tenant invoice test. That proves
-an invoice from a different tenant is still hidden from this route.
+```sh
+"$review_findings_bin" record \
+  --repo <repo-display-name> \
+  --repo-path <repo-root> \
+  --branch <branch-or-review-key> \
+  --target <PR-or-range> \
+  --base <base> \
+  --head <head> \
+  --decision-id D<N> \
+  --status <open|fixed|rejected|deferred|provisional|reopened> \
+  --source <native-review|cold-review|lens|user> \
+  --fingerprint "<file + code element + root cause>" \
+  --summary "<one-sentence finding>" \
+  --impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal> \
+  --priority <P0|P1|P2|P3|P4> \
+  --material \
+  --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
+  --decision "<owner or next action>" \
+  --text "<reason, evidence, impact, and validation notes>"
 ```
+
+Agents can then query prior findings with one command:
+
+```sh
+"$review_findings_bin" query --repo sample-app --repo-path <repo-root> --branch <branch> --target <current-target> "duplicate refunds"
+"$review_findings_bin" query --repo sample-app --repo-path <repo-root> --branch <branch> --target <current-target> --status open "tenant invoice leak"
+"$review_findings_bin" query --repo sample-app --repo-path <repo-root> --branch <branch> --target <current-target> --json "blocked consult payment reversal"
+"$review_findings_bin" record-command --repo sample-app --repo-path <repo-root> --branch <branch> --target <target> --base <base> --command "pnpm test refunds" --result passed --reason "Checks D1 duplicate refund guard." --decision-id D1
+"$review_findings_bin" closeout --repo sample-app --repo-path <repo-root> --branch <branch> --base <base> --target <current-target>
+"$review_findings_bin" closeout --material --repo sample-app --repo-path <repo-root> --branch <branch> --base <base> --target <current-target>
+"$review_findings_bin" prune --older-than-days 90 --min-seen-count 1
+```
+
+The CLI combines SQLite FTS5 with a local hashed vector index over compact
+issue cards. The structured SQLite rows remain the source for status, target,
+branch, decision ID, file, owner, and verification records. Older findings rank
+lower unless they are re-recorded or returned by searches often enough to raise
+their seen count. `prune` removes old low-use findings from the local index.
 
 ## Validation
 
@@ -497,15 +513,17 @@ Add other focused subagents with the relevant named skills when useful:
 `reducing-cognitive-load`,
 `frontend-ui-validation`,
 `impeccable`,
-or `monitoring-gh-actions`.
+`supply-chain-security-pass`, or `monitoring-gh-actions`.
 
 Give subagents neutral prompts: target, base, changed-surface summary, and the
 checklist they own. Tracked-finding notices for open Class B findings,
 generated fresh per `review-guardrails`, are the one allowed reference to
 prior findings. Do not leak desired conclusions or ask for a rubber stamp.
-Give cold-review subagents the decision-log path, but tell them not to open or
-read it before giving their verdict. After the verdict, they should append
-their own decisions to the log or return the entries if they cannot write.
+Give cold-review subagents the target, neutral checklist, and tracked-finding
+notices generated from currently open consult entries. If an optional decision
+log exists, give them its path only with the guard above; after the verdict,
+they should append long-form rationale or return the entries if they cannot
+write.
 If the harness cannot run subagents, say so, continue only as best effort, and
 do not call the review clean unless the user accepts that limitation.
 
@@ -563,6 +581,41 @@ the PR.
   to Phase 1 before declaring clean.
 - Do not downgrade either phase's clean stop condition because the first pass
   looks obviously clean.
+- Every closeout must be backed by the findings CLI. Before writing the final
+  answer, resolve `review_findings_bin` from `AGENT_REVIEW_FINDINGS_BIN` or
+  `<skill-dir>/scripts/review-findings`, record each validation command with
+  `"$review_findings_bin" record-command`, then run
+  `"$review_findings_bin" closeout --repo <repo> --repo-path <repo-root>
+  --branch <branch> --base <base> --target <current-target>` and use its
+  output as the source for these exact sections:
+  - `Material findings`: owner-facing review findings that change visible
+    behavior, workflows, permissions, data correctness, audit/history,
+    billing/payroll/finance, migrations/schema, or API contracts. Lead with
+    this section when it has entries.
+  - `User-visible or workflow changes`: UI, route, API, or workflow changes
+    made while reviewing that the review owner may notice or want to inspect.
+  - `Security, data, and permission changes`: auth, privacy, finance,
+    data-correctness, audit/history, and migration/schema changes.
+  - `Lower-risk findings`: internal edge cases, tests, and helper fixes. Keep
+    this concise; do not let it bury the material findings.
+  - `Findings found`: finding IDs, source, status, and one-sentence summary.
+    Say `none` only when the CLI has no recorded actionable findings.
+  - `Changes made while reviewing`: files/functions changed because of review
+    findings, mapped back to finding IDs. Say `none` only when the CLI has no
+    recorded fixed findings.
+  - `Verification run`: commands run, pass/fail result, and which finding or
+    risk each command checked. This must come from recorded CLI command rows.
+  - `Still open`: consult queue, deferred findings, skipped validation, and
+    residual risk.
+- Do not invent or reconstruct those sections from chat history. If the CLI
+  output is incomplete, record the missing finding or command first, rerun
+  `"$review_findings_bin" closeout`, then answer.
+- For a concise owner-facing answer, run
+  `"$review_findings_bin" closeout --material --repo <repo> --repo-path
+  <repo-root> --branch <branch> --base <base> --target <current-target>` and
+  summarize that output before the full verification details.
+- Include the `"$review_findings_bin" query` command that can retrieve the
+  recorded findings for this repo/branch/target.
 
 ## Helper
 
@@ -610,7 +663,7 @@ The helper:
 - uses `gpt-5.5` as the standard Codex review model and pins
   `model_reasoning_effort="high"` by default; use `--thinking codex=xhigh`
   only for tricky/high-risk changes where the extra latency is worth it;
-- runs `scripts/check-review-models` before real review work. Dry runs skip
+- runs `<skill-dir>/scripts/check-review-models` before real review work. Dry runs skip
   the gate because they do not start Phase 1;
 - supports `--parallel-tests`, `--parallel-tests-shell`, `--heartbeat-seconds`,
   `--output`, and `--dry-run`;
@@ -624,8 +677,8 @@ The helper:
 - defaults structured Codex reviewers to `gpt-5.5` with `high` thinking;
 - defaults structured Claude reviewers to `default` with `max` effort;
 - writes a normalized JSON ledger when `--json-output` is set. Prefer placing
-  that file beside the review decision log or in another local-only review
-  state path, not in the product repo unless the user asks.
+  that file beside the local findings database state or the optional decision
+  log, not in the product repo unless the user asks.
 - classifies structured findings by scope instead of dropping out-of-diff
   findings blindly. `direct` and `induced` findings are blocking; `adjacent`
   and `unrelated` findings are retained as nonblocking context.
@@ -637,41 +690,43 @@ The helper:
 Smoke-test the helper without spending a real review call:
 
 ```sh
-skills/code-review/scripts/test-codex-review-helper
+<skill-dir>/scripts/test-codex-review-helper
 ```
 
 Check model guidance directly:
 
 ```sh
-skills/code-review/scripts/check-review-models
+<skill-dir>/scripts/check-review-models
 ```
 
 Calibrate the optional structured reviewer when changing its prompt/schema or
 when reviewer quality is in doubt:
 
 ```sh
-skills/code-review/scripts/calibrate-structured-review --fixture both
-skills/code-review/scripts/calibrate-structured-review --fixture malicious --thinking xhigh
+<skill-dir>/scripts/calibrate-structured-review --fixture both
+<skill-dir>/scripts/calibrate-structured-review --fixture malicious --thinking xhigh
 ```
 
 This creates a temporary fake repo. The malicious fixture contains intentionally
 bad code with shell command injection and password exposure; the reviewer must
 report both kinds of findings. The benign fixture contains safe shell/filesystem
 and owner-check code; the reviewer should stay clean. This calibration is not
-part of normal `$code-review` and should not run unless the agent or user
+part of normal `$code-review` and should not run unless the agent or the user
 explicitly wants to test reviewer quality.
 
 ## Output
 
 Report iterations, the Phase 1 engine used, `review-until-clean` result,
-`cold-pr-review-until-clean` result, validation results, the findings ledger
-breakdown, PR URL or PR blocker, `pr-proof-pack` result, PR evidence, context
-updates, required-lens results, structured JSON ledger path when one was
-written, decision-log path, budget use (elapsed wall clock and diff growth
-against the baseline), the consult queue awaiting the user, final verdict, and
-anything left for human judgment. When clean, say plainly that both phases were
-clean on the same final target, including the same dirty-tree/snapshot identity
-when local overlay changes were present, that the required review lenses were
-completed, and name real test gaps or residual risk. If the last review pass
-had no findings, phrase that as the final clean confirmation, not as the whole
-review outcome unless the findings ledger is empty.
+`cold-pr-review-until-clean` result, `Findings found`, `Changes made while
+reviewing`, `Verification run`, `Still open`, PR evidence, required-lens
+results, PR URL or PR blocker, `pr-proof-pack` result, context updates, the
+configured `review-findings closeout` command used, findings database query command,
+structured JSON ledger path when one was written, budget use (elapsed wall
+clock and diff growth against the baseline), the consult queue awaiting the
+review owner, final verdict, and anything left for human judgment. When clean,
+say plainly that both phases were clean on the same final target, including the
+same dirty-tree/snapshot identity when local overlay changes were present, that
+the required review lenses were completed, and name real test gaps or residual
+risk. If the last review pass had no findings, phrase that as the final clean
+confirmation, not as the whole review outcome unless the findings registry is
+empty.

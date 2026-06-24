@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Review"
   short_description: "Native and cold review until clean, then PR proof."
-  default_prompt: "Use $code-review to orchestrate $review-until-clean first, then $cold-pr-review-until-clean in a subagent. Run required rubbish, architecture, cognitive-load, React-state, and applicable $test-audit lenses, keep the local/Obsidian decision log and findings ledger, use $finding-discipline throughout, fix actionable findings, validate, create or update the PR when applicable, run $pr-proof-pack, and close with the full findings breakdown instead of only the final clean pass."
+  default_prompt: "Use $code-review; use the configured review-findings helper for findings and verification; validate and include proof."
