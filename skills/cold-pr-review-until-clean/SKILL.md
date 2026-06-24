@@ -13,7 +13,7 @@ cold review invocations** complete with **zero actionable findings**.
 This skill is the normal-PR final independent review loop. In
 `code-review`, run it after the Codex review phase unless Codex review is
 unavailable or explicitly skipped. The source of truth here is
-`cold-pr-review`, not a repo-specific review bot or workflow.
+`cold-pr-review`, not an OpenClaw-specific review workflow or Clawsweeper.
 Fixes are handled directly by the implementing agent unless a repo-specific fix
 workflow applies.
 
@@ -23,6 +23,7 @@ workflow applies.
 review_tool: must invoke cold-pr-review through an independent subagent whenever the harness supports subagents
 review_context: subagent gets only the target, the neutral review checklist, and tracked-finding notices generated per review-guardrails; no other prior rationale or findings
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
+state_store: keep findings, commands, open queue, and stop reason in the findings CLI
 stop_condition: 3 consecutive cold review runs with zero actionable findings
 counter_reset: any actionable finding resets consecutive_clean to 0
 no_early_exit: do not stop on 1 or 2 clean passes
@@ -49,8 +50,9 @@ Before the first cold review:
 5. If `code-review` already ran `review-surface-map`, `pr-rubbish-audit`,
    `typescript-discipline`,
    `improve-codebase-architecture`, `reducing-cognitive-load`,
-   `frontend-ui-validation`, or `finding-discipline`, do not pass those
-   results to the reviewer. Convert them only into neutral checklist topics.
+   `supply-chain-security-pass`, `frontend-ui-validation`, or
+   `finding-discipline`, do not pass those results to the reviewer. Convert
+   them only into neutral checklist topics.
 
 If the repo is dirty, make sure fixes will land in the right checkout.
 For local CLI work, use the user's normal isolation rules before editing
@@ -69,8 +71,10 @@ Repeat:
 
 ```text
 1. If the wall-clock budget has expired:
+     Record stop reason `budget-expired` in the findings CLI or final report.
      STOP and report unresolved state honestly.
 2. iterations += 1
+   Track the phase, iteration, target, reviewed head, and current clean streak.
 3. Invoke cold-pr-review against the target.
    - Use a fresh subagent.
    - Pass only target + review checklist.
@@ -81,6 +85,7 @@ Repeat:
        fail -> consult queue (Class B), ask the user without waiting
    - findings matching an open queue entry -> match note, no new entry
    If open questions for the user have reached consult_cap ->
+     Record the open queue and stop reason `blocked-on-consult`.
      SUSPEND as blocked-on-consult: present all open questions and wait.
 5. Classify the review:
    - clean              -> no findings, or only evidence-rejected ones
@@ -88,9 +93,12 @@ Repeat:
    - has_findings       -> at least one actionable finding remains
 6. If clean or clean-except-queue:
      consecutive_clean += 1
+     Track the run verdict and clean streak.
      If consecutive_clean >= 3:
-       If the consult queue is empty -> STOP, report success.
-       Else -> SUSPEND as blocked-on-consult: present the queue and wait
+       If the consult queue is empty -> record stop reason `3-consecutive-clean`,
+               then STOP and report success.
+       Else -> record stop reason `blocked-on-consult`,
+               then SUSPEND as blocked-on-consult: present the queue and wait
                for the user. Do not run more reviews on this unchanged
                tree.
      Else -> go to step 1 without editing anything.
@@ -98,8 +106,10 @@ Repeat:
      consecutive_clean = 0
      Fix the actionable findings with narrow edits.
      Run relevant verification for the fixes.
+     Record each command, result, and reason with the findings CLI.
      Inspect the diff so the fix maps to the findings, then check the
      diff-growth budget.
+     Keep fixed-finding details in the findings CLI.
      Go to step 1.
 ```
 
@@ -108,7 +118,7 @@ Resume after the user answers a suspended loop:
 - Any accepted finding -> fix it, close its queue entry, reset
   `consecutive_clean` to 0, and go to step 1 on the changed tree.
 - All open entries rejected -> record the decisions; the completed streak
-  already covered this exact tree, so STOP and report success citing those
+  already covered this exact tree, so STOP with success citing those
   rejections.
 
 Between consecutive clean reviews, **do not edit code**. The streak is
@@ -169,7 +179,7 @@ contracts, then give a merge verdict.
 You may add domain-specific checklist items, such as security-sensitive
 flows, UI states to inspect, migration safety, or concurrency concerns.
 You may also append tracked-finding notices for open Class B findings,
-generated fresh from the decision log per `review-guardrails` — that is
+generated fresh from the findings database per `review-guardrails` — that is
 the only prior-finding content allowed. Do not include:
 
 - Any other prior reviewer findings
@@ -206,6 +216,8 @@ cheaper than falsely declaring convergence.
 - Do not bundle unrelated cleanup into the fix step.
 - Run the relevant tests, typechecks, linters, or UI validation for the
   changed surface before the next cold review.
+- Record why each added or changed test catches a reachable product, API,
+  workflow, security, or data regression in the related finding record.
 - Inspect the diff after fixing so you can confirm the next reviewer is
   seeing the intended tree.
 - If a finding is invalid, document why and run another cold review. Do
@@ -234,7 +246,7 @@ On termination, report:
 - Last cold-review summary and merge verdict
 - Findings fixed directly
 - Findings intentionally rejected as invalid, with rationale
-- Consult-queue findings awaiting the user, with their registry entries
+- Consult-queue findings awaiting the user, with their finding records
 - Verification commands and results
 
 ## Hard Rules
@@ -243,6 +255,8 @@ On termination, report:
 - Never claim success before 3 consecutive clean passes.
 - Never edit between clean passes.
 - Always reset the counter on any actionable finding.
+- Record findings, fixes, verification commands, consult-queue changes, and
+  stop conditions in the findings CLI.
 - Use a fresh reviewer for each pass when possible.
 - In `code-review`, run `review-until-clean` before this skill
   unless the native review engine is unavailable or explicitly skipped.

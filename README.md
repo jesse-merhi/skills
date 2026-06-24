@@ -83,6 +83,10 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   still install by skill name.
 - **Meta tools:** `skill-cleaner` audits loaded skills, duplicates, unused
   candidates, and prompt-budget pressure.
+- **Local helpers:** `code-review` includes the Rust `review-findings` CLI for
+  durable review findings, verification records, semantic-ish local search, and
+  CLI-backed closeouts. Install it with
+  `skills/code-review/scripts/install-review-findings`.
 
 ## Credits
 
@@ -121,10 +125,12 @@ Run:
 
 ```sh
 ./tests/skills-test
+./tests/review-findings-test
 ```
 
-The test checks skill frontmatter and the handoff tmux helper behavior. CI also
-checks shell, Python, and JavaScript syntax for the helper scripts.
+The tests check skill frontmatter, handoff tmux helper behavior, and the
+review-findings CLI lifecycle. CI also checks shell, Python, JavaScript, and
+Rust helper syntax/builds.
 
 ## License
 

@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cargo_dir="$script_dir/review-findings-rs"
+install_dir="${AGENT_REVIEW_FINDINGS_INSTALL_DIR:-$HOME/.local/bin}"
+target_dir="${AGENT_REVIEW_FINDINGS_TARGET_DIR:-${CARGO_TARGET_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/agent-review-findings/target}}"
+
+is_under() {
+  local child="$1"
+  local parent="$2"
+
+  case "$child/" in
+    "$parent"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+source_fingerprint() {
+  (
+    cd -- "$cargo_dir"
+    {
+      shasum -a 256 Cargo.toml Cargo.lock
+      find src -type f -print | LC_ALL=C sort | while IFS= read -r path; do
+        shasum -a 256 "$path"
+      done
+    } | shasum -a 256 | awk '{print $1}'
+  )
+}
+
+resolve_cargo() {
+  local repo_root path entry candidate
+
+  if [[ -n "${AGENT_REVIEW_FINDINGS_CARGO:-}" ]]; then
+    if [[ "$AGENT_REVIEW_FINDINGS_CARGO" = /* && -x "$AGENT_REVIEW_FINDINGS_CARGO" ]]; then
+      printf '%s\n' "$AGENT_REVIEW_FINDINGS_CARGO"
+      return 0
+    fi
+    printf 'AGENT_REVIEW_FINDINGS_CARGO must be an absolute executable path.\n' >&2
+    return 1
+  fi
+
+  for path in \
+    "$HOME/.cargo/bin/cargo" \
+    "/opt/homebrew/bin/cargo" \
+    "/usr/local/bin/cargo" \
+    "/usr/bin/cargo"
+  do
+    if [[ -x "$path" ]]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+  done
+
+  repo_root="$(cd -- "$script_dir/../../.." && pwd)"
+  while IFS= read -r entry; do
+    [[ "$entry" = /* ]] || continue
+    entry="$(cd -- "$entry" 2>/dev/null && pwd || printf '%s\n' "$entry")"
+    is_under "$entry" "$repo_root" && continue
+    candidate="$entry/cargo"
+    [[ -x "$candidate" ]] || continue
+    candidate="$(cd -- "$(dirname -- "$candidate")" 2>/dev/null && pwd)/$(basename -- "$candidate")"
+    is_under "$candidate" "$repo_root" && continue
+    printf '%s\n' "$candidate"
+    return 0
+  done < <(printf '%s' "${PATH:-}" | tr ':' '\n')
+
+  printf 'trusted cargo executable not found.\n' >&2
+  return 1
+}
+
+cargo_bin="$(resolve_cargo)"
+CARGO_TARGET_DIR="$target_dir" "$cargo_bin" build --quiet --release --locked --manifest-path "$cargo_dir/Cargo.toml"
+mkdir -p "$install_dir"
+cp "$target_dir/release/review-findings" "$install_dir/review-findings"
+chmod +x "$install_dir/review-findings"
+source_fingerprint > "$install_dir/review-findings.source-sha256"
+
+printf '%s\n' "$install_dir/review-findings"

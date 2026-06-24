@@ -73,12 +73,39 @@ harness. Skip entries that do not list your harness and report the skip.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 5. Verify
+## 5. Install Repo-Owned Helper Binaries
+
+Some skills include local helper binaries. Install the Rust `review-findings`
+binary so `code-review` can record findings, verification commands, and
+closeouts in a fast local SQLite database:
+
+```sh
+REPO/skills/code-review/scripts/install-review-findings
+```
+
+By default this writes:
+
+```text
+~/.local/bin/review-findings
+```
+
+If the harness supports local environment variables, record the absolute helper
+path as `AGENT_REVIEW_FINDINGS_BIN`. Otherwise agents can use the skill-local
+launcher at `REPO/skills/code-review/scripts/review-findings`.
+
+Verify:
+
+```sh
+${AGENT_REVIEW_FINDINGS_BIN:-$HOME/.local/bin/review-findings} path
+```
+
+## 6. Verify
 
 Run:
 
 ```sh
 ./tests/skills-test
+./tests/review-findings-test
 ```
 
 Report:
@@ -87,4 +114,5 @@ Report:
 - skills linked
 - existing local skills preserved
 - third-party installs run or skipped
+- helper binaries installed or skipped
 - test result
