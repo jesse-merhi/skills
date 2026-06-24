@@ -20,19 +20,24 @@ review_started = <local timestamp>
 baseline_diff  = <changed files and changed lines of the original target,
                   from `git diff --stat`>
 scope_baseline = <request, target, intended behavior, owner boundary, files>
+findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
+decision_log_path = <optional path for long-form rationale, when available>
 consult_queue  = []
 consult_cap    = 5 open questions for the user
 ```
 
-Put `review_started`, `baseline_diff`, and `scope_baseline` in the decision
-log header when `code-review` is running; otherwise keep them in the loop
-report.
+Keep `review_started`, `baseline_diff`, `scope_baseline`, the current review
+phase, clean streak counters, remaining lenses, and open consult-queue entries
+in active loop state. Record triaged findings and verification commands in the
+findings database as soon as they are accepted, rejected, deferred, made
+provisional, reopened, or run. If an optional decision log exists, mirror setup
+fields in its header.
 
 ## Wall-Clock Budget
 
 - Default: **8 hours per review run**, measured from `review_started`.
 - Check before starting each review cycle. When the budget has expired, stop
-  fixing and report honestly: decisions logged, remaining findings triaged,
+  fixing and report honestly: findings recorded, remaining findings triaged,
   and a handoff summary of what is still open.
 - Do not keep looping past the budget because a clean streak is almost met.
 - A machine-local override may set a different budget value for one machine.
@@ -47,9 +52,9 @@ report.
 - A fix that would exceed the budget, or touch a file outside the mapped
   review surface, is never applied silently: it becomes a consult-queue
   item.
-- Past the budget, remaining findings become Deferred entries in the
-  decision log or loop report. When the honest answer is that the PR should
-  be split, say so plainly.
+- Past the budget, remaining findings become `deferred` entries in the findings
+  database or loop report. When the honest answer is that the PR should be
+  split, say so plainly.
 
 ## Scope Governor
 
@@ -62,9 +67,9 @@ Before applying a review-driven fix, classify the finding against the frozen
 - `Stop-and-consult`: requires a new shared contract, migration, API shape,
   storage shape, product/security judgment, or different owner boundary.
 
-Patch only in-scope blockers. Record follow-ups as Deferred entries and do
+Patch only in-scope blockers. Record follow-ups as `deferred` findings and do
 not patch them in this PR. Add stop-and-consult findings to `consult_queue`
-with the scope reason.
+with the scope reason, then record them in the findings database.
 
 Stop patching and consult when:
 
@@ -95,7 +100,8 @@ hold:
 
 Test passes -> **provisional fix (Class A)**:
 
-- Apply the fix now and log it as `Provisional: D<N>` in the decision log.
+- Apply the fix now and record it as status `provisional` in the findings
+  database.
 - Ask the user in parallel; do not wait for the answer. The loop continues
   on the fixed tree, so later passes are full-value and nothing re-raises.
 - The user keeps it -> close the entry; the fix was already reviewed.
@@ -107,8 +113,8 @@ migration), or the fix would break a budget or the review surface. Add it
 to `consult_queue` with a fingerprint (file, code element, one-sentence
 root cause), raise it with the user without waiting — immediately when the
 user is active, otherwise in the suspension or final report — and keep
-fixing other findings. In Claude Code use the question tool; in Codex ask
-in the reply.
+fixing other findings. In Claude Code use the question tool; in Codex ask in
+the reply.
 
 The consult cap bounds how much uncertainty may pile up: when open
 questions for the user reach `consult_cap` (default 5, counting open Class
@@ -133,12 +139,13 @@ Related issues in the same code ARE in scope.
   target instructions. Facts only: no severity, no rationale, no proposed
   fix, no opinion on validity. The notice must never say or imply the code
   is fine.
-- Rebuild the notice list from the decision log's currently open consult
-  entries at every reviewer dispatch. Never copy it from a previous pass
-  and never maintain it by hand: a resolved entry must vanish from the
-  next notice, and a stale notice silently suppresses real review.
+- Rebuild the notice list from currently open consult entries in the findings
+  database at every reviewer dispatch. Confirm their current status with
+  `review-findings query`. Never copy a notice list from a previous pass and
+  never maintain it by hand: a resolved entry must vanish from the next notice,
+  and a stale notice silently suppresses real review.
 - Only the orchestrating agent writes queue entries and notices. Reviewers
-  never edit the queue or the decision log before their verdict.
+  never edit the queue or finding records before their verdict.
 - Engine support: the claude workflow takes the notice in its target
   instructions; cold reviewers take it as a checklist line. Bare
   `codex review` takes no instructions, so the codex engine cannot send
@@ -158,6 +165,8 @@ verdict:
   sentence.
 - A finding in a later pass that matches an open queue entry gets a one-line
   match note on that entry instead of a second queue entry or a new fix.
+  Record the match so a continuation sees that the re-raise has already been
+  matched.
 - Match on the same root cause at the same code, not on exact wording or
   line numbers. When unsure, treat the finding as new.
 - Never feed the queue or prior findings to a reviewer. Bare native reviews
@@ -179,10 +188,10 @@ Resolution:
 
 - The user accepts a queued finding -> fix it, close the entry, reset the
   streak, and resume the loop on the changed tree.
-- The user rejects it -> record the rejection and its reason in the decision
-  log. If the streak was already met and no queue entries remain open,
-  report success citing those rejections; the completed streak already
-  covered this exact tree.
+- The user rejects it -> record the rejection and its reason in the findings
+  database, and if the streak was already met and no queue entries remain open,
+  report success citing those rejections; the completed streak already covered
+  this exact tree.
 - Never report a fully clean verdict while the queue has open entries.
 
 Why this terminates: every pass either fixes something (bounded by the

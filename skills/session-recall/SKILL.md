@@ -40,13 +40,13 @@ Do not run parallel refreshes against the same SQLite database. Use sequential s
 1. Start with a recent, bounded fuzzy query.
 
 ```sh
-agent-session-find --index-since 14d --max-sources 80 "uplinked export ui"
+agent-session-find --index-since 14d --max-sources 80 "sample-app export ui"
 ```
 
 2. Add repo or cwd context when the project is known.
 
 ```sh
-agent-session-find --cwd uplinked --since 30d "export bugs"
+agent-session-find --cwd sample-app --since 30d "export bugs"
 ```
 
 3. Search one source when the likely harness is known.
@@ -65,7 +65,7 @@ asking the user to reconstruct context from memory.
 5. If the user mentions a handoff, worker, subagent, delegated implementation, reviewer pass, branch, commit, or PR opened by another agent, retry with `--workers`. Normal recall excludes worker transcripts by default, but parent sessions keep compact worker handoff/completion summaries.
 
 ```sh
-agent-session-find --workers --cwd uplinked "effect discipline eslint PR"
+agent-session-find --workers --cwd sample-app "effect discipline eslint PR"
 ```
 
 6. If running several follow-up searches against the same index, add `--no-refresh` after the first successful refresh.
@@ -78,7 +78,7 @@ agent-session-find --workers --cwd uplinked "effect discipline eslint PR"
 
 Use the words the user or agent likely typed, not a perfect summary. Good query terms include:
 
-- product or repo names: `uplinked`, `agent-session-find`
+- product or repo names: `sample-app`, `agent-session-find`
 - visible feature words: `export ui`, `mobile build`, `database restore`
 - error text or symbols: `missing_symbol`, `No such file`
 - workflow labels: `code review`, `test-audit`, `installer`
