@@ -1,4 +1,0 @@
-interface:
-  display_name: "Supply Chain Security Pass"
-  short_description: "Review CI, dependency, and supply-chain risk."
-  default_prompt: "Use $supply-chain-security-pass to inspect this PR for supply-chain and security risk."

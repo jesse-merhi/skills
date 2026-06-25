@@ -252,10 +252,6 @@ overlay changes:
      related tests should change and whether changed tests earn their keep,
      especially around removed APIs, impossible states, implementation details,
      or branch-local history.
-   - `supply-chain-security-pass`: mandatory when the diff touches CI, GitHub
-     Actions, package manifests, lockfiles, install/build/release scripts,
-     publish config, Docker/devcontainer, permissions, secrets handling,
-     generated/vendor code, or process execution.
    - `frontend-ui-validation`: mandatory when the diff changes visible UI,
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the
@@ -513,7 +509,7 @@ Add other focused subagents with the relevant named skills when useful:
 `reducing-cognitive-load`,
 `frontend-ui-validation`,
 `impeccable`,
-`supply-chain-security-pass`, or `monitoring-gh-actions`.
+or `monitoring-gh-actions`.
 
 Give subagents neutral prompts: target, base, changed-surface summary, and the
 checklist they own. Tracked-finding notices for open Class B findings,
