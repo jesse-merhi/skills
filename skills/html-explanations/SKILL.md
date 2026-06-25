@@ -30,9 +30,19 @@ Good fits:
 - Use one self-contained `.html` file with inline CSS and inline JavaScript.
 - Do not add a build step or remote runtime dependency.
 - Put the answer first in the page: a short headline, a one-paragraph summary, then the visual/interactive body.
+- The first screen must be understandable without reading code. Explain
+  the decision, bug, or concept in plain English before showing
+  implementation details. Put code, dense mechanics, and caveats in
+  lower sections or `<details>` blocks unless the user's explicit goal
+  is code reading.
 - Use real labels from the task: filenames, functions, API names, states, events, dates, and decisions.
 - Prefer compact sections, tables, flow diagrams, timelines, side-by-side cards, and toggles over long paragraphs.
 - Put long code snippets inside `<details>` blocks or side-by-side panels.
+- If styling inline `<code>` and block `<pre><code>`, add a dedicated
+  `pre code` rule that resets inline-code backgrounds, borders, padding,
+  radius, and font sizing inside code blocks. Inline code pill styles must
+  never leak into block code, because they create unreadable pale strips on
+  dark code panels.
 - If the page explains code, link or label the exact files and symbols used as evidence.
 - If the page includes user data or secrets from local files, keep it local and do not add external scripts, fonts, analytics, or image URLs.
 - Make it readable on mobile and desktop.
@@ -74,6 +84,12 @@ Before saying the work is done:
 
 - Open the HTML file in a browser when browser tools are available.
 - Check the console for errors if the page has JavaScript.
+- Visually inspect every `<pre><code>` block after CSS is applied.
+  Confirm code text has strong contrast and is not inheriting inline
+  code pill backgrounds, borders, padding, or rounded boxes.
+- Read the first viewport as if you are the target user. If it is not
+  clear what the recommendation or explanation is before any code
+  block, rewrite the top of the page.
 - Check at least one narrow viewport if the page is meant to be read on mobile.
 - Report anything you did not verify.
 - Always include a clickable `file://` URL in the final reply, for example:
