@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClawHub Local Test"
+  short_description: "Run ClawHub locally with a prod-like Convex DB"
+  default_prompt: "Use $clawhub-local-test to start ClawHub locally with a local Convex database refreshed from production."
