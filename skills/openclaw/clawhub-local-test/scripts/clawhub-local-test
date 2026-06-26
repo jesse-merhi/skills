@@ -1,0 +1,684 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_name="$(basename "$0")"
+default_repo="$PWD"
+if [[ ! -d "$default_repo/convex" || ! -f "$default_repo/package.json" ]]; then
+  default_repo="$HOME/repos/clawhub"
+fi
+
+repo="${CLAWHUB_LOCAL_TEST_REPO:-$default_repo}"
+state_dir="${CLAWHUB_LOCAL_TEST_STATE_DIR:-$HOME/.clawhub-local-test}"
+start_port="${CLAWHUB_LOCAL_TEST_PORT:-3000}"
+app_port=""
+snapshot_max_age_hours="${CLAWHUB_LOCAL_TEST_SNAPSHOT_MAX_AGE_HOURS:-24}"
+ttl="${CLAWHUB_LOCAL_TEST_TTL:-8h}"
+browser_app="${CLAWHUB_LOCAL_TEST_BROWSER:-Google Chrome}"
+action="start"
+refresh_mode="auto"
+include_file_storage=0
+skip_import=0
+seed_fixtures=1
+seed_abuse_fixtures=1
+open_browser=0
+workers=1
+dry_run=0
+env_file=""
+vite_convex_url=""
+convex_deployment=""
+convex_target_kind=""
+convex_import_deployment=""
+cloud_dev_auth="skipped"
+
+usage() {
+  cat <<USAGE
+Usage:
+  $script_name [options]
+  $script_name --status
+  $script_name --stop
+
+Starts ClawHub locally and, unless skipped, replaces the configured development
+Convex DB with a cached or freshly exported production snapshot. Imports are
+guarded to local/anonymous or dev Convex deployments only.
+
+Options:
+  --repo <path>              ClawHub checkout/worktree to run
+  --state-dir <path>         State directory (default: ~/.clawhub-local-test)
+  --port <port>              Web port; otherwise choose from ${start_port} upward
+  --refresh                  Always export a fresh prod snapshot before import
+  --no-refresh               Reuse the latest cached snapshot
+  --snapshot-max-age <hours> Auto-refresh snapshots older than this (default: ${snapshot_max_age_hours})
+  --include-file-storage     Include Convex file storage in the prod export
+  --skip-import              Start services without replacing local Convex data
+  --no-seed-fixtures         Do not apply dev-auth/local fixture data after import
+  --no-seed-abuse-fixtures   Do not apply publisher-abuse review demo rows
+  --no-workers               Start the app without local background workers
+  --open                     Open the browser after startup
+  --browser <app>            Browser app for --open (default: ${browser_app})
+  --ttl <duration>           Auto-stop lease, e.g. 30m, 8h, 1d (default: ${ttl})
+  --no-ttl                   Disable auto-stop watchdog
+  --dry-run                  Print the plan without exporting, importing, or starting
+  --status                   Show managed instance status
+  --stop                     Stop managed app/Convex/watchdog processes
+  -h, --help                 Show this help
+USAGE
+}
+
+die() {
+  printf '%s: %s\n' "$script_name" "$*" >&2
+  exit 1
+}
+
+log() {
+  printf '[%s] %s\n' "$script_name" "$*" >&2
+}
+
+expand_path() {
+  local value="$1"
+  case "$value" in
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s/%s\n' "$HOME" "${value#"~/"}" ;;
+    *) printf '%s\n' "$value" ;;
+  esac
+}
+
+parse_ttl_seconds() {
+  local value="$1"
+  local amount unit
+  case "$value" in
+    ""|"0"|"none"|"never"|"off")
+      printf '0\n'
+      ;;
+    *)
+      if [[ ! "$value" =~ ^([0-9]+)([smhd]?)$ ]]; then
+        die "invalid --ttl value: $value"
+      fi
+      amount="${BASH_REMATCH[1]}"
+      unit="${BASH_REMATCH[2]}"
+      case "$unit" in
+        ""|"s") printf '%s\n' "$amount" ;;
+        "m") printf '%s\n' "$((amount * 60))" ;;
+        "h") printf '%s\n' "$((amount * 60 * 60))" ;;
+        "d") printf '%s\n' "$((amount * 24 * 60 * 60))" ;;
+      esac
+      ;;
+  esac
+}
+
+format_epoch() {
+  local value="${1:-}"
+  if [[ -z "$value" || "$value" == "0" ]]; then
+    printf 'none\n'
+  else
+    date -r "$value" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || printf '%s\n' "$value"
+  fi
+}
+
+pid_running() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+read_pid_file() {
+  local file="$1"
+  [[ -f "$file" ]] && sed -n '1p' "$file" || true
+}
+
+env_file_value() {
+  local file="$1"
+  local key="$2"
+  [[ -f "$file" ]] || return 0
+  awk -F= -v key="$key" '
+    $1 == key {
+      value = substr($0, length(key) + 2)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      sub(/[[:space:]]+#.*/, "", value)
+      gsub(/^"|"$/, "", value)
+      gsub(/^'\''|'\''$/, "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
+instance_value() {
+  env_file_value "$instance_file" "$1"
+}
+
+write_instance_var() {
+  local key="$1"
+  local value="$2"
+  printf '%s=%q\n' "$key" "$value" >>"$instance_file"
+}
+
+port_in_use() {
+  local port="$1"
+  nc -z 127.0.0.1 "$port" >/dev/null 2>&1
+}
+
+choose_port() {
+  local port="${app_port:-$start_port}"
+  while port_in_use "$port"; do
+    port="$((port + 1))"
+  done
+  printf '%s\n' "$port"
+}
+
+wait_for_url() {
+  local url="$1"
+  local timeout_seconds="$2"
+  local started
+  started="$(date +%s)"
+  while (( $(date +%s) - started < timeout_seconds )); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+run_detached() {
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$@" </dev/null &
+  else
+    nohup "$@" </dev/null &
+  fi
+}
+
+stop_process_file() {
+  local label="$1"
+  local file="$2"
+  local pid
+  pid="$(read_pid_file "$file")"
+  if pid_running "$pid"; then
+    log "stopping $label pid $pid"
+    if ! kill "-$pid" >/dev/null 2>&1; then
+      kill "$pid" >/dev/null 2>&1 || true
+    fi
+  fi
+  rm -f "$file"
+}
+
+stop_all() {
+  stop_process_file "watchdog" "$watchdog_pid_file"
+  stop_process_file "app" "$app_pid_file"
+  stop_process_file "convex" "$convex_pid_file"
+  rm -f "$instance_file"
+}
+
+show_status() {
+  if [[ ! -f "$instance_file" ]]; then
+    printf 'No managed ClawHub local-test instance recorded at %s\n' "$state_dir"
+    return
+  fi
+
+  local app_pid convex_pid watchdog_pid
+  app_pid="$(read_pid_file "$app_pid_file")"
+  convex_pid="$(read_pid_file "$convex_pid_file")"
+  watchdog_pid="$(read_pid_file "$watchdog_pid_file")"
+
+  cat <<STATUS
+state_dir: $state_dir
+repo: $(instance_value REPO)
+url: $(instance_value URL)
+convex_url: $(instance_value VITE_CONVEX_URL)
+convex_deployment: $(instance_value CONVEX_DEPLOYMENT)
+convex_target_kind: $(instance_value CONVEX_TARGET_KIND)
+convex_import_deployment: $(instance_value CONVEX_IMPORT_DEPLOYMENT)
+snapshot: $(instance_value SNAPSHOT)
+snapshot_source: $(instance_value SNAPSHOT_SOURCE)
+dev_fixtures: $(instance_value DEV_FIXTURES)
+publisher_abuse_fixtures: $(instance_value PUBLISHER_ABUSE_FIXTURES)
+started_at: $(format_epoch "$(instance_value STARTED_AT)")
+expires_at: $(format_epoch "$(instance_value EXPIRES_AT)")
+app_pid: ${app_pid:-none} ($(pid_running "$app_pid" && printf running || printf stopped))
+convex_pid: ${convex_pid:-none} ($(pid_running "$convex_pid" && printf running || printf stopped))
+watchdog_pid: ${watchdog_pid:-none} ($(pid_running "$watchdog_pid" && printf running || printf stopped))
+logs:
+  app: $log_dir/app.log
+  app_err: $log_dir/app.err.log
+  convex: $log_dir/convex.log
+  convex_err: $log_dir/convex.err.log
+cloud_dev_auth: $(instance_value CLOUD_DEV_AUTH)
+STATUS
+}
+
+latest_snapshot() {
+  find "$snapshot_dir" -maxdepth 1 -type f -name 'clawhub-prod-*.zip' -print 2>/dev/null |
+    sort |
+    tail -1
+}
+
+snapshot_is_fresh() {
+  local path="$1"
+  [[ -f "$path" ]] || return 1
+  local now mtime max_age_seconds
+  now="$(date +%s)"
+  mtime="$(stat -f %m "$path" 2>/dev/null || stat -c %Y "$path" 2>/dev/null || printf 0)"
+  max_age_seconds="$((snapshot_max_age_hours * 60 * 60))"
+  (( now - mtime <= max_age_seconds ))
+}
+
+ensure_repo() {
+  repo="$(expand_path "$repo")"
+  [[ -d "$repo" ]] || die "repo does not exist: $repo"
+  [[ -f "$repo/package.json" && -d "$repo/convex" ]] || die "not a ClawHub checkout: $repo"
+}
+
+ensure_worktree_env() {
+  if [[ -f "$repo/.env.local" && -d "$repo/.convex" ]]; then
+    return
+  fi
+  log "setting up worktree env"
+  (cd "$repo" && bun run setup:worktree -- --quiet)
+}
+
+local_hostname() {
+  local value="$1"
+  node -e 'const u = new URL(process.argv[1]); process.stdout.write(u.hostname);' "$value"
+}
+
+ensure_convex_target() {
+  env_file="$repo/.env.local"
+  [[ -f "$env_file" ]] || die "missing .env.local after setup"
+
+  vite_convex_url="$(env_file_value "$env_file" VITE_CONVEX_URL)"
+  convex_deployment="$(env_file_value "$env_file" CONVEX_DEPLOYMENT)"
+  [[ -n "$vite_convex_url" ]] || die ".env.local is missing VITE_CONVEX_URL"
+  [[ -n "$convex_deployment" ]] || die ".env.local is missing CONVEX_DEPLOYMENT"
+
+  local host deployment_name
+  host="$(local_hostname "$vite_convex_url" 2>/dev/null || true)"
+  [[ -n "$host" ]] || die "refusing to import: VITE_CONVEX_URL is not a valid URL ($vite_convex_url)"
+
+  case "$convex_deployment" in
+    local:*|anonymous:*|anonymous-agent)
+      case "$host" in
+        "127.0.0.1"|"localhost"|"::1")
+          convex_target_kind="local"
+          convex_import_deployment="local"
+          ;;
+        *)
+          die "refusing to import: local/anonymous CONVEX_DEPLOYMENT must use loopback VITE_CONVEX_URL ($vite_convex_url)"
+          ;;
+      esac
+      ;;
+    dev:*)
+      case "$host" in
+        "127.0.0.1"|"localhost"|"::1")
+          die "refusing to import: dev CONVEX_DEPLOYMENT must not use loopback VITE_CONVEX_URL ($vite_convex_url)"
+          ;;
+      esac
+      deployment_name="${convex_deployment#dev:}"
+      [[ -n "$deployment_name" ]] || die "refusing to import: CONVEX_DEPLOYMENT has empty dev deployment name"
+      [[ "$host" == "$deployment_name.convex.cloud" ]] ||
+        die "refusing to import: dev deployment $deployment_name does not match VITE_CONVEX_URL host $host"
+      convex_target_kind="dev"
+      convex_import_deployment="$deployment_name"
+      ;;
+    prod:*|production:*|staging:*|preview:*)
+      die "refusing to import into protected Convex deployment marker: $convex_deployment"
+      ;;
+    *)
+      die "refusing to import: CONVEX_DEPLOYMENT must be local/anonymous or dev:* ($convex_deployment)"
+      ;;
+  esac
+}
+
+ensure_convex_running() {
+  if [[ "$convex_target_kind" == "dev" ]]; then
+    log "using cloud dev Convex target $convex_import_deployment"
+    return
+  fi
+
+  if curl -fsS "$vite_convex_url" >/dev/null 2>&1; then
+    log "local Convex already reachable at $vite_convex_url"
+    return
+  fi
+
+  log "starting local Convex at $vite_convex_url"
+  run_detached bash -lc "cd '$repo' && exec bunx convex dev --typecheck=disable" \
+    >"$log_dir/convex.log" 2>"$log_dir/convex.err.log"
+  echo "$!" >"$convex_pid_file"
+
+  if ! wait_for_url "$vite_convex_url" 120; then
+    die "local Convex did not become reachable at $vite_convex_url; see $log_dir/convex.err.log"
+  fi
+}
+
+push_convex_code() {
+  log "pushing current Convex code to $convex_target_kind target"
+  (cd "$repo" && bunx convex dev --once --typecheck=disable)
+}
+
+refresh_snapshot_if_needed() {
+  snapshot_source="cached"
+  snapshot_path="$(latest_snapshot || true)"
+  if [[ "$refresh_mode" == "none" && -z "$snapshot_path" ]]; then
+    die "--no-refresh was passed but no cached snapshot exists in $snapshot_dir"
+  fi
+
+  local should_refresh=0
+  if [[ "$refresh_mode" == "force" || -z "$snapshot_path" ]]; then
+    should_refresh=1
+  elif [[ "$refresh_mode" == "auto" ]] && ! snapshot_is_fresh "$snapshot_path"; then
+    should_refresh=1
+  fi
+
+  if [[ "$should_refresh" == "1" ]]; then
+    local stamp storage_suffix next_snapshot
+    stamp="$(date -u '+%Y%m%dT%H%M%SZ')"
+    storage_suffix=""
+    if [[ "$include_file_storage" == "1" ]]; then
+      storage_suffix="-with-storage"
+    fi
+    next_snapshot="$snapshot_dir/clawhub-prod-${stamp}${storage_suffix}.zip"
+    snapshot_source="fresh"
+    log "exporting production Convex data to $next_snapshot"
+    if [[ "$include_file_storage" == "1" ]]; then
+      (cd "$repo" && bunx convex export --prod --include-file-storage --path "$next_snapshot")
+    else
+      (cd "$repo" && bunx convex export --prod --path "$next_snapshot")
+    fi
+    snapshot_path="$next_snapshot"
+  else
+    log "using cached production snapshot $snapshot_path"
+  fi
+}
+
+import_snapshot_to_target() {
+  log "replacing $convex_target_kind Convex data from $snapshot_path"
+  (cd "$repo" && bunx convex import --deployment "$convex_import_deployment" --replace-all -y "$snapshot_path")
+}
+
+generate_dev_auth_secret() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32
+    return
+  fi
+  node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))'
+}
+
+ensure_dev_auth_env() {
+  export DEV_AUTH_ENABLED="${DEV_AUTH_ENABLED:-1}"
+  export VITE_ENABLE_DEV_AUTH="${VITE_ENABLE_DEV_AUTH:-1}"
+  export DEV_AUTH_CONVEX_DEPLOYMENT="${DEV_AUTH_CONVEX_DEPLOYMENT:-$convex_deployment}"
+
+  if [[ "$convex_target_kind" != "dev" ]]; then
+    cloud_dev_auth="not_required"
+    return
+  fi
+
+  if [[ -z "${DEV_AUTH_SECRET:-}" || "${#DEV_AUTH_SECRET}" -lt 32 ]]; then
+    DEV_AUTH_SECRET="$(generate_dev_auth_secret)"
+    export DEV_AUTH_SECRET
+  fi
+  export DEV_AUTH_SITE_URL="${DEV_AUTH_SITE_URL:-http://127.0.0.1:$app_port}"
+
+  log "configuring cloud dev auth for local dev personas"
+  printf '%s' "$DEV_AUTH_SECRET" |
+    (cd "$repo" && bunx convex env set DEV_AUTH_SECRET --deployment "$convex_import_deployment")
+  (cd "$repo" && bunx convex env set DEV_AUTH_SITE_URL "$DEV_AUTH_SITE_URL" --deployment "$convex_import_deployment")
+  cloud_dev_auth="configured"
+}
+
+seed_dev_fixtures() {
+  if [[ "$seed_fixtures" != "1" ]]; then
+    dev_fixtures="skipped"
+    return
+  fi
+  log "applying ClawHub dev-auth fixtures"
+  (cd "$repo" && bunx convex run --deployment "$convex_import_deployment" --no-push devSeed:seedLocalFixtures)
+  dev_fixtures="applied"
+}
+
+seed_publisher_abuse_fixtures() {
+  if [[ "$seed_abuse_fixtures" != "1" ]]; then
+    publisher_abuse_fixtures="skipped"
+    return
+  fi
+  local existing_count
+  existing_count="$(
+    cd "$repo" &&
+      bunx convex run --deployment "$convex_import_deployment" --inline-query 'return (await ctx.db.query("publisherAbuseReviewNominations").take(1)).length' |
+      tr -dc '0-9'
+  )"
+  if [[ "${existing_count:-0}" != "0" ]]; then
+    log "preserving existing publisher-abuse review rows"
+    publisher_abuse_fixtures="existing"
+    return
+  fi
+  log "applying publisher-abuse review fixtures"
+  (cd "$repo" && bunx convex run --deployment "$convex_import_deployment" --no-push internal.publisherAbuseDevSeed.seed)
+  publisher_abuse_fixtures="applied"
+}
+
+start_app() {
+  if [[ -z "$app_port" ]]; then
+    app_port="$(choose_port)"
+  fi
+  log "starting ClawHub app at http://127.0.0.1:$app_port"
+  local worker_flag=()
+  if [[ "$workers" != "1" ]]; then
+    worker_flag=(--no-workers)
+  fi
+  local worker_args="${worker_flag[*]-}"
+  run_detached bash -lc "cd '$repo' && exec bun scripts/dev-worktree.ts --port '$app_port' $worker_args" \
+    >"$log_dir/app.log" 2>"$log_dir/app.err.log"
+  echo "$!" >"$app_pid_file"
+}
+
+start_watchdog() {
+  local ttl_seconds="$1"
+  if [[ "$ttl_seconds" == "0" ]]; then
+    rm -f "$watchdog_pid_file"
+    return
+  fi
+  run_detached bash -lc "sleep '$ttl_seconds'; '$self_path' --state-dir '$state_dir' --stop >/dev/null 2>&1" \
+    >"$log_dir/watchdog.log" 2>"$log_dir/watchdog.err.log"
+  echo "$!" >"$watchdog_pid_file"
+}
+
+open_url() {
+  local url="$1"
+  if [[ "$open_browser" != "1" ]]; then
+    return
+  fi
+  open -a "$browser_app" "$url"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo)
+      repo="${2:?missing value for --repo}"
+      shift 2
+      ;;
+    --state-dir)
+      state_dir="${2:?missing value for --state-dir}"
+      shift 2
+      ;;
+    --port)
+      app_port="${2:?missing value for --port}"
+      shift 2
+      ;;
+    --refresh)
+      refresh_mode="force"
+      shift
+      ;;
+    --no-refresh)
+      refresh_mode="none"
+      shift
+      ;;
+    --snapshot-max-age)
+      snapshot_max_age_hours="${2:?missing value for --snapshot-max-age}"
+      shift 2
+      ;;
+    --include-file-storage)
+      include_file_storage=1
+      shift
+      ;;
+    --skip-import)
+      skip_import=1
+      shift
+      ;;
+    --no-seed-fixtures)
+      seed_fixtures=0
+      shift
+      ;;
+    --no-seed-abuse-fixtures)
+      seed_abuse_fixtures=0
+      shift
+      ;;
+    --no-workers)
+      workers=0
+      shift
+      ;;
+    --open)
+      open_browser=1
+      shift
+      ;;
+    --browser)
+      browser_app="${2:?missing value for --browser}"
+      shift 2
+      ;;
+    --ttl)
+      ttl="${2:?missing value for --ttl}"
+      shift 2
+      ;;
+    --no-ttl)
+      ttl="0"
+      shift
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    --status)
+      action="status"
+      shift
+      ;;
+    --stop)
+      action="stop"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown option: $1"
+      ;;
+  esac
+done
+
+repo="$(expand_path "$repo")"
+state_dir="$(expand_path "$state_dir")"
+snapshot_dir="$state_dir/snapshots"
+run_dir="$state_dir/run"
+log_dir="$state_dir/logs"
+app_pid_file="$run_dir/app.pid"
+convex_pid_file="$run_dir/convex.pid"
+watchdog_pid_file="$run_dir/watchdog.pid"
+instance_file="$run_dir/instance.env"
+self_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+mkdir -p "$snapshot_dir" "$run_dir" "$log_dir"
+
+case "$action" in
+  status)
+    show_status
+    exit 0
+    ;;
+  stop)
+    stop_all
+    exit 0
+    ;;
+esac
+
+ensure_repo
+ensure_worktree_env
+ensure_convex_target
+
+if [[ "$dry_run" == "1" ]]; then
+  cat <<PLAN
+repo: $repo
+state_dir: $state_dir
+VITE_CONVEX_URL: $vite_convex_url
+CONVEX_DEPLOYMENT: $convex_deployment
+convex_target_kind: $convex_target_kind
+convex_import_deployment: $convex_import_deployment
+refresh_mode: $refresh_mode
+include_file_storage: $include_file_storage
+skip_import: $skip_import
+seed_fixtures: $seed_fixtures
+seed_abuse_fixtures: $seed_abuse_fixtures
+port: ${app_port:-auto from $start_port}
+ttl: $ttl
+PLAN
+  exit 0
+fi
+
+stop_all
+app_port="$(choose_port)"
+ensure_dev_auth_env
+ensure_convex_running
+push_convex_code
+
+snapshot_path=""
+snapshot_source="skipped"
+dev_fixtures="skipped"
+publisher_abuse_fixtures="skipped"
+if [[ "$skip_import" != "1" ]]; then
+  refresh_snapshot_if_needed
+  import_snapshot_to_target
+fi
+seed_dev_fixtures
+seed_publisher_abuse_fixtures
+
+start_app
+ttl_seconds="$(parse_ttl_seconds "$ttl")"
+started_at="$(date +%s)"
+expires_at=0
+if [[ "$ttl_seconds" != "0" ]]; then
+  expires_at="$((started_at + ttl_seconds))"
+fi
+start_watchdog "$ttl_seconds"
+
+url="http://127.0.0.1:$app_port/"
+rm -f "$instance_file"
+write_instance_var REPO "$repo"
+write_instance_var URL "$url"
+write_instance_var VITE_CONVEX_URL "$vite_convex_url"
+write_instance_var CONVEX_DEPLOYMENT "$convex_deployment"
+write_instance_var CONVEX_TARGET_KIND "$convex_target_kind"
+write_instance_var CONVEX_IMPORT_DEPLOYMENT "$convex_import_deployment"
+write_instance_var SNAPSHOT "${snapshot_path:-}"
+write_instance_var SNAPSHOT_SOURCE "$snapshot_source"
+write_instance_var DEV_FIXTURES "$dev_fixtures"
+write_instance_var PUBLISHER_ABUSE_FIXTURES "$publisher_abuse_fixtures"
+write_instance_var CLOUD_DEV_AUTH "$cloud_dev_auth"
+write_instance_var STARTED_AT "$started_at"
+write_instance_var EXPIRES_AT "$expires_at"
+
+open_url "$url"
+
+cat <<DONE
+ClawHub local test is starting.
+
+URL: $url
+Repo: $repo
+Convex: $vite_convex_url ($convex_deployment, import target: $convex_import_deployment)
+Snapshot: ${snapshot_path:-not imported} ($snapshot_source)
+Dev fixtures: $dev_fixtures
+Publisher abuse fixtures: $publisher_abuse_fixtures
+Logs:
+  app: $log_dir/app.log
+  app_err: $log_dir/app.err.log
+  convex: $log_dir/convex.log
+  convex_err: $log_dir/convex.err.log
+Lease expires: $(format_epoch "$expires_at")
+
+Status: $script_name --status
+Stop:   $script_name --stop
+DONE
