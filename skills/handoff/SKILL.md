@@ -67,6 +67,30 @@ artifacts, put those paths in the handoff and seed prompt; do not make the
 repair agent write in the discovery worktree just because the artifacts live
 there.
 
+When launching a brand-new Codex app thread into a dedicated worktree, use the
+worktree environment without a branch `startingState` by default:
+
+```text
+target: {
+  type: "project",
+  projectId: "<project id>",
+  environment: { type: "worktree" }
+}
+```
+
+Put the desired worker branch name in the handoff and seed prompt, and tell the
+worker to create or switch to that branch after the worktree is available. Do
+not pass `startingState: { type: "branch", branchName: "..." }` for a new
+branch; that field means "start from this existing branch" and will fail setup
+when the branch does not already exist. Only use branch `startingState` after
+verifying the exact local or remote branch already exists.
+
+Do not treat a returned `pendingWorktreeId` as proof that the worker is running.
+It only proves that worktree setup was queued. Before reporting a handoff as
+launched, verify that a real thread appears, the worker worktree exists, or the
+app reports successful setup. If verification is unavailable, report it as
+queued/pending, not started.
+
 Use a **Codex fork** only when the next agent genuinely needs the raw current
 conversation history itself, such as continuing an interrupted debugging or
 review turn where the exact prior back-and-forth is part of the state.
@@ -91,6 +115,8 @@ concise message that:
 - names the exact repo/worktree path if it must use a non-default checkout
 - says whether the session should work in a dedicated worktree; repair/edit/PR
   and parallel worker handoffs should do so by default
+- gives the worker's intended branch name and tells it to create/switch to that
+  branch after the Codex-managed worktree starts
 - says not to rely on inherited history
 - says not to create, fork, rename, pin, archive, or monitor other Codex threads
   unless thread orchestration is explicitly the delegated task
