@@ -44,18 +44,23 @@ assert_output_not_contains() {
 }
 
 test_review_findings_workflow_is_documented() {
+  local skill_doc="$ROOT_DIR/skills/code-review/SKILL.md"
+  local findings_doc="$ROOT_DIR/skills/code-review/references/findings-registry.md"
+  local output_doc="$ROOT_DIR/skills/code-review/references/final-output.md"
+
   assert_contains "$ROOT_DIR/INSTALL.md" "Install Repo-Owned Helper Binaries"
   assert_contains "$ROOT_DIR/README.md" "skills/code-review/scripts/install-review-findings"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "The findings database is the working registry."
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" 'Use the Rust `review-findings` binary as the local SQLite search index'
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "--user-impact"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '"$review_findings_bin" closeout --material'
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "--branch <branch> --base <base> --target <current-target>"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "Material findings"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "User-visible or workflow changes"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "Security, data, and permission changes"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "Lower-risk findings"
+  assert_contains "$skill_doc" "Read [references/findings-registry.md](references/findings-registry.md)."
+  assert_contains "$findings_doc" "The findings database is the working registry."
+  assert_contains "$findings_doc" 'Use the Rust `review-findings` binary as the local SQLite search index'
+  assert_contains "$findings_doc" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
+  assert_contains "$findings_doc" "--user-impact"
+  assert_contains "$findings_doc" '"$review_findings_bin" closeout --material'
+  assert_contains "$output_doc" "--branch <branch> --base <base> --target <current-target>"
+  assert_contains "$output_doc" "Material findings"
+  assert_contains "$output_doc" "User-visible or workflow changes"
+  assert_contains "$output_doc" "Security, data, and permission changes"
+  assert_contains "$output_doc" "Lower-risk findings"
 }
 
 test_review_findings_installs_rust_binary() {

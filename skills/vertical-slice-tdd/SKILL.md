@@ -5,42 +5,28 @@ description: 'Implement behavior changes with one narrow failing vertical-slice 
 
 # Vertical Slice TDD
 
-Drive the work through thin end-to-end behavior slices. Avoid writing
-all tests first or building layers that do not yet connect.
+Drive the work through thin end-to-end behavior slices. Avoid writing all tests
+first or building layers that do not yet connect.
 
-## Loop
+## Workflow
 
 1. Pick the smallest externally meaningful behavior.
-2. Write one failing test for that behavior. Prefer the highest level
-   that still gives fast, stable feedback.
-3. Run the test and show that it fails for the expected reason.
-4. Implement only enough production code to pass that test.
-5. Run the focused test.
-6. Refactor only after green, keeping behavior unchanged.
-7. Repeat for the next slice.
-8. Finish with the package's relevant typecheck/lint/test commands.
+2. Follow the red/green/refactor loop in [loop.md](references/loop.md).
+3. Keep each slice shaped like the examples in [slice-shape.md](references/slice-shape.md).
+4. Finish with the package's relevant typecheck/lint/test commands.
+5. Use [exceptions.md](references/exceptions.md) only for docs-only,
+   config-only, generated-code, or mechanical formatting changes.
 
-## Slice Shape
+## Required Discipline
 
-A good first slice crosses the real boundary of the feature:
+- One narrow failing vertical-slice test at a time.
+- Implement only enough production code to pass that test.
+- Refactor only after green, keeping behavior unchanged.
+- Do not mock the behavior the slice is supposed to prove.
 
-- UI to API to persistence
-- command to filesystem effect
-- parser input to normalized output
-- webhook/event to stored state
+## Context Pointers
 
-It may be narrow, but it should prove the route through the system.
-
-## Avoid
-
-- Layer-only tasks such as "add schema", "add endpoint", or "add UI"
-  unless they are part of the current passing slice.
-- Broad test inventories before implementation.
-- Mocking the behavior that the slice is supposed to prove.
-- Refactors before a failing test makes the need concrete.
-
-## When TDD Is Not Appropriate
-
-For docs-only, config-only, generated-code, or mechanical formatting
-changes, state the exception and use the smallest available validation
-instead.
+- Use [loop.md](references/loop.md) for the exact TDD loop.
+- Use [slice-shape.md](references/slice-shape.md) for good boundaries and
+  layer-only tasks to avoid.
+- Use [exceptions.md](references/exceptions.md) when TDD is not appropriate.
