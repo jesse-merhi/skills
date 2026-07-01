@@ -91,5 +91,6 @@ coverage for a screen that only rendered in the simulator.
 - saying "looks fine" without audit counts and screenshot paths;
 - ignoring script warnings without inspecting the element, text, and box values;
 - skipping Impeccable detection when it can run;
-- fixing with `browser_evaluate` DOM mutation instead of source edits;
+- fixing by mutating the live DOM through browser automation instead of editing
+  source files;
 - checking only the happy state when empty/error/loading states are reachable.
