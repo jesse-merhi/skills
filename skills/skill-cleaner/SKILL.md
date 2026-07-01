@@ -5,52 +5,37 @@ description: "Audit agent skills: loaded roots, duplicate skills, unused skills,
 
 # Skill Cleaner
 
-Use this when trimming skill prompt budget, finding duplicate skills, auditing enabled/disabled skill roots, or deciding which skills/plugins to remove.
+Use this when trimming skill prompt budget, finding duplicate skills, auditing
+enabled/disabled skill roots, or deciding which skills/plugins to remove.
 
 ## Workflow
 
 1. Run the analyzer from this skill directory or repo root:
 
-```bash
-npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --months 3
-```
+   ```bash
+   npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --months 3
+   ```
 
-Useful variants:
+2. Use [commands.md](references/commands.md) for useful variants.
+3. Read the report in the order described by
+   [report-guide.md](references/report-guide.md).
+4. Before deleting or editing, apply the safety checks in
+   [cleanup-policy.md](references/cleanup-policy.md).
+5. Use [analyzer-notes.md](references/analyzer-notes.md) when interpreting
+   budget, root, duplicate, and usage heuristics.
 
-```bash
-npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --no-logs
-npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --months 6 --max-log-mb 800 --deep-logs
-npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --context-tokens 272000 --budget-percent 2 --no-logs
-npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --root ~/archived-skills --no-logs
-```
-
-2. Read the report in this order:
-- `Skill Budget`: GPT-5.5 context size, 2% skills budget, Codex-budgeted usage, and pre-budget full-list pressure.
-- `Description candidates`: long descriptions where relaxed grammar saves prompt budget.
-- `Duplicates`: same skill name or near-identical description/body across Codex, plugin cache, repo siblings, and personal skill roots.
-- `Unused candidates`: no recent `$skill` mention, `SKILL.md` read, or explicit skill-use trace in recent local harness logs.
-- `Root summary`: where skills came from and whether config marks them disabled.
-
-3. Before deleting or editing:
-- Verify the kept copy exists and is loaded.
-- Prefer deleting repo-local duplicates when harness built-ins cover them.
-- Keep repo-specific skills when they encode project policy or live operations.
-- Preserve trigger nouns in descriptions: product, tool, action, object.
-
-## Analyzer Notes
-
-- The script mirrors Codex's model-visible line shape: `- name: description (file: path)`.
-- It applies Codex-like frontmatter rules: YAML frontmatter only, default name from parent dir, single-line sanitized `name` and `description`.
-- It follows Codex `core-skills/src/render.rs`: 2% of raw `context_window`, token cost `ceil(utf8_bytes / 4)`, then full descriptions -> equal description truncation -> omitted minimum lines.
-- It reads `~/.codex/models_cache.json` for GPT-5.5 `context_window`; fallback is 272,000 tokens and 2%.
-- It scans only normal Codex/plugin/repo skill roots by default. Extra folders are included only with `--root <path>`.
-- It realpath-dedupes roots, so symlinked roots do not create false duplicates.
-- For duplicate names, it reports description/body similarity and suggests deletion candidates only when bodies are near copies. Keep priority defaults to direct Codex system skills, then direct Codex skills, then plugin skills, then personal/repo copies.
-- It scans `~/.codex/history.jsonl` and recent `~/.codex/sessions/**/*.jsonl` by default. Add `--deep-logs` for archived Codex sessions. When auditing another harness, add its skill roots with `--root <path>` and use that harness's local history or usage logs as supporting evidence when available.
-- Usage evidence is heuristic: `$skill`, `Use $skill`, and paths like `skills/<name>/SKILL.md`.
-
-## Output Policy
+## Required Discipline
 
 - Suggest first; edit only when the user asks.
-- If asked to apply cleanup, make small grouped commits: descriptions, deletes, config disables.
-- Do not delete ignored/untracked skill dirs without naming the destination or confirming they are disposable.
+- Verify the kept copy exists and is loaded before deleting duplicates.
+- Preserve trigger nouns in descriptions: product, tool, action, object.
+- Do not delete ignored/untracked skill dirs without naming the destination or
+  confirming they are disposable.
+
+## Context Pointers
+
+- Use [commands.md](references/commands.md) for analyzer command variants.
+- Use [report-guide.md](references/report-guide.md) for report reading order.
+- Use [analyzer-notes.md](references/analyzer-notes.md) for how the script models
+  Codex skill budget and usage.
+- Use [cleanup-policy.md](references/cleanup-policy.md) before applying cleanup.

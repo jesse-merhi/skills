@@ -1,0 +1,53 @@
+# Reporting
+
+While looping, narrate one short line per iteration so the user can follow the
+trajectory:
+
+```text
+iter 1: triggered /clawsweeper re-review @ sha abc123 -> 4 findings -> fixed -> pushed def456
+iter 2: triggered re-review @ sha def456 -> 1 finding -> fixed inline -> pushed ghi789
+iter 3: triggered re-review @ sha ghi789 -> clean (1/3)
+iter 4: triggered re-review @ sha ghi789 -> clean (2/3)
+iter 5: triggered re-review @ sha ghi789 -> 1 finding -> counter reset -> pushed jkl012
+iter 8: triggered re-review @ sha xyz999 -> clean (3/3)
+```
+
+On termination, report:
+
+- final iteration count
+- whether the stop reason was `3-consecutive-clean`, `safety-cap-hit`, or
+  `wall-clock-cap-hit`
+- the last Clawsweeper verdict, with a link to the comment/review
+- any findings that needed a repo-specific fix workflow rather than direct edits
+- the PR head SHA at the moment of the final clean re-review
+
+## Hard Rules
+
+- Always re-trigger via comment. The body must be exactly
+  `/clawsweeper re-review`.
+- Do not paraphrase, bundle other text, or mention humans in the trigger
+  comment.
+- Never claim success at fewer than 3 consecutive clean re-reviews.
+- Never edit or push between consecutive clean re-reviews. Pushes invalidate the
+  streak.
+- Always reset the counter on any actionable finding, even on re-review 3.
+- Always validate head SHA before counting a response.
+- Respect the safety and wall-clock caps.
+- Do not silence findings by reclassifying them as nits to keep the streak
+  alive. If Clawsweeper says it is actionable, it is actionable.
+- Do not impersonate Clawsweeper by writing your own "looks clean" comment. The
+  verdict must come from the bot.
+
+## Common Mistakes
+
+| Mistake | Why it breaks the skill |
+|---|---|
+| Stopping at the first clean re-review | The point of the skill is the streak, not a single green run |
+| Pushing a commit between two clean re-reviews | Clawsweeper is now reviewing a different tree; streak invalidated |
+| Reading an old Clawsweeper review as the response | That verdict is from before your trigger; not valid |
+| Counting an in-progress "working on it" comment as clean | A placeholder is not a verdict |
+| Counting 2 clean + 1 dirty + 1 clean as "close enough" | Counter resets on dirty; that is 1 consecutive, not 3 |
+| Skipping the trigger because "the last fix was tiny" | The skill requires Clawsweeper to confirm every time |
+| Using a different reviewer | The stop condition is defined against Clawsweeper specifically |
+| Bundling unrelated cleanup into a fix step | Introduces new diff that the next re-review may flag |
+| Re-triggering with extra text in the body | The bot may not parse the command; trigger gets ignored |

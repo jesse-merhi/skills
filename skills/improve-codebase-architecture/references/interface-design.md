@@ -1,7 +1,7 @@
 # Interface Design
 
-Use this when the user wants alternative interfaces for a chosen
-deepening candidate.
+Use this when the user wants alternative interfaces for a chosen deepening
+candidate.
 
 ## Process
 
@@ -10,15 +10,14 @@ deepening candidate.
 Explain:
 
 - constraints the new interface must satisfy
-- dependencies and their category from [DEEPENING.md](DEEPENING.md)
+- dependencies and their category from [deepening.md](deepening.md)
 - a short illustrative code sketch to make the constraints concrete
 
 ### Explore Alternatives
 
 Produce at least three meaningfully different interface designs:
 
-- Minimum interface: one to three entry points, high leverage per entry
-  point.
+- Minimum interface: one to three entry points, high leverage per entry point.
 - Flexible interface: supports more variation and extension.
 - Common-case interface: makes the most common caller trivial.
 - Ports-and-adapters interface: when cross-seam dependencies matter.
@@ -33,5 +32,5 @@ For each design, include:
 
 ### Recommend
 
-Compare the designs and recommend one. If a hybrid is strongest, say
-which parts to combine and why.
+Compare the designs and recommend one. If a hybrid is strongest, say which parts
+to combine and why.

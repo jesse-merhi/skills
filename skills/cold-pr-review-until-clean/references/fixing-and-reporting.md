@@ -1,0 +1,41 @@
+# Fixing And Reporting
+
+## Fixing Findings
+
+- Fix only what maps to actionable cold-review findings.
+- Prefer the smallest change that addresses the reviewer's concern.
+- Do not bundle unrelated cleanup into the fix step.
+- Run the relevant tests, typechecks, linters, or UI validation for the changed
+  surface before the next cold review.
+- Record why each added or changed test catches a reachable product, API,
+  workflow, security, or data regression in the related finding record.
+- Inspect the diff after fixing so you can confirm the next reviewer is seeing
+  the intended tree.
+- If a finding is invalid, document why and run another cold review. Do not
+  count your rejection as a clean pass by itself.
+
+## Reporting
+
+Narrate one short line per iteration:
+
+```text
+iter 1: cold review -> 3 findings -> fixed
+iter 2: cold review -> 1 finding  -> fixed
+iter 3: cold review -> clean (1/3)
+iter 4: cold review -> clean (2/3)
+iter 5: cold review -> 1 finding  -> counter reset
+iter 6: cold review -> clean (1/3)
+iter 7: cold review -> clean (2/3)
+iter 8: cold review -> clean (3/3)
+```
+
+On termination, report:
+
+- Final iteration count
+- Stop reason: `3-consecutive-clean`, `blocked-on-consult`, or
+  `budget-expired`
+- Last cold-review summary and merge verdict
+- Findings fixed directly
+- Findings intentionally rejected as invalid, with rationale
+- Consult-queue findings awaiting the user, with their finding records
+- Verification commands and results

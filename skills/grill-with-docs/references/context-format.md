@@ -24,25 +24,23 @@ _Avoid_: Client, buyer, account
 
 ## Rules
 
-- Be opinionated. When multiple words exist for the same concept, pick
-  the best one and list the others as aliases to avoid.
-- Flag conflicts explicitly. If a term is used ambiguously, call it out
-  in `Flagged ambiguities` with a clear resolution.
-- Keep definitions tight. One or two sentences max. Define what the
-  term is.
-- Show relationships. Use bold term names and express cardinality where
-  obvious.
-- Only include terms specific to this project's context. General
-  programming concepts do not belong.
-- Group terms under subheadings when natural clusters emerge. If all
-  terms belong to one area, a flat list is fine.
+- Be opinionated. When multiple words exist for the same concept, pick the best
+  one and list the others as aliases to avoid.
+- Flag conflicts explicitly. If a term is used ambiguously, call it out in
+  `Flagged ambiguities` with a clear resolution.
+- Keep definitions tight. One or two sentences max. Define what the term is.
+- Show relationships. Use bold term names and express cardinality where obvious.
+- Only include terms specific to this project's context. General programming
+  concepts do not belong.
+- Group terms under subheadings when natural clusters emerge. If all terms
+  belong to one area, a flat list is fine.
 - Write an example dialogue when it clarifies boundaries between related
   concepts.
 
 ## Storage
 
-Store this in the user's Obsidian-backed project notes, not in the
-product repo, unless the user explicitly asks for repo-local docs.
+Store this in the user's Obsidian-backed project notes, not in the product repo,
+unless the user explicitly asks for repo-local docs.
 
 The preferred shape is:
 
@@ -52,8 +50,8 @@ repos/
     CONTEXT.md
 ```
 
-If write access or the target path is unclear, return the proposed note
-body and path instead of writing into the product repo.
+If write access or the target path is unclear, return the proposed note body and
+path instead of writing into the product repo.
 
 ## Single vs Multi-Context Notes
 
@@ -77,12 +75,11 @@ Repos with multiple contexts may use a note-backed `CONTEXT-MAP.md`:
 - **Ordering <-> Billing**: Shared types for `CustomerId` and `Money`
 ```
 
-The skill infers which structure applies in the target notes:
+Infer which structure applies in the target notes:
 
 - If `CONTEXT-MAP.md` exists, read it to find contexts.
 - If only a root `CONTEXT.md` exists, treat it as a single context.
-- If neither exists, create or propose a root `CONTEXT.md` lazily when
-  the first term is resolved.
-
-When multiple contexts exist, infer which one the current topic relates
-to. If unclear, ask.
+- If neither exists, create or propose a root `CONTEXT.md` lazily when the first
+  term is resolved.
+- When multiple contexts exist, infer which one the current topic relates to. If
+  unclear, ask.

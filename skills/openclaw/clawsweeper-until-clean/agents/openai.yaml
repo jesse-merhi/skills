@@ -1,0 +1,7 @@
+interface:
+  display_name: "Clawsweeper Until Clean"
+  short_description: "Rerun Clawsweeper until three clean passes."
+  default_prompt: "Use $clawsweeper-until-clean to trigger Clawsweeper re-reviews, fix findings, and stop only after three consecutive clean bot verdicts."
+
+policy:
+  allow_implicit_invocation: false
