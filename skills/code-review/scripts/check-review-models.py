@@ -466,19 +466,19 @@ def check_claude_higher_family(source: Source, expected_name: str) -> Check:
     if error:
         return Check(
             "Claude higher-family availability",
-            False,
+            True,
             source.label,
-            "no Fable/Mythos model available",
+            "informational only; default remains the review model source of truth",
             "<unreadable>",
-            error,
+            f"Claude Code SDK catalog could not be inspected for higher-family availability: {error}",
         )
     higher = higher_claude_family_models(models, expected_name)
     available = ", ".join(str(model.get("value", "<unknown>")) for model in models[:8])
     return Check(
         "Claude higher-family availability",
-        not higher,
+        True,
         source.label,
-        "no Fable/Mythos model available",
+        "informational only; default remains the review model source of truth",
         ", ".join(higher[:5]) if higher else "none",
         f"Claude Code SDK model catalog values: {available}",
     )
@@ -490,7 +490,7 @@ def check_anthropic_model_api(source: Source | None, expected_name: str) -> Chec
             "Anthropic API model inventory",
             True,
             "https://api.anthropic.com/v1/models",
-            "no newer Fable review model",
+            "informational only; account inventory is not a review-model recommendation",
             "skipped",
             "ANTHROPIC_API_KEY was not set, so account model inventory could not be checked.",
         )
@@ -500,16 +500,16 @@ def check_anthropic_model_api(source: Source | None, expected_name: str) -> Chec
             "Anthropic API model inventory",
             True,
             source.label,
-            "no newer Fable review model",
+            "informational only; account inventory is not a review-model recommendation",
             "skipped",
             f"Account model inventory check could not run: {error}",
         )
     newer = newer_fable_models(ids, expected_name)
     return Check(
         "Anthropic API model inventory",
-        not newer,
+        True,
         source.label,
-        "no newer Fable review model",
+        "informational only; account inventory is not a review-model recommendation",
         ", ".join(newer[:5]) if newer else "none",
         f"Checked {len(ids)} model IDs from the Anthropic Models API.",
     )

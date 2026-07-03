@@ -5,8 +5,8 @@ overlay changes.
 
 1. Run `<skill-dir>/scripts/check-review-models`. Stop the whole review before
    Phase 1 if a newer or better recommended Codex model than `gpt-5.5` is
-   available, if a Claude Code default model changed, if a Fable/Mythos-family
-   Claude model is available, or if the check cannot be completed.
+   available, if a Claude Code default model changed, or if the check cannot be
+   completed.
 
 2. Map changed flows, entrypoints, contracts, side effects, state transitions,
    risk surfaces, and validation targets with `review-surface-map`.

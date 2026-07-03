@@ -218,6 +218,13 @@ FABLE_CLAUDE_CODE_SDK_CATALOG = json.dumps(
                 "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
             },
             {
+                "value": "opus[1m]",
+                "displayName": "Opus 4.8",
+                "description": "Opus 4.8 with 1M context",
+                "supportsEffort": True,
+                "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
+            },
+            {
                 "value": "fable",
                 "displayName": "Fable",
                 "description": "Fable 5 for the hardest tasks",
@@ -469,11 +476,11 @@ def main() -> int:
             repo,
             check=False,
         )
-        if stale_anthropic_api_gate.returncode == 0:
+        if stale_anthropic_api_gate.returncode != 0:
             raise AssertionError(
-                f"stale Anthropic API gate unexpectedly passed\nstdout:\n{stale_anthropic_api_gate.stdout}\nstderr:\n{stale_anthropic_api_gate.stderr}"
+                f"Anthropic API inventory gate unexpectedly failed\nstdout:\n{stale_anthropic_api_gate.stdout}\nstderr:\n{stale_anthropic_api_gate.stderr}"
             )
-        assert_contains(stale_anthropic_api_gate.stdout, "review model gate failed")
+        assert_contains(stale_anthropic_api_gate.stdout, "review model check passed")
         assert_contains(stale_anthropic_api_gate.stdout, "observed claude-fable-5")
 
         fable_claude_models_gate = run(
@@ -487,11 +494,11 @@ def main() -> int:
             repo,
             check=False,
         )
-        if fable_claude_models_gate.returncode == 0:
+        if fable_claude_models_gate.returncode != 0:
             raise AssertionError(
-                f"Fable Claude model gate unexpectedly passed\nstdout:\n{fable_claude_models_gate.stdout}\nstderr:\n{fable_claude_models_gate.stderr}"
+                f"Fable Claude model gate unexpectedly failed\nstdout:\n{fable_claude_models_gate.stdout}\nstderr:\n{fable_claude_models_gate.stderr}"
             )
-        assert_contains(fable_claude_models_gate.stdout, "review model gate failed")
+        assert_contains(fable_claude_models_gate.stdout, "review model check passed")
         assert_contains(fable_claude_models_gate.stdout, "Claude higher-family availability")
         assert_contains(fable_claude_models_gate.stdout, "observed fable (Fable 5)")
 
