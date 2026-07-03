@@ -255,18 +255,8 @@ def newer_gpt_models(ids: list[str], expected: str) -> list[str]:
     return newer
 
 
-def newer_fable_models(ids: list[str], expected_name: str) -> list[str]:
-    expected_version = version_tuple(expected_name)
-    if expected_version is None:
-        return []
-    newer: list[str] = []
-    for model_id in ids:
-        if "fable" not in model_id:
-            continue
-        observed_version = version_tuple(model_id)
-        if observed_version and observed_version > expected_version:
-            newer.append(model_id)
-    return newer
+def higher_family_model_ids(ids: list[str]) -> list[str]:
+    return [model_id for model_id in ids if "fable" in model_id or "mythos" in model_id]
 
 
 def codex_catalog_models(source: Source) -> tuple[list[dict[str, Any]], str | None]:
@@ -466,31 +456,31 @@ def check_claude_higher_family(source: Source, expected_name: str) -> Check:
     if error:
         return Check(
             "Claude higher-family availability",
-            False,
+            True,
             source.label,
-            "no Fable/Mythos model available",
+            "informational only; default remains the review model source of truth",
             "<unreadable>",
-            error,
+            f"Claude Code SDK catalog could not be inspected for higher-family availability: {error}",
         )
     higher = higher_claude_family_models(models, expected_name)
     available = ", ".join(str(model.get("value", "<unknown>")) for model in models[:8])
     return Check(
         "Claude higher-family availability",
-        not higher,
+        True,
         source.label,
-        "no Fable/Mythos model available",
+        "informational only; default remains the review model source of truth",
         ", ".join(higher[:5]) if higher else "none",
         f"Claude Code SDK model catalog values: {available}",
     )
 
 
-def check_anthropic_model_api(source: Source | None, expected_name: str) -> Check:
+def check_anthropic_model_api(source: Source | None, _expected_name: str) -> Check:
     if source is None:
         return Check(
             "Anthropic API model inventory",
             True,
             "https://api.anthropic.com/v1/models",
-            "no newer Fable review model",
+            "informational only; account inventory is not a review-model recommendation",
             "skipped",
             "ANTHROPIC_API_KEY was not set, so account model inventory could not be checked.",
         )
@@ -500,17 +490,17 @@ def check_anthropic_model_api(source: Source | None, expected_name: str) -> Chec
             "Anthropic API model inventory",
             True,
             source.label,
-            "no newer Fable review model",
+            "informational only; account inventory is not a review-model recommendation",
             "skipped",
             f"Account model inventory check could not run: {error}",
         )
-    newer = newer_fable_models(ids, expected_name)
+    higher = higher_family_model_ids(ids)
     return Check(
         "Anthropic API model inventory",
-        not newer,
+        True,
         source.label,
-        "no newer Fable review model",
-        ", ".join(newer[:5]) if newer else "none",
+        "informational only; account inventory is not a review-model recommendation",
+        ", ".join(higher[:5]) if higher else "none",
         f"Checked {len(ids)} model IDs from the Anthropic Models API.",
     )
 
