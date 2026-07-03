@@ -8,7 +8,7 @@ Classify every run from the engine's review output after triage:
   codex, the output clearly says the reviewed change is correct or has no
   findings. For claude, the workflow report has an empty findings list.
 - `clean-except-queue`: every remaining finding matches an open consult-queue
-  entry (`review-guardrails`). Counts toward the streak; cannot produce the
+  entry (`review-guardrails`). Counts toward the clean target; cannot produce the
   final clean verdict.
 - `has_findings`: at least one actionable finding remains.
 - `ambiguous`: errored, interrupted, wrong target, no clear verdict, or output
@@ -24,7 +24,7 @@ Maintain these across the whole session:
 ```text
 consecutive_clean = 0
 iterations = 0
-required_clean = 3 for the codex engine, 1 for the claude engine
+required_clean = 1
 ```
 
 Repeat:
@@ -34,7 +34,7 @@ Repeat:
      Record stop reason `budget-expired` in the findings CLI or final report.
      STOP and report unresolved state honestly.
 2. iterations += 1
-   Track the phase, iteration, target, reviewed head, and current clean streak.
+   Track the phase, iteration, target, reviewed head, and current clean count.
 3. Run the selected engine's bare review against the fixed target.
 4. Triage the findings:
    - reject only with recorded evidence
@@ -49,12 +49,12 @@ Repeat:
    clean / clean-except-queue / has_findings / ambiguous
 6. If clean or clean-except-queue:
      consecutive_clean += 1
-     Track the run verdict and clean streak.
+     Track the run verdict and clean count.
      If clean-except-queue and the engine cannot send tracked-finding
      notices (codex) -> SUSPEND as blocked-on-consult now; without
      notices, repeat passes on a tree with a known finding are degraded.
      If consecutive_clean >= required_clean:
-       If the consult queue is empty -> record stop reason `clean-streak-met`,
+       If the consult queue is empty -> record stop reason `clean-pass-met`,
                then STOP and report success.
        Else -> record stop reason `blocked-on-consult`,
                then SUSPEND as blocked-on-consult: present the queue and wait
@@ -83,8 +83,9 @@ Resume after the user answers a suspended loop:
 
 - Any accepted finding -> fix it, close its queue entry, reset
   `consecutive_clean` to 0, and go to step 1 on the changed tree.
-- All open entries rejected -> record the decisions; the completed streak
+- All open entries rejected -> record the decisions; the completed clean target
   already covered this exact tree, so STOP with success citing those rejections.
 
-Between consecutive clean reviews, **do not edit code**. A multi-run streak is
-only meaningful if the engine reviews the same tree every time.
+When `required_clean` is raised above 1 for a task-specific reason, do not edit
+code between consecutive clean reviews. A multi-run streak is only meaningful if
+the engine reviews the same tree every time.

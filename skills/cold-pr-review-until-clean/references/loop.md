@@ -14,7 +14,7 @@ Repeat:
      Record stop reason `budget-expired` in the findings CLI or final report.
      STOP and report unresolved state honestly.
 2. iterations += 1
-   Track the phase, iteration, target, reviewed head, and current clean streak.
+   Track the phase, iteration, target, reviewed head, and current clean count.
 3. Invoke cold-pr-review against the target.
    - Use a fresh subagent.
    - Pass only target + review checklist.
@@ -33,9 +33,9 @@ Repeat:
    - has_findings       -> at least one actionable finding remains
 6. If clean or clean-except-queue:
      consecutive_clean += 1
-     Track the run verdict and clean streak.
-     If consecutive_clean >= 3:
-       If the consult queue is empty -> record stop reason `3-consecutive-clean`,
+     Track the run verdict and clean count.
+     If consecutive_clean >= 1:
+       If the consult queue is empty -> record stop reason `clean-pass-met`,
                then STOP and report success.
        Else -> record stop reason `blocked-on-consult`,
                then SUSPEND as blocked-on-consult: present the queue and wait
@@ -56,8 +56,9 @@ Resume after the user answers a suspended loop:
 
 - Any accepted finding -> fix it, close its queue entry, reset
   `consecutive_clean` to 0, and go to step 1 on the changed tree.
-- All open entries rejected -> record the decisions; the completed streak
+- All open entries rejected -> record the decisions; the completed clean target
   already covered this exact tree, so STOP with success citing those rejections.
 
-Between consecutive clean reviews, **do not edit code**. The streak is only
-meaningful if independent reviewers are looking at the same tree.
+When a task-specific requirement raises the clean target above 1, do not edit
+code between consecutive clean reviews. The streak is only meaningful if
+independent reviewers are looking at the same tree.
