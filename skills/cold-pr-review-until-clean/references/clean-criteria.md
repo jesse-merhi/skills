@@ -10,7 +10,7 @@ Treat a cold review run as clean only when:
 - Nits, optional style suggestions, and "consider" items do not reset the
   counter unless they reveal a real defect.
 - A run whose only findings match the open consult queue is
-  `clean-except-queue`: it counts toward the streak, but the loop suspends as
+  `clean-except-queue`: it counts toward the clean target, but the loop suspends as
   blocked-on-consult instead of reporting a clean verdict while the queue is
   open.
 - An errored, ambiguous, incomplete, or wrong-target review is not clean.
