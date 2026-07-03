@@ -250,6 +250,7 @@ STALE_ANTHROPIC_MODELS_API = json.dumps(
     {
         "data": [
             {"id": "claude-fable-5", "type": "model"},
+            {"id": "claude-mythos-4-7", "type": "model"},
             {"id": "claude-opus-4-8", "type": "model"},
         ]
     }
@@ -482,6 +483,7 @@ def main() -> int:
             )
         assert_contains(stale_anthropic_api_gate.stdout, "review model check passed")
         assert_contains(stale_anthropic_api_gate.stdout, "observed claude-fable-5")
+        assert_contains(stale_anthropic_api_gate.stdout, "claude-mythos-4-7")
 
         fable_claude_models_gate = run(
             [
