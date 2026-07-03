@@ -1,4 +1,4 @@
 interface:
   display_name: "Cold Review Until Clean"
   short_description: "Final independent cold-review loop for PR confidence."
-  default_prompt: "Use $cold-pr-review-until-clean to run fresh cold reviewers until this PR gets three consecutive clean passes."
+  default_prompt: "Use $cold-pr-review-until-clean to run fresh cold reviewers until this PR gets one clean pass."

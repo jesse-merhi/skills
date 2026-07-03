@@ -21,18 +21,13 @@ Narrate one short line per iteration:
 ```text
 iter 1: cold review -> 3 findings -> fixed
 iter 2: cold review -> 1 finding  -> fixed
-iter 3: cold review -> clean (1/3)
-iter 4: cold review -> clean (2/3)
-iter 5: cold review -> 1 finding  -> counter reset
-iter 6: cold review -> clean (1/3)
-iter 7: cold review -> clean (2/3)
-iter 8: cold review -> clean (3/3)
+iter 3: cold review -> clean (1/1)
 ```
 
 On termination, report:
 
 - Final iteration count
-- Stop reason: `3-consecutive-clean`, `blocked-on-consult`, or
+- Stop reason: `clean-pass-met`, `blocked-on-consult`, or
   `budget-expired`
 - Last cold-review summary and merge verdict
 - Findings fixed directly

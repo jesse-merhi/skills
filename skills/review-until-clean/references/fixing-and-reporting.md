@@ -20,15 +20,10 @@ Narrate one short line per iteration:
 
 ```text
 iter 1: codex review --uncommitted -> 2 findings -> fixed
-iter 2: codex review --uncommitted -> clean (1/3)
-iter 3: codex review --uncommitted -> clean (2/3)
-iter 4: codex review --uncommitted -> 1 finding -> counter reset
-iter 5: codex review --uncommitted -> clean (1/3)
-iter 6: codex review --uncommitted -> clean (2/3)
-iter 7: codex review --uncommitted -> clean (3/3)
+iter 2: codex review --uncommitted -> clean (1/1)
 ```
 
-The claude engine narrates the same way with its own streak target:
+The claude engine narrates the same way:
 
 ```text
 iter 1: code-review workflow high main...HEAD -> 1 finding -> fixed
@@ -39,7 +34,7 @@ On termination, report:
 
 - Final iteration count
 - Engine used and why (harness default or user override)
-- Stop reason: `clean-streak-met`, `blocked-on-consult`, `budget-expired`, or
+- Stop reason: `clean-pass-met`, `blocked-on-consult`, `budget-expired`, or
   `ambiguous-review`
 - Target command or workflow args used
 - Last review summary and verdict
