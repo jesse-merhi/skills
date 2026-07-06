@@ -25,6 +25,11 @@ Default to delegating to 5.5:
   than rewriting yourself unless the fix is trivial.
 - **Expensive grunt work.** Manual visual verification, browser-driving
   checks, screenshot loops, large mechanical edits, long test/verify cycles.
+- **Token-intensive reading.** Don't waste your brain (or context) churning
+  through logs, CI output, error dumps, stack traces, large diffs, or broad
+  codebase sweeps. Hand codex the question, have it read the volume and
+  return distilled findings; you reason over the summary and only read raw
+  material yourself when the distillation smells wrong.
 - Continue a run with `codex exec resume --last` (or by session id) instead
   of restarting with lost context.
 
@@ -48,4 +53,4 @@ rendered result yourself (via codex-captured screenshots) and iterate.
 Fable: specs, design direction, hard debugging calls, code review, judging
 codex's output, anything requiring top-end reasoning.
 GPT-5.5: implementing to spec, verification legwork, browser/computer use,
-everything token-expensive or mechanical.
+log/error/output digestion, everything token-expensive or mechanical.
