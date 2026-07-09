@@ -128,3 +128,8 @@ Use these to diagnose issues the user may be having with a skill:
 - **Sprawl**: a skill too long, even when every line is live and unique.
 - **No-op**: a line the model already obeys by default, so you pay load to say
   nothing.
+- **Negation**: steering by prohibition makes the forbidden behavior more
+  available. State the positive target behavior instead.
+- **Negative space**: omitted guidance delegates decisions to the agent's
+  priors. Read drafts for consequential silences and either fill them or leave
+  them open as explicit branches.

@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
   short_description: "Native and cold review until clean, then PR proof."
-  default_prompt: "Use $code-review; use the configured review-findings helper for findings and verification; validate and include proof."
+  default_prompt: "Use $code-review; include the Standards lenses and Fowler smell baseline, record findings with the configured helper, validate, and include proof."
 
 policy:
   allow_implicit_invocation: false

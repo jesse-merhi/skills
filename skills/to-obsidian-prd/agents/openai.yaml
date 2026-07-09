@@ -1,4 +1,0 @@
-interface:
-  display_name: "To Obsidian PRD"
-  short_description: "Draft narrow Obsidian PRDs."
-  default_prompt: "Turn this idea into a narrow Obsidian PRD, including implementation and testing decisions when known."

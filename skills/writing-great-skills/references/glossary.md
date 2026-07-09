@@ -233,6 +233,29 @@ observe the rush should you hide the later steps.
 
 _Avoid_: premature closure, the rush, rushing, shortcutting
 
+### Negation
+
+_Failure mode._ Steering by prohibition names the behavior you are trying to
+avoid and makes it easier for the agent to reproduce. A prohibition earns its
+place only as a hard guardrail that cannot be phrased positively.
+
+Cure it by stating the positive target behavior. When a guardrail must stay,
+pair it with the behavior to perform instead.
+
+_Avoid_: prohibition-first prompting, ironic rebound
+
+### Negative Space
+
+_Failure mode._ Omitted guidance still steers the agent because the missing
+decision falls back to the agent's priors. This is not neutral; it is an
+unreviewed branch.
+
+Cure it by reading a draft for consequential silences. Fill the omission when
+the skill needs a default, or make the choice an explicit branch when context
+should decide.
+
+_Avoid_: accidental omission, silent delegation
+
 ## Pruning
 
 Keeping a skill lean, with each remedy paired with the failure it cures.

@@ -3,7 +3,8 @@
 Recommend focused changes:
 
 - Remove or rewrite tests that only prove old fields are gone, old callbacks are
-  absent, mocks were called in a specific order, or impossible data is ignored.
+  absent, mocks were called in a specific order, expected values were recomputed
+  from the same logic as the implementation, or impossible data is ignored.
 - Do not keep a test just because it guards against "the old design coming back"
   when the old design is no longer reachable through current product contracts.
 - Add tests only for verified reachable risks introduced by the PR.
@@ -19,3 +20,5 @@ Recommend focused changes:
   that matters after finding it.
 - Prefer one test that exercises the user/API contract over several tests that
   assert internals.
+- Prefer known-good literals, worked examples, specs, or fixtures for expected
+  values. Do not compute the expected value the same way production code does.

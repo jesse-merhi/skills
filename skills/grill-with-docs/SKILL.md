@@ -1,17 +1,13 @@
 ---
 name: grill-with-docs
-description: 'Challenge plans, PRDs, implementation ideas, or architecture decisions against repo docs, code, glossary, ADRs, project context, and open questions.'
+description: 'Ground a plan in repo docs, code, Obsidian notes, glossary, ADRs, specs, and tickets, then run grilling to stress-test the decisions one question at a time.'
 ---
 
 # Grill With Docs
 
-Interview the user about the plan until you reach shared understanding. Walk
-down the design tree, resolving dependent decisions one by one. For each
-question, provide your recommended answer.
-
-Ask questions one at a time and wait for feedback before continuing. If a
-question can be answered by exploring the codebase, docs, or project context,
-explore first and bring the evidence back instead of asking.
+Run a `grilling` session after grounding the plan in project context.
+`grilling` is the interview primitive; this skill adds docs, code, and Obsidian
+context before the questioning starts.
 
 ## Workflow
 
@@ -21,20 +17,25 @@ explore first and bring the evidence back instead of asking.
    transitions, user-visible outcomes, and implied invariants.
 3. Compare those terms against existing docs and code. Prefer existing
    vocabulary. Flag invented terms, overloaded names, and domain gaps.
-4. Grill the plan with concrete one-at-a-time questions:
+4. Run `grilling`: ask one concrete question at a time, provide your
+   recommended answer, look up facts yourself, and put decisions to the user.
+5. Use these prompts as useful pressure points during grilling:
    - Which existing decision or ADR does this rely on?
    - Which code path proves the plan is implementable?
-   - What behavior is the first vertical slice?
+   - What behavior is the first tracer-bullet ticket?
    - What assumption would make the plan fail?
    - Which acceptance criterion is still vague or untestable?
    - If the plan changes rendered UI, what design direction, viewport states,
      and `frontend-ui-validation` proof will review require?
-5. Apply the session behaviors in
+6. Apply the session behaviors in
    [session-behavior.md](references/session-behavior.md): glossary challenges,
    fuzzy-language sharpening, concrete scenarios, code cross-checks, UI
    readiness, context updates, and ADR offers.
-6. Continue until the plan is clear enough to execute.
-7. Return either a tightened plan with assumptions and first slice made clear,
+7. If the work is too large or foggy for one session, point the user to
+   `wayfinder` instead of forcing the whole journey through one grill.
+8. Continue until the plan is clear enough to execute and the user confirms the
+   shared understanding.
+9. Return either a tightened plan with assumptions and first ticket made clear,
    or a short set of blockers/questions if the plan is not ready.
 
 ## Output Shape
@@ -44,10 +45,12 @@ Prefer short sections:
 - `Grounding`: docs/code/notes inspected
 - `What Holds Up`: parts supported by evidence
 - `Gaps`: unclear terms, missing decisions, weak assumptions
-- `Tightened Plan`: revised plan or first slice
+- `Tightened Plan`: revised plan or first ticket
 - `Next Question`: the single question the user should answer next
 
-When the plan is ready, stop asking and give the tightened plan.
+When the plan is ready, stop asking and give the tightened plan. If the user has
+not confirmed the shared understanding, make the confirmation request the next
+question instead of proceeding.
 
 ## Context Pointers
 

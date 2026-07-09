@@ -40,8 +40,9 @@ There are two gates:
    [usefulness-bar.md](references/usefulness-bar.md).
 5. Recommend focused changes:
    - Remove or rewrite tests that only prove old fields are gone, old callbacks
-     are absent, mocks were called in a specific order, or impossible data is
-     ignored.
+     are absent, mocks were called in a specific order, tautological expected
+     values are recomputed from the same logic as the implementation, or
+     impossible data is ignored.
    - Add tests only for verified reachable risks introduced by the PR.
    - Prefer one test that exercises the user/API contract over several tests
      that assert internals.
@@ -61,6 +62,8 @@ There are two gates:
 - If related tests exist but did not change, decide whether the PR should
   update, add, delete, or leave them alone.
 - If tests changed, audit every changed assertion.
+- A tautological assertion gives no confidence: expected values must come from
+  an independent source of truth, not from re-running the implementation logic.
 
 ## Context Pointers
 

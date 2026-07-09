@@ -4,7 +4,8 @@ Use these labels when auditing tests or assertions:
 
 - `keeper`: catches a verified reachable regression in promised behavior.
 - `rewrite`: points at the right risk but asserts the wrong level, stale API
-  shape, brittle text, timing, fixture internals, or implementation detail.
+  shape, brittle text, timing, fixture internals, implementation detail, or a
+  tautological expected value.
 - `delete`: covers removed behavior, impossible state, branch-local history, or
   "absence of old thing" with no compatibility promise.
 - `changed-but-useless`: a changed or added test passes but would not catch a
