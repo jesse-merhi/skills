@@ -8,9 +8,9 @@ description: 'Run the harness-native review (bare `codex review` in Codex, the b
 Run the harness's own built-in review in a loop. Every time the review surfaces
 actionable findings, fix only those findings and run the review again.
 
-Stop after the selected engine produces **one clean run**. For Codex, this keeps
-the native review loop bounded to one clean pass after fixes; for Claude, one
-workflow run is already an internal panel.
+Stop after the selected engine produces **two consecutive clean runs** on the
+same reviewed tree. This gives the native review loop one confirmation pass
+after the first clean result without returning to the old unbounded streak.
 
 This skill is separate from `cold-pr-review-until-clean`: the source of truth is
 the harness's native review mode, not a custom prompt, `cold-pr-review`, a
@@ -28,11 +28,11 @@ review_tool: must invoke the selected engine's bare built-in review; do not subs
 prompt_policy: pass only the review target plus tracked-finding notices generated per review-guardrails; no other prompt, checklist, desired verdict, or rationale
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
-stop_condition: one run with zero actionable findings
+stop_condition: two consecutive runs with zero actionable findings
 counter_reset: any actionable finding resets consecutive_clean to 0
 no_early_exit: do not stop before a fresh engine run returns clean
 no_self_review: do not decide the tree is clean without a fresh engine run
-same_tree_for_clean_target: if a task-specific override requires multiple clean passes, do not edit, stage, unstage, commit, or otherwise change the reviewed tree between clean passes
+same_tree_for_clean_target: do not edit, stage, unstage, commit, or otherwise change the reviewed tree between clean passes
 same_engine_for_clean_target: do not switch review engines during the loop
 consult_findings: consult-worthy findings go to the consult queue; keep fixing other findings instead of waiting
 queue_matched_passes: a pass whose only findings match the open consult queue counts toward the clean target but can never produce a final clean verdict
@@ -59,7 +59,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 3. Run the until-clean loop.
 
    Read [references/loop.md](references/loop.md). Maintain
-   `consecutive_clean`, `iterations`, and `required_clean = 1`. Run the selected
+   `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the selected
    engine's bare review, triage with `finding-discipline`, fix actionable
    findings, record state in the findings CLI, and rerun until the clean target
    or an honest stop condition is reached.
@@ -76,7 +76,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 - The selected engine's bare built-in review ran for each iteration.
 - No custom prompt, output-format prompt, desired verdict, or prior rationale
   was passed to the engine.
-- The required clean pass was met on the reviewed tree, or the loop stopped
+- The required clean passes were met on the reviewed tree, or the loop stopped
   honestly with `blocked-on-consult`, `budget-expired`, or `ambiguous-review`.
 - Findings, fixes, validation commands, consult-queue changes, and stop
   conditions are recorded in the findings CLI.

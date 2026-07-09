@@ -26,9 +26,9 @@ Workflow({ name: "code-review", args: "<level> [target]" })
   notification. Wait for that notification; do not edit the tree or start the
   next iteration while a review is in flight.
 - Each run fans out finder and verifier subagents (a `high` run measured roughly
-  24 agents, 800k subagent tokens, and 9 minutes). Because each run is already
-  an internal panel, `required_clean` is 1 for this engine. Say what a run costs
-  before starting if the user has not already accepted an until-clean loop.
+  24 agents, 800k subagent tokens, and 9 minutes). The loop still requires
+  `required_clean = 2`, so say what repeated runs cost before starting if the
+  user has not already accepted an until-clean loop.
 - Findings come back with `CONFIRMED` or `PLAUSIBLE` verdicts and are
   recall-biased at higher levels, so triage with `finding-discipline` before
   fixing.

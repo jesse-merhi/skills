@@ -20,14 +20,16 @@ Narrate one short line per iteration:
 
 ```text
 iter 1: codex review --uncommitted -> 2 findings -> fixed
-iter 2: codex review --uncommitted -> clean (1/1)
+iter 2: codex review --uncommitted -> clean (1/2)
+iter 3: codex review --uncommitted -> clean (2/2)
 ```
 
 The claude engine narrates the same way:
 
 ```text
 iter 1: code-review workflow high main...HEAD -> 1 finding -> fixed
-iter 2: code-review workflow high main...HEAD -> clean (1/1)
+iter 2: code-review workflow high main...HEAD -> clean (1/2)
+iter 3: code-review workflow high main...HEAD -> clean (2/2)
 ```
 
 On termination, report:
