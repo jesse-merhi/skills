@@ -1,11 +1,12 @@
-# PRD Note Template
+# Spec Note Template
 
 ```md
-# PRD: <Outcome>
+# Spec: <Outcome>
 
 Status: Draft
-Type: PRD
+Type: Spec
 Created: <YYYY-MM-DD>
+Alias: PRD
 
 ## Outcome
 <One or two sentences describing the user/system outcome.>
@@ -34,6 +35,7 @@ Excluded:
 
 ## Testing Decisions
 - <behavior to test through public interfaces>
+- <agreed test seam or seams; prefer the highest existing seam that still gives stable feedback>
 - <test level or prior-art test path when known>
 - <for frontend UI work: required `frontend-ui-validation` evidence such as mobile/desktop screenshots, layout audit, console check, or trace>
 - <what does not need dedicated coverage>

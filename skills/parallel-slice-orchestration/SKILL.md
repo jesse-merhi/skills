@@ -9,7 +9,7 @@ Use this when the user wants an existing PRD or slice plan implemented with
 subagents. The orchestrator owns decomposition, dependency order, integration,
 and final verification. Workers own narrow vertical slices.
 
-Always load `vertical-slice-tdd` before assigning implementation work. Load the
+Always load `tdd` before assigning implementation work. Load the
 relevant repo/domain skill before decomposition.
 
 Only spawn subagents when the user has explicitly asked for subagents,
@@ -52,7 +52,7 @@ same slice plan sequentially and say that parallel execution was not available.
 
 - Every worker result has been read before integration.
 - Changed files match assigned ownership.
-- `vertical-slice-tdd` was followed, or the worker stated a valid
+- `tdd` was followed, or the worker stated a valid
   docs/config/generated-code exception.
 - Rendered UI slices used `impeccable` when shaping or refining UI and
   `frontend-ui-validation` before reporting done.

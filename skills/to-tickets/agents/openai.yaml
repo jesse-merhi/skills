@@ -1,0 +1,7 @@
+interface:
+  display_name: "To Tickets"
+  short_description: "Create blocker-aware Obsidian issue tickets."
+  default_prompt: "Use $to-tickets to break this spec or plan into tracer-bullet tickets with blocking edges, then publish them as Obsidian Issues."
+
+policy:
+  allow_implicit_invocation: false

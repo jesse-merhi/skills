@@ -8,7 +8,7 @@ Each worker prompt must include:
 - the expected vertical path through the system
 - files/modules they may edit
 - files/modules they must avoid
-- required skills to load, especially `vertical-slice-tdd` and the repo/domain
+- required skills to load, especially `tdd` and the repo/domain
   skill
 - for rendered UI slices, required skills to load: `impeccable` before coding or
   visual refinement and `frontend-ui-validation` before reporting done
@@ -24,7 +24,7 @@ Prefer worker prompts shaped like:
 You own Slice N: <behavior>.
 Mode: <AFK | HITL | unspecified>.
 
-Load <repo skill> and vertical-slice-tdd.
+Load <repo skill> and tdd.
 Write one failing test for <acceptance criterion>, prove it fails for the
 expected reason, implement only enough production code to pass, then run
 the focused test.

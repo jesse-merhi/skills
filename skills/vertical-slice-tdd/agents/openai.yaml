@@ -1,4 +1,0 @@
-interface:
-  display_name: "Vertical Slice TDD"
-  short_description: "Test one behavior slice at a time"
-  default_prompt: "Implement this change using vertical-slice TDD."

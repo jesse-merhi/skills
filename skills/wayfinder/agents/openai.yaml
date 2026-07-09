@@ -1,0 +1,7 @@
+interface:
+  display_name: "Wayfinder"
+  short_description: "Map foggy multi-session work in Obsidian."
+  default_prompt: "Use $wayfinder to chart this large effort as an Obsidian issue map with a destination, frontier tickets, blockers, and decisions so far."
+
+policy:
+  allow_implicit_invocation: false

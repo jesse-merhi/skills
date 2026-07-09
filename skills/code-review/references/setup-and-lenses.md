@@ -32,6 +32,24 @@ overlay changes.
      unjustified assertions, weak runtime narrowing, and contract drift are
      actionable findings and should be fixed at the narrowest useful boundary.
 
+   Also consider this Fowler smell baseline on the Standards path. Repo
+   standards override the baseline, tooling-enforced issues should be skipped,
+   and every smell is a judgment call rather than a hard violation:
+
+   - Mysterious Name: a name does not reveal what it does or holds.
+   - Duplicated Code: the same logic shape appears in more than one hunk or
+     file.
+   - Feature Envy: code reaches into another module's data more than its own.
+   - Data Clumps: the same fields or params travel together repeatedly.
+   - Primitive Obsession: a primitive or string stands in for a domain concept.
+   - Repeated Switches: the same conditional cascade recurs on the same type.
+   - Shotgun Surgery: one logical change forces scattered edits.
+   - Divergent Change: one file or module changes for unrelated reasons.
+   - Speculative Generality: abstraction appears without a current need.
+   - Message Chains: callers navigate through a chain they should not know.
+   - Middle Man: a class or function mostly delegates onward.
+   - Refused Bequest: an implementation ignores most of what it inherits.
+
 5. Add conditional review lenses only when their trigger is present:
 
    - `test-audit`: mandatory when the PR touches code with nearby or related
