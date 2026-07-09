@@ -19,7 +19,32 @@ Figure out which harness you're running in:
 If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
-## 2. Survey Existing Skills
+## 2. Link Global Instructions
+
+This repo owns the user's global agent instructions:
+
+- `REPO/AGENTS.md` — shared, harness-agnostic instructions.
+- `REPO/CLAUDE.md` — Claude Code only. It imports `AGENTS.md` via
+  `@AGENTS.md` and layers Claude-specific content (model delegation policy)
+  on top. Never move Claude-specific content into `AGENTS.md`: Codex reads
+  `AGENTS.md` directly and must not see instructions about delegating to
+  itself.
+
+Link per harness (replace existing dead symlinks; ask before replacing real
+files with local edits):
+
+| Harness | Command |
+| --- | --- |
+| Claude Code | `ln -sf REPO/CLAUDE.md ~/.claude/CLAUDE.md` and `ln -sf REPO/AGENTS.md ~/.claude/AGENTS.md` |
+| Codex | `ln -sf REPO/AGENTS.md ~/.codex/AGENTS.md` |
+| opencode | `ln -sf REPO/AGENTS.md ~/.config/opencode/AGENTS.md` |
+
+The extra `~/.claude/AGENTS.md` symlink exists only so the relative
+`@AGENTS.md` import in `CLAUDE.md` resolves regardless of whether the harness
+resolves imports against the symlink location or the real file. Claude Code
+does not load `~/.claude/AGENTS.md` by itself.
+
+## 3. Survey Existing Skills
 
 Before touching anything, inventory the target skills directory for the current
 harness:
@@ -40,7 +65,7 @@ Classify existing entries:
 4. A dead symlink: safe to remove.
 5. Obvious junk: ask before deleting.
 
-## 3. Link Skills
+## 4. Link Skills
 
 Always use per-skill symlinks. The target skills directory should remain a real
 directory; each repo skill gets its own symlink inside it.
@@ -65,7 +90,7 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 4. Install Third-Party Skills
+## 5. Install Third-Party Skills
 
 Read `external.md`. For each entry, run only the command for the current
 harness. Skip entries that do not list your harness and report the skip.
@@ -73,7 +98,7 @@ harness. Skip entries that do not list your harness and report the skip.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 5. Install Repo-Owned Helper Binaries
+## 6. Install Repo-Owned Helper Binaries
 
 Some skills include local helper binaries. Install the Rust `review-findings`
 binary so `code-review` can record findings, verification commands, and
@@ -99,7 +124,7 @@ Verify:
 ${AGENT_REVIEW_FINDINGS_BIN:-$HOME/.local/bin/review-findings} path
 ```
 
-## 6. Verify
+## 7. Verify
 
 Run:
 
