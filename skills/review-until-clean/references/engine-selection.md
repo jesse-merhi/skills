@@ -14,6 +14,5 @@ Pick the review engine before the first iteration:
    - Codex engine requested from Claude Code: run the codex engine normally; the
      helper shells out to the `codex` CLI either way.
 
-Use one engine for the whole loop. If a task-specific override requires
-multiple clean passes, a clean streak only means something when the same
-reviewer saw the same tree every time.
+Use one engine for the whole loop. The clean streak only means something when
+the same reviewer saw the same tree every time.
