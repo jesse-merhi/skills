@@ -3,7 +3,7 @@
 Review each worker result before integrating:
 
 - changed files match ownership
-- `vertical-slice-tdd` was followed, or the worker stated a valid
+- `tdd` was followed, or the worker stated a valid
   docs/config/generated-code exception
 - rendered UI slices used `impeccable` when shaping or refining UI and
   `frontend-ui-validation` before reporting done

@@ -35,28 +35,32 @@ The skills snap together into the loop I actually run:
 1. **Find the thing.** Use `session-recall`, `review-surface-map`, or
    `diagnose` to recover context, map a messy change, or chase a bug until it
    becomes concrete.
-2. **Brief the agent.** Use `grill-with-docs` to pull repo docs, code, and
-   notes into the conversation before the agent starts guessing.
-3. **Make it grill me.** `grill-with-docs` is also the move where the agent
-   interrogates my plan until the missing decisions are obvious.
-4. **Turn the conversation into a spec.** Use `to-obsidian-prd` to freeze the
-   plan and `to-obsidian-slices` when the work needs to become agent-sized
-   chunks.
-5. **Hand off and let it run.** Use `handoff` for a clean session and
+2. **Brief the agent.** Use `grill-with-docs` to pull repo docs, code, Obsidian
+   specs, and tickets into the conversation before the agent starts guessing.
+   Use `research` when the missing context lives in primary sources outside the
+   current repo.
+3. **Make it grill me.** Use `grilling`, or `grill-with-docs` when project
+   context matters, until the missing decisions are obvious.
+4. **Turn the conversation into a spec.** Use `to-spec` to freeze the plan in
+   Obsidian `Specs/`, and `to-tickets` when the work needs to become
+   blocker-aware Obsidian `Issues/`.
+5. **Map it if it is too big.** Use `wayfinder` for foggy work that will not fit
+   in one session.
+6. **Hand off and let it run.** Use `handoff` for a clean session and
    `parallel-slice-orchestration` when several isolated worktrees should move
    at once.
-6. **Talk to it. Test it.** Use `test-audit`, `frontend-ui-validation`, and
+7. **Talk to it. Test it.** Use `test-audit`, `frontend-ui-validation`, and
    `diagnose` to prove the thing works instead of trusting the transcript.
-7. **Review it like I hate it.** Use `code-review`, `review-until-clean`,
+8. **Review it like I hate it.** Use `code-review`, `review-until-clean`,
    `cold-pr-review`, `cold-pr-review-until-clean`, `finding-discipline`,
    and `pr-rubbish-audit`.
-8. **Ship it.** Use `pr-proof-pack`, `monitoring-gh-actions`, and
+9. **Ship it.** Use `pr-proof-pack`, `monitoring-gh-actions`, and
    `review-guardrails` to make the evidence, CI state, and review loop
    readable.
-9. **Bonus: point it at the changelog and tell it to break things.** Findings
+10. **Bonus: point it at the changelog and tell it to break things.** Findings
    from that usually go straight back through `diagnose`, `handoff`,
    `test-audit`, and `code-review`.
-10. **Rinse, repeat, profit.** Use `skill-cleaner` when the loop itself starts
+11. **Rinse, repeat, profit.** Use `skill-cleaner` when the loop itself starts
     getting noisy.
 
 None of this is sacred. Half the specific commands will probably be obsolete
@@ -68,16 +72,16 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 - **Review and quality loops:** `code-review`, `review-until-clean`,
   `cold-pr-review`, `cold-pr-review-until-clean`, `finding-discipline`,
   `review-surface-map`, `review-guardrails`, and `pr-rubbish-audit`.
-- **Testing and implementation discipline:** `test-audit`,
+- **Testing and implementation discipline:** `test-audit`, `tdd`,
   `typescript-discipline`, `reducing-cognitive-load`, and `diagnose`.
-  `vertical-slice-tdd` is still here as a supporting implementation discipline
+  `tdd` is still here as a supporting implementation discipline
   for handoff/orchestration workflows, not because I usually call it directly.
 - **Frontend work:** `frontend-ui-validation` and
   `acpx-frontend-delegation`, with `external.md` documenting the Impeccable
   install path.
-- **Planning and handoff:** `grill-with-docs`, `to-obsidian-prd`,
-  `to-obsidian-slices`, `parallel-slice-orchestration`, `handoff`, and
-  `session-recall`.
+- **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
+  `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
+  `handoff`, and `session-recall`.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.

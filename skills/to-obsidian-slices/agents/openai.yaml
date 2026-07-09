@@ -1,4 +1,0 @@
-interface:
-  display_name: "To Obsidian Slices"
-  short_description: "Create approved slice notes."
-  default_prompt: "Use $to-obsidian-slices to propose vertical slices, confirm granularity and dependencies, then create Obsidian slice notes with pre-plan, implementation, and verification todos."

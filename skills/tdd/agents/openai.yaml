@@ -1,0 +1,4 @@
+interface:
+  display_name: "TDD"
+  short_description: "Use red-green tests at agreed seams."
+  default_prompt: "Use $tdd: agree the public seam, write one failing test, then make the smallest change to pass it."

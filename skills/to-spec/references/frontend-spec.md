@@ -1,4 +1,4 @@
-# Frontend PRD Guidance
+# Frontend Spec Guidance
 
 For frontend UI work, capture the design direction and rendered validation bar
 before publishing:
@@ -11,4 +11,4 @@ before publishing:
 
 Capture implementation and testing decisions when they are already known. If the
 user is present and these choices matter, ask them to confirm the module shape,
-testing focus, and UI validation focus before publishing.
+testing seams, and UI validation focus before publishing.
