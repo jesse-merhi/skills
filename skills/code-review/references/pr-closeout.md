@@ -10,8 +10,9 @@ programmatic proof: focused test results, Playwright/Maestro traces, API
 responses, migration dry runs, script output, logs, CI links, or command
 summaries. Tie each evidence item to the behavior or risk it proves.
 
-After both review phases are clean on the same final target and final local
-validation has passed, ensure the reviewed branch has PR evidence:
+After the Phase 1 native gate has passed, Phase 2 is clean on the final target,
+and final local validation has passed, ensure the reviewed branch has PR
+evidence:
 
 1. Check whether a PR already exists for the branch, such as with:
 

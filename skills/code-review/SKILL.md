@@ -11,9 +11,10 @@ Orchestrate two until-clean review phases for one target.
 2. Phase 2: run `cold-pr-review-until-clean` in a subagent until cold review is
    clean.
 
-Use `finding-discipline` throughout both phases. Each phase must satisfy its
-own clean stop condition on the same final target after the last accepted fix
-and affected validation.
+Use `finding-discipline` throughout both phases. Phase 1 must satisfy the
+native clean stop condition before Phase 2 begins. Phase 2 must then stay in
+the cold-review loop until cold review is clean on the final target after the
+last accepted cold-review fix and affected validation.
 
 Phase 1 uses the harness-native review engine: bare `codex review` in Codex,
 the built-in `code-review` workflow in Claude Code. If the user names an
@@ -90,16 +91,26 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    same target. Give it the one-time setup summary, neutral risk checklist, and
    any tracked-finding notices generated from currently open consult entries.
 
-8. After any accepted fix from either phase:
+8. After an accepted Phase 1 finding:
 
    - apply the fix in the real checkout;
    - record the finding and fix in the findings database;
    - run affected validation and record each command;
    - inspect the diff and check the diff-growth budget;
-   - reset both phase clean-confirmation states to zero;
    - return to Phase 1.
 
-9. Close out only after both phases are clean on the same final target.
+9. After an accepted Phase 2 finding:
+
+   - apply the fix in the real checkout;
+   - record the finding and fix in the findings database;
+   - run affected validation and record each command;
+   - inspect the diff and check the diff-growth budget;
+   - stay in Phase 2 and dispatch the next fresh cold reviewer;
+   - do not return to Phase 1 unless the user explicitly asks for a fresh
+     native gate.
+
+10. Close out only after the Phase 1 native gate has passed and Phase 2 is
+    clean on the final target.
 
    Read [references/pr-closeout.md](references/pr-closeout.md) for PR creation
    or update, evidence, `pr-proof-pack`, pending GitHub Actions, and PR blockers.
@@ -111,8 +122,9 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - The required model gate passed for this run.
 - `review-surface-map`, required lenses, applicable conditional lenses,
   `review-guardrails`, and `finding-discipline` were used.
-- Native review and cold review each met their own clean stop condition on the
-  same final target and same dirty-tree/snapshot identity.
+- Native review met its clean stop condition before Phase 2, and cold review
+  met its clean stop condition on the final target and dirty-tree/snapshot
+  identity.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
@@ -140,6 +152,8 @@ consult queue is resolved.
 - patching follow-up or out-of-scope findings into this PR;
 - leaking prior findings or desired conclusions into cold reviewers;
 - editing between clean passes in either phase;
+- returning from Phase 2 to Phase 1 after cold-review fixes unless explicitly
+  requested;
 - leaving accepted fixes in a temporary snapshot instead of the real checkout;
 - pushing just to review;
 - writing final closeout sections from chat history.

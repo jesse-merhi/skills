@@ -66,9 +66,10 @@ validation cannot run, stop honestly with the blocker or residual risk.
   exists to reduce missed findings, not to polish the final report.
 - Do not downgrade either phase's clean stop condition because the first pass
   looks obviously clean.
-- If tests, validation, `review-until-clean`, or
-  `cold-pr-review-until-clean` cause edits, rerun affected validation and return
-  to Phase 1 before declaring clean.
+- If tests, validation, or `review-until-clean` cause edits during Phase 1,
+  rerun affected validation and return to Phase 1 before entering Phase 2. If
+  `cold-pr-review-until-clean` causes edits during Phase 2, rerun affected
+  validation and stay in Phase 2 with a fresh cold reviewer.
 - Do not push just to review. Push only when the user requested publish, ship,
   PR update, another GitHub mutation, or the PR closeout step is running after
   both review phases and final validation are clean.

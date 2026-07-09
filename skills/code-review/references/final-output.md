@@ -57,12 +57,12 @@ command, structured JSON ledger path when one was written, budget use (elapsed
 wall clock and diff growth against the baseline), the consult queue awaiting the
 review owner, final verdict, and anything left for human judgment.
 
-When clean, say plainly that both phases were clean on the same final target,
-including the same dirty-tree/snapshot identity when local overlay changes were
-present, that the required review lenses were completed, and name real test gaps
-or residual risk. If the last review pass had no findings, phrase that as the
-final clean confirmation, not as the whole review outcome unless the findings
-registry is empty.
+When clean, say plainly that the Phase 1 native gate passed before Phase 2 and
+Phase 2 was clean on the final target, including the same dirty-tree/snapshot
+identity when local overlay changes were present. Say that required review
+lenses were completed, and name real test gaps or residual risk. If the last
+review pass had no findings, phrase that as the final clean confirmation, not as
+the whole review outcome unless the findings registry is empty.
 
 At closeout, use the material sections first:
 

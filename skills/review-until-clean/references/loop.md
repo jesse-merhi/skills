@@ -24,7 +24,7 @@ Maintain these across the whole session:
 ```text
 consecutive_clean = 0
 iterations = 0
-required_clean = 1
+required_clean = 2
 ```
 
 Repeat:
@@ -86,6 +86,5 @@ Resume after the user answers a suspended loop:
 - All open entries rejected -> record the decisions; the completed clean target
   already covered this exact tree, so STOP with success citing those rejections.
 
-When `required_clean` is raised above 1 for a task-specific reason, do not edit
-code between consecutive clean reviews. A multi-run streak is only meaningful if
-the engine reviews the same tree every time.
+Do not edit code between consecutive clean reviews. A multi-run streak is only
+meaningful if the engine reviews the same tree every time.
