@@ -61,7 +61,7 @@ newer version deliberately before updating the version numbers below.
 The CLI detector is also part of frontend validation:
 
 ```sh
-npx --yes impeccable@3.0.3 detect <changed-ui-path-or-url> --json
+npx --yes impeccable@3.2.0 detect <changed-ui-path-or-url> --json
 ```
 
 ### Install
@@ -71,10 +71,10 @@ into the normal global skills folder for that harness.
 
 | Harness     | Method |
 |-------------|--------|
-| Claude Code | `(cd ~ && npx --yes impeccable@3.0.3 skills install --providers=.claude -y)` |
-| Codex       | `(cd ~ && npx --yes impeccable@3.0.3 skills install --providers=.agents -y && ln -sfn ~/.agents/skills/impeccable ~/.codex/skills/impeccable)` |
-| opencode    | `(cd ~/.config/opencode && npx --yes impeccable@3.0.3 skills install --providers=.opencode -y && mkdir -p ~/.config/opencode/skills && rm -rf ~/.config/opencode/skills/impeccable && cp -R ~/.config/opencode/.opencode/skills/impeccable ~/.config/opencode/skills/impeccable)` |
-| Pi          | `(cd ~ && npx --yes impeccable@3.0.3 skills install --providers=.pi -y && mkdir -p ~/.pi/agent/skills && rm -rf ~/.pi/agent/skills/impeccable && cp -R ~/.pi/skills/impeccable ~/.pi/agent/skills/impeccable)` |
+| Claude Code | `(cd ~ && npx --yes impeccable@3.2.0 skills install --providers=.claude -y)` |
+| Codex       | `(cd ~ && npx --yes impeccable@3.2.0 skills install --providers=.agents -y && ln -sfn ~/.agents/skills/impeccable ~/.codex/skills/impeccable)` |
+| opencode    | `(cd ~/.config/opencode && npx --yes impeccable@3.2.0 skills install --providers=.opencode -y && mkdir -p ~/.config/opencode/skills && rm -rf ~/.config/opencode/skills/impeccable && cp -R ~/.config/opencode/.opencode/skills/impeccable ~/.config/opencode/skills/impeccable)` |
+| Pi          | `(cd ~ && npx --yes impeccable@3.2.0 skills install --providers=.pi -y && mkdir -p ~/.pi/agent/skills && rm -rf ~/.pi/agent/skills/impeccable && cp -R ~/.pi/skills/impeccable ~/.pi/agent/skills/impeccable)` |
 
 The installer owns the external skill files. Do not symlink `impeccable`
 from this repo.

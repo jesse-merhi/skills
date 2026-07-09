@@ -3,7 +3,7 @@
 Run Impeccable detection on the best available target:
 
 ```bash
-npx --yes impeccable@3.0.3 detect <changed-ui-path-or-url> --json
+npx --yes impeccable@3.2.0 detect <changed-ui-path-or-url> --json
 ```
 
 Prefer the running URL when the dev server is available, because the rendered

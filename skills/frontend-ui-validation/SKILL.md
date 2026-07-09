@@ -40,7 +40,7 @@ belong in project testing skills.
 5. Run Impeccable detection on the best available target:
 
    ```bash
-   npx --yes impeccable@3.0.3 detect <changed-ui-path-or-url> --json
+   npx --yes impeccable@3.2.0 detect <changed-ui-path-or-url> --json
    ```
 
    Read [references/impeccable.md](references/impeccable.md) for target
