@@ -1,6 +1,6 @@
 ---
 name: design-engineering
-description: 'Implement and refine interaction craft: motion, animation, transitions, micro-interactions, component feel, press feedback, popovers, drawers, sheets, toasts, drag or swipe gestures, springs, easing, timing, and perceived performance. Use when UI behavior must feel responsive and physically coherent. For gesture physics or Apple-style fluidity, load references/apple-design.md; for naming an effect, load references/animation-vocabulary.md.'
+description: 'Implement or refine UI motion and interaction: animations, transitions, micro-interactions, component feel, popovers, drawers, sheets, toasts, drag or swipe gestures, springs, easing, and perceived performance. Use when behavior must feel responsive and physically coherent.'
 ---
 
 # Design Engineering

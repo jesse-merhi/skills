@@ -1,6 +1,6 @@
 ---
 name: frontend-design
-description: 'Design and implement production frontend UI. Use for new or redesigned pages, screens, components, layouts, visual hierarchy, typography, color, responsive behavior, design-system work, and UI polish. Load design-engineering as well when the task includes motion, gestures, transitions, or interaction feel; finish visible changes with frontend-ui-validation.'
+description: 'Design and implement production frontend UI: pages, screens, components, layout, hierarchy, typography, color, states, responsiveness, design systems, and polish. Use for broad visual work; route motion or interaction feel to design-engineering and rendered proof to frontend-ui-validation.'
 ---
 
 # Frontend Design
