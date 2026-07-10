@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Engineering"
+  short_description: "Polish interaction, motion, and component feel"
+  default_prompt: "Use $design-engineering to make this interaction feel intentional, responsive, and polished."

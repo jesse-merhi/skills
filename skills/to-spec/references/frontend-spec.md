@@ -3,8 +3,8 @@
 For frontend UI work, capture the design direction and rendered validation bar
 before publishing:
 
-- use `impeccable` language for audience/register, mode, tone, structure,
-  tokens, anti-references, and likely visual risk
+- name the audience, product or brand register, tone, structure, existing
+  tokens, anti-references, interaction intent, and likely visual risk
 - include acceptance criteria for the important states and viewports
 - include `frontend-ui-validation` proof expected during review: screenshots,
   layout-audit output, console checks, or traces

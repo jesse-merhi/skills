@@ -11,8 +11,8 @@ ownership of scope, files, validation, and the final answer.
 ## Workflow
 
 1. Read enough local UI context first: changed files, nearby components, styles,
-   tokens, docs, and relevant skills such as `impeccable` and
-   `frontend-ui-validation`.
+   tokens, docs, and relevant skills such as `frontend-design`,
+   `design-engineering`, and `frontend-ui-validation`.
 2. If design direction is unclear, ask Claude for a read-only plan using
    [commands.md](references/commands.md).
 3. Decide the implementation scope in Codex. Name the exact file(s) Claude may

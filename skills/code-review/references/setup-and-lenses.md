@@ -59,8 +59,9 @@ overlay changes.
    - `frontend-ui-validation`: mandatory when the diff changes visible UI,
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the
-     change. This lens must include Impeccable detection on the changed UI path
-     or running URL.
+     change.
+   - `review-animations`: mandatory when the diff materially changes animation,
+     transitions, gestures, springs, or interaction timing.
 
 6. Build a neutral risk checklist for `cold-pr-review-until-clean` from the
    changed-surface map and required/conditional lenses. Include checklist
