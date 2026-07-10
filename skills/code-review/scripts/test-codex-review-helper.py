@@ -101,17 +101,17 @@ CODEX_CATALOG = json.dumps(
     {
         "models": [
             {
+                "slug": "gpt-5.6-sol",
+                "display_name": "GPT-5.6-Sol",
+                "visibility": "list",
+                "priority": 1,
+                "supported_reasoning_levels": [{"effort": "high"}, {"effort": "xhigh"}],
+            },
+            {
                 "slug": "gpt-5.5",
                 "display_name": "GPT-5.5",
                 "visibility": "list",
                 "priority": 0,
-                "supported_reasoning_levels": [{"effort": "high"}, {"effort": "xhigh"}],
-            },
-            {
-                "slug": "gpt-5.4",
-                "display_name": "GPT-5.4",
-                "visibility": "list",
-                "priority": 1,
                 "supported_reasoning_levels": [{"effort": "high"}, {"effort": "xhigh"}],
             },
         ]
@@ -123,8 +123,8 @@ OPENAI_MODELS_API = json.dumps(
     {
         "object": "list",
         "data": [
+            {"id": "gpt-5.6-sol", "object": "model"},
             {"id": "gpt-5.5", "object": "model"},
-            {"id": "gpt-5.4", "object": "model"},
         ],
     }
 )
@@ -134,8 +134,8 @@ STALE_OPENAI_MODELS_API = json.dumps(
     {
         "object": "list",
         "data": [
+            {"id": "gpt-5.7", "object": "model"},
             {"id": "gpt-5.6", "object": "model"},
-            {"id": "gpt-5.5", "object": "model"},
         ],
     }
 )
@@ -145,15 +145,15 @@ STALE_CODEX_CATALOG = json.dumps(
     {
         "models": [
             {
-                "slug": "gpt-5.6",
-                "display_name": "GPT-5.6",
+                "slug": "gpt-5.7",
+                "display_name": "GPT-5.7",
                 "visibility": "list",
                 "priority": 0,
                 "supported_reasoning_levels": [{"effort": "high"}, {"effort": "xhigh"}],
             },
             {
-                "slug": "gpt-5.5",
-                "display_name": "GPT-5.5",
+                "slug": "gpt-5.6-terra",
+                "display_name": "GPT-5.6-Terra",
                 "visibility": "list",
                 "priority": 1,
                 "supported_reasoning_levels": [{"effort": "high"}, {"effort": "xhigh"}],
@@ -166,6 +166,13 @@ STALE_CODEX_CATALOG = json.dumps(
 CLAUDE_CODE_SDK_CATALOG = json.dumps(
     {
         "models": [
+            {
+                "value": "claude-fable-5[1m]",
+                "displayName": "Fable",
+                "description": "Fable 5 for the hardest tasks",
+                "supportsEffort": True,
+                "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
+            },
             {
                 "value": "default",
                 "displayName": "Default (recommended)",
@@ -196,9 +203,9 @@ STALE_CLAUDE_CODE_SDK_CATALOG = json.dumps(
     {
         "models": [
             {
-                "value": "default",
-                "displayName": "Default (recommended)",
-                "description": "Use the default model (currently Opus 4.9 (1M context))",
+                "value": "claude-fable-5[1m]",
+                "displayName": "Fable",
+                "description": "Mythos 5 for the hardest tasks",
                 "supportsEffort": True,
                 "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
             }
@@ -225,7 +232,7 @@ FABLE_CLAUDE_CODE_SDK_CATALOG = json.dumps(
                 "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
             },
             {
-                "value": "fable",
+                "value": "claude-fable-5[1m]",
                 "displayName": "Fable",
                 "description": "Fable 5 for the hardest tasks",
                 "supportsEffort": True,
@@ -425,7 +432,7 @@ def main() -> int:
                 f"stale OpenAI API gate unexpectedly passed\nstdout:\n{stale_openai_api_gate.stdout}\nstderr:\n{stale_openai_api_gate.stderr}"
             )
         assert_contains(stale_openai_api_gate.stdout, "review model gate failed")
-        assert_contains(stale_openai_api_gate.stdout, "observed gpt-5.6")
+        assert_contains(stale_openai_api_gate.stdout, "observed gpt-5.7")
 
         stale_gate = run(
             [
@@ -441,7 +448,7 @@ def main() -> int:
         if stale_gate.returncode == 0:
             raise AssertionError(f"stale model gate unexpectedly passed\nstdout:\n{stale_gate.stdout}\nstderr:\n{stale_gate.stderr}")
         assert_contains(stale_gate.stdout, "review model gate failed")
-        assert_contains(stale_gate.stdout, "observed gpt-5.6")
+        assert_contains(stale_gate.stdout, "observed <missing>")
 
         stale_claude_code_gate = run(
             [
@@ -459,7 +466,7 @@ def main() -> int:
                 f"stale Claude Code gate unexpectedly passed\nstdout:\n{stale_claude_code_gate.stdout}\nstderr:\n{stale_claude_code_gate.stderr}"
             )
         assert_contains(stale_claude_code_gate.stdout, "review model gate failed")
-        assert_contains(stale_claude_code_gate.stdout, "observed default -> Opus 4.9 (1M context)")
+        assert_contains(stale_claude_code_gate.stdout, "observed claude-fable-5[1m] -> Mythos 5")
 
         stale_anthropic_api_gate = run(
             [
@@ -502,14 +509,14 @@ def main() -> int:
             )
         assert_contains(fable_claude_models_gate.stdout, "review model check passed")
         assert_contains(fable_claude_models_gate.stdout, "Claude higher-family availability")
-        assert_contains(fable_claude_models_gate.stdout, "observed fable (Fable 5)")
+        assert_contains(fable_claude_models_gate.stdout, "observed claude-fable-5[1m] -> Fable 5")
 
         write(repo / "app.txt", "dirty\n")
         local_dry_run = run_helper(repo, fake_codex, ["--mode", "auto", "--dry-run"])
         assert_contains(local_dry_run.stdout, "codex-review target: local")
         assert_contains(local_dry_run.stdout, "review ")
-        assert_contains(local_dry_run.stdout, "model=\"gpt-5.5\"")
-        assert_contains(local_dry_run.stdout, "model_reasoning_effort=\"high\"")
+        assert_contains(local_dry_run.stdout, "model=\"gpt-5.6-sol\"")
+        assert_contains(local_dry_run.stdout, "model_reasoning_effort=\"xhigh\"")
         assert_contains(local_dry_run.stdout, "--uncommitted")
 
         run(["git", "add", "app.txt"], repo)
@@ -550,7 +557,7 @@ def main() -> int:
             repo,
             fake_codex,
             ["--mode", "local", "--heartbeat-seconds", "1"],
-            extra_env={"FAKE_CODEX_EXPECT_ARGS_CONTAIN": 'model="gpt-5.5" -c model_reasoning_effort="high"'},
+            extra_env={"FAKE_CODEX_EXPECT_ARGS_CONTAIN": 'model="gpt-5.6-sol" -c model_reasoning_effort="xhigh"'},
         )
         assert_contains(pinned_native.stdout, "codex-review clean: no accepted/actionable findings reported")
 
@@ -647,7 +654,7 @@ def main() -> int:
         )
         if panel.returncode == 0:
             raise AssertionError(f"panel structured run unexpectedly passed\nstdout:\n{panel.stdout}\nstderr:\n{panel.stderr}")
-        assert_contains(panel.stdout, "reviewers: codex:model=gpt-5.5:thinking=xhigh, claude:model=default:thinking=max")
+        assert_contains(panel.stdout, "reviewers: codex:model=gpt-5.6-sol:thinking=xhigh, claude:model=claude-fable-5[1m]:thinking=high")
         assert_contains(panel.stdout, "structured review findings: 2 blocking")
 
         print("test-codex-review-helper passed")

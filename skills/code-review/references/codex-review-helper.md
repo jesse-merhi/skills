@@ -42,9 +42,8 @@ The helper:
   outside the reviewed checkout, so a repo-local executable cannot shadow them;
 - runs `git fetch origin --quiet` before branch or whole-target review, warning
   and continuing with existing refs if fetch fails;
-- uses `gpt-5.5` as the standard Codex review model and pins
-  `model_reasoning_effort="high"` by default; use `--thinking codex=xhigh` only
-  for tricky/high-risk changes where the extra latency is worth it;
+- uses `gpt-5.6-sol` as the standard Codex review model and pins
+  `model_reasoning_effort="xhigh"` by default;
 - runs `<skill-dir>/scripts/check-review-models` before real review work. Dry
   runs skip the gate because they do not start Phase 1;
 - supports `--parallel-tests`, `--parallel-tests-shell`, `--heartbeat-seconds`,
@@ -56,8 +55,9 @@ The helper:
   prompts, datasets, or JSON-schema instructions to native `codex review`. Use
   structured mode only as an explicit extra reviewer path, calibration path, or
   machine-readable ledger path.
-- defaults structured Codex reviewers to `gpt-5.5` with `high` thinking;
-- defaults structured Claude reviewers to `default` with `max` effort;
+- defaults structured Codex reviewers to `gpt-5.6-sol` with `xhigh` thinking;
+- defaults structured Claude reviewers to `claude-fable-5[1m]` with `high`
+  effort;
 - writes a normalized JSON ledger when `--json-output` is set. Prefer placing
   that file beside the local findings database state or the optional decision
   log, not in the product repo unless the user asks.
