@@ -1,6 +1,6 @@
 ---
 name: design-engineering
-description: 'Implement or refine UI motion and interaction: animations, transitions, micro-interactions, component feel, popovers, drawers, sheets, toasts, drag or swipe gestures, springs, easing, and perceived performance. Use when behavior must feel responsive and physically coherent.'
+description: 'Implement or refine UI motion and interaction: animations, transitions, micro-interactions, component feel, popovers, drawers, sheets, toasts, drag or swipe gestures, springs, easing, timing, and performance. Use for responsive, physically coherent behavior.'
 ---
 
 # Design Engineering
