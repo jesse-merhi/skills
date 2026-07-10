@@ -20,3 +20,12 @@ For operational apps, look especially for:
 - sticky bars covering content
 - empty states that shove controls off-screen
 - modals too tall for mobile
+
+Also check for repeated decorative scaffolding, weak type hierarchy, washed-out
+muted text, nested containers, monotonous spacing, layout that depends on short
+placeholder copy, and motion that delays frequent actions. Treat these as
+contextual observations rather than automatic failures.
+
+When motion or interaction feel is material to the change, use
+`design-engineering` for implementation guidance or `review-animations` for a
+focused motion review.

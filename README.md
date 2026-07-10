@@ -76,9 +76,10 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   `typescript-discipline`, `reducing-cognitive-load`, and `diagnose`.
   `tdd` is still here as a supporting implementation discipline
   for handoff/orchestration workflows, not because I usually call it directly.
-- **Frontend work:** `frontend-ui-validation` and
-  `acpx-frontend-delegation`, with `external.md` documenting the Impeccable
-  install path.
+- **Frontend work:** `frontend-design`, `design-engineering`,
+  `review-animations`, `frontend-ui-validation`, and
+  `acpx-frontend-delegation` split visual direction, interaction craft,
+  motion review, rendered proof, and optional delegation.
 - **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
   `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
   `handoff`, and `session-recall`.
@@ -97,10 +98,9 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 Some of this started somewhere else.
 
 Matt Pocock's agent workflow ideas shaped the `grill`, PRD, slicing, and
-handoff parts of the loop. Peter Bakaus's Impeccable work shaped the frontend
-design and review path. This repo does not vendor Impeccable; `external.md`
-documents the pinned install path and `frontend-ui-validation` handles rendered
-proof.
+handoff parts of the loop. Emil Kowalski's design-engineering work shaped the
+interaction and motion skills; the adapted material retains its MIT notice.
+`frontend-ui-validation` owns rendered proof separately from design direction.
 
 As usual, I took the shape, bent it around my own setup, and kept the parts
 that paid rent.
@@ -117,8 +117,8 @@ The install model is deliberately boring:
 - skill names come from `SKILL.md` frontmatter, not folder paths;
 - local hand-written skills are preserved unless the user explicitly approves
   replacing them;
-- third-party skills are installed only through the pinned commands in
-  `external.md`.
+- third-party skills are installed only through pinned commands in
+  `external.md` when that file names one.
 
 That gives you a normal repo you can pull, review, and update without turning
 your whole skills directory into a mystery symlink.

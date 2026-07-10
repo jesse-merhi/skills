@@ -20,7 +20,7 @@ Add other focused subagents with the relevant named skills when useful:
 - `improve-codebase-architecture`
 - `reducing-cognitive-load`
 - `frontend-ui-validation`
-- `impeccable`
+- `review-animations`
 - `monitoring-gh-actions`
 
 Give subagents neutral prompts: target, base, changed-surface summary, and the
