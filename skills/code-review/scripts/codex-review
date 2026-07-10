@@ -27,14 +27,14 @@ FALSE_VALUES = {"0", "false", "no", "off"}
 STRUCTURED_ENGINES = ("codex", "claude")
 STRUCTURED_SCOPES = ("direct", "induced", "adjacent", "unrelated")
 STRUCTURED_BLOCKING_SCOPES = {"direct", "induced"}
-DEFAULT_CODEX_MODEL = "gpt-5.5"
-DEFAULT_CODEX_THINKING = "high"
-DEFAULT_CLAUDE_MODEL = "default"
-DEFAULT_CLAUDE_THINKING = "max"
+DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+DEFAULT_CODEX_THINKING = "xhigh"
+DEFAULT_CLAUDE_MODEL = "claude-fable-5[1m]"
+DEFAULT_CLAUDE_THINKING = "high"
 CODEX_REVIEW_THINKING_LEVELS = {"high", "xhigh"}
 THINKING_LEVELS_BY_ENGINE = {
     "codex": CODEX_REVIEW_THINKING_LEVELS,
-    "claude": {"low", "medium", "high", "max"},
+    "claude": {"low", "medium", "high", "xhigh", "max"},
 }
 
 
@@ -114,17 +114,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--json-output", default=os.environ.get("CODEX_REVIEW_JSON_OUTPUT"), help="Write normalized review ledger JSON.")
     parser.add_argument("--structured", action="store_true", help="Run optional structured JSON reviewer instead of native `codex review`.")
     parser.add_argument("--engine", choices=STRUCTURED_ENGINES, default=os.environ.get("CODEX_REVIEW_STRUCTURED_ENGINE", "codex"))
-    parser.add_argument("--reviewers", help="Comma-separated structured reviewers, e.g. codex,claude or codex:gpt-5.5:xhigh.")
+    parser.add_argument("--reviewers", help="Comma-separated structured reviewers, e.g. codex,claude or codex:gpt-5.6-sol:xhigh.")
     parser.add_argument("--panel", action="store_true", help="Run an opt-in structured Codex/Claude panel.")
     parser.add_argument(
         "--model",
         action="append",
-        help="Reviewer model for all reviewers or engine=model. Defaults: codex=gpt-5.5, claude=default. Repeatable.",
+        help="Reviewer model for all reviewers or engine=model. Defaults: codex=gpt-5.6-sol, claude=claude-fable-5[1m]. Repeatable.",
     )
     parser.add_argument(
         "--thinking",
         action="append",
-        help="Reviewer effort for all reviewers or engine=level. Defaults: codex=high, claude=max.",
+        help="Reviewer effort for all reviewers or engine=level. Defaults: codex=xhigh, claude=high.",
     )
     parser.add_argument("--allow-partial-panel", action="store_true", help="Continue structured panel output when one reviewer fails.")
     parser.add_argument("--prompt", action="append", help="Structured-review-only extra instruction text.")

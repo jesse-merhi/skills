@@ -19,10 +19,12 @@ OPENAI_MODELS_API_URL = "https://api.openai.com/v1/models"
 ANTHROPIC_MODELS_API_URL = "https://api.anthropic.com/v1/models"
 CLAUDE_AGENT_SDK_PACKAGE = "@anthropic-ai/claude-agent-sdk@0.3.185"
 
-EXPECTED_CODEX_MODEL = "gpt-5.5"
-EXPECTED_CLAUDE_ALIAS = "default"
-EXPECTED_CLAUDE_MODEL = "opus[1m]"
-EXPECTED_CLAUDE_NAME = "Opus 4.8"
+EXPECTED_CODEX_MODEL = "gpt-5.6-sol"
+EXPECTED_CODEX_EFFORT = "xhigh"
+EXPECTED_CLAUDE_ALIAS = "claude-fable-5[1m]"
+EXPECTED_CLAUDE_MODEL = "claude-fable-5[1m]"
+EXPECTED_CLAUDE_NAME = "Fable 5"
+EXPECTED_CLAUDE_EFFORT = "high"
 
 
 @dataclass(frozen=True)
@@ -57,9 +59,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--openai-models-file", default=os.environ.get("CODEX_REVIEW_MODEL_GATE_OPENAI_MODELS_FILE"))
     parser.add_argument("--anthropic-models-file", default=os.environ.get("CODEX_REVIEW_MODEL_GATE_ANTHROPIC_MODELS_FILE"))
     parser.add_argument("--expected-codex-model", default=EXPECTED_CODEX_MODEL)
+    parser.add_argument("--expected-codex-effort", default=EXPECTED_CODEX_EFFORT)
     parser.add_argument("--expected-claude-alias", default=EXPECTED_CLAUDE_ALIAS)
     parser.add_argument("--expected-claude-model", default=EXPECTED_CLAUDE_MODEL)
     parser.add_argument("--expected-claude-name", default=EXPECTED_CLAUDE_NAME)
+    parser.add_argument("--expected-claude-effort", default=EXPECTED_CLAUDE_EFFORT)
     parser.add_argument("--timeout", type=int, default=20)
     parser.add_argument("--check-api-inventory", action="store_true", help="Also check authenticated provider model-list APIs.")
     parser.add_argument("--json", action="store_true", help="Print machine-readable check output.")
@@ -277,13 +281,6 @@ def visible_codex_models(models: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [model for model in models if model.get("visibility") == "list" and isinstance(model.get("slug"), str)]
 
 
-def codex_priority(model: dict[str, Any]) -> tuple[int, str]:
-    priority = model.get("priority")
-    if not isinstance(priority, int):
-        priority = 1_000_000
-    return priority, str(model.get("slug", ""))
-
-
 def claude_catalog_models(source: Source) -> tuple[list[dict[str, Any]], str | None]:
     try:
         parsed = json.loads(source.text)
@@ -337,7 +334,7 @@ def higher_claude_family_models(models: list[dict[str, Any]], expected_name: str
     return result
 
 
-def check_codex(source: Source, expected: str) -> Check:
+def check_codex(source: Source, expected: str, expected_effort: str) -> Check:
     models, error = codex_catalog_models(source)
     if error:
         return Check(
@@ -351,23 +348,25 @@ def check_codex(source: Source, expected: str) -> Check:
     listed = visible_codex_models(models)
     if not listed:
         return Check("Codex standard model", False, source.label, expected, "<none>", "Codex model catalog had no visible list models.")
-    best = sorted(listed, key=codex_priority)[0]
-    observed = normalize_model(str(best["slug"]))
     expected_model = next((model for model in listed if normalize_model(str(model.get("slug"))) == normalize_model(expected)), None)
+    supports_expected_effort = False
     if expected_model is None:
+        observed = "<missing>"
         detail = f"Visible Codex models: {', '.join(str(model['slug']) for model in listed[:8])}"
     else:
+        observed = normalize_model(str(expected_model["slug"]))
         effort_values = [
             str(level.get("effort"))
             for level in expected_model.get("supported_reasoning_levels", [])
             if isinstance(level, dict) and isinstance(level.get("effort"), str)
         ]
+        supports_expected_effort = expected_effort in effort_values
         detail = f"Codex CLI catalog lists {expected} with reasoning levels: {', '.join(effort_values) or '<unknown>'}."
     return Check(
         "Codex standard model",
-        observed == normalize_model(expected),
+        expected_model is not None and supports_expected_effort,
         source.label,
-        expected,
+        f"{expected} with {expected_effort} reasoning",
         observed,
         detail,
     )
@@ -404,31 +403,37 @@ def check_openai_model_api(source: Source | None, expected: str) -> Check:
     )
 
 
-def check_claude_default(source: Source, expected_alias: str, expected_model: str, expected_name: str) -> Check:
+def check_claude_model(
+    source: Source,
+    expected_alias: str,
+    expected_model: str,
+    expected_name: str,
+    expected_effort: str,
+) -> Check:
     models, error = claude_catalog_models(source)
     if error:
         return Check(
-            "Claude Code default model",
+            "Claude Code review model",
             False,
             source.label,
             expected_name,
             "<unreadable>",
             error,
         )
-    default_model = next((model for model in models if normalize_model(str(model.get("value", ""))) == normalize_model(expected_alias)), None)
-    if not default_model:
+    selected_model = next((model for model in models if normalize_model(str(model.get("value", ""))) == normalize_model(expected_alias)), None)
+    if not selected_model:
         available = ", ".join(str(model.get("value", "<unknown>")) for model in models[:8])
         return Check(
-            "Claude Code default model",
+            "Claude Code review model",
             False,
             source.label,
             expected_alias,
             "<missing>",
             f"Claude Code SDK model catalog values: {available}",
         )
-    observed_name = extract_claude_catalog_name(default_model)
-    observed_value = normalize_model(str(default_model.get("value", "")))
-    supports_max = model_supports_effort(default_model, "max")
+    observed_name = extract_claude_catalog_name(selected_model)
+    observed_value = normalize_model(str(selected_model.get("value", "")))
+    supports_expected_effort = model_supports_effort(selected_model, expected_effort)
     has_expected_model_value = any(
         normalize_model(str(model.get("value", ""))) == normalize_model(expected_model)
         for model in models
@@ -436,18 +441,18 @@ def check_claude_default(source: Source, expected_alias: str, expected_model: st
     ok = (
         observed_value == normalize_model(expected_alias)
         and normalize_name(expected_name) in normalize_name(observed_name)
-        and supports_max
+        and supports_expected_effort
         and has_expected_model_value
     )
-    description = str(default_model.get("description", "")).strip()
+    description = str(selected_model.get("description", "")).strip()
     values = ", ".join(str(model.get("value", "<unknown>")) for model in models[:8])
     return Check(
-        "Claude Code default model",
+        "Claude Code review model",
         ok,
         source.label,
         f"{expected_alias} -> {expected_name} ({expected_model})",
         f"{observed_value} -> {observed_name}",
-        f"Default entry description: {description or '<none>'}. Max effort supported: {'yes' if supports_max else 'no'}. Catalog values: {values}.",
+        f"Selected entry description: {description or '<none>'}. {expected_effort} effort supported: {'yes' if supports_expected_effort else 'no'}. Catalog values: {values}.",
     )
 
 
@@ -458,7 +463,7 @@ def check_claude_higher_family(source: Source, expected_name: str) -> Check:
             "Claude higher-family availability",
             True,
             source.label,
-            "informational only; default remains the review model source of truth",
+            "informational only; selected Fable model remains the review source of truth",
             "<unreadable>",
             f"Claude Code SDK catalog could not be inspected for higher-family availability: {error}",
         )
@@ -468,7 +473,7 @@ def check_claude_higher_family(source: Source, expected_name: str) -> Check:
         "Claude higher-family availability",
         True,
         source.label,
-        "informational only; default remains the review model source of truth",
+        "informational only; selected Fable model remains the review source of truth",
         ", ".join(higher[:5]) if higher else "none",
         f"Claude Code SDK model catalog values: {available}",
     )
@@ -548,12 +553,13 @@ def main() -> int:
             args.timeout,
         )
         checks = [
-            check_codex(codex_source, args.expected_codex_model),
-            check_claude_default(
+            check_codex(codex_source, args.expected_codex_model, args.expected_codex_effort),
+            check_claude_model(
                 claude_code_source,
                 args.expected_claude_alias,
                 args.expected_claude_model,
                 args.expected_claude_name,
+                args.expected_claude_effort,
             ),
             check_claude_higher_family(claude_code_source, args.expected_claude_name),
         ]
