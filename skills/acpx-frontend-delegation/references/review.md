@@ -12,6 +12,5 @@ Validate with the normal frontend proof:
 
 - run the app or static server
 - run `frontend-ui-validation`
-- run Impeccable detection
 - check mobile, tablet, and desktop widths
 - verify console errors and horizontal overflow

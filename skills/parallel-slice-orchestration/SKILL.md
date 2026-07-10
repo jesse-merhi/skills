@@ -54,7 +54,8 @@ same slice plan sequentially and say that parallel execution was not available.
 - Changed files match assigned ownership.
 - `tdd` was followed, or the worker stated a valid
   docs/config/generated-code exception.
-- Rendered UI slices used `impeccable` when shaping or refining UI and
+- Rendered UI slices used `frontend-design` for visual direction,
+  `design-engineering` when interaction craft was material, and
   `frontend-ui-validation` before reporting done.
 - HITL slices stopped at named checkpoints and returned evidence before
   continuation.

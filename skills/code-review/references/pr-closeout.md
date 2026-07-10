@@ -4,8 +4,8 @@ When creating, updating, or preparing a PR, include proof that the behavior
 works in the PR description, PR comment, or closeout.
 
 Prefer visual proof for UI work: desktop and mobile screenshots for each
-meaningfully changed viewport, state, or flow, plus Impeccable detector output
-for the changed UI target. If screenshots are impossible or irrelevant, provide
+meaningfully changed viewport, state, or flow, plus layout-audit and console
+results for the changed UI target. If screenshots are impossible or irrelevant, provide
 programmatic proof: focused test results, Playwright/Maestro traces, API
 responses, migration dry runs, script output, logs, CI links, or command
 summaries. Tie each evidence item to the behavior or risk it proves.
