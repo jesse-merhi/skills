@@ -79,10 +79,12 @@ behavior in plain language, or omit the shorthand.
 6. Add PR-visible screenshots for human-visible UI changes.
 
    Read [references/screenshots.md](references/screenshots.md) for the required
-   screenshot contract, GitHub upload path, proof table, crop rules, and
-   before/after rules. Done when every distinct changed UI state has a
-   reviewer-visible screenshot, or a narrow no-screenshot rationale or concrete
-   blocker is stated in the PR body.
+   screenshot contract, GitHub upload path, annotations, crop rules, and
+   before/after rules. When adding attachments, prefer using CDP when available.
+   Put each image directly in the main PR body, never inside a table, with its
+   annotations and proof information immediately below it. Done when every
+   distinct changed UI state has a reviewer-visible screenshot, or a narrow
+   no-screenshot rationale or concrete blocker is stated in the PR body.
 
 7. Add Mermaid only when it clarifies behavior.
 
@@ -104,6 +106,8 @@ behavior in plain language, or omit the shorthand.
   before implementation inventory.
 - Every human-visible UI change has reviewer-visible screenshots, or an explicit
   blocker or narrow no-screenshot rationale from `references/screenshots.md`.
+- Screenshot attachments preferably use CDP when available, and images appear
+  directly in the main PR body rather than inside tables.
 - Every screenshot has a proof claim, URL/state, viewport, and crop choice.
 - Every Mermaid diagram in the final body was validated, or Mermaid was omitted.
 - Verification is reviewer-checkable: concrete command, request/response,
@@ -117,6 +121,8 @@ behavior in plain language, or omit the shorthand.
 - treating the previous branch commit as "before";
 - unexplained task IDs, internal shorthand, sprint names, or local-only paths;
 - generic net-diff tables that group code areas without explaining behavior;
+- images embedded in tables instead of the main PR body with annotations and
+  proof information below them;
 - proof sections that are only a list of test files;
 - missing screenshots for human-visible UI changes without an explicit blocker
   or narrow no-screenshot rationale;
