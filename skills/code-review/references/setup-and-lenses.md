@@ -4,7 +4,7 @@ Do once before review loops, then redo only if the target, base, or dirty local
 overlay changes.
 
 1. Run `<skill-dir>/scripts/check-review-models`. Stop the whole review before
-   Phase 1 if `gpt-5.6-sol` or `claude-fable-5[1m]` is unavailable, Codex loses
+   Phase 1 if `gpt-5.6-sol` or `claude-fable-5` is unavailable, Codex loses
    `high` support, Claude loses `high` support, or the check cannot be completed.
 
 2. Map changed flows, entrypoints, contracts, side effects, state transitions,
