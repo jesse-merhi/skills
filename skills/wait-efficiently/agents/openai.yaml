@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wait Efficiently"
+  short_description: "Wait and monitor without token-heavy polling"
+  default_prompt: "Use $wait-efficiently to wait or monitor this task without repeated model polling."

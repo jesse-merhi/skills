@@ -3,12 +3,16 @@
 Do once before review loops, then redo only if the target, base, or dirty local
 overlay changes.
 
-1. Run `<skill-dir>/scripts/check-review-models`. Stop the whole review before
-   Phase 1 if `gpt-5.6-sol` or `claude-fable-5` is unavailable, Codex loses
-   `high` support, Claude loses `high` support, or the check cannot be completed.
+1. Run `<skill-dir>/scripts/check-review-models --engine <selected-engine>`.
+   Stop before Phase 1 only when the selected engine's model or configured
+   effort is unavailable, or its catalogue check cannot be completed.
 
 2. Map changed flows, entrypoints, contracts, side effects, state transitions,
    risk surfaces, and validation targets with `review-surface-map`.
+
+   If the map identifies at least three substantially independent runtime
+   surfaces, follow [large-diff-slices.md](large-diff-slices.md) once before
+   Phase 1. Do not slice a diff merely because it has many files.
 
 3. Load `review-guardrails`; record `review_started`, `baseline_diff`, and
    `scope_baseline` in the loop state.

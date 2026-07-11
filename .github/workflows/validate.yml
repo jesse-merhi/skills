@@ -37,6 +37,7 @@ jobs:
         run: |
           ./tests/skills-test
           ./tests/review-findings-test
+          python3 -m unittest discover -s skills/wait-efficiently/scripts -p 'test_*.py'
 
       - name: Check shell, Python, and JavaScript syntax
         run: |
@@ -49,7 +50,7 @@ jobs:
             skills/code-review/scripts/check-review-models \
             skills/code-review/scripts/calibrate-structured-review \
             skills/code-review/scripts/test-codex-review-helper
-          python3 -m py_compile skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py
+          python3 -m py_compile skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
 
       - name: Check review-findings Rust helper

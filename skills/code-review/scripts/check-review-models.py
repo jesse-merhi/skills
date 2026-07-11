@@ -52,6 +52,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--anthropic-models-url", default=ANTHROPIC_MODELS_API_URL)
     parser.add_argument("--codex-bin", default=os.environ.get("CODEX_BIN", "codex"))
     parser.add_argument("--claude-bin", default=os.environ.get("CLAUDE_BIN", "claude"))
+    parser.add_argument(
+        "--engine",
+        choices=("codex", "claude", "both"),
+        default="codex",
+        help="Validate only the selected review engine. Default: codex.",
+    )
     parser.add_argument("--claude-sdk-package", default=os.environ.get("CODEX_REVIEW_MODEL_GATE_CLAUDE_SDK_PACKAGE", CLAUDE_AGENT_SDK_PACKAGE))
     parser.add_argument("--claude-sdk-dir", default=os.environ.get("CODEX_REVIEW_MODEL_GATE_CLAUDE_SDK_DIR"))
     parser.add_argument("--codex-catalog-file", default=os.environ.get("CODEX_REVIEW_MODEL_GATE_CODEX_CATALOG_FILE"))
@@ -544,49 +550,51 @@ def render_json(checks: list[Check]) -> str:
 def main() -> int:
     args = parse_args()
     try:
-        codex_source = read_codex_catalog(args.codex_bin, args.codex_catalog_file, args.timeout)
-        claude_code_source = read_claude_code_catalog(
-            args.claude_bin,
-            args.claude_code_file,
-            args.claude_sdk_package,
-            args.claude_sdk_dir,
-            args.timeout,
-        )
-        checks = [
-            check_codex(codex_source, args.expected_codex_model, args.expected_codex_effort),
-            check_claude_model(
+        checks: list[Check] = []
+        if args.engine in {"codex", "both"}:
+            codex_source = read_codex_catalog(args.codex_bin, args.codex_catalog_file, args.timeout)
+            checks.append(check_codex(codex_source, args.expected_codex_model, args.expected_codex_effort))
+            if args.check_api_inventory:
+                openai_models_source = read_json_source(
+                    args.openai_models_url,
+                    args.openai_models_file,
+                    args.timeout,
+                    api_key=os.environ.get("OPENAI_API_KEY"),
+                    headers={"Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY', '')}"},
+                )
+                checks.append(check_openai_model_api(openai_models_source, args.expected_codex_model))
+        if args.engine in {"claude", "both"}:
+            claude_code_source = read_claude_code_catalog(
+                args.claude_bin,
+                args.claude_code_file,
+                args.claude_sdk_package,
+                args.claude_sdk_dir,
+                args.timeout,
+            )
+            checks.extend([
+                check_claude_model(
                 claude_code_source,
                 args.expected_claude_alias,
                 args.expected_claude_model,
                 args.expected_claude_name,
                 args.expected_claude_effort,
-            ),
-            check_claude_higher_family(claude_code_source, args.expected_claude_name),
-        ]
-        if args.check_api_inventory:
-            openai_models_source = read_json_source(
-                args.openai_models_url,
-                args.openai_models_file,
-                args.timeout,
-                api_key=os.environ.get("OPENAI_API_KEY"),
-                headers={"Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY', '')}"},
-            )
-            anthropic_models_source = read_json_source(
-                args.anthropic_models_url,
-                args.anthropic_models_file,
-                args.timeout,
-                api_key=os.environ.get("ANTHROPIC_API_KEY"),
-                headers={
-                    "x-api-key": os.environ.get("ANTHROPIC_API_KEY", ""),
-                    "anthropic-version": "2023-06-01",
-                },
-            )
-            checks.extend(
-                [
-                    check_openai_model_api(openai_models_source, args.expected_codex_model),
+                ),
+                check_claude_higher_family(claude_code_source, args.expected_claude_name),
+            ])
+            if args.check_api_inventory:
+                anthropic_models_source = read_json_source(
+                    args.anthropic_models_url,
+                    args.anthropic_models_file,
+                    args.timeout,
+                    api_key=os.environ.get("ANTHROPIC_API_KEY"),
+                    headers={
+                        "x-api-key": os.environ.get("ANTHROPIC_API_KEY", ""),
+                        "anthropic-version": "2023-06-01",
+                    },
+                )
+                checks.append(
                     check_anthropic_model_api(anthropic_models_source, args.expected_claude_name),
-                ]
-            )
+                )
     except Exception as exc:
         checks = [
             Check(

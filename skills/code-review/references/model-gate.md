@@ -1,11 +1,16 @@
 # Model Gate
 
+Select the review engine before running this gate. In Codex, the default engine
+is Codex. In Claude Code, the default is Claude. A user-named engine overrides
+the harness default; naming Fable selects Claude. Validate only the selected
+engine.
+
 `gpt-5.6-sol` is the standard Codex review model. Treat any other Codex review
 model as a deliberate user-approved exception, not as a helper default.
 
 Claude review uses the Claude Code `claude-fable-5` model with `high`
 effort. Codex uses `high` reasoning. Treat a missing or renamed selected model,
-or either model losing its configured effort level, as a stop-and-update event.
+or that model losing its configured effort level, as a stop-and-update event.
 Higher-family models appearing elsewhere in the Claude catalog are
 informational unless the selected Fable model changes.
 
@@ -13,17 +18,16 @@ Before the first review phase in every `code-review` run, resolve
 `<skill-dir>` to the directory containing `SKILL.md`, then run:
 
 ```sh
-<skill-dir>/scripts/check-review-models
+<skill-dir>/scripts/check-review-models --engine <codex|claude>
 ```
 
-The gate checks native model catalogs:
+The gate checks the selected engine's native model catalogue:
 
-- `codex debug models` must still list `gpt-5.6-sol` with `high` reasoning
-  support.
-- Claude Code's Agent SDK initialization catalog must still report
-  `claude-fable-5` as Fable 5 with `high` effort support.
-- Claude Code's Agent SDK initialization catalog reports higher-family model
-  availability as informational context without blocking the review.
+- For Codex, `codex debug models` must still list `gpt-5.6-sol` with `high`
+  reasoning support. The gate does not invoke or inspect Claude.
+- For Claude, the Agent SDK initialization catalogue must still report
+  `claude-fable-5` as Fable 5 with `high` effort support. The gate does not
+  inspect Codex.
 
 The Claude check installs `@anthropic-ai/claude-agent-sdk` into a local cache on
 first use, then reads `initializationResult().models` from Claude Code without
@@ -38,15 +42,12 @@ For manual inventory checks, run:
 That optional API path uses `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` when they
 are present. It can show a new model exists in the authenticated account, but it
 does not say which model Codex or Claude Code recommends for review work. The
-default Phase 1 gate stays on the Codex CLI and Claude Code SDK catalogs.
+default Phase 1 gate still checks only the selected engine's native catalogue.
 
-If official guidance names a newer or better recommended Codex model than
-`gpt-5.6-sol`, if the Codex catalog removes `gpt-5.6-sol` or its `high`
-support, or if Claude Code's catalog changes or removes Fable 5, stop the entire
-review process before Phase 1. Tell the user the model named by the catalog,
-the source checked, and that `code-review` / `scripts/codex-review` need an
-update. Do not run native review, cold review, subagents, tests, or fix loops
-until the user approves how to proceed.
+If the selected engine's catalogue removes its configured model or effort,
+stop before Phase 1. Tell the user what changed in the selected catalogue and
+that `code-review` / `scripts/codex-review` need an update. An unselected
+engine never blocks the run and is not a reason to ask the user anything.
 
 If the freshness check cannot be completed, stop before Phase 1 and tell the
 user the check failed. This check is required to avoid silently reviewing with
