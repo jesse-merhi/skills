@@ -43,7 +43,7 @@ The helper:
 - runs `git fetch origin --quiet` before branch or whole-target review, warning
   and continuing with existing refs if fetch fails;
 - uses `gpt-5.6-sol` as the standard Codex review model and pins
-  `model_reasoning_effort="xhigh"` by default;
+  `model_reasoning_effort="high"` by default;
 - runs `<skill-dir>/scripts/check-review-models` before real review work. Dry
   runs skip the gate because they do not start Phase 1;
 - supports `--parallel-tests`, `--parallel-tests-shell`, `--heartbeat-seconds`,
@@ -55,7 +55,7 @@ The helper:
   prompts, datasets, or JSON-schema instructions to native `codex review`. Use
   structured mode only as an explicit extra reviewer path, calibration path, or
   machine-readable ledger path.
-- defaults structured Codex reviewers to `gpt-5.6-sol` with `xhigh` thinking;
+- defaults structured Codex reviewers to `gpt-5.6-sol` with `high` thinking;
 - defaults structured Claude reviewers to `claude-fable-5[1m]` with `high`
   effort;
 - writes a normalized JSON ledger when `--json-output` is set. Prefer placing
@@ -86,7 +86,7 @@ when reviewer quality is in doubt:
 
 ```sh
 <skill-dir>/scripts/calibrate-structured-review --fixture both
-<skill-dir>/scripts/calibrate-structured-review --fixture malicious --thinking xhigh
+<skill-dir>/scripts/calibrate-structured-review --fixture malicious --thinking high
 ```
 
 This creates a temporary fake repo. The malicious fixture contains intentionally

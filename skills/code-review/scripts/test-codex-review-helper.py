@@ -516,7 +516,7 @@ def main() -> int:
         assert_contains(local_dry_run.stdout, "codex-review target: local")
         assert_contains(local_dry_run.stdout, "review ")
         assert_contains(local_dry_run.stdout, "model=\"gpt-5.6-sol\"")
-        assert_contains(local_dry_run.stdout, "model_reasoning_effort=\"xhigh\"")
+        assert_contains(local_dry_run.stdout, "model_reasoning_effort=\"high\"")
         assert_contains(local_dry_run.stdout, "--uncommitted")
 
         run(["git", "add", "app.txt"], repo)
@@ -557,7 +557,7 @@ def main() -> int:
             repo,
             fake_codex,
             ["--mode", "local", "--heartbeat-seconds", "1"],
-            extra_env={"FAKE_CODEX_EXPECT_ARGS_CONTAIN": 'model="gpt-5.6-sol" -c model_reasoning_effort="xhigh"'},
+            extra_env={"FAKE_CODEX_EXPECT_ARGS_CONTAIN": 'model="gpt-5.6-sol" -c model_reasoning_effort="high"'},
         )
         assert_contains(pinned_native.stdout, "codex-review clean: no accepted/actionable findings reported")
 

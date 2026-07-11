@@ -4,7 +4,7 @@
 model as a deliberate user-approved exception, not as a helper default.
 
 Claude review uses the Claude Code `claude-fable-5[1m]` model with `high`
-effort. Codex uses `xhigh` reasoning. Treat a missing or renamed selected model,
+effort. Codex uses `high` reasoning. Treat a missing or renamed selected model,
 or either model losing its configured effort level, as a stop-and-update event.
 Higher-family models appearing elsewhere in the Claude catalog are
 informational unless the selected Fable model changes.
@@ -18,7 +18,7 @@ Before the first review phase in every `code-review` run, resolve
 
 The gate checks native model catalogs:
 
-- `codex debug models` must still list `gpt-5.6-sol` with `xhigh` reasoning
+- `codex debug models` must still list `gpt-5.6-sol` with `high` reasoning
   support.
 - Claude Code's Agent SDK initialization catalog must still report
   `claude-fable-5[1m]` as Fable 5 with `high` effort support.
@@ -41,7 +41,7 @@ does not say which model Codex or Claude Code recommends for review work. The
 default Phase 1 gate stays on the Codex CLI and Claude Code SDK catalogs.
 
 If official guidance names a newer or better recommended Codex model than
-`gpt-5.6-sol`, if the Codex catalog removes `gpt-5.6-sol` or its `xhigh`
+`gpt-5.6-sol`, if the Codex catalog removes `gpt-5.6-sol` or its `high`
 support, or if Claude Code's catalog changes or removes Fable 5, stop the entire
 review process before Phase 1. Tell the user the model named by the catalog,
 the source checked, and that `code-review` / `scripts/codex-review` need an

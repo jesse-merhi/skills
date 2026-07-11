@@ -124,7 +124,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--fixture", choices=("malicious", "benign", "both"), default="both")
     parser.add_argument("--codex-bin", default=os.environ.get("CODEX_BIN", "codex"))
-    parser.add_argument("--thinking", choices=("high", "xhigh"), default="xhigh")
+    parser.add_argument("--thinking", choices=("high", "xhigh"), default="high")
     parser.add_argument("--keep-repo", action="store_true", help="Leave the temporary fixture repo on disk.")
     return parser.parse_args(argv)
 
