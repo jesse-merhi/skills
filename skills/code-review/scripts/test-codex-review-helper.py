@@ -167,7 +167,7 @@ CLAUDE_CODE_SDK_CATALOG = json.dumps(
     {
         "models": [
             {
-                "value": "claude-fable-5[1m]",
+                "value": "claude-fable-5",
                 "displayName": "Fable",
                 "description": "Fable 5 for the hardest tasks",
                 "supportsEffort": True,
@@ -203,7 +203,7 @@ STALE_CLAUDE_CODE_SDK_CATALOG = json.dumps(
     {
         "models": [
             {
-                "value": "claude-fable-5[1m]",
+                "value": "claude-fable-5",
                 "displayName": "Fable",
                 "description": "Mythos 5 for the hardest tasks",
                 "supportsEffort": True,
@@ -232,7 +232,7 @@ FABLE_CLAUDE_CODE_SDK_CATALOG = json.dumps(
                 "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
             },
             {
-                "value": "claude-fable-5[1m]",
+                "value": "claude-fable-5",
                 "displayName": "Fable",
                 "description": "Fable 5 for the hardest tasks",
                 "supportsEffort": True,
@@ -484,7 +484,7 @@ def main() -> int:
                 f"stale Claude Code gate unexpectedly passed\nstdout:\n{stale_claude_code_gate.stdout}\nstderr:\n{stale_claude_code_gate.stderr}"
             )
         assert_contains(stale_claude_code_gate.stdout, "review model gate failed")
-        assert_contains(stale_claude_code_gate.stdout, "observed claude-fable-5[1m] -> Mythos 5")
+        assert_contains(stale_claude_code_gate.stdout, "observed claude-fable-5 -> Mythos 5")
 
         stale_anthropic_api_gate = run(
             [
@@ -531,7 +531,7 @@ def main() -> int:
             )
         assert_contains(fable_claude_models_gate.stdout, "review model check passed")
         assert_contains(fable_claude_models_gate.stdout, "Claude higher-family availability")
-        assert_contains(fable_claude_models_gate.stdout, "observed claude-fable-5[1m] -> Fable 5")
+        assert_contains(fable_claude_models_gate.stdout, "observed claude-fable-5 -> Fable 5")
 
         write(repo / "app.txt", "dirty\n")
         local_dry_run = run_helper(repo, fake_codex, ["--mode", "auto", "--dry-run"])
@@ -699,7 +699,7 @@ def main() -> int:
         )
         if panel.returncode == 0:
             raise AssertionError(f"panel structured run unexpectedly passed\nstdout:\n{panel.stdout}\nstderr:\n{panel.stderr}")
-        assert_contains(panel.stdout, "reviewers: codex:model=gpt-5.6-sol:thinking=xhigh, claude:model=claude-fable-5[1m]:thinking=high")
+        assert_contains(panel.stdout, "reviewers: codex:model=gpt-5.6-sol:thinking=xhigh, claude:model=claude-fable-5:thinking=high")
         assert_contains(panel.stdout, "structured review findings: 2 blocking")
 
         print("test-codex-review-helper passed")

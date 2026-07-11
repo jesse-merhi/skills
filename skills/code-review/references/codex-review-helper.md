@@ -56,7 +56,7 @@ The helper:
   structured mode only as an explicit extra reviewer path, calibration path, or
   machine-readable ledger path.
 - defaults structured Codex reviewers to `gpt-5.6-sol` with `high` thinking;
-- defaults structured Claude reviewers to `claude-fable-5[1m]` with `high`
+- defaults structured Claude reviewers to `claude-fable-5` with `high`
   effort;
 - writes a normalized JSON ledger when `--json-output` is set. Prefer placing
   that file beside the local findings database state or the optional decision
