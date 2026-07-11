@@ -3,6 +3,10 @@
 Use short sections:
 
 - `Review Order`: the best sequence to read the PR.
+- `Review Slices`: when there are at least three substantially independent
+  runtime surfaces, propose two to four bounded discovery slices. For each,
+  name its entrypoints, flow boundary, shared contracts, and overlap with other
+  slices. Otherwise say `not needed`.
 - `Flow Map`: changed flows with entrypoints, important symbols, and downstream
   consumers.
 - `Contracts`: schemas, types, env vars, permissions, APIs, or persistence rules

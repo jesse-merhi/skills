@@ -4,7 +4,8 @@ Use a fresh subagent for every cold-review pass whenever the harness can spawn
 one. The loop is designed to fight implementer anchoring bias; a self-review
 inside the implementation context does not provide the same signal.
 
-- In Codex, use `spawn_agent` with a tightly scoped review prompt.
+- In Codex, use `spawn_agent` with `fork_turns: "none"` and a self-contained,
+  tightly scoped review prompt. Never inherit the coordinator's turns.
 - In Claude Code, use the `Task` tool with a code-reviewer or general reviewer
   subagent.
 - In other harnesses, use the closest isolated reviewer agent/workspace.
@@ -16,6 +17,11 @@ as lower-confidence in the final report.
 Use the `cold-pr-review` skill's pattern: dispatch an isolated reviewer with no
 implementation context. In Codex, use `spawn_agent`; in Claude Code, use `Task`;
 in other harnesses, use the closest isolated reviewer mechanism available.
+
+Isolation is about conversation history, not repository access. The reviewer
+may inspect the target diff and any repository files it decides are relevant.
+Give it facts as plain text: target, base, scope, and a neutral checklist. Do
+not fork parent turns and expect the reviewer to ignore them.
 
 For PRs:
 

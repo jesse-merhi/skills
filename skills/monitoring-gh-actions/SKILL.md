@@ -1,6 +1,6 @@
 ---
 name: monitoring-gh-actions
-description: 'Use when monitoring ongoing GitHub Actions workflow runs or pull request checks through GitHub CLI and needing conservative polling that avoids rate limits.'
+description: 'Use when monitoring ongoing GitHub Actions workflow runs or pull request checks through GitHub CLI and needing history-aware waiting that avoids token-heavy polling and rate limits.'
 ---
 
 # Monitoring GitHub Actions
@@ -10,21 +10,30 @@ or fix them. This is a monitoring skill, not a CI triage/fix skill.
 
 ## Core Rule
 
-Poll slowly by default. Use **120 seconds** as the default interval unless the
-user explicitly asks for tighter monitoring, you are in the final stretch of a
-run, or a human is actively waiting and asked for quicker updates.
+Use `wait-efficiently` for every wait. Keep the current command or wait pending
+inside one tool call so the model is not re-entered between checks.
 
-If you shorten the interval, say why. Prefer `30s` as the shortest normal
-interval. Do not poll every few seconds in a loop.
+Estimate the next check from completed runs of the same workflow and event:
+
+```bash
+<wait-efficiently-dir>/scripts/estimate-gh-wait.py --run-id <run-id>
+```
+
+Use its `suggested_wait_seconds`. It prefers same-branch history when enough
+samples exist, uses the 75th-percentile duration, and subtracts elapsed runtime.
+If history is missing, its fallback is 120 seconds. Do not poll every few
+seconds.
 
 ## Workflow
 
 1. Run the preflight checks in [preflight.md](references/preflight.md).
 2. Choose the matching command from [commands.md](references/commands.md).
-3. If watch mode is not a good fit, use the manual polling fallback from
-   [commands.md](references/commands.md).
-4. Report only state changes or meaningful progress.
-5. If the goal shifts from waiting to fixing CI, stop using this skill and
+3. Estimate the next check from historical duration, wait silently with
+   `wait-efficiently`, then fetch status once.
+4. If watch mode is not a good fit, use the manual polling fallback from
+   [commands.md](references/commands.md), with the same history-aware waits.
+5. Report only state changes or meaningful progress.
+6. If the goal shifts from waiting to fixing CI, stop using this skill and
    switch to a CI-fix workflow instead.
 
 ## Context Pointers
