@@ -20,7 +20,7 @@ ANTHROPIC_MODELS_API_URL = "https://api.anthropic.com/v1/models"
 CLAUDE_AGENT_SDK_PACKAGE = "@anthropic-ai/claude-agent-sdk@0.3.185"
 
 EXPECTED_CODEX_MODEL = "gpt-5.6-sol"
-EXPECTED_CODEX_EFFORT = "xhigh"
+EXPECTED_CODEX_EFFORT = "high"
 EXPECTED_CLAUDE_ALIAS = "claude-fable-5[1m]"
 EXPECTED_CLAUDE_MODEL = "claude-fable-5[1m]"
 EXPECTED_CLAUDE_NAME = "Fable 5"
