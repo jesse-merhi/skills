@@ -3,7 +3,7 @@
 `gpt-5.6-sol` is the standard Codex review model. Treat any other Codex review
 model as a deliberate user-approved exception, not as a helper default.
 
-Claude review uses the Claude Code `claude-fable-5[1m]` model with `high`
+Claude review uses the Claude Code `claude-fable-5` model with `high`
 effort. Codex uses `high` reasoning. Treat a missing or renamed selected model,
 or either model losing its configured effort level, as a stop-and-update event.
 Higher-family models appearing elsewhere in the Claude catalog are
@@ -21,7 +21,7 @@ The gate checks native model catalogs:
 - `codex debug models` must still list `gpt-5.6-sol` with `high` reasoning
   support.
 - Claude Code's Agent SDK initialization catalog must still report
-  `claude-fable-5[1m]` as Fable 5 with `high` effort support.
+  `claude-fable-5` as Fable 5 with `high` effort support.
 - Claude Code's Agent SDK initialization catalog reports higher-family model
   availability as informational context without blocking the review.
 
