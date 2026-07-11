@@ -125,7 +125,8 @@ def proof_kind(path: str) -> str:
     if any(marker in lower for marker in ui_markers):
         return (
             "PR-visible screenshot required if human-visible UI changed; upload through "
-            "GitHub's PR UI with Computer Use and include claim, URL/state, viewport, and crop/full-page reason."
+            "GitHub's PR UI, preferably with CDP, and place it directly in the PR body "
+            "with the claim, URL/state, viewport, and crop/full-page reason below it."
         )
     if any(marker in lower for marker in job_markers):
         return "Mermaid/table: scheduled, queued, or cleanup behavior changed."

@@ -69,12 +69,12 @@ behavior in plain language, or omit the shorthand.
    no visual proof. Done when each important changed behavior has a proof type
    that a reviewer can check.
 
-5. Write a description-first PR body.
+5. Write a behavior-first PR body.
 
    Read [references/body-shape.md](references/body-shape.md) for the PR body
-   template, table rules, API examples, and verification guidance. Done when the
-   body leads with behavior and reviewer impact, not implementation buckets or
-   test-file inventory.
+   template, UI and API proof examples, table rules, and verification guidance.
+   Done when the body shows the new behavior first, followed by the smallest
+   useful proof and reviewer-checkable verification.
 
 6. Add PR-visible screenshots for human-visible UI changes.
 
@@ -102,8 +102,8 @@ behavior in plain language, or omit the shorthand.
 
 - The PR body is self-contained for a repository reviewer.
 - The body describes only current net PR behavior, not branch-local churn.
-- `Summary`, `What Changed`, `Proof`, and `Verification` explain behavior
-  before implementation inventory.
+- The new behavior appears first and is written in terms of what a person, API
+  consumer, operator, or downstream system can observe.
 - Every human-visible UI change has reviewer-visible screenshots, or an explicit
   blocker or narrow no-screenshot rationale from `references/screenshots.md`.
 - Screenshot attachments preferably use CDP when available, and images appear

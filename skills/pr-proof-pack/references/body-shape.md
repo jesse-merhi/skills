@@ -2,123 +2,135 @@
 
 ## Contents
 
+- [Lead With the New Behavior](#lead-with-the-new-behavior)
 - [Default Shape](#default-shape)
+- [UI Proof](#ui-proof)
+- [API and Backend Proof](#api-and-backend-proof)
 - [Tables](#tables)
-- [API And Backend Proof](#api-and-backend-proof)
+- [What to Leave Out](#what-to-leave-out)
 
-Use the net diff as input, not as the PR description format. A good PR body
-first tells the reviewer what behavior changed and why it matters, then points
-to the smallest proof. Do not lead with a generic "Net Diff" table when it
-would force the reader to translate implementation buckets into product or API
-behavior.
+Use the net diff to discover what changed, not as the structure of the PR body.
+A reviewer should understand the resulting behavior before reading implementation
+details, file lists, test commands, or agent-process notes.
+
+## Lead With the New Behavior
+
+Open with what a person, API consumer, operator, or downstream system can do or
+observe after the PR merges. Name the actor, action or condition, and outcome.
+
+Good:
+
+> Invalid supplier contact details are now rejected before persistence. Create
+> and update requests return the same field-level validation messages, so the UI
+> can show a consistent error without saving partial data.
+
+Bad:
+
+> This PR updates validation, routers, tests, and OpenAPI files for SUP-142.
+
+The first version explains the new behavior. The second makes the reviewer
+reconstruct it from implementation categories and unexplained task shorthand.
+
+When the change fixes a bug, state the old behavior only when it makes the new
+behavior easier to understand:
+
+> Previously, changing the sort direction reset the selected filters. Filters
+> now remain selected while results reorder.
+
+Do not narrate the coding process or repeat the same claim across multiple
+sections.
 
 ## Default Shape
 
-Prefer this structure for most backend, API, validation, data, and workflow
-PRs:
+Use only the sections the change needs. Rename headings when a specific human
+label is clearer than a generic one.
 
 ````md
-## Summary
+## New behavior
 
-<Two to four sentences in plain language. Name the behavior that changed, the
-main affected surfaces, and the user/API effect. Avoid task shorthand.>
+<One short paragraph describing who experiences the change, what they do, and
+what happens now. Include the previous behavior only when the contrast matters.>
 
-## What Changed
+- <Important scenario or rule and its observable outcome.>
+- <Second distinct scenario or rule, if needed.>
 
-- <Surface or behavior>: <concrete before/after or new rule>.
-- <Surface or behavior>: <concrete before/after or new rule>.
+## UI proof
 
-## Proof
+<Include for human-visible UI changes. Put each image directly in the PR body.>
 
-Behavioral proof:
+![Descriptive alt text](https://github.com/user-attachments/assets/...)
 
-- <Concrete user action, API request/response, state transition, or data
-  example>: shows <specific changed behavior>.
-- <Concrete user action, API request/response, state transition, or data
-  example>: shows <specific changed behavior>.
+**What this shows:** <The exact new behavior visible in the image.>
 
-## Verification
+**State:** <Route, fixture or account state, and viewport. State why a full-page
+capture was necessary when applicable.>
 
-Reviewer-checkable behavior:
+## How to verify
 
-- <Copy-paste command, request/response pair, screenshot state, or API example>
-  demonstrates <specific changed rule>.
+1. <Starting state or fixture.>
+2. <Action a reviewer can perform.>
+3. <Expected new outcome.>
 
-Automated checks:
+## Checks
 
-- CI covers <test/check name or category>, or `<short command>` passed locally.
-- Not run: <command or check>: <honest reason>, when applicable.
+- `<focused command>` — passed.
+- <Relevant CI coverage, or an honest not-run reason when applicable.>
+
+## Implementation notes
+
+<Optional. Include only a non-obvious constraint, migration, compatibility
+decision, rollout detail, or risk that materially helps review.>
 ````
 
-Use only sections that help review. Start from the description-first shape
-above. Add optional sections only when they improve comprehension:
+Keep `New behavior` first. After that, order proof by usefulness to a reviewer:
+visible UI, request/response or state-transition proof, manual verification,
+then automated checks. Put optional implementation notes last unless a warning
+must be read before verification.
+
+For a tiny change, a short paragraph plus checks may be enough. Do not create
+empty sections or pad the body to match the template.
+
+## UI Proof
+
+Show the changed UI as early as possible after the behavior description. Add
+images directly to the main PR body, never to a table or a detached comment.
+Prefer GitHub-hosted attachments added through CDP when that path is available.
+
+Put the useful context immediately below each image:
+
+- **What this shows:** the specific claim the image proves;
+- **State:** the route and any fixture, role, permission, filter, or responsive
+  state needed to reproduce it;
+- **Viewport:** include it in `State` when size affects the behavior;
+- **Capture:** mention an element, viewport, or full-page crop only when that
+  choice helps the reviewer interpret the image.
+
+Use descriptive alt text. Do not use a file name such as `screenshot-1.png` as
+the explanation.
+
+For before/after proof, place the images one after the other under `Before` and
+`Now` subheadings. Each image gets its own explanation below it. `Before` means
+the PR base behavior, not an earlier commit from the feature branch.
+
+If a human-visible UI change has no screenshot, add one direct sentence stating
+the concrete blocker or the narrow reason an image would not prove changed UI.
+Do not add a screenshot section for backend-only changes.
+
+## API and Backend Proof
+
+Describe the changed contract as a behavior, then show the smallest request,
+response, state transition, query result, or data example that proves it. Do not
+introduce the example with vague labels such as "API behavior example."
 
 ````md
-## Summary
-- ...
+## New behavior
 
-## What Changed
-- ...
+Supplier create and update requests now reject invalid Australian phone numbers
+before persistence. Both endpoints return the same validation message.
 
-## Flow
-```mermaid
-...
-```
+## Request and response
 
-## Proof
-- ...
-
-## Screenshots
-| Screenshot | Claim Proved | URL / State | Viewport | Crop Choice |
-| --- | --- | --- | --- | --- |
-| ... | ... | ... | ... | ... |
-
-## Verification
-- Reviewer-checkable behavior.
-- Automated checks.
-````
-
-Avoid separate `Net Diff`, `API Behavior Examples`, and `Review` sections unless
-they add information a reviewer cannot get from `Summary`, `What Changed`,
-`Proof`, and `Verification`. If you include review-loop evidence, state it as a
-concise verification item and omit internal run labels, task codes, and
-reviewer-process details that do not help assess the PR.
-
-## Tables
-
-Use tables only for real comparisons or matrices. The columns must represent
-clear comparison axes such as `Before` / `After`, `Surface` / `Changed
-behavior`, `Scenario` / `Without acknowledgement` / `With acknowledgement`, or
-`Screenshot` / `Claim Proved` / `Viewport`.
-
-If the content is just a list of facts, a sequence of proof items, or prose
-arranged into columns, use bullets, short subsections, or collapsible
-`<details>` blocks instead. Keep table cells short enough to scan; if a cell
-needs multiple clauses, a list of files, or a long command, do not use a table.
-
-## API And Backend Proof
-
-For validation/API PRs, describe the changed contract instead of listing vague
-"API behavior examples." Good: "Supplier create/update now rejects invalid
-contact email or Australian phone numbers with `400` before persistence." Bad:
-"Supplier create/update | Invalid contact email or contact phone number |
-`400` validation failure."
-
-For API and backend PRs, prefer behavioral verification over test inventory.
-Include a minimal request and response, such as a `curl` command or JSON
-request/response pair, for each important changed rule. Keep it copy-pasteable
-when possible. If auth, fixture setup, or environment data prevents a real
-copy-paste command, provide a representative request/response example and say
-what fixture or role is needed.
-
-Example:
-
-````md
-## Verification
-
-Reviewer-checkable behavior:
-
-Invalid supplier phone numbers now fail before supplier creation:
+An invalid phone number now fails before supplier creation:
 
 ```sh
 curl -i -X POST "$API_URL/suppliers" \
@@ -139,28 +151,51 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-Automated checks:
+## Checks
 
-- CI runs the shared validation, contract/OpenAPI, and affected router tests.
+- Shared validation, contract, and affected router tests pass in CI.
 ````
 
-Do not make `Proof` a list of test file names. Test files can support proof,
-but the PR body should first explain the behavior those tests demonstrate. When
-CI already runs the commands, summarize the relevant CI coverage in one or two
-bullets instead of pasting the full local command list.
+Keep examples copy-pasteable when possible. If auth, fixture setup, or
+environment data prevents that, label the example as representative and state
+the required role or fixture. Do not paste secrets, long terminal output, or
+every exercised request.
 
-Avoid:
+## Tables
 
-- tables used as layout for non-comparative prose, checklists, or proof
-  inventory;
-- tables whose columns do not make a clear comparison or matrix easier to
-  understand;
-- proof tables whose cells contain paragraphs, long file lists, or long
-  commands;
-- proof sections that are only a list of test files;
-- verification sections that only paste CI-equivalent command lists;
-- "API behavior examples" tables that restate `400` or happy-path outcomes
-  without naming the concrete changed rule;
-- raw review-loop sections that talk about Codex passes, subagent passes, Jira
-  creation, or internal review labels instead of reviewer-relevant risk;
-- raw terminal dumps or unwrapped command dumps in the PR body.
+Use a table only when rows need to be compared across stable axes, such as:
+
+- scenario / previous behavior / new behavior;
+- permission / allowed action / denied action;
+- input / resulting status / persisted state.
+
+Never put images in a table. Tables constrain image size, hide annotations, and
+make before/after proof harder to read. Put images in the main body with their
+context immediately below them.
+
+If the content is a list of facts, a sequence, a file inventory, or prose split
+into columns, use sentences, bullets, or short subsections instead. Keep cells
+brief; if a cell needs multiple clauses, a file list, or a long command, the
+table is not helping.
+
+## What to Leave Out
+
+Remove content that reports the agent's work without helping a human understand
+or verify the new behavior:
+
+- generic `Summary`, `What Changed`, and `Proof` sections that repeat one
+  another;
+- net-diff tables, file inventories, and implementation buckets presented as
+  behavior;
+- unexplained ticket IDs, sprint names, bug-bash labels, or thread shorthand;
+- test-file lists or long command inventories in place of behavioral proof;
+- review-loop history, agent names, internal run labels, and planning notes;
+- screenshots of unchanged routes or images without a specific proof claim;
+- image tables, local-only image paths, and attachments left only in comments;
+- raw terminal dumps, secrets, tokens, and verbose CI output;
+- claims such as "works as expected" or "tests pass" without saying what
+  behavior was exercised.
+
+Implementation detail belongs in the body only when it explains a meaningful
+constraint, risk, migration, compatibility decision, rollout concern, or review
+hotspot. Otherwise, let the diff carry it.
