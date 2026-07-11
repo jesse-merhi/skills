@@ -5,6 +5,12 @@ subagent using `cold-pr-review-until-clean`; do not use `cold-pr-review` for
 this skill. Give that subagent the target, base, changed-surface summary, and
 the risk checklist from the one-time setup.
 
+Every review subagent must start without coordinator conversation history. In
+Codex, set `fork_turns: "none"`; use the equivalent context-free option in
+other harnesses. Pass only a self-contained text brief containing the target,
+base, changed-surface summary, and the lens it owns. Repository inspection is
+allowed and expected; inherited turns are not.
+
 Always add a focused `test-audit` subagent when the PR touches code with nearby
 or related tests, or when the PR changes, adds, or deletes tests. Ask it to
 check both coverage drift and changed-test usefulness.
@@ -21,7 +27,6 @@ Add other focused subagents with the relevant named skills when useful:
 - `reducing-cognitive-load`
 - `frontend-ui-validation`
 - `review-animations`
-- `monitoring-gh-actions`
 
 Give subagents neutral prompts: target, base, changed-surface summary, and the
 checklist they own. Tracked-finding notices for open Class B findings, generated
@@ -39,3 +44,4 @@ do not call the review clean unless the user accepts that limitation.
 
 Run `monitoring-gh-actions` at the end, after both review phases and local
 validation are clean, when PR checks are pending and monitoring is in scope.
+That is coordinator work, not a review subagent.
