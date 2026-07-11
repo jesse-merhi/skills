@@ -405,11 +405,27 @@ def main() -> int:
         gate = run([str(model_gate_path())], repo)
         assert_contains(gate.stdout, "review model check passed")
         assert_not_contains(gate.stdout, "API model inventory")
+        assert_not_contains(gate.stdout, "Claude")
+
+        codex_gate_ignores_stale_claude = run(
+            [
+                str(model_gate_path()),
+                "--engine",
+                "codex",
+                "--codex-catalog-file",
+                str(codex_catalog),
+                "--claude-code-file",
+                str(stale_claude_code_catalog),
+            ],
+            repo,
+        )
+        assert_contains(codex_gate_ignores_stale_claude.stdout, "review model check passed")
+        assert_not_contains(codex_gate_ignores_stale_claude.stdout, "Claude")
 
         api_gate = run([str(model_gate_path()), "--check-api-inventory"], repo)
         assert_contains(api_gate.stdout, "review model check passed")
         assert_contains(api_gate.stdout, "OpenAI API model inventory")
-        assert_contains(api_gate.stdout, "Anthropic API model inventory")
+        assert_not_contains(api_gate.stdout, "Anthropic API model inventory")
 
         stale_openai_api_gate = run(
             [
@@ -453,8 +469,10 @@ def main() -> int:
         stale_claude_code_gate = run(
             [
                 str(model_gate_path()),
+                "--engine",
+                "claude",
                 "--codex-catalog-file",
-                str(codex_catalog),
+                str(stale_codex_catalog),
                 "--claude-code-file",
                 str(stale_claude_code_catalog),
             ],
@@ -471,6 +489,8 @@ def main() -> int:
         stale_anthropic_api_gate = run(
             [
                 str(model_gate_path()),
+                "--engine",
+                "claude",
                 "--check-api-inventory",
                 "--openai-models-file",
                 str(openai_models_api),
@@ -495,8 +515,10 @@ def main() -> int:
         fable_claude_models_gate = run(
             [
                 str(model_gate_path()),
+                "--engine",
+                "claude",
                 "--codex-catalog-file",
-                str(codex_catalog),
+                str(stale_codex_catalog),
                 "--claude-code-file",
                 str(fable_claude_code_catalog),
             ],
@@ -567,6 +589,29 @@ def main() -> int:
                 f"finding run unexpectedly passed\nstdout:\n{native_finding.stdout}\nstderr:\n{native_finding.stderr}"
             )
         assert_contains(native_finding.stdout, "codex-review findings: accepted/actionable findings reported")
+
+        claude_only = run_helper(
+            repo,
+            fake_codex,
+            [
+                "--mode",
+                "local",
+                "--structured",
+                "--engine",
+                "claude",
+                "--claude-bin",
+                str(fake_claude),
+                "--heartbeat-seconds",
+                "1",
+            ],
+            extra_env={
+                "CODEX_REVIEW_MODEL_GATE_CODEX_CATALOG_FILE": str(stale_codex_catalog),
+                "FAKE_CLAUDE_STRUCTURED_JSON": structured_report([], correct=True),
+            },
+        )
+        assert_contains(claude_only.stdout, "review model check passed")
+        assert_not_contains(claude_only.stdout, "Codex standard model")
+        assert_contains(claude_only.stdout, "structured review clean")
 
         structured_json = temp_root / "structured-findings.json"
         structured = run_helper(

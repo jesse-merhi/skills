@@ -28,12 +28,16 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 1. Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
 
-2. Run the required model gate.
+2. Select the review engine, then run its model gate.
+
+   Use the harness-native engine unless the user explicitly names another:
+   Codex in Codex, Claude in Claude Code. Treat an explicit request for Fable
+   as selecting Claude. Do not ask about or validate the unselected engine.
 
    Read [references/model-gate.md](references/model-gate.md), then run:
 
    ```sh
-   <skill-dir>/scripts/check-review-models
+   <skill-dir>/scripts/check-review-models --engine <codex|claude>
    ```
 
    Done when the gate passes. If it cannot complete or reports stale model

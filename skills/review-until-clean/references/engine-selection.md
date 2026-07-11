@@ -2,7 +2,8 @@
 
 Pick the review engine before the first iteration:
 
-1. If the user names an engine (codex or claude), use that engine.
+1. If the user names an engine (codex or claude), use that engine. Treat an
+   explicit request for Fable as selecting the claude engine.
 2. Otherwise use the engine that matches the running harness:
    - Codex CLI -> the codex engine (bare `codex review`).
    - Claude Code -> the claude engine (built-in `code-review` workflow).
