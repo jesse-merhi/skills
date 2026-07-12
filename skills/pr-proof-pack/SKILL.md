@@ -69,20 +69,22 @@ behavior in plain language, or omit the shorthand.
    no visual proof. Done when each important changed behavior has a proof type
    that a reviewer can check.
 
-5. Write a description-first PR body.
+5. Write a behavior-first PR body.
 
    Read [references/body-shape.md](references/body-shape.md) for the PR body
-   template, table rules, API examples, and verification guidance. Done when the
-   body leads with behavior and reviewer impact, not implementation buckets or
-   test-file inventory.
+   template, UI and API proof examples, table rules, and verification guidance.
+   Done when the body shows the new behavior first, followed by the smallest
+   useful proof and reviewer-checkable verification.
 
 6. Add PR-visible screenshots for human-visible UI changes.
 
    Read [references/screenshots.md](references/screenshots.md) for the required
-   screenshot contract, GitHub upload path, proof table, crop rules, and
-   before/after rules. Done when every distinct changed UI state has a
-   reviewer-visible screenshot, or a narrow no-screenshot rationale or concrete
-   blocker is stated in the PR body.
+   screenshot contract, GitHub upload path, annotations, crop rules, and
+   before/after rules. When adding attachments, prefer using CDP when available.
+   Put each image directly in the main PR body, never inside a table, with its
+   annotations and proof information immediately below it. Done when every
+   distinct changed UI state has a reviewer-visible screenshot, or a narrow
+   no-screenshot rationale or concrete blocker is stated in the PR body.
 
 7. Add Mermaid only when it clarifies behavior.
 
@@ -100,10 +102,12 @@ behavior in plain language, or omit the shorthand.
 
 - The PR body is self-contained for a repository reviewer.
 - The body describes only current net PR behavior, not branch-local churn.
-- `Summary`, `What Changed`, `Proof`, and `Verification` explain behavior
-  before implementation inventory.
+- The new behavior appears first and is written in terms of what a person, API
+  consumer, operator, or downstream system can observe.
 - Every human-visible UI change has reviewer-visible screenshots, or an explicit
   blocker or narrow no-screenshot rationale from `references/screenshots.md`.
+- Screenshot attachments preferably use CDP when available, and images appear
+  directly in the main PR body rather than inside tables.
 - Every screenshot has a proof claim, URL/state, viewport, and crop choice.
 - Every Mermaid diagram in the final body was validated, or Mermaid was omitted.
 - Verification is reviewer-checkable: concrete command, request/response,
@@ -117,6 +121,8 @@ behavior in plain language, or omit the shorthand.
 - treating the previous branch commit as "before";
 - unexplained task IDs, internal shorthand, sprint names, or local-only paths;
 - generic net-diff tables that group code areas without explaining behavior;
+- images embedded in tables instead of the main PR body with annotations and
+  proof information below them;
 - proof sections that are only a list of test files;
 - missing screenshots for human-visible UI changes without an explicit blocker
   or narrow no-screenshot rationale;

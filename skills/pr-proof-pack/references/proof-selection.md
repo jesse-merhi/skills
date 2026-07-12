@@ -23,7 +23,7 @@ Use screenshots for reviewer-visible UI behavior:
 
 If the PR changes or makes reachable human-visible UI, the default is a
 PR-visible screenshot. Load [screenshots.md](screenshots.md) for the upload
-path, screenshot table, crop rules, before/after rules, and acceptable
+path, inline annotation format, crop rules, before/after rules, and acceptable
 no-screenshot rationales.
 
 Do not use screenshots for backend-only behavior when diagrams, API examples,
