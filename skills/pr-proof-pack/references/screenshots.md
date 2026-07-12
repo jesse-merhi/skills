@@ -4,7 +4,7 @@
 
 - [Upload Path](#upload-path)
 - [Screenshot Contract](#screenshot-contract)
-- [Screenshot Proof Table](#screenshot-proof-table)
+- [Screenshot Placement](#screenshot-placement)
 - [Before/After Rule](#beforeafter-rule)
 
 When a PR changes or makes reachable UI that a human reviewer can see, include
@@ -24,9 +24,10 @@ why no screenshot is needed for that unchanged UI.
 
 ## Upload Path
 
-Screenshot upload path: use Computer Use in an agent-owned browser window and
-GitHub's normal PR comment attachment UI. This is the required path when
-Computer Use is available and the PR needs screenshots.
+Preferred screenshot upload path: use Chrome DevTools Protocol (CDP) in an
+agent-owned browser window with GitHub's normal PR comment attachment UI. If CDP
+is unavailable or cannot operate the attachment control, fall back to Computer
+Use in an agent-owned browser window.
 
 1. Open the PR in a fresh agent-owned browser window. Do not reuse existing
    user browser windows unless the user explicitly asks.
@@ -35,25 +36,26 @@ Computer Use is available and the PR needs screenshots.
    drag-and-drop area.
 4. Wait for GitHub to insert a
    `https://github.com/user-attachments/assets/...` Markdown image reference.
-5. Copy that Markdown into the PR body screenshot table without submitting a
+5. Copy that Markdown directly into the main PR body without submitting a
    comment unless a comment is explicitly desired.
 
-Use Computer Use confirmation policy for the actual file upload step. A PR
-proof screenshot upload is a file upload to GitHub; if the user has not already
-approved that exact upload destination and file class, confirm right before
-uploading.
+Use the active browser tool's confirmation policy for the actual file upload
+step. A PR proof screenshot upload is a file upload to GitHub; if the user has
+not already approved that exact upload destination and file class, confirm
+right before uploading.
 
 Do not use CLI upload helpers, browser-cookie extraction, `gh-image`,
 `GH_SESSION_TOKEN`, Keychain-stored web sessions, or Dia/Chrome/Arc cookie
 stores for PR screenshots. Do not cite those unsupported paths as the reason
-screenshots are missing. If screenshots are required and Computer Use is
-available, try the GitHub attachment UI before writing a "Screenshots missing"
-note.
+screenshots are missing. If screenshots are required, try the GitHub attachment
+UI through CDP and then the Computer Use fallback before writing a "Screenshots
+missing" note.
 
-Mark screenshot upload blocked only when Computer Use is unavailable, GitHub
-login/comment access is unavailable in the agent-owned browser, the GitHub
-attachment UI cannot attach the file, or the user declines the upload
-confirmation. Include that concrete blocker in the PR body.
+Mark screenshot upload blocked only when CDP and the Computer Use fallback are
+unavailable or fail, GitHub login/comment access is unavailable in the
+agent-owned browser, the GitHub attachment UI cannot attach the file, or the
+user declines the upload confirmation. Include that concrete blocker in the PR
+body.
 
 ## Screenshot Contract
 
@@ -65,10 +67,10 @@ Every screenshot needs a proof claim. Before adding one, answer:
 
 If those answers are weak, remove the screenshot.
 
-For human-visible UI changes, answer those questions in the PR body screenshot
-table and include the screenshot unless it is blocked. A textual "browser proof
-passed" line is useful supporting evidence, but it is not a replacement for the
-required screenshot.
+For human-visible UI changes, answer those questions immediately below the image
+in the PR body and include the screenshot unless it is blocked. A textual
+"browser proof passed" line is useful supporting evidence, but it is not a
+replacement for the required screenshot.
 
 Default to the smallest readable image:
 
@@ -88,26 +90,32 @@ machine. Use the repository or harness-approved upload path for GitHub-hosted
 images or another reviewer-accessible artifact URL. Do not commit screenshot
 files to the repo unless the project or user explicitly wants that.
 
-## Screenshot Proof Table
+## Screenshot Placement
 
-When screenshots are included, add a short table near them:
+When screenshots are included, place each image directly in the main PR body
+with its annotation and proof information immediately below it:
 
 ```md
-| Screenshot | Claim Proved | URL / State | Viewport | Crop Choice |
-| --- | --- | --- | --- | --- |
-| Skills browse sorted by installs | Install sort renders prod rows in expected first-page order | `/skills?sort=installs&dir=desc`, prod Convex | 1440x900 | viewport crop; controls + first rows are both relevant |
+![Skills browse sorted by installs](https://github.com/user-attachments/assets/...)
+
+**What this shows:** Install sort renders production rows in the expected
+first-page order.
+
+**State:** `/skills?sort=installs&dir=desc`, production Convex, 1440x900
+viewport crop. The controls and first rows are both relevant.
 ```
 
-Use human labels. Avoid file names like `screenshot-1.png` as the only
-explanation.
+Never put images in tables. Use human labels and descriptive alt text. Avoid
+file names like `screenshot-1.png` as the only explanation.
 
-For UI PRs with no screenshot table, add a short "Screenshots" note explaining
-why the PR has no reviewer-visible screenshots. Acceptable reasons are narrow:
+For UI PRs with no screenshots, add a short note explaining why the PR has no
+reviewer-visible screenshots. Acceptable reasons are narrow:
 backend-only diff, no human-visible behavior changed, screenshot capture was
-blocked by auth/fixture/tooling, Computer Use upload was unavailable or failed
-for a concrete GitHub UI/login/attachment reason, or the screenshot would only
-show unchanged UI. "Tests passed", "layout audit passed", or "no CLI upload
-token/session was available" is not an acceptable reason by itself.
+blocked by auth/fixture/tooling, CDP and Computer Use upload paths were
+unavailable or failed for a concrete GitHub UI/login/attachment reason, or the
+screenshot would only show unchanged UI. "Tests passed", "layout audit passed",
+or "no CLI upload token/session was available" is not an acceptable reason by
+itself.
 
 ## Before/After Rule
 
@@ -128,7 +136,7 @@ Avoid:
 - missing screenshots for human-visible UI changes without an explicit blocker
   or narrow no-screenshot rationale;
 - screenshot blocker notes based on unsupported CLI helper/session-token paths
-  instead of a Computer Use attempt;
+  instead of trying CDP and the Computer Use fallback;
 - local-only `/tmp` screenshot paths presented as PR-visible proof;
 - full-page screenshots without a reason;
 - route-load screenshots for UI the PR did not change;
