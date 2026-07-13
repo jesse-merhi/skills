@@ -5,7 +5,7 @@
 For unclear design direction, ask Claude for a read-only plan:
 
 ```sh
-npx acpx@0.11.0 --model opus --cwd "$PWD" --approve-reads --timeout 1800 \
+npx acpx@0.11.0 --model claude-fable-5 --cwd "$PWD" --approve-reads --timeout 1800 \
   claude -s frontend "Inspect the changed UI and propose the smallest polished fix. Do not edit yet."
 ```
 
@@ -14,13 +14,13 @@ npx acpx@0.11.0 --model opus --cwd "$PWD" --approve-reads --timeout 1800 \
 For implementation, use a fresh one-shot Claude process:
 
 ```sh
-npx acpx@0.11.0 --model opus --cwd "$PWD" --approve-all --timeout 1800 \
+npx acpx@0.11.0 --model claude-fable-5 --cwd "$PWD" --approve-all --timeout 1800 \
   claude exec "Implement the agreed frontend change. Keep scope narrow and run the relevant checks."
 ```
 
 ## Command Notes
 
-- Keep `--model opus` for frontend work.
+- Keep `--model claude-fable-5` for frontend work. The shorter `fable` alias is accepted by Claude Code help but failed through acpx in July 2026.
 - Use `--approve-reads` for planning.
 - Use `--approve-all` only for scoped implementation prompts in a clean worktree
   or otherwise safe edit context.
