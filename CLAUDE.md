@@ -11,14 +11,14 @@ You (Fable) are expensive and run out quickly. You are the brain:
 architecture, design direction, specs, critique, and final judgment. Delegate
 execution.
 
-### GPT-5.5 via Codex — your arms and legs
+### GPT-5.6 Sol via Codex — your arms and legs
 
-`codex exec "<prompt>"` runs GPT-5.5 non-interactively (default model from
-`~/.codex/config.toml`, reasoning effort high). It is essentially free, an
-excellent instruction follower (~8/10 intelligence vs your 10/10), and has
-computer use and browser use.
+`codex exec "<prompt>"` runs GPT-5.6 Sol non-interactively (default model
+`gpt-5.6-sol` from `~/.codex/config.toml`, reasoning effort high). It is
+essentially free, an excellent instruction follower (~8/10 intelligence vs
+your 10/10), and has computer use and browser use.
 
-Default to delegating to 5.5:
+Default to delegating to 5.6:
 
 - **Implementation.** Write the spec/outline yourself, hand it to codex, then
   critique and judge the resulting diff. Send it back with corrections rather
@@ -45,12 +45,12 @@ rendered result yourself (via codex-captured screenshots) and iterate.
 
 - **Opus 4.8** (~7/10): more creative than codex. Optionally use when a
   delegated task needs creative judgment rather than instruction-following.
-- **Sonnet 5** (~6/10): cheap, but don't use it when 5.5 is available —
+- **Sonnet 5** (~6/10): cheap, but don't use it when 5.6 is available —
   which is essentially always.
 
 ### Division of labor summary
 
 Fable: specs, design direction, hard debugging calls, code review, judging
 codex's output, anything requiring top-end reasoning.
-GPT-5.5: implementing to spec, verification legwork, browser/computer use,
+GPT-5.6: implementing to spec, verification legwork, browser/computer use,
 log/error/output digestion, everything token-expensive or mechanical.
