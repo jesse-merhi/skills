@@ -1,0 +1,819 @@
+<!-- Copyright 2026 Anthropic PBC · SPDX-License-Identifier: Apache-2.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skill simplification triage</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #f6f3ea;
+    --surface: #fffdf8;
+    --ink: #18201c;
+    --muted: #66706a;
+    --line: #d8d4c9;
+    --line-strong: #b9b5a9;
+    --forest: #1f5b45;
+    --forest-soft: #e1eee7;
+    --amber: #a65d16;
+    --amber-soft: #f7e9d6;
+    --red: #a33b32;
+    --red-soft: #f6e3df;
+    --blue: #315d88;
+    --blue-soft: #e4edf6;
+    --violet: #654b86;
+    --violet-soft: #ede7f4;
+    --shadow: 0 12px 36px rgba(36, 42, 38, 0.08);
+    --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(circle at 12% -10%, rgba(31, 91, 69, 0.11), transparent 34rem),
+      var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+  button, input, textarea, select { font: inherit; }
+  button, select { min-height: 44px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 3px solid rgba(49, 93, 136, 0.32);
+    outline-offset: 2px;
+  }
+
+  .shell {
+    width: min(1440px, 100%);
+    margin: 0 auto;
+    padding: 44px 28px 80px;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+    gap: 28px;
+    align-items: end;
+    margin-bottom: 28px;
+  }
+  .eyebrow {
+    color: var(--forest);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 780px;
+    margin: 8px 0 12px;
+    font-family: var(--serif);
+    font-size: clamp(38px, 5vw, 66px);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 0.98;
+  }
+  .lede {
+    max-width: 760px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 17px;
+  }
+  .hero-note {
+    border-left: 3px solid var(--forest);
+    padding: 2px 0 2px 18px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .hero-note strong { color: var(--ink); }
+
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .metric {
+    min-height: 82px;
+    padding: 14px 15px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: rgba(255, 253, 248, 0.78);
+  }
+  .metric-value {
+    display: block;
+    font-family: var(--serif);
+    font-size: 29px;
+    line-height: 1;
+  }
+  .metric-label {
+    display: block;
+    margin-top: 7px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin: 0 -12px 24px;
+    padding: 12px;
+    border: 1px solid rgba(216, 212, 201, 0.86);
+    border-radius: 16px;
+    background: rgba(246, 243, 234, 0.94);
+    box-shadow: 0 10px 28px rgba(36, 42, 38, 0.06);
+    backdrop-filter: blur(14px);
+  }
+  .search-wrap { flex: 1 1 280px; }
+  .search-wrap input {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  select {
+    padding: 8px 34px 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .btn {
+    padding: 9px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-weight: 650;
+  }
+  .btn:hover { border-color: var(--forest); }
+  .btn.primary {
+    border-color: var(--forest);
+    background: var(--forest);
+    color: white;
+  }
+  .btn.primary:hover { background: #174836; }
+  .btn.danger { color: var(--red); }
+  .btn.copied { border-color: var(--forest); background: var(--forest-soft); color: var(--forest); }
+
+  .content {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .sidebar {
+    position: sticky;
+    top: 86px;
+    padding: 17px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 253, 248, 0.82);
+  }
+  .sidebar h2 {
+    margin: 0 0 10px;
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+  }
+  .sidebar p { margin: 0 0 15px; color: var(--muted); font-size: 13px; }
+  .progress-track {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e6e1d6;
+  }
+  .progress-bar {
+    width: 0;
+    height: 100%;
+    background: var(--forest);
+    transition: width 180ms ease;
+  }
+  .progress-copy {
+    margin-top: 8px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .legend { display: grid; gap: 9px; margin-top: 18px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); }
+  .dot.high { background: var(--red); }
+  .dot.medium { background: var(--amber); }
+  .dot.low { background: var(--blue); }
+  .quick-actions { display: grid; gap: 8px; margin-top: 18px; }
+  .quick-actions .btn { width: 100%; text-align: left; }
+
+  .queue { display: grid; gap: 15px; }
+  .section-heading {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    margin: 14px 0 2px;
+  }
+  .section-heading:first-child { margin-top: 0; }
+  .section-heading h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 500;
+  }
+  .section-heading span { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+  .card {
+    scroll-margin-top: 96px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: 0 3px 12px rgba(36, 42, 38, 0.035);
+    overflow: hidden;
+  }
+  .card[data-decision="agree"] { border-left: 5px solid var(--forest); }
+  .card[data-decision="modify"] { border-left: 5px solid var(--amber); }
+  .card[data-decision="defer"] { border-left: 5px solid var(--violet); }
+  .card[data-decision="keep"] { border-left: 5px solid var(--blue); }
+  .card-head {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 18px 19px 13px;
+  }
+  .index {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .title-block { min-width: 0; flex: 1; }
+  .title-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .title-row h3 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 16px;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .badge.high { background: var(--red-soft); color: var(--red); }
+  .badge.medium { background: var(--amber-soft); color: var(--amber); }
+  .badge.low { background: var(--blue-soft); color: var(--blue); }
+  .path {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+  .recommendation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 19px 15px 67px;
+  }
+  .recommendation-box {
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #faf8f2;
+  }
+  .recommendation-box.add { background: #f2f7f3; border-color: #cfddd3; }
+  .recommendation-label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .recommendation-box p { margin: 0; font-size: 13px; }
+
+  .decision-area {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.85fr) minmax(300px, 1.15fr);
+    gap: 14px;
+    padding: 15px 19px 18px 67px;
+    border-top: 1px solid var(--line);
+    background: rgba(246, 243, 234, 0.46);
+  }
+  .decision-label, .comment-label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .decision-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .decision-btn {
+    min-width: 0;
+    padding: 8px 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .decision-btn:hover { border-color: var(--ink); }
+  .decision-btn[aria-pressed="true"][data-value="agree"] { border-color: var(--forest); background: var(--forest-soft); color: var(--forest); }
+  .decision-btn[aria-pressed="true"][data-value="modify"] { border-color: var(--amber); background: var(--amber-soft); color: var(--amber); }
+  .decision-btn[aria-pressed="true"][data-value="defer"] { border-color: var(--violet); background: var(--violet-soft); color: var(--violet); }
+  .decision-btn[aria-pressed="true"][data-value="keep"] { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 76px;
+    resize: vertical;
+    padding: 10px 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+  }
+  textarea::placeholder { color: #8a928d; }
+  .empty {
+    padding: 50px 24px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 16px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .toast {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 50;
+    max-width: min(380px, calc(100vw - 48px));
+    padding: 12px 15px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: white;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 150ms ease, transform 150ms ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 1060px) {
+    .summary-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .content { grid-template-columns: 1fr; }
+    .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .sidebar h2, .sidebar p { grid-column: 1 / -1; }
+    .legend, .quick-actions { margin-top: 0; }
+    .decision-area { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .shell { padding: 30px 16px 64px; }
+    .hero { grid-template-columns: 1fr; gap: 18px; }
+    .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .toolbar { position: static; margin-inline: 0; }
+    .toolbar .btn, .toolbar select { flex: 1 1 145px; }
+    .recommendation, .decision-area { grid-template-columns: 1fr; padding-left: 19px; }
+    .decision-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sidebar { grid-template-columns: 1fr; }
+    .sidebar h2, .sidebar p { grid-column: auto; }
+  }
+  @media (max-width: 420px) {
+    .summary-strip { grid-template-columns: 1fr 1fr; }
+    .card-head { padding-inline: 14px; }
+    .index { display: none; }
+    .recommendation, .decision-area { padding-inline: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Skills repository · GPT-5.6 prompt simplification</div>
+      <h1>Decide what changes, one skill at a time.</h1>
+      <p class="lede">Review all 37 recommendations, mark your decision, and leave corrections or constraints in plain language. Your choices save locally in this browser; copy the handoff when you want me to implement them.</p>
+    </div>
+    <div class="hero-note"><strong>Suggested flow:</strong> handle the high-priority contract problems first, then use filters to work through structural trims and light polish. “Keep” means reject the recommendation and retain the skill as written.</div>
+  </section>
+
+  <section class="summary-strip" aria-label="Triage summary">
+    <div class="metric"><span class="metric-value" id="metricReviewed">0</span><span class="metric-label">Reviewed</span></div>
+    <div class="metric"><span class="metric-value" id="metricRemaining">37</span><span class="metric-label">Remaining</span></div>
+    <div class="metric"><span class="metric-value" id="metricAgree">0</span><span class="metric-label">Agree</span></div>
+    <div class="metric"><span class="metric-value" id="metricModify">0</span><span class="metric-label">Modify</span></div>
+    <div class="metric"><span class="metric-value" id="metricDefer">0</span><span class="metric-label">Defer</span></div>
+    <div class="metric"><span class="metric-value" id="metricKeep">0</span><span class="metric-label">Keep as-is</span></div>
+  </section>
+
+  <section class="toolbar" aria-label="Triage controls">
+    <label class="search-wrap">
+      <span class="decision-label">Search skills and recommendations</span>
+      <input id="searchInput" type="search" placeholder="Search e.g. review, authorization, description…" />
+    </label>
+    <label>
+      <span class="decision-label">Priority</span>
+      <select id="priorityFilter">
+        <option value="all">All priorities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </label>
+    <label>
+      <span class="decision-label">Decision</span>
+      <select id="decisionFilter">
+        <option value="all">All decisions</option>
+        <option value="unreviewed">Unreviewed</option>
+        <option value="agree">Agree</option>
+        <option value="modify">Modify</option>
+        <option value="defer">Defer</option>
+        <option value="keep">Keep as-is</option>
+        <option value="commented">Has comment</option>
+      </select>
+    </label>
+    <button class="btn" id="clearFiltersBtn" type="button">Clear filters</button>
+    <button class="btn primary" id="copyBtn" type="button">Copy handoff</button>
+    <button class="btn" id="downloadBtn" type="button">Download JSON</button>
+  </section>
+
+  <div class="content">
+    <aside class="sidebar">
+      <h2>Your review</h2>
+      <p>Decisions and comments are stored locally under this page’s filename. Nothing is sent anywhere.</p>
+      <div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-copy" id="progressCopy">0 of 37 reviewed</div>
+      </div>
+      <div class="legend" aria-label="Priority legend">
+        <div class="legend-row"><span class="dot high"></span>High · correctness or permission contract</div>
+        <div class="legend-row"><span class="dot medium"></span>Medium · structural simplification</div>
+        <div class="legend-row"><span class="dot low"></span>Low · focused polish</div>
+      </div>
+      <div class="quick-actions">
+        <button class="btn" type="button" id="agreeVisibleBtn">Agree to visible</button>
+        <button class="btn" type="button" id="showNextBtn">Jump to next unreviewed</button>
+        <button class="btn danger" type="button" id="resetBtn">Reset all decisions</button>
+      </div>
+    </aside>
+
+    <section class="queue" id="queue" aria-live="polite"></section>
+  </div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  var STORAGE_KEY = 'skills-triage-gpt56-v1';
+  var DECISION_LABELS = { agree: 'Agree', modify: 'Modify', defer: 'Defer', keep: 'Keep as-is' };
+  var PRIORITY_LABELS = { high: 'Fix first', medium: 'Structural simplification', low: 'Light polish' };
+  var SKILLS = [
+    {name:'clawsweeper-until-clean',priority:'high',path:'skills/openclaw/clawsweeper-until-clean/SKILL.md',remove:'Resolve the direct conflict with AGENTS.md: the skill posts PR comments while repo policy forbids them. Consolidate the three-clean rule, currently repeated in four places.',add:'Either add a narrow AGENTS.md exception for explicit invocation, or require the user to post each trigger. Preserve freshness, head-SHA, and safety-cap rules.'},
+    {name:'diagnose',priority:'high',path:'skills/diagnose/SKILL.md',remove:'Remove the unconditional “fix the smallest proven cause”; diagnosing does not necessarily authorize implementation.',add:'Add diagnose-only and diagnose-and-fix branches. Both reproduce and establish cause; only the latter edits code.'},
+    {name:'frontend-ui-validation',priority:'high',path:'skills/frontend-ui-validation/SKILL.md',remove:'Replace “fix every real error and warning” with authorization-aware behavior. Trim the viewport and tool inventory from the description.',add:'Default to reporting findings; fix and rerun only when implementation is authorized. Keep screenshot, console, responsive, and native-proof requirements.'},
+    {name:'handoff',priority:'high',path:'skills/handoff/SKILL.md',remove:'Separate “write a handoff” from “create or launch another task.” Trim the 360-character default prompt, which repeats the body.',add:'Add document-only and document-and-launch branches. Launch only when requested; preserve privacy and worktree isolation.'},
+    {name:'html-explanations',priority:'high',path:'skills/html-explanations/SKILL.md',remove:'Remove the file:// final-answer requirement, which conflicts with current Codex local-file link formatting. Move page-shape lists and the special code-block CSS rule into references.',add:'Return an absolute Markdown file link. Add a clear non-trigger: use prose for explanations that remain readable without an artifact.'},
+    {name:'pr-rubbish-audit',priority:'high',path:'skills/pr-rubbish-audit/SKILL.md',remove:'Its name and description promise an audit, but step 6 automatically edits the tree.',add:'Make audit/report the default. Add an authorized cleanup branch that applies the approved plan and validates it.'},
+    {name:'research',priority:'high',path:'skills/research/SKILL.md',remove:'Do not implicitly create a Markdown file for every documentation or API question. Its trigger is broader than its side effect.',add:'Either make it explicit-only or narrow the trigger to requests for durable research. Add a chat-only branch for ordinary factual research.'},
+    {name:'skill-cleaner',priority:'high',path:'skills/skill-cleaner/SKILL.md',remove:'Remove generated suggested descriptions until they preserve trigger meaning; the current generic replacements are unsafe.',add:'Report the visible truncated prefix, budget by root, and “manual rewrite candidate.” Add tests proving suggestions retain product, action, object, and exclusion nouns.'},
+    {name:'tdd',priority:'high',path:'skills/tdd/SKILL.md',remove:'Remove the absolute requirement to ask the user to approve every seam. Reconsider “refactoring is not part of the loop,” which conflicts with conventional red-green-refactor.',add:'Infer seams from existing public contracts and ask only when materially ambiguous. Restore a bounded refactor phase or explicitly rename this as red-green-only TDD.'},
+    {name:'wait-efficiently',priority:'high',path:'skills/wait-efficiently/SKILL.md',remove:'Move Codex-specific nested polling mechanics out of the core body. Shorten the description’s list of wait synonyms.',add:'Keep the universal contract: one pre-wait update, no unchanged heartbeat narration, meaningful-state reporting, and efficient product-native waiting.'},
+
+    {name:'code-review',priority:'medium',path:'skills/code-review/SKILL.md',remove:'Remove phase behavior already owned by review-until-clean, cold-pr-review-until-clean, review-guardrails, and references.',add:'Keep orchestration order, target identity, phase handoff, overall completion, and an explicit warning that this workflow fixes findings rather than performing a read-only review.'},
+    {name:'cold-pr-review-until-clean',priority:'medium',path:'skills/cold-pr-review-until-clean/SKILL.md',remove:'Consolidate duplicated invariants across YAML, workflow, Done Means, and Avoid.',add:'Preserve fresh isolated reviewers, context isolation, zero-actionable stop condition, consult fixed point, and findings state.'},
+    {name:'design-engineering',priority:'medium',path:'skills/design-engineering/SKILL.md',remove:'Shorten the animation and component synonym inventory. Move timing, easing, physical coherence, component, and performance reference material behind pointers.',add:'Keep task routing, purpose-before-motion, reduced-motion requirements, and a short verification gate.'},
+    {name:'frontend-design',priority:'medium',path:'skills/frontend-design/SKILL.md',remove:'Move the four principle subsections into a design reference; they bury the six-step workflow.',add:'Preserve product-context inspection, rendered states, motion routing, and rendered validation. Add a decision rule for preserving versus changing the design system.'},
+    {name:'grill-with-docs',priority:'medium',path:'skills/grill-with-docs/SKILL.md',remove:'Move the six example pressure questions into session-behavior.md and remove repeated reference pointers.',add:'Add an explicit inventory of unresolved material decisions and stop once that inventory is empty and confirmed.'},
+    {name:'parallel-slice-orchestration',priority:'medium',path:'skills/parallel-slice-orchestration/SKILL.md',remove:'Replace “always load TDD” with a decision rule; docs, generated artifacts, or configuration slices may not need it.',add:'Require TDD for behavior-changing code unless a named exception applies. Preserve explicit delegation authorization, disjoint ownership, vertical slices, and integration verification.'},
+    {name:'pr-proof-pack',priority:'medium',path:'skills/pr-proof-pack/SKILL.md',remove:'Trim the 286-character description and especially its 765-character default prompt. Remove screenshot and freshness rules duplicated from references.',add:'Add draft-versus-publish authorization. Preserve net-diff truth, behavior-first proof, screenshot requirements, and refresh-after-change.'},
+    {name:'reducing-cognitive-load',priority:'medium',path:'skills/reducing-cognitive-load/SKILL.md',remove:'Clarify whether “apply replacement patterns” means recommendations or edits. Remove duplicated reference pointers.',add:'Add review-only and authorized-refactor branches. Preserve domain-type reuse, explicit serialization boundaries, and concrete completion criteria.'},
+    {name:'review-guardrails',priority:'medium',path:'skills/review-guardrails/SKILL.md',remove:'Stop code-review and the two loop skills from restating its state and fixed-point rules. Consolidate state fields and completion rules where possible.',add:'Make this the single source of truth for budgets, scope, consult queue, provisional fixes, and fixed-point suspension.'},
+    {name:'review-until-clean',priority:'medium',path:'skills/review-until-clean/SKILL.md',remove:'Collapse repetition across the non-negotiable YAML block, workflow, completion criteria, and avoidance list.',add:'Preserve the distinction from one-shot review, same engine and tree rules, two clean passes, consult behavior, and fresh engine verdicts.'},
+    {name:'session-recall',priority:'medium',path:'skills/session-recall/SKILL.md',remove:'Shorten the 432-character description. Merge duplicated commands in Workflow and Defaults.',add:'Keep privacy and low-token result-card behavior. Add a bounded no-match stop after meaningful widening attempts.'},
+    {name:'test-audit',priority:'medium',path:'skills/test-audit/SKILL.md',remove:'Shorten the description’s test-smell inventory. Clarify that “verify after edits” does not itself authorize edits.',add:'Default to recommendations; add an implementation branch when requested. Preserve reachable-risk reasoning, stale-contract checks, and no-test-needed outcomes.'},
+    {name:'wayfinder',priority:'medium',path:'skills/wayfinder/SKILL.md',remove:'Move map templates, ticket templates, ticket-type definitions, and fog theory into references. Reconsider the universal one-ticket-per-session rule.',add:'Add explicit completion conditions, map status transitions, resume behavior, and what happens when the destination is fully specified.'},
+    {name:'writing-great-skills',priority:'medium',path:'skills/writing-great-skills/SKILL.md',remove:'Remove definitions duplicated by the glossary; keep the body focused on the authoring procedure.',add:'Add GPT-5.6’s simplify-one-group-at-a-time workflow, contradiction and authorization review, and before/after invocation and behavioral eval requirements.'},
+
+    {name:'acpx-frontend-delegation',priority:'low',path:'skills/acpx-frontend-delegation/SKILL.md',remove:'Shorten the trigger’s CSS and layout synonym list and avoid repeating commands.md in multiple steps.',add:'Define “substantial” with a compact decision rule. Preserve scoped file ownership, fresh write sessions, diff review, validation, and fallback.'},
+    {name:'cold-pr-review',priority:'low',path:'skills/cold-pr-review/SKILL.md',remove:'State “no implementation context” once rather than in the introduction, workflow, and discipline section.',add:'Add a compact completion criterion: independent context, neutral checklist, actionable findings only, and explicit confidence downgrade on self-review fallback.'},
+    {name:'finding-discipline',priority:'low',path:'skills/finding-discipline/SKILL.md',remove:'Remove the final Context Pointers repetition because workflow steps already link each reference.',add:'Preserve the finding bar, confirmation pass, root-cause deduplication, and actionable output contract.'},
+    {name:'grilling',priority:'low',path:'skills/grilling/SKILL.md',remove:'Replace “relentlessly about every aspect” with a materiality filter to avoid exhausting inconsequential branches.',add:'Add a small decision ledger and stop when material dependencies are resolved and shared understanding is confirmed.'},
+    {name:'improve-codebase-architecture',priority:'low',path:'skills/improve-codebase-architecture/SKILL.md',remove:'Move detailed Obsidian storage policy behind a reference.',add:'Preserve review-first behavior. Add explicit review, plan, and authorized-implementation branches.'},
+    {name:'monitoring-gh-actions',priority:'low',path:'skills/monitoring-gh-actions/SKILL.md',remove:'Remove duplicate references to commands.md and wait-efficiently.',add:'Keep the clean ownership boundary: monitor and report; switch workflows when the user asks to diagnose or fix.'},
+    {name:'clawhub-local-test',priority:'low',path:'skills/openclaw/clawhub-local-test/SKILL.md',remove:'Shorten the 360-character trigger and move the long reporting-field list into a reference.',add:'Resolve the skill directory instead of assuming repository location. Preserve production-target guards, redaction, lease, and stop/status details.'},
+    {name:'openclaw-local-test',priority:'low',path:'skills/openclaw/openclaw-local-test/SKILL.md',remove:'Remove the hard-coded “usually GPT-5.5” reporting assumption unless it remains an intentional pinned fixture. Use the skill directory for helper installation.',add:'Detect and report the actual runtime model and config. Preserve redacted config inspection, endpoint health checks, isolation, and lease cleanup.'},
+    {name:'review-animations',priority:'low',path:'skills/review-animations/SKILL.md',remove:'Shorten the description’s motion synonym inventory. Consider moving the eight review lenses to the standards reference.',add:'Preserve the explicit no-fix boundary, product-evidence override, reduced-motion review, actionable finding shape, and verdict.'},
+    {name:'review-surface-map',priority:'low',path:'skills/review-surface-map/SKILL.md',remove:'Remove the Context Pointers duplication after the five workflow steps.',add:'Add one completion sentence requiring entrypoints, contracts, side effects, risks, and proving validation for every changed flow.'},
+    {name:'to-spec',priority:'low',path:'skills/to-spec/SKILL.md',remove:'Remove “the ideal number of seams is one”; complex products can legitimately have several public contracts.',add:'Prefer the fewest meaningful seams without collapsing distinct behavior. Add a final completeness check for unresolved decisions and validation.'},
+    {name:'to-tickets',priority:'low',path:'skills/to-tickets/SKILL.md',remove:'Rephrase “prefactor the code” so a planning skill proposes a prerequisite ticket instead of silently expanding implementation scope.',add:'Preserve user approval before publication, vertical slices, blocker edges, AFK/HITL modes, and acceptance-criterion coverage.'},
+    {name:'typescript-discipline',priority:'low',path:'skills/typescript-discipline/SKILL.md',remove:'Shorten the description’s TypeScript construct inventory. Replace “ask before using unsafe typing” with a positive resolution path.',add:'Require unknown plus narrowing, schemas, or adapters; preserve the absolute prohibition on as any and targeted verification.'}
+  ];
+
+  var state = loadState();
+  var filters = { search: '', priority: 'all', decision: 'all' };
+  var toastTimer = null;
+
+  function loadState() {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function persistState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) {}
+  }
+
+  function getEntry(name) {
+    if (!state[name]) state[name] = { decision: '', comment: '' };
+    return state[name];
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (char) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[char];
+    });
+  }
+
+  function visibleSkills() {
+    var query = filters.search.trim().toLowerCase();
+    return SKILLS.filter(function (skill) {
+      var entry = getEntry(skill.name);
+      var matchesSearch = !query || [skill.name, skill.path, skill.remove, skill.add].join(' ').toLowerCase().includes(query);
+      var matchesPriority = filters.priority === 'all' || skill.priority === filters.priority;
+      var matchesDecision = filters.decision === 'all' ||
+        (filters.decision === 'unreviewed' && !entry.decision) ||
+        (filters.decision === 'commented' && entry.comment.trim()) ||
+        entry.decision === filters.decision;
+      return matchesSearch && matchesPriority && matchesDecision;
+    });
+  }
+
+  function makeCard(skill, index) {
+    var entry = getEntry(skill.name);
+    var article = document.createElement('article');
+    article.className = 'card';
+    article.id = 'skill-' + skill.name;
+    article.dataset.name = skill.name;
+    article.dataset.priority = skill.priority;
+    article.dataset.decision = entry.decision || '';
+    article.innerHTML =
+      '<div class="card-head">' +
+        '<div class="index">' + String(index + 1).padStart(2, '0') + '</div>' +
+        '<div class="title-block">' +
+          '<div class="title-row"><h3>' + escapeHtml(skill.name) + '</h3><span class="badge ' + skill.priority + '">' + escapeHtml(PRIORITY_LABELS[skill.priority]) + '</span></div>' +
+          '<span class="path">' + escapeHtml(skill.path) + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="recommendation">' +
+        '<div class="recommendation-box"><span class="recommendation-label">Remove or change</span><p>' + escapeHtml(skill.remove) + '</p></div>' +
+        '<div class="recommendation-box add"><span class="recommendation-label">Add or preserve</span><p>' + escapeHtml(skill.add) + '</p></div>' +
+      '</div>' +
+      '<div class="decision-area">' +
+        '<div><span class="decision-label">Your decision</span><div class="decision-buttons" role="group" aria-label="Decision for ' + escapeHtml(skill.name) + '"></div></div>' +
+        '<label><span class="comment-label">Comment or correction</span><textarea placeholder="What should change about this recommendation?">' + escapeHtml(entry.comment || '') + '</textarea></label>' +
+      '</div>';
+
+    var buttons = article.querySelector('.decision-buttons');
+    Object.keys(DECISION_LABELS).forEach(function (value) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'decision-btn';
+      button.dataset.value = value;
+      button.textContent = DECISION_LABELS[value];
+      button.setAttribute('aria-pressed', String(entry.decision === value));
+      button.addEventListener('click', function () {
+        var current = getEntry(skill.name);
+        current.decision = current.decision === value ? '' : value;
+        persistState();
+        render();
+        requestAnimationFrame(function () {
+          var replacement = document.getElementById('skill-' + skill.name);
+          if (replacement && filters.decision === 'all') replacement.scrollIntoView({block:'nearest'});
+        });
+      });
+      buttons.appendChild(button);
+    });
+
+    var textarea = article.querySelector('textarea');
+    textarea.addEventListener('input', function () {
+      getEntry(skill.name).comment = textarea.value;
+      persistState();
+      updateSummary();
+    });
+    return article;
+  }
+
+  function render() {
+    var queue = document.getElementById('queue');
+    var visible = visibleSkills();
+    queue.innerHTML = '';
+    if (!visible.length) {
+      queue.innerHTML = '<div class="empty"><strong>No skills match these filters.</strong><br />Clear a filter or search for another term.</div>';
+      updateSummary();
+      return;
+    }
+
+    ['high', 'medium', 'low'].forEach(function (priority) {
+      var group = visible.filter(function (skill) { return skill.priority === priority; });
+      if (!group.length) return;
+      var heading = document.createElement('div');
+      heading.className = 'section-heading';
+      heading.innerHTML = '<h2>' + escapeHtml(PRIORITY_LABELS[priority]) + '</h2><span>' + group.length + ' visible</span>';
+      queue.appendChild(heading);
+      group.forEach(function (skill) {
+        queue.appendChild(makeCard(skill, SKILLS.indexOf(skill)));
+      });
+    });
+    updateSummary();
+  }
+
+  function updateSummary() {
+    var counts = { agree: 0, modify: 0, defer: 0, keep: 0 };
+    SKILLS.forEach(function (skill) {
+      var decision = getEntry(skill.name).decision;
+      if (counts[decision] !== undefined) counts[decision] += 1;
+    });
+    var reviewed = counts.agree + counts.modify + counts.defer + counts.keep;
+    document.getElementById('metricReviewed').textContent = reviewed;
+    document.getElementById('metricRemaining').textContent = SKILLS.length - reviewed;
+    document.getElementById('metricAgree').textContent = counts.agree;
+    document.getElementById('metricModify').textContent = counts.modify;
+    document.getElementById('metricDefer').textContent = counts.defer;
+    document.getElementById('metricKeep').textContent = counts.keep;
+    document.getElementById('progressBar').style.width = ((reviewed / SKILLS.length) * 100).toFixed(1) + '%';
+    document.getElementById('progressCopy').textContent = reviewed + ' of ' + SKILLS.length + ' reviewed';
+  }
+
+  function buildMarkdown() {
+    var counts = { agree: 0, modify: 0, defer: 0, keep: 0, unreviewed: 0 };
+    SKILLS.forEach(function (skill) {
+      var decision = getEntry(skill.name).decision || 'unreviewed';
+      counts[decision] += 1;
+    });
+    var lines = [
+      '# Skill simplification triage',
+      '',
+      'Summary: ' + counts.agree + ' agree · ' + counts.modify + ' modify · ' + counts.defer + ' defer · ' + counts.keep + ' keep as-is · ' + counts.unreviewed + ' unreviewed',
+      ''
+    ];
+    ['high', 'medium', 'low'].forEach(function (priority) {
+      lines.push('## ' + PRIORITY_LABELS[priority]);
+      lines.push('');
+      SKILLS.filter(function (skill) { return skill.priority === priority; }).forEach(function (skill) {
+        var entry = getEntry(skill.name);
+        lines.push('### ' + skill.name + ' — ' + (DECISION_LABELS[entry.decision] || 'Unreviewed'));
+        lines.push('');
+        if (entry.comment.trim()) lines.push('Comment: ' + entry.comment.trim());
+        else lines.push('Comment: _none_');
+        lines.push('');
+      });
+    });
+    return lines.join('\n');
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
+    }
+    fallbackCopy(text);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text) {
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); } catch (error) {}
+    area.remove();
+  }
+
+  function showToast(message) {
+    var toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+  }
+
+  document.getElementById('searchInput').addEventListener('input', function (event) {
+    filters.search = event.target.value;
+    render();
+  });
+  document.getElementById('priorityFilter').addEventListener('change', function (event) {
+    filters.priority = event.target.value;
+    render();
+  });
+  document.getElementById('decisionFilter').addEventListener('change', function (event) {
+    filters.decision = event.target.value;
+    render();
+  });
+  document.getElementById('clearFiltersBtn').addEventListener('click', function () {
+    filters = { search: '', priority: 'all', decision: 'all' };
+    document.getElementById('searchInput').value = '';
+    document.getElementById('priorityFilter').value = 'all';
+    document.getElementById('decisionFilter').value = 'all';
+    render();
+  });
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var button = this;
+    copyText(buildMarkdown()).then(function () {
+      button.classList.add('copied');
+      button.textContent = 'Copied';
+      showToast('Markdown handoff copied to clipboard.');
+      setTimeout(function () { button.classList.remove('copied'); button.textContent = 'Copy handoff'; }, 1400);
+    });
+  });
+  document.getElementById('downloadBtn').addEventListener('click', function () {
+    var payload = { generatedAt: new Date().toISOString(), decisions: state };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'skill-triage-decisions.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('JSON decision file downloaded.');
+  });
+  document.getElementById('agreeVisibleBtn').addEventListener('click', function () {
+    var visible = visibleSkills();
+    if (!visible.length) return;
+    if (!window.confirm('Mark all ' + visible.length + ' visible recommendations as Agree? Existing decisions will be replaced.')) return;
+    visible.forEach(function (skill) { getEntry(skill.name).decision = 'agree'; });
+    persistState();
+    render();
+    showToast('Visible recommendations marked Agree.');
+  });
+  document.getElementById('showNextBtn').addEventListener('click', function () {
+    filters.decision = 'unreviewed';
+    document.getElementById('decisionFilter').value = 'unreviewed';
+    render();
+    var first = document.querySelector('.card');
+    if (first) first.scrollIntoView({behavior:'smooth', block:'start'});
+    else showToast('Every skill has a decision.');
+  });
+  document.getElementById('resetBtn').addEventListener('click', function () {
+    if (!window.confirm('Clear every decision and comment? This cannot be undone.')) return;
+    state = {};
+    persistState();
+    render();
+    showToast('All decisions and comments cleared.');
+  });
+
+  render();
+</script>
+</body>
+</html>
