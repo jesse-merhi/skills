@@ -391,6 +391,64 @@
     background: var(--surface);
   }
   .description-block p { margin: 4px 0 0; font-size: 13px; }
+  .proposal-block {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #c8d5cd;
+  }
+  .proposal-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .proposal-heading h4 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .proposal-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 4px 8px;
+    border: 1px solid #a9c9b3;
+    border-radius: 999px;
+    background: #e3f2e7;
+    color: #245a35;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .proposal-status.drifted {
+    border-color: #ddb6ae;
+    background: var(--red-soft);
+    color: var(--red);
+  }
+  .proposal-copy { margin: 0 0 9px; color: var(--muted); font-size: 12px; }
+  .diff-block { border-color: #27312c; }
+  .diff-line { display: block; min-height: 18px; padding: 0 14px; }
+  .diff-line.meta { color: #aebdb5; }
+  .diff-line.hunk { background: #25352c; color: #9dc9ad; }
+  .diff-line.del { background: rgba(184, 73, 61, 0.2); color: #ffd5cf; }
+  .diff-line.add { background: rgba(64, 151, 91, 0.22); color: #c9f3d3; }
+  details.current-source { margin-top: 12px; }
+  details.current-source > summary {
+    min-height: 44px;
+    padding: 9px 11px;
+    border: 1px solid #aec3b5;
+    border-radius: 9px;
+    color: var(--forest);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 750;
+  }
+  details.current-source[open] > summary { margin-bottom: 12px; }
   .source-label {
     display: block;
     margin-bottom: 7px;
@@ -577,7 +635,7 @@
       <h1>Decide what changes, one skill at a time.</h1>
       <p class="lede">Review all 37 recommendations against the actual skill writing, mark your decision, and leave corrections or constraints in plain language. Your choices save locally in this browser; copy the handoff when you want me to implement them.</p>
     </div>
-    <div class="hero-note"><strong>Suggested flow:</strong> expand “Read current skill” before deciding. The page surfaces the most relevant numbered lines and keeps the full `SKILL.md` one click away. “Keep” means reject the recommendation and retain the skill as written.</div>
+    <div class="hero-note"><strong>Suggested flow:</strong> expand “Review proposed diff” before deciding. Each patch is checked against the current skill source, with the relevant numbered lines and full `SKILL.md` underneath. “Keep” means reject the patch and retain the skill as written.</div>
   </section>
 
   <section class="summary-strip" aria-label="Triage summary">
@@ -691,6 +749,165 @@
     {name:'typescript-discipline',priority:'low',path:'skills/typescript-discipline/SKILL.md',remove:'Shorten the description’s TypeScript construct inventory. Replace “ask before using unsafe typing” with a positive resolution path.',add:'Require unknown plus narrowing, schemas, or adapters; preserve the absolute prohibition on as any and targeted verification.'}
   ];
 
+  var PROPOSED_EDITS = {
+    'clawsweeper-until-clean': [{
+      before: ['Use this skill when the source of truth is the Clawsweeper bot acting on the', 'GitHub PR, not a local review command. Trigger Clawsweeper, wait for the fresh', 'review, fix actionable findings, push, and repeat.'],
+      after: ['Use this skill when the source of truth is the Clawsweeper bot acting on the', 'GitHub PR, not a local review command. If repository policy explicitly permits', 'bot-trigger comments for this workflow, trigger Clawsweeper and run the loop.', 'Otherwise, prepare each trigger and ask the user to post it before continuing.']
+    }],
+    'diagnose': [{
+      before: ['6. Fix the smallest proven cause.', '7. Add or update regression coverage when the failure was real behavior.'],
+      after: ['6. If implementation is authorized, fix the smallest proven cause.', '   Otherwise, stop after establishing the cause and recommended fix.', '7. When a fix is authorized, add or update regression coverage for real behavior.']
+    }],
+    'frontend-ui-validation': [{
+      before: ['8. Fix every real `error` and `warning` before claiming done. If a finding is', '   intentional, explain why. Re-run the same viewport and state after each fix.'],
+      after: ['8. Report every real `error` and `warning`. If implementation is authorized,', '   fix each finding and re-run the same viewport and state. Otherwise, return', '   the evidence and recommended fix without editing source.']
+    }],
+    'handoff': [{
+      before: ['6. Launch only after the handoff and placement/isolation decisions are clear.', '', '   When creating a brand-new session outside tmux, seed it with only a concise'],
+      after: ['6. Launch only when the user requested a new task or worker. A document-only', '   handoff stops after saving and reporting the handoff path.', '', '   When creating a brand-new session outside tmux, seed it with only a concise']
+    }],
+    'html-explanations': [{
+      before: ['4. Keep the final chat reply short: what file you created, a `file://`', '   link to open it, what it covers, and how it was verified.'],
+      after: ['4. Keep the final chat reply short: what file you created, an absolute', '   Markdown link to open it, what it covers, and how it was verified.']
+    }, {
+      before: ['- Always include a clickable `file://` URL in the final reply, for example:', '', '```text', 'file:///absolute/path/to/explainer.html', '```'],
+      after: ['- Always include a clickable absolute local-file Markdown link in the final', '  reply, using the file path format supported by the current harness.']
+    }],
+    'pr-rubbish-audit': [{
+      before: ['6. Apply focused cleanup. Revert hunks surgically. Never reset the whole', '   worktree. Do not touch unrelated dirty user changes.', '7. Validate with focused tests for changed behavior, typecheck/lint/format gates'],
+      after: ['6. Stop after the cleanup plan unless the user authorized implementation.', '   When authorized, apply focused cleanup surgically without touching unrelated', '   user changes.', '7. After authorized edits, validate with focused tests, typecheck/lint/format gates']
+    }],
+    'research': [{
+      before: ['Investigate a question against primary sources and leave one cited Markdown', 'note the user or another skill can read later.'],
+      after: ['Investigate a question against primary sources. Write a cited Markdown note', 'only when the user asks for durable research; otherwise return the cited answer', 'in chat without creating an artifact.']
+    }],
+    'skill-cleaner': [{
+      before: ['- Preserve trigger nouns in descriptions: product, tool, action, object.', '- Do not delete ignored/untracked skill dirs without naming the destination or'],
+      after: ['- Preserve trigger nouns in descriptions: product, tool, action, object.', '- Treat generated descriptions as manual rewrite candidates until tests prove', '  that they preserve trigger meaning and exclusions.', '- Do not delete ignored/untracked skill dirs without naming the destination or']
+    }],
+    'tdd': [{
+      before: ['Test only at pre-agreed seams. Before writing any test, write down the seams', 'under test and confirm them with the user. No test is written at an unconfirmed', 'seam. You cannot test everything; agreeing the seams up front is how testing', 'effort lands on the critical paths and complex logic instead of every edge case.', '', 'Ask: "What is the public interface, and which seams should we test?"'],
+      after: ['Infer test seams from existing public contracts and write them down before', 'testing. Ask the user only when multiple plausible seams would materially change', 'coverage, cost, or the product contract.']
+    }, {
+      before: ['- **Refactoring is not part of the loop.** It belongs to the review stage; use', '  `code-review` for that work.'],
+      after: ['- **Refactor after green.** Make only behavior-preserving improvements needed', '  for the current slice, then re-run the test before starting the next red step.']
+    }],
+    'wait-efficiently': [{
+      before: ['Keep one tool call pending for the whole wait. Do not return unchanged state to', 'the model between polls.'],
+      after: ['Before waiting, state what is being awaited and when the next meaningful update', 'will occur. Use the product-native wait mechanism, avoid unchanged heartbeat', 'updates, and return only for action, a deadline, or a meaningful state change.']
+    }],
+
+    'code-review': [{
+      before: ["description: 'Review a PR, branch, commit, or diff with a two-phase until-clean workflow: map changed flows, run native review, run cold review, fix findings, and verify.'"],
+      after: ["description: 'Orchestrate the native and independent until-clean review phases for a PR, branch, commit, or diff. Use only when the user authorizes a fix-and-rerun review workflow.'"]
+    }],
+    'cold-pr-review-until-clean': [{
+      before: ["description: 'Run independent cold-review subagents on a PR, branch, or diff, fix actionable findings, and repeat until the configured clean stop condition is met.'"],
+      after: ["description: 'Run fresh isolated cold reviews, fix actionable findings, and repeat to the configured clean stop condition.'"]
+    }],
+    'design-engineering': [{
+      before: ["description: 'Implement or refine UI motion and interaction: animations, transitions, micro-interactions, component feel, popovers, drawers, sheets, toasts, drag or swipe gestures, springs, easing, timing, and performance. Use for responsive, physically coherent behavior.'"],
+      after: ["description: 'Implement or refine purposeful UI motion, transitions, gestures, and component interactions with responsive behavior and reduced-motion support.'"]
+    }],
+    'frontend-design': [{
+      before: ["description: 'Design and implement production frontend UI: pages, screens, components, layout, hierarchy, typography, color, states, responsiveness, design systems, and polish. Use for broad visual work; route motion to design-engineering.'"],
+      after: ["description: 'Design and implement production frontend UI, including layout, hierarchy, states, responsiveness, and design-system fit. Route material motion work to design-engineering.'"]
+    }],
+    'grill-with-docs': [{
+      before: ["description: 'Ground a plan in repo docs, code, Obsidian notes, glossary, ADRs, specs, and tickets, then run grilling to stress-test the decisions one question at a time.'"],
+      after: ["description: 'Ground a plan in repository evidence, then grill unresolved material decisions one question at a time until the decision inventory is empty.'"]
+    }],
+    'parallel-slice-orchestration': [{
+      before: ['Always load `tdd` before assigning implementation work. Load the', 'relevant repo/domain skill before decomposition.'],
+      after: ['Load `tdd` for behavior-changing implementation slices. A worker may use a', 'named docs, configuration, or generated-artifact exception when no executable', 'behavior changes. Load the relevant repo/domain skill before decomposition.']
+    }],
+    'pr-proof-pack': [{
+      before: ['description: Create or refresh reviewer-checkable PR proof when creating a pull request, updating a PR body, modifying proof, or changing a branch after proof was written. Use for net diff summaries, PR-visible screenshots, Mermaid diagrams, API examples, behavioral verification, and proof cleanup.'],
+      after: ['description: Create or refresh reviewer-checkable pull-request proof from the net diff, including behavioral verification and PR-visible evidence when relevant.']
+    }],
+    'reducing-cognitive-load': [{
+      before: ['5. Apply the replacement patterns in [patterns.md](references/patterns.md).', '6. Use the extraction test in [extraction-test.md](references/extraction-test.md)'],
+      after: ['5. In review-only work, recommend concrete replacement patterns from', '   [patterns.md](references/patterns.md). Apply them only when refactoring is', '   authorized.', '6. Use the extraction test in [extraction-test.md](references/extraction-test.md)']
+    }],
+    'review-guardrails': [{
+      before: ["description: 'Bound autonomous review loops with wall-clock, diff-growth, scope, consult-queue, provisional-fix, and tracked-finding rules.'"],
+      after: ["description: 'Own the shared budgets, scope, tracked findings, consult queue, provisional fixes, and fixed-point rules for autonomous review loops.'"]
+    }],
+    'review-until-clean': [{
+      before: ["description: 'Run the harness-native review (bare `codex review` in Codex, the built-in code-review workflow in Claude Code) in a fix-and-rerun loop until clean; also used as code-review''s first phase.'"],
+      after: ["description: 'Run the harness-native review in a fix-and-rerun loop until two fresh passes are clean. Use for an explicitly authorized until-clean workflow, not a one-shot review.'"]
+    }],
+    'session-recall': [{
+      before: ['description: Find prior local Codex or Claude agent sessions with the agent-session-find CLI. Use when context may exist in previous sessions, after compaction or handoff, before asking the user to remember prior work, when searching for old fixes, decisions, commands, errors, file paths, repo context, review outcomes, or "where did we handle this before?" Keep session contents local and use low-token search results before opening full logs.'],
+      after: ['description: Find prior local Codex or Claude sessions when earlier work may answer the current question. Keep contents local and inspect low-token result cards before opening logs.']
+    }],
+    'test-audit': [{
+      before: ['6. Verify after edits.', '   - Run the focused test file or package test script.'],
+      after: ['6. Edit tests only when implementation is authorized. After edits:', '   - Run the focused test file or package test script.']
+    }],
+    'wayfinder': [{
+      before: ["description: 'Plan a huge chunk of work, more than one agent session can hold, as a shared Obsidian issue map, and resolve tickets one at a time until the way to the destination is clear.'"],
+      after: ["description: 'Map multi-session work into linked Obsidian issues, track fog and blockers, and resolve tickets until the destination is fully specified.'"]
+    }],
+    'writing-great-skills': [{
+      before: ["description: 'Reference for writing and editing skills well: invocation choices, information hierarchy, progressive disclosure, leading words, pruning, and failure modes.'"],
+      after: ["description: 'Write and revise skills with precise invocation, progressive disclosure, contradiction checks, focused simplification, and before/after behavioral evaluation.'"]
+    }],
+
+    'acpx-frontend-delegation': [{
+      before: ['description: Delegate substantial Codex frontend work to Claude Code through acpx. Use when running in Codex and the task includes visual design direction, dense CSS/layout work, responsive UI polish, ambiguous frontend implementation, or the user explicitly asks to use Claude/acpx for frontend work.'],
+      after: ['description: Delegate substantial frontend design or implementation work from Codex to Claude Code through acpx, with scoped ownership and local validation.']
+    }],
+    'cold-pr-review': [{
+      before: ["description: 'Run an independent cold review of a PR, branch, or major feature using changed-flow mapping, relevant review lenses, and finding-discipline.'"],
+      after: ["description: 'Run an independent cold review of a PR, branch, or major feature with neutral context, changed-flow coverage, and actionable findings only.'"]
+    }],
+    'finding-discipline': [{
+      before: ["description: 'Filter code-review observations into actionable findings for PR, cold, security, and noisy-diff reviews; remove style nits and vague risks.'"],
+      after: ["description: 'Filter review observations into confirmed, actionable, root-cause-deduplicated findings; exclude style nits and vague risks.'"]
+    }],
+    'grilling': [{
+      before: ['Interview the user relentlessly about every aspect of this plan until you reach', 'a shared understanding.'],
+      after: ['Interview the user about unresolved material decisions until dependencies are', 'resolved and shared understanding is confirmed. Do not spend turns on choices', 'that cannot change scope, behavior, risk, or implementation.']
+    }],
+    'improve-codebase-architecture': [{
+      before: ["description: 'Review or plan architecture changes around module depth, interfaces, adapters, locality, dependency direction, testability, and durable architecture notes.'"],
+      after: ["description: 'Review or plan architecture changes around module depth, interfaces, locality, dependency direction, and testability. Implement only when explicitly authorized.'"]
+    }],
+    'monitoring-gh-actions': [{
+      before: ["description: 'Use when monitoring ongoing GitHub Actions workflow runs or pull request checks through GitHub CLI and needing history-aware waiting that avoids token-heavy polling and rate limits.'"],
+      after: ["description: 'Monitor ongoing GitHub Actions runs with history-aware waiting and report meaningful state changes. Switch workflows before diagnosing or fixing failures.'"]
+    }],
+    'clawhub-local-test': [{
+      before: ['description: Start and manage a local ClawHub manual-test instance backed by a development Convex database refreshed from production. Use when testing ClawHub UI, moderation, API, search, publisher, package, skill, or Convex-backed behavior locally with prod-like data instead of hand-running setup, prod export, dev/local import, dev auth fixture, and app server commands.'],
+      after: ['description: Start and manage a guarded local ClawHub manual-test instance backed by a development Convex database refreshed from production-like data.']
+    }],
+    'openclaw-local-test': [{
+      before: ["description: 'Spin up and manage a local OpenClaw manual-test Gateway in a browser, with optional local Atlassian AIGW, Slack, Discord, and fresh ports.'"],
+      after: ["description: 'Start and manage an isolated local OpenClaw manual-test Gateway, inspect its actual runtime configuration, and clean up its lease.'"]
+    }],
+    'review-animations': [{
+      before: ["description: 'Review changed animation, transition, gesture, spring, or motion code for purpose, timing, easing, coherence, interruption, performance, reduced motion, and input behavior. Use as a focused code-review lens.'"],
+      after: ["description: 'Review changed UI motion for purpose, coherence, interruption, performance, input behavior, and reduced-motion support. Report findings without fixing.'"]
+    }],
+    'review-surface-map': [{
+      before: ["description: 'Map changed runtime surfaces for a PR, branch, commit, or large diff: entrypoints, flows, callers, contracts, side effects, risk, and validation.'"],
+      after: ["description: 'Map each changed runtime flow from entrypoint through contracts and side effects to risks and proving validation.'"]
+    }],
+    'to-spec': [{
+      before: ['   the codebase, the better; the ideal number is one.'],
+      after: ['   the codebase, the better. Prefer the fewest meaningful seams without', '   collapsing contracts that represent distinct behavior.']
+    }],
+    'to-tickets': [{
+      before: ['3. Look for opportunities to prefactor the code to make implementation easier:'],
+      after: ['3. Identify prerequisite refactors and propose them as explicit blocking tickets:']
+    }],
+    'typescript-discipline': [{
+      before: ["description: 'Write or review TypeScript production code, shared domain types, schemas, API/client contracts, exported functions, typed React, casts, any/unknown, ts-ignore, narrowing, and package-script verification.'"],
+      after: ["description: 'Write or review production TypeScript with shared domain types, explicit boundary validation, safe narrowing, and targeted package verification.'"]
+    }]
+  };
+
   var state = loadState();
   var filters = { search: '', priority: 'all', decision: 'all' };
   var toastTimer = null;
@@ -791,15 +1008,62 @@
     });
   }
 
+  function appendDiffLine(code, text, kind) {
+    var row = document.createElement('span');
+    row.className = 'diff-line ' + kind;
+    row.textContent = text || ' ';
+    code.appendChild(row);
+  }
+
+  function renderProposedDiff(skill, source, block) {
+    var edits = PROPOSED_EDITS[skill.name] || [];
+    var code = block.querySelector('.diff-block code');
+    var status = block.querySelector('.proposal-status');
+    var matched = 0;
+    var lineDelta = 0;
+
+    appendDiffLine(code, '--- a/' + skill.path, 'meta');
+    appendDiffLine(code, '+++ b/' + skill.path, 'meta');
+
+    edits.forEach(function (edit) {
+      var beforeText = edit.before.join('\n');
+      var offset = source.indexOf(beforeText);
+      var isMatch = offset !== -1;
+      if (isMatch) matched += 1;
+      var oldStart = isMatch ? source.slice(0, offset).split('\n').length : 0;
+      var newStart = isMatch ? oldStart + lineDelta : 0;
+      var hunk = isMatch
+        ? '@@ -' + oldStart + ',' + edit.before.length + ' +' + newStart + ',' + edit.after.length + ' @@'
+        : '@@ proposed replacement — current source text not found @@';
+      appendDiffLine(code, hunk, 'hunk');
+      edit.before.forEach(function (line) { appendDiffLine(code, '-' + line, 'del'); });
+      edit.after.forEach(function (line) { appendDiffLine(code, '+' + line, 'add'); });
+      if (isMatch) lineDelta += edit.after.length - edit.before.length;
+    });
+
+    var allMatch = edits.length > 0 && matched === edits.length;
+    status.textContent = allMatch ? 'Matches current source' : matched + ' of ' + edits.length + ' hunks match';
+    status.classList.toggle('drifted', !allMatch);
+  }
+
   function renderSkillContext(skill, panel, source) {
     var lines = source.split('\n');
     var selection = relevantLineSelection(lines, skill);
     panel.innerHTML =
-      '<div class="context-top"><div><h4>Actual skill writing</h4><p>Highlighted lines have the strongest wording overlap with this recommendation. Line numbers are from the current branch.</p></div><a class="raw-link" target="_blank" rel="noreferrer">Open raw SKILL.md</a></div>' +
-      '<div class="description-block"><span class="source-label">Current trigger description</span><p></p></div>' +
-      '<span class="source-label">Most relevant current lines</span>' +
-      '<pre class="source-excerpt"><code></code></pre>' +
-      '<details class="full-source"><summary>Show full SKILL.md</summary><pre><code></code></pre></details>';
+      '<div class="proposal-block">' +
+        '<div class="proposal-heading"><h4>Proposed patch</h4><span class="proposal-status"></span></div>' +
+        '<p class="proposal-copy">This is the concrete first-pass edit I would make. Red lines are removed; green lines replace them.</p>' +
+        '<pre class="diff-block"><code></code></pre>' +
+      '</div>' +
+      '<details class="current-source">' +
+        '<summary>Read the current skill around this patch</summary>' +
+        '<div class="context-top"><div><h4>Actual skill writing</h4><p>Highlighted lines have the strongest wording overlap with the recommendation. Line numbers are from the current branch.</p></div><a class="raw-link" target="_blank" rel="noreferrer">Open raw SKILL.md</a></div>' +
+        '<div class="description-block"><span class="source-label">Current trigger description</span><p></p></div>' +
+        '<span class="source-label">Most relevant current lines</span>' +
+        '<pre class="source-excerpt"><code></code></pre>' +
+        '<details class="full-source"><summary>Show full SKILL.md</summary><pre><code></code></pre></details>' +
+      '</details>';
+    renderProposedDiff(skill, source, panel.querySelector('.proposal-block'));
     panel.querySelector('.raw-link').href = '../' + skill.path;
     panel.querySelector('.description-block p').textContent = currentDescription(source);
     appendSourceLines(panel.querySelector('.source-excerpt code'), lines, selection.visible, selection.exact);
@@ -811,7 +1075,7 @@
       renderSkillContext(skill, panel, sourceCache[skill.name]);
       return;
     }
-    panel.innerHTML = '<div class="context-loading">Loading actual SKILL.md…</div>';
+    panel.innerHTML = '<div class="context-loading">Loading proposed patch and current SKILL.md…</div>';
     fetch('../' + skill.path, { cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -861,10 +1125,10 @@
         '<div class="recommendation-box add"><span class="recommendation-label">Add or preserve</span><p>' + escapeHtml(skill.add) + '</p></div>' +
       '</div>' +
       '<div class="context-row">' +
-        '<span class="context-hint">Compare this recommendation with the current description and source lines.</span>' +
-        '<button class="context-toggle" type="button" aria-expanded="' + String(Boolean(openContexts[skill.name])) + '">' + (openContexts[skill.name] ? 'Hide current skill' : 'Read current skill') + '</button>' +
+        '<span class="context-hint">Inspect the exact proposed patch, then open its current source context if needed.</span>' +
+        '<button class="context-toggle" type="button" aria-expanded="' + String(Boolean(openContexts[skill.name])) + '">' + (openContexts[skill.name] ? 'Hide proposed diff' : 'Review proposed diff') + '</button>' +
       '</div>' +
-      '<div class="context-panel" ' + (openContexts[skill.name] ? '' : 'hidden') + '><div class="context-loading">Loading actual SKILL.md…</div></div>' +
+      '<div class="context-panel" ' + (openContexts[skill.name] ? '' : 'hidden') + '><div class="context-loading">Loading proposed patch and current SKILL.md…</div></div>' +
       '<div class="decision-area">' +
         '<div><span class="decision-label">Your decision</span><div class="decision-buttons" role="group" aria-label="Decision for ' + escapeHtml(skill.name) + '"></div></div>' +
         '<label><span class="comment-label">Comment or correction</span><textarea placeholder="What should change about this recommendation?">' + escapeHtml(entry.comment || '') + '</textarea></label>' +
@@ -905,7 +1169,7 @@
       openContexts[skill.name] = !openContexts[skill.name];
       var isOpen = openContexts[skill.name];
       contextButton.setAttribute('aria-expanded', String(isOpen));
-      contextButton.textContent = isOpen ? 'Hide current skill' : 'Read current skill';
+      contextButton.textContent = isOpen ? 'Hide proposed diff' : 'Review proposed diff';
       contextPanel.hidden = !isOpen;
       if (isOpen) loadSkillContext(skill, contextPanel);
     });
