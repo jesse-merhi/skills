@@ -323,6 +323,138 @@
   }
   .recommendation-box p { margin: 0; font-size: 13px; }
 
+  .context-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 19px 15px 67px;
+  }
+  .context-hint {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .context-toggle {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--forest);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 750;
+  }
+  .context-toggle:hover { border-color: var(--forest); background: var(--forest-soft); }
+  .context-panel {
+    margin: 0 19px 18px 67px;
+    padding: 16px;
+    border: 1px solid #c8d5cd;
+    border-radius: 12px;
+    background: #eef4f0;
+  }
+  .context-panel[hidden] { display: none; }
+  .context-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 13px;
+  }
+  .context-top h4 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .context-top p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .raw-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 11px;
+    border: 1px solid #aec3b5;
+    border-radius: 9px;
+    color: var(--forest);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .raw-link:hover { background: var(--forest-soft); }
+  .description-block {
+    margin-bottom: 12px;
+    padding: 12px 13px;
+    border: 1px solid #c8d5cd;
+    border-radius: 9px;
+    background: var(--surface);
+  }
+  .description-block p { margin: 4px 0 0; font-size: 13px; }
+  .source-label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--forest);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  pre {
+    max-width: 100%;
+    margin: 0;
+    overflow: auto;
+    border: 1px solid #27312c;
+    border-radius: 10px;
+    background: #17201b;
+    color: #e7efe9;
+  }
+  pre code {
+    display: block;
+    min-width: 100%;
+    padding: 12px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .source-line { display: block; padding: 0 14px 0 0; }
+  .source-line.relevant { background: rgba(111, 190, 145, 0.14); }
+  .line-number {
+    display: inline-block;
+    width: 42px;
+    margin-right: 12px;
+    color: #789084;
+    text-align: right;
+    user-select: none;
+  }
+  .source-gap { display: block; padding-left: 53px; color: #789084; }
+  details.full-source { margin-top: 11px; }
+  details.full-source summary {
+    min-height: 44px;
+    padding: 9px 11px;
+    border: 1px solid #aec3b5;
+    border-radius: 9px;
+    color: var(--forest);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 750;
+  }
+  details.full-source[open] summary { margin-bottom: 8px; }
+  .source-error {
+    padding: 12px;
+    border: 1px solid #e0b9b4;
+    border-radius: 9px;
+    background: var(--red-soft);
+    color: var(--red);
+    font-size: 13px;
+  }
+
   .decision-area {
     display: grid;
     grid-template-columns: minmax(360px, 0.85fr) minmax(300px, 1.15fr);
@@ -416,6 +548,8 @@
     .toolbar { position: static; margin-inline: 0; }
     .toolbar .btn, .toolbar select { flex: 1 1 145px; }
     .recommendation, .decision-area { grid-template-columns: 1fr; padding-left: 19px; }
+    .context-row { align-items: flex-start; padding-left: 19px; }
+    .context-panel { margin-left: 19px; }
     .decision-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .sidebar { grid-template-columns: 1fr; }
     .sidebar h2, .sidebar p { grid-column: auto; }
@@ -424,7 +558,10 @@
     .summary-strip { grid-template-columns: 1fr 1fr; }
     .card-head { padding-inline: 14px; }
     .index { display: none; }
-    .recommendation, .decision-area { padding-inline: 14px; }
+    .recommendation, .decision-area, .context-row { padding-inline: 14px; }
+    .context-row { flex-direction: column; }
+    .context-toggle { width: 100%; }
+    .context-panel { margin-inline: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -438,9 +575,9 @@
     <div>
       <div class="eyebrow">Skills repository · GPT-5.6 prompt simplification</div>
       <h1>Decide what changes, one skill at a time.</h1>
-      <p class="lede">Review all 37 recommendations, mark your decision, and leave corrections or constraints in plain language. Your choices save locally in this browser; copy the handoff when you want me to implement them.</p>
+      <p class="lede">Review all 37 recommendations against the actual skill writing, mark your decision, and leave corrections or constraints in plain language. Your choices save locally in this browser; copy the handoff when you want me to implement them.</p>
     </div>
-    <div class="hero-note"><strong>Suggested flow:</strong> handle the high-priority contract problems first, then use filters to work through structural trims and light polish. “Keep” means reject the recommendation and retain the skill as written.</div>
+    <div class="hero-note"><strong>Suggested flow:</strong> expand “Read current skill” before deciding. The page surfaces the most relevant numbered lines and keeps the full `SKILL.md` one click away. “Keep” means reject the recommendation and retain the skill as written.</div>
   </section>
 
   <section class="summary-strip" aria-label="Triage summary">
@@ -557,6 +694,8 @@
   var state = loadState();
   var filters = { search: '', priority: 'all', decision: 'all' };
   var toastTimer = null;
+  var sourceCache = {};
+  var openContexts = {};
 
   function loadState() {
     try {
@@ -580,6 +719,111 @@
     return String(value).replace(/[&<>"']/g, function (char) {
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[char];
     });
+  }
+
+  function currentDescription(source) {
+    var match = source.match(/^description:\s*(.+)$/m);
+    if (!match) return 'No description found.';
+    var value = match[1].trim();
+    if ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"'))) {
+      value = value.slice(1, -1);
+    }
+    return value.replace(/''/g, "'");
+  }
+
+  function recommendationTokens(skill) {
+    var stopWords = new Set(['about','actual','after','already','also','because','before','being','between','change','current','default','description','explicit','from','into','itself','keep','meaning','more','only','preserve','remove','replace','require','rules','should','skill','skills','their','these','this','through','until','when','where','which','while','with','without']);
+    var words = (skill.remove + ' ' + skill.add).toLowerCase().match(/[a-z0-9][a-z0-9-]{3,}/g) || [];
+    return Array.from(new Set(words.filter(function (word) { return !stopWords.has(word); })));
+  }
+
+  function relevantLineSelection(lines, skill) {
+    var tokens = recommendationTokens(skill);
+    var bodyStart = 0;
+    var fenceCount = 0;
+    lines.forEach(function (line, index) {
+      if (line.trim() === '---') {
+        fenceCount += 1;
+        if (fenceCount === 2) bodyStart = index + 1;
+      }
+    });
+    var scored = lines.map(function (line, index) {
+      var lower = line.toLowerCase();
+      var score = index < bodyStart || !lower.trim() ? 0 : tokens.reduce(function (total, token) {
+        return total + (lower.includes(token) ? (token.length > 8 ? 3 : 1) : 0);
+      }, 0);
+      if (/^(##|\d+\.|-|```)/.test(line.trim())) score += score ? 1 : 0;
+      return { index: index, score: score };
+    }).filter(function (item) { return item.score > 0; })
+      .sort(function (a, b) { return b.score - a.score || a.index - b.index; })
+      .slice(0, 5);
+
+    if (!scored.length) scored = [{ index: Math.min(bodyStart + 2, lines.length - 1), score: 1 }];
+    var exact = new Set(scored.map(function (item) { return item.index; }));
+    var visible = new Set();
+    scored.forEach(function (item) {
+      for (var offset = -2; offset <= 2; offset += 1) {
+        var index = item.index + offset;
+        if (index >= bodyStart && index < lines.length) visible.add(index);
+      }
+    });
+    return { exact: exact, visible: Array.from(visible).sort(function (a, b) { return a - b; }) };
+  }
+
+  function appendSourceLines(code, lines, indices, relevant) {
+    var previous = -2;
+    indices.forEach(function (index) {
+      if (index > previous + 1) {
+        var gap = document.createElement('span');
+        gap.className = 'source-gap';
+        gap.textContent = '⋯';
+        code.appendChild(gap);
+      }
+      var row = document.createElement('span');
+      row.className = 'source-line' + (relevant && relevant.has(index) ? ' relevant' : '');
+      var number = document.createElement('span');
+      number.className = 'line-number';
+      number.textContent = String(index + 1);
+      row.appendChild(number);
+      row.appendChild(document.createTextNode(lines[index] || ' '));
+      code.appendChild(row);
+      previous = index;
+    });
+  }
+
+  function renderSkillContext(skill, panel, source) {
+    var lines = source.split('\n');
+    var selection = relevantLineSelection(lines, skill);
+    panel.innerHTML =
+      '<div class="context-top"><div><h4>Actual skill writing</h4><p>Highlighted lines have the strongest wording overlap with this recommendation. Line numbers are from the current branch.</p></div><a class="raw-link" target="_blank" rel="noreferrer">Open raw SKILL.md</a></div>' +
+      '<div class="description-block"><span class="source-label">Current trigger description</span><p></p></div>' +
+      '<span class="source-label">Most relevant current lines</span>' +
+      '<pre class="source-excerpt"><code></code></pre>' +
+      '<details class="full-source"><summary>Show full SKILL.md</summary><pre><code></code></pre></details>';
+    panel.querySelector('.raw-link').href = '../' + skill.path;
+    panel.querySelector('.description-block p').textContent = currentDescription(source);
+    appendSourceLines(panel.querySelector('.source-excerpt code'), lines, selection.visible, selection.exact);
+    appendSourceLines(panel.querySelector('.full-source code'), lines, lines.map(function (_, index) { return index; }), null);
+  }
+
+  function loadSkillContext(skill, panel) {
+    if (sourceCache[skill.name]) {
+      renderSkillContext(skill, panel, sourceCache[skill.name]);
+      return;
+    }
+    panel.innerHTML = '<div class="context-loading">Loading actual SKILL.md…</div>';
+    fetch('../' + skill.path, { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.text();
+      })
+      .then(function (source) {
+        sourceCache[skill.name] = source;
+        renderSkillContext(skill, panel, source);
+      })
+      .catch(function (error) {
+        panel.innerHTML = '<div class="source-error">Could not load the current skill source (' + escapeHtml(error.message) + '). Keep the local server running and retry.</div>';
+      });
   }
 
   function visibleSkills() {
@@ -616,6 +860,11 @@
         '<div class="recommendation-box"><span class="recommendation-label">Remove or change</span><p>' + escapeHtml(skill.remove) + '</p></div>' +
         '<div class="recommendation-box add"><span class="recommendation-label">Add or preserve</span><p>' + escapeHtml(skill.add) + '</p></div>' +
       '</div>' +
+      '<div class="context-row">' +
+        '<span class="context-hint">Compare this recommendation with the current description and source lines.</span>' +
+        '<button class="context-toggle" type="button" aria-expanded="' + String(Boolean(openContexts[skill.name])) + '">' + (openContexts[skill.name] ? 'Hide current skill' : 'Read current skill') + '</button>' +
+      '</div>' +
+      '<div class="context-panel" ' + (openContexts[skill.name] ? '' : 'hidden') + '><div class="context-loading">Loading actual SKILL.md…</div></div>' +
       '<div class="decision-area">' +
         '<div><span class="decision-label">Your decision</span><div class="decision-buttons" role="group" aria-label="Decision for ' + escapeHtml(skill.name) + '"></div></div>' +
         '<label><span class="comment-label">Comment or correction</span><textarea placeholder="What should change about this recommendation?">' + escapeHtml(entry.comment || '') + '</textarea></label>' +
@@ -633,11 +882,12 @@
         var current = getEntry(skill.name);
         current.decision = current.decision === value ? '' : value;
         persistState();
-        render();
-        requestAnimationFrame(function () {
-          var replacement = document.getElementById('skill-' + skill.name);
-          if (replacement && filters.decision === 'all') replacement.scrollIntoView({block:'nearest'});
+        article.dataset.decision = current.decision || '';
+        buttons.querySelectorAll('.decision-btn').forEach(function (candidate) {
+          candidate.setAttribute('aria-pressed', String(candidate.dataset.value === current.decision));
         });
+        updateSummary();
+        if (!['all', 'commented'].includes(filters.decision)) render();
       });
       buttons.appendChild(button);
     });
@@ -648,6 +898,18 @@
       persistState();
       updateSummary();
     });
+
+    var contextButton = article.querySelector('.context-toggle');
+    var contextPanel = article.querySelector('.context-panel');
+    contextButton.addEventListener('click', function () {
+      openContexts[skill.name] = !openContexts[skill.name];
+      var isOpen = openContexts[skill.name];
+      contextButton.setAttribute('aria-expanded', String(isOpen));
+      contextButton.textContent = isOpen ? 'Hide current skill' : 'Read current skill';
+      contextPanel.hidden = !isOpen;
+      if (isOpen) loadSkillContext(skill, contextPanel);
+    });
+    if (openContexts[skill.name]) requestAnimationFrame(function () { loadSkillContext(skill, contextPanel); });
     return article;
   }
 
