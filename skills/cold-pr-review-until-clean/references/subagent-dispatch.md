@@ -34,7 +34,10 @@ architecture issues, cognitive load, and React state ownership issues.
 Check TypeScript type boundaries, API/client contracts, schemas, casts,
 `any`, `unknown`, and ts-ignore usage when TypeScript changed. Apply security
 and UI lenses when the diff touches those surfaces. Report only concrete
-actionable findings tied to changed code or contracts, then give a merge
+actionable findings tied to changed code or contracts. Report every distinct
+actionable finding in this pass, ordered by severity. Before returning, sweep
+the target again for independent defects in other files or failure modes that
+you may have stopped checking after an earlier finding, then give a merge
 verdict.
 ```
 
@@ -49,7 +52,10 @@ state ownership issues. Check TypeScript type boundaries, API/client
 contracts, schemas, casts, `any`, `unknown`, and ts-ignore usage when
 TypeScript changed. Apply security and UI lenses when the diff touches those
 surfaces. Report only concrete actionable findings tied to changed code or
-contracts, then give a merge verdict.
+contracts. Report every distinct actionable finding in this pass, ordered by
+severity. Before returning, sweep the target again for independent defects in
+other files or failure modes that you may have stopped checking after an
+earlier finding, then give a merge verdict.
 ```
 
 You may add domain-specific checklist items, such as security-sensitive flows,
