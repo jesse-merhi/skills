@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: 'Review a PR, branch, commit, or diff with a two-phase until-clean workflow: map changed flows, run native review, run cold review, fix findings, and verify.'
+description: 'Orchestrate the native and independent until-clean review phases for a PR, branch, commit, or diff. Use only when the user authorizes a fix-and-rerun review workflow.'
 ---
 
 # Code Review

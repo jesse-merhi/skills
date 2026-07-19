@@ -29,6 +29,8 @@ enabled/disabled skill roots, or deciding which skills/plugins to remove.
 - Suggest first; edit only when the user asks.
 - Verify the kept copy exists and is loaded before deleting duplicates.
 - Preserve trigger nouns in descriptions: product, tool, action, object.
+- Treat generated descriptions as manual rewrite candidates until tests prove
+  that they preserve trigger meaning and exclusions.
 - Do not delete ignored/untracked skill dirs without naming the destination or
   confirming they are disposable.
 

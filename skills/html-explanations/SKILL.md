@@ -22,8 +22,8 @@ Good fits:
 1. Decide the one thing the page should help the user understand.
 2. Pick a format from `references/html-effectiveness-patterns.md`.
 3. Create a local standalone HTML file. Use `assets/explanation-template.html` for a small starter, or copy a closer template from `assets/html-effectiveness/examples/`.
-4. Keep the final chat reply short: what file you created, a `file://`
-   link to open it, what it covers, and how it was verified.
+4. Keep the final chat reply short: what file you created, an absolute
+   Markdown link to open it, what it covers, and how it was verified.
 
 ## Output Rules
 
@@ -92,11 +92,8 @@ Before saying the work is done:
   block, rewrite the top of the page.
 - Check at least one narrow viewport if the page is meant to be read on mobile.
 - Report anything you did not verify.
-- Always include a clickable `file://` URL in the final reply, for example:
-
-```text
-file:///absolute/path/to/explainer.html
-```
+- Always include a clickable absolute local-file Markdown link in the final
+  reply, using the file path format supported by the current harness.
 
 ## Source Inspiration
 

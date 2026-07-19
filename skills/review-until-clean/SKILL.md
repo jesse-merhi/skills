@@ -1,6 +1,6 @@
 ---
 name: review-until-clean
-description: 'Run the harness-native review (bare `codex review` in Codex, the built-in code-review workflow in Claude Code) in a fix-and-rerun loop until clean; also used as code-review''s first phase.'
+description: 'Run the harness-native review in a fix-and-rerun loop until two fresh passes are clean. Use for an explicitly authorized until-clean workflow, not a one-shot review.'
 ---
 
 # Review Until Clean
