@@ -760,6 +760,8 @@ def build_structured_prompt(
         - Shell commands, if available, must be read-only inspection commands. Do not run tests, formatters, package installs, generators, network mutation commands, git mutation commands, or commands that write files.
         - Report only actionable defects introduced or exposed by this change as direct or induced.
         - Prefer high-signal findings over style feedback.
+        - Report every distinct actionable defect you find in this pass, ordered by severity. Each later review round costs another full fix-test-review cycle, so do not withhold a known finding for a later round.
+        - Before returning, sweep the entire change bundle again for independent defects in other files or failure modes that you may have stopped checking after an earlier finding.
         - Include security findings only when the patch creates a concrete exploitable risk, removes an important safety check, or lacks validation at a trust boundary.
         - For each finding, use the smallest file/line location that demonstrates the issue.
         - If there are no direct or induced findings, return an empty findings array or only adjacent/unrelated findings and mark the patch correct.
