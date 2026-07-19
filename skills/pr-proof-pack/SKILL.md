@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable PR proof when creating a pull request, updating a PR body, modifying proof, or changing a branch after proof was written. Use for net diff summaries, PR-visible screenshots, Mermaid diagrams, API examples, behavioral verification, and proof cleanup.
+description: Create or refresh reviewer-checkable pull-request proof from the net diff, including behavioral verification and PR-visible evidence when relevant.
 ---
 
 # PR Proof Pack

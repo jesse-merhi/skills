@@ -50,7 +50,8 @@ session will focus on and tailor the document accordingly.
    Done when the worker is told how to prove the repair, create/update PR proof,
    run review, and report residual risk.
 
-6. Launch only after the handoff and placement/isolation decisions are clear.
+6. Launch only when the user requested a new task or worker. A document-only
+   handoff stops after saving and reporting the handoff path.
 
    When creating a brand-new session outside tmux, seed it with only a concise
    message that links to the handoff document, states the next focus, tells the

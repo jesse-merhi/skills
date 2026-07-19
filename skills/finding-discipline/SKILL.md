@@ -1,6 +1,6 @@
 ---
 name: finding-discipline
-description: 'Filter code-review observations into actionable findings for PR, cold, security, and noisy-diff reviews; remove style nits and vague risks.'
+description: 'Filter review observations into confirmed, actionable, root-cause-deduplicated findings; exclude style nits and vague risks.'
 ---
 
 # Finding Discipline

@@ -1,6 +1,6 @@
 ---
 name: review-surface-map
-description: 'Map changed runtime surfaces for a PR, branch, commit, or large diff: entrypoints, flows, callers, contracts, side effects, risk, and validation.'
+description: 'Map each changed runtime flow from entrypoint through contracts and side effects to risks and proving validation.'
 ---
 
 # Review Surface Map

@@ -1,6 +1,6 @@
 ---
 name: session-recall
-description: Find prior local Codex or Claude agent sessions with the agent-session-find CLI. Use when context may exist in previous sessions, after compaction or handoff, before asking the user to remember prior work, when searching for old fixes, decisions, commands, errors, file paths, repo context, review outcomes, or "where did we handle this before?" Keep session contents local and use low-token search results before opening full logs.
+description: Find prior local Codex or Claude sessions when earlier work may answer the current question. Keep contents local and inspect low-token result cards before opening logs.
 ---
 
 # Session Recall
