@@ -1,6 +1,6 @@
 ---
 name: cold-pr-review-until-clean
-description: 'Run independent cold-review subagents on a PR, branch, or diff, fix actionable findings, and repeat until the configured clean stop condition is met.'
+description: 'Run fresh isolated cold reviews, fix actionable findings, and repeat to the configured clean stop condition.'
 ---
 
 # Cold PR Review Until Clean

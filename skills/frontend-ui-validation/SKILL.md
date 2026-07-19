@@ -52,8 +52,9 @@ belong in project testing skills.
    comparisons, read
    [references/design-specific-checks.md](references/design-specific-checks.md).
 
-8. Fix every real `error` and `warning` before claiming done. If a finding is
-   intentional, explain why. Re-run the same viewport and state after each fix.
+8. Report every real `error` and `warning`. If implementation is authorized,
+   fix each finding and re-run the same viewport and state. Otherwise, return
+   the evidence and recommended fix without editing source.
 
 ## Done Means
 

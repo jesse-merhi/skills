@@ -9,8 +9,9 @@ Use this when the user wants an existing PRD or slice plan implemented with
 subagents. The orchestrator owns decomposition, dependency order, integration,
 and final verification. Workers own narrow vertical slices.
 
-Always load `tdd` before assigning implementation work. Load the
-relevant repo/domain skill before decomposition.
+Load `tdd` for behavior-changing implementation slices. A worker may use a
+named docs, configuration, or generated-artifact exception when no executable
+behavior changes. Load the relevant repo/domain skill before decomposition.
 
 Only spawn subagents when the user has explicitly asked for subagents,
 delegation, or parallel agent work. Otherwise, produce the slice plan and ask

@@ -5,8 +5,9 @@ description: 'Investigate a question against high-trust primary sources and capt
 
 # Research
 
-Investigate a question against primary sources and leave one cited Markdown
-note the user or another skill can read later.
+Investigate a question against primary sources. Write a cited Markdown note
+only when the user asks for durable research; otherwise return the cited answer
+in chat without creating an artifact.
 
 Primary sources include official docs, source code, specs, standards, release
 notes, first-party APIs, and repository-owned notes. Prefer them over blog

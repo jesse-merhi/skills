@@ -14,8 +14,9 @@ Do not start with a fix. Start by making the failure observable and repeatable.
 3. Reproduce the failure before editing production code.
 4. Rank hypotheses by evidence, not plausibility.
 5. Instrument surgically only where it answers a specific question.
-6. Fix the smallest proven cause.
-7. Add or update regression coverage when the failure was real behavior.
+6. If implementation is authorized, fix the smallest proven cause.
+   Otherwise, stop after establishing the cause and recommended fix.
+7. When a fix is authorized, add or update regression coverage for real behavior.
 8. Verify with the original failing command and the affected broader command set.
 9. Report using [reporting.md](references/reporting.md).
 

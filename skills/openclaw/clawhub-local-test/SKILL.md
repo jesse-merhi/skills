@@ -1,6 +1,6 @@
 ---
 name: clawhub-local-test
-description: Start and manage a local ClawHub manual-test instance backed by a development Convex database refreshed from production. Use when testing ClawHub UI, moderation, API, search, publisher, package, skill, or Convex-backed behavior locally with prod-like data instead of hand-running setup, prod export, dev/local import, dev auth fixture, and app server commands.
+description: Start and manage a guarded local ClawHub manual-test instance backed by a development Convex database refreshed from production-like data.
 ---
 
 # ClawHub Local Test

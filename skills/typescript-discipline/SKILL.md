@@ -1,6 +1,6 @@
 ---
 name: typescript-discipline
-description: 'Write or review TypeScript production code, shared domain types, schemas, API/client contracts, exported functions, typed React, casts, any/unknown, ts-ignore, narrowing, and package-script verification.'
+description: 'Write or review production TypeScript with shared domain types, explicit boundary validation, safe narrowing, and targeted package verification.'
 ---
 
 # TypeScript Discipline

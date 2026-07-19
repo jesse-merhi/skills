@@ -26,7 +26,9 @@ duplicated types, or clever inline transformations.
 3. Model structured data before serialization. If data becomes a string, array,
    or hash, serialize once at an explicit boundary.
 4. Scan for the red flags in [red-flags.md](references/red-flags.md).
-5. Apply the replacement patterns in [patterns.md](references/patterns.md).
+5. In review-only work, recommend concrete replacement patterns from
+   [patterns.md](references/patterns.md). Apply them only when refactoring is
+   authorized.
 6. Use the extraction test in [extraction-test.md](references/extraction-test.md)
    before adding helper functions.
 7. When reviewing a diff, use [review-checklist.md](references/review-checklist.md)
