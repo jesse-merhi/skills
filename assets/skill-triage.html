@@ -120,6 +120,73 @@
     text-transform: uppercase;
   }
 
+  .decision-brief {
+    margin-bottom: 22px;
+    padding: 22px;
+    border: 1px solid #bdcbbf;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #edf4ef 0%, #f8f5ec 72%);
+    box-shadow: 0 14px 34px rgba(36, 42, 38, 0.05);
+  }
+  .brief-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .brief-head h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(25px, 3vw, 34px);
+    font-weight: 500;
+  }
+  .brief-head p { max-width: 720px; margin: 5px 0 0; color: var(--muted); }
+  .source-rule {
+    max-width: 360px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--amber);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .source-rule strong { color: var(--ink); }
+  .brief-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1fr;
+    gap: 12px;
+  }
+  .brief-column {
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(255, 253, 248, 0.84);
+  }
+  .brief-column h3 { margin: 0; font-size: 14px; }
+  .brief-column > p { margin: 5px 0 11px; color: var(--muted); font-size: 12px; }
+  .brief-items { display: grid; gap: 8px; }
+  .brief-item {
+    padding: 9px 10px;
+    border-radius: 9px;
+    background: #f3f0e8;
+    font-size: 12px;
+  }
+  .brief-item a, .skill-chip { color: var(--forest); font-weight: 750; text-decoration: none; }
+  .brief-item p { margin: 4px 0 0; color: var(--muted); }
+  .skill-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .skill-chip {
+    display: inline-flex;
+    padding: 5px 7px;
+    border: 1px solid #cbd3cd;
+    border-radius: 7px;
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 9px;
+  }
+  .brief-column details summary { color: var(--forest); cursor: pointer; font-size: 12px; font-weight: 750; }
+  .brief-column details[open] summary { margin-bottom: 9px; }
+
   .toolbar {
     position: sticky;
     top: 0;
@@ -290,6 +357,24 @@
   .badge.high { background: var(--red-soft); color: var(--red); }
   .badge.medium { background: var(--amber-soft); color: var(--amber); }
   .badge.low { background: var(--blue-soft); color: var(--blue); }
+  .origin-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid #c2cfc6;
+    border-radius: 999px;
+    color: var(--forest);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+  .origin-badge.adapted { border-color: #d5b875; background: #fff4d8; color: #775112; }
+  .origin-badge.vendored { border-color: #aebed5; background: #e9f0fa; color: #34567f; }
+  .origin-badge.inspired { background: #edf4ef; }
   .path {
     display: block;
     margin-top: 5px;
@@ -593,6 +678,8 @@
 
   @media (max-width: 1060px) {
     .summary-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .brief-grid { grid-template-columns: 1fr 1fr; }
+    .brief-column:first-child { grid-column: 1 / -1; }
     .content { grid-template-columns: 1fr; }
     .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .sidebar h2, .sidebar p { grid-column: 1 / -1; }
@@ -603,6 +690,8 @@
     .shell { padding: 30px 16px 64px; }
     .hero { grid-template-columns: 1fr; gap: 18px; }
     .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .brief-grid { grid-template-columns: 1fr; }
+    .brief-column:first-child { grid-column: auto; }
     .toolbar { position: static; margin-inline: 0; }
     .toolbar .btn, .toolbar select { flex: 1 1 145px; }
     .recommendation, .decision-area { grid-template-columns: 1fr; padding-left: 19px; }
@@ -632,10 +721,10 @@
   <section class="hero">
     <div>
       <div class="eyebrow">Skills repository · GPT-5.6 prompt simplification</div>
-      <h1>Decide what changes, one skill at a time.</h1>
-      <p class="lede">Review all 37 recommendations against the actual skill writing, mark your decision, and leave corrections or constraints in plain language. Your choices save locally in this browser; copy the handoff when you want me to implement them.</p>
+      <h1>Your decisions, with the source context intact.</h1>
+      <p class="lede">The triage is complete. Use the briefing below to see what is ready, what you intentionally preserved, and what still needs discussion before any skill files change.</p>
     </div>
-    <div class="hero-note"><strong>Suggested flow:</strong> expand “Review proposed diff” before deciding. Each patch is checked against the current skill source, with the relevant numbered lines and full `SKILL.md` underneath. “Keep” means reject the patch and retain the skill as written.</div>
+    <div class="hero-note"><strong>Source-aware rule:</strong> adapted skills keep their upstream philosophy by default. We only make a local change when it fixes a harness mismatch, adds attribution, or records an intentional fork.</div>
   </section>
 
   <section class="summary-strip" aria-label="Triage summary">
@@ -644,8 +733,10 @@
     <div class="metric"><span class="metric-value" id="metricAgree">0</span><span class="metric-label">Agree</span></div>
     <div class="metric"><span class="metric-value" id="metricModify">0</span><span class="metric-label">Modify</span></div>
     <div class="metric"><span class="metric-value" id="metricDefer">0</span><span class="metric-label">Defer</span></div>
-    <div class="metric"><span class="metric-value" id="metricKeep">0</span><span class="metric-label">Keep as-is</span></div>
+    <div class="metric"><span class="metric-value" id="metricKeep">0</span><span class="metric-label">Preserve</span></div>
   </section>
+
+  <section class="decision-brief" id="decisionBrief" aria-label="Decision briefing"></section>
 
   <section class="toolbar" aria-label="Triage controls">
     <label class="search-wrap">
@@ -669,8 +760,18 @@
         <option value="agree">Agree</option>
         <option value="modify">Modify</option>
         <option value="defer">Defer</option>
-        <option value="keep">Keep as-is</option>
+        <option value="keep">Preserve</option>
         <option value="commented">Has comment</option>
+      </select>
+    </label>
+    <label>
+      <span class="decision-label">Origin</span>
+      <select id="originFilter">
+        <option value="all">All origins</option>
+        <option value="local">Local</option>
+        <option value="adapted">Adapted</option>
+        <option value="inspired">Inspired</option>
+        <option value="vendored">Vendored material</option>
       </select>
     </label>
     <button class="btn" id="clearFiltersBtn" type="button">Clear filters</button>
@@ -705,8 +806,22 @@
 
 <script>
   var STORAGE_KEY = 'skills-triage-gpt56-v1';
-  var DECISION_LABELS = { agree: 'Agree', modify: 'Modify', defer: 'Defer', keep: 'Keep as-is' };
+  var DECISION_LABELS = { agree: 'Agree', modify: 'Modify', defer: 'Defer', keep: 'Preserve' };
   var PRIORITY_LABELS = { high: 'Fix first', medium: 'Structural simplification', low: 'Light polish' };
+  var ORIGINS = {
+    'tdd': {kind:'adapted',label:'Adapted · Matt Pocock',source:'https://github.com/mattpocock/skills/blob/main/skills/engineering/tdd/SKILL.md',note:'Near-verbatim upstream behavior; prefer attribution or a documented overlay over rewriting its philosophy.'},
+    'writing-great-skills': {kind:'adapted',label:'Adapted · Matt Pocock',source:'https://github.com/mattpocock/skills',note:'Explicitly adapted and already carries the upstream MIT notice.'},
+    'design-engineering': {kind:'adapted',label:'Adapted · Emil Kowalski',source:'https://github.com/emilkowalski/skills',note:'Adapted motion guidance with an upstream MIT notice.'},
+    'review-animations': {kind:'adapted',label:'Adapted · Emil Kowalski',source:'https://github.com/emilkowalski/skills',note:'Adapted review guidance with an upstream MIT notice.'},
+    'html-explanations': {kind:'vendored',label:'Vendored examples · Anthropic',source:'https://github.com/ThariqS/html-effectiveness',note:'The wrapper is local; its example gallery is vendored with the upstream license.'},
+    'grilling': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local workflow shaped by Matt Pocock’s ideas rather than a tracked verbatim copy.'},
+    'grill-with-docs': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local workflow shaped by Matt Pocock’s ideas rather than a tracked verbatim copy.'},
+    'handoff': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local workflow shaped by Matt Pocock’s ideas rather than a tracked verbatim copy.'},
+    'parallel-slice-orchestration': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local orchestration built around the repository’s own parallel-worker policy.'},
+    'to-spec': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local planning workflow shaped by Matt Pocock’s ideas.'},
+    'to-tickets': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local planning workflow shaped by Matt Pocock’s ideas.'},
+    'wayfinder': {kind:'inspired',label:'Matt-inspired local skill',source:'https://github.com/mattpocock/skills',note:'Local multi-session planning workflow shaped by Matt Pocock’s ideas.'}
+  };
   var SKILLS = [
     {name:'clawsweeper-until-clean',priority:'high',path:'skills/openclaw/clawsweeper-until-clean/SKILL.md',remove:'Resolve the direct conflict with AGENTS.md: the skill posts PR comments while repo policy forbids them. Consolidate the three-clean rule, currently repeated in four places.',add:'Either add a narrow AGENTS.md exception for explicit invocation, or require the user to post each trigger. Preserve freshness, head-SHA, and safety-cap rules.'},
     {name:'diagnose',priority:'high',path:'skills/diagnose/SKILL.md',remove:'Remove the unconditional “fix the smallest proven cause”; diagnosing does not necessarily authorize implementation.',add:'Add diagnose-only and diagnose-and-fix branches. Both reproduce and establish cause; only the latter edits code.'},
@@ -716,7 +831,7 @@
     {name:'pr-rubbish-audit',priority:'high',path:'skills/pr-rubbish-audit/SKILL.md',remove:'Its name and description promise an audit, but step 6 automatically edits the tree.',add:'Make audit/report the default. Add an authorized cleanup branch that applies the approved plan and validates it.'},
     {name:'research',priority:'high',path:'skills/research/SKILL.md',remove:'Do not implicitly create a Markdown file for every documentation or API question. Its trigger is broader than its side effect.',add:'Either make it explicit-only or narrow the trigger to requests for durable research. Add a chat-only branch for ordinary factual research.'},
     {name:'skill-cleaner',priority:'high',path:'skills/skill-cleaner/SKILL.md',remove:'Remove generated suggested descriptions until they preserve trigger meaning; the current generic replacements are unsafe.',add:'Report the visible truncated prefix, budget by root, and “manual rewrite candidate.” Add tests proving suggestions retain product, action, object, and exclusion nouns.'},
-    {name:'tdd',priority:'high',path:'skills/tdd/SKILL.md',remove:'Remove the absolute requirement to ask the user to approve every seam. Reconsider “refactoring is not part of the loop,” which conflicts with conventional red-green-refactor.',add:'Infer seams from existing public contracts and ask only when materially ambiguous. Restore a bounded refactor phase or explicitly rename this as red-green-only TDD.'},
+    {name:'tdd',priority:'high',path:'skills/tdd/SKILL.md',remove:'Retire the behavioral rewrite. The current skill closely tracks Matt Pocock’s upstream TDD, including pre-agreed seams and keeping refactoring outside the red-green loop.',add:'Add explicit upstream attribution and preserve those semantics. Put any repository-specific behavior in a documented local overlay or intentional fork.'},
     {name:'wait-efficiently',priority:'high',path:'skills/wait-efficiently/SKILL.md',remove:'Move Codex-specific nested polling mechanics out of the core body. Shorten the description’s list of wait synonyms.',add:'Keep the universal contract: one pre-wait update, no unchanged heartbeat narration, meaningful-state reporting, and efficient product-native waiting.'},
 
     {name:'code-review',priority:'medium',path:'skills/code-review/SKILL.md',remove:'Remove phase behavior already owned by review-until-clean, cold-pr-review-until-clean, review-guardrails, and references.',add:'Keep orchestration order, target identity, phase handoff, overall completion, and an explicit warning that this workflow fixes findings rather than performing a read-only review.'},
@@ -786,11 +901,8 @@
       after: ['- Preserve trigger nouns in descriptions: product, tool, action, object.', '- Treat generated descriptions as manual rewrite candidates until tests prove', '  that they preserve trigger meaning and exclusions.', '- Do not delete ignored/untracked skill dirs without naming the destination or']
     }],
     'tdd': [{
-      before: ['Test only at pre-agreed seams. Before writing any test, write down the seams', 'under test and confirm them with the user. No test is written at an unconfirmed', 'seam. You cannot test everything; agreeing the seams up front is how testing', 'effort lands on the critical paths and complex logic instead of every edge case.', '', 'Ask: "What is the public interface, and which seams should we test?"'],
-      after: ['Infer test seams from existing public contracts and write them down before', 'testing. Ask the user only when multiple plausible seams would materially change', 'coverage, cost, or the product contract.']
-    }, {
-      before: ['- **Refactoring is not part of the loop.** It belongs to the review stage; use', '  `code-review` for that work.'],
-      after: ['- **Refactor after green.** Make only behavior-preserving improvements needed', '  for the current slice, then re-run the test before starting the next red step.']
+      before: ['# Test-Driven Development', '', 'TDD is the red -> green loop. This skill is the reference that makes that loop'],
+      after: ['# Test-Driven Development', '', 'This skill adapts Matt Pocock’s upstream `tdd` skill. Preserve its pre-agreed', 'seam and red -> green loop semantics unless this repository intentionally', 'documents a fork.', '', 'TDD is the red -> green loop. This skill is the reference that makes that loop']
     }],
     'wait-efficiently': [{
       before: ['Keep one tool call pending for the whole wait. Do not return unchanged state to', 'the model between polls.'],
@@ -908,8 +1020,12 @@
     }]
   };
 
+  var DISCUSSION_NOTES = {
+    'handoff': 'Open design choice: keep one skill with document-only and launch branches, or split launching into a separate skill.',
+    'tdd': 'Upstream check: the current wording tracks Matt Pocock’s TDD skill. Preserve its seams and loop semantics; limit the local change to attribution or an explicit overlay.'
+  };
   var state = loadState();
-  var filters = { search: '', priority: 'all', decision: 'all' };
+  var filters = { search: '', priority: 'all', decision: 'all', origin: 'all' };
   var toastTimer = null;
   var sourceCache = {};
   var openContexts = {};
@@ -936,6 +1052,10 @@
     return String(value).replace(/[&<>"']/g, function (char) {
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[char];
     });
+  }
+
+  function originFor(skill) {
+    return ORIGINS[skill.name] || {kind:'local',label:'Local skill',source:'',note:'Repository-owned skill.'};
   }
 
   function currentDescription(source) {
@@ -1094,18 +1214,22 @@
     var query = filters.search.trim().toLowerCase();
     return SKILLS.filter(function (skill) {
       var entry = getEntry(skill.name);
-      var matchesSearch = !query || [skill.name, skill.path, skill.remove, skill.add].join(' ').toLowerCase().includes(query);
+      var origin = originFor(skill);
+      var matchesSearch = !query || [skill.name, skill.path, skill.remove, skill.add, origin.label, origin.note].join(' ').toLowerCase().includes(query);
       var matchesPriority = filters.priority === 'all' || skill.priority === filters.priority;
+      var matchesOrigin = filters.origin === 'all' || origin.kind === filters.origin;
       var matchesDecision = filters.decision === 'all' ||
         (filters.decision === 'unreviewed' && !entry.decision) ||
         (filters.decision === 'commented' && entry.comment.trim()) ||
         entry.decision === filters.decision;
-      return matchesSearch && matchesPriority && matchesDecision;
+      return matchesSearch && matchesPriority && matchesOrigin && matchesDecision;
     });
   }
 
   function makeCard(skill, index) {
     var entry = getEntry(skill.name);
+    var origin = originFor(skill);
+    var originBadge = origin.kind === 'local' ? '' : '<a class="origin-badge ' + escapeHtml(origin.kind) + '" href="' + escapeHtml(origin.source) + '" target="_blank" rel="noreferrer" title="' + escapeHtml(origin.note) + '">' + escapeHtml(origin.label) + '</a>';
     var article = document.createElement('article');
     article.className = 'card';
     article.id = 'skill-' + skill.name;
@@ -1116,7 +1240,7 @@
       '<div class="card-head">' +
         '<div class="index">' + String(index + 1).padStart(2, '0') + '</div>' +
         '<div class="title-block">' +
-          '<div class="title-row"><h3>' + escapeHtml(skill.name) + '</h3><span class="badge ' + skill.priority + '">' + escapeHtml(PRIORITY_LABELS[skill.priority]) + '</span></div>' +
+          '<div class="title-row"><h3>' + escapeHtml(skill.name) + '</h3><span class="badge ' + skill.priority + '">' + escapeHtml(PRIORITY_LABELS[skill.priority]) + '</span>' + originBadge + '</div>' +
           '<span class="path">' + escapeHtml(skill.path) + '</span>' +
         '</div>' +
       '</div>' +
@@ -1201,6 +1325,39 @@
     updateSummary();
   }
 
+  function skillChips(skills) {
+    return '<div class="skill-chips">' + skills.map(function (skill) {
+      return '<a class="skill-chip" href="#skill-' + escapeHtml(skill.name) + '">' + escapeHtml(skill.name) + '</a>';
+    }).join('') + '</div>';
+  }
+
+  function renderDecisionBrief(counts) {
+    var agreed = SKILLS.filter(function (skill) { return getEntry(skill.name).decision === 'agree'; });
+    var modified = SKILLS.filter(function (skill) { return getEntry(skill.name).decision === 'modify'; });
+    var preserved = SKILLS.filter(function (skill) { return getEntry(skill.name).decision === 'keep'; });
+    var externalCount = SKILLS.filter(function (skill) {
+      return ['adapted', 'vendored'].includes(originFor(skill).kind);
+    }).length;
+    var discussionItems = modified.map(function (skill) {
+      var entry = getEntry(skill.name);
+      return '<div class="brief-item"><a href="#skill-' + escapeHtml(skill.name) + '">' + escapeHtml(skill.name) + '</a>' +
+        (entry.comment ? '<p><strong>Your note:</strong> ' + escapeHtml(entry.comment) + '</p>' : '') +
+        (DISCUSSION_NOTES[skill.name] ? '<p><strong>What it means:</strong> ' + escapeHtml(DISCUSSION_NOTES[skill.name]) + '</p>' : '') +
+      '</div>';
+    }).join('') || '<div class="brief-item">Nothing is waiting for discussion.</div>';
+
+    document.getElementById('decisionBrief').innerHTML =
+      '<div class="brief-head">' +
+        '<div><h2>You chose targeted cleanup, not a wholesale rewrite.</h2><p>' + counts.agree + ' proposals are ready to apply, ' + counts.modify + ' need a design decision, and ' + counts.keep + ' are intentionally preserved.</p></div>' +
+        '<div class="source-rule"><strong>Provenance guardrail:</strong> ' + externalCount + ' entries contain explicitly adapted or vendored material. Preserve upstream semantics by default; document any intentional fork.</div>' +
+      '</div>' +
+      '<div class="brief-grid">' +
+        '<section class="brief-column"><h3>Talk through next · ' + modified.length + '</h3><p>These are questions, not implementation approvals.</p><div class="brief-items">' + discussionItems + '</div></section>' +
+        '<section class="brief-column"><h3>Preserve · ' + preserved.length + '</h3><p>Keep the current skill behavior and reject the proposed patch.</p>' + skillChips(preserved) + '</section>' +
+        '<section class="brief-column"><h3>Ready to apply · ' + agreed.length + '</h3><p>Mostly authorization boundaries, description trimming, and deduplication.</p><details><summary>Show approved skills</summary>' + skillChips(agreed) + '</details></section>' +
+      '</div>';
+  }
+
   function updateSummary() {
     var counts = { agree: 0, modify: 0, defer: 0, keep: 0 };
     SKILLS.forEach(function (skill) {
@@ -1216,6 +1373,7 @@
     document.getElementById('metricKeep').textContent = counts.keep;
     document.getElementById('progressBar').style.width = ((reviewed / SKILLS.length) * 100).toFixed(1) + '%';
     document.getElementById('progressCopy').textContent = reviewed + ' of ' + SKILLS.length + ' reviewed';
+    renderDecisionBrief(counts);
   }
 
   function buildMarkdown() {
@@ -1227,7 +1385,7 @@
     var lines = [
       '# Skill simplification triage',
       '',
-      'Summary: ' + counts.agree + ' agree · ' + counts.modify + ' modify · ' + counts.defer + ' defer · ' + counts.keep + ' keep as-is · ' + counts.unreviewed + ' unreviewed',
+      'Summary: ' + counts.agree + ' agree · ' + counts.modify + ' modify · ' + counts.defer + ' defer · ' + counts.keep + ' preserve · ' + counts.unreviewed + ' unreviewed',
       ''
     ];
     ['high', 'medium', 'low'].forEach(function (priority) {
@@ -1237,6 +1395,7 @@
         var entry = getEntry(skill.name);
         lines.push('### ' + skill.name + ' — ' + (DECISION_LABELS[entry.decision] || 'Unreviewed'));
         lines.push('');
+        if (originFor(skill).kind !== 'local') lines.push('Origin: ' + originFor(skill).label + ' — ' + originFor(skill).source);
         if (entry.comment.trim()) lines.push('Comment: ' + entry.comment.trim());
         else lines.push('Comment: _none_');
         lines.push('');
@@ -1285,11 +1444,16 @@
     filters.decision = event.target.value;
     render();
   });
+  document.getElementById('originFilter').addEventListener('change', function (event) {
+    filters.origin = event.target.value;
+    render();
+  });
   document.getElementById('clearFiltersBtn').addEventListener('click', function () {
-    filters = { search: '', priority: 'all', decision: 'all' };
+    filters = { search: '', priority: 'all', decision: 'all', origin: 'all' };
     document.getElementById('searchInput').value = '';
     document.getElementById('priorityFilter').value = 'all';
     document.getElementById('decisionFilter').value = 'all';
+    document.getElementById('originFilter').value = 'all';
     render();
   });
   document.getElementById('copyBtn').addEventListener('click', function () {
