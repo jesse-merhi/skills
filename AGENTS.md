@@ -6,6 +6,8 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 
 ## Communication
 
+- Default to concise, answer-first output. Prefer short sections and bullets
+  over long prose; include only the context needed to act.
 - When explaining technical concepts, write for an intelligent reader fresh
   out of high school: assume no specialist background, use plain language,
   define necessary jargon, preserve important nuance, and include a concrete
