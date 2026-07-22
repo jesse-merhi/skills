@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+"""Durable SQLite registry for independent blog-review findings."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+STATUSES = ("open", "fixed", "rejected", "deferred", "duplicate")
+SEVERITIES = ("P1", "P2", "P3")
+VERDICTS = ("findings", "clean", "blocked")
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def connect(path: str) -> sqlite3.Connection:
+    db_path = Path(path).expanduser().resolve()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    connection.executescript(
+        """
+        PRAGMA foreign_keys = ON;
+        CREATE TABLE IF NOT EXISTS reviews (
+            review_id TEXT PRIMARY KEY,
+            target TEXT NOT NULL,
+            target_hash TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            audience TEXT NOT NULL DEFAULT '',
+            purpose TEXT NOT NULL DEFAULT '',
+            corpus_path TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS findings (
+            review_id TEXT NOT NULL,
+            finding_id TEXT NOT NULL,
+            lens TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            status TEXT NOT NULL,
+            location TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            evidence TEXT NOT NULL,
+            suggestion TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            duplicate_of TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (review_id, finding_id),
+            FOREIGN KEY (review_id) REFERENCES reviews(review_id)
+        );
+        CREATE TABLE IF NOT EXISTS passes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            review_id TEXT NOT NULL,
+            agent TEXT NOT NULL,
+            lens TEXT NOT NULL,
+            target_hash TEXT NOT NULL,
+            verdict TEXT NOT NULL,
+            notes TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (review_id) REFERENCES reviews(review_id)
+        );
+        """
+    )
+    review_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(reviews)").fetchall()
+    }
+    for column in ("audience", "purpose", "corpus_path"):
+        if column not in review_columns:
+            connection.execute(
+                f"ALTER TABLE reviews ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+            )
+    connection.commit()
+    return connection
+
+
+def content_hash(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def review_exists(connection: sqlite3.Connection, review_id: str) -> bool:
+    return connection.execute(
+        "SELECT 1 FROM reviews WHERE review_id = ?", (review_id,)
+    ).fetchone() is not None
+
+
+def command_init(args: argparse.Namespace) -> None:
+    connection = connect(args.db)
+    target = Path(args.target).expanduser().resolve()
+    if not target.is_file():
+        raise SystemExit(f"Target does not exist: {target}")
+    actual_hash = content_hash(target)
+    if args.target_hash and args.target_hash != actual_hash:
+        raise SystemExit(f"Target hash mismatch: expected {args.target_hash}, found {actual_hash}")
+    existing = connection.execute(
+        "SELECT target, target_hash FROM reviews WHERE review_id = ?", (args.review_id,)
+    ).fetchone()
+    if existing is not None:
+        if existing["target"] != str(target) or existing["target_hash"] != actual_hash:
+            raise SystemExit(f"Review ID {args.review_id} already belongs to a different target snapshot")
+        connection.execute(
+            """UPDATE reviews SET mode = ?, audience = ?, purpose = ?, corpus_path = ?, updated_at = ?
+               WHERE review_id = ?""",
+            (args.mode, args.audience, args.purpose, args.corpus_path, now(), args.review_id),
+        )
+        connection.commit()
+        print(args.review_id)
+        return
+    timestamp = now()
+    connection.execute(
+        """INSERT INTO reviews(
+             review_id, target, target_hash, mode, audience, purpose, corpus_path,
+             created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            args.review_id, str(target), actual_hash, args.mode, args.audience,
+            args.purpose, args.corpus_path, timestamp, timestamp,
+        ),
+    )
+    connection.commit()
+    print(args.review_id)
+
+
+def command_record(args: argparse.Namespace) -> None:
+    connection = connect(args.db)
+    if not review_exists(connection, args.review_id):
+        raise SystemExit(f"Unknown review: {args.review_id}")
+    if args.status == "duplicate" and not args.duplicate_of:
+        raise SystemExit("--duplicate-of is required for duplicate findings")
+    timestamp = now()
+    connection.execute(
+        """INSERT INTO findings(
+             review_id, finding_id, lens, severity, status, location, summary,
+             evidence, suggestion, fingerprint, duplicate_of, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(review_id, finding_id) DO UPDATE SET
+             lens=excluded.lens,
+             severity=excluded.severity,
+             status=excluded.status,
+             location=excluded.location,
+             summary=excluded.summary,
+             evidence=excluded.evidence,
+             suggestion=excluded.suggestion,
+             fingerprint=excluded.fingerprint,
+             duplicate_of=excluded.duplicate_of,
+             updated_at=excluded.updated_at""",
+        (
+            args.review_id, args.finding_id, args.lens, args.severity, args.status,
+            args.location, args.summary, args.evidence, args.suggestion,
+            args.fingerprint, args.duplicate_of, timestamp, timestamp,
+        ),
+    )
+    connection.execute(
+        "UPDATE reviews SET updated_at = ? WHERE review_id = ?",
+        (timestamp, args.review_id),
+    )
+    connection.commit()
+    print(f"{args.finding_id} {args.status}")
+
+
+def command_record_pass(args: argparse.Namespace) -> None:
+    connection = connect(args.db)
+    review = connection.execute(
+        "SELECT target, target_hash FROM reviews WHERE review_id = ?", (args.review_id,)
+    ).fetchone()
+    if review is None:
+        raise SystemExit(f"Unknown review: {args.review_id}")
+    actual_hash = content_hash(Path(str(review["target"])))
+    if args.target_hash != review["target_hash"] or actual_hash != review["target_hash"]:
+        raise SystemExit("Cannot record a pass against a stale or mismatched target snapshot")
+    connection.execute(
+        """INSERT INTO passes(review_id, agent, lens, target_hash, verdict, notes, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (args.review_id, args.agent, args.lens, args.target_hash, args.verdict, args.notes, now()),
+    )
+    connection.commit()
+    print(f"{args.lens} {args.verdict}")
+
+
+def row_dict(row: sqlite3.Row) -> dict[str, object]:
+    return {key: row[key] for key in row.keys()}
+
+
+def command_list(args: argparse.Namespace) -> None:
+    connection = connect(args.db)
+    query = "SELECT * FROM findings WHERE review_id = ?"
+    parameters: list[str] = [args.review_id]
+    if args.status:
+        query += " AND status = ?"
+        parameters.append(args.status)
+    query += " ORDER BY CASE severity WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END, finding_id"
+    rows = connection.execute(query, parameters).fetchall()
+    if args.json:
+        print(json.dumps([row_dict(row) for row in rows], indent=2))
+        return
+    for row in rows:
+        print(f"{row['finding_id']} {row['severity']} {row['status']} [{row['lens']}] {row['summary']}")
+        print(f"  {row['location']}: {row['evidence']}")
+        print(f"  Direction: {row['suggestion']}")
+
+
+def command_closeout(args: argparse.Namespace) -> None:
+    connection = connect(args.db)
+    review = connection.execute(
+        "SELECT * FROM reviews WHERE review_id = ?", (args.review_id,)
+    ).fetchone()
+    if review is None:
+        raise SystemExit(f"Unknown review: {args.review_id}")
+    actual_hash = content_hash(Path(str(review["target"])))
+    findings = connection.execute(
+        """SELECT * FROM findings WHERE review_id = ?
+           ORDER BY CASE severity WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END, finding_id""",
+        (args.review_id,),
+    ).fetchall()
+    passes = connection.execute(
+        "SELECT * FROM passes WHERE review_id = ? ORDER BY id", (args.review_id,)
+    ).fetchall()
+    counts: dict[str, int] = {status: 0 for status in STATUSES}
+    for finding in findings:
+        counts[str(finding["status"])] += 1
+    print(f"Review: {review['review_id']}")
+    print(f"Target: {review['target']}")
+    print(f"Target hash: {review['target_hash']}")
+    print(f"Snapshot: {'current' if actual_hash == review['target_hash'] else 'stale'}")
+    print(f"Mode: {review['mode']}")
+    print(f"Audience: {review['audience']}")
+    print(f"Purpose: {review['purpose']}")
+    print(f"Corpus: {review['corpus_path'] or 'none'}")
+    print(f"Passes: {len(passes)}")
+    for review_pass in passes:
+        print(f"- {review_pass['lens']} / {review_pass['agent']}: {review_pass['verdict']} on {review_pass['target_hash']}")
+    print("Findings:")
+    print("- " + ", ".join(f"{status}={counts[status]}" for status in STATUSES))
+    for finding in findings:
+        print(f"- {finding['finding_id']} {finding['severity']} {finding['status']}: {finding['summary']} ({finding['location']})")
+    remaining = [finding for finding in findings if finding["status"] in {"open", "deferred"}]
+    print("Still open:")
+    if remaining:
+        for finding in remaining:
+            print(f"- {finding['finding_id']}: {finding['summary']}")
+    else:
+        print("- none")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="command", required=True)
+
+    init = subparsers.add_parser("init")
+    init.add_argument("--db", required=True)
+    init.add_argument("--review-id", required=True)
+    init.add_argument("--target", required=True)
+    init.add_argument("--target-hash")
+    init.add_argument("--mode", choices=("review-only", "review-and-revise"), required=True)
+    init.add_argument("--audience", required=True)
+    init.add_argument("--purpose", required=True)
+    init.add_argument("--corpus-path", default="")
+    init.set_defaults(function=command_init)
+
+    record = subparsers.add_parser("record")
+    record.add_argument("--db", required=True)
+    record.add_argument("--review-id", required=True)
+    record.add_argument("--finding-id", required=True)
+    record.add_argument("--lens", required=True)
+    record.add_argument("--severity", choices=SEVERITIES, required=True)
+    record.add_argument("--status", choices=STATUSES, required=True)
+    record.add_argument("--location", required=True)
+    record.add_argument("--summary", required=True)
+    record.add_argument("--evidence", required=True)
+    record.add_argument("--suggestion", required=True)
+    record.add_argument("--fingerprint", required=True)
+    record.add_argument("--duplicate-of")
+    record.set_defaults(function=command_record)
+
+    record_pass = subparsers.add_parser("record-pass")
+    record_pass.add_argument("--db", required=True)
+    record_pass.add_argument("--review-id", required=True)
+    record_pass.add_argument("--agent", required=True)
+    record_pass.add_argument("--lens", required=True)
+    record_pass.add_argument("--target-hash", required=True)
+    record_pass.add_argument("--verdict", choices=VERDICTS, required=True)
+    record_pass.add_argument("--notes", required=True)
+    record_pass.set_defaults(function=command_record_pass)
+
+    list_parser = subparsers.add_parser("list")
+    list_parser.add_argument("--db", required=True)
+    list_parser.add_argument("--review-id", required=True)
+    list_parser.add_argument("--status", choices=STATUSES)
+    list_parser.add_argument("--json", action="store_true")
+    list_parser.set_defaults(function=command_list)
+
+    closeout = subparsers.add_parser("closeout")
+    closeout.add_argument("--db", required=True)
+    closeout.add_argument("--review-id", required=True)
+    closeout.set_defaults(function=command_closeout)
+    return root
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    args.function(args)
+
+
+if __name__ == "__main__":
+    main()

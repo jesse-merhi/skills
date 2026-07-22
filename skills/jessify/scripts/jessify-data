@@ -1,0 +1,862 @@
+#!/usr/bin/env python3
+"""Prepare a local corpus and training/evaluation data for Jessify."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from collections import Counter
+from pathlib import Path
+from typing import Any, Iterable
+
+
+SCHEMA_VERSION = 1
+TEXT_SUFFIXES = {".md", ".mdx", ".txt"}
+QUALITY_WEIGHTS = {"canonical": 1.0, "usable": 0.7, "exclude": 0.0}
+ROLES = {
+    "opening", "setup", "explanation", "example", "transition", "aside",
+    "argument", "reflection", "punchline", "conclusion", "unknown",
+}
+WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?")
+
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+def stable_id(prefix: str, *parts: str) -> str:
+    digest = hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()[:16]
+    return f"{prefix}_{digest}"
+
+
+def ensure_workspace(workspace: Path) -> None:
+    for relative in (
+        "corpus/raw", "training", "preferences", "eval", "reviews"
+    ):
+        (workspace / relative).mkdir(parents=True, exist_ok=True)
+    manifest = workspace / "project.json"
+    if not manifest.exists():
+        write_json(manifest, {"schema_version": SCHEMA_VERSION, "name": "jessify"})
+
+
+def write_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+    temporary.replace(path)
+
+
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line_number, line in enumerate(path.read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as exc:
+            fail(f"{path}:{line_number}: invalid JSON: {exc}")
+        if not isinstance(value, dict):
+            fail(f"{path}:{line_number}: expected an object")
+        rows.append(value)
+    return rows
+
+
+def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    temporary.replace(path)
+
+
+def words(text: str) -> list[str]:
+    return [match.group(0).lower().replace("’", "'") for match in WORD_RE.finditer(text)]
+
+
+def clean_inline(text: str) -> str:
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def parse_document(path: Path) -> tuple[str, list[dict[str, str]]]:
+    raw = path.read_text(encoding="utf-8")
+    fallback = path.parent.name if path.stem.lower() in {"blog", "index", "readme"} else path.stem
+    title = fallback.replace("-", " ").replace("_", " ").strip().title()
+    frontmatter = re.match(r"\A---\s*\n(.*?)\n---\s*\n", raw, flags=re.DOTALL)
+    if frontmatter:
+        title_match = re.search(r"^title:\s*(.+?)\s*$", frontmatter.group(1), flags=re.MULTILINE)
+        if title_match:
+            title = title_match.group(1).strip().strip("'\"") or title
+        raw = raw[frontmatter.end():]
+    section = "Introduction"
+    blocks: list[dict[str, str]] = []
+    buffer: list[str] = []
+    in_fence = False
+
+    def flush() -> None:
+        nonlocal buffer
+        if not buffer:
+            return
+        original = "\n".join(buffer).strip()
+        buffer = []
+        plain = clean_inline(re.sub(r"^(?:>|[-*+] |\d+\. )+", "", original, flags=re.MULTILINE))
+        if not plain or not re.search(r"[A-Za-z]", plain):
+            return
+        if "MEDIA PLACEHOLDER" in plain.upper():
+            return
+        if re.fullmatch(r"(?:[-*]\s*)?\[[^]]+\]\(#[^)]+\)", original.strip()):
+            return
+        blocks.append({"section": section, "text": original, "plain_text": plain})
+
+    for line in raw.splitlines():
+        if line.lstrip().startswith("```"):
+            flush()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        heading = re.match(r"^(#{1,6})\s+(.+?)\s*$", line)
+        if heading:
+            flush()
+            section = clean_inline(heading.group(2)) or section
+            if len(heading.group(1)) == 1:
+                title = section
+            continue
+        if not line.strip():
+            flush()
+            continue
+        if re.search(r"<(?:img|video|source)\b", line, flags=re.IGNORECASE):
+            flush()
+            continue
+        buffer.append(line)
+    flush()
+    return title, blocks
+
+
+def chunk_blocks(blocks: list[dict[str, str]], minimum: int, maximum: int) -> list[dict[str, str]]:
+    chunks: list[dict[str, str]] = []
+    current: list[dict[str, str]] = []
+    current_words = 0
+
+    def flush() -> None:
+        nonlocal current, current_words
+        if not current:
+            return
+        chunks.append({
+            "section": current[0]["section"],
+            "text": "\n\n".join(item["text"] for item in current),
+            "plain_text": "\n\n".join(item["plain_text"] for item in current),
+        })
+        current = []
+        current_words = 0
+
+    for block in blocks:
+        count = len(words(block["plain_text"]))
+        section_changed = current and current[0]["section"] != block["section"]
+        would_overflow = current and current_words + count > maximum
+        if section_changed or (would_overflow and current_words >= minimum):
+            flush()
+        current.append(block)
+        current_words += count
+        if current_words >= maximum:
+            flush()
+    flush()
+
+    if len(chunks) >= 2 and len(words(chunks[-1]["plain_text"])) < minimum:
+        tail = chunks.pop()
+        if chunks[-1]["section"] == tail["section"]:
+            chunks[-1]["text"] += "\n\n" + tail["text"]
+            chunks[-1]["plain_text"] += "\n\n" + tail["plain_text"]
+        else:
+            chunks.append(tail)
+    return chunks
+
+
+def source_files(inputs: list[str]) -> list[Path]:
+    found: list[Path] = []
+    for raw in inputs:
+        path = Path(raw).expanduser().resolve()
+        if not path.exists():
+            fail(f"Input does not exist: {path}")
+        if path.is_file() and path.suffix.lower() in TEXT_SUFFIXES:
+            found.append(path)
+        elif path.is_dir():
+            found.extend(
+                candidate for candidate in sorted(path.rglob("*"))
+                if candidate.is_file() and candidate.suffix.lower() in TEXT_SUFFIXES
+            )
+    unique = {str(path): path for path in found}
+    return [unique[key] for key in sorted(unique)]
+
+
+def command_init(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    ensure_workspace(workspace)
+    print(workspace)
+
+
+def command_ingest(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    ensure_workspace(workspace)
+    documents_path = workspace / "corpus/documents.jsonl"
+    units_path = workspace / "corpus/units.jsonl"
+    documents = load_jsonl(documents_path)
+    units = load_jsonl(units_path)
+    files = source_files(args.input)
+    if not files:
+        fail("No Markdown, MDX, or text files found")
+    if args.min_words < 1 or args.max_words < args.min_words:
+        fail("--min-words must be positive and no greater than --max-words")
+
+    for path in files:
+        content = path.read_text(encoding="utf-8")
+        source_key = str(path)
+        documents = [row for row in documents if row.get("source_path") != source_key]
+        previous_ids = {
+            row.get("id") for row in units if row.get("source_path") == source_key
+        }
+        units = [row for row in units if row.get("id") not in previous_ids]
+        title, blocks = parse_document(path)
+        chunks = chunk_blocks(blocks, args.min_words, args.max_words)
+        document_id = stable_id("doc", source_key, hashlib.sha256(content.encode()).hexdigest())
+        destination = workspace / "corpus/raw" / f"{document_id}{path.suffix.lower()}"
+        shutil.copy2(path, destination)
+        documents.append({
+            "schema_version": SCHEMA_VERSION,
+            "id": document_id,
+            "title": title,
+            "source_path": source_key,
+            "raw_copy": str(destination),
+            "quality": args.quality,
+            "split": args.split,
+            "sha256": hashlib.sha256(content.encode()).hexdigest(),
+            "unit_count": len(chunks),
+        })
+        for index, chunk in enumerate(chunks):
+            preceding = chunks[index - 1]["plain_text"][-800:] if index else ""
+            following = chunks[index + 1]["plain_text"][:800] if index + 1 < len(chunks) else ""
+            units.append({
+                "schema_version": SCHEMA_VERSION,
+                "id": stable_id("unit", document_id, str(index), chunk["plain_text"]),
+                "document_id": document_id,
+                "source_path": source_key,
+                "title": title,
+                "section": chunk["section"],
+                "unit_index": index,
+                "quality": args.quality,
+                "split": args.split,
+                "text": chunk["text"],
+                "plain_text": chunk["plain_text"],
+                "word_count": len(words(chunk["plain_text"])),
+                "preceding_context": preceding,
+                "following_context": following,
+            })
+        print(f"ingested {path}: {len(chunks)} units ({args.quality}, {args.split})")
+
+    write_jsonl(documents_path, sorted(documents, key=lambda row: str(row["source_path"])))
+    write_jsonl(units_path, sorted(units, key=lambda row: (str(row["source_path"]), int(row["unit_index"]))))
+
+
+def reverse_prompt(unit: dict[str, Any], variant: int) -> str:
+    return f"""Convert the authored blog passage below into a style-neutral writing brief.
+Return one JSON object with exactly these keys:
+- neutral_brief: facts, claims, story beats, and intended reader movement
+- rhetorical_role: one of {', '.join(sorted(ROLES - {'unknown'}))}
+- must_preserve: an array of atomic facts or constraints
+- structure: an array describing the logical sequence
+
+Do not imitate the author's wording, cadence, punctuation, humor, or voice.
+Do not quote distinctive phrases. Do not invent facts. Variant {variant} should
+express the same content differently from other variants.
+
+Section: {unit['section']}
+Previous context: {unit['preceding_context']}
+Passage:
+{unit['plain_text']}
+Following context: {unit['following_context']}
+"""
+
+
+def split_paths(workspace: Path, split: str) -> tuple[Path, Path, Path]:
+    directory = workspace / ("training" if split == "train" else "eval")
+    return (
+        directory / "reverse-instruction-requests.jsonl",
+        directory / "reverse-instruction-responses.jsonl",
+        directory / ("sft-pairs.jsonl" if split == "train" else "cases.jsonl"),
+    )
+
+
+def command_requests(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    ensure_workspace(workspace)
+    if args.variants < 1:
+        fail("--variants must be at least 1")
+    units = load_jsonl(workspace / "corpus/units.jsonl")
+    rows: list[dict[str, Any]] = []
+    for unit in units:
+        if unit.get("split") != args.split or unit.get("quality") not in {"canonical", "usable"}:
+            continue
+        for variant in range(1, args.variants + 1):
+            rows.append({
+                "schema_version": SCHEMA_VERSION,
+                "custom_id": f"reverse:{unit['id']}:{variant}",
+                "source_unit_id": unit["id"],
+                "variant": variant,
+                "prompt": reverse_prompt(unit, variant),
+                "target_text": unit["text"],
+            })
+    output, _, _ = split_paths(workspace, args.split)
+    write_jsonl(output, rows)
+    print(f"wrote {len(rows)} requests to {output}")
+
+
+def command_run_requests(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    ensure_workspace(workspace)
+    requests_path, responses_path, _ = split_paths(workspace, args.split)
+    requests = load_jsonl(requests_path)
+    if not requests:
+        fail(f"No requests found at {requests_path}; run requests first")
+    command = shlex.split(args.command)
+    if not command:
+        fail("--command cannot be empty")
+    request_ids = {str(row["custom_id"]) for row in requests}
+    existing = load_jsonl(responses_path) if args.resume else []
+    by_id = {
+        str(row.get("custom_id")): row
+        for row in existing
+        if str(row.get("custom_id")) in request_ids
+    }
+    completed = 0
+    for request in requests:
+        custom_id = str(request["custom_id"])
+        if custom_id in by_id:
+            continue
+        if args.limit is not None and completed >= args.limit:
+            break
+        result = subprocess.run(
+            command,
+            input=str(request["prompt"]),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "no output"
+            fail(f"Runner failed for {custom_id} with exit {result.returncode}: {detail}")
+        if not result.stdout.strip():
+            fail(f"Runner returned no output for {custom_id}")
+        response = {
+            "schema_version": SCHEMA_VERSION,
+            "custom_id": custom_id,
+            "content": result.stdout.strip(),
+        }
+        extract_response(response)
+        by_id[custom_id] = response
+        completed += 1
+        ordered = [by_id[str(row["custom_id"])] for row in requests if str(row["custom_id"]) in by_id]
+        write_jsonl(responses_path, ordered)
+        print(f"completed {custom_id}", file=sys.stderr)
+    ordered = [by_id[str(row["custom_id"])] for row in requests if str(row["custom_id"]) in by_id]
+    write_jsonl(responses_path, ordered)
+    print(f"wrote {len(by_id)} responses to {responses_path}")
+
+
+def extract_response(row: dict[str, Any]) -> dict[str, Any]:
+    if all(key in row for key in ("neutral_brief", "rhetorical_role", "must_preserve", "structure")):
+        return row
+    candidate: Any = row.get("output_text") or row.get("content") or row.get("response")
+    if isinstance(candidate, dict):
+        body = candidate.get("body", candidate)
+        choices = body.get("choices") if isinstance(body, dict) else None
+        if choices:
+            candidate = choices[0].get("message", {}).get("content")
+    if not isinstance(candidate, str):
+        fail(f"Could not find response content for {row.get('custom_id', '<unknown>')}")
+    candidate = re.sub(r"\A```(?:json)?\s*|\s*```\Z", "", candidate.strip(), flags=re.IGNORECASE)
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError as exc:
+        fail(f"Invalid JSON response for {row.get('custom_id', '<unknown>')}: {exc}")
+    if not isinstance(parsed, dict):
+        fail("Reverse-instruction response must be an object")
+    return parsed
+
+
+def command_merge_responses(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    ensure_workspace(workspace)
+    requests_path, stored_responses_path, output = split_paths(workspace, args.split)
+    requests = {
+        row["custom_id"]: row
+        for row in load_jsonl(requests_path)
+    }
+    units = {row["id"]: row for row in load_jsonl(workspace / "corpus/units.jsonl")}
+    response_rows = load_jsonl(Path(args.responses).expanduser().resolve())
+    response_ids = [str(row.get("custom_id")) for row in response_rows]
+    duplicate_ids = sorted(identifier for identifier, count in Counter(response_ids).items() if count > 1)
+    if duplicate_ids:
+        fail(f"Duplicate custom_id values in responses: {', '.join(duplicate_ids)}")
+    missing_ids = sorted(set(requests) - set(response_ids))
+    if missing_ids and not args.allow_partial:
+        fail(f"Missing {len(missing_ids)} responses; rerun with --allow-partial only for deliberate inspection")
+    pairs: list[dict[str, Any]] = []
+    for response_row in response_rows:
+        custom_id = response_row.get("custom_id")
+        if custom_id not in requests:
+            fail(f"Unknown custom_id in responses: {custom_id}")
+        request = requests[custom_id]
+        unit = units[request["source_unit_id"]]
+        parsed = extract_response(response_row)
+        role = str(parsed.get("rhetorical_role", "unknown"))
+        if role not in ROLES:
+            fail(f"Unsupported rhetorical_role for {custom_id}: {role}")
+        must_preserve = parsed.get("must_preserve")
+        structure = parsed.get("structure")
+        if not isinstance(must_preserve, list) or not isinstance(structure, list):
+            fail(f"must_preserve and structure must be arrays for {custom_id}")
+        if not all(isinstance(item, str) and item.strip() for item in must_preserve + structure):
+            fail(f"must_preserve and structure must contain only non-empty strings for {custom_id}")
+        neutral_brief = str(parsed.get("neutral_brief", "")).strip()
+        if not neutral_brief:
+            fail(f"Empty neutral_brief for {custom_id}")
+        pair = {
+            "schema_version": SCHEMA_VERSION,
+            "id": stable_id("pair", custom_id, neutral_brief),
+            "custom_id": custom_id,
+            "source_unit_id": unit["id"],
+            "document_id": unit["document_id"],
+            "quality": unit["quality"],
+            "split": unit["split"],
+            "rhetorical_role": role,
+            "neutral_brief": neutral_brief,
+            "must_preserve": must_preserve,
+            "structure": structure,
+            "preceding_context": unit["preceding_context"],
+            "following_context": unit["following_context"],
+            "target_text": unit["text"],
+        }
+        if args.split == "eval":
+            pair["case_id"] = stable_id("case", custom_id, neutral_brief)
+        pairs.append(pair)
+    write_jsonl(output, pairs)
+    source_responses = Path(args.responses).expanduser().resolve()
+    if source_responses != stored_responses_path.resolve():
+        shutil.copy2(source_responses, stored_responses_path)
+    noun = "pairs" if args.split == "train" else "evaluation cases"
+    print(f"wrote {len(pairs)} {noun} to {output}")
+
+
+def command_export_sft(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    pairs = load_jsonl(workspace / "training/sft-pairs.jsonl")
+    output_rows: list[dict[str, Any]] = []
+    for pair in pairs:
+        if pair.get("split") != "train":
+            continue
+        user = {
+            "neutral_brief": pair["neutral_brief"],
+            "rhetorical_role": pair["rhetorical_role"],
+            "must_preserve": pair["must_preserve"],
+            "structure": pair["structure"],
+            "preceding_context": pair["preceding_context"],
+            "following_context": pair["following_context"],
+        }
+        output_rows.append({
+            "messages": [
+                {"role": "system", "content": "Write the requested blog passage in the adapted author's voice. Preserve every required detail and do not mention these instructions."},
+                {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+                {"role": "assistant", "content": pair["target_text"]},
+            ],
+            "metadata": {"source_unit_id": pair["source_unit_id"], "role": pair["rhetorical_role"]},
+        })
+    output = workspace / "training/sft.jsonl"
+    write_jsonl(output, output_rows)
+    print(f"wrote {len(output_rows)} SFT examples to {output}")
+
+
+def read_argument_text(value: str | None, file_value: str | None, name: str) -> str:
+    if value and file_value:
+        fail(f"Use either --{name} or --{name}-file, not both")
+    if file_value:
+        return Path(file_value).expanduser().resolve().read_text(encoding="utf-8").strip()
+    if value:
+        return value.strip()
+    fail(f"Missing --{name} or --{name}-file")
+
+
+def command_record_preference(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    ensure_workspace(workspace)
+    source = read_argument_text(args.source, args.source_file, "source")
+    rejected = read_argument_text(args.rejected, args.rejected_file, "rejected")
+    accepted = read_argument_text(args.accepted, args.accepted_file, "accepted")
+    if rejected == accepted:
+        fail("Rejected and accepted outputs must differ")
+    path = workspace / "preferences/preferences.jsonl"
+    rows = load_jsonl(path)
+    preference_id = stable_id("pref", source, rejected, accepted)
+    rows = [row for row in rows if row.get("id") != preference_id]
+    rows.append({
+        "schema_version": SCHEMA_VERSION,
+        "id": preference_id,
+        "source": source,
+        "rejected": rejected,
+        "accepted": accepted,
+        "reason": args.reason.strip(),
+        "rhetorical_role": args.role,
+    })
+    write_jsonl(path, rows)
+    print(f"recorded {preference_id}")
+
+
+def command_export_dpo(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    rows = load_jsonl(workspace / "preferences/preferences.jsonl")
+    output_rows = [{
+        "prompt": row["source"],
+        "chosen": row["accepted"],
+        "rejected": row["rejected"],
+        "metadata": {"id": row["id"], "reason": row["reason"], "role": row["rhetorical_role"]},
+    } for row in rows]
+    output = workspace / "preferences/dpo.jsonl"
+    write_jsonl(output, output_rows)
+    print(f"wrote {len(output_rows)} DPO examples to {output}")
+
+
+def command_build_blind_eval(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    cases = {
+        str(row["case_id"]): row
+        for row in load_jsonl(workspace / "eval/cases.jsonl")
+    }
+    if not cases:
+        fail("No evaluation cases; prepare the eval split first")
+    candidates = load_jsonl(Path(args.candidates).expanduser().resolve())
+    grouped: dict[str, list[dict[str, str]]] = {}
+    for row in candidates:
+        case_id = str(row.get("case_id", ""))
+        system = str(row.get("system", "")).strip()
+        output = str(row.get("output", "")).strip()
+        if case_id not in cases:
+            fail(f"Candidate references unknown case_id: {case_id}")
+        if not system or not output:
+            fail(f"Candidate {case_id} requires non-empty system and output")
+        grouped.setdefault(case_id, []).append({"system": system, "output": output})
+
+    cards: list[dict[str, Any]] = []
+    keys: list[dict[str, Any]] = []
+    for case_id, case in cases.items():
+        options = grouped.get(case_id, [])
+        systems = [option["system"] for option in options]
+        if len(set(systems)) != len(systems):
+            fail(f"Evaluation case {case_id} has duplicate outputs for one system")
+        if len(systems) < 2:
+            fail(f"Evaluation case {case_id} needs outputs from at least two systems")
+        if len(systems) > 26:
+            fail(f"Evaluation case {case_id} has more than 26 systems")
+        options = sorted(
+            options,
+            key=lambda option: hashlib.sha256(
+                f"{args.seed}\0{case_id}\0{option['system']}".encode("utf-8")
+            ).hexdigest(),
+        )
+        public_options: list[dict[str, str]] = []
+        key_options: list[dict[str, str]] = []
+        for index, option in enumerate(options):
+            label = chr(ord("A") + index)
+            public_options.append({"label": label, "output": option["output"]})
+            key_options.append({"label": label, "system": option["system"]})
+        cards.append({
+            "schema_version": SCHEMA_VERSION,
+            "case_id": case_id,
+            "neutral_brief": case["neutral_brief"],
+            "rhetorical_role": case["rhetorical_role"],
+            "must_preserve": case["must_preserve"],
+            "structure": case["structure"],
+            "options": public_options,
+        })
+        keys.append({"schema_version": SCHEMA_VERSION, "case_id": case_id, "options": key_options})
+    cards_path = workspace / "eval/blind-cases.jsonl"
+    key_path = workspace / "eval/blind-key.jsonl"
+    write_jsonl(cards_path, cards)
+    write_jsonl(key_path, keys)
+    print(f"wrote {len(cards)} blind cases to {cards_path}; keep {key_path} hidden from the evaluator")
+
+
+def command_score_blind_eval(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    keys = {
+        str(row["case_id"]): {
+            str(option["label"]): str(option["system"])
+            for option in row["options"]
+        }
+        for row in load_jsonl(workspace / "eval/blind-key.jsonl")
+    }
+    if not keys:
+        fail("No blind evaluation key; run build-blind-eval first")
+    choices = load_jsonl(Path(args.choices).expanduser().resolve())
+    wins: Counter[str] = Counter()
+    seen: set[str] = set()
+    for choice in choices:
+        case_id = str(choice.get("case_id", ""))
+        label = str(choice.get("label", ""))
+        if case_id in seen:
+            fail(f"Duplicate choice for case_id: {case_id}")
+        if case_id not in keys or label not in keys[case_id]:
+            fail(f"Unknown blind choice: {case_id} / {label}")
+        wins[keys[case_id][label]] += 1
+        seen.add(case_id)
+    print(json.dumps({
+        "evaluated": len(seen),
+        "missing": len(keys) - len(seen),
+        "wins": dict(wins.most_common()),
+    }, indent=2))
+
+
+def command_retrieve(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    query = read_argument_text(args.query, args.query_file, "query")
+    units = [
+        row for row in load_jsonl(workspace / "corpus/units.jsonl")
+        if row.get("split") == "train" and row.get("quality") in {"canonical", "usable"}
+        and (not args.exclude_document or row.get("document_id") != args.exclude_document)
+    ]
+    if not units:
+        fail("No eligible corpus units")
+    role_counts: dict[str, Counter[str]] = {}
+    for pair in load_jsonl(workspace / "training/sft-pairs.jsonl"):
+        unit_id = str(pair.get("source_unit_id", ""))
+        role = str(pair.get("rhetorical_role", "unknown"))
+        if unit_id and role in ROLES:
+            role_counts.setdefault(unit_id, Counter())[role] += 1
+    document_tokens = [Counter(words(str(unit["plain_text"]))) for unit in units]
+    document_frequency: Counter[str] = Counter()
+    for counts in document_tokens:
+        document_frequency.update(counts.keys())
+    query_counts = Counter(words(query))
+    total = len(units)
+
+    def vector(counts: Counter[str]) -> dict[str, float]:
+        return {
+            token: count * (math.log((total + 1) / (document_frequency[token] + 1)) + 1.0)
+            for token, count in counts.items()
+        }
+
+    query_vector = vector(query_counts)
+    query_norm = math.sqrt(sum(value * value for value in query_vector.values())) or 1.0
+    scored: list[tuple[float, dict[str, Any]]] = []
+    for unit, counts in zip(units, document_tokens):
+        unit_vector = vector(counts)
+        norm = math.sqrt(sum(value * value for value in unit_vector.values())) or 1.0
+        similarity = sum(query_vector.get(token, 0.0) * value for token, value in unit_vector.items()) / (query_norm * norm)
+        quality = QUALITY_WEIGHTS[str(unit["quality"])]
+        inferred_role = "unknown"
+        if unit["id"] in role_counts:
+            inferred_role = role_counts[unit["id"]].most_common(1)[0][0]
+        role_bonus = 0.15 if args.role != "unknown" and inferred_role == args.role else 0.0
+        score = similarity * 0.75 + quality * 0.25 + role_bonus
+        scored.append((score, {**unit, "rhetorical_role": inferred_role}))
+    selected = sorted(scored, key=lambda item: item[0], reverse=True)[:args.limit]
+    if args.json:
+        print(json.dumps([{**unit, "retrieval_score": round(score, 6)} for score, unit in selected], indent=2, ensure_ascii=False))
+        return
+    for rank, (score, unit) in enumerate(selected, start=1):
+        print(f"[{rank}] {score:.4f} {unit['title']} / {unit['section']} ({unit['quality']})")
+        print(unit["text"])
+        print()
+
+
+def command_stats(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    documents = load_jsonl(workspace / "corpus/documents.jsonl")
+    units = load_jsonl(workspace / "corpus/units.jsonl")
+    pairs = load_jsonl(workspace / "training/sft-pairs.jsonl")
+    preferences = load_jsonl(workspace / "preferences/preferences.jsonl")
+    eval_cases = load_jsonl(workspace / "eval/cases.jsonl")
+    result = {
+        "documents": len(documents),
+        "units": len(units),
+        "words": sum(int(row.get("word_count", 0)) for row in units),
+        "quality": dict(Counter(str(row.get("quality")) for row in documents)),
+        "splits": dict(Counter(str(row.get("split")) for row in documents)),
+        "sft_pairs": len(pairs),
+        "preferences": len(preferences),
+        "eval_cases": len(eval_cases),
+    }
+    print(json.dumps(result, indent=2))
+
+
+def require_keys(rows: list[dict[str, Any]], keys: set[str], path: Path, errors: list[str]) -> None:
+    seen: set[str] = set()
+    for index, row in enumerate(rows, start=1):
+        missing = keys - row.keys()
+        if missing:
+            errors.append(f"{path}:{index}: missing {sorted(missing)}")
+        identifier = row.get("id")
+        if identifier and identifier in seen:
+            errors.append(f"{path}:{index}: duplicate id {identifier}")
+        if identifier:
+            seen.add(str(identifier))
+
+
+def command_validate(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    errors: list[str] = []
+    documents_path = workspace / "corpus/documents.jsonl"
+    units_path = workspace / "corpus/units.jsonl"
+    pairs_path = workspace / "training/sft-pairs.jsonl"
+    preferences_path = workspace / "preferences/preferences.jsonl"
+    eval_cases_path = workspace / "eval/cases.jsonl"
+    documents = load_jsonl(documents_path)
+    units = load_jsonl(units_path)
+    pairs = load_jsonl(pairs_path)
+    preferences = load_jsonl(preferences_path)
+    eval_cases = load_jsonl(eval_cases_path)
+    require_keys(documents, {"id", "source_path", "quality", "split", "sha256"}, documents_path, errors)
+    require_keys(units, {"id", "document_id", "text", "plain_text", "quality", "split"}, units_path, errors)
+    require_keys(pairs, {"id", "source_unit_id", "neutral_brief", "target_text", "split"}, pairs_path, errors)
+    require_keys(preferences, {"id", "source", "rejected", "accepted", "reason"}, preferences_path, errors)
+    require_keys(eval_cases, {"case_id", "source_unit_id", "neutral_brief", "target_text", "split"}, eval_cases_path, errors)
+    document_ids = {row.get("id") for row in documents}
+    splits_by_hash: dict[str, set[str]] = {}
+    for document in documents:
+        splits_by_hash.setdefault(str(document.get("sha256")), set()).add(str(document.get("split")))
+    for sha256, splits in splits_by_hash.items():
+        if len(splits) > 1:
+            errors.append(f"document content {sha256} appears in both training and evaluation splits")
+    unit_ids = {row.get("id") for row in units}
+    for unit in units:
+        if unit.get("document_id") not in document_ids:
+            errors.append(f"unit {unit.get('id')} references unknown document")
+    for pair in pairs:
+        if pair.get("source_unit_id") not in unit_ids:
+            errors.append(f"pair {pair.get('id')} references unknown unit")
+        if pair.get("split") != "train":
+            errors.append(f"pair {pair.get('id')} leaks non-training split")
+    for preference in preferences:
+        if preference.get("accepted") == preference.get("rejected"):
+            errors.append(f"preference {preference.get('id')} has identical outputs")
+    training_document_ids = {row.get("document_id") for row in pairs}
+    for case in eval_cases:
+        if case.get("source_unit_id") not in unit_ids:
+            errors.append(f"evaluation case {case.get('case_id')} references unknown unit")
+        if case.get("split") != "eval":
+            errors.append(f"evaluation case {case.get('case_id')} is not on the eval split")
+        if case.get("document_id") in training_document_ids:
+            errors.append(f"evaluation case {case.get('case_id')} leaks a training document")
+    if errors:
+        print("\n".join(errors), file=sys.stderr)
+        raise SystemExit(1)
+    print(f"valid: {len(documents)} documents, {len(units)} units, {len(pairs)} pairs, {len(preferences)} preferences, {len(eval_cases)} evaluation cases")
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="command", required=True)
+
+    init = subparsers.add_parser("init")
+    init.add_argument("--workspace", required=True)
+    init.set_defaults(function=command_init)
+
+    ingest = subparsers.add_parser("ingest")
+    ingest.add_argument("--workspace", required=True)
+    ingest.add_argument("--input", action="append", required=True)
+    ingest.add_argument("--quality", choices=sorted(QUALITY_WEIGHTS), required=True)
+    ingest.add_argument("--split", choices=("train", "eval"), default="train")
+    ingest.add_argument("--min-words", type=int, default=60)
+    ingest.add_argument("--max-words", type=int, default=260)
+    ingest.set_defaults(function=command_ingest)
+
+    requests = subparsers.add_parser("requests")
+    requests.add_argument("--workspace", required=True)
+    requests.add_argument("--variants", type=int, default=2)
+    requests.add_argument("--split", choices=("train", "eval"), default="train")
+    requests.set_defaults(function=command_requests)
+
+    run_requests = subparsers.add_parser("run-requests")
+    run_requests.add_argument("--workspace", required=True)
+    run_requests.add_argument("--split", choices=("train", "eval"), default="train")
+    run_requests.add_argument("--command", required=True, help="Runner command; prompt is provided on stdin and JSON is read from stdout")
+    run_requests.add_argument("--limit", type=int)
+    run_requests.add_argument("--resume", action="store_true")
+    run_requests.set_defaults(function=command_run_requests)
+
+    merge = subparsers.add_parser("merge-responses")
+    merge.add_argument("--workspace", required=True)
+    merge.add_argument("--responses", required=True)
+    merge.add_argument("--split", choices=("train", "eval"), default="train")
+    merge.add_argument("--allow-partial", action="store_true")
+    merge.set_defaults(function=command_merge_responses)
+
+    export_sft = subparsers.add_parser("export-sft")
+    export_sft.add_argument("--workspace", required=True)
+    export_sft.set_defaults(function=command_export_sft)
+
+    preference = subparsers.add_parser("record-preference")
+    preference.add_argument("--workspace", required=True)
+    preference.add_argument("--source")
+    preference.add_argument("--source-file")
+    preference.add_argument("--rejected")
+    preference.add_argument("--rejected-file")
+    preference.add_argument("--accepted")
+    preference.add_argument("--accepted-file")
+    preference.add_argument("--reason", required=True)
+    preference.add_argument("--role", choices=sorted(ROLES), default="unknown")
+    preference.set_defaults(function=command_record_preference)
+
+    export_dpo = subparsers.add_parser("export-dpo")
+    export_dpo.add_argument("--workspace", required=True)
+    export_dpo.set_defaults(function=command_export_dpo)
+
+    blind_eval = subparsers.add_parser("build-blind-eval")
+    blind_eval.add_argument("--workspace", required=True)
+    blind_eval.add_argument("--candidates", required=True)
+    blind_eval.add_argument("--seed", default="jessify")
+    blind_eval.set_defaults(function=command_build_blind_eval)
+
+    score_eval = subparsers.add_parser("score-blind-eval")
+    score_eval.add_argument("--workspace", required=True)
+    score_eval.add_argument("--choices", required=True)
+    score_eval.set_defaults(function=command_score_blind_eval)
+
+    retrieve = subparsers.add_parser("retrieve")
+    retrieve.add_argument("--workspace", required=True)
+    retrieve.add_argument("--query")
+    retrieve.add_argument("--query-file")
+    retrieve.add_argument("--role", choices=sorted(ROLES), default="unknown")
+    retrieve.add_argument("--limit", type=int, default=5)
+    retrieve.add_argument("--exclude-document")
+    retrieve.add_argument("--json", action="store_true")
+    retrieve.set_defaults(function=command_retrieve)
+
+    stats = subparsers.add_parser("stats")
+    stats.add_argument("--workspace", required=True)
+    stats.set_defaults(function=command_stats)
+
+    validate = subparsers.add_parser("validate")
+    validate.add_argument("--workspace", required=True)
+    validate.set_defaults(function=command_validate)
+    return root
+
+
+def main() -> None:
+    args = parser().parse_args()
+    args.function(args)
+
+
+if __name__ == "__main__":
+    main()

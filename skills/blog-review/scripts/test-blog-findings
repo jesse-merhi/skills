@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tool="$skill_dir/scripts/blog-findings"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+target="$tmp/article.md"
+db="$tmp/reviews.sqlite"
+printf '# Article\n\nA paragraph.\n' > "$target"
+target_hash="$(shasum -a 256 "$target" | awk '{print $1}')"
+
+"$tool" init --db "$db" --review-id review-1 --target "$target" --target-hash "$target_hash" --mode review-only --audience 'software engineers' --purpose 'explain a workflow' >/dev/null
+"$tool" record-pass --db "$db" --review-id review-1 --agent reviewer-a --lens flow --target-hash "$target_hash" --verdict findings --notes 'One candidate.' >/dev/null
+"$tool" record --db "$db" --review-id review-1 --finding-id W1 --lens flow --severity P2 --status open --location 'Paragraph 1' --summary 'The transition has no referent.' --evidence 'This points to nothing.' --suggestion 'Name the preceding idea.' --fingerprint 'paragraph-1:transition:missing-referent' >/dev/null
+"$tool" record --db "$db" --review-id review-1 --finding-id W1 --lens flow --severity P2 --status fixed --location 'Paragraph 1' --summary 'The transition has no referent.' --evidence 'This points to nothing.' --suggestion 'Named the preceding idea.' --fingerprint 'paragraph-1:transition:missing-referent' >/dev/null
+
+"$tool" list --db "$db" --review-id review-1 --status fixed | grep -q 'W1 P2 fixed'
+"$tool" closeout --db "$db" --review-id review-1 | grep -q 'Still open:'
+"$tool" closeout --db "$db" --review-id review-1 | grep -q -- '- none'
+"$tool" closeout --db "$db" --review-id review-1 | grep -q 'Snapshot: current'
+"$tool" closeout --db "$db" --review-id review-1 | grep -q 'Audience: software engineers'
+printf 'ok - blog findings\n'

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blog Review"
+  short_description: "Run independent editorial reviews of a blog"
+  default_prompt: "Use $blog-review to critique this blog and return actionable writing findings."

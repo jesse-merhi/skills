@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""Deterministic stdin runner used by the Jessify data test."""
+
+import json
+import sys
+
+
+prompt = sys.stdin.read()
+if "Passage:" not in prompt:
+    raise SystemExit("missing passage")
+print(json.dumps({
+    "neutral_brief": "Explain that a small tool grew from an ordinary problem and now preserves useful context.",
+    "rhetorical_role": "explanation",
+    "must_preserve": ["The tool preserves context"],
+    "structure": ["problem", "tool", "benefit"],
+}))

@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tool="$skill_dir/scripts/jessify-data"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+mkdir -p "$tmp/train" "$tmp/eval"
+printf '%s\n' \
+  '# A Test Post' \
+  '' \
+  'I started with a very ordinary problem, which naturally became less ordinary the longer I stared at it. That is usually how these things go for me, and it is probably why I now have another tool.' \
+  '' \
+  'The tool does one thing well. It keeps the important context nearby, lets the rest disappear, and means I can get back to the interesting part without rebuilding everything from scratch.' \
+  > "$tmp/train/post.md"
+printf '%s\n' \
+  '# A Held Out Post' \
+  '' \
+  'Much later, I tried the same idea on an entirely different problem. It mostly worked, which is usually the point where the more interesting failures begin to appear.' \
+  '' \
+  'The important part was not that it failed. The important part was that I could finally see why, fix the actual problem, and keep the strange little bits that made the tool useful in the first place.' \
+  > "$tmp/eval/post.md"
+
+"$tool" init --workspace "$tmp/workspace" >/dev/null
+"$tool" ingest --workspace "$tmp/workspace" --input "$tmp/train" --quality canonical >/dev/null
+"$tool" ingest --workspace "$tmp/workspace" --input "$tmp/eval" --quality usable --split eval >/dev/null
+"$tool" requests --workspace "$tmp/workspace" --variants 1 >/dev/null
+"$tool" requests --workspace "$tmp/workspace" --variants 1 --split eval >/dev/null
+
+request_id="$(python3 -c 'import json,sys; print(json.loads(open(sys.argv[1]).readline())["custom_id"])' "$tmp/workspace/training/reverse-instruction-requests.jsonl")"
+printf '{"custom_id":"%s","neutral_brief":"Explain that a small tool grew from a normal problem and now preserves context.","rhetorical_role":"explanation","must_preserve":["The tool preserves context"],"structure":["problem","tool","benefit"]}\n' "$request_id" > "$tmp/responses.jsonl"
+
+"$tool" merge-responses --workspace "$tmp/workspace" --responses "$tmp/responses.jsonl" >/dev/null
+"$tool" run-requests --workspace "$tmp/workspace" --split eval --command "$skill_dir/scripts/test-reverse-runner" --resume >/dev/null
+"$tool" merge-responses --workspace "$tmp/workspace" --split eval --responses "$tmp/workspace/eval/reverse-instruction-responses.jsonl" >/dev/null
+"$tool" export-sft --workspace "$tmp/workspace" >/dev/null
+"$tool" record-preference --workspace "$tmp/workspace" --source 'Explain the tool.' --rejected 'The tool is useful.' --accepted 'Somehow I built another tool.' --reason 'The accepted line has personality.' >/dev/null
+"$tool" export-dpo --workspace "$tmp/workspace" >/dev/null
+"$tool" retrieve --workspace "$tmp/workspace" --query 'tool that preserves context' --limit 1 --json | grep -q 'retrieval_score'
+
+eval_case_id="$(python3 -c 'import json,sys; print(json.loads(open(sys.argv[1]).readline())["case_id"])' "$tmp/workspace/eval/cases.jsonl")"
+printf '%s\n' \
+  "{\"case_id\":\"$eval_case_id\",\"system\":\"retrieval\",\"output\":\"Candidate one.\"}" \
+  "{\"case_id\":\"$eval_case_id\",\"system\":\"adapter\",\"output\":\"Candidate two.\"}" \
+  > "$tmp/candidates.jsonl"
+"$tool" build-blind-eval --workspace "$tmp/workspace" --candidates "$tmp/candidates.jsonl" >/dev/null
+first_label="$(python3 -c 'import json,sys; print(json.loads(open(sys.argv[1]).readline())["options"][0]["label"])' "$tmp/workspace/eval/blind-cases.jsonl")"
+printf '{"case_id":"%s","label":"%s"}\n' "$eval_case_id" "$first_label" > "$tmp/choices.jsonl"
+"$tool" score-blind-eval --workspace "$tmp/workspace" --choices "$tmp/choices.jsonl" | grep -q '"evaluated": 1'
+"$tool" validate --workspace "$tmp/workspace" | grep -q '^valid:'
+
+test -s "$tmp/workspace/training/sft.jsonl"
+test -s "$tmp/workspace/preferences/dpo.jsonl"
+test -s "$tmp/workspace/eval/blind-key.jsonl"
+printf 'ok - jessify data\n'

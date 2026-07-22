@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jessify"
+  short_description: "Rewrite prose in Jesse’s personal voice"
+  default_prompt: "Use $jessify to rewrite this draft in Jesse’s voice without changing its meaning."
