@@ -9,6 +9,28 @@ Open a PR in its branch's real worktree, then review it through VS Code's
 dedicated active-pull-request view. This gives the user the PR diff and comment
 UI while the modified side remains a local file with full language services.
 
+## Orient a cold reviewer
+
+Before opening individual diffs, give the reviewer a concise, answer-first
+orientation that assumes no repository context. Prefer short sections and
+bullets over long prose; include only the context needed to begin reviewing.
+Do not inventory every changed file.
+
+Cover:
+
+- what part of the product or system is changing
+- the relevant behavior before and after the PR
+- unfamiliar terms needed to follow the change
+- the main runtime flow from entrypoint through state and side effects
+- important contracts, invariants, and risky boundaries
+- a recommended file-and-function tour, with one short reason for each stop
+
+Order the tour by understanding, not directory or diff order. Start with the
+best grounding point, follow the changed behavior end to end, inspect tests as
+proof of that behavior, and leave generated or mechanical changes until their
+upstream purpose is clear. State uncertainty when the available PR description,
+code, or tests do not establish part of the model.
+
 ## The review surface
 
 Use the **GitHub Pull Request** activity-bar view for an active, locally checked
