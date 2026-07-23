@@ -41,6 +41,8 @@ INSTRUCTION_LEAK_RE = re.compile(
     r"these instructions)\b",
     flags=re.IGNORECASE,
 )
+NON_PROSE_ARTIFACT_RE = re.compile(r"```|<[^>]+>|https?://|/Users/")
+NUMBERED_STEP_RE = re.compile(r"^\s*\d+[.)]\s+")
 
 
 def fail(message: str) -> None:
@@ -297,6 +299,7 @@ def retrieval_examples(units: list[dict[str, Any]], case: dict[str, Any], limit:
         if row.get("split") == "train"
         and row.get("quality") in {"canonical", "usable"}
         and row.get("document_id") != case.get("document_id")
+        and is_prose_unit(row)
     ]
     for row in eligible:
         document_frequency.update(set(words(str(row.get("plain_text", "")))))
@@ -337,7 +340,9 @@ def candidate_prompt(case: dict[str, Any], examples: list[dict[str, Any]]) -> st
 Preserve every required fact. Add no claim, motivation, chronology, or certainty.
 Make it sound like a real person thinking aloud: concrete, conversational, and
 specific. Avoid generic inspirational language, fake audience objections, and
-performative drama. Match the rhetorical job and connect naturally to context.
+performative drama. Produce finished blog or how-to prose, not a Slack message,
+chat reply, outline, metadata block, or field/value list. Match the rhetorical
+job and connect naturally to context.
 Aim for roughly {target_word_budget} words and do not exceed {max(45, round(target_word_budget * 1.6))} words.
 Return only the finished passage with no preface.
 
@@ -432,12 +437,27 @@ def batch_dir(workspace: Path, name: str) -> Path:
     return workspace / "rlhf/batches" / name
 
 
+def is_prose_unit(row: dict[str, Any]) -> bool:
+    text = str(row.get("text", ""))
+    if len(words(text)) < 60 or NON_PROSE_ARTIFACT_RE.search(text):
+        return False
+    if NUMBERED_STEP_RE.search(str(row.get("section", ""))):
+        return False
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return False
+    if sum(line.endswith(":") for line in lines) >= 2:
+        return False
+    structured = sum(bool(re.match(r"^([-*]|\d+[.)])\s+", line)) for line in lines)
+    return structured * 5 < len(lines) * 2
+
+
 def choose_units(units: list[dict[str, Any]], split: str, limit: int, seed: str) -> list[dict[str, Any]]:
     eligible = [
         row for row in units
         if row.get("split") == split
         and row.get("quality") in {"canonical", "usable"}
-        and len(words(str(row.get("text", "")))) >= 60
+        and is_prose_unit(row)
     ]
     if not eligible:
         fail(f"No eligible {split} units")

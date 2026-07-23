@@ -32,12 +32,21 @@ units = [
     {"id": "a1", "document_id": "a", "split": "train", "quality": "canonical", "text": "word " * 70},
     {"id": "a2", "document_id": "a", "split": "train", "quality": "canonical", "text": "word " * 70},
     {"id": "b-short", "document_id": "b", "split": "train", "quality": "canonical", "text": "word " * 20},
+    {"id": "b-metadata", "document_id": "b", "split": "train", "quality": "canonical", "text": ("Field:\n" * 8) + ("word " * 70)},
     {"id": "b1", "document_id": "b", "split": "train", "quality": "usable", "text": "word " * 70},
     {"id": "c1", "document_id": "c", "split": "train", "quality": "canonical", "text": "word " * 70},
 ]
 chosen = module.choose_units(units, "train", 3, "test")
 assert {row["document_id"] for row in chosen} == {"a", "b", "c"}
-assert all(row["id"] != "b-short" for row in chosen)
+assert all(row["id"] not in {"b-short", "b-metadata"} for row in chosen)
+prompt = module.candidate_prompt({
+    "neutral_brief": "Explain the result.",
+    "rhetorical_role": "explanation",
+    "must_preserve": ["The result exists"],
+    "structure": ["result"],
+    "target_text": "word " * 70,
+}, [])
+assert "not a Slack message" in prompt
 PY
 
 printf '%s\n' '{"schema_version":1,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"
