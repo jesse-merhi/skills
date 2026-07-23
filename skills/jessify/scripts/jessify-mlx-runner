@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Run one local MLX Jessify adapter prompt from stdin."""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+
+from mlx_lm import generate, load
+from mlx_lm.sample_utils import make_sampler
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--adapter-path", required=True)
+    parser.add_argument("--max-tokens", type=int, default=640)
+    parser.add_argument("--temperature", type=float, default=0.6)
+    args = parser.parse_args()
+    source = sys.stdin.read().strip()
+    if not source:
+        raise SystemExit("missing prompt on stdin")
+    model, tokenizer = load(args.model, adapter_path=args.adapter_path)
+    messages = [{"role": "user", "content": source}]
+    try:
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
+        )
+    except TypeError:
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+    output = generate(
+        model,
+        tokenizer,
+        prompt=prompt,
+        max_tokens=args.max_tokens,
+        sampler=make_sampler(temp=args.temperature, top_p=0.9),
+        verbose=False,
+    )
+    output = re.sub(r"\A<think>[\s\S]*?</think>\s*", "", output).strip()
+    if not output:
+        raise SystemExit("MLX adapter returned an empty response")
+    sys.stdout.write(output)
+
+
+if __name__ == "__main__":
+    main()

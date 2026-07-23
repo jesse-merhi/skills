@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tool="$skill_dir/scripts/jessify-rlhf"
+trainer="$skill_dir/scripts/jessify-train-local"
+tmp="$(mktemp -d)"
+server_pid=""
+cleanup() {
+  if [[ -n "$server_pid" ]]; then
+    kill "$server_pid" 2>/dev/null || true
+  fi
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+workspace="$tmp/workspace"
+preference="$workspace/rlhf/batches/preference-test"
+evaluation="$workspace/rlhf/batches/eval-test"
+mkdir -p "$preference" "$evaluation"
+
+printf '%s\n' '{"schema_version":1,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"
+printf '%s\n' '{"case_id":"case_train","neutral_brief":"Explain why the tool keeps useful context.","rhetorical_role":"explanation","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","options":[{"label":"A","output":"The tool keeps the context I need."},{"label":"B","output":"Context is retained by this innovative solution."}]}' > "$preference/blind-cases.jsonl"
+printf '%s\n' '{"case_id":"case_train","options":[{"label":"A","system":"authentic-reference"},{"label":"B","system":"test-baseline"}]}' > "$preference/blind-key.jsonl"
+printf '%s\n' '{"case_id":"case_train","rhetorical_role":"explanation","neutral_brief":"Explain why the tool keeps useful context.","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","options":[{"label":"A","system":"authentic-reference","output":"The tool keeps the context I need."},{"label":"B","system":"test-baseline","output":"Context is retained by this innovative solution."}]}' > "$preference/private-cases.jsonl"
+printf '%s\n' '{"schema_version":1,"case_id":"case_train","label":"A","tags":["generic-voice"],"confidence":"high","note":"A sounds natural.","edited_output":""}' > "$preference/choices.jsonl"
+
+"$tool" export-preferences --workspace "$workspace" --batch preference-test > "$tmp/export.json"
+grep -q '"added": 1' "$tmp/export.json"
+test "$(wc -l < "$workspace/preferences/preferences.jsonl")" -eq 1
+test "$(wc -l < "$workspace/preferences/dpo.jsonl")" -eq 1
+
+for index in 2 3 4; do
+  printf '{"schema_version":1,"id":"pref_%s","source":"Prompt %s","rejected":"Rejected %s","accepted":"Accepted %s","reason":"test","rhetorical_role":"explanation","batch":"preference-test"}\n' "$index" "$index" "$index" "$index" >> "$workspace/preferences/preferences.jsonl"
+done
+"$trainer" prepare --workspace "$workspace" --validation-fraction 0.25 > "$tmp/train-prepare.json"
+grep -q '"train": 3' "$tmp/train-prepare.json"
+grep -q '"valid": 1' "$tmp/train-prepare.json"
+test "$(wc -l < "$workspace/training/mlx/train.jsonl")" -eq 3
+test "$(wc -l < "$workspace/training/mlx/valid.jsonl")" -eq 1
+
+printf '%s\n' '{"schema_version":1,"name":"eval-test","purpose":"eval","split":"eval","model":"test","seed":"test","count":1}' > "$evaluation/meta.json"
+cp "$preference/blind-cases.jsonl" "$evaluation/blind-cases.jsonl"
+printf '%s\n' '{"case_id":"case_train","options":[{"label":"A","system":"authentic-reference"},{"label":"B","system":"test-baseline"}]}' > "$evaluation/blind-key.jsonl"
+printf '%s\n' '{"schema_version":1,"case_id":"case_train","label":"B","tags":["bad-flow"],"confidence":"medium","note":"","edited_output":""}' > "$evaluation/choices.jsonl"
+cp "$preference/private-cases.jsonl" "$evaluation/private-cases.jsonl"
+
+if "$tool" export-preferences --workspace "$workspace" --batch eval-test >"$tmp/unexpected" 2>&1; then
+  printf 'eval data was incorrectly accepted for training\n' >&2
+  exit 1
+fi
+"$tool" score --workspace "$workspace" --batch eval-test > "$tmp/score.json"
+grep -q '"test-baseline": 1' "$tmp/score.json"
+
+: > "$preference/choices.jsonl"
+"$tool" serve --workspace "$workspace" --batch preference-test --port 0 --no-open > "$tmp/url" 2> "$tmp/server.log" &
+server_pid="$!"
+for _ in {1..50}; do
+  [[ -s "$tmp/url" ]] && break
+  sleep 0.05
+done
+url="$(head -n 1 "$tmp/url")"
+[[ "$url" == http://127.0.0.1:*/* ]]
+curl --fail --silent --dump-header "$tmp/headers" "$url" > "$tmp/index.html"
+grep -qi '^Content-Security-Policy:' "$tmp/headers"
+grep -q 'Which one sounds most like you?' "$tmp/index.html"
+curl --fail --silent "${url}api/state" > "$tmp/state.json"
+if grep -q 'authentic-reference\|test-baseline' "$tmp/state.json"; then
+  printf 'blind API leaked a system name\n' >&2
+  exit 1
+fi
+token="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["token"])' "$tmp/state.json")"
+printf '{"token":"%s","case_id":"case_train","label":"A","tags":[],"confidence":"high","note":"","edited_output":""}\n' "$token" > "$tmp/choice.json"
+curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/choice.json" "${url}api/choice" | grep -q '"saved": true'
+curl --silent --output /dev/null --write-out '%{http_code}' -H 'Host: attacker.invalid' "$url" | grep -q '^403$'
+printf '{"token":"%s"}\n' "$token" > "$tmp/token.json"
+curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/token.json" "${url}api/finish" | grep -q '"total": 4'
+curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/token.json" "${url}api/shutdown" | grep -q '"stopping": true'
+wait "$server_pid"
+server_pid=""
+
+printf 'ok - jessify rlhf\n'

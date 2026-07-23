@@ -104,6 +104,22 @@ surface prose.
    <skill-dir>/scripts/jessify-data export-dpo --workspace <workspace>
    ```
 
+   For a substantial preference-labeling session, use the loopback-only blind
+   desk instead of recording examples one at a time. Read
+   [references/training-and-evaluation.md](references/training-and-evaluation.md),
+   then prepare and serve a training batch:
+
+   ```sh
+   <skill-dir>/scripts/jessify-rlhf prepare --workspace <workspace> \
+     --name preferences-001 --purpose preference --model qwen3:4b --limit 30
+   <skill-dir>/scripts/jessify-rlhf serve --workspace <workspace> \
+     --batch preferences-001
+   ```
+
+   The desk hides system identity, autosaves choices locally, supports edited
+   winners, and exports DPO pairs only after every case is labeled. Never
+   export a held-out evaluation batch into preferences.
+
 7. Train only behind an evaluation gate.
 
    Read [references/training-and-evaluation.md](references/training-and-evaluation.md).
@@ -113,6 +129,37 @@ surface prose.
    those same cases. Use `build-blind-eval` and `score-blind-eval` to choose the
    system Jesse prefers without system labels while content-preservation checks
    still pass.
+
+   For the local blind desk, prepare a separate held-out batch and let the desk
+   reveal aggregate scores only after all labels are saved:
+
+   ```sh
+   <skill-dir>/scripts/jessify-rlhf prepare --workspace <workspace> \
+     --name heldout-001 --purpose eval --model qwen3:4b --limit 20
+   <skill-dir>/scripts/jessify-rlhf serve --workspace <workspace> \
+     --batch heldout-001
+   ```
+
+   `jessify-rlhf` talks only to Ollama at `127.0.0.1`, binds its UI only to
+   `127.0.0.1`, uses no external assets, and keeps system keys server-side.
+   For a corporate or otherwise local-only workspace, do not substitute an
+   external batch API or hosted evaluator.
+
+8. Train the local adapter after preference collection.
+
+   Prepare accepted winners as preference-informed supervised examples, then
+   train a private MLX LoRA on Apple Silicon:
+
+   ```sh
+   <skill-dir>/scripts/jessify-train-local prepare --workspace <workspace>
+   <skill-dir>/scripts/jessify-train-local train --workspace <workspace> \
+     --name qwen3-4b-jessify
+   ```
+
+   This stage uses only chosen outputs for the MLX loss; it is not a substitute
+   for DPO. Keep the separately exported `preferences/dpo.jsonl` for a true
+   pairwise preference trainer. Do not call the adapter successful until it
+   beats the unadapted and retrieval-only systems on the held-out blind batch.
 
 ## Done Means
 

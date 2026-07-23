@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Prepare and train a local MLX LoRA from Jessify-approved responses."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any, Iterable
+
+
+SYSTEM_PROMPT = (
+    "Write the requested first-person technical blog passage in the adapted "
+    "author's voice. Preserve every required fact, add no new claim, and do "
+    "not mention these instructions."
+)
+
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as exc:
+            fail(f"{path}:{line_number}: invalid JSON: {exc}")
+        if not isinstance(value, dict):
+            fail(f"{path}:{line_number}: expected an object")
+        rows.append(value)
+    return rows
+
+
+def atomic_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.chmod(0o700)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+    path.chmod(0o600)
+
+
+def command_prepare(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    os.umask(0o077)
+    preferences = load_jsonl(workspace / "preferences/preferences.jsonl")
+    if not preferences:
+        fail("No approved preferences; finish a preference batch first")
+    unique: dict[str, dict[str, Any]] = {}
+    for row in preferences:
+        source = str(row.get("source", "")).strip()
+        chosen = str(row.get("accepted", "")).strip()
+        if not source or not chosen:
+            fail(f"Preference {row.get('id', '<unknown>')} lacks source or accepted text")
+        identifier = hashlib.sha256(f"{source}\0{chosen}".encode("utf-8")).hexdigest()
+        unique[identifier] = {
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": source},
+                {"role": "assistant", "content": chosen},
+            ],
+            "metadata": {
+                "preference_id": row.get("id"),
+                "role": row.get("rhetorical_role", "unknown"),
+                "batch": row.get("batch", ""),
+            },
+        }
+    ordered = sorted(unique.items(), key=lambda item: hashlib.sha256(f"{args.seed}\0{item[0]}".encode("utf-8")).hexdigest())
+    if len(ordered) < 4:
+        fail("At least four distinct approved responses are required before adapter training")
+    valid_count = max(1, round(len(ordered) * args.validation_fraction))
+    valid_count = min(valid_count, len(ordered) - 1)
+    valid = [row for _, row in ordered[:valid_count]]
+    train = [row for _, row in ordered[valid_count:]]
+    directory = workspace / "training/mlx"
+    atomic_jsonl(directory / "train.jsonl", train)
+    atomic_jsonl(directory / "valid.jsonl", valid)
+    atomic_jsonl(directory / "test.jsonl", [])
+    print(json.dumps({"train": len(train), "valid": len(valid), "source_preferences": len(preferences)}, indent=2))
+
+
+def ensure_mlx(workspace: Path) -> Path:
+    python = workspace / ".venv/bin/python"
+    if python.exists():
+        probe = subprocess.run(
+            [str(python), "-c", "import mlx_lm"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if probe.returncode == 0:
+            return python
+    uv = shutil.which("uv")
+    if not uv:
+        fail("uv is required to create the private MLX environment")
+    subprocess.run([uv, "venv", str(workspace / ".venv")], check=True)
+    subprocess.run([
+        uv, "pip", "install", "--python", str(python), "mlx-lm>=0.31,<0.32",
+    ], check=True)
+    return python
+
+
+def command_train(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    os.umask(0o077)
+    data = workspace / "training/mlx"
+    if not (data / "train.jsonl").exists() or not (data / "valid.jsonl").exists():
+        fail("Missing MLX data; run prepare first")
+    python = ensure_mlx(workspace)
+    adapter = workspace / "adapters" / args.name
+    adapter.mkdir(parents=True, exist_ok=True)
+    adapter.chmod(0o700)
+    cache = workspace / "model-cache/huggingface"
+    cache.mkdir(parents=True, exist_ok=True)
+    cache.chmod(0o700)
+    environment = os.environ.copy()
+    environment.update({
+        "HF_HOME": str(cache),
+        "HUGGINGFACE_HUB_CACHE": str(cache / "hub"),
+        "TOKENIZERS_PARALLELISM": "false",
+    })
+    command = [
+        str(python), "-m", "mlx_lm", "lora",
+        "--model", args.model,
+        "--train",
+        "--data", str(data),
+        "--fine-tune-type", "lora",
+        "--mask-prompt",
+        "--num-layers", str(args.num_layers),
+        "--batch-size", "1",
+        "--grad-accumulation-steps", str(args.grad_accumulation),
+        "--iters", str(args.iters),
+        "--learning-rate", str(args.learning_rate),
+        "--steps-per-report", "10",
+        "--steps-per-eval", str(min(50, max(10, args.iters // 4))),
+        "--save-every", str(min(50, args.iters)),
+        "--max-seq-length", str(args.max_seq_length),
+        "--grad-checkpoint",
+        "--adapter-path", str(adapter),
+        "--seed", str(args.seed),
+    ]
+    print(f"training local adapter at {adapter}")
+    subprocess.run(command, check=True, env=environment)
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="command", required=True)
+
+    prepare = subparsers.add_parser("prepare", help="Convert approved winners into private MLX chat data")
+    prepare.add_argument("--workspace", required=True)
+    prepare.add_argument("--validation-fraction", type=float, default=0.1)
+    prepare.add_argument("--seed", default="jessify-mlx")
+    prepare.set_defaults(function=command_prepare)
+
+    train = subparsers.add_parser("train", help="Train a local preference-informed LoRA")
+    train.add_argument("--workspace", required=True)
+    train.add_argument("--name", default="qwen3-4b-jessify")
+    train.add_argument("--model", default="mlx-community/Qwen3-4B-4bit")
+    train.add_argument("--iters", type=int, default=200)
+    train.add_argument("--num-layers", type=int, default=16)
+    train.add_argument("--grad-accumulation", type=int, default=4)
+    train.add_argument("--learning-rate", type=float, default=1e-5)
+    train.add_argument("--max-seq-length", type=int, default=2048)
+    train.add_argument("--seed", type=int, default=0)
+    train.set_defaults(function=command_train)
+    return root
+
+
+def main() -> None:
+    args = parser().parse_args()
+    if hasattr(args, "validation_fraction") and not 0 < args.validation_fraction < 0.5:
+        fail("--validation-fraction must be between 0 and 0.5")
+    for name in ("iters", "num_layers", "grad_accumulation", "max_seq_length"):
+        if hasattr(args, name) and getattr(args, name) < 1:
+            fail(f"--{name.replace('_', '-')} must be at least 1")
+    args.function(args)
+
+
+if __name__ == "__main__":
+    main()

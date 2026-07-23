@@ -1,0 +1,929 @@
+#!/usr/bin/env python3
+"""Generate and label privacy-safe local Jessify preference/evaluation batches."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import os
+import re
+import secrets
+import subprocess
+import sys
+import threading
+import urllib.error
+import urllib.parse
+import urllib.request
+import webbrowser
+from collections import Counter
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any, Iterable, Optional
+
+
+SCHEMA_VERSION = 1
+OLLAMA_BASE = "http://127.0.0.1:11434"
+ROLES = {
+    "opening", "setup", "explanation", "example", "transition", "aside",
+    "argument", "reflection", "punchline", "conclusion", "unknown",
+}
+TAGS = {
+    "factual-drift", "generic-voice", "copied-phrasing", "bad-flow",
+    "too-formal", "too-performative", "missing-detail",
+}
+WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?")
+INSTRUCTION_LEAK_RE = re.compile(
+    r"\b(?:neutral brief|must preserve|rhetorical role|source provided|"
+    r"target passage|key constraints|we are writing|the requested passage|"
+    r"these instructions)\b",
+    flags=re.IGNORECASE,
+)
+
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+def words(text: str) -> list[str]:
+    return [match.group(0).lower().replace("’", "'") for match in WORD_RE.finditer(text)]
+
+
+def stable_id(prefix: str, *parts: str) -> str:
+    digest = hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()[:16]
+    return f"{prefix}_{digest}"
+
+
+def secure_workspace(workspace: Path) -> None:
+    os.umask(0o077)
+    workspace.mkdir(parents=True, exist_ok=True)
+    workspace.chmod(0o700)
+    for relative in ("rlhf", "rlhf/batches", "preferences", "eval"):
+        path = workspace / relative
+        path.mkdir(parents=True, exist_ok=True)
+        path.chmod(0o700)
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        fail(f"Missing file: {path}")
+    except json.JSONDecodeError as exc:
+        fail(f"{path}: invalid JSON: {exc}")
+    if not isinstance(value, dict):
+        fail(f"{path}: expected an object")
+    return value
+
+
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as exc:
+            fail(f"{path}:{line_number}: invalid JSON: {exc}")
+        if not isinstance(value, dict):
+            fail(f"{path}:{line_number}: expected an object")
+        rows.append(value)
+    return rows
+
+
+def atomic_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+    path.chmod(0o600)
+
+
+def atomic_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+    path.chmod(0o600)
+
+
+def ollama_request(
+    model: str,
+    prompt: str,
+    temperature: float,
+    schema: Optional[dict[str, Any]] = None,
+    max_tokens: int = 512,
+) -> str:
+    body: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "think": False,
+        "keep_alive": "10m",
+        "options": {
+            "temperature": temperature,
+            "num_ctx": 8192,
+            "num_predict": max_tokens,
+        },
+    }
+    if schema is not None:
+        body["format"] = schema
+    request = urllib.request.Request(
+        f"{OLLAMA_BASE}/api/generate",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        fail(f"Local Ollama request failed: {exc}")
+    output = str(payload.get("response", "")).strip()
+    output = re.sub(r"\A<think>[\s\S]*?</think>\s*", "", output).strip()
+    if not output:
+        fail("Local Ollama returned an empty response")
+    return output
+
+
+def ensure_model(model: str) -> None:
+    request = urllib.request.Request(f"{OLLAMA_BASE}/api/tags")
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        fail(f"Local Ollama is unavailable at {OLLAMA_BASE}: {exc}")
+    names = {str(row.get("name", "")) for row in payload.get("models", [])}
+    if model not in names:
+        fail(f"Ollama model is not installed locally: {model}")
+
+
+def has_ngram_overlap(left: str, right: str, size: int = 9) -> bool:
+    left_words = words(left)
+    right_words = words(right)
+    if len(left_words) < size or len(right_words) < size:
+        return False
+    grams = {tuple(left_words[index:index + size]) for index in range(len(left_words) - size + 1)}
+    return any(tuple(right_words[index:index + size]) in grams for index in range(len(right_words) - size + 1))
+
+
+def trim_complete_sentences(text: str, max_words: int) -> str:
+    boundaries = [
+        match.end()
+        for match in re.finditer(r"[.!?…][\"')\]]*(?=\s|$)", text)
+    ]
+    eligible = [text[:boundary].strip() for boundary in boundaries]
+    eligible = [candidate for candidate in eligible if 20 <= len(words(candidate)) <= max_words]
+    return eligible[-1] if eligible else ""
+
+
+def reverse_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["neutral_brief", "rhetorical_role", "must_preserve", "structure"],
+        "properties": {
+            "neutral_brief": {"type": "string"},
+            "rhetorical_role": {"type": "string", "enum": sorted(ROLES - {"unknown"})},
+            "must_preserve": {"type": "array", "items": {"type": "string"}},
+            "structure": {"type": "array", "items": {"type": "string"}},
+        },
+    }
+
+
+def passage_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["passage"],
+        "properties": {"passage": {"type": "string"}},
+    }
+
+
+def clean_candidate(model: str, draft: str, max_tokens: int) -> str:
+    prompt = f"""Extract only the finished first-person blog passage from DRAFT.
+Remove task analysis, planning, prompt restatement, labels, constraint lists,
+and commentary about how to write it. Preserve the draft's actual claims and
+do not add or rewrite facts. Return only JSON matching the supplied schema.
+
+DRAFT:
+{draft}
+"""
+    raw = ollama_request(
+        model,
+        prompt,
+        0.0,
+        passage_schema(),
+        max_tokens=max_tokens,
+    )
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return ""
+    return str(value.get("passage", "")).strip()
+
+
+def build_brief(model: str, unit: dict[str, Any]) -> dict[str, Any]:
+    passage = str(unit["plain_text"])
+    prompt = f"""Convert TARGET PASSAGE into a style-neutral writing brief.
+Return only one JSON object matching the supplied schema.
+
+Rules:
+- Preserve facts, claims, chronology, uncertainty, and intended reader movement.
+- Paraphrase. Do not quote distinctive wording, jokes, cadence, punctuation, or voice.
+- Do not use the author's name and do not invent or repair facts.
+- Keep must_preserve items short and atomic.
+- Use context only to identify rhetorical function; never import its facts.
+
+Section: {unit.get('section', 'Unknown')}
+Previous context: {unit.get('preceding_context', '')}
+TARGET PASSAGE:
+{passage}
+Following context: {unit.get('following_context', '')}
+"""
+    last_error = ""
+    for attempt in range(3):
+        candidate = ollama_request(
+            model,
+            prompt + (f"\nPrevious attempt failed: {last_error}" if last_error else ""),
+            0.1,
+            reverse_schema(),
+            max_tokens=384,
+        )
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last_error = f"invalid JSON ({exc})"
+            continue
+        brief = str(parsed.get("neutral_brief", "")).strip()
+        role = str(parsed.get("rhetorical_role", "")).strip()
+        preserve = parsed.get("must_preserve")
+        structure = parsed.get("structure")
+        if role not in ROLES - {"unknown"}:
+            last_error = "unsupported rhetorical role"
+        elif not brief or not isinstance(preserve, list) or not isinstance(structure, list):
+            last_error = "missing required fields"
+        elif len(preserve) < 1 or len(structure) < 1:
+            last_error = "must_preserve and structure cannot be empty"
+        elif not all(isinstance(item, str) and item.strip() for item in preserve + structure):
+            last_error = "list fields require non-empty strings"
+        elif re.search(r"\bjesse\b", brief, flags=re.IGNORECASE):
+            last_error = "brief names the author"
+        elif has_ngram_overlap(passage, brief, 9):
+            last_error = "brief copies a nine-word phrase from the target"
+        else:
+            return {
+                "neutral_brief": brief,
+                "rhetorical_role": role,
+                "must_preserve": [str(item).strip() for item in preserve],
+                "structure": [str(item).strip() for item in structure],
+            }
+    fail(f"Could not produce a safe neutral brief for {unit.get('id')}: {last_error}")
+
+
+def retrieval_examples(units: list[dict[str, Any]], case: dict[str, Any], limit: int = 4) -> list[dict[str, Any]]:
+    query_words = words(str(case["neutral_brief"]))
+    document_frequency: Counter[str] = Counter()
+    eligible = [
+        row for row in units
+        if row.get("split") == "train"
+        and row.get("quality") in {"canonical", "usable"}
+        and row.get("document_id") != case.get("document_id")
+    ]
+    for row in eligible:
+        document_frequency.update(set(words(str(row.get("plain_text", "")))))
+    scored: list[tuple[float, dict[str, Any]]] = []
+    count = max(1, len(eligible))
+    for row in eligible:
+        row_words = Counter(words(str(row.get("plain_text", ""))))
+        score = 0.0
+        for token in set(query_words):
+            if token in row_words:
+                score += (1.0 + math.log(row_words[token])) * math.log((count + 1) / (document_frequency[token] + 1))
+        if row.get("section") == case.get("section"):
+            score += 0.25
+        quality = 1.0 if row.get("quality") == "canonical" else 0.7
+        scored.append((score * quality, row))
+    scored.sort(key=lambda item: (-item[0], str(item[1].get("id", ""))))
+    return [row for score, row in scored[:limit] if score > 0]
+
+
+def candidate_prompt(case: dict[str, Any], examples: list[dict[str, Any]]) -> str:
+    target_word_budget = len(words(str(case.get("target_text", ""))))
+    source = {
+        "neutral_brief": case["neutral_brief"],
+        "rhetorical_role": case["rhetorical_role"],
+        "must_preserve": case["must_preserve"],
+        "structure": case["structure"],
+        "preceding_context": case.get("preceding_context", ""),
+        "following_context": case.get("following_context", ""),
+    }
+    example_text = ""
+    if examples:
+        blocks = []
+        for index, example in enumerate(examples, 1):
+            blocks.append(f"REFERENCE {index} ({example.get('section', 'passage')}):\n{example.get('plain_text', '')}")
+        example_text = "\n\nVoice references from different training documents:\n" + "\n\n".join(blocks)
+    return f"""Write one first-person technical blog passage from the source below.
+
+Preserve every required fact. Add no claim, motivation, chronology, or certainty.
+Make it sound like a real person thinking aloud: concrete, conversational, and
+specific. Avoid generic inspirational language, fake audience objections, and
+performative drama. Match the rhetorical job and connect naturally to context.
+Aim for roughly {target_word_budget} words and do not exceed {max(45, round(target_word_budget * 1.6))} words.
+Return only the finished passage with no preface.
+
+SOURCE:
+{json.dumps(source, ensure_ascii=False, indent=2)}
+{example_text}
+
+References are evidence of voice only. Never copy a distinctive phrase or fact
+from them, and never mention the author or these instructions.
+"""
+
+
+def generate_output(model: str, case: dict[str, Any], examples: list[dict[str, Any]]) -> str:
+    prompt = candidate_prompt(case, examples)
+    last_error = ""
+    target_words = len(words(str(case.get("target_text", ""))))
+    max_words = max(45, round(target_words * 1.6))
+    max_tokens = min(640, max(96, round(max_words * 1.6)))
+    for attempt in range(3):
+        output = ollama_request(
+            model,
+            prompt + (f"\nRewrite because the previous output {last_error}." if last_error else ""),
+            0.65,
+            max_tokens=max_tokens,
+        )
+        if INSTRUCTION_LEAK_RE.search(output) or output.lstrip().startswith("{"):
+            output = clean_candidate(model, output, max_tokens)
+        if len(words(output)) < 20:
+            last_error = "was too short"
+            continue
+        if INSTRUCTION_LEAK_RE.search(output) or output.lstrip().startswith("{"):
+            last_error = "repeated prompt or schema language"
+            continue
+        if len(words(output)) > max_words or output[-1] not in ".?!…\"')":
+            output = trim_complete_sentences(output, max_words)
+            if not output:
+                last_error = f"had no complete 20-{max_words} word passage"
+                continue
+        copied = next((row for row in examples if has_ngram_overlap(str(row.get("plain_text", "")), output, 9)), None)
+        if copied is not None:
+            last_error = "copied a long phrase from a reference"
+            continue
+        return output
+    fail(f"Could not generate a safe candidate for {case.get('case_id')}: {last_error}")
+
+
+def generate_adapter_output(
+    workspace: Path,
+    model: str,
+    adapter_path: Path,
+    case: dict[str, Any],
+) -> str:
+    python = workspace / ".venv/bin/python"
+    runner = Path(__file__).resolve().parent / "jessify-mlx-runner"
+    if not python.exists():
+        fail("Missing private MLX environment; run jessify-train-local train first")
+    if not adapter_path.exists():
+        fail(f"Missing adapter: {adapter_path}")
+    try:
+        adapter_path.resolve().relative_to(workspace)
+    except ValueError:
+        fail("The private adapter must live inside the Jessify workspace")
+    environment = os.environ.copy()
+    cache = workspace / "model-cache/huggingface"
+    environment.update({
+        "HF_HOME": str(cache),
+        "HUGGINGFACE_HUB_CACHE": str(cache / "hub"),
+        "TOKENIZERS_PARALLELISM": "false",
+    })
+    result = subprocess.run(
+        [
+            str(python), str(runner), "--model", model,
+            "--adapter-path", str(adapter_path),
+        ],
+        input=candidate_prompt(case, []),
+        text=True,
+        capture_output=True,
+        env=environment,
+        check=False,
+    )
+    if result.returncode != 0:
+        fail(f"Local MLX adapter failed: {result.stderr.strip()}")
+    output = result.stdout.strip()
+    if len(words(output)) < 20:
+        fail(f"Local MLX adapter produced a short response for {case.get('case_id')}")
+    return output
+
+
+def batch_dir(workspace: Path, name: str) -> Path:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", name):
+        fail("Batch name must use lowercase letters, digits, and hyphens")
+    return workspace / "rlhf/batches" / name
+
+
+def choose_units(units: list[dict[str, Any]], split: str, limit: int, seed: str) -> list[dict[str, Any]]:
+    eligible = [row for row in units if row.get("split") == split and row.get("quality") in {"canonical", "usable"}]
+    eligible.sort(key=lambda row: hashlib.sha256(f"{seed}\0{row.get('id')}".encode("utf-8")).hexdigest())
+    if not eligible:
+        fail(f"No eligible {split} units")
+    return eligible[:limit]
+
+
+def command_prepare(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    secure_workspace(workspace)
+    ensure_model(args.model)
+    purpose = args.purpose
+    split = "train" if purpose == "preference" else "eval"
+    directory = batch_dir(workspace, args.name)
+    if directory.exists() and not args.resume:
+        fail(f"Batch already exists: {directory}; use --resume or choose another name")
+    if directory.exists() and args.resume and (directory / "meta.json").exists():
+        existing_meta = load_json(directory / "meta.json")
+        expected = {
+            "purpose": purpose,
+            "split": split,
+            "model": args.model,
+            "seed": args.seed,
+        }
+        mismatches = [key for key, value in expected.items() if existing_meta.get(key) != value]
+        expected_adapter = str(Path(args.adapter_path).expanduser().resolve()) if args.adapter_path else ""
+        if str(existing_meta.get("adapter_path", "")) != expected_adapter:
+            mismatches.append("adapter-path")
+        if expected_adapter and existing_meta.get("mlx_model") != args.mlx_model:
+            mismatches.append("mlx-model")
+        if mismatches:
+            fail(f"Cannot resume batch with changed settings: {', '.join(mismatches)}")
+    directory.mkdir(parents=True, exist_ok=True)
+    directory.chmod(0o700)
+    units = load_jsonl(workspace / "corpus/units.jsonl")
+    selected = choose_units(units, split, args.limit, args.seed)
+    private_path = directory / "private-cases.jsonl"
+    existing = {str(row["case_id"]): row for row in load_jsonl(private_path)} if args.resume else {}
+    for index, unit in enumerate(selected, 1):
+        case_id = stable_id("rlhf", args.name, str(unit["id"]))
+        if case_id in existing:
+            print(f"[{index}/{len(selected)}] resumed {case_id}", file=sys.stderr)
+            continue
+        print(f"[{index}/{len(selected)}] building {case_id}", file=sys.stderr)
+        brief = build_brief(args.model, unit)
+        case: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "case_id": case_id,
+            "source_unit_id": unit["id"],
+            "document_id": unit["document_id"],
+            "section": unit.get("section", ""),
+            "split": split,
+            "target_text": unit["text"],
+            "preceding_context": unit.get("preceding_context", ""),
+            "following_context": unit.get("following_context", ""),
+            **brief,
+        }
+        references = retrieval_examples(units, case)
+        raw_options = [
+            {"system": f"{args.model}-baseline", "output": generate_output(args.model, case, [])},
+            {"system": f"{args.model}-retrieval", "output": generate_output(args.model, case, references)},
+            {"system": "authentic-reference", "output": str(unit["text"])},
+        ]
+        if args.adapter_path:
+            adapter_path = Path(args.adapter_path).expanduser().resolve()
+            raw_options.append({
+                "system": f"adapter:{adapter_path.name}",
+                "output": generate_adapter_output(workspace, args.mlx_model, adapter_path, case),
+            })
+        raw_options.sort(key=lambda row: hashlib.sha256(f"{args.seed}\0{case_id}\0{row['system']}".encode("utf-8")).hexdigest())
+        case["options"] = [
+            {"label": chr(ord("A") + option_index), **option}
+            for option_index, option in enumerate(raw_options)
+        ]
+        existing[case_id] = case
+        atomic_jsonl(private_path, existing.values())
+    private_rows = list(existing.values())
+    private_rows.sort(key=lambda row: next((index for index, item in enumerate(selected) if item["id"] == row["source_unit_id"]), 10**9))
+    atomic_jsonl(private_path, private_rows)
+    blind_rows = []
+    key_rows = []
+    for case in private_rows:
+        blind_rows.append({
+            "schema_version": SCHEMA_VERSION,
+            "case_id": case["case_id"],
+            "neutral_brief": case["neutral_brief"],
+            "rhetorical_role": case["rhetorical_role"],
+            "must_preserve": case["must_preserve"],
+            "structure": case["structure"],
+            "preceding_context": case.get("preceding_context", ""),
+            "following_context": case.get("following_context", ""),
+            "options": [{"label": option["label"], "output": option["output"]} for option in case["options"]],
+        })
+        key_rows.append({
+            "case_id": case["case_id"],
+            "options": [{"label": option["label"], "system": option["system"]} for option in case["options"]],
+        })
+    atomic_jsonl(directory / "blind-cases.jsonl", blind_rows)
+    atomic_jsonl(directory / "blind-key.jsonl", key_rows)
+    atomic_json(directory / "meta.json", {
+        "schema_version": SCHEMA_VERSION,
+        "name": args.name,
+        "purpose": purpose,
+        "split": split,
+        "model": args.model,
+        "seed": args.seed,
+        "count": len(blind_rows),
+        "adapter_path": str(Path(args.adapter_path).expanduser().resolve()) if args.adapter_path else "",
+        "mlx_model": args.mlx_model if args.adapter_path else "",
+    })
+    atomic_jsonl(directory / "choices.jsonl", load_jsonl(directory / "choices.jsonl"))
+    print(f"prepared {len(blind_rows)} {purpose} cases in {directory}")
+
+
+def validate_choice(case: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    case_id = str(payload.get("case_id", ""))
+    allowed_labels = {str(option["label"]) for option in case["options"]}
+    label = str(payload.get("label", ""))
+    if label not in allowed_labels | {"none"}:
+        fail(f"Invalid label for {case_id}: {label}")
+    tags = payload.get("tags", [])
+    if not isinstance(tags, list) or any(str(tag) not in TAGS for tag in tags):
+        fail(f"Invalid tags for {case_id}")
+    note = str(payload.get("note", "")).strip()
+    edited = str(payload.get("edited_output", "")).strip()
+    if len(note) > 1000 or len(edited) > 20000:
+        fail(f"Choice text is too long for {case_id}")
+    confidence = str(payload.get("confidence", "medium"))
+    if confidence not in {"low", "medium", "high"}:
+        fail(f"Invalid confidence for {case_id}")
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "case_id": case_id,
+        "label": label,
+        "tags": sorted(set(str(tag) for tag in tags)),
+        "confidence": confidence,
+        "note": note,
+        "edited_output": edited,
+    }
+
+
+def export_preferences(workspace: Path, directory: Path) -> dict[str, int]:
+    meta = load_json(directory / "meta.json")
+    if meta.get("purpose") != "preference":
+        fail("Held-out evaluation choices can never be exported as training preferences")
+    private = {str(row["case_id"]): row for row in load_jsonl(directory / "private-cases.jsonl")}
+    choices = load_jsonl(directory / "choices.jsonl")
+    path = workspace / "preferences/preferences.jsonl"
+    preferences = load_jsonl(path)
+    by_id = {str(row["id"]): row for row in preferences}
+    added = 0
+    skipped = 0
+    for choice in choices:
+        case = private.get(str(choice.get("case_id", "")))
+        if case is None or choice.get("label") == "none":
+            skipped += 1
+            continue
+        selected = next((row for row in case["options"] if row["label"] == choice["label"]), None)
+        if selected is None:
+            fail(f"Unknown choice label for {choice.get('case_id')}")
+        chosen = str(choice.get("edited_output") or selected["output"]).strip()
+        source = json.dumps({
+            "neutral_brief": case["neutral_brief"],
+            "rhetorical_role": case["rhetorical_role"],
+            "must_preserve": case["must_preserve"],
+            "structure": case["structure"],
+            "preceding_context": case.get("preceding_context", ""),
+            "following_context": case.get("following_context", ""),
+        }, ensure_ascii=False)
+        reason_parts = list(choice.get("tags", []))
+        if choice.get("note"):
+            reason_parts.append(str(choice["note"]))
+        reason = "; ".join(reason_parts) or "Blind preference selection"
+        for rejected_option in case["options"]:
+            rejected = str(rejected_option["output"]).strip()
+            if rejected_option["label"] == choice["label"] or rejected == chosen:
+                continue
+            preference_id = stable_id("pref", source, rejected, chosen)
+            if preference_id not in by_id:
+                added += 1
+            by_id[preference_id] = {
+                "schema_version": SCHEMA_VERSION,
+                "id": preference_id,
+                "source": source,
+                "rejected": rejected,
+                "accepted": chosen,
+                "reason": reason,
+                "rhetorical_role": case["rhetorical_role"],
+                "batch": meta["name"],
+                "source_case_id": case["case_id"],
+                "chosen_system": "human-edit" if choice.get("edited_output") else selected["system"],
+                "rejected_system": rejected_option["system"],
+                "confidence": choice.get("confidence", "medium"),
+            }
+    rows = sorted(by_id.values(), key=lambda row: str(row["id"]))
+    atomic_jsonl(path, rows)
+    dpo_rows = [{
+        "prompt": row["source"],
+        "chosen": row["accepted"],
+        "rejected": row["rejected"],
+        "metadata": {
+            "id": row["id"], "reason": row["reason"],
+            "role": row["rhetorical_role"], "batch": row.get("batch", ""),
+        },
+    } for row in rows]
+    atomic_jsonl(workspace / "preferences/dpo.jsonl", dpo_rows)
+    return {"added": added, "total": len(rows), "skipped": skipped}
+
+
+def score_batch(directory: Path) -> dict[str, Any]:
+    meta = load_json(directory / "meta.json")
+    if meta.get("purpose") != "eval":
+        fail("Only held-out evaluation batches produce system scores")
+    keys = {
+        str(row["case_id"]): {str(option["label"]): str(option["system"]) for option in row["options"]}
+        for row in load_jsonl(directory / "blind-key.jsonl")
+    }
+    choices = load_jsonl(directory / "choices.jsonl")
+    wins: Counter[str] = Counter()
+    tags: Counter[str] = Counter()
+    none = 0
+    seen: set[str] = set()
+    for choice in choices:
+        case_id = str(choice.get("case_id", ""))
+        if case_id in seen:
+            fail(f"Duplicate choice for case: {case_id}")
+        seen.add(case_id)
+        label = str(choice.get("label", ""))
+        if label == "none":
+            none += 1
+        elif case_id in keys and label in keys[case_id]:
+            wins[keys[case_id][label]] += 1
+        else:
+            fail(f"Unknown evaluation choice: {case_id} / {label}")
+        tags.update(str(tag) for tag in choice.get("tags", []))
+    return {
+        "batch": meta["name"],
+        "evaluated": len(seen),
+        "missing": len(keys) - len(seen),
+        "none_acceptable": none,
+        "wins": dict(wins.most_common()),
+        "flags": dict(tags.most_common()),
+    }
+
+
+def command_export(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    secure_workspace(workspace)
+    result = export_preferences(workspace, batch_dir(workspace, args.batch))
+    print(json.dumps(result, indent=2))
+
+
+def command_score(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    result = score_batch(batch_dir(workspace, args.batch))
+    print(json.dumps(result, indent=2))
+
+
+def command_status(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    root = workspace / "rlhf/batches"
+    rows = []
+    for directory in sorted(path for path in root.iterdir() if path.is_dir()) if root.exists() else []:
+        meta_path = directory / "meta.json"
+        if not meta_path.exists():
+            continue
+        meta = load_json(meta_path)
+        choices = load_jsonl(directory / "choices.jsonl")
+        rows.append({
+            "name": meta.get("name"), "purpose": meta.get("purpose"),
+            "model": meta.get("model"), "completed": len(choices),
+            "total": meta.get("count"),
+        })
+    print(json.dumps(rows, indent=2))
+
+
+class EvalServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, address: tuple[str, int], handler: type[BaseHTTPRequestHandler], workspace: Path, directory: Path):
+        super().__init__(address, handler)
+        self.workspace = workspace
+        self.directory = directory
+        self.meta = load_json(directory / "meta.json")
+        self.cases = load_jsonl(directory / "blind-cases.jsonl")
+        self.assets = Path(__file__).resolve().parent.parent / "assets/rlhf"
+        self.token = secrets.token_urlsafe(24)
+        self.write_lock = threading.Lock()
+
+
+class EvalHandler(BaseHTTPRequestHandler):
+    server: EvalServer
+
+    def log_message(self, format_string: str, *args: Any) -> None:
+        print(f"{self.address_string()} - {format_string % args}", file=sys.stderr)
+
+    def secure_headers(self, content_type: str) -> None:
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+
+    def json_response(self, status: int, payload: Any) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.secure_headers("application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def file_response(self, path: Path, content_type: str) -> None:
+        try:
+            body = path.read_bytes()
+        except FileNotFoundError:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        self.send_response(HTTPStatus.OK)
+        self.secure_headers(content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def allowed_host(self) -> bool:
+        host = self.headers.get("Host", "").split(":", 1)[0].strip("[]")
+        return host in {"127.0.0.1", "localhost"}
+
+    def allowed_origin(self) -> bool:
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        parsed = urllib.parse.urlparse(origin)
+        return parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost"}
+
+    def do_GET(self) -> None:
+        if not self.allowed_host():
+            self.send_error(HTTPStatus.FORBIDDEN)
+            return
+        path = urllib.parse.urlparse(self.path).path
+        if path == "/":
+            self.file_response(self.server.assets / "index.html", "text/html; charset=utf-8")
+        elif path == "/app.css":
+            self.file_response(self.server.assets / "app.css", "text/css; charset=utf-8")
+        elif path == "/app.js":
+            self.file_response(self.server.assets / "app.js", "text/javascript; charset=utf-8")
+        elif path == "/api/state":
+            choices = load_jsonl(self.server.directory / "choices.jsonl")
+            self.json_response(HTTPStatus.OK, {
+                "meta": self.server.meta,
+                "cases": self.server.cases,
+                "choices": choices,
+                "tags": sorted(TAGS),
+                "token": self.server.token,
+            })
+        else:
+            self.send_error(HTTPStatus.NOT_FOUND)
+
+    def read_payload(self) -> Optional[dict[str, Any]]:
+        if not self.allowed_host() or not self.allowed_origin():
+            self.send_error(HTTPStatus.FORBIDDEN)
+            return None
+        if self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
+            self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+            return None
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return None
+        if length < 2 or length > 25000:
+            self.send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+            return None
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return None
+        if not isinstance(payload, dict) or payload.get("token") != self.server.token:
+            self.send_error(HTTPStatus.FORBIDDEN)
+            return None
+        return payload
+
+    def do_POST(self) -> None:
+        payload = self.read_payload()
+        if payload is None:
+            return
+        path = urllib.parse.urlparse(self.path).path
+        if path == "/api/choice":
+            case_id = str(payload.get("case_id", ""))
+            case = next((row for row in self.server.cases if row["case_id"] == case_id), None)
+            if case is None:
+                self.json_response(HTTPStatus.BAD_REQUEST, {"error": "Unknown case"})
+                return
+            try:
+                choice = validate_choice(case, payload)
+            except SystemExit as exc:
+                self.json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            with self.server.write_lock:
+                choices = {str(row["case_id"]): row for row in load_jsonl(self.server.directory / "choices.jsonl")}
+                choices[case_id] = choice
+                ordered = [choices[row["case_id"]] for row in self.server.cases if row["case_id"] in choices]
+                atomic_jsonl(self.server.directory / "choices.jsonl", ordered)
+            self.json_response(HTTPStatus.OK, {"saved": True, "completed": len(ordered), "total": len(self.server.cases)})
+        elif path == "/api/finish":
+            choices = load_jsonl(self.server.directory / "choices.jsonl")
+            if len(choices) != len(self.server.cases):
+                self.json_response(HTTPStatus.CONFLICT, {"error": "Complete every case before revealing results"})
+                return
+            try:
+                if self.server.meta.get("purpose") == "preference":
+                    result = export_preferences(self.server.workspace, self.server.directory)
+                else:
+                    result = score_batch(self.server.directory)
+            except SystemExit as exc:
+                self.json_response(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            self.json_response(HTTPStatus.OK, result)
+        elif path == "/api/shutdown":
+            self.json_response(HTTPStatus.OK, {"stopping": True})
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+        else:
+            self.send_error(HTTPStatus.NOT_FOUND)
+
+
+def command_serve(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    secure_workspace(workspace)
+    directory = batch_dir(workspace, args.batch)
+    if not (directory / "meta.json").exists():
+        fail(f"Unknown batch: {args.batch}")
+    server = EvalServer(("127.0.0.1", args.port), EvalHandler, workspace, directory)
+    port = server.server_address[1]
+    url = f"http://127.0.0.1:{port}/"
+    print(url, flush=True)
+    if not args.no_open:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="command", required=True)
+
+    prepare = subparsers.add_parser("prepare", help="Generate a local blind preference or held-out evaluation batch")
+    prepare.add_argument("--workspace", required=True)
+    prepare.add_argument("--name", required=True)
+    prepare.add_argument("--purpose", choices=("preference", "eval"), required=True)
+    prepare.add_argument("--model", default="qwen3:4b")
+    prepare.add_argument("--limit", type=int, default=20)
+    prepare.add_argument("--seed", default="jessify-rlhf")
+    prepare.add_argument("--resume", action="store_true")
+    prepare.add_argument("--adapter-path")
+    prepare.add_argument("--mlx-model", default="mlx-community/Qwen3-4B-4bit")
+    prepare.set_defaults(function=command_prepare)
+
+    serve = subparsers.add_parser("serve", help="Launch the loopback-only blind labeling app")
+    serve.add_argument("--workspace", required=True)
+    serve.add_argument("--batch", required=True)
+    serve.add_argument("--port", type=int, default=0)
+    serve.add_argument("--no-open", action="store_true")
+    serve.set_defaults(function=command_serve)
+
+    export = subparsers.add_parser("export-preferences", help="Export a completed training batch to DPO pairs")
+    export.add_argument("--workspace", required=True)
+    export.add_argument("--batch", required=True)
+    export.set_defaults(function=command_export)
+
+    score = subparsers.add_parser("score", help="Score a held-out evaluation batch")
+    score.add_argument("--workspace", required=True)
+    score.add_argument("--batch", required=True)
+    score.set_defaults(function=command_score)
+
+    status = subparsers.add_parser("status", help="Show local batch progress without corpus text")
+    status.add_argument("--workspace", required=True)
+    status.set_defaults(function=command_status)
+    return root
+
+
+def main() -> None:
+    args = parser().parse_args()
+    if getattr(args, "limit", 1) < 1:
+        fail("--limit must be at least 1")
+    args.function(args)
+
+
+if __name__ == "__main__":
+    main()

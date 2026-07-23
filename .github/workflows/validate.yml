@@ -51,9 +51,12 @@ jobs:
             skills/code-review/scripts/install-review-findings \
             skills/code-review/scripts/check-review-models \
             skills/code-review/scripts/calibrate-structured-review \
-            skills/code-review/scripts/test-codex-review-helper
-          python3 -m py_compile skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
+            skills/code-review/scripts/test-codex-review-helper \
+            skills/jessify/scripts/test-jessify-data \
+            skills/jessify/scripts/test-jessify-rlhf
+          python3 -m py_compile skills/code-review/scripts/*.py skills/jessify/scripts/jessify-data skills/jessify/scripts/jessify-mlx-runner skills/jessify/scripts/jessify-rlhf skills/jessify/scripts/jessify-train-local skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
+          node --check skills/jessify/assets/rlhf/app.js
 
       - name: Check review-findings Rust helper
         run: |

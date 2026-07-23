@@ -41,6 +41,10 @@ eval/blind-cases.jsonl
 eval/blind-key.jsonl
 preferences/preferences.jsonl
 preferences/dpo.jsonl
+rlhf/batches/<batch>/meta.json
+rlhf/batches/<batch>/blind-cases.jsonl
+rlhf/batches/<batch>/blind-key.jsonl
+rlhf/batches/<batch>/choices.jsonl
 reviews/
 ```
 
