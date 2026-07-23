@@ -433,11 +433,38 @@ def batch_dir(workspace: Path, name: str) -> Path:
 
 
 def choose_units(units: list[dict[str, Any]], split: str, limit: int, seed: str) -> list[dict[str, Any]]:
-    eligible = [row for row in units if row.get("split") == split and row.get("quality") in {"canonical", "usable"}]
-    eligible.sort(key=lambda row: hashlib.sha256(f"{seed}\0{row.get('id')}".encode("utf-8")).hexdigest())
+    eligible = [
+        row for row in units
+        if row.get("split") == split
+        and row.get("quality") in {"canonical", "usable"}
+        and len(words(str(row.get("text", "")))) >= 60
+    ]
     if not eligible:
         fail(f"No eligible {split} units")
-    return eligible[:limit]
+    by_document: dict[str, list[dict[str, Any]]] = {}
+    for row in eligible:
+        by_document.setdefault(str(row.get("document_id", "")), []).append(row)
+    for rows in by_document.values():
+        rows.sort(key=lambda row: hashlib.sha256(f"{seed}\0{row.get('id')}".encode("utf-8")).hexdigest())
+    document_ids = sorted(
+        by_document,
+        key=lambda document_id: hashlib.sha256(f"{seed}\0{document_id}".encode("utf-8")).hexdigest(),
+    )
+    selected: list[dict[str, Any]] = []
+    round_index = 0
+    while len(selected) < limit:
+        added = False
+        for document_id in document_ids:
+            rows = by_document[document_id]
+            if round_index < len(rows):
+                selected.append(rows[round_index])
+                added = True
+                if len(selected) == limit:
+                    break
+        if not added:
+            break
+        round_index += 1
+    return selected
 
 
 def command_prepare(args: argparse.Namespace) -> None:

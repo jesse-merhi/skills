@@ -19,6 +19,27 @@ preference="$workspace/rlhf/batches/preference-test"
 evaluation="$workspace/rlhf/batches/eval-test"
 mkdir -p "$preference" "$evaluation"
 
+python3 - "$tool" <<'PY'
+import importlib.machinery
+import importlib.util
+import sys
+
+loader = importlib.machinery.SourceFileLoader("jessify_rlhf", sys.argv[1])
+spec = importlib.util.spec_from_loader(loader.name, loader)
+module = importlib.util.module_from_spec(spec)
+loader.exec_module(module)
+units = [
+    {"id": "a1", "document_id": "a", "split": "train", "quality": "canonical", "text": "word " * 70},
+    {"id": "a2", "document_id": "a", "split": "train", "quality": "canonical", "text": "word " * 70},
+    {"id": "b-short", "document_id": "b", "split": "train", "quality": "canonical", "text": "word " * 20},
+    {"id": "b1", "document_id": "b", "split": "train", "quality": "usable", "text": "word " * 70},
+    {"id": "c1", "document_id": "c", "split": "train", "quality": "canonical", "text": "word " * 70},
+]
+chosen = module.choose_units(units, "train", 3, "test")
+assert {row["document_id"] for row in chosen} == {"a", "b", "c"}
+assert all(row["id"] != "b-short" for row in chosen)
+PY
+
 printf '%s\n' '{"schema_version":1,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"
 printf '%s\n' '{"case_id":"case_train","neutral_brief":"Explain why the tool keeps useful context.","rhetorical_role":"explanation","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","options":[{"label":"A","output":"The tool keeps the context I need."},{"label":"B","output":"Context is retained by this innovative solution."}]}' > "$preference/blind-cases.jsonl"
 printf '%s\n' '{"case_id":"case_train","options":[{"label":"A","system":"authentic-reference"},{"label":"B","system":"test-baseline"}]}' > "$preference/blind-key.jsonl"
