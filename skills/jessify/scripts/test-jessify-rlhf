@@ -64,6 +64,16 @@ invented_brief = {
 }
 assert module.brief_has_lexical_support(passage, grounded_brief)
 assert not module.brief_has_lexical_support(passage, invented_brief)
+original_urlopen = module.urllib.request.urlopen
+module.urllib.request.urlopen = lambda *_args, **_kwargs: (_ for _ in ()).throw(module.socket.timeout())
+try:
+    module.ollama_request("test", "test", 0.0)
+except SystemExit as error:
+    assert str(error) == "Local Ollama request timed out twice"
+else:
+    raise AssertionError("socket.timeout escaped the Ollama request handler")
+finally:
+    module.urllib.request.urlopen = original_urlopen
 PY
 
 printf '%s\n' '{"schema_version":1,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"

@@ -10,6 +10,7 @@ import math
 import os
 import re
 import secrets
+import socket
 import subprocess
 import sys
 import threading
@@ -161,11 +162,20 @@ def ollama_request(
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=300) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        fail(f"Local Ollama request failed: {exc}")
+    payload: Optional[dict[str, Any]] = None
+    for request_attempt in range(2):
+        try:
+            with urllib.request.urlopen(request, timeout=300) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            break
+        except socket.timeout:
+            if request_attempt == 0:
+                continue
+            fail("Local Ollama request timed out twice")
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            fail(f"Local Ollama request failed: {exc}")
+    if payload is None:
+        fail("Local Ollama returned no response")
     output = str(payload.get("response", "")).strip()
     output = re.sub(r"\A<think>[\s\S]*?</think>\s*", "", output).strip()
     if not output:

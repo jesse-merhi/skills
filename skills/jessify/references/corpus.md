@@ -24,6 +24,10 @@ frontmatter, fenced code, media-only HTML, and media placeholders, then groups
 nearby prose into context-bearing units. Short punchlines remain attached to
 their surrounding passage rather than becoming meaningless isolated examples.
 
+To reject a previously ingested document without deleting its provenance,
+ingest the same source path again with `--quality exclude` and its existing
+split. This replaces the document and all of its units as ineligible material.
+
 The workspace layout is:
 
 ```text
