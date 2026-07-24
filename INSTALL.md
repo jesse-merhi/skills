@@ -60,7 +60,7 @@ Classify existing entries:
 
 1. A matching skill from this repo: safe to replace with a symlink.
 2. A third-party skill not in this repo: leave it alone unless `external.md`
-   explicitly says to install, update, or replace it.
+   explicitly says to install, update, replace, or remove it.
 3. A hand-written local skill not in this repo: ask before touching it.
 4. A dead symlink: safe to remove.
 5. Obvious junk: ask before deleting.
@@ -90,10 +90,13 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 5. Install Third-Party Skills
+## 5. Reconcile Third-Party Skills
 
-Read `external.md`. For each entry, run only the command for the current
-harness. Skip entries that do not list your harness and report the skip.
+Read `external.md`. For each active or retired entry, run only the install or
+removal command for the current harness. Skip entries that do not list your
+harness and report the skip. Retired entries are intentional cleanup
+tombstones: keep processing them on every reinstall so old external copies do
+not survive after this repository stops using them.
 
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.

@@ -100,6 +100,8 @@ for path in sorted(skill_paths):
         errors.append(f"missing description: {path}")
     name = metadata.get("name")
     if name:
+        if name == "impeccable":
+            errors.append(f"retired skill must not be reintroduced: {path}")
         previous = seen_names.get(name)
         if previous is not None:
             errors.append(f"duplicate skill name: {name}: {previous} and {path}")
@@ -194,7 +196,18 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "$handoff"
 }
 
+test_retired_impeccable_cleanup_is_documented() {
+  assert_contains "$ROOT_DIR/INSTALL.md" "Retired entries are intentional cleanup"
+  assert_contains "$ROOT_DIR/external.md" "### impeccable"
+  assert_contains "$ROOT_DIR/external.md" "~/.agents/skills/impeccable"
+  assert_contains "$ROOT_DIR/external.md" "~/.claude/skills/impeccable"
+  assert_contains "$ROOT_DIR/external.md" "~/.config/opencode/.opencode/skills/impeccable"
+  assert_contains "$ROOT_DIR/external.md" "~/.pi/skills/impeccable"
+  assert_contains "$ROOT_DIR/external.md" "skills/impeccable/scripts/hook.mjs"
+}
+
 test_skill_frontmatter_is_valid
+test_retired_impeccable_cleanup_is_documented
 test_handoff_tmux_helper_builds_tmux_window_command
 
 printf 'ok - skills tests\n'
