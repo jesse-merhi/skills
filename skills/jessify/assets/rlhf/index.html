@@ -29,8 +29,8 @@
           <span id="purposeBadge" class="badge"></span>
           <span id="roleBadge" class="role"></span>
         </div>
-        <h1>Which one sounds most like you?</h1>
-        <p class="instruction">Judge voice and flow, but reject anything that changes the facts. System names stay hidden until the held-out batch is complete.</p>
+        <h1>What would you personally publish?</h1>
+        <p class="instruction">Use the writing prompt to imagine the passage you would write. Then choose the closest option—or reject all three.</p>
 
         <section class="brief-block" aria-labelledby="briefHeading">
           <h2 id="briefHeading">What this passage must do</h2>
@@ -54,6 +54,13 @@
       </aside>
 
       <section class="choice-column" aria-label="Anonymous writing options">
+        <section class="task-card" aria-labelledby="taskHeading">
+          <span class="kicker">Your writing prompt</span>
+          <h2 id="taskHeading">Imagine this is the next passage in your technical blog.</h2>
+          <p id="taskPrompt" class="task-prompt"></p>
+          <p class="task-guidance">Which option is closest to what you would personally say here? Reject anything that changes the facts or talks about the task itself.</p>
+        </section>
+
         <div id="options" class="options"></div>
 
         <button id="noneButton" class="none-button" type="button">

@@ -47,6 +47,23 @@ prompt = module.candidate_prompt({
     "target_text": "word " * 70,
 }, [])
 assert "not a Slack message" in prompt
+assert module.MODEL_REASONING_LEAK_RE.search(
+    "Okay, the user wants me to write a passage and they've given me instructions."
+)
+assert not module.MODEL_REASONING_LEAK_RE.search(
+    "Okay, here is what happened when we shipped the first version."
+)
+passage = "The service retries failed jobs."
+grounded_brief = {
+    "neutral_brief": "Explain that the service retries failed jobs.",
+    "must_preserve": ["Failed jobs are retried"],
+}
+invented_brief = {
+    "neutral_brief": "Explain that Kafka retries failed jobs.",
+    "must_preserve": ["Kafka handles retries"],
+}
+assert module.brief_has_lexical_support(passage, grounded_brief)
+assert not module.brief_has_lexical_support(passage, invented_brief)
 PY
 
 printf '%s\n' '{"schema_version":1,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"
@@ -93,7 +110,9 @@ url="$(head -n 1 "$tmp/url")"
 [[ "$url" == http://127.0.0.1:*/* ]]
 curl --fail --silent --dump-header "$tmp/headers" "$url" > "$tmp/index.html"
 grep -qi '^Content-Security-Policy:' "$tmp/headers"
-grep -q 'Which one sounds most like you?' "$tmp/index.html"
+grep -q 'What would you personally publish?' "$tmp/index.html"
+grep -q 'Your writing prompt' "$tmp/index.html"
+grep -q 'what you would personally say here' "$tmp/index.html"
 curl --fail --silent "${url}api/state" > "$tmp/state.json"
 if grep -q 'authentic-reference\|test-baseline' "$tmp/state.json"; then
   printf 'blind API leaked a system name\n' >&2

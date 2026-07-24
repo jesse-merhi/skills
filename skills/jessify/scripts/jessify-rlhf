@@ -35,10 +35,23 @@ TAGS = {
     "too-formal", "too-performative", "missing-detail",
 }
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?")
+CONTENT_STOP_WORDS = {
+    "about", "after", "again", "against", "also", "because", "before",
+    "being", "below", "between", "could", "every", "first", "from",
+    "have", "into", "itself", "might", "other", "passage", "should",
+    "their", "there", "these", "thing", "those", "through", "using",
+    "what", "when", "where", "which", "while", "with", "would", "write",
+}
 INSTRUCTION_LEAK_RE = re.compile(
     r"\b(?:neutral brief|must preserve|rhetorical role|source provided|"
     r"target passage|key constraints|we are writing|the requested passage|"
     r"these instructions)\b",
+    flags=re.IGNORECASE,
+)
+MODEL_REASONING_LEAK_RE = re.compile(
+    r"(?:^\s*(?:we need to|i need to|let(?:'|’)s (?:write|craft|produce))\b|"
+    r"\bthe user wants me to\b|\bthey(?:'|’)ve given me\b|"
+    r"\bword count limit\b|\bwhat (?:i|we) need to (?:write|produce|do)\b)",
     flags=re.IGNORECASE,
 )
 NON_PROSE_ARTIFACT_RE = re.compile(r"```|<[^>]+>|https?://|/Users/")
@@ -51,6 +64,10 @@ def fail(message: str) -> None:
 
 def words(text: str) -> list[str]:
     return [match.group(0).lower().replace("’", "'") for match in WORD_RE.finditer(text)]
+
+
+def content_words(text: str) -> set[str]:
+    return {word for word in words(text) if len(word) >= 4 and word not in CONTENT_STOP_WORDS}
 
 
 def stable_id(prefix: str, *parts: str) -> str:
@@ -210,6 +227,22 @@ def passage_schema() -> dict[str, Any]:
     }
 
 
+def candidate_review_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["grounded", "finished_passage", "failure"],
+        "properties": {
+            "grounded": {"type": "boolean"},
+            "finished_passage": {"type": "boolean"},
+            "failure": {
+                "type": "string",
+                "enum": ["none", "missing-fact", "invented-fact", "meta-commentary"],
+            },
+        },
+    }
+
+
 def clean_candidate(model: str, draft: str, max_tokens: int) -> str:
     prompt = f"""Extract only the finished first-person blog passage from DRAFT.
 Remove task analysis, planning, prompt restatement, labels, constraint lists,
@@ -233,6 +266,62 @@ DRAFT:
     return str(value.get("passage", "")).strip()
 
 
+def review_candidate(model: str, case: dict[str, Any], candidate: str) -> tuple[bool, str]:
+    source = {
+        "neutral_brief": case["neutral_brief"],
+        "must_preserve": case["must_preserve"],
+        "structure": case["structure"],
+    }
+    source_terms = content_words(" ".join([
+        str(case["neutral_brief"]),
+        *(str(item) for item in case["must_preserve"]),
+    ]))
+    candidate_terms = content_words(candidate)
+    minimum_overlap = max(2, math.ceil(len(source_terms) * 0.2))
+    if len(source_terms & candidate_terms) < minimum_overlap:
+        return False, "insufficient-source-overlap"
+    prompt = f"""Act as a strict data-quality filter, not a writing assistant.
+
+Set grounded=false when CANDIDATE omits a required fact or introduces any
+specific technology, system behavior, motivation, chronology, or outcome that
+is not supported by SOURCE. Set finished_passage=false when it contains task
+analysis, planning, prompt commentary, instructions, metadata, or an outline
+instead of publishable prose. Do not reward fluency. Return only JSON matching
+the supplied schema.
+
+SOURCE:
+{json.dumps(source, ensure_ascii=False, indent=2)}
+
+CANDIDATE:
+{candidate}
+"""
+    raw = ollama_request(model, prompt, 0.0, candidate_review_schema(), max_tokens=160)
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return False, "failed the grounding review"
+    grounded = value.get("grounded") is True
+    finished = value.get("finished_passage") is True
+    failure = str(value.get("failure", "failed-grounding-review")).strip()
+    return grounded and finished, failure or "failed-grounding-review"
+
+
+def brief_has_lexical_support(passage: str, brief: dict[str, Any]) -> bool:
+    passage_terms = content_words(passage)
+    fact_terms = content_words(" ".join(str(item) for item in brief["must_preserve"]))
+    if len(fact_terms & passage_terms) < max(2, math.ceil(len(fact_terms) * 0.4)):
+        return False
+    brief_terms = content_words(str(brief["neutral_brief"]))
+    if len(brief_terms & passage_terms) < max(2, math.ceil(len(brief_terms) * 0.2)):
+        return False
+    return True
+
+
+def review_brief(passage: str, brief: dict[str, Any]) -> tuple[bool, str]:
+    grounded = brief_has_lexical_support(passage, brief)
+    return grounded, "none" if grounded else "brief lacked deterministic lexical support"
+
+
 def build_brief(model: str, unit: dict[str, Any]) -> dict[str, Any]:
     passage = str(unit["plain_text"])
     prompt = f"""Convert TARGET PASSAGE into a style-neutral writing brief.
@@ -243,16 +332,13 @@ Rules:
 - Paraphrase. Do not quote distinctive wording, jokes, cadence, punctuation, or voice.
 - Do not use the author's name and do not invent or repair facts.
 - Keep must_preserve items short and atomic.
-- Use context only to identify rhetorical function; never import its facts.
 
 Section: {unit.get('section', 'Unknown')}
-Previous context: {unit.get('preceding_context', '')}
 TARGET PASSAGE:
 {passage}
-Following context: {unit.get('following_context', '')}
 """
     last_error = ""
-    for attempt in range(3):
+    for attempt in range(5):
         candidate = ollama_request(
             model,
             prompt + (f"\nPrevious attempt failed: {last_error}" if last_error else ""),
@@ -282,12 +368,16 @@ Following context: {unit.get('following_context', '')}
         elif has_ngram_overlap(passage, brief, 9):
             last_error = "brief copies a nine-word phrase from the target"
         else:
-            return {
+            result = {
                 "neutral_brief": brief,
                 "rhetorical_role": role,
                 "must_preserve": [str(item).strip() for item in preserve],
                 "structure": [str(item).strip() for item in structure],
             }
+            grounded, reason = review_brief(passage, result)
+            if grounded:
+                return result
+            last_error = f"brief was not grounded in its target ({reason})"
     fail(f"Could not produce a safe neutral brief for {unit.get('id')}: {last_error}")
 
 
@@ -361,13 +451,16 @@ def generate_output(model: str, case: dict[str, Any], examples: list[dict[str, A
     target_words = len(words(str(case.get("target_text", ""))))
     max_words = max(45, round(target_words * 1.6))
     max_tokens = min(640, max(96, round(max_words * 1.6)))
-    for attempt in range(3):
+    for attempt in range(5):
         output = ollama_request(
             model,
             prompt + (f"\nRewrite because the previous output {last_error}." if last_error else ""),
             0.65,
             max_tokens=max_tokens,
         )
+        if MODEL_REASONING_LEAK_RE.search(output):
+            last_error = "contained model reasoning instead of a finished passage"
+            continue
         if INSTRUCTION_LEAK_RE.search(output) or output.lstrip().startswith("{"):
             output = clean_candidate(model, output, max_tokens)
         if len(words(output)) < 20:
@@ -384,6 +477,10 @@ def generate_output(model: str, case: dict[str, Any], examples: list[dict[str, A
         copied = next((row for row in examples if has_ngram_overlap(str(row.get("plain_text", "")), output, 9)), None)
         if copied is not None:
             last_error = "copied a long phrase from a reference"
+            continue
+        accepted, review_reason = review_candidate(model, case, output)
+        if not accepted:
+            last_error = review_reason
             continue
         return output
     fail(f"Could not generate a safe candidate for {case.get('case_id')}: {last_error}")
@@ -515,40 +612,63 @@ def command_prepare(args: argparse.Namespace) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     directory.chmod(0o700)
     units = load_jsonl(workspace / "corpus/units.jsonl")
-    selected = choose_units(units, split, args.limit, args.seed)
+    selected = choose_units(units, split, len(units), args.seed)
     private_path = directory / "private-cases.jsonl"
     existing = {str(row["case_id"]): row for row in load_jsonl(private_path)} if args.resume else {}
+    rejected_path = workspace / "rlhf/rejected" / f"{args.name}.jsonl"
+    rejected_rows = load_jsonl(rejected_path) if args.resume else []
+    rejected_ids = {str(row.get("case_id", "")) for row in rejected_rows}
     for index, unit in enumerate(selected, 1):
+        if len(existing) >= args.limit:
+            break
         case_id = stable_id("rlhf", args.name, str(unit["id"]))
         if case_id in existing:
-            print(f"[{index}/{len(selected)}] resumed {case_id}", file=sys.stderr)
+            print(f"[{len(existing)}/{args.limit}] resumed {case_id}", file=sys.stderr)
             continue
-        print(f"[{index}/{len(selected)}] building {case_id}", file=sys.stderr)
-        brief = build_brief(args.model, unit)
-        case: dict[str, Any] = {
-            "schema_version": SCHEMA_VERSION,
-            "case_id": case_id,
-            "source_unit_id": unit["id"],
-            "document_id": unit["document_id"],
-            "section": unit.get("section", ""),
-            "split": split,
-            "target_text": unit["text"],
-            "preceding_context": unit.get("preceding_context", ""),
-            "following_context": unit.get("following_context", ""),
-            **brief,
-        }
-        references = retrieval_examples(units, case)
-        raw_options = [
-            {"system": f"{args.model}-baseline", "output": generate_output(args.model, case, [])},
-            {"system": f"{args.model}-retrieval", "output": generate_output(args.model, case, references)},
-            {"system": "authentic-reference", "output": str(unit["text"])},
-        ]
-        if args.adapter_path:
-            adapter_path = Path(args.adapter_path).expanduser().resolve()
-            raw_options.append({
-                "system": f"adapter:{adapter_path.name}",
-                "output": generate_adapter_output(workspace, args.mlx_model, adapter_path, case),
+        if case_id in rejected_ids:
+            continue
+        print(f"[{len(existing) + 1}/{args.limit}] building {case_id}", file=sys.stderr)
+        try:
+            brief = build_brief(args.model, unit)
+            case: dict[str, Any] = {
+                "schema_version": SCHEMA_VERSION,
+                "case_id": case_id,
+                "source_unit_id": unit["id"],
+                "document_id": unit["document_id"],
+                "section": unit.get("section", ""),
+                "split": split,
+                "target_text": unit["text"],
+                "preceding_context": unit.get("preceding_context", ""),
+                "following_context": unit.get("following_context", ""),
+                **brief,
+            }
+            references = retrieval_examples(units, case)
+            raw_options = [
+                {"system": f"{args.model}-baseline", "output": generate_output(args.model, case, [])},
+                {"system": f"{args.model}-retrieval", "output": generate_output(args.model, case, references)},
+                {"system": "authentic-reference", "output": str(unit["text"])},
+            ]
+            if args.adapter_path:
+                adapter_path = Path(args.adapter_path).expanduser().resolve()
+                raw_options.append({
+                    "system": f"adapter:{adapter_path.name}",
+                    "output": generate_adapter_output(workspace, args.mlx_model, adapter_path, case),
+                })
+        except SystemExit as exc:
+            reason = str(exc)
+            if not reason.startswith("Could not produce a safe") and not reason.startswith("Could not generate a safe"):
+                raise
+            rejected_rows.append({
+                "schema_version": SCHEMA_VERSION,
+                "case_id": case_id,
+                "source_unit_id": unit["id"],
+                "document_id": unit["document_id"],
+                "reason": reason,
             })
+            rejected_ids.add(case_id)
+            atomic_jsonl(rejected_path, rejected_rows)
+            print(f"quarantined {case_id}: {reason}", file=sys.stderr)
+            continue
         raw_options.sort(key=lambda row: hashlib.sha256(f"{args.seed}\0{case_id}\0{row['system']}".encode("utf-8")).hexdigest())
         case["options"] = [
             {"label": chr(ord("A") + option_index), **option}
@@ -556,6 +676,8 @@ def command_prepare(args: argparse.Namespace) -> None:
         ]
         existing[case_id] = case
         atomic_jsonl(private_path, existing.values())
+    if len(existing) < args.limit:
+        fail(f"Only {len(existing)} of {args.limit} requested cases passed local quality gates")
     private_rows = list(existing.values())
     private_rows.sort(key=lambda row: next((index for index, item in enumerate(selected) if item["id"] == row["source_unit_id"]), 10**9))
     atomic_jsonl(private_path, private_rows)

@@ -23,6 +23,7 @@ const elements = {
   purposeBadge: byId("purposeBadge"),
   roleBadge: byId("roleBadge"),
   neutralBrief: byId("neutralBrief"),
+  taskPrompt: byId("taskPrompt"),
   mustPreserve: byId("mustPreserve"),
   beforeContext: byId("beforeContext"),
   afterContext: byId("afterContext"),
@@ -154,6 +155,7 @@ function render() {
   elements.purposeBadge.textContent = state.meta.purpose === "eval" ? "Held-out evaluation" : "Training preference";
   elements.roleBadge.textContent = item.rhetorical_role;
   elements.neutralBrief.textContent = item.neutral_brief;
+  elements.taskPrompt.textContent = `Write a finished first-person technical blog passage. ${item.neutral_brief}`;
   elements.mustPreserve.replaceChildren(...item.must_preserve.map((fact) => {
     const li = document.createElement("li");
     li.textContent = fact;
