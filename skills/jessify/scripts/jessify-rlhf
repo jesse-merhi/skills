@@ -523,7 +523,19 @@ TARGET PASSAGE:
     fail(f"Could not produce a safe neutral brief for {unit.get('id')}: {last_error}")
 
 
-def retrieval_examples(units: list[dict[str, Any]], case: dict[str, Any], limit: int = 4) -> list[dict[str, Any]]:
+def retrieval_examples(
+    units: list[dict[str, Any]],
+    case: dict[str, Any],
+    limit: int = 4,
+    vetoes: Optional[dict[str, set[str]]] = None,
+) -> list[dict[str, Any]]:
+    """Pick voice references, honouring the sources the author has ruled out.
+
+    A passage the author rejected as too specific or not their voice must not
+    come back as evidence of how they write.
+    """
+    vetoed_units = (vetoes or {}).get("unit", set())
+    vetoed_documents = (vetoes or {}).get("document", set())
     query_words = words(str(case["neutral_brief"]))
     document_frequency: Counter[str] = Counter()
     eligible = [
@@ -531,6 +543,8 @@ def retrieval_examples(units: list[dict[str, Any]], case: dict[str, Any], limit:
         if row.get("split") == "train"
         and row.get("quality") in {"canonical", "usable"}
         and row.get("document_id") != case.get("document_id")
+        and str(row.get("id", "")) not in vetoed_units
+        and str(row.get("document_id", "")) not in vetoed_documents
         and is_prose_unit(row)
     ]
     for row in eligible:
@@ -546,7 +560,10 @@ def retrieval_examples(units: list[dict[str, Any]], case: dict[str, Any], limit:
         if row.get("section") == case.get("section"):
             score += 0.25
         quality = 1.0 if row.get("quality") == "canonical" else 0.7
-        scored.append((score * quality, row))
+        # A reference is there to show how the author sounds, so prefer passages
+        # that actually use their devices over ones that merely share topic words.
+        voice = 1.0 + 0.08 * len(voice_families(unit_prose(row)))
+        scored.append((score * quality * voice, row))
     scored.sort(key=lambda item: (-item[0], str(item[1].get("id", ""))))
     return [row for score, row in scored[:limit] if score > 0]
 
@@ -876,9 +893,10 @@ def command_prepare(args: argparse.Namespace) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     directory.chmod(0o700)
     units = load_jsonl(workspace / "corpus/units.jsonl")
+    vetoes = load_vetoes(workspace)
     selected, skipped = choose_units(
         units, split, len(units), args.seed,
-        vetoes=load_vetoes(workspace),
+        vetoes=vetoes,
         min_voice_families=args.min_voice_families,
         max_specificity=args.max_specificity,
     )
@@ -923,7 +941,7 @@ def command_prepare(args: argparse.Namespace) -> None:
                 "fact_pressure": pressure,
                 **brief,
             }
-            references = retrieval_examples(units, case)
+            references = retrieval_examples(units, case, vetoes=vetoes)
             raw_options = [
                 {"system": f"{args.model}-baseline", "output": generate_output(args.model, case, [])},
                 {"system": f"{args.model}-retrieval", "output": generate_output(args.model, case, references)},

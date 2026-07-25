@@ -140,6 +140,21 @@ kept, tally = module.choose_units(units, "train", 5, "test", vetoes=document_vet
 assert not any(row["document_id"] == "a" for row in kept), "document veto ignored"
 assert tally["vetoed document"] == 2
 
+# A passage the author rejected must not come back as evidence of how they write.
+reference_case = {"neutral_brief": "worked through the problem the slow way",
+                  "document_id": "c", "section": ""}
+pool = module.retrieval_examples(units, reference_case)
+assert pool, "retrieval found no voice references at all"
+assert all(row["document_id"] != "c" for row in pool), "retrieved from the case's own document"
+withheld = module.retrieval_examples(
+    units, reference_case, vetoes={"unit": set(), "document": {"a"}},
+)
+assert all(row["document_id"] != "a" for row in withheld), "vetoed document still retrieved"
+one_less = module.retrieval_examples(
+    units, reference_case, vetoes={"unit": {row["id"] for row in pool}, "document": set()},
+)
+assert not one_less, "vetoed units still retrieved"
+
 # Ranking puts the strongest voice first so a partly finished batch is still useful.
 ranked, _ = module.choose_units(
     [units[0], units[5], units[7]], "train", 3, "test", min_voice_families=1, max_specificity=99.0,
