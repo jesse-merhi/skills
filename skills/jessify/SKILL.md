@@ -59,8 +59,9 @@ surface prose.
 
 4. Measure the voice before trying to imitate it.
 
-   Adjectives are not a specification. Build a measured profile once per corpus
-   change, then read the card it produces:
+   Read [references/voice-profile.md](references/voice-profile.md). Adjectives are
+   not a specification. Build a measured profile once per corpus change, then read
+   the card it produces:
 
    ```sh
    <skill-dir>/scripts/jessify-voice profile --workspace <workspace> --canonical-only
