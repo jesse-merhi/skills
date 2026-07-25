@@ -65,9 +65,22 @@ The twin matters. Every other option is rebuilt from a lossy brief, so the
 authentic passage is the only one holding the full set of details, and a
 labeller can spot it by richness instead of by voice. The twin keeps the
 authentic content and drains only the register, so at least one pair in every
-case differs in nothing but how it sounds. It is accepted only when it keeps
-most of the authentic content words, uses strictly fewer voice devices, and is a
-real rewrite rather than the original with the jokes filed off.
+case differs in nothing but how it sounds.
+
+Accepting a twin takes four cheap checks and one review: it must stay in a
+length band around the original, stay on topic, use strictly fewer voice
+devices, and not simply echo the original's word sequence. Only then does a
+local review decide whether the claims survived. Word overlap alone cannot make
+that call — measured on public prose, faithful flattenings score 0.36 to 0.53
+content recall precisely because a register change replaces most of the
+vocabulary on purpose. When no twin passes, `prepare` says which check rejected
+it rather than dropping the option silently.
+
+Briefs are held to the same standard as options. A required fact quoted straight
+from the passage is not a fact, it is the author's sentence, and every candidate
+then opens with it. `prepare` rejects any brief field that lifts a nine-word run
+from the target, while short reuse of a real detail such as "over 530 security
+advisories" still passes.
 
 The desk separates two axes that a single click used to blur:
 
