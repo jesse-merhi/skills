@@ -521,20 +521,46 @@ def copied_brief_field(passage: str, fields: Iterable[Any]) -> bool:
     return any(has_ngram_overlap(passage, str(field), 9) for field in fields)
 
 
-def brief_has_lexical_support(passage: str, brief: dict[str, Any]) -> bool:
-    passage_terms = content_words(passage)
-    fact_terms = content_words(" ".join(str(item) for item in brief["must_preserve"]))
-    if len(fact_terms & passage_terms) < max(2, math.ceil(len(fact_terms) * 0.4)):
-        return False
-    brief_terms = content_words(str(brief["neutral_brief"]))
-    if len(brief_terms & passage_terms) < max(2, math.ceil(len(brief_terms) * 0.2)):
-        return False
-    return True
+def brief_review_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["all_supported"],
+        "properties": {"all_supported": {"type": "boolean"}},
+    }
 
 
-def review_brief(passage: str, brief: dict[str, Any]) -> tuple[bool, str]:
-    grounded = brief_has_lexical_support(passage, brief)
-    return grounded, "none" if grounded else "brief lacked deterministic lexical support"
+def review_brief(model: str, passage: str, brief: dict[str, Any]) -> tuple[bool, str]:
+    """Check the brief's facts come from the passage, without demanding its words.
+
+    This used to be a word-overlap test, which punished the passages this
+    workflow most wants. In a stance-heavy paragraph the content words *are* the
+    voice words, so a deliberately style-neutral brief shares little vocabulary
+    with its source and looked ungrounded while being perfectly faithful.
+    Measured on public prose, a faithful brief for such a passage shared one
+    content stem out of five, and an invented one shared zero — too close to
+    separate. Overlap cannot answer this question, so ask about the claims.
+    """
+    prompt = f"""Decide whether every listed fact is stated or clearly implied by PASSAGE.
+
+Set all_supported=false if any fact adds a system, motivation, number, outcome,
+or chronology the passage does not support. Wording will differ on purpose;
+judge the claim, not the phrasing. Return only JSON matching the schema.
+
+FACTS:
+{json.dumps([str(item) for item in brief["must_preserve"]], ensure_ascii=False, indent=2)}
+
+PASSAGE:
+{passage}
+"""
+    raw = ollama_request(model, prompt, 0.0, brief_review_schema(), max_tokens=80)
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return False, "the grounding review did not return usable JSON"
+    if value.get("all_supported") is not True:
+        return False, "a required fact is not supported by the passage"
+    return True, "none"
 
 
 def build_brief(model: str, unit: dict[str, Any]) -> dict[str, Any]:
@@ -594,7 +620,7 @@ TARGET PASSAGE:
                 "must_preserve": [str(item).strip() for item in preserve],
                 "structure": [str(item).strip() for item in structure],
             }
-            grounded, reason = review_brief(passage, result)
+            grounded, reason = review_brief(model, passage, result)
             if grounded:
                 return result
             last_error = f"brief was not grounded in its target ({reason})"

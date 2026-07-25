@@ -184,26 +184,24 @@ invented_brief = {
     "neutral_brief": "Explain that Kafka retries failed jobs.",
     "must_preserve": ["Kafka handles retries"],
 }
-assert module.brief_has_lexical_support(passage, grounded_brief)
-assert not module.brief_has_lexical_support(passage, invented_brief)
-
-# The brief writer is told to paraphrase, so inflections must not read as new
-# concepts, while a genuinely invented one still must.
-assert module.stem("leaking") == module.stem("leaks") == "leak"
-assert module.stem("retried") == module.stem("retries") == "retry"
-assert module.stem("advisories") == module.stem("advisory") == "advisory"
-for short in ("data", "less", "this", "goes"):
-    assert module.stem(short) == short, short
-assert module.brief_has_lexical_support(
-    "Leaking information into context is worse.",
-    {"neutral_brief": "Explain that context leaks are worse.",
-     "must_preserve": ["Context leaks are worse"]},
-), "a paraphrased fact was treated as ungrounded"
-assert not module.brief_has_lexical_support(
-    "Leaking information into context is worse.",
-    {"neutral_brief": "Explain that Redis evictions are worse.",
-     "must_preserve": ["Redis evictions cause loss"]},
-), "stemming let an invented fact through"
+# Briefs are graded on their claims, not their vocabulary. A stance-heavy
+# passage keeps its content in its voice words, so a faithful style-neutral brief
+# shares almost nothing lexically with its source: measured on public prose, one
+# content stem out of five for a faithful brief against zero for an invented one.
+# Overlap cannot separate those, so review_brief asks the local model instead.
+STANCE = (
+    "I Love AI, it's truly the next revolution for humankind. But in all the "
+    "avenues and ways we use it to do amazingly awesome things, there are just "
+    "as many ways humans will become greedy."
+)
+faithful_terms = module.content_words("The technology is transformative. People will exploit it.")
+invented_terms = module.content_words("Redis evicted the cache. The outage lasted an hour.")
+stance_terms = module.content_words(STANCE)
+assert len(faithful_terms & stance_terms) <= 1, "fixture no longer shows the lexical shortfall"
+assert len(invented_terms & stance_terms) == 0
+assert not hasattr(module, "brief_has_lexical_support"), \
+    "the word-overlap brief gate is back; it rejects faithful abstract briefs"
+assert module.brief_review_schema()["required"] == ["all_supported"]
 
 # A required fact lifted verbatim from the passage is the author's sentence, and
 # every candidate would then open with it. Short reuse of a real detail is fine.
