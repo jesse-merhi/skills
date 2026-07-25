@@ -266,13 +266,16 @@ grep -q '"rejected_unfaithful": true' "$workspace/preferences/dpo.jsonl"
 grep -q '"voice_dimension": "hedged first-person opinion"' "$workspace/preferences/dpo.jsonl"
 
 # A source the author called too specific must never become training data, and
-# must leave a veto behind for the next batch.
+# must leave a veto behind for the next batch. Changing your mind after an
+# earlier export has to retract the pairs that export already wrote.
+test "$(wc -l < "$workspace/preferences/preferences.jsonl")" -eq 1
 printf '%s\n' '{"schema_version":2,"case_id":"case_train","label":"A","tags":[],"unfaithful":[],"source_verdict":"too-specific","confidence":"high","note":"","edited_output":""}' > "$preference/choices.jsonl"
-rm -f "$workspace/preferences/preferences.jsonl" "$workspace/preferences/dpo.jsonl"
 "$tool" export-preferences --workspace "$workspace" --batch preference-test > "$tmp/vetoed.json"
 grep -q '"added": 0' "$tmp/vetoed.json"
 grep -q '"vetoed_sources": 1' "$tmp/vetoed.json"
+grep -q '"retracted": 1' "$tmp/vetoed.json"
 test ! -s "$workspace/preferences/preferences.jsonl"
+test ! -s "$workspace/preferences/dpo.jsonl"
 grep -q '"scope": "unit"' "$workspace/rlhf/eligibility.jsonl"
 grep -q '"id": "unit_train"' "$workspace/rlhf/eligibility.jsonl"
 "$tool" eligibility --workspace "$workspace" | grep -q '"too-specific": 1'

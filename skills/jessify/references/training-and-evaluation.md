@@ -104,10 +104,18 @@ was worth learning from at all, and the answer is routed:
 | Not really prose | vetoes that passage |
 | This whole article is not my voice | vetoes the entire document |
 
-Vetoes land in `rlhf/eligibility.jsonl`, and `choose_units` honours them in
-every later batch, preference and held-out alike. A vetoed case is excluded from
-preference export, because a source the author rejected should not become a
-training target.
+Vetoes land in `rlhf/eligibility.jsonl` and reach three places:
+
+- `choose_units` skips the source in every later batch, preference and held-out
+  alike;
+- `retrieval_examples` stops offering it as evidence of how the author writes;
+- `export-preferences` excludes it, and retracts pairs an earlier export already
+  wrote from that source, including pairs from other batches. The reported
+  `retracted` count says how many were removed.
+
+Changing your mind is therefore safe: relabel the case, export again, and the
+training set catches up. Pairs written before the schema recorded a source id
+cannot be matched, so they are left alone.
 
 This crosses the train/eval boundary deliberately and safely: a veto row records
 only scope, source id, and verdict. It never records which option won, so

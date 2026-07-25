@@ -668,7 +668,7 @@ def echo_share(reference: str, candidate: str, size: int = 5) -> float:
     return sum(gram in present for gram in grams) / len(grams)
 
 
-def generate_flattened_output(model: str, authentic: str) -> str:
+def generate_flattened_output(model: str, authentic: str) -> tuple[str, str]:
     """Rewrite the authentic passage in a flat register, keeping its content.
 
     Every other option is reconstructed from a lossy brief, so the authentic
@@ -677,6 +677,9 @@ def generate_flattened_output(model: str, authentic: str) -> str:
     the comparison: same content, drained register, so the only remaining
     difference is how it sounds. It also yields one preference pair per case
     whose signal is unambiguously about voice.
+
+    Returns the rewrite and an empty reason, or an empty rewrite and the reason
+    the last attempt was rejected, so a skipped contrast is never silent.
     """
     prompt = f"""Rewrite PASSAGE as neutral corporate documentation.
 
@@ -693,20 +696,22 @@ PASSAGE:
     authentic_families = len(voice_families(authentic))
     budget = len(words(authentic))
     max_tokens = min(900, max(160, round(budget * 2.0)))
+    reason = "no attempt was made"
     for attempt in range(3):
         output = ollama_request(model, prompt, 0.2, max_tokens=max_tokens)
         if INSTRUCTION_LEAK_RE.search(output) or MODEL_REASONING_LEAK_RE.search(output):
-            continue
-        if not 0.6 * budget <= len(words(output)) <= 1.8 * budget:
-            continue
-        if content_recall(authentic, output) < 0.6:
-            continue
-        if len(voice_families(output)) >= authentic_families:
-            continue
-        if echo_share(authentic, output) > 0.5:
-            continue
-        return output
-    return ""
+            reason = "leaked prompt or reasoning"
+        elif not 0.6 * budget <= len(words(output)) <= 1.8 * budget:
+            reason = "length left the band around the original"
+        elif content_recall(authentic, output) < 0.6:
+            reason = "dropped too much of the original content"
+        elif len(voice_families(output)) >= authentic_families:
+            reason = "kept as many voice devices as the original"
+        elif echo_share(authentic, output) > 0.5:
+            reason = "echoed the original instead of rewriting it"
+        else:
+            return output, ""
+    return "", reason
 
 
 def generate_adapter_output(
@@ -948,11 +953,14 @@ def command_prepare(args: argparse.Namespace) -> None:
                 {"system": "authentic-reference", "output": str(unit["text"])},
             ]
             if args.contrast:
-                flattened = generate_flattened_output(args.model, unit_prose(unit))
+                flattened, contrast_reason = generate_flattened_output(args.model, unit_prose(unit))
                 if flattened:
                     raw_options.append({"system": "voice-stripped-authentic", "output": flattened})
                 else:
-                    print(f"no content-matched contrast for {case_id}", file=sys.stderr)
+                    print(
+                        f"no content-matched contrast for {case_id}: {contrast_reason}",
+                        file=sys.stderr,
+                    )
             if args.adapter_path:
                 adapter_path = Path(args.adapter_path).expanduser().resolve()
                 raw_options.append({
@@ -1141,7 +1149,19 @@ def export_preferences(workspace: Path, directory: Path) -> dict[str, int]:
                 "confidence": choice.get("confidence", "medium"),
                 "voice_dimension": case.get("voice_dimension", ""),
                 "rejected_unfaithful": rejected_option["label"] in unfaithful,
+                "source_unit_id": str(case.get("source_unit_id", "")),
+                "document_id": str(case.get("document_id", "")),
             }
+    # A veto has to reach pairs an earlier export already wrote, including ones
+    # from other batches that drew on the same source.
+    vetoes = load_vetoes(workspace)
+    retracted = [
+        key for key, row in by_id.items()
+        if str(row.get("source_unit_id", "")) in vetoes["unit"]
+        or str(row.get("document_id", "")) in vetoes["document"]
+    ]
+    for key in retracted:
+        del by_id[key]
     rows = sorted(by_id.values(), key=lambda row: str(row["id"]))
     atomic_jsonl(path, rows)
     dpo_rows = [{
@@ -1156,7 +1176,13 @@ def export_preferences(workspace: Path, directory: Path) -> dict[str, int]:
         },
     } for row in rows]
     atomic_jsonl(workspace / "preferences/dpo.jsonl", dpo_rows)
-    return {"added": added, "total": len(rows), "skipped": skipped, "vetoed_sources": vetoed}
+    return {
+        "added": added,
+        "total": len(rows),
+        "skipped": skipped,
+        "vetoed_sources": vetoed,
+        "retracted": len(retracted),
+    }
 
 
 def score_batch(directory: Path) -> dict[str, Any]:
