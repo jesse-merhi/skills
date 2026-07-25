@@ -25,15 +25,23 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 OLLAMA_BASE = "http://127.0.0.1:11434"
 ROLES = {
     "opening", "setup", "explanation", "example", "transition", "aside",
     "argument", "reflection", "punchline", "conclusion", "unknown",
 }
 TAGS = {
-    "factual-drift", "generic-voice", "copied-phrasing", "bad-flow",
-    "too-formal", "too-performative", "missing-detail",
+    "generic-voice", "copied-phrasing", "bad-flow",
+    "too-formal", "too-performative", "sounds-like-chat",
+}
+LEGACY_TAGS = {"factual-drift", "missing-detail"}
+ACCEPTED_TAGS = TAGS | LEGACY_TAGS
+SOURCE_VERDICTS = ("ok", "too-specific", "not-prose", "off-voice-source")
+VERDICT_SCOPE = {
+    "too-specific": "unit",
+    "not-prose": "unit",
+    "off-voice-source": "document",
 }
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?")
 CONTENT_STOP_WORDS = {
@@ -57,6 +65,33 @@ MODEL_REASONING_LEAK_RE = re.compile(
 )
 NON_PROSE_ARTIFACT_RE = re.compile(r"```|<[^>]+>|https?://|/Users/")
 NUMBERED_STEP_RE = re.compile(r"^\s*\d+[.)]\s+")
+FIRST_PERSON_RE = re.compile(r"\b(?:i|me|my|mine|myself)\b", flags=re.IGNORECASE)
+READER_ADDRESS_RE = re.compile(r"\b(?:you|your|yours|yourself)\b", flags=re.IGNORECASE)
+CONTRACTION_RE = re.compile(r"\w['’](?:s|t|m|ve|ll|re|d)\b", flags=re.IGNORECASE)
+STANCE_RE = re.compile(
+    r"\b(?:probably|honestly|actually|basically|really|truly|obviously|frankly|"
+    r"apparently|maybe|perhaps|somehow|admittedly|alas|surely|arguably|"
+    r"i think|i mean|i guess|i reckon|in my opinion|to be honest|kind of|sort of|"
+    r"strong opinion|shock horror)\b",
+    flags=re.IGNORECASE,
+)
+ASIDE_RE = re.compile(r"\.\.\.|…|!|\(|:\)|—")
+TURN_OPENER_RE = re.compile(
+    r"(?:\A|(?<=[.!?…]\s))(?:So|But|And|Well|Look|See|Now|Anyway|Okay|Yes|No|Yet|Alas|"
+    r"Turns out|Except|Honestly)\b"
+)
+PROPER_NOUN_RE = re.compile(r"\b[A-Z][A-Za-z0-9.\-]+\b")
+ACRONYM_RE = re.compile(r"\b[A-Z]{2,6}\b")
+QUANTITY_RE = re.compile(r"\b\d[\d,.:/%]*\s*(?:am|pm|st|nd|rd|th|k|m|x)?\b", flags=re.IGNORECASE)
+VOICE_DIMENSIONS: tuple[tuple[frozenset[str], str], ...] = (
+    (frozenset({"question", "reader-address"}), "questions put to the reader"),
+    (frozenset({"stance", "first-person"}), "hedged first-person opinion"),
+    (frozenset({"punchline", "turn"}), "short punchlines after a turn"),
+    (frozenset({"aside", "first-person"}), "self-aware asides"),
+    (frozenset({"turn", "contraction"}), "conversational mid-thought turns"),
+    (frozenset({"reader-address"}), "speaking straight to the reader"),
+    (frozenset({"first-person"}), "first-person narration"),
+)
 
 
 def fail(message: str) -> None:
@@ -74,6 +109,103 @@ def content_words(text: str) -> set[str]:
 def stable_id(prefix: str, *parts: str) -> str:
     digest = hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()[:16]
     return f"{prefix}_{digest}"
+
+
+def sentences(text: str) -> list[str]:
+    return [part.strip() for part in re.split(r"(?<=[.!?…])\s+", text) if part.strip()]
+
+
+def unit_prose(row: dict[str, Any]) -> str:
+    """Prefer the markup-free rendering; fall back to the raw unit text."""
+    return str(row.get("plain_text") or row.get("text") or "")
+
+
+def plain_option(text: str) -> str:
+    """Strip inline markup so no option can be identified by its formatting.
+
+    The authentic passage arrives from a Markdown corpus and may carry code
+    spans or emphasis that a generated candidate never has. Applied to every
+    option equally, this removes a tell that has nothing to do with voice.
+    """
+    text = re.sub(r"`+", "", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"(?<![\w*])\*([^*\n]+)\*(?![\w*])", r"\1", text)
+    text = re.sub(r"(?<![\w_])_([^_\n]+)_(?![\w_])", r"\1", text)
+    return text.strip()
+
+
+def voice_families(text: str) -> list[str]:
+    """Name the distinct voice devices a passage uses.
+
+    Counting families rather than raw marker density keeps a long expository
+    passage from outscoring a short personal one purely on word count.
+    """
+    body = sentences(text)
+    present = {
+        "first-person": bool(FIRST_PERSON_RE.search(text)),
+        "reader-address": bool(READER_ADDRESS_RE.search(text)),
+        "contraction": bool(CONTRACTION_RE.search(text)),
+        "stance": bool(STANCE_RE.search(text)),
+        "aside": bool(ASIDE_RE.search(text)),
+        "question": "?" in text,
+        "turn": bool(TURN_OPENER_RE.search(text)),
+        "punchline": any(1 <= len(words(part)) <= 6 for part in body),
+    }
+    return sorted(name for name, found in present.items() if found)
+
+
+def specificity_score(text: str) -> float:
+    """Distinct one-off references per hundred words.
+
+    A passage crowded with named systems, versions, and timestamps cannot be
+    rewritten from a brief without reciting them, so judging it measures
+    recall rather than voice. Distinct references are counted once each: an
+    entity repeated throughout a passage is one topic, not many details.
+    """
+    references: set[str] = {match.lower() for match in re.findall(r"`([^`]+)`", text)}
+    body = re.sub(r"`[^`]+`", " ", text)
+    for part in sentences(body):
+        tail = part[1:] if part else ""
+        references.update(match.lower() for match in PROPER_NOUN_RE.findall(tail))
+        references.update(match.lower() for match in ACRONYM_RE.findall(part))
+    references.update(match.lower() for match in QUANTITY_RE.findall(body))
+    references.discard("i")
+    return round(100.0 * len(references) / max(1, len(words(text))), 2)
+
+
+def voice_dimension(text: str) -> str:
+    """Name the transferable style question a case is best placed to answer."""
+    families = set(voice_families(text))
+    for candidate, description in VOICE_DIMENSIONS:
+        if candidate <= families:
+            return description
+    return "everyday register"
+
+
+def voice_case_reason(text: str, min_families: int, max_specificity: float) -> str:
+    """Name why a passage cannot carry a fair voice judgment, or return "".
+
+    The returned strings are a fixed vocabulary so callers can tally them without
+    putting per-passage measurements into their output.
+
+    Specificity is tested first because it is the failure the author notices: a
+    passage can be unmistakably theirs and still be impossible to judge, because
+    every option either recites the same list of names and timestamps or is
+    visibly missing them.
+    """
+    if specificity_score(text) > max_specificity:
+        return "too specific to judge"
+    families = voice_families(text)
+    if not {"first-person", "reader-address"} & set(families):
+        return "impersonal exposition"
+    if len(families) < min_families:
+        return "too few voice devices"
+    return ""
+
+
+def fact_pressure(must_preserve: list[Any], target_text: str) -> float:
+    """Required facts per hundred words of the passage being replaced."""
+    return round(100.0 * len(must_preserve) / max(1, len(words(target_text))), 2)
 
 
 def secure_workspace(workspace: Path) -> None:
@@ -496,6 +628,70 @@ def generate_output(model: str, case: dict[str, Any], examples: list[dict[str, A
     fail(f"Could not generate a safe candidate for {case.get('case_id')}: {last_error}")
 
 
+def content_recall(reference: str, candidate: str) -> float:
+    reference_terms = content_words(reference)
+    if not reference_terms:
+        return 0.0
+    return len(reference_terms & content_words(candidate)) / len(reference_terms)
+
+
+def echo_share(reference: str, candidate: str, size: int = 5) -> float:
+    """Share of the reference's word runs that survive verbatim in the candidate.
+
+    A flattened rewrite keeps factual phrases, so a single long shared run proves
+    nothing. What separates a rewrite from an echo is how much of the original
+    sequence is still intact.
+    """
+    left = words(reference)
+    right = words(candidate)
+    if len(left) < size:
+        return 0.0
+    grams = [tuple(left[index:index + size]) for index in range(len(left) - size + 1)]
+    present = {tuple(right[index:index + size]) for index in range(max(0, len(right) - size + 1))}
+    return sum(gram in present for gram in grams) / len(grams)
+
+
+def generate_flattened_output(model: str, authentic: str) -> str:
+    """Rewrite the authentic passage in a flat register, keeping its content.
+
+    Every other option is reconstructed from a lossy brief, so the authentic
+    passage is the only one carrying the full set of details. That lets a
+    labeller spot it by richness instead of by voice. A flattened twin restores
+    the comparison: same content, drained register, so the only remaining
+    difference is how it sounds. It also yields one preference pair per case
+    whose signal is unambiguously about voice.
+    """
+    prompt = f"""Rewrite PASSAGE as neutral corporate documentation.
+
+Keep every fact, name, number, claim, and the order they appear in. Change only
+how it sounds: remove first-person warmth, humour, asides, ellipses, direct
+questions to the reader, exclamations, and short punchy sentences. Use uniform
+declarative sentences and standard business register. Do not summarise, do not
+shorten below the original length, and do not add commentary about the rewrite.
+Return only the rewritten prose.
+
+PASSAGE:
+{authentic}
+"""
+    authentic_families = len(voice_families(authentic))
+    budget = len(words(authentic))
+    max_tokens = min(900, max(160, round(budget * 2.0)))
+    for attempt in range(3):
+        output = ollama_request(model, prompt, 0.2, max_tokens=max_tokens)
+        if INSTRUCTION_LEAK_RE.search(output) or MODEL_REASONING_LEAK_RE.search(output):
+            continue
+        if not 0.6 * budget <= len(words(output)) <= 1.8 * budget:
+            continue
+        if content_recall(authentic, output) < 0.6:
+            continue
+        if len(voice_families(output)) >= authentic_families:
+            continue
+        if echo_share(authentic, output) > 0.5:
+            continue
+        return output
+    return ""
+
+
 def generate_adapter_output(
     workspace: Path,
     model: str,
@@ -559,20 +755,56 @@ def is_prose_unit(row: dict[str, Any]) -> bool:
     return structured * 5 < len(lines) * 2
 
 
-def choose_units(units: list[dict[str, Any]], split: str, limit: int, seed: str) -> list[dict[str, Any]]:
-    eligible = [
-        row for row in units
-        if row.get("split") == split
-        and row.get("quality") in {"canonical", "usable"}
-        and is_prose_unit(row)
-    ]
+def choose_units(
+    units: list[dict[str, Any]],
+    split: str,
+    limit: int,
+    seed: str,
+    vetoes: Optional[dict[str, set[str]]] = None,
+    min_voice_families: int = 3,
+    max_specificity: float = 6.0,
+) -> tuple[list[dict[str, Any]], Counter[str]]:
+    """Pick source-diverse, voice-bearing units and report why others were skipped.
+
+    Returns the selection plus a text-free tally of rejection reasons so a
+    caller can report gate behaviour without printing corpus content.
+    """
+    vetoed_units = (vetoes or {}).get("unit", set())
+    vetoed_documents = (vetoes or {}).get("document", set())
+    skipped: Counter[str] = Counter()
+    eligible: list[dict[str, Any]] = []
+    for row in units:
+        if row.get("split") != split or row.get("quality") not in {"canonical", "usable"}:
+            continue
+        if str(row.get("document_id", "")) in vetoed_documents:
+            skipped["vetoed document"] += 1
+            continue
+        if str(row.get("id", "")) in vetoed_units:
+            skipped["vetoed unit"] += 1
+            continue
+        if not is_prose_unit(row):
+            skipped["not prose"] += 1
+            continue
+        reason = voice_case_reason(unit_prose(row), min_voice_families, max_specificity)
+        if reason:
+            skipped[reason] += 1
+            continue
+        eligible.append(row)
     if not eligible:
-        fail(f"No eligible {split} units")
+        fail(
+            f"No eligible {split} units after the voice gate "
+            f"(skipped: {dict(skipped.most_common()) or 'none'}). "
+            "Ingest more finished prose, or relax --min-voice-families/--max-specificity."
+        )
     by_document: dict[str, list[dict[str, Any]]] = {}
     for row in eligible:
         by_document.setdefault(str(row.get("document_id", "")), []).append(row)
     for rows in by_document.values():
-        rows.sort(key=lambda row: hashlib.sha256(f"{seed}\0{row.get('id')}".encode("utf-8")).hexdigest())
+        rows.sort(key=lambda row: (
+            -len(voice_families(unit_prose(row))),
+            specificity_score(unit_prose(row)),
+            hashlib.sha256(f"{seed}\0{row.get('id')}".encode("utf-8")).hexdigest(),
+        ))
     document_ids = sorted(
         by_document,
         key=lambda document_id: hashlib.sha256(f"{seed}\0{document_id}".encode("utf-8")).hexdigest(),
@@ -591,7 +823,29 @@ def choose_units(units: list[dict[str, Any]], split: str, limit: int, seed: str)
         if not added:
             break
         round_index += 1
-    return selected
+    return selected, skipped
+
+
+def load_vetoes(workspace: Path) -> dict[str, set[str]]:
+    """Read the author's source rejections into unit and document veto sets."""
+    vetoes: dict[str, set[str]] = {"unit": set(), "document": set()}
+    for row in load_jsonl(workspace / "rlhf/eligibility.jsonl"):
+        scope = str(row.get("scope", ""))
+        identifier = str(row.get("id", ""))
+        if scope in vetoes and identifier:
+            vetoes[scope].add(identifier)
+    return vetoes
+
+
+def record_veto(workspace: Path, row: dict[str, Any]) -> None:
+    """Append one source veto, keyed so repeated labelling stays idempotent."""
+    path = workspace / "rlhf/eligibility.jsonl"
+    rows = load_jsonl(path)
+    key = (str(row["scope"]), str(row["id"]), str(row["verdict"]))
+    if any((str(item.get("scope")), str(item.get("id")), str(item.get("verdict"))) == key for item in rows):
+        return
+    rows.append(row)
+    atomic_jsonl(path, rows)
 
 
 def command_prepare(args: argparse.Namespace) -> None:
@@ -622,7 +876,14 @@ def command_prepare(args: argparse.Namespace) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     directory.chmod(0o700)
     units = load_jsonl(workspace / "corpus/units.jsonl")
-    selected = choose_units(units, split, len(units), args.seed)
+    selected, skipped = choose_units(
+        units, split, len(units), args.seed,
+        vetoes=load_vetoes(workspace),
+        min_voice_families=args.min_voice_families,
+        max_specificity=args.max_specificity,
+    )
+    if skipped:
+        print(f"voice gate skipped: {dict(skipped.most_common())}", file=sys.stderr)
     private_path = directory / "private-cases.jsonl"
     existing = {str(row["case_id"]): row for row in load_jsonl(private_path)} if args.resume else {}
     rejected_path = workspace / "rlhf/rejected" / f"{args.name}.jsonl"
@@ -640,6 +901,13 @@ def command_prepare(args: argparse.Namespace) -> None:
         print(f"[{len(existing) + 1}/{args.limit}] building {case_id}", file=sys.stderr)
         try:
             brief = build_brief(args.model, unit)
+            pressure = fact_pressure(brief["must_preserve"], unit_prose(unit))
+            if pressure > args.max_fact_pressure:
+                fail(
+                    f"Could not produce a safe neutral brief for {unit.get('id')}: "
+                    f"needs {pressure} facts per 100 words, so judging it would test "
+                    f"recall of specifics rather than voice"
+                )
             case: dict[str, Any] = {
                 "schema_version": SCHEMA_VERSION,
                 "case_id": case_id,
@@ -650,6 +918,9 @@ def command_prepare(args: argparse.Namespace) -> None:
                 "target_text": unit["text"],
                 "preceding_context": unit.get("preceding_context", ""),
                 "following_context": unit.get("following_context", ""),
+                "voice_dimension": voice_dimension(unit_prose(unit)),
+                "specificity": specificity_score(unit_prose(unit)),
+                "fact_pressure": pressure,
                 **brief,
             }
             references = retrieval_examples(units, case)
@@ -658,6 +929,12 @@ def command_prepare(args: argparse.Namespace) -> None:
                 {"system": f"{args.model}-retrieval", "output": generate_output(args.model, case, references)},
                 {"system": "authentic-reference", "output": str(unit["text"])},
             ]
+            if args.contrast:
+                flattened = generate_flattened_output(args.model, unit_prose(unit))
+                if flattened:
+                    raw_options.append({"system": "voice-stripped-authentic", "output": flattened})
+                else:
+                    print(f"no content-matched contrast for {case_id}", file=sys.stderr)
             if args.adapter_path:
                 adapter_path = Path(args.adapter_path).expanduser().resolve()
                 raw_options.append({
@@ -681,7 +958,7 @@ def command_prepare(args: argparse.Namespace) -> None:
             continue
         raw_options.sort(key=lambda row: hashlib.sha256(f"{args.seed}\0{case_id}\0{row['system']}".encode("utf-8")).hexdigest())
         case["options"] = [
-            {"label": chr(ord("A") + option_index), **option}
+            {"label": chr(ord("A") + option_index), **option, "output": plain_option(str(option["output"]))}
             for option_index, option in enumerate(raw_options)
         ]
         existing[case_id] = case
@@ -703,6 +980,7 @@ def command_prepare(args: argparse.Namespace) -> None:
             "structure": case["structure"],
             "preceding_context": case.get("preceding_context", ""),
             "following_context": case.get("following_context", ""),
+            "voice_dimension": case.get("voice_dimension", ""),
             "options": [{"label": option["label"], "output": option["output"]} for option in case["options"]],
         })
         key_rows.append({
@@ -721,6 +999,10 @@ def command_prepare(args: argparse.Namespace) -> None:
         "count": len(blind_rows),
         "adapter_path": str(Path(args.adapter_path).expanduser().resolve()) if args.adapter_path else "",
         "mlx_model": args.mlx_model if args.adapter_path else "",
+        "min_voice_families": args.min_voice_families,
+        "max_specificity": args.max_specificity,
+        "max_fact_pressure": args.max_fact_pressure,
+        "contrast": bool(args.contrast),
     })
     atomic_jsonl(directory / "choices.jsonl", load_jsonl(directory / "choices.jsonl"))
     print(f"prepared {len(blind_rows)} {purpose} cases in {directory}")
@@ -733,8 +1015,12 @@ def validate_choice(case: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     if label not in allowed_labels | {"none"}:
         fail(f"Invalid label for {case_id}: {label}")
     tags = payload.get("tags", [])
-    if not isinstance(tags, list) or any(str(tag) not in TAGS for tag in tags):
+    if not isinstance(tags, list) or any(str(tag) not in ACCEPTED_TAGS for tag in tags):
         fail(f"Invalid tags for {case_id}")
+    unfaithful = payload.get("unfaithful", [])
+    if not isinstance(unfaithful, list) or any(str(item) not in allowed_labels for item in unfaithful):
+        fail(f"Invalid faithfulness flags for {case_id}")
+    unfaithful_labels = sorted(set(str(item) for item in unfaithful))
     note = str(payload.get("note", "")).strip()
     edited = str(payload.get("edited_output", "")).strip()
     if len(note) > 1000 or len(edited) > 20000:
@@ -742,11 +1028,21 @@ def validate_choice(case: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     confidence = str(payload.get("confidence", "medium"))
     if confidence not in {"low", "medium", "high"}:
         fail(f"Invalid confidence for {case_id}")
+    source_verdict = str(payload.get("source_verdict", "ok")) or "ok"
+    if source_verdict not in SOURCE_VERDICTS:
+        fail(f"Invalid source verdict for {case_id}: {source_verdict}")
+    if label in unfaithful_labels and not edited:
+        fail(
+            f"Option {label} is flagged as changing the facts for {case_id}. "
+            "Edit it into something you would publish, or pick another option."
+        )
     return {
         "schema_version": SCHEMA_VERSION,
         "case_id": case_id,
         "label": label,
         "tags": sorted(set(str(tag) for tag in tags)),
+        "unfaithful": unfaithful_labels,
+        "source_verdict": source_verdict,
         "confidence": confidence,
         "note": note,
         "edited_output": edited,
@@ -764,14 +1060,34 @@ def export_preferences(workspace: Path, directory: Path) -> dict[str, int]:
     by_id = {str(row["id"]): row for row in preferences}
     added = 0
     skipped = 0
+    vetoed = 0
     for choice in choices:
         case = private.get(str(choice.get("case_id", "")))
         if case is None or choice.get("label") == "none":
             skipped += 1
             continue
+        verdict = str(choice.get("source_verdict", "ok")) or "ok"
+        if verdict != "ok":
+            scope = VERDICT_SCOPE[verdict]
+            record_veto(workspace, {
+                "schema_version": SCHEMA_VERSION,
+                "scope": scope,
+                "id": str(case["source_unit_id"] if scope == "unit" else case["document_id"]),
+                "verdict": verdict,
+                "batch": str(meta["name"]),
+                "source_case_id": str(case["case_id"]),
+            })
+            vetoed += 1
+            continue
         selected = next((row for row in case["options"] if row["label"] == choice["label"]), None)
         if selected is None:
             fail(f"Unknown choice label for {choice.get('case_id')}")
+        unfaithful = {str(item) for item in choice.get("unfaithful", [])}
+        if selected["label"] in unfaithful and not str(choice.get("edited_output", "")).strip():
+            fail(
+                f"Refusing to train on {case['case_id']}: the winning option is flagged as "
+                "changing the facts and was never edited"
+            )
         chosen = str(choice.get("edited_output") or selected["output"]).strip()
         source = json.dumps({
             "neutral_brief": case["neutral_brief"],
@@ -805,6 +1121,8 @@ def export_preferences(workspace: Path, directory: Path) -> dict[str, int]:
                 "chosen_system": "human-edit" if choice.get("edited_output") else selected["system"],
                 "rejected_system": rejected_option["system"],
                 "confidence": choice.get("confidence", "medium"),
+                "voice_dimension": case.get("voice_dimension", ""),
+                "rejected_unfaithful": rejected_option["label"] in unfaithful,
             }
     rows = sorted(by_id.values(), key=lambda row: str(row["id"]))
     atomic_jsonl(path, rows)
@@ -815,10 +1133,12 @@ def export_preferences(workspace: Path, directory: Path) -> dict[str, int]:
         "metadata": {
             "id": row["id"], "reason": row["reason"],
             "role": row["rhetorical_role"], "batch": row.get("batch", ""),
+            "voice_dimension": row.get("voice_dimension", ""),
+            "rejected_unfaithful": bool(row.get("rejected_unfaithful", False)),
         },
     } for row in rows]
     atomic_jsonl(workspace / "preferences/dpo.jsonl", dpo_rows)
-    return {"added": added, "total": len(rows), "skipped": skipped}
+    return {"added": added, "total": len(rows), "skipped": skipped, "vetoed_sources": vetoed}
 
 
 def score_batch(directory: Path) -> dict[str, Any]:
@@ -832,6 +1152,8 @@ def score_batch(directory: Path) -> dict[str, Any]:
     choices = load_jsonl(directory / "choices.jsonl")
     wins: Counter[str] = Counter()
     tags: Counter[str] = Counter()
+    verdicts: Counter[str] = Counter()
+    unfaithful: Counter[str] = Counter()
     none = 0
     seen: set[str] = set()
     for choice in choices:
@@ -847,6 +1169,14 @@ def score_batch(directory: Path) -> dict[str, Any]:
         else:
             fail(f"Unknown evaluation choice: {case_id} / {label}")
         tags.update(str(tag) for tag in choice.get("tags", []))
+        verdicts[str(choice.get("source_verdict", "ok")) or "ok"] += 1
+        for flagged in choice.get("unfaithful", []):
+            if case_id in keys and str(flagged) in keys[case_id]:
+                unfaithful[keys[case_id][str(flagged)]] += 1
+    contrast_cases = sum(
+        1 for case_id in seen
+        if {"authentic-reference", "voice-stripped-authentic"} <= set(keys.get(case_id, {}).values())
+    )
     return {
         "batch": meta["name"],
         "evaluated": len(seen),
@@ -854,6 +1184,13 @@ def score_batch(directory: Path) -> dict[str, Any]:
         "none_acceptable": none,
         "wins": dict(wins.most_common()),
         "flags": dict(tags.most_common()),
+        "source_verdicts": dict(verdicts.most_common()),
+        "unfaithful_by_system": dict(unfaithful.most_common()),
+        "calibration": {
+            "content_matched_cases": contrast_cases,
+            "authentic_wins": wins.get("authentic-reference", 0),
+            "voice_stripped_wins": wins.get("voice-stripped-authentic", 0),
+        },
     }
 
 
@@ -868,6 +1205,19 @@ def command_score(args: argparse.Namespace) -> None:
     workspace = Path(args.workspace).expanduser().resolve()
     result = score_batch(batch_dir(workspace, args.batch))
     print(json.dumps(result, indent=2))
+
+
+def command_eligibility(args: argparse.Namespace) -> None:
+    """Report which sources the author has ruled out, without corpus text."""
+    workspace = Path(args.workspace).expanduser().resolve()
+    rows = load_jsonl(workspace / "rlhf/eligibility.jsonl")
+    verdicts: Counter[str] = Counter(str(row.get("verdict", "")) for row in rows)
+    scopes: Counter[str] = Counter(str(row.get("scope", "")) for row in rows)
+    print(json.dumps({
+        "vetoes": len(rows),
+        "by_verdict": dict(verdicts.most_common()),
+        "by_scope": dict(scopes.most_common()),
+    }, indent=2))
 
 
 def command_status(args: argparse.Namespace) -> None:
@@ -900,6 +1250,32 @@ class EvalServer(ThreadingHTTPServer):
         self.assets = Path(__file__).resolve().parent.parent / "assets/rlhf"
         self.token = secrets.token_urlsafe(24)
         self.write_lock = threading.Lock()
+        self.sources = {
+            str(row["case_id"]): row
+            for row in load_jsonl(directory / "private-cases.jsonl")
+        }
+
+    def apply_source_verdict(self, choice: dict[str, Any]) -> None:
+        """Turn a "bad source" rejection into a veto future batches will honour.
+
+        Only the source identity crosses over, never which option won, so this
+        cannot leak a held-out label into training selection.
+        """
+        verdict = str(choice.get("source_verdict", "ok")) or "ok"
+        if verdict == "ok":
+            return
+        case = self.sources.get(str(choice.get("case_id", "")))
+        if case is None:
+            return
+        scope = VERDICT_SCOPE[verdict]
+        record_veto(self.workspace, {
+            "schema_version": SCHEMA_VERSION,
+            "scope": scope,
+            "id": str(case["source_unit_id"] if scope == "unit" else case["document_id"]),
+            "verdict": verdict,
+            "batch": str(self.meta.get("name", "")),
+            "source_case_id": str(case["case_id"]),
+        })
 
 
 class EvalHandler(BaseHTTPRequestHandler):
@@ -965,6 +1341,7 @@ class EvalHandler(BaseHTTPRequestHandler):
                 "cases": self.server.cases,
                 "choices": choices,
                 "tags": sorted(TAGS),
+                "source_verdicts": [row for row in SOURCE_VERDICTS if row != "ok"],
                 "token": self.server.token,
             })
         else:
@@ -1016,6 +1393,7 @@ class EvalHandler(BaseHTTPRequestHandler):
                 choices[case_id] = choice
                 ordered = [choices[row["case_id"]] for row in self.server.cases if row["case_id"] in choices]
                 atomic_jsonl(self.server.directory / "choices.jsonl", ordered)
+                self.server.apply_source_verdict(choice)
             self.json_response(HTTPStatus.OK, {"saved": True, "completed": len(ordered), "total": len(self.server.cases)})
         elif path == "/api/finish":
             choices = load_jsonl(self.server.directory / "choices.jsonl")
@@ -1072,7 +1450,23 @@ def parser() -> argparse.ArgumentParser:
     prepare.add_argument("--resume", action="store_true")
     prepare.add_argument("--adapter-path")
     prepare.add_argument("--mlx-model", default="mlx-community/Qwen3-4B-4bit")
-    prepare.set_defaults(function=command_prepare)
+    prepare.add_argument(
+        "--min-voice-families", type=int, default=3,
+        help="Distinct voice devices a passage must use to be worth judging",
+    )
+    prepare.add_argument(
+        "--max-specificity", type=float, default=6.0,
+        help="Ceiling on distinct one-off references per 100 words",
+    )
+    prepare.add_argument(
+        "--max-fact-pressure", type=float, default=6.0,
+        help="Ceiling on required facts per 100 words of the replaced passage",
+    )
+    prepare.add_argument(
+        "--no-contrast", dest="contrast", action="store_false",
+        help="Skip the content-matched voice-stripped option",
+    )
+    prepare.set_defaults(function=command_prepare, contrast=True)
 
     serve = subparsers.add_parser("serve", help="Launch the loopback-only blind labeling app")
     serve.add_argument("--workspace", required=True)
@@ -1094,6 +1488,12 @@ def parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="Show local batch progress without corpus text")
     status.add_argument("--workspace", required=True)
     status.set_defaults(function=command_status)
+
+    eligibility = subparsers.add_parser(
+        "eligibility", help="Show which sources author feedback has ruled out",
+    )
+    eligibility.add_argument("--workspace", required=True)
+    eligibility.set_defaults(function=command_eligibility)
     return root
 
 

@@ -23,18 +23,61 @@ results, decoding budget, and evaluation set for every candidate.
 Keep preference adaptation separate from supervised data so a bad synthetic
 brief cannot overwrite direct user feedback.
 
+## What a preference case must be
+
+The desk asks one question: which of these anonymous passages sounds like the
+author wrote it. That question only works when the passage under comparison can
+actually carry it, so `prepare` refuses sources that cannot.
+
+A passage is rejected when it is **too specific** — when it is dense with named
+systems, versions, people, and timestamps. Every candidate then either recites
+the same list or visibly lacks it, so the author is really being asked to score
+recall of details, not voice. `specificity_score` counts *distinct* one-off
+references per hundred words; an entity repeated throughout a passage is one
+topic, not many details. A passage can be unmistakably the author's and still
+fail here, which is the point.
+
+A passage is also rejected when it **reads as impersonal exposition**: correct
+prose that uses no first person, no reader address, and fewer than
+`--min-voice-families` distinct voice devices. There is no transferable voice to
+learn from it.
+
+After the brief exists, `prepare` measures **fact pressure** — required facts per
+hundred words of the passage being replaced. A brief above
+`--max-fact-pressure` is a reconstruction puzzle regardless of how clean the
+prose looked, so the case is quarantined.
+
+Tune with `--min-voice-families`, `--max-specificity`, and
+`--max-fact-pressure`. `prepare` prints a text-free tally of why sources were
+skipped, so the gate can be calibrated on a private corpus without exposing it.
+
 ## Local preference collection
 
 Use `jessify-rlhf` when the author can label many examples. A preference batch
-draws only from training documents and compares three anonymous options:
+draws only from training documents and compares anonymous options:
 
 - a local model without retrieved voice examples;
 - the same local model with training-only voice retrieval;
-- the authentic training passage as a hidden calibration control.
+- the authentic training passage as a hidden calibration control;
+- a **voice-stripped twin** of that authentic passage, unless `--no-contrast`.
 
-The evaluator can choose a winner, reject every option, tag the failure mode,
-or edit the winner. An edit becomes the chosen response. Each unselected
-option becomes a separate rejected response, producing DPO-style pairs.
+The twin matters. Every other option is rebuilt from a lossy brief, so the
+authentic passage is the only one holding the full set of details, and a
+labeller can spot it by richness instead of by voice. The twin keeps the
+authentic content and drains only the register, so at least one pair in every
+case differs in nothing but how it sounds. It is accepted only when it keeps
+most of the authentic content words, uses strictly fewer voice devices, and is a
+real rewrite rather than the original with the jokes filed off.
+
+The desk separates two axes that a single click used to blur:
+
+- **voice** — which option sounds like the author, or none of them;
+- **faithfulness** — a per-option flag for changing or dropping a fact.
+
+Flagging your own pick forces an edit before it can be saved, so a passage that
+reads right but states something false never becomes a training target. Each
+unselected option becomes a rejected response, and a rejection that also broke
+the facts is marked so a later trainer can weight it differently.
 
 ```sh
 jessify-rlhf prepare --workspace <workspace> --name preferences-001 \
@@ -48,6 +91,32 @@ labels out of the browser payload, and exports to
 `preferences/preferences.jsonl` plus `preferences/dpo.jsonl` only when the
 batch is complete. Treat `none are acceptable` as useful negative evidence,
 but do not manufacture a chosen response from it.
+
+## Rejections change the next batch
+
+Feedback that ends as a note is wasted. The desk also asks whether the source
+was worth learning from at all, and the answer is routed:
+
+| Answer | Effect |
+| --- | --- |
+| Fine | the case exports normally |
+| Too specific | vetoes that passage; never asked about again |
+| Not really prose | vetoes that passage |
+| This whole article is not my voice | vetoes the entire document |
+
+Vetoes land in `rlhf/eligibility.jsonl`, and `choose_units` honours them in
+every later batch, preference and held-out alike. A vetoed case is excluded from
+preference export, because a source the author rejected should not become a
+training target.
+
+This crosses the train/eval boundary deliberately and safely: a veto row records
+only scope, source id, and verdict. It never records which option won, so
+curating sources out of the eval pool cannot leak a held-out label into training
+selection. Review what has accumulated with:
+
+```sh
+jessify-rlhf eligibility --workspace <workspace>
+```
 
 ## Local adapter stage
 
@@ -136,6 +205,13 @@ jessify-rlhf score --workspace <workspace> --batch heldout-001
 Held-out choices are scores, never preference training data. The exporter
 refuses an eval batch even if called directly. Do not show the blind key,
 system scores, or authentic calibration identity before every case is labeled.
+
+`score` reports a `calibration` block for the content-matched pair. If the
+flattened twin beats the authentic passage on cases where both appear, the run
+is suspect before any system comparison is read: either the labelling was noisy
+or the twin kept voice it should have drained. Check that first, because every
+other number in the batch depends on the author reliably recognising their own
+prose when content is held constant.
 
 For local-only or corporate corpora, run neutral-brief generation, retrieval,
 candidate generation, labeling, adapter training, and evaluation on the local

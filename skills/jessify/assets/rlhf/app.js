@@ -6,9 +6,17 @@ const state = {
   choices: new Map(),
   savedIds: new Set(),
   tags: [],
+  sourceVerdicts: [],
   token: "",
   index: 0,
   saving: false,
+};
+
+const VERDICT_COPY = {
+  ok: "Fine — a normal paragraph of mine",
+  "too-specific": "Too specific — judging it means recalling details, not voice",
+  "not-prose": "Not really prose — notes, a list, or metadata",
+  "off-voice-source": "This whole article is not writing I want to sound like",
 };
 
 const byId = (id) => document.getElementById(id);
@@ -22,14 +30,15 @@ const elements = {
   batchLabel: byId("batchLabel"),
   purposeBadge: byId("purposeBadge"),
   roleBadge: byId("roleBadge"),
+  dimensionBadge: byId("dimensionBadge"),
   neutralBrief: byId("neutralBrief"),
-  taskPrompt: byId("taskPrompt"),
   mustPreserve: byId("mustPreserve"),
   beforeContext: byId("beforeContext"),
   afterContext: byId("afterContext"),
   options: byId("options"),
   noneButton: byId("noneButton"),
   tags: byId("tags"),
+  sourceVerdicts: byId("sourceVerdicts"),
   confidence: byId("confidence"),
   note: byId("note"),
   editPanel: byId("editPanel"),
@@ -43,9 +52,13 @@ const elements = {
   results: byId("results"),
 };
 
-function optionButton(option, selected) {
+function optionCard(option, choice) {
+  const card = document.createElement("article");
+  card.className = "option-card";
+
   const button = document.createElement("button");
   button.type = "button";
+  const selected = option.label === choice.label;
   button.className = `option${selected ? " selected" : ""}`;
   button.dataset.label = option.label;
   button.setAttribute("aria-pressed", selected ? "true" : "false");
@@ -60,7 +73,23 @@ function optionButton(option, selected) {
 
   button.append(label, copy);
   button.addEventListener("click", () => select(option.label));
-  return button;
+
+  const flag = document.createElement("label");
+  flag.className = "fact-flag";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.dataset.unfaithful = option.label;
+  input.checked = choice.unfaithful.includes(option.label);
+  input.addEventListener("change", () => {
+    captureForm();
+    renderSelection();
+  });
+  const text = document.createElement("span");
+  text.textContent = `${option.label} changes or drops a fact`;
+  flag.append(input, text);
+
+  card.append(button, flag);
+  return card;
 }
 
 function currentCase() {
@@ -74,6 +103,8 @@ function draftChoice() {
     case_id: caseId,
     label: existing.label || "",
     tags: existing.tags || [],
+    unfaithful: existing.unfaithful || [],
+    source_verdict: existing.source_verdict || "ok",
     confidence: existing.confidence || "medium",
     note: existing.note || "",
     edited_output: existing.edited_output || "",
@@ -81,7 +112,8 @@ function draftChoice() {
 }
 
 function select(label) {
-  const choice = draftChoice();
+  if (!currentCase()) return;
+  const choice = captureForm();
   if (choice.label && choice.label !== label) choice.edited_output = "";
   choice.label = label;
   if (label === "none") choice.edited_output = "";
@@ -103,11 +135,41 @@ function renderSelection() {
     const option = currentCase().options.find((item) => item.label === choice.label);
     elements.editedOutput.placeholder = option ? option.output : "";
   }
+  const conflicted = Boolean(choice.label) && choice.unfaithful.includes(choice.label);
+  if (conflicted) {
+    elements.editPanel.hidden = false;
+    elements.editPanel.open = true;
+    elements.statusMessage.textContent =
+      `${choice.label} is your pick but is flagged as changing a fact. Edit it, or choose another option.`;
+  } else if (elements.statusMessage.textContent.includes("flagged as changing a fact")) {
+    elements.statusMessage.textContent = "";
+  }
+}
+
+function renderSourceVerdicts(selected) {
+  elements.sourceVerdicts.replaceChildren();
+  for (const value of ["ok", ...state.sourceVerdicts]) {
+    const option = document.createElement("label");
+    option.className = "verdict";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "sourceVerdict";
+    input.value = value;
+    input.checked = value === selected;
+    const text = document.createElement("span");
+    text.textContent = VERDICT_COPY[value] || value.replaceAll("-", " ");
+    option.append(input, text);
+    elements.sourceVerdicts.append(option);
+  }
 }
 
 function captureForm() {
   const choice = draftChoice();
   choice.tags = [...elements.tags.querySelectorAll("input:checked")].map((input) => input.value);
+  choice.unfaithful = [...elements.options.querySelectorAll("input[data-unfaithful]:checked")]
+    .map((input) => input.dataset.unfaithful);
+  const verdict = elements.sourceVerdicts.querySelector("input:checked");
+  choice.source_verdict = verdict ? verdict.value : "ok";
   choice.confidence = elements.confidence.value;
   choice.note = elements.note.value.trim();
   choice.edited_output = elements.editedOutput.value.trim();
@@ -154,8 +216,9 @@ function render() {
   const choice = draftChoice();
   elements.purposeBadge.textContent = state.meta.purpose === "eval" ? "Held-out evaluation" : "Training preference";
   elements.roleBadge.textContent = item.rhetorical_role;
+  elements.dimensionBadge.textContent = item.voice_dimension ? `leans on ${item.voice_dimension}` : "";
+  elements.dimensionBadge.hidden = !item.voice_dimension;
   elements.neutralBrief.textContent = item.neutral_brief;
-  elements.taskPrompt.textContent = `Write a finished first-person technical blog passage. ${item.neutral_brief}`;
   elements.mustPreserve.replaceChildren(...item.must_preserve.map((fact) => {
     const li = document.createElement("li");
     li.textContent = fact;
@@ -163,12 +226,13 @@ function render() {
   }));
   elements.beforeContext.textContent = item.preceding_context || "No preceding passage.";
   elements.afterContext.textContent = item.following_context || "No following passage.";
-  elements.options.replaceChildren(...item.options.map((option) => optionButton(option, option.label === choice.label)));
+  elements.options.replaceChildren(...item.options.map((option) => optionCard(option, choice)));
   elements.confidence.value = choice.confidence;
   elements.note.value = choice.note;
   elements.editedOutput.value = choice.edited_output;
   elements.editPanel.open = Boolean(choice.edited_output);
   renderTags(choice.tags);
+  renderSourceVerdicts(choice.source_verdict);
   elements.previousButton.disabled = state.index === 0;
   elements.statusMessage.textContent = "";
   updateProgress();
@@ -177,7 +241,7 @@ function render() {
 }
 
 async function saveAndMove(direction = 1) {
-  if (state.saving) return;
+  if (state.saving || !currentCase()) return;
   const choice = captureForm();
   if (!choice.label) {
     elements.statusMessage.textContent = "Choose an option or mark none acceptable.";
@@ -245,6 +309,7 @@ async function boot() {
     state.meta = body.meta;
     state.cases = body.cases;
     state.tags = body.tags;
+    state.sourceVerdicts = body.source_verdicts || [];
     state.token = body.token;
     state.choices = new Map(body.choices.map((choice) => [choice.case_id, choice]));
     state.savedIds = new Set(body.choices.map((choice) => choice.case_id));
@@ -272,6 +337,7 @@ elements.reviewButton.addEventListener("click", () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) return;
+  if (event.target instanceof HTMLInputElement) return;
   if (event.key >= "1" && event.key <= "9") {
     const option = currentCase()?.options[Number(event.key) - 1];
     if (option) select(option.label);

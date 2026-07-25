@@ -116,6 +116,24 @@ surface prose.
      --batch preferences-001
    ```
 
+   The desk asks only one thing: which anonymous passage sounds like Jesse wrote
+   it. It never asks him to imagine authoring a passage he has no reason to
+   write. `prepare` refuses sources that cannot carry that question — passages
+   crowded with names, versions, and timestamps, and passages with no personal
+   voice to learn from — and reports a text-free tally of what it skipped.
+
+   Rejections are routed, not filed. "Too specific" and "not really prose" veto
+   that passage; "this whole article is not my voice" vetoes the document. Vetoes
+   persist in `rlhf/eligibility.jsonl` and are honoured by every later batch:
+
+   ```sh
+   <skill-dir>/scripts/jessify-rlhf eligibility --workspace <workspace>
+   ```
+
+   Voice and faithfulness are separate answers. Flagging the winning option as
+   changing a fact forces an edit before it can be saved, so prose that reads
+   right but states something false never becomes a training target.
+
    The desk hides system identity, autosaves choices locally, supports edited
    winners, and exports DPO pairs only after every case is labeled. Never
    export a held-out evaluation batch into preferences.

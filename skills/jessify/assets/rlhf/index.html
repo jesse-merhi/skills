@@ -4,17 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>Jessify — Blind preference desk</title>
+    <title>Jessify — Blind voice desk</title>
     <link rel="stylesheet" href="/app.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="Jessify preference desk home">
+      <a class="brand" href="#top" aria-label="Jessify voice desk home">
         <span class="brand-mark" aria-hidden="true">J</span>
         <span>
           <strong>Jessify</strong>
-          <small>blind preference desk</small>
+          <small>blind voice desk</small>
         </span>
       </a>
       <div class="progress-wrap" aria-live="polite">
@@ -24,55 +24,47 @@
     </header>
 
     <main id="top" class="shell" hidden>
-      <aside class="brief-column">
+      <div class="ask">
         <div class="eyebrow-row">
           <span id="purposeBadge" class="badge"></span>
           <span id="roleBadge" class="role"></span>
+          <span id="dimensionBadge" class="dimension"></span>
         </div>
-        <h1>What would you personally publish?</h1>
-        <p class="instruction">Use the writing prompt to imagine the passage you would write. Then choose the closest option—or reject all three.</p>
+        <h1>Which one sounds like you wrote it?</h1>
+        <p class="instruction">
+          Same paragraph, four writers. Pick the one that reads like your own writing.
+          You are not being asked to write anything, and you do not need to recognise
+          the topic.
+        </p>
+      </div>
 
-        <section class="brief-block" aria-labelledby="briefHeading">
-          <h2 id="briefHeading">What this passage must do</h2>
-          <p id="neutralBrief"></p>
-        </section>
+      <section class="choice-column" aria-label="Anonymous writing options">
+        <div id="options" class="options"></div>
 
-        <section class="brief-block" aria-labelledby="factsHeading">
-          <h2 id="factsHeading">Must preserve</h2>
-          <ul id="mustPreserve"></ul>
-        </section>
+        <button id="noneButton" class="none-button" type="button">
+          <span aria-hidden="true">×</span>
+          None of these sound like me
+        </button>
 
-        <details class="context-block">
-          <summary>Surrounding context</summary>
+        <details class="context-block" aria-label="Underlying passage">
+          <summary>What this passage is about — open only if you want to check the facts</summary>
           <div>
+            <h3>The job of the passage</h3>
+            <p id="neutralBrief" class="context-copy"></p>
+            <h3>Details it should keep</h3>
+            <ul id="mustPreserve"></ul>
             <h3>Before</h3>
             <p id="beforeContext" class="context-copy"></p>
             <h3>After</h3>
             <p id="afterContext" class="context-copy"></p>
           </div>
         </details>
-      </aside>
-
-      <section class="choice-column" aria-label="Anonymous writing options">
-        <section class="task-card" aria-labelledby="taskHeading">
-          <span class="kicker">Your writing prompt</span>
-          <h2 id="taskHeading">Imagine this is the next passage in your technical blog.</h2>
-          <p id="taskPrompt" class="task-prompt"></p>
-          <p class="task-guidance">Which option is closest to what you would personally say here? Reject anything that changes the facts or talks about the task itself.</p>
-        </section>
-
-        <div id="options" class="options"></div>
-
-        <button id="noneButton" class="none-button" type="button">
-          <span aria-hidden="true">×</span>
-          None are acceptable
-        </button>
 
         <section class="feedback" aria-labelledby="feedbackHeading">
           <div class="feedback-heading">
             <div>
               <span class="kicker">Optional but useful</span>
-              <h2 id="feedbackHeading">Why?</h2>
+              <h2 id="feedbackHeading">What was wrong with the rest?</h2>
             </div>
             <div class="confidence">
               <label for="confidence">Confidence</label>
@@ -85,10 +77,19 @@
           </div>
           <div id="tags" class="tags"></div>
           <label class="note-label" for="note">A short note, if the tags are not enough</label>
-          <textarea id="note" rows="2" maxlength="1000" placeholder="e.g. B gets the point right, but I would never say the last sentence."></textarea>
+          <textarea id="note" rows="2" maxlength="1000" placeholder="e.g. B has the right shape, but I would never open a paragraph that way."></textarea>
+
+          <fieldset class="source-verdict">
+            <legend>Is this passage worth learning from at all?</legend>
+            <p class="source-help">
+              Anything other than the first answer removes this source from every future
+              batch, so you never get asked about it again.
+            </p>
+            <div id="sourceVerdicts" class="verdict-options"></div>
+          </fieldset>
 
           <details id="editPanel" class="edit-panel">
-            <summary>Edit the winner before saving</summary>
+            <summary>Edit your pick before saving</summary>
             <p>Your edit becomes the preferred answer. Leave it blank to accept the chosen option unchanged.</p>
             <textarea id="editedOutput" rows="8" maxlength="20000"></textarea>
           </details>

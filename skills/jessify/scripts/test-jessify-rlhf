@@ -28,17 +28,124 @@ loader = importlib.machinery.SourceFileLoader("jessify_rlhf", sys.argv[1])
 spec = importlib.util.spec_from_loader(loader.name, loader)
 module = importlib.util.module_from_spec(spec)
 loader.exec_module(module)
+
+# A passage carrying voice: first person, a stance adverb, a turn, a punchline,
+# and almost no one-off references to recite.
+VOICE = (
+    "I honestly thought this part would be simple. It was not. So I sat down and "
+    "worked through it the slow way, one piece at a time, and after a while the "
+    "shape of the problem became obvious to me. You can probably guess what "
+    "happened next: the thing I had been avoiding was the thing that mattered. "
+    "I still think about how long I spent looking in the wrong place, and I would "
+    "rather you did not repeat that for yourself."
+)
+# Unmistakably the same author, and still unjudgeable: every option must either
+# recite this pile of names and timestamps or visibly lack them.
+SPECIFIC = (
+    "So at 7:30 am on the 10th of April my manager messaged me asking to chat at "
+    "9:30 am. I didn't see it. At 9:36 am I joined the Zoom call anyway. He "
+    "explained that as part of the Atlassian partnership I'd been picked to work "
+    "on OpenClaw full time, reporting to the Rovo Dev team from the 21st of "
+    "April, right after Team26 wrapped up in Anaheim. Honestly? I accepted "
+    "within the hour, and told Hamish and Priya over lunch."
+)
+# Correct prose, but encyclopedic: nothing to learn about a personal voice.
+IMPERSONAL = (
+    "The delivery loop is straightforward. Requests arrive, the scheduler assigns "
+    "them to a worker, and results are written back to the queue. Failures are "
+    "retried twice before the record is parked for review. Throughput scales with "
+    "the number of workers until the database becomes the limiting factor, at "
+    "which point additional workers provide no further benefit and simply add "
+    "contention to the connection pool that already exists."
+)
+
+assert "first-person" in module.voice_families(VOICE)
+assert "punchline" in module.voice_families(VOICE)
+assert len(module.voice_families(VOICE)) >= 3
+assert not module.voice_case_reason(VOICE, 3, 6.0), module.voice_case_reason(VOICE, 3, 6.0)
+
+# "Too specific" has to be a measurable property, not a note the author repeats.
+# This passage passes every voice check and is still rejected, which is the whole
+# point: sounding like the author does not make a passage judgeable.
+assert len(module.voice_families(SPECIFIC)) >= 3, module.voice_families(SPECIFIC)
+assert module.specificity_score(SPECIFIC) > 6.0
+assert module.voice_case_reason(SPECIFIC, 3, 6.0) == "too specific to judge"
+assert module.specificity_score(VOICE) < module.specificity_score(SPECIFIC)
+
+assert module.voice_case_reason(IMPERSONAL, 3, 6.0) == "impersonal exposition"
+
+# Repeating one entity is one topic, not a pile of separate details.
+repeated = "I use OpenClaw daily. OpenClaw is fast. OpenClaw rarely breaks on me."
+varied = "I use OpenClaw, Rovo, Codex, Zoom, Jira and Confluence every day myself."
+assert module.specificity_score(repeated) < module.specificity_score(varied)
+
+# A brief demanding many facts per hundred words is a recall test, not a
+# voice test, however clean its prose looks.
+assert module.fact_pressure(["a", "b"], "word " * 100) == 2.0
+assert module.fact_pressure(["a"] * 12, "word " * 100) > 6.0
+
+assert module.voice_dimension(VOICE) != "everyday register"
+assert isinstance(module.voice_dimension(IMPERSONAL), str)
+
+# The authentic option comes from a Markdown corpus; a generated one never does.
+# Formatting must not be the thing that gives an option away.
+assert module.plain_option("A normal `tmux` session breaks.") == "A normal tmux session breaks."
+assert module.plain_option("*someone* said **all** of it.") == "someone said all of it."
+assert module.plain_option("Use _this_ instead.") == "Use this instead."
+assert module.plain_option("2 * 3 and snake_case_name stay put") == "2 * 3 and snake_case_name stay put"
+assert module.plain_option("  padded  ") == "padded"
+
 units = [
-    {"id": "a1", "document_id": "a", "split": "train", "quality": "canonical", "text": "word " * 70},
-    {"id": "a2", "document_id": "a", "split": "train", "quality": "canonical", "text": "word " * 70},
-    {"id": "b-short", "document_id": "b", "split": "train", "quality": "canonical", "text": "word " * 20},
-    {"id": "b-metadata", "document_id": "b", "split": "train", "quality": "canonical", "text": ("Field:\n" * 8) + ("word " * 70)},
-    {"id": "b1", "document_id": "b", "split": "train", "quality": "usable", "text": "word " * 70},
-    {"id": "c1", "document_id": "c", "split": "train", "quality": "canonical", "text": "word " * 70},
+    {"id": "a1", "document_id": "a", "split": "train", "quality": "canonical",
+     "text": VOICE, "plain_text": VOICE},
+    {"id": "a2", "document_id": "a", "split": "train", "quality": "canonical",
+     "text": VOICE, "plain_text": VOICE},
+    {"id": "b-short", "document_id": "b", "split": "train", "quality": "canonical",
+     "text": "word " * 20, "plain_text": "word " * 20},
+    {"id": "b-metadata", "document_id": "b", "split": "train", "quality": "canonical",
+     "text": ("Field:\n" * 8) + VOICE, "plain_text": ("Field:\n" * 8) + VOICE},
+    {"id": "b-specific", "document_id": "b", "split": "train", "quality": "canonical",
+     "text": SPECIFIC, "plain_text": SPECIFIC},
+    {"id": "b-impersonal", "document_id": "b", "split": "train", "quality": "canonical",
+     "text": IMPERSONAL, "plain_text": IMPERSONAL},
+    {"id": "b1", "document_id": "b", "split": "train", "quality": "usable",
+     "text": VOICE, "plain_text": VOICE},
+    {"id": "c1", "document_id": "c", "split": "train", "quality": "canonical",
+     "text": VOICE, "plain_text": VOICE},
 ]
-chosen = module.choose_units(units, "train", 3, "test")
-assert {row["document_id"] for row in chosen} == {"a", "b", "c"}
+chosen, skipped = module.choose_units(units, "train", 3, "test")
+assert {row["document_id"] for row in chosen} == {"a", "b", "c"}, "lost source diversity"
 assert all(row["id"] not in {"b-short", "b-metadata"} for row in chosen)
+assert all(row["id"] not in {"b-specific", "b-impersonal"} for row in chosen), \
+    "voice gate let an unjudgeable passage through"
+assert sum(skipped.values()) >= 4, dict(skipped)
+# The tally is a fixed vocabulary, so it can be printed next to a private
+# corpus without exposing a measurement of any single passage.
+assert set(skipped) <= {
+    "not prose", "too specific to judge", "impersonal exposition",
+    "too few voice devices", "vetoed unit", "vetoed document",
+}, dict(skipped)
+assert skipped["too specific to judge"] == 1, dict(skipped)
+assert skipped["impersonal exposition"] == 1, dict(skipped)
+
+# The author's rejections have to change what the next batch asks about.
+unit_veto = {"unit": {"a1"}, "document": set()}
+kept, tally = module.choose_units(units, "train", 5, "test", vetoes=unit_veto)
+assert "a1" not in {row["id"] for row in kept}, "unit veto ignored"
+assert any(row["document_id"] == "a" for row in kept), "unit veto took the whole document"
+assert tally["vetoed unit"] == 1
+
+document_veto = {"unit": set(), "document": {"a"}}
+kept, tally = module.choose_units(units, "train", 5, "test", vetoes=document_veto)
+assert not any(row["document_id"] == "a" for row in kept), "document veto ignored"
+assert tally["vetoed document"] == 2
+
+# Ranking puts the strongest voice first so a partly finished batch is still useful.
+ranked, _ = module.choose_units(
+    [units[0], units[5], units[7]], "train", 3, "test", min_voice_families=1, max_specificity=99.0,
+)
+assert ranked[0]["id"] != "b-impersonal", "impersonal passage ranked first"
+
 prompt = module.candidate_prompt({
     "neutral_brief": "Explain the result.",
     "rhetorical_role": "explanation",
@@ -64,6 +171,56 @@ invented_brief = {
 }
 assert module.brief_has_lexical_support(passage, grounded_brief)
 assert not module.brief_has_lexical_support(passage, invented_brief)
+
+# The content-matched contrast is only useful when it keeps the content, drains
+# the voice, and is a real rewrite rather than the original with the jokes filed
+# off. A faithful flattening has to clear all three bars at production settings.
+assert module.content_recall(VOICE, VOICE) == 1.0
+assert module.content_recall(VOICE, IMPERSONAL) < 0.3
+FLATTENED = (
+    "This part was initially thought to be simple. It was not simple. The work "
+    "was completed the slow way, one piece at a time, and after a while the shape "
+    "of the problem became obvious. The thing that had been avoiding attention was "
+    "the thing that mattered. A long period was spent looking in the wrong place, "
+    "and repeating that is not recommended for any reader working on this yourself."
+)
+assert module.content_recall(VOICE, FLATTENED) >= 0.6, module.content_recall(VOICE, FLATTENED)
+assert len(module.voice_families(FLATTENED)) < len(module.voice_families(VOICE)), \
+    "flattened twin must lose voice devices"
+assert module.echo_share(VOICE, FLATTENED) <= 0.5, module.echo_share(VOICE, FLATTENED)
+
+# Retaining one long factual phrase is not an echo; keeping the whole sequence is.
+NEAR_COPY = VOICE.replace("You can probably guess", "One can guess")
+assert module.echo_share(VOICE, NEAR_COPY) > 0.5, "a near copy would pass as a rewrite"
+assert module.echo_share(VOICE, VOICE) == 1.0
+assert module.echo_share("too short", VOICE) == 0.0
+
+# Two axes stay separate: a winner flagged as unfaithful cannot be saved unedited.
+case = {"options": [{"label": "A"}, {"label": "B"}]}
+try:
+    module.validate_choice(case, {"case_id": "x", "label": "A", "unfaithful": ["A"]})
+except SystemExit as error:
+    assert "changing the facts" in str(error), str(error)
+else:
+    raise AssertionError("an unfaithful winner was accepted without an edit")
+edited = module.validate_choice(
+    case, {"case_id": "x", "label": "A", "unfaithful": ["A"], "edited_output": "Fixed."},
+)
+assert edited["edited_output"] == "Fixed."
+flagged = module.validate_choice(case, {"case_id": "x", "label": "A", "unfaithful": ["B"]})
+assert flagged["unfaithful"] == ["B"] and flagged["source_verdict"] == "ok"
+for bad in ({"label": "A", "unfaithful": ["Z"]}, {"label": "A", "source_verdict": "nonsense"}):
+    try:
+        module.validate_choice(case, {"case_id": "x", **bad})
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError(f"invalid payload accepted: {bad}")
+
+# Choices recorded before the two-axis fields existed still load.
+legacy = module.validate_choice(case, {"case_id": "x", "label": "A", "tags": ["factual-drift"]})
+assert legacy["unfaithful"] == [] and legacy["source_verdict"] == "ok"
+
 original_urlopen = module.urllib.request.urlopen
 module.urllib.request.urlopen = lambda *_args, **_kwargs: (_ for _ in ()).throw(module.socket.timeout())
 try:
@@ -74,21 +231,59 @@ else:
     raise AssertionError("socket.timeout escaped the Ollama request handler")
 finally:
     module.urllib.request.urlopen = original_urlopen
+print("unit checks passed", file=sys.stderr)
 PY
 
-printf '%s\n' '{"schema_version":1,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"
-printf '%s\n' '{"case_id":"case_train","neutral_brief":"Explain why the tool keeps useful context.","rhetorical_role":"explanation","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","options":[{"label":"A","output":"The tool keeps the context I need."},{"label":"B","output":"Context is retained by this innovative solution."}]}' > "$preference/blind-cases.jsonl"
+printf '%s\n' '{"schema_version":2,"name":"preference-test","purpose":"preference","split":"train","model":"test","seed":"test","count":1}' > "$preference/meta.json"
+printf '%s\n' '{"case_id":"case_train","neutral_brief":"Explain why the tool keeps useful context.","rhetorical_role":"explanation","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","voice_dimension":"hedged first-person opinion","options":[{"label":"A","output":"The tool keeps the context I need."},{"label":"B","output":"Context is retained by this innovative solution."}]}' > "$preference/blind-cases.jsonl"
 printf '%s\n' '{"case_id":"case_train","options":[{"label":"A","system":"authentic-reference"},{"label":"B","system":"test-baseline"}]}' > "$preference/blind-key.jsonl"
-printf '%s\n' '{"case_id":"case_train","rhetorical_role":"explanation","neutral_brief":"Explain why the tool keeps useful context.","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","options":[{"label":"A","system":"authentic-reference","output":"The tool keeps the context I need."},{"label":"B","system":"test-baseline","output":"Context is retained by this innovative solution."}]}' > "$preference/private-cases.jsonl"
-printf '%s\n' '{"schema_version":1,"case_id":"case_train","label":"A","tags":["generic-voice"],"confidence":"high","note":"A sounds natural.","edited_output":""}' > "$preference/choices.jsonl"
+printf '%s\n' '{"case_id":"case_train","rhetorical_role":"explanation","neutral_brief":"Explain why the tool keeps useful context.","must_preserve":["The tool keeps context"],"structure":["problem","benefit"],"preceding_context":"Before.","following_context":"After.","voice_dimension":"hedged first-person opinion","source_unit_id":"unit_train","document_id":"doc_train","options":[{"label":"A","system":"authentic-reference","output":"The tool keeps the context I need."},{"label":"B","system":"test-baseline","output":"Context is retained by this innovative solution."}]}' > "$preference/private-cases.jsonl"
+printf '%s\n' '{"schema_version":2,"case_id":"case_train","label":"A","tags":["generic-voice"],"unfaithful":["B"],"source_verdict":"ok","confidence":"high","note":"A sounds natural.","edited_output":""}' > "$preference/choices.jsonl"
 
 "$tool" export-preferences --workspace "$workspace" --batch preference-test > "$tmp/export.json"
 grep -q '"added": 1' "$tmp/export.json"
+grep -q '"vetoed_sources": 0' "$tmp/export.json"
 test "$(wc -l < "$workspace/preferences/preferences.jsonl")" -eq 1
 test "$(wc -l < "$workspace/preferences/dpo.jsonl")" -eq 1
+# The rejected side records that it also broke the facts, so a later trainer can
+# weight it differently from a merely off-voice rejection.
+grep -q '"rejected_unfaithful": true' "$workspace/preferences/dpo.jsonl"
+grep -q '"voice_dimension": "hedged first-person opinion"' "$workspace/preferences/dpo.jsonl"
+
+# A source the author called too specific must never become training data, and
+# must leave a veto behind for the next batch.
+printf '%s\n' '{"schema_version":2,"case_id":"case_train","label":"A","tags":[],"unfaithful":[],"source_verdict":"too-specific","confidence":"high","note":"","edited_output":""}' > "$preference/choices.jsonl"
+rm -f "$workspace/preferences/preferences.jsonl" "$workspace/preferences/dpo.jsonl"
+"$tool" export-preferences --workspace "$workspace" --batch preference-test > "$tmp/vetoed.json"
+grep -q '"added": 0' "$tmp/vetoed.json"
+grep -q '"vetoed_sources": 1' "$tmp/vetoed.json"
+test ! -s "$workspace/preferences/preferences.jsonl"
+grep -q '"scope": "unit"' "$workspace/rlhf/eligibility.jsonl"
+grep -q '"id": "unit_train"' "$workspace/rlhf/eligibility.jsonl"
+"$tool" eligibility --workspace "$workspace" | grep -q '"too-specific": 1'
+# The ledger records the source only; it can never carry which option won.
+if grep -q 'label\|accepted\|output' "$workspace/rlhf/eligibility.jsonl"; then
+  printf 'eligibility ledger leaked label data\n' >&2
+  exit 1
+fi
+# Re-exporting the same verdict must not grow the ledger.
+"$tool" export-preferences --workspace "$workspace" --batch preference-test > /dev/null
+test "$(wc -l < "$workspace/rlhf/eligibility.jsonl")" -eq 1
+rm -f "$workspace/rlhf/eligibility.jsonl"
+
+# An unfaithful winner is refused at export too, not only in the browser.
+printf '%s\n' '{"schema_version":2,"case_id":"case_train","label":"A","tags":[],"unfaithful":["A"],"source_verdict":"ok","confidence":"high","note":"","edited_output":""}' > "$preference/choices.jsonl"
+if "$tool" export-preferences --workspace "$workspace" --batch preference-test >"$tmp/unfaithful" 2>&1; then
+  printf 'export accepted a winner that changes the facts\n' >&2
+  exit 1
+fi
+grep -q 'changing the facts' "$tmp/unfaithful"
+
+printf '%s\n' '{"schema_version":2,"case_id":"case_train","label":"A","tags":["generic-voice"],"unfaithful":["B"],"source_verdict":"ok","confidence":"high","note":"A sounds natural.","edited_output":""}' > "$preference/choices.jsonl"
+"$tool" export-preferences --workspace "$workspace" --batch preference-test > /dev/null
 
 for index in 2 3 4; do
-  printf '{"schema_version":1,"id":"pref_%s","source":"Prompt %s","rejected":"Rejected %s","accepted":"Accepted %s","reason":"test","rhetorical_role":"explanation","batch":"preference-test"}\n' "$index" "$index" "$index" "$index" >> "$workspace/preferences/preferences.jsonl"
+  printf '{"schema_version":2,"id":"pref_%s","source":"Prompt %s","rejected":"Rejected %s","accepted":"Accepted %s","reason":"test","rhetorical_role":"explanation","batch":"preference-test"}\n' "$index" "$index" "$index" "$index" >> "$workspace/preferences/preferences.jsonl"
 done
 "$trainer" prepare --workspace "$workspace" --validation-fraction 0.25 > "$tmp/train-prepare.json"
 grep -q '"train": 3' "$tmp/train-prepare.json"
@@ -96,10 +291,10 @@ grep -q '"valid": 1' "$tmp/train-prepare.json"
 test "$(wc -l < "$workspace/training/mlx/train.jsonl")" -eq 3
 test "$(wc -l < "$workspace/training/mlx/valid.jsonl")" -eq 1
 
-printf '%s\n' '{"schema_version":1,"name":"eval-test","purpose":"eval","split":"eval","model":"test","seed":"test","count":1}' > "$evaluation/meta.json"
+printf '%s\n' '{"schema_version":2,"name":"eval-test","purpose":"eval","split":"eval","model":"test","seed":"test","count":1}' > "$evaluation/meta.json"
 cp "$preference/blind-cases.jsonl" "$evaluation/blind-cases.jsonl"
-printf '%s\n' '{"case_id":"case_train","options":[{"label":"A","system":"authentic-reference"},{"label":"B","system":"test-baseline"}]}' > "$evaluation/blind-key.jsonl"
-printf '%s\n' '{"schema_version":1,"case_id":"case_train","label":"B","tags":["bad-flow"],"confidence":"medium","note":"","edited_output":""}' > "$evaluation/choices.jsonl"
+printf '%s\n' '{"case_id":"case_train","options":[{"label":"A","system":"authentic-reference"},{"label":"B","system":"voice-stripped-authentic"}]}' > "$evaluation/blind-key.jsonl"
+printf '%s\n' '{"schema_version":2,"case_id":"case_train","label":"B","tags":["bad-flow"],"unfaithful":["A"],"source_verdict":"ok","confidence":"medium","note":"","edited_output":""}' > "$evaluation/choices.jsonl"
 cp "$preference/private-cases.jsonl" "$evaluation/private-cases.jsonl"
 
 if "$tool" export-preferences --workspace "$workspace" --batch eval-test >"$tmp/unexpected" 2>&1; then
@@ -107,7 +302,14 @@ if "$tool" export-preferences --workspace "$workspace" --batch eval-test >"$tmp/
   exit 1
 fi
 "$tool" score --workspace "$workspace" --batch eval-test > "$tmp/score.json"
-grep -q '"test-baseline": 1' "$tmp/score.json"
+grep -q '"voice-stripped-authentic": 1' "$tmp/score.json"
+# The content-matched pair is reported so a labeller preferring the flattened
+# twin over the real passage is visible instead of silently averaged away.
+grep -q '"content_matched_cases": 1' "$tmp/score.json"
+grep -q '"voice_stripped_wins": 1' "$tmp/score.json"
+grep -q '"authentic-reference": 1' "$tmp/score.json"
+# Held-out labelling must not add preference rows behind the exporter's back.
+test "$(wc -l < "$workspace/preferences/preferences.jsonl")" -eq 4
 
 : > "$preference/choices.jsonl"
 "$tool" serve --workspace "$workspace" --batch preference-test --port 0 --no-open > "$tmp/url" 2> "$tmp/server.log" &
@@ -120,20 +322,46 @@ url="$(head -n 1 "$tmp/url")"
 [[ "$url" == http://127.0.0.1:*/* ]]
 curl --fail --silent --dump-header "$tmp/headers" "$url" > "$tmp/index.html"
 grep -qi '^Content-Security-Policy:' "$tmp/headers"
-grep -q 'What would you personally publish?' "$tmp/index.html"
-grep -q 'Your writing prompt' "$tmp/index.html"
-grep -q 'what you would personally say here' "$tmp/index.html"
+# The desk asks the author to recognise their own voice. It must never ask them
+# to imagine authoring a passage they have no reason to write.
+grep -q 'Which one sounds like you wrote it?' "$tmp/index.html"
+grep -q 'You are not being asked to write anything' "$tmp/index.html"
+grep -q 'open only if you want to check the facts' "$tmp/index.html"
+grep -q 'Is this passage worth learning from at all?' "$tmp/index.html"
+for banned in 'What would you personally publish' 'Your writing prompt' 'imagine the passage you would write' 'what you would personally say here'; do
+  if grep -qF "$banned" "$tmp/index.html"; then
+    printf 'the authoring framing came back: %s\n' "$banned" >&2
+    exit 1
+  fi
+done
 curl --fail --silent "${url}api/state" > "$tmp/state.json"
-if grep -q 'authentic-reference\|test-baseline' "$tmp/state.json"; then
+if grep -q 'authentic-reference\|test-baseline\|voice-stripped' "$tmp/state.json"; then
   printf 'blind API leaked a system name\n' >&2
   exit 1
 fi
+grep -q '"source_verdicts"' "$tmp/state.json"
+python3 -c '
+import json, sys
+state = json.load(open(sys.argv[1]))
+assert state["source_verdicts"][0] == "too-specific", state["source_verdicts"]
+assert "factual-drift" not in state["tags"], "retired tag still offered"
+' "$tmp/state.json"
 token="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["token"])' "$tmp/state.json")"
-printf '{"token":"%s","case_id":"case_train","label":"A","tags":[],"confidence":"high","note":"","edited_output":""}\n' "$token" > "$tmp/choice.json"
+printf '{"token":"%s","case_id":"case_train","label":"A","tags":[],"unfaithful":[],"source_verdict":"ok","confidence":"high","note":"","edited_output":""}\n' "$token" > "$tmp/choice.json"
 curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/choice.json" "${url}api/choice" | grep -q '"saved": true'
+# Saving a source rejection has to write the veto immediately, without waiting
+# for the batch to be finished.
+printf '{"token":"%s","case_id":"case_train","label":"A","tags":[],"unfaithful":[],"source_verdict":"off-voice-source","confidence":"high","note":"","edited_output":""}\n' "$token" > "$tmp/verdict.json"
+curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/verdict.json" "${url}api/choice" | grep -q '"saved": true'
+grep -q '"scope": "document"' "$workspace/rlhf/eligibility.jsonl"
+grep -q '"id": "doc_train"' "$workspace/rlhf/eligibility.jsonl"
+# The desk must refuse a self-contradictory label rather than store it.
+printf '{"token":"%s","case_id":"case_train","label":"A","tags":[],"unfaithful":["A"],"source_verdict":"ok","confidence":"high","note":"","edited_output":""}\n' "$token" > "$tmp/bad.json"
+curl --silent -o "$tmp/bad-response.json" --write-out '%{http_code}' -H 'Content-Type: application/json' --data-binary @"$tmp/bad.json" "${url}api/choice" | grep -q '^400$'
+grep -q 'changing the facts' "$tmp/bad-response.json"
 curl --silent --output /dev/null --write-out '%{http_code}' -H 'Host: attacker.invalid' "$url" | grep -q '^403$'
 printf '{"token":"%s"}\n' "$token" > "$tmp/token.json"
-curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/token.json" "${url}api/finish" | grep -q '"total": 4'
+curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/token.json" "${url}api/finish" | grep -q '"vetoed_sources"'
 curl --fail --silent -H 'Content-Type: application/json' --data-binary @"$tmp/token.json" "${url}api/shutdown" | grep -q '"stopping": true'
 wait "$server_pid"
 server_pid=""
