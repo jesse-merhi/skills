@@ -369,6 +369,52 @@ def passage_schema() -> dict[str, Any]:
     }
 
 
+def flattening_review_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["same_facts", "flatter"],
+        "properties": {
+            "same_facts": {"type": "boolean"},
+            "flatter": {"type": "boolean"},
+        },
+    }
+
+
+def review_flattening(model: str, authentic: str, candidate: str) -> tuple[bool, str]:
+    """Ask the local model whether the twin kept the facts and lost the voice.
+
+    A thorough register change legitimately swaps most of the vocabulary, so
+    word overlap cannot tell a faithful flattening apart from one that drifted.
+    Judge the claims instead.
+    """
+    prompt = f"""Compare two versions of the same paragraph.
+
+Set same_facts=true only when B states the same claims, entities, numbers, and
+order as A, with nothing added, removed, or altered. Expanding an abbreviation
+or renaming nothing of substance still counts as the same facts.
+Set flatter=true when B reads as neutral documentation and A reads as a person
+talking: first-person warmth, humour, asides, direct questions, or short punchy
+sentences. Judge register, not quality. Return only JSON matching the schema.
+
+A:
+{authentic}
+
+B:
+{candidate}
+"""
+    raw = ollama_request(model, prompt, 0.0, flattening_review_schema(), max_tokens=120)
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return False, "the faithfulness review did not return usable JSON"
+    if value.get("same_facts") is not True:
+        return False, "changed the facts of the original"
+    if value.get("flatter") is not True:
+        return False, "did not read as a flatter register than the original"
+    return True, ""
+
+
 def candidate_review_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -719,14 +765,18 @@ PASSAGE:
             reason = "leaked prompt or reasoning"
         elif not 0.6 * budget <= len(words(output)) <= 1.8 * budget:
             reason = "length left the band around the original"
-        elif content_recall(authentic, output) < 0.6:
-            reason = "dropped too much of the original content"
+        elif content_recall(authentic, output) < 0.3:
+            reason = "drifted off the original topic"
         elif len(voice_families(output)) >= authentic_families:
             reason = "kept as many voice devices as the original"
         elif echo_share(authentic, output) > 0.5:
             reason = "echoed the original instead of rewriting it"
         else:
-            return output, ""
+            # Cheap checks first; only spend a review call on a plausible twin.
+            accepted, review_reason = review_flattening(model, authentic, output)
+            if accepted:
+                return output, ""
+            reason = review_reason
     return "", reason
 
 

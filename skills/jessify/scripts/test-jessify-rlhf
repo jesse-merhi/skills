@@ -213,10 +213,16 @@ FLATTENED = (
     "the thing that mattered. A long period was spent looking in the wrong place, "
     "and repeating that is not recommended for any reader working on this yourself."
 )
-assert module.content_recall(VOICE, FLATTENED) >= 0.6, module.content_recall(VOICE, FLATTENED)
+assert module.content_recall(VOICE, FLATTENED) >= 0.3, module.content_recall(VOICE, FLATTENED)
 assert len(module.voice_families(FLATTENED)) < len(module.voice_families(VOICE)), \
     "flattened twin must lose voice devices"
 assert module.echo_share(VOICE, FLATTENED) <= 0.5, module.echo_share(VOICE, FLATTENED)
+
+# Measured on public prose: a thorough register change scores 0.36-0.53 content
+# recall because it swaps most of the vocabulary on purpose. The lexical floor is
+# only a topic-drift guard; whether the facts survived is a review question.
+assert module.content_recall(VOICE, IMPERSONAL) < 0.3, "topic drift would pass the floor"
+assert module.flattening_review_schema()["required"] == ["same_facts", "flatter"]
 
 # Retaining one long factual phrase is not an echo; keeping the whole sequence is.
 NEAR_COPY = VOICE.replace("You can probably guess", "One can guess")
