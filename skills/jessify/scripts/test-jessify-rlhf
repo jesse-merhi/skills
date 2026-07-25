@@ -187,6 +187,24 @@ invented_brief = {
 assert module.brief_has_lexical_support(passage, grounded_brief)
 assert not module.brief_has_lexical_support(passage, invented_brief)
 
+# The brief writer is told to paraphrase, so inflections must not read as new
+# concepts, while a genuinely invented one still must.
+assert module.stem("leaking") == module.stem("leaks") == "leak"
+assert module.stem("retried") == module.stem("retries") == "retry"
+assert module.stem("advisories") == module.stem("advisory") == "advisory"
+for short in ("data", "less", "this", "goes"):
+    assert module.stem(short) == short, short
+assert module.brief_has_lexical_support(
+    "Leaking information into context is worse.",
+    {"neutral_brief": "Explain that context leaks are worse.",
+     "must_preserve": ["Context leaks are worse"]},
+), "a paraphrased fact was treated as ungrounded"
+assert not module.brief_has_lexical_support(
+    "Leaking information into context is worse.",
+    {"neutral_brief": "Explain that Redis evictions are worse.",
+     "must_preserve": ["Redis evictions cause loss"]},
+), "stemming let an invented fact through"
+
 # A required fact lifted verbatim from the passage is the author's sentence, and
 # every candidate would then open with it. Short reuse of a real detail is fine.
 target = (

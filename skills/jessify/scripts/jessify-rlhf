@@ -102,8 +102,24 @@ def words(text: str) -> list[str]:
     return [match.group(0).lower().replace("’", "'") for match in WORD_RE.finditer(text)]
 
 
+def stem(word: str) -> str:
+    """Strip common inflections so a paraphrase still matches its source.
+
+    The brief writer is asked to paraphrase, which turns "leaking" into "leaks"
+    and "retried" into "retries". Comparing surface forms treated those as
+    different concepts and rejected sound briefs.
+    """
+    for suffix in ("ing", "ies", "ied", "es", "ed", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 4:
+            return word[: -len(suffix)] + ("y" if suffix in {"ies", "ied"} else "")
+    return word
+
+
 def content_words(text: str) -> set[str]:
-    return {word for word in words(text) if len(word) >= 4 and word not in CONTENT_STOP_WORDS}
+    return {
+        stem(word) for word in words(text)
+        if len(word) >= 4 and word not in CONTENT_STOP_WORDS
+    }
 
 
 def stable_id(prefix: str, *parts: str) -> str:
