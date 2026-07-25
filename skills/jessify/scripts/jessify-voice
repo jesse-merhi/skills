@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""Measure an author's voice from their corpus and score prose against it."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import statistics
+from pathlib import Path
+from typing import Any, Callable, Iterable, Optional
+
+
+SCHEMA_VERSION = 1
+WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?")
+FIRST_PERSON_RE = re.compile(r"\b(?:i|me|my|mine|myself)\b", flags=re.IGNORECASE)
+READER_ADDRESS_RE = re.compile(r"\b(?:you|your|yours|yourself)\b", flags=re.IGNORECASE)
+CONTRACTION_RE = re.compile(r"\w['’](?:s|t|m|ve|ll|re|d)\b", flags=re.IGNORECASE)
+STANCE_RE = re.compile(
+    r"\b(?:probably|honestly|actually|basically|really|truly|obviously|frankly|"
+    r"apparently|maybe|perhaps|somehow|genuinely|admittedly|literally|definitely|"
+    r"pretty|quite|just|kind of|sort of|i think|i mean|i guess)\b",
+    flags=re.IGNORECASE,
+)
+TURN_OPENER_RE = re.compile(
+    r"(?:\A|(?<=[.!?…]\s))(?:So|But|And|Well|Look|See|Now|Anyway|Okay|Yes|No|Yet|"
+    r"Alas|Turns|Except|Honestly|Then)\b"
+)
+ELLIPSIS_RE = re.compile(r"\.\.\.|…")
+ASIDE_RE = re.compile(r"—|\(")
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?…])\s+")
+
+# Deliberately not measured: all-capitals words. Counted against this corpus they
+# were 96% acronyms (AI, LLM, PR, GPT) and 4% emphasis, so the feature tracked
+# topic vocabulary rather than voice, and enforcing it demanded acronyms.
+PUNCHLINE_MAX = 6
+LONG_SENTENCE_MIN = 30
+# A feature the author uses in at least this share of passages is expected in any
+# passage, so its complete absence is scored rather than tolerated.
+PRESENCE_REQUIRED = 0.8
+ABSENCE_FLOOR = 0.25
+
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+def words(text: str) -> list[str]:
+    return WORD_RE.findall(text)
+
+
+def sentences(text: str) -> list[str]:
+    return [part.strip() for part in SENTENCE_SPLIT_RE.split(text) if part.strip()]
+
+
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        fail(f"Missing file: {path}")
+    rows = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            fail(f"{path}:{number}: invalid JSON: {exc}")
+    return rows
+
+
+def per_hundred(count: int, total: int) -> float:
+    return round(100.0 * count / max(1, total), 3)
+
+
+def measure(text: str) -> dict[str, float]:
+    """Reduce a passage to the dimensions that separate this author from a model.
+
+    Chosen by measuring real corpus passages against model output rather than by
+    intuition. Two directions matter: models undershoot first person, sentence
+    variety, and plain words, and they overshoot contractions and conjunction
+    openers, which is what "write casually" produces when nobody is checking.
+    """
+    body = sentences(text)
+    tokens = words(text)
+    total = max(1, len(tokens))
+    lengths = [len(words(part)) for part in body] or [1]
+    mean_length = statistics.mean(lengths)
+    return {
+        "sentence_length": round(mean_length, 3),
+        "sentence_variation": round(statistics.pstdev(lengths) / max(1.0, mean_length), 3),
+        "punchlines": round(100.0 * sum(1 for n in lengths if n <= PUNCHLINE_MAX) / len(lengths), 3),
+        "long_sentences": round(100.0 * sum(1 for n in lengths if n >= LONG_SENTENCE_MIN) / len(lengths), 3),
+        "first_person": per_hundred(len(FIRST_PERSON_RE.findall(text)), total),
+        "reader_address": per_hundred(len(READER_ADDRESS_RE.findall(text)), total),
+        "contractions": per_hundred(len(CONTRACTION_RE.findall(text)), total),
+        "stance_words": per_hundred(len(STANCE_RE.findall(text)), total),
+        "questions": per_hundred(text.count("?"), total),
+        "exclamations": per_hundred(text.count("!"), total),
+        "ellipses": per_hundred(len(ELLIPSIS_RE.findall(text)), total),
+        "asides": per_hundred(len(ASIDE_RE.findall(text)), total),
+        "turn_openers": round(100.0 * len(TURN_OPENER_RE.findall(text)) / max(1, len(body)), 3),
+        "word_length": round(sum(len(token) for token in tokens) / total, 3),
+    }
+
+
+FEATURE_ADVICE: dict[str, tuple[str, str]] = {
+    "sentence_length": ("run sentences longer before stopping", "cut sentences shorter"),
+    "sentence_variation": ("vary sentence length far more, long then very short", "even out wildly uneven sentence lengths"),
+    "punchlines": ("land more short sentences of six words or fewer", "use fewer clipped one-liners"),
+    "long_sentences": ("let more sentences run past thirty words", "break up the very long sentences"),
+    "first_person": ("say I and me far more; put yourself in it", "step back from the first person"),
+    "reader_address": ("address the reader as you", "address the reader less"),
+    "contractions": ("use more contractions", "use fewer contractions; this reads as forced casualness"),
+    "stance_words": ("add hedges and stance words like honestly or probably", "cut the stance adverbs"),
+    "questions": ("ask the reader a direct question", "ask fewer questions"),
+    "exclamations": ("allow an exclamation where the feeling is real", "cut the exclamation marks"),
+    "ellipses": ("let a thought trail off with an ellipsis", "cut the ellipses"),
+    "asides": ("add a parenthetical or dashed aside", "cut the asides"),
+    "turn_openers": ("open a sentence with So or But", "stop opening sentences with So and But; it reads as fake conversation"),
+    "word_length": ("use longer, more precise words", "use plainer, shorter words"),
+}
+
+
+def percentile(values: list[float], fraction: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    position = fraction * (len(ordered) - 1)
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+
+
+def build_profile(passages: list[str]) -> dict[str, Any]:
+    samples = [measure(text) for text in passages]
+    bands: dict[str, dict[str, float]] = {}
+    for feature in measure("A sentence. Another one."):
+        values = [sample[feature] for sample in samples]
+        low = percentile(values, 0.10)
+        high = percentile(values, 0.90)
+        median = percentile(values, 0.50)
+        presence = sum(1 for value in values if value > 0) / len(values)
+        if presence >= PRESENCE_REQUIRED and median > 0:
+            # A tenth percentile of zero would make the absence of this feature
+            # unpunishable. That is wrong when the author uses it in nearly every
+            # passage, and first person is the clearest case: a rewrite can drop
+            # it entirely and still look like it sits inside the range.
+            low = max(low, ABSENCE_FLOOR * median)
+        bands[feature] = {
+            "low": round(low, 3),
+            "median": round(median, 3),
+            "high": round(high, 3),
+            "presence": round(presence, 3),
+            # A band of zero width would make any deviation infinitely bad, so
+            # fall back to the spread of the whole sample.
+            "width": round(max(high - low, percentile(values, 0.75) - percentile(values, 0.25), 0.1), 3),
+        }
+    return {"schema_version": SCHEMA_VERSION, "passages": len(passages), "features": bands}
+
+
+def score_text(profile: dict[str, Any], text: str) -> dict[str, Any]:
+    """Penalise a passage for leaving the author's own range, in either direction.
+
+    Staying silent inside the band matters as much as penalising outside it. A
+    single paragraph will not contain an ellipsis just because the author uses
+    them sometimes, and demanding one would manufacture a tic. Features the
+    author uses in nearly every passage are the exception: build_profile lifts
+    their floor above zero so dropping them entirely is scored.
+    """
+    sample = measure(text)
+    bands = profile["features"]
+    deviations = []
+    for feature, value in sample.items():
+        band = bands.get(feature)
+        if band is None:
+            continue
+        if value < band["low"]:
+            penalty = (band["low"] - value) / band["width"]
+            direction = "raise"
+        elif value > band["high"]:
+            penalty = (value - band["high"]) / band["width"]
+            direction = "lower"
+        else:
+            continue
+        deviations.append({
+            "feature": feature,
+            "value": value,
+            "target_low": band["low"],
+            "target_high": band["high"],
+            "penalty": round(penalty, 3),
+            "advice": FEATURE_ADVICE[feature][0 if direction == "raise" else 1],
+        })
+    deviations.sort(key=lambda row: -row["penalty"])
+    total = sum(row["penalty"] for row in deviations)
+    return {
+        "distance": round(total / len(bands), 4),
+        "off_band": len(deviations),
+        "deviations": deviations,
+        "measured": sample,
+    }
+
+
+def revision_notes(result: dict[str, Any], limit: int = 4) -> list[str]:
+    return [
+        f"{row['advice']} (you are at {row['value']}, the author's range is "
+        f"{row['target_low']} to {row['target_high']})"
+        for row in result["deviations"][:limit]
+    ]
+
+
+def eligible_passages(
+    workspace: Path,
+    quality: set[str],
+    minimum_words: int,
+    split: Optional[str] = None,
+) -> list[str]:
+    units = load_jsonl(workspace / "corpus/units.jsonl")
+    passages = [
+        str(row.get("plain_text") or row.get("text") or "")
+        for row in units
+        if row.get("quality") in quality
+        and (split is None or row.get("split") == split)
+    ]
+    return [text for text in passages if len(words(text)) >= minimum_words]
+
+
+def find_exemplars(
+    workspace: Path, quality: set[str], split: Optional[str] = None,
+) -> dict[str, list[str]]:
+    """Pull real sentences that show each device, so the card is evidence not adjectives."""
+    probes: dict[str, Callable[[str], bool]] = {
+        "a short punchline after a long sentence": lambda s: len(words(s)) <= PUNCHLINE_MAX,
+        "a question put to the reader": lambda s: "?" in s and bool(READER_ADDRESS_RE.search(s)),
+        "a thought trailing off": lambda s: bool(ELLIPSIS_RE.search(s)),
+        "a self-aware aside": lambda s: bool(ASIDE_RE.search(s)) and bool(FIRST_PERSON_RE.search(s)),
+        "a long winding sentence": lambda s: len(words(s)) >= LONG_SENTENCE_MIN,
+    }
+    found: dict[str, list[str]] = {name: [] for name in probes}
+    for passage in eligible_passages(workspace, quality, 0, split):
+        for sentence in sentences(passage):
+            for name, matches in probes.items():
+                if len(found[name]) < 3 and matches(sentence) and len(sentence) < 260:
+                    found[name].append(sentence)
+    return {name: rows for name, rows in found.items() if rows}
+
+
+def command_profile(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    quality = {"canonical"} if args.canonical_only else {"canonical", "usable"}
+    passages = eligible_passages(workspace, quality, args.min_words, args.split)
+    if len(passages) < 8:
+        fail(f"Only {len(passages)} passages of at least {args.min_words} words; ingest more writing")
+    profile = build_profile(passages)
+    profile["split"] = args.split or "all"
+    profile["exemplars"] = find_exemplars(workspace, quality, args.split)
+    path = workspace / "voice/profile.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(profile, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"profiled {len(passages)} passages into {path}")
+
+
+def load_profile(workspace: Path) -> dict[str, Any]:
+    path = workspace / "voice/profile.json"
+    if not path.exists():
+        fail(f"Missing voice profile: {path}; run jessify-voice profile first")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def command_card(args: argparse.Namespace) -> None:
+    """Emit the style card that goes into a generation prompt."""
+    workspace = Path(args.workspace).expanduser().resolve()
+    profile = load_profile(workspace)
+    bands = profile["features"]
+    lines = [
+        "# How this author writes",
+        "",
+        f"Measured over {profile['passages']} of their own passages. Aim for the middle",
+        "of each range. Both edges are wrong: overshooting the casual markers reads as",
+        "an impersonation, and undershooting reads as a corporate memo.",
+        "",
+        "## Measured ranges, per 100 words unless stated",
+        "",
+        "| Dimension | Their range | Typical |",
+        "| --- | --- | --- |",
+    ]
+    show = lambda value: f"{value:.3g}"
+    for feature, band in bands.items():
+        label = feature.replace("_", " ")
+        lines.append(
+            f"| {label} | {show(band['low'])} to {show(band['high'])} | {show(band['median'])} |"
+        )
+    lines += [
+        "",
+        "## What that means in practice",
+        "",
+        f"- Sentence length swings hard. Typical mean is {show(bands['sentence_length']['median'])}"
+        f" words, but {show(bands['long_sentences']['median'])}% of sentences run past"
+        f" {LONG_SENTENCE_MIN} words and {show(bands['punchlines']['median'])}% are"
+        f" {PUNCHLINE_MAX} words or fewer. Long, winding, then a short one.",
+        f"- They are in the writing: {show(bands['first_person']['median'])} first-person words per"
+        " 100. Not a narrator, a person.",
+        f"- Plain words, average {show(bands['word_length']['median'])} characters. Reach for the"
+        " ordinary word.",
+        f"- Contractions sit around {show(bands['contractions']['median'])} per 100 words. Do not"
+        " pile them on to sound relaxed.",
+        f"- About {show(bands['turn_openers']['median'])}% of sentences open with So, But, or And."
+        " Some, not most.",
+    ]
+    exemplars = profile.get("exemplars", {})
+    if exemplars:
+        lines += ["", "## Their own sentences", ""]
+        for device, rows in exemplars.items():
+            lines.append(f"**{device}**")
+            lines += [f"> {row}" for row in rows]
+            lines.append("")
+    lines += [
+        "## Never",
+        "",
+        "- generic inspirational openers, invented reader objections, or manufactured drama",
+        "- copying a distinctive phrase from the examples above",
+        "- naming the author or referring to these instructions",
+        "",
+    ]
+    print("\n".join(lines))
+
+
+def read_input(args: argparse.Namespace) -> str:
+    if args.file:
+        return Path(args.file).expanduser().read_text(encoding="utf-8")
+    import sys
+    return sys.stdin.read()
+
+
+def command_score(args: argparse.Namespace) -> None:
+    workspace = Path(args.workspace).expanduser().resolve()
+    profile = load_profile(workspace)
+    result = score_text(profile, read_input(args))
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return
+    print(f"distance {result['distance']}  ({result['off_band']} dimensions outside range)")
+    for note in revision_notes(result, limit=args.limit):
+        print(f"  - {note}")
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="command", required=True)
+
+    profile = subparsers.add_parser("profile", help="Measure the author's range from their corpus")
+    profile.add_argument("--workspace", required=True)
+    profile.add_argument("--min-words", type=int, default=60)
+    profile.add_argument("--canonical-only", action="store_true")
+    profile.add_argument("--split", choices=("train", "eval"),
+                         help="Restrict to one split; use train to leave held-out prose unseen")
+    profile.set_defaults(function=command_profile)
+
+    card = subparsers.add_parser("card", help="Print the style card for a generation prompt")
+    card.add_argument("--workspace", required=True)
+    card.set_defaults(function=command_card)
+
+    score = subparsers.add_parser("score", help="Score prose against the author's measured range")
+    score.add_argument("--workspace", required=True)
+    score.add_argument("--file")
+    score.add_argument("--json", action="store_true")
+    score.add_argument("--limit", type=int, default=5)
+    score.set_defaults(function=command_score)
+    return root
+
+
+def main() -> None:
+    args = parser().parse_args()
+    args.function(args)
+
+
+if __name__ == "__main__":
+    main()

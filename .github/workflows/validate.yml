@@ -38,6 +38,9 @@ jobs:
           ./tests/skills-test
           ./tests/review-findings-test
           python3 -m unittest discover -s skills/wait-efficiently/scripts -p 'test_*.py'
+          ./skills/jessify/scripts/test-jessify-data
+          ./skills/jessify/scripts/test-jessify-rlhf
+          ./skills/jessify/scripts/test-jessify-voice
 
       - name: Check shell, Python, and JavaScript syntax
         run: |
@@ -53,8 +56,9 @@ jobs:
             skills/code-review/scripts/calibrate-structured-review \
             skills/code-review/scripts/test-codex-review-helper \
             skills/jessify/scripts/test-jessify-data \
-            skills/jessify/scripts/test-jessify-rlhf
-          python3 -m py_compile skills/code-review/scripts/*.py skills/jessify/scripts/jessify-data skills/jessify/scripts/jessify-mlx-runner skills/jessify/scripts/jessify-rlhf skills/jessify/scripts/jessify-train-local skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
+            skills/jessify/scripts/test-jessify-rlhf \
+            skills/jessify/scripts/test-jessify-voice
+          python3 -m py_compile skills/code-review/scripts/*.py skills/jessify/scripts/jessify-data skills/jessify/scripts/jessify-mlx-runner skills/jessify/scripts/jessify-rlhf skills/jessify/scripts/jessify-train-local skills/jessify/scripts/jessify-voice skills/jessify/scripts/jessify-write skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
           node --check skills/jessify/assets/rlhf/app.js
 

@@ -57,22 +57,52 @@ surface prose.
    Done when `validate` passes and evaluation documents are absent from the
    training export.
 
-4. Jessify prose.
+4. Measure the voice before trying to imitate it.
 
-   - First extract a neutral content brief: claims, facts, story beats,
-     uncertainty, technical terms, and required transitions.
+   Adjectives are not a specification. Build a measured profile once per corpus
+   change, then read the card it produces:
+
+   ```sh
+   <skill-dir>/scripts/jessify-voice profile --workspace <workspace> --canonical-only
+   <skill-dir>/scripts/jessify-voice card --workspace <workspace>
+   ```
+
+   The card states Jesse's own range on fifteen dimensions with quoted examples
+   of each device. Both edges of every range are wrong. Overshooting the cheap
+   casual markers is the common failure: measured against this corpus, model
+   output uses five times Jesse's contraction rate and four times his rate of
+   opening sentences with "So" or "But", while using almost no first person and
+   almost none of his long winding sentences. Writing that sounds "casual" is
+   usually an impersonation, not a likeness.
+
+5. Jessify prose.
+
+   Rewrite, score against the profile, and revise until it lands:
+
+   ```sh
+   <skill-dir>/scripts/jessify-write --workspace <workspace> --file <input> \
+     --candidates 3 --revisions 2
+   ```
+
+   It drafts several candidates, keeps the ones that preserve every number,
+   scores each against the measured profile, and re-prompts the loser with the
+   specific dimensions that were out of range. Pass `--command '<cli>'` to use
+   any generator that takes a prompt on stdin; without it the local Ollama model
+   is used, which keeps a private corpus on the machine.
+
+   Check the result yourself:
+
+   ```sh
+   <skill-dir>/scripts/jessify-voice score --workspace <workspace> --file <draft>
+   ```
+
+   Jesse's own held-out passages score about 0.02. Treat anything above 0.05 as
+   not yet in his voice, and read the named deviations rather than guessing.
+
+   When writing by hand rather than through the script:
+
    - Discard the source wording. Do not line-edit an AI draft sentence by
      sentence; its cadence will survive the edit.
-   - Retrieve three to six examples with the same rhetorical job:
-
-     ```sh
-     <skill-dir>/scripts/jessify-data retrieve --workspace <workspace> \
-       --query-file <neutral-brief> --role <role> --limit 5
-     ```
-
-   - Generate the passage afresh from the neutral brief, local section context,
-     and retrieved examples. Use examples as evidence of voice, not phrases to
-     copy.
    - Preserve intentional Jesse features when they serve the passage: winding
      spoken clauses, ellipses, direct questions, self-aware asides, emphatic
      capitalization, concrete examples, and occasional short punchlines.
@@ -80,14 +110,14 @@ surface prose.
      imperfections only when they are clearly intentional voice rather than an
      accident.
 
-5. Review independently.
+6. Review independently.
 
    Invoke `blog-review` after a section or full article has been Jessified. The
    writer must not be the only judge of its own output. Pass the target and the
    canonical corpus location, but do not tell reviewers which lines were
    difficult or what verdict to reach.
 
-6. Record user feedback.
+7. Record user feedback.
 
    When Jesse rejects one version and approves another, record the source,
    rejected output, accepted output, reason, and rhetorical role:
@@ -138,7 +168,7 @@ surface prose.
    winners, and exports DPO pairs only after every case is labeled. Never
    export a held-out evaluation batch into preferences.
 
-7. Train only behind an evaluation gate.
+8. Evaluate blind when comparing systems.
 
    Read [references/training-and-evaluation.md](references/training-and-evaluation.md).
    Prepare neutral briefs for held-out documents with `requests --split eval`
@@ -163,7 +193,7 @@ surface prose.
    For a corporate or otherwise local-only workspace, do not substitute an
    external batch API or hosted evaluator.
 
-8. Train the local adapter after preference collection.
+9. Train a local adapter only if the profile stops improving.
 
    Prepare accepted winners as preference-informed supervised examples, then
    train a private MLX LoRA on Apple Silicon:

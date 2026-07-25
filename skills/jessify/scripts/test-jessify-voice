@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+python3 - "$skill_dir/scripts/jessify-voice" "$skill_dir/scripts/jessify-write" "$tmp" <<'PY'
+import importlib.machinery
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+
+def load(name, path):
+    loader = importlib.machinery.SourceFileLoader(name, path)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+voice = load("jessify_voice", sys.argv[1])
+tmp = Path(sys.argv[3])
+
+# Two registers of the same content. The author's own writing swings between long
+# winding sentences and very short ones, stays in the first person, and uses plain
+# words. The corporate twin does none of that.
+AUTHORED = [
+    "I honestly thought this would be simple, and I kept telling myself that right up "
+    "until the moment it stopped being true and I had to sit down and work through the "
+    "whole thing again from the start. It was not simple. You can probably guess how "
+    "that went for me.",
+    "So I gave up on the clever version. I mean it, I threw the whole thing away and "
+    "started again with the boring approach, which is the one that worked in the end and "
+    "which I should have reached for on the first day instead of the fourth. Boring wins.",
+    "The bit I keep coming back to is how long I spent looking in the wrong place, "
+    "because the wrong place looked exactly like the right one and nobody, least of all "
+    "me, had any reason to doubt it. That is the part that stings. You would have done "
+    "the same.",
+    "I do not think this is a hard problem, honestly. It just looks hard from outside, "
+    "and once you have sat with it for an afternoon and drawn the thing out on paper the "
+    "shape of it becomes fairly obvious and slightly embarrassing. Mostly embarrassing.",
+]
+CORPORATE = [
+    "The initial assessment indicated that the task would be straightforward. This "
+    "assessment proved inaccurate. A complete reassessment was subsequently required "
+    "before the work could proceed to completion in the intended manner.",
+    "The sophisticated implementation was ultimately abandoned. A conventional approach "
+    "was adopted instead, and this approach delivered the required outcome within the "
+    "established timeframe and without further complications arising.",
+    "Considerable time was allocated to investigating an incorrect area. The incorrect "
+    "area presented characteristics substantially similar to the correct area, and no "
+    "indication of the discrepancy was available to the personnel involved.",
+    "The problem is not considered difficult. External perception suggests otherwise. "
+    "Following a period of analysis and documentation, the structure of the problem "
+    "becomes readily apparent to the reviewing party.",
+]
+
+profile = voice.build_profile(AUTHORED)
+assert profile["passages"] == 4
+bands = profile["features"]
+assert set(bands) == set(voice.measure("A sentence. Another one."))
+for feature, band in bands.items():
+    assert band["low"] <= band["median"] <= band["high"], feature
+    assert band["width"] > 0, f"{feature} band has no width; any deviation would be infinite"
+
+# The whole point: the author's own prose must score closer than the corporate twin.
+authored_scores = [voice.score_text(profile, text)["distance"] for text in AUTHORED]
+corporate_scores = [voice.score_text(profile, text)["distance"] for text in CORPORATE]
+assert max(authored_scores) < min(corporate_scores), (authored_scores, corporate_scores)
+
+# Overshooting the casual markers has to be penalised too, or "sound casual"
+# produces an impersonation that the scorer happily rewards.
+OVERSHOT = (
+    "So it's easy. But it's not. And honestly it's just, well, it's basically really "
+    "quite tricky. So I'd say it's tricky! But it's fine. So don't worry. And it's ok!"
+)
+overshot = voice.score_text(profile, OVERSHOT)
+assert overshot["distance"] > max(authored_scores), "a caricature scored as well as real prose"
+overshot_features = {row["feature"] for row in overshot["deviations"]}
+assert overshot_features & {"contractions", "turn_openers", "sentence_length"}, overshot_features
+
+# Deviations have to name a direction and a target, or revision cannot act on them.
+flat = voice.score_text(profile, CORPORATE[0])
+assert flat["deviations"], "no deviations reported for obviously off-voice prose"
+top = flat["deviations"][0]
+assert top["penalty"] >= flat["deviations"][-1]["penalty"], "deviations not ranked"
+for row in flat["deviations"]:
+    assert row["advice"] and row["target_low"] <= row["target_high"]
+notes = voice.revision_notes(flat)
+assert notes and all("range is" in note for note in notes), notes
+
+# A passage inside every band is scored zero, not nudged toward a tic it has no
+# room for. A single paragraph will not contain an ellipsis on demand.
+inside = voice.score_text(profile, AUTHORED[0])
+assert inside["distance"] >= 0.0
+assert voice.measure(AUTHORED[0])["ellipses"] == 0.0
+assert not any(row["feature"] == "ellipses" for row in inside["deviations"]), \
+    "scorer demanded a flourish the band does not require"
+
+# A feature the author uses in nearly every passage must not become
+# unpunishable just because a tenth of their passages lack it. Dropping first
+# person entirely is the failure this caught: a rewrite that referred to "the
+# author" throughout scored as though it were inside the range.
+assert bands["first_person"]["presence"] >= voice.PRESENCE_REQUIRED
+assert bands["first_person"]["low"] > 0, "absence of first person is unpunishable"
+THIRD_PERSON = (
+    "It has been argued that the author's greatest ideas came from avoiding effort. "
+    "The author has settled on a simple rule, and the author applies it whenever a "
+    "task recurs, because by the third repetition the process itself is suspect and "
+    "warrants a closer look from whoever happens to be responsible for it."
+)
+assert voice.measure(THIRD_PERSON)["first_person"] == 0.0
+third = voice.score_text(profile, THIRD_PERSON)
+assert any(row["feature"] == "first_person" for row in third["deviations"]), \
+    "writing about the author in the third person was not scored"
+
+# A sparse flourish must not get the floor, so a single paragraph is never told to
+# manufacture one. Compare against the raw percentile rather than against zero:
+# with few passages the tenth percentile interpolates above zero on its own.
+samples = [voice.measure(text) for text in AUTHORED]
+sparse = [name for name, band in bands.items() if band["presence"] < voice.PRESENCE_REQUIRED]
+common = [name for name, band in bands.items() if band["presence"] >= voice.PRESENCE_REQUIRED]
+assert sparse and common, (sparse, common)
+for name in sparse:
+    raw = voice.percentile([sample[name] for sample in samples], 0.10)
+    assert bands[name]["low"] == round(raw, 3), f"{name} was floored despite being sparse"
+for name in common:
+    raw = voice.percentile([sample[name] for sample in samples], 0.10)
+    floored = max(raw, voice.ABSENCE_FLOOR * bands[name]["median"])
+    assert bands[name]["low"] == round(floored, 3), f"{name} missed the absence floor"
+
+# All-capitals words are deliberately not measured: against the real corpus they
+# were 96% acronyms and 4% emphasis, so the feature tracked topic, not voice.
+assert "emphatic_caps" not in bands
+assert not hasattr(voice, "CAPS_RE")
+
+# Percentiles must not blow up on degenerate input.
+assert voice.percentile([], 0.5) == 0.0
+assert voice.percentile([2.0], 0.9) == 2.0
+
+writer = load("jessify_write", sys.argv[2])
+
+# A voice change replaces most of the vocabulary on purpose, so faithfulness is
+# about the numbers and the names, not word overlap.
+source = "OpenClaw has 44,000 commits and 530 advisories, and Teller was worse."
+same_facts = "I counted 44,000 commits on OpenClaw. 530 advisories. Teller was worse, honestly."
+lost_number = "I counted the commits on OpenClaw. Plenty of advisories. Teller was worse."
+assert writer.faithfulness(source, same_facts)["numbers_kept"] is True
+checked = writer.faithfulness(source, lost_number)
+assert checked["numbers_kept"] is False
+assert "44000" in checked["missing_numbers"] and "530" in checked["missing_numbers"]
+assert writer.faithfulness(source, same_facts)["reference_recall"] == 1.0
+
+# Retrieval must never hand back the passage being rewritten, or a rewrite of
+# text already in the corpus turns into a copy.
+assert writer.shares_long_phrase(AUTHORED[0], AUTHORED[0]) is True
+assert writer.shares_long_phrase(AUTHORED[0], CORPORATE[0]) is False
+assert writer.shares_long_phrase("too short to compare", AUTHORED[0]) is False
+
+# Generator wrappers must not swallow a preface or a heading into the output.
+assert writer.clean_output("Here is the rewrite:\n\nI did the thing.") == "I did the thing."
+assert writer.clean_output("# Title\nI did the thing.") == "I did the thing."
+assert writer.META_LEAK_RE.search("Here is the rewrite in the author's voice.")
+assert not writer.META_LEAK_RE.search("I rewrote the config and it worked.")
+
+corpus = tmp / "ws/corpus"
+corpus.mkdir(parents=True)
+rows = [
+    {"id": f"u{index}", "document_id": "d", "quality": "canonical", "split": "train",
+     "plain_text": text, "text": text}
+    for index, text in enumerate(AUTHORED * 3)
+]
+rows.append({"id": "eval1", "document_id": "e", "quality": "canonical", "split": "eval",
+             "plain_text": CORPORATE[0], "text": CORPORATE[0]})
+(corpus / "units.jsonl").write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+
+# A train-only profile must not see held-out passages.
+train_only = voice.eligible_passages(tmp / "ws", {"canonical"}, 0, "train")
+assert CORPORATE[0] not in train_only, "held-out passage leaked into the train profile"
+assert len(voice.eligible_passages(tmp / "ws", {"canonical"}, 0, None)) == len(train_only) + 1
+
+exemplars = voice.find_exemplars(tmp / "ws", {"canonical"}, "train")
+assert exemplars, "no device exemplars found in prose that clearly contains them"
+assert all(rows for rows in exemplars.values())
+print("unit checks passed", file=sys.stderr)
+PY
+
+workspace="$tmp/ws"
+"$skill_dir/scripts/jessify-voice" profile --workspace "$workspace" --canonical-only --split train --min-words 30 >/dev/null
+test -s "$workspace/voice/profile.json"
+python3 -c "
+import json,sys
+p=json.load(open(sys.argv[1]))
+assert p['split']=='train', p['split']
+assert p['passages']>=8, p['passages']
+" "$workspace/voice/profile.json"
+
+"$skill_dir/scripts/jessify-voice" card --workspace "$workspace" > "$tmp/card.md"
+grep -q 'How this author writes' "$tmp/card.md"
+grep -q 'Measured ranges' "$tmp/card.md"
+# The card has to warn against the overshoot, since that is the failure mode a
+# plain "write casually" instruction produces.
+grep -q 'Do not' "$tmp/card.md"
+grep -q 'impersonation' "$tmp/card.md"
+# No unrounded float noise in a prompt meant for a model to read.
+if grep -qE '[0-9]\.[0-9]{4,}' "$tmp/card.md"; then
+  printf 'card leaked unrounded numbers\n' >&2
+  exit 1
+fi
+
+printf 'I honestly thought this would be simple. It was not.\n' > "$tmp/good.txt"
+"$skill_dir/scripts/jessify-voice" score --workspace "$workspace" --file "$tmp/good.txt" > "$tmp/score.txt"
+grep -q 'distance' "$tmp/score.txt"
+"$skill_dir/scripts/jessify-voice" score --workspace "$workspace" --file "$tmp/good.txt" --json > "$tmp/score.json"
+python3 -c "
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert 'distance' in r and 'deviations' in r and 'measured' in r
+" "$tmp/score.json"
+
+# A tiny corpus must fail loudly rather than produce a meaningless profile.
+small="$tmp/small"; mkdir -p "$small/corpus"
+printf '%s\n' '{"id":"x","document_id":"d","quality":"canonical","split":"train","plain_text":"Short.","text":"Short."}' > "$small/corpus/units.jsonl"
+if "$skill_dir/scripts/jessify-voice" profile --workspace "$small" >"$tmp/small.out" 2>&1; then
+  printf 'profiled a corpus far too small to measure\n' >&2
+  exit 1
+fi
+grep -q 'ingest more writing' "$tmp/small.out"
+
+# Scoring before profiling must say what to do.
+if "$skill_dir/scripts/jessify-voice" score --workspace "$small" --file "$tmp/good.txt" >"$tmp/noprofile.out" 2>&1; then
+  printf 'scored without a profile\n' >&2
+  exit 1
+fi
+grep -q 'run jessify-voice profile first' "$tmp/noprofile.out"
+
+printf 'ok - jessify voice\n'
