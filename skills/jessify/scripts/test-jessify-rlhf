@@ -187,6 +187,20 @@ invented_brief = {
 assert module.brief_has_lexical_support(passage, grounded_brief)
 assert not module.brief_has_lexical_support(passage, invented_brief)
 
+# A required fact lifted verbatim from the passage is the author's sentence, and
+# every candidate would then open with it. Short reuse of a real detail is fine.
+target = (
+    "Leaking information into context is substantially more common and naturally "
+    "is also substantially worse, and over 530 advisories say so."
+)
+assert module.copied_brief_field(target, ["State that context leaks are worse."]) is False
+assert module.copied_brief_field(target, ["over 530 advisories"]) is False
+assert module.copied_brief_field(
+    target,
+    ["State that context leaks are worse.",
+     "Leaking information into context is substantially more common and naturally is also substantially worse"],
+) is True, "a verbatim clause in must_preserve was allowed through"
+
 # The content-matched contrast is only useful when it keeps the content, drains
 # the voice, and is a real rewrite rather than the original with the jokes filed
 # off. A faithful flattening has to clear all three bars at production settings.

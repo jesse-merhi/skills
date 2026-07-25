@@ -448,6 +448,17 @@ CANDIDATE:
     return grounded and finished, failure or "failed-grounding-review"
 
 
+def copied_brief_field(passage: str, fields: Iterable[Any]) -> bool:
+    """True when any brief field lifts a long phrase straight from the passage.
+
+    Short reuse is unavoidable and fine: a required fact may well be "over 530
+    security advisories". What breaks the comparison is a whole clause of the
+    author's own prose arriving in the brief, because every candidate then
+    reproduces it verbatim.
+    """
+    return any(has_ngram_overlap(passage, str(field), 9) for field in fields)
+
+
 def brief_has_lexical_support(passage: str, brief: dict[str, Any]) -> bool:
     passage_terms = content_words(passage)
     fact_terms = content_words(" ".join(str(item) for item in brief["must_preserve"]))
@@ -473,7 +484,9 @@ Rules:
 - Preserve facts, claims, chronology, uncertainty, and intended reader movement.
 - Paraphrase. Do not quote distinctive wording, jokes, cadence, punctuation, or voice.
 - Do not use the author's name and do not invent or repair facts.
-- Keep must_preserve items short and atomic.
+- Every must_preserve item names one fact in under eight words. Never copy a
+  clause or sentence from the passage into it; a quoted sentence is the author's
+  prose, not a fact.
 
 Section: {unit.get('section', 'Unknown')}
 TARGET PASSAGE:
@@ -507,8 +520,11 @@ TARGET PASSAGE:
             last_error = "list fields require non-empty strings"
         elif re.search(r"\bjesse\b", brief, flags=re.IGNORECASE):
             last_error = "brief names the author"
-        elif has_ngram_overlap(passage, brief, 9):
-            last_error = "brief copies a nine-word phrase from the target"
+        elif copied_brief_field(passage, [brief, *preserve, *structure]):
+            # A required fact quoted straight from the passage is not a fact, it
+            # is the author's sentence. Every candidate then opens with the same
+            # line and the comparison stops being about voice.
+            last_error = "brief quotes a nine-word phrase from the target"
         else:
             result = {
                 "neutral_brief": brief,
