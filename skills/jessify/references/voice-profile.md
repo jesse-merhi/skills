@@ -54,6 +54,37 @@ jessify-voice score --workspace <workspace> --file <draft>
 The author's own held-out passages score about 0.008. Treat anything above 0.05
 as not yet in their voice, and read the named deviations instead of guessing.
 
+## Two flags that sit beside the distance
+
+Neither is folded into the score. Both are noisier than the measured bands, and
+averaging them in would corrupt a number that currently separates the author from
+a model three times in three.
+
+**Words they have never written.** `profile` takes a list of words a model reaches
+for when performing "good writing" — delve, leverage, seamless, furthermore,
+comprehensive, harness — and keeps only the ones absent from the whole corpus.
+Against the public corpus, 79 of 88 survived that filter. Unedited model prose
+scored 7.84 of them per hundred words; the author's own writing and his edited
+sections scored between 0.0 and 0.9. It is a blunt instrument that catches raw
+model output instantly and says little about prose someone has already worked on.
+
+Only the filtered list reaches `profile.json`, never the corpus vocabulary. On a
+private corpus that file would otherwise become a word list of private writing.
+
+**Sentences that hook onto nothing.** A run of consecutive sentences opening with a
+fresh noun phrase — no pronoun pointing back, no conjunction carrying the previous
+thought on — is the "one thing after another" that reads as a machine emptying its
+notes. It is measured as a *run*, not an average, and that is the whole point: in a
+real 3,521-word article the paragraph doing this was invisible to every average,
+and the run was still seven sentences long.
+
+Getting there took three attempts. Counting explanatory connectives rated the worst
+paragraph in that article *highest*, because it happened to contain the word
+"principle". A bare-declarative rate put a section scoring 0.011 at 71%, above
+sections reading five times worse. A back-reference rate put a bad section inside
+the range and a good one below it. Only the local run survived contact with the
+corpus, and even it is a warning rather than a score.
+
 ## Deliberately not measured
 
 All-capitals words. Counted against this corpus they were 96% acronyms — AI, LLM,

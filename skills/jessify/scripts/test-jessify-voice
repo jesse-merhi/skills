@@ -147,6 +147,42 @@ assert voice.scale_warning(profile, " ".join(["word"] * 5)), "no warning on a ti
 assert not voice.scale_warning(profile, AUTHORED[0] * 3), "warned on a full-length passage"
 assert "too_short" in voice.score_text(profile, AUTHORED[0])
 
+# Two signals that stay beside the distance rather than inside it, because both
+# are noisier than the measured bands and averaging them in would corrupt a
+# number that currently separates this author from a model three times in three.
+
+# Vocabulary. Words a model reaches for when performing "good writing", kept only
+# where the author has never once written them.
+assert profile["never_used"], "no machine words were ruled out by the corpus"
+assert all(w in voice.MACHINE_WORDS for w in profile["never_used"])
+seen = {w.lower() for text in AUTHORED for w in voice.words(text)}
+assert not (set(profile["never_used"]) & seen), "flagged a word the author actually uses"
+# The corpus vocabulary itself must not reach the profile: on a private corpus
+# that file would otherwise become a word list of the author's private writing.
+assert "vocabulary" not in profile and "seen" not in profile
+machine = "This transformative paradigm will leverage a comprehensive framework."
+hits = [w for w, _ in voice.foreign_words(profile, machine)]
+assert len(hits) >= 3, hits
+assert voice.foreign_words(profile, AUTHORED[0]) == []
+
+# Structure. A run of sentences that hook onto nothing before them is the "one
+# thing after another" that paragraph averages hide.
+LISTY = ("Cold subagents review the code blind. Codex and Claude take turns at it. "
+         "The discipline skills nag about hooks. The reviewers file their findings.")
+JOINED = ("Cold subagents review the code blind, because an agent that wrote it will defend it. "
+          "So Codex and Claude take turns at it. They catch what one model alone would miss.")
+assert voice.standalone_run(LISTY) == 4, voice.standalone_run(LISTY)
+assert voice.standalone_run(JOINED) <= 1, voice.standalone_run(JOINED)
+assert voice.standalone_run("") == 0
+assert profile["max_standalone_run"] >= 1
+assert voice.score_text(profile, LISTY)["standalone_run"] == 4
+# The flag is local, so it survives being buried in a much longer piece. That is
+# the whole point: averaging a real article hid this while the run was still there.
+buried = " ".join(AUTHORED) + " " + LISTY + " " + " ".join(AUTHORED)
+assert voice.score_text(profile, buried)["standalone_run"] >= 4, "burying the run hid it"
+assert voice.score_text(profile, " ".join(AUTHORED))["standalone_run"] < 4, \
+    "fixture already runs long without the list, so the check proves nothing"
+
 # Percentiles must not blow up on degenerate input.
 assert voice.percentile([], 0.5) == 0.0
 assert voice.percentile([2.0], 0.9) == 2.0

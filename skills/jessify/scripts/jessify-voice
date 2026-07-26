@@ -8,6 +8,7 @@ import json
 import re
 import statistics
 from pathlib import Path
+from collections import Counter
 from typing import Any, Callable, Iterable, Optional
 
 
@@ -41,6 +42,36 @@ PRESENCE_REQUIRED = 0.8
 # Below this fraction of the profile's typical passage length, a score says more
 # about the window than about the writing.
 SHORT_PASSAGE_RATIO = 0.6
+
+# Words a model reaches for when it is performing "good writing". Profiling keeps
+# only the ones the author has never once written, so the flag is grounded in
+# their corpus rather than in taste. Storing only the filtered list, never the
+# corpus vocabulary, keeps a private corpus out of the profile file.
+MACHINE_WORDS = (
+    "delve leverage robust seamless navigate landscape realm underscore pivotal testament "
+    "crucial furthermore moreover ultimately comprehensive innovative transformative holistic "
+    "myriad plethora paradigm synergy utilize facilitate endeavor foster garner harness "
+    "intricate nuanced multifaceted profound compelling remarkable notable significant "
+    "essentially fundamentally inherently arguably notably importantly consequently "
+    "elevate empower streamline optimize revolutionize unlock unleash embark journey "
+    "tapestry beacon cornerstone bedrock backbone lifeblood catalyst gateway "
+    "vital key essential critical paramount imperative "
+    "emerged emerging evolving rapidly increasingly widely broadly "
+    "ensure enable provide various numerous several certain "
+    "approach methodology framework strategy solution capability functionality"
+).split()
+
+# A sentence stands alone when nothing in its opening points back: no pronoun, no
+# demonstrative, no conjunction carrying the previous thought forward. A long run
+# of them is the "one thing after another" that reads as a machine emptying its
+# notes. Measured locally, as a run, because paragraph averages hide it.
+CARRIES_ON_RE = re.compile(
+    r"^(?:it|that|this|they|these|those|so|but|and|then|which|he|she|we|there|here|"
+    r"because|yet|still|except|anyway|now|honestly|alas|well|look|see|if|when|"
+    r"you|i|my|our|its|their|his|her|one|both|either|neither|all|none|each|"
+    r"most|some|every|no)\b",
+    flags=re.IGNORECASE,
+)
 ABSENCE_FLOOR = 0.25
 
 
@@ -123,6 +154,25 @@ FEATURE_ADVICE: dict[str, tuple[str, str]] = {
 }
 
 
+def standalone_run(text: str) -> int:
+    """Longest stretch of consecutive sentences that hook onto nothing before them."""
+    longest = current = 0
+    for sentence in sentences(text):
+        if CARRIES_ON_RE.match(sentence.strip()):
+            current = 0
+        else:
+            current += 1
+            longest = max(longest, current)
+    return longest
+
+
+def foreign_words(profile: dict[str, Any], text: str) -> list[tuple[str, int]]:
+    """Machine-favoured words this author has never written, found in a draft."""
+    unused = set(profile.get("never_used", []))
+    found = Counter(word for word in (w.lower() for w in words(text)) if word in unused)
+    return found.most_common()
+
+
 def percentile(values: list[float], fraction: float) -> float:
     if not values:
         return 0.0
@@ -158,12 +208,16 @@ def build_profile(passages: list[str]) -> dict[str, Any]:
             "width": round(max(high - low, percentile(values, 0.75) - percentile(values, 0.25), 0.1), 3),
         }
     lengths = sorted(len(words(text)) for text in passages)
+    seen = {word.lower() for text in passages for word in words(text)}
+    runs = sorted(standalone_run(text) for text in passages)
     return {
         "schema_version": SCHEMA_VERSION,
         "passages": len(passages),
         # Bands describe passages of this size. Scoring something much shorter
         # exaggerates the distance, because a short passage cannot average out.
         "median_words": lengths[len(lengths) // 2],
+        "never_used": [word for word in MACHINE_WORDS if word not in seen],
+        "max_standalone_run": runs[-max(1, len(runs) // 10)],
         "features": bands,
     }
 
@@ -220,9 +274,17 @@ def score_text(profile: dict[str, Any], text: str) -> dict[str, Any]:
         })
     deviations.sort(key=lambda row: -row["penalty"])
     total = sum(row["penalty"] for row in deviations)
+    run = standalone_run(text)
+    allowed = int(profile.get("max_standalone_run", 0))
     return {
         "distance": round(total / len(bands), 4),
         "too_short": scale_warning(profile, text),
+        # Reported beside the distance, never folded into it. Both are noisier
+        # than the measured bands, and averaging them in would corrupt a number
+        # that currently separates this author from a model three times in three.
+        "foreign_words": foreign_words(profile, text),
+        "standalone_run": run,
+        "listy": bool(allowed and run > allowed),
         "off_band": len(deviations),
         "deviations": deviations,
         "measured": sample,
@@ -392,6 +454,13 @@ def command_score(args: argparse.Namespace) -> None:
     print(f"distance {result['distance']}  ({result['off_band']} dimensions outside range)")
     if result["too_short"]:
         print(f"  note: {result['too_short']}")
+    if result["foreign_words"]:
+        listed = ", ".join(f"{word} x{count}" if count > 1 else word
+                           for word, count in result["foreign_words"][:8])
+        print(f"  ! words the author has never used: {listed}")
+    if result["listy"]:
+        print(f"  ! {result['standalone_run']} sentences in a row hook onto nothing before them "
+              f"(their longest is {profile.get('max_standalone_run')}); explain, do not list")
     for note in revision_notes(result, limit=args.limit):
         print(f"  - {note}")
 

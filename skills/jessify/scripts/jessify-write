@@ -373,6 +373,8 @@ def command_check(args: argparse.Namespace) -> None:
         scored["distance"] <= args.target
         and checked["numbers_kept"]
         and not lifted
+        and not scored["foreign_words"]
+        and not scored["listy"]
     )
     result = {
         "passed": passed,
@@ -383,6 +385,9 @@ def command_check(args: argparse.Namespace) -> None:
         "missing_names": checked["missing_references"][:8],
         "lifted_from_corpus": lifted,
         "too_short": scored["too_short"],
+        "never_used_words": [word for word, _ in scored["foreign_words"]],
+        "standalone_run": scored["standalone_run"],
+        "reads_as_a_list": scored["listy"],
     }
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -391,6 +396,12 @@ def command_check(args: argparse.Namespace) -> None:
         print(f"{verdict}: distance {scored['distance']} (target {args.target})")
         if scored["too_short"]:
             print(f"  note: {scored['too_short']}")
+        if scored["foreign_words"]:
+            listed = ", ".join(word for word, _ in scored["foreign_words"][:8])
+            print(f"  ! words they have never used: {listed}")
+        if scored["listy"]:
+            print(f"  ! {scored['standalone_run']} sentences in a row hook onto nothing "
+                  "before them; lead with the idea and let the rest follow from it")
         for note in result["revise"]:
             print(f"  - {note}")
         if checked["missing_numbers"]:
