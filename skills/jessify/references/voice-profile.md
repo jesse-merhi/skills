@@ -132,6 +132,24 @@ and the failures are worth remembering:
 - a post republished from a public blog is real writing that would be counted twice;
 - a long outline is not a stub, however few prose lines it has.
 
+A rejected document is not always a rejected author. A how-to alternates between
+steps, which teach nothing about voice, and the author explaining why they
+bothered, which is some of the most concentrated voice evidence there is.
+Throwing both away together is a real loss: measured across four real how-tos,
+10% of the text was voice-bearing, and across two voice-rich documents that were
+not posts, 53% was.
+
+```sh
+jessify-source passages --input <dir> --out <voice-only.md>
+```
+
+That keeps passages carrying at least three voice devices and drops anything with
+a code block, numbered steps, repeated instruction openers, or mostly list lines.
+On a real corpus it recovered 4,246 words from documents the document-level gate
+had excluded outright, doubled the usable corpus, and lifted first-person
+presence back above the threshold so its floor applied again. Ingest the extract
+alongside whole posts, not instead of them.
+
 Run it before ingesting, and treat its output as the first of three gates. This one
 asks what the document is. The mixed-corpus warning asks what register it is in.
 The vocabulary and structure flags ask whether this author wrote it. Passing one

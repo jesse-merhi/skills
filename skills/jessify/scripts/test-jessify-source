@@ -174,4 +174,32 @@ if "$skill_dir/scripts/jessify-source" classify --input "$tmp/nope" >"$tmp/err.t
 fi
 grep -q 'does not exist' "$tmp/err.txt"
 
+# A how-to is not one thing: it alternates between steps, which teach nothing about
+# voice, and the author explaining why they bothered. Measured on four real how-tos,
+# 10% of the text was voice-bearing; on two voice-rich documents it was 53%.
+# Document-level classification throws both away together.
+mkdir -p "$tmp/mixed"
+python3 - "$tmp/mixed/howto.md" <<'PY2'
+import sys
+aside = ("I put this off for weeks, honestly, because the whole thing looked like it would "
+         "be miserable and it turned out to be quite a lot worse than that. You can probably "
+         "guess how the rest of it went for me, and I would rather you did not have to repeat "
+         "any of it yourself.\n\n")
+step = ("Run the database migration command from inside the project root directory.\n"
+        "Click continue once the installer has finished copying every file across.\n"
+        "Verify that the printed checksum matches the expected value before moving on.\n"
+        "Set the environment variable, then restart the worker process to pick it up.\n\n")
+open(sys.argv[1], "w").write("# Setting it up\n\n" + (aside + step) * 6)
+PY2
+"$skill_dir/scripts/jessify-source" passages --input "$tmp/mixed" --out "$tmp/voice.md" > "$tmp/pass.txt"
+grep -q '"voice"' "$tmp/pass.txt"
+grep -q '"procedural"' "$tmp/pass.txt"
+python3 -c "
+import sys
+kept = open(sys.argv[1]).read()
+assert 'I put this off' in kept, 'dropped the author talking'
+assert 'Run the migration' not in kept, 'kept a procedural step as voice evidence'
+assert 'Verify the checksum' not in kept
+" "$tmp/voice.md"
+
 printf 'ok - jessify source\n'
