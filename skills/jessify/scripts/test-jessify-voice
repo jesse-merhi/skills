@@ -183,6 +183,18 @@ assert voice.score_text(profile, buried)["standalone_run"] >= 4, "burying the ru
 assert voice.score_text(profile, " ".join(AUTHORED))["standalone_run"] < 4, \
     "fixture already runs long without the list, so the check proves nothing"
 
+# Mixing registers silently destroys the floors. Measured on real posts: adding one
+# impersonal how-to to two personal essays put first-person presence at 63%, below
+# the threshold, so its floor vanished and prose written about "the author" scored
+# clean again. Separation from a model fell from 0.105 to 0.085.
+mixed_corpus = AUTHORED + CORPORATE
+mixed = voice.build_profile(mixed_corpus)
+assert mixed["features"]["first_person"]["presence"] < voice.PRESENCE_REQUIRED
+assert mixed["features"]["first_person"]["low"] == 0.0, "floor survived a mixed corpus"
+assert voice.build_profile(AUTHORED)["features"]["first_person"]["low"] > 0.0
+assert any(voice.MIXED_LOW <= b["presence"] < voice.PRESENCE_REQUIRED
+           for b in mixed["features"].values()), "nothing lands in the warn band"
+
 # Percentiles must not blow up on degenerate input.
 assert voice.percentile([], 0.5) == 0.0
 assert voice.percentile([2.0], 0.9) == 2.0

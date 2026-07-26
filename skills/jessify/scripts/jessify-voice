@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import statistics
+import sys
 from pathlib import Path
 from collections import Counter
 from typing import Any, Callable, Iterable, Optional
@@ -73,6 +74,9 @@ CARRIES_ON_RE = re.compile(
     flags=re.IGNORECASE,
 )
 ABSENCE_FLOOR = 0.25
+# Presence between these bounds means the author uses a device in some passages
+# and not others, which is the signature of a corpus spanning two registers.
+MIXED_LOW = 0.4
 
 
 def fail(message: str) -> None:
@@ -342,6 +346,26 @@ def command_profile(args: argparse.Namespace) -> None:
     if len(passages) < 8:
         fail(f"Only {len(passages)} passages of at least {args.min_words} words; ingest more writing")
     profile = build_profile(passages)
+    # A corpus that mixes registers silently destroys the floors: if only half the
+    # passages use first person, its absence stops being punishable and a rewrite
+    # that never says "I" scores clean. Measured on real posts, adding one
+    # impersonal how-to to two personal essays cut separation from 0.105 to 0.085
+    # and stopped the detector catching prose written about "the author".
+    mixed = [
+        (name, band["presence"]) for name, band in profile["features"].items()
+        if MIXED_LOW <= band["presence"] < PRESENCE_REQUIRED
+    ]
+    if mixed:
+        print(
+            "warning: inconsistent across this corpus, so absence is not scored: "
+            + ", ".join(f"{name} ({presence:.0%} of passages)" for name, presence in mixed),
+            file=sys.stderr,
+        )
+        print(
+            "         this usually means the corpus mixes registers, such as personal "
+            "essays with impersonal how-tos. Profile one register at a time.",
+            file=sys.stderr,
+        )
     profile["split"] = args.split or "all"
     profile["exemplars"] = find_exemplars(workspace, quality, args.split)
     path = workspace / "voice/profile.json"
