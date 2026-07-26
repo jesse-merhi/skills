@@ -145,14 +145,25 @@ writer = load("jessify_write", sys.argv[2])
 
 # A voice change replaces most of the vocabulary on purpose, so faithfulness is
 # about the numbers and the names, not word overlap.
-source = "OpenClaw has 44,000 commits and 530 advisories, and Teller was worse."
-same_facts = "I counted 44,000 commits on OpenClaw. 530 advisories. Teller was worse, honestly."
-lost_number = "I counted the commits on OpenClaw. Plenty of advisories. Teller was worse."
+source = "We shipped OpenClaw with 44,000 commits and 530 advisories, and Teller was worse."
+same_facts = "I counted 44,000 commits on OpenClaw. 530 advisories too. Honestly, Teller was worse."
+lost_number = "I counted the commits on OpenClaw. Plenty of advisories. Honestly, Teller was worse."
 assert writer.faithfulness(source, same_facts)["numbers_kept"] is True
 checked = writer.faithfulness(source, lost_number)
 assert checked["numbers_kept"] is False
 assert "44000" in checked["missing_numbers"] and "530" in checked["missing_numbers"]
 assert writer.faithfulness(source, same_facts)["reference_recall"] == 1.0
+
+# Every sentence starts with a capital, so a naive name check reports "However"
+# and "This" as facts the rewrite dropped.
+opener_heavy = "However, this matters. Ultimately the point stands. Organizations agree."
+assert writer.references(opener_heavy) == set(), writer.references(opener_heavy)
+assert "openclaw" in writer.references("We shipped OpenClaw last week.")
+# Documented limit: a name appearing only at the very start of its only sentence
+# is not tracked, because that is indistinguishable from an ordinary opener.
+assert writer.references("Teller was worse.") == set()
+assert "api" in writer.references("The API was slow.")
+assert "tmux" in writer.references("A normal `tmux` session breaks.")
 
 # Retrieval must never hand back the passage being rewritten, or a rewrite of
 # text already in the corpus turns into a copy.

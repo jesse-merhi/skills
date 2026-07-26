@@ -78,27 +78,39 @@ surface prose.
 
 5. Jessify prose.
 
-   Rewrite, score against the profile, and revise until it lands:
+   You are the generator. Do not delegate the writing to a weaker model when you
+   are the one running this skill. Get the brief, write the draft yourself, then
+   let the tool grade it:
 
    ```sh
-   <skill-dir>/scripts/jessify-write --workspace <workspace> --file <input> \
+   <skill-dir>/scripts/jessify-write prompt --workspace <workspace> --file <input>
+   # write your rewrite to <draft>
+   <skill-dir>/scripts/jessify-write check --workspace <workspace> \
+     --source <input> --draft <draft>
+   ```
+
+   `prompt` prints the style card, four of Jesse's real passages closest to the
+   topic, and the task. `check` reports the voice distance, names the dimensions
+   out of range, and flags any number dropped or phrase lifted from the corpus.
+   It exits non-zero until the draft is in range, so you can loop on it.
+
+   Revise using the named deviations rather than guessing, and re-check. Jesse's
+   own passages score about 0.013; the target is 0.03. Expect the first draft to
+   overshoot: measured here, a strong model's first attempt hit 0.060 by making
+   sentence lengths far more uneven than Jesse ever does, and one revision
+   against the named dimension took it to 0.000.
+
+   For unattended or private work, where no capable model can see the text, run
+   the loop against a separate generator instead:
+
+   ```sh
+   <skill-dir>/scripts/jessify-write auto --workspace <workspace> --file <input> \
      --candidates 3 --revisions 2
    ```
 
-   It drafts several candidates, keeps the ones that preserve every number,
-   scores each against the measured profile, and re-prompts the loser with the
-   specific dimensions that were out of range. Pass `--command '<cli>'` to use
-   any generator that takes a prompt on stdin; without it the local Ollama model
-   is used, which keeps a private corpus on the machine.
-
-   Check the result yourself:
-
-   ```sh
-   <skill-dir>/scripts/jessify-voice score --workspace <workspace> --file <draft>
-   ```
-
-   Jesse's own held-out passages score about 0.02. Treat anything above 0.05 as
-   not yet in his voice, and read the named deviations rather than guessing.
+   That path uses local Ollama by default, or any CLI given with `--command`.
+   Expect materially worse output: on the same input it reached 0.032 and stalled,
+   still with no first person, where writing it directly reached 0.020.
 
    When writing by hand rather than through the script:
 
