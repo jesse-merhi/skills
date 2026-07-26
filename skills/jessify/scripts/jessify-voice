@@ -247,6 +247,14 @@ def scale_warning(profile: dict[str, Any], text: str) -> str:
 def score_text(profile: dict[str, Any], text: str) -> dict[str, Any]:
     """Penalise a passage for leaving the author's own range, in either direction.
 
+    The distance compares candidates; it does not classify. Ranking four rewrites
+    of one paragraph, it put the author's own first three times out of three.
+    Judging arbitrary prose on its own, it fails: a 1,963-word article the author
+    confirmed was not his scored 0.0036, better than his published writing at
+    0.0131, because averaging any long text pulls every dimension to the median.
+    At matched chunk scale it was still no better than chance, 0.0347 against his
+    own 0.0324. Absolute judgement lives in the flags below, not in this number.
+
     Staying silent inside the band matters as much as penalising outside it. A
     single paragraph will not contain an ellipsis just because the author uses
     them sometimes, and demanding one would manufacture a tic. Features the
@@ -475,7 +483,11 @@ def command_score(args: argparse.Namespace) -> None:
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return
+    if result["foreign_words"] or result["listy"]:
+        print("NOT THIS AUTHOR")
     print(f"distance {result['distance']}  ({result['off_band']} dimensions outside range)")
+    print("  distance ranks rewrites of the same passage; on its own it does not "
+          "classify, so read the flags first")
     if result["too_short"]:
         print(f"  note: {result['too_short']}")
     if result["foreign_words"]:

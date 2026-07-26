@@ -195,6 +195,15 @@ assert voice.build_profile(AUTHORED)["features"]["first_person"]["low"] > 0.0
 assert any(voice.MIXED_LOW <= b["presence"] < voice.PRESENCE_REQUIRED
            for b in mixed["features"].values()), "nothing lands in the warn band"
 
+# The distance ranks; it does not classify. A long piece averages every dimension
+# toward the median, so an article the author confirmed was not his scored 0.0036
+# against his own published 0.0131. The flags are what carry an absolute verdict,
+# and the printed output has to say so.
+long_machine = " ".join(CORPORATE * 6)
+assert voice.score_text(profile, long_machine)["distance"] < \
+       voice.score_text(profile, CORPORATE[0])["distance"], \
+    "averaging no longer masks off-voice prose, so the caveat may be stale"
+
 # Percentiles must not blow up on degenerate input.
 assert voice.percentile([], 0.5) == 0.0
 assert voice.percentile([2.0], 0.9) == 2.0
@@ -290,6 +299,12 @@ fi
 printf 'I honestly thought this would be simple. It was not.\n' > "$tmp/good.txt"
 "$skill_dir/scripts/jessify-voice" score --workspace "$workspace" --file "$tmp/good.txt" > "$tmp/score.txt"
 grep -q 'distance' "$tmp/score.txt"
+# The output must not present the distance as a verdict on arbitrary prose.
+grep -q 'does not classify' "$tmp/score.txt"
+printf 'This transformative paradigm will leverage a comprehensive framework. The solution delivers robust outcomes. The methodology ensures seamless integration.\n' > "$tmp/machine.txt"
+"$skill_dir/scripts/jessify-voice" score --workspace "$workspace" --file "$tmp/machine.txt" > "$tmp/machine.out"
+grep -q 'NOT THIS AUTHOR' "$tmp/machine.out"
+grep -q 'never used' "$tmp/machine.out"
 "$skill_dir/scripts/jessify-voice" score --workspace "$workspace" --file "$tmp/good.txt" --json > "$tmp/score.json"
 python3 -c "
 import json,sys
