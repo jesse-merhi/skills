@@ -42,12 +42,12 @@ VOICE = (
 # Unmistakably the same author, and still unjudgeable: every option must either
 # recite this pile of names and timestamps or visibly lack them.
 SPECIFIC = (
-    "So at 7:30 am on the 10th of April my manager messaged me asking to chat at "
-    "9:30 am. I didn't see it. At 9:36 am I joined the Zoom call anyway. He "
-    "explained that as part of the Atlassian partnership I'd been picked to work "
-    "on OpenClaw full time, reporting to the Rovo Dev team from the 21st of "
-    "April, right after Team26 wrapped up in Anaheim. Honestly? I accepted "
-    "within the hour, and told Hamish and Priya over lunch."
+    "So at 7:30 am on the 3rd of March my manager messaged me asking to chat at "
+    "9:30 am. I didn't see it. At 9:36 am I joined the call anyway. They "
+    "explained that as part of the Northwind partnership I'd been picked to work "
+    "on Larkspur full time, reporting to the Vega team from the 21st of "
+    "March, right after Foundry24 wrapped up in Bellhaven. Honestly? I accepted "
+    "within the hour, and told Ada and Ravi over lunch."
 )
 # Correct prose, but encyclopedic: nothing to learn about a personal voice.
 IMPERSONAL = (
