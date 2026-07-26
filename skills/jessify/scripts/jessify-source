@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Classify documents by what they are, so only real blog posts become voice evidence."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any, Iterable
+
+
+TEXT_SUFFIXES = {".md", ".mdx", ".txt"}
+WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?")
+FIRST_PERSON_RE = re.compile(r"\b(?:i|me|my|mine|myself)\b", flags=re.IGNORECASE)
+READER_RE = re.compile(r"\b(?:you|your|yours)\b", flags=re.IGNORECASE)
+HEADING_RE = re.compile(r"^#{1,6}\s")
+LIST_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+TABLE_RE = re.compile(r"^\s*\|")
+FIELD_RE = re.compile(r"^\s*\*{0,2}[A-Z][A-Za-z /]{2,30}\*{0,2}\s*:\s*\S")
+IMPERATIVE_RE = re.compile(
+    r"^\s*(?:Run|Click|Open|Install|Navigate|Go to|Select|Copy|Paste|Add|Set|Create|"
+    r"Enable|Configure|Download|Choose|Enter|Type|Press|Ensure|Make sure|Check|Verify|"
+    r"Update|Deploy|Restart|Save|Follow|Head to|Replace|Clone|Export|Import)\b",
+    flags=re.MULTILINE,
+)
+DIARY_TITLE_RE = re.compile(
+    r"^(?:mon|tues|wednes|thurs|fri|satur|sun)day|^week\s*\d|^day\s*\d|"
+    r"^\d{1,2}\s*[/-]\s*\d{1,2}|wed\s*-\s*thurs|\bdiary\b|\bjournal\b|\bstandup\b|"
+    r"\bweekly update\b|\bdaily\b",
+    flags=re.IGNORECASE,
+)
+GENERATED_TITLE_RE = re.compile(
+    r"\bwrapped\b|\breport\b|\bsummary of\b|\bexport\b|\bdump\b|\btranscript\b",
+    flags=re.IGNORECASE,
+)
+ASSESSMENT_TITLE_RE = re.compile(
+    r"\bassessment\b|\bself[- ]review\b|\bperformance\b|\bgoals?\b|\bokrs?\b|"
+    r"\bonboarding\b|\btraining\b|\bcurriculum\b|\bquiz\b|\bexercise\b|\brubric\b",
+    flags=re.IGNORECASE,
+)
+HOWTO_TITLE_RE = re.compile(
+    r"^how to\b|\bhow[- ]to\b|\bguide\b|\btutorial\b|\bsetup\b|\bsetting up\b|"
+    r"\bgetting started\b|\binstall(?:ation|ing)?\b|\bruntime\b|\brunbook\b|\bplaybook\b|"
+    r"\bcheat ?sheet\b|\bdocumentation\b|\bconfigur",
+    flags=re.IGNORECASE,
+)
+
+# A blog post is prose written to be read by someone who did not ask for it.
+# Everything else here is written to be used: followed, filled in, or filed.
+#
+# Three separate questions, and this file answers only the first. What kind of
+# document is this (here)? What register is it written in, personal or impersonal
+# (jessify-voice, via the mixed-corpus warning)? And did this author write it
+# (jessify-voice, via the vocabulary and structure flags)? A document has to pass
+# all three to be voice evidence, and passing one says nothing about the others.
+#
+# IMPERATIVE_PER_1K is not yet calibrated against real how-tos. Measured across
+# four public blog posts, including an impersonal technical explainer, instruction
+# openers ran 0.4 to 0.9 per 1k words, so the threshold below sits far above
+# anything observed and will only fire on genuine step-by-step material. Tighten
+# it once a corpus containing actual how-tos is available to measure.
+BLOG = "blog-post"
+KINDS = (BLOG, "how-to", "diary", "notes", "metadata", "generated", "assessment")
+IMPERATIVE_PER_1K = 6.0
+# Below this, a document is a note rather than a post. A real 297-word notes file
+# of first-person prose otherwise classified as a blog post; the shortest genuine
+# post measured was 1,968 words, so this stays permissive but is worth tuning per
+# corpus with --min-words.
+MIN_POST_WORDS = 400
+
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
+def words(text: str) -> list[str]:
+    return WORD_RE.findall(text)
+
+
+def measure(title: str, body: str) -> dict[str, Any]:
+    lines = body.splitlines()
+    live = [line for line in lines if line.strip()]
+    total = max(1, len(words(body)))
+    headings = sum(1 for line in lines if HEADING_RE.match(line))
+    listed = sum(1 for line in live if LIST_RE.match(line))
+    tabled = sum(1 for line in live if TABLE_RE.match(line))
+    fields = sum(1 for line in live if FIELD_RE.match(line))
+    prose = [
+        line for line in live
+        if not HEADING_RE.match(line) and not LIST_RE.match(line) and not TABLE_RE.match(line)
+    ]
+    return {
+        "words": len(words(body)),
+        "prose_lines": len(prose),
+        "prose_share": round(len(prose) / max(1, len(live)), 2),
+        "headings_per_1k": round(1000 * headings / total, 1),
+        "list_share": round(listed / max(1, len(live)), 2),
+        "table_share": round(tabled / max(1, len(live)), 2),
+        "field_share": round(fields / max(1, len(live)), 2),
+        "imperatives_per_1k": round(1000 * len(IMPERATIVE_RE.findall(body)) / total, 1),
+        "first_person_per_100": round(100 * len(FIRST_PERSON_RE.findall(body)) / total, 2),
+        "reader_per_100": round(100 * len(READER_RE.findall(body)) / total, 2),
+        "code_blocks": body.count("```") // 2,
+    }
+
+
+def classify(title: str, body: str, min_words: int = MIN_POST_WORDS) -> tuple[str, str]:
+    """Name what a document is, and why, from its shape and its title.
+
+    Ordered by how decisive each signal is. A dated title is a diary whatever the
+    prose looks like; a stub is a stub before anything else can be judged; and a
+    document can be unmistakably the author's and still be a how-to.
+    """
+    m = measure(title, body)
+    # Length is the reliable stub signal. Counting prose *lines* punishes a short
+    # post made of a few long paragraphs, and documents that are all table rows
+    # are caught by their table share further down.
+    if m["words"] < min_words:
+        return "metadata", f"too short to be a post: {m['words']} words"
+    # A long document with no continuous prose is an outline or a form, not a
+    # stub. Measured on a real 2,227-word outline, which is all headings and
+    # bullets and would otherwise be reported as a stub.
+    if m["prose_lines"] < 2:
+        return "notes", f"{m['words']} words but no continuous prose; headings and lists only"
+    if DIARY_TITLE_RE.search(title):
+        return "diary", "title names a day, week, or recurring update"
+    if GENERATED_TITLE_RE.search(title) and m["first_person_per_100"] < 1.0:
+        return "generated", "report-style title with almost no authorial voice"
+    if ASSESSMENT_TITLE_RE.search(title):
+        return "assessment", "title names review, training, or goal-setting material"
+    if m["table_share"] >= 0.2 or m["field_share"] >= 0.15:
+        return "metadata", f"{int(100 * max(m['table_share'], m['field_share']))}% of lines are table or field rows"
+    if m["imperatives_per_1k"] >= IMPERATIVE_PER_1K or HOWTO_TITLE_RE.search(title):
+        return "how-to", (
+            f"{m['imperatives_per_1k']} instruction openers per 1k words"
+            if m["imperatives_per_1k"] >= IMPERATIVE_PER_1K else "title announces a guide or setup"
+        )
+    if m["prose_share"] < 0.5 or m["list_share"] >= 0.35:
+        return "notes", f"only {int(100 * m['prose_share'])}% of lines are prose"
+    if m["first_person_per_100"] < 0.3 and m["reader_per_100"] < 0.3:
+        return "notes", "no first person and no reader address; reads as impersonal record"
+    return BLOG, (
+        f"{m['words']} words of continuous prose, {m['first_person_per_100']} first-person "
+        f"per 100, {m['imperatives_per_1k']} instruction openers"
+    )
+
+
+def read_documents(inputs: list[str]) -> list[tuple[str, Path, str]]:
+    found: list[Path] = []
+    for raw in inputs:
+        path = Path(raw).expanduser()
+        if not path.exists():
+            fail(f"Input does not exist: {path}")
+        if path.is_file() and path.suffix.lower() in TEXT_SUFFIXES:
+            found.append(path)
+        elif path.is_dir():
+            found.extend(
+                item for item in sorted(path.rglob("*"))
+                if item.is_file() and item.suffix.lower() in TEXT_SUFFIXES
+            )
+    documents = []
+    for path in found:
+        body = path.read_text(encoding="utf-8", errors="replace")
+        heading = next(
+            (line.lstrip("# ").strip() for line in body.splitlines() if HEADING_RE.match(line)),
+            "",
+        )
+        documents.append((heading or path.stem.replace("-", " "), path, body))
+    return documents
+
+
+def command_classify(args: argparse.Namespace) -> None:
+    documents = read_documents(args.input)
+    if not documents:
+        fail("No Markdown, MDX, or text files found")
+    rows = []
+    for title, path, body in documents:
+        titles = args.title or title
+        kind, reason = classify(titles if len(documents) == 1 else title, body, args.min_words)
+        rows.append({"path": str(path), "title": title, "kind": kind, "reason": reason,
+                     **measure(title, body)})
+    if args.json:
+        print(json.dumps(rows, indent=2, ensure_ascii=False))
+        return
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row["kind"]] = counts.get(row["kind"], 0) + 1
+    for row in sorted(rows, key=lambda r: (r["kind"] != BLOG, r["path"])):
+        mark = "KEEP" if row["kind"] == BLOG else "drop"
+        print(f"{mark}  {row['kind']:<10} {Path(row['path']).name[:44]:<44} {row['reason']}")
+    print()
+    print(json.dumps({"total": len(rows), "by_kind": dict(sorted(counts.items()))}))
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="command", required=True)
+    classify_parser = subparsers.add_parser(
+        "classify", help="Report what each document is, so only blog posts become voice evidence",
+    )
+    classify_parser.add_argument("--input", action="append", required=True)
+    classify_parser.add_argument("--title", help="Override the title for a single document")
+    classify_parser.add_argument("--min-words", type=int, default=MIN_POST_WORDS)
+    classify_parser.add_argument("--json", action="store_true")
+    classify_parser.set_defaults(function=command_classify)
+    return root
+
+
+def main() -> None:
+    args = parser().parse_args()
+    args.function(args)
+
+
+if __name__ == "__main__":
+    main()

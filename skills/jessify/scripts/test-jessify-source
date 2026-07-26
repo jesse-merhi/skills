@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+python3 - "$skill_dir/scripts/jessify-source" <<'PY'
+import importlib.machinery
+import importlib.util
+import sys
+
+loader = importlib.machinery.SourceFileLoader("jessify_source", sys.argv[1])
+spec = importlib.util.spec_from_loader(loader.name, loader)
+source = importlib.util.module_from_spec(spec)
+loader.exec_module(source)
+
+PARA = (
+    "I honestly thought this would be simple, and I kept telling myself that right up "
+    "until the moment it stopped being true. It was not simple. You can probably guess "
+    "how that went for me, because the thing I had been avoiding turned out to be the "
+    "thing that mattered most of all.\n\n"
+)
+BLOG = ("# Why I stopped writing code by hand\n\n" + PARA * 12)
+
+# A blog post is prose written for someone who did not ask for it. Length and
+# continuous prose alone are not enough; the other kinds below all have real
+# prose in them too.
+kind, why = source.classify("Why I stopped writing code by hand", BLOG)
+assert kind == "blog-post", (kind, why)
+
+# A dated title is a diary whatever the prose looks like. This body is the exact
+# blog body above, so only the title can be doing the work.
+for title in ("Monday 14th", "Week 3", "Wed-Thursday", "Daily update", "My internship journal"):
+    kind, why = source.classify(title, BLOG)
+    assert kind == "diary", (title, kind, why)
+
+# Review, training, and goal-setting material is excluded even when the prose is
+# unmistakably the author's.
+for title in ("Mid-year self-review", "Security training curriculum", "H1 goals", "Onboarding quiz"):
+    kind, _ = source.classify(title, BLOG)
+    assert kind == "assessment", (title, kind)
+
+# A generated report only counts as generated when the voice is absent too, so a
+# genuine post about a report is not swept up with it.
+FLAT_PARA = (
+    "The team expected this to be simple, and that expectation held right up until the "
+    "moment it stopped being true. It was not simple. Readers can probably guess how that "
+    "went, because the avoided item turned out to be the item that mattered most.\n\n"
+)
+flat = "# The report\n\n" + FLAT_PARA * 12
+assert source.classify("Atlassian Wrapped report", flat)[0] == "generated"
+assert source.classify("Why our Wrapped report was wrong", BLOG)[0] == "blog-post"
+
+# Stubs cannot be judged on substance, so they are ruled out before anything else.
+assert source.classify("Conversion stub", "# Title\n\nOne short line.\n")[0] == "metadata"
+assert source.classify("Nearly empty", "# T\n\n" + "word " * 300)[0] == "metadata"
+
+# Field and table dumps are records, not writing.
+fields = "# Project\n\n" + "".join(f"**Field {i}:** value {i}\n" for i in range(20)) + PARA
+assert source.classify("Project page", fields)[0] == "metadata", source.classify("Project page", fields)
+table = "# Data\n\n" + "".join(f"| a{i} | b{i} |\n" for i in range(30)) + PARA * 2
+assert source.classify("Results table", table)[0] == "metadata"
+
+# Step-by-step material is a how-to however well written. The threshold is not yet
+# calibrated against real how-tos, so this fixture is deliberately far above it.
+steps = "# Setting it up\n\n" + "".join(
+    f"Run the migration command for step {i} in the project root directory.\n"
+    f"Click continue when the installer finishes copying files across.\n"
+    f"Verify the output matches the expected checksum before moving on.\n"
+    for i in range(24))
+assert source.classify("Some process", steps)[0] == "how-to", source.classify("Some process", steps)
+assert source.classify("How to rotate credentials", BLOG)[0] == "how-to"
+assert source.classify("Terraform setup guide", BLOG)[0] == "how-to"
+
+# Bullet-heavy operational notes are not posts.
+notes = "# Notes\n\n" + "".join(
+    f"- point number {i} about the ongoing work and what it needs next\n" for i in range(30)
+) + PARA * 2
+assert source.classify("Project notes", notes)[0] == "notes", source.classify("Project notes", notes)
+
+# Impersonal records have no voice to learn from.
+impersonal = "# Record\n\n" + (
+    "The service retries failed jobs twice before parking them for review. Throughput "
+    "scales with worker count until the database becomes the limiting factor. Additional "
+    "workers then add contention to the connection pool without improving results.\n\n") * 16
+assert source.classify("System behaviour", impersonal)[0] == "notes"
+
+# Source type, register, and authorship are three different questions, and this
+# module answers only the first. Prose written by somebody else in the author's
+# own format is still, structurally, a blog post; catching that is the job of the
+# vocabulary and structure flags in jessify-voice.
+assert source.classify("A post by someone else", flat)[0] in {"blog-post", "notes"}
+
+assert set(source.KINDS) == {"blog-post", "how-to", "diary", "notes", "metadata",
+                             "generated", "assessment"}
+print("unit checks passed", file=sys.stderr)
+PY
+
+mkdir -p "$tmp/docs"
+body="$(python3 -c "
+para = ('I thought this would be simple and it was not, which I only worked out after '
+        'a good while had gone by. You can probably guess the rest of it from there.')
+print(('%s\n\n' % para) * 14)
+")"
+printf '# A real post\n\n%s' "$body" > "$tmp/docs/post.md"
+printf '# Monday 3rd\n\n%s' "$body" > "$tmp/docs/monday.md"
+"$skill_dir/scripts/jessify-source" classify --input "$tmp/docs" > "$tmp/out.txt"
+grep -q 'KEEP  blog-post' "$tmp/out.txt"
+grep -q 'drop  diary' "$tmp/out.txt"
+grep -q '"blog-post": 1' "$tmp/out.txt"
+grep -q '"diary": 1' "$tmp/out.txt"
+
+"$skill_dir/scripts/jessify-source" classify --input "$tmp/docs" --json > "$tmp/out.json"
+python3 -c "
+import json, sys
+rows = json.load(open(sys.argv[1]))
+assert len(rows) == 2
+assert {r['kind'] for r in rows} == {'blog-post', 'diary'}
+for r in rows:
+    assert r['reason'] and r['words'] > 0
+" "$tmp/out.json"
+
+# A single file can have its real title supplied, since a filename is not a title.
+"$skill_dir/scripts/jessify-source" classify --input "$tmp/docs/post.md" --title "Week 2 recap" > "$tmp/single.txt"
+grep -q 'drop  diary' "$tmp/single.txt"
+
+if "$skill_dir/scripts/jessify-source" classify --input "$tmp/nope" >"$tmp/err.txt" 2>&1; then
+  printf 'accepted a missing input\n' >&2
+  exit 1
+fi
+grep -q 'does not exist' "$tmp/err.txt"
+
+printf 'ok - jessify source\n'
