@@ -226,6 +226,13 @@ grep -q 'Measured ranges' "$tmp/card.md"
 # plain "write casually" instruction produces.
 grep -q 'Do not' "$tmp/card.md"
 grep -q 'impersonation' "$tmp/card.md"
+# The structural instruction has to survive. Two attempts to turn it into a
+# measured dimension both fired on the author's own prose, so it stays as
+# guidance, and the temptation will be to swap it for a number that looks more
+# rigorous and is not.
+grep -q 'Explain, do not list' "$tmp/card.md"
+grep -q 'list wearing prose' "$tmp/card.md"
+grep -q 'no number below can check' "$tmp/card.md"
 # No unrounded float noise in a prompt meant for a model to read.
 if grep -qE '[0-9]\.[0-9]{4,}' "$tmp/card.md"; then
   printf 'card leaked unrounded numbers\n' >&2
