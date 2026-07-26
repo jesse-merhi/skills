@@ -111,6 +111,32 @@ rewrite it back and compare all three scores. Exclude the source document from
 retrieval with `--exclude-document`, or the original will be handed back to the
 generator as an example and copied.
 
+## Source type is a separate gate
+
+A voice corpus is not everything the author wrote. `jessify-source classify` names
+what each document is before any of it becomes evidence, because diaries, how-tos,
+assessments, runbooks, scripts, interviews, launch notices, event recaps, and
+republished copies can all be unmistakably theirs and still be the wrong thing to
+learn from. Storage type decides nothing: an official post can be filed as a page,
+and a page can be a diary entry.
+
+Every rule in that file exists because a real document defeated the earlier ones,
+and the failures are worth remembering:
+
+- a performance script reads as first-person prose until the stage directions are
+  noticed, so one stray direction is not enough to call it a script;
+- an essay explaining how the author sets goals is a post, while the goal-setting
+  material itself is not, and only the strength of the first person separates them;
+- a launch notice is blog-shaped and voice-thin, which is exactly the register that
+  destroys the first-person floor;
+- a post republished from a public blog is real writing that would be counted twice;
+- a long outline is not a stub, however few prose lines it has.
+
+Run it before ingesting, and treat its output as the first of three gates. This one
+asks what the document is. The mixed-corpus warning asks what register it is in.
+The vocabulary and structure flags ask whether this author wrote it. Passing one
+says nothing about the other two.
+
 ## Limits
 
 The profile is unreliable on passages that carry little voice. A technical

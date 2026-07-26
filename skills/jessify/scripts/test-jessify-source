@@ -35,19 +35,25 @@ for title in ("Monday 14th", "Week 3", "Wed-Thursday", "Daily update", "My inter
     kind, why = source.classify(title, BLOG)
     assert kind == "diary", (title, kind, why)
 
-# Review, training, and goal-setting material is excluded even when the prose is
-# unmistakably the author's.
-for title in ("Mid-year self-review", "Security training curriculum", "H1 goals", "Onboarding quiz"):
-    kind, _ = source.classify(title, BLOG)
-    assert kind == "assessment", (title, kind)
-
-# A generated report only counts as generated when the voice is absent too, so a
-# genuine post about a report is not swept up with it.
+# Review, training, and goal-setting *material* is excluded, but an essay about
+# how the author approaches that work is a post. Measured on a real 1,327-word
+# piece explaining a goal-setting method: the title keyword alone rejected it,
+# while its first person marked it as authored writing. So the keyword only
+# decides when the voice is administrative.
 FLAT_PARA = (
     "The team expected this to be simple, and that expectation held right up until the "
     "moment it stopped being true. It was not simple. Readers can probably guess how that "
     "went, because the avoided item turned out to be the item that mattered most.\n\n"
 )
+admin = "# Process\n\n" + FLAT_PARA * 12
+for title in ("Mid-year self-review", "Security training curriculum", "H1 goals", "Onboarding quiz"):
+    kind, _ = source.classify(title, admin)
+    assert kind == "assessment", (title, kind)
+    essay_kind, _ = source.classify(title, BLOG)
+    assert essay_kind == source.BLOG, (title, essay_kind, "essay about the process was rejected")
+
+# A generated report only counts as generated when the voice is absent too, so a
+# genuine post about a report is not swept up with it.
 flat = "# The report\n\n" + FLAT_PARA * 12
 assert source.classify("Atlassian Wrapped report", flat)[0] == "generated"
 assert source.classify("Why our Wrapped report was wrong", BLOG)[0] == "blog-post"
@@ -92,8 +98,45 @@ assert source.classify("System behaviour", impersonal)[0] == "notes"
 # vocabulary and structure flags in jessify-voice.
 assert source.classify("A post by someone else", flat)[0] in {"blog-post", "notes"}
 
+# Every kind below exists because a real document defeated the rules without it.
 assert set(source.KINDS) == {"blog-post", "how-to", "diary", "notes", "metadata",
-                             "generated", "assessment"}
+                             "generated", "assessment", "script", "event-recap",
+                             "interview", "announcement", "republished"}
+
+# A performance script reads as first-person prose until the stage directions are
+# noticed, and one stray direction is not enough. A real 3,606-word how-to was
+# misread as a script because a looser pattern matched "(to b": IGNORECASE also
+# lowercases an [A-Z] class.
+script = "# Skit\n\n" + (
+    "_Walks in from off-frame looking confused_\n\nOh! Hey everyone, I did not see you "
+    "there at all, which is embarrassing given the circumstances.\n\n"
+    "_Curtains close, music starts, sound effects_\n\nAnd we are back again.\n\n") * 14
+assert source.classify("Trust Rewind", script)[0] == "script", source.classify("Trust Rewind", script)
+assert source.classify("A guide", BLOG.replace("It was not simple.", "It was not (to be) simple."))[0] \
+    != "script", "a single parenthetical was read as a stage direction"
+
+# An event recap is a diary whose sections are days rather than dates.
+recap = "# Day 1\n\n" + PARA * 7 + "\n# Day 2\n\n" + PARA * 7
+assert source.classify("TCAT On-site", recap)[0] == "event-recap"
+
+# A runbook is written to be executed. Numbered phases plus an absent voice.
+phases = "# Phase 0 Prerequisites\n\n" + FLAT_PARA * 6 + "\n# Phase 1.1 Gathering\n\n" + FLAT_PARA * 6
+assert source.classify("Securing the platform", phases)[0] == "notes", \
+    source.classify("Securing the platform", phases)
+
+# An interview is the interviewer's questions with answers underneath.
+qa = "".join(f"# Question number {i}?\n\n{PARA * 2}" for i in range(5))
+assert source.classify("Day in the Life", qa)[0] == "interview"
+
+# A post republished from elsewhere is real writing that would be counted twice.
+assert source.classify("LLMs are secure", "# T\n\nThis is a blog I wrote in my own time and "
+                       "has been transferred to confluence.\n\n" + PARA * 10)[0] == "republished"
+
+# A launch notice is blog-shaped and voice-thin. Two real product updates carried
+# 0.0 and 0.97 first-person per 100, which is the register that destroyed the
+# first-person floor in the voice profile.
+for title in ("Introducing: the new service", "Apex Wrapped Pilot is here!", "What's new in v2"):
+    assert source.classify(title, BLOG)[0] == "announcement", (title, source.classify(title, BLOG))
 print("unit checks passed", file=sys.stderr)
 PY
 

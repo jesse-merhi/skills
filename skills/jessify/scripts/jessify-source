@@ -62,7 +62,46 @@ HOWTO_TITLE_RE = re.compile(
 # anything observed and will only fire on genuine step-by-step material. Tighten
 # it once a corpus containing actual how-tos is available to measure.
 BLOG = "blog-post"
-KINDS = (BLOG, "how-to", "diary", "notes", "metadata", "generated", "assessment")
+KINDS = (BLOG, "how-to", "diary", "notes", "metadata", "generated", "assessment",
+         "script", "event-recap", "interview", "announcement", "republished")
+
+# Every rule below was added because a real document defeated the earlier ones.
+# A performance script reads as first-person prose until you notice the stage
+# directions. An event recap is a diary whose headings are days rather than dates.
+# An interview is the interviewer's questions with answers underneath. A launch
+# announcement is a genuine post that carries almost no voice. And a post
+# republished from a public blog is real writing that would be counted twice.
+STAGE_RE = re.compile(
+    r"^\s*[_*].{0,120}\b(?:walks|enters|exits|curtains?|cut to|camera|voice ?over|"
+    r"music|sound effects?|off[- ]frame|to camera|beat)\b.{0,120}[_*]\s*$",
+    flags=re.IGNORECASE | re.MULTILINE,
+)
+# One stage direction is a coincidence. A real 1,304-word script carried several;
+# a 3,606-word how-to was misread as a script by a looser pattern that matched
+# "(to b" because IGNORECASE also lowercases a [A-Z] class.
+STAGE_DIRECTIONS_REQUIRED = 2
+DAY_HEADING_RE = re.compile(r"^#{1,6}\s*(?:Day|Session|Morning|Afternoon)\s*\d*\s*$",
+                            flags=re.IGNORECASE | re.MULTILINE)
+PHASE_HEADING_RE = re.compile(r"^#{1,6}\s*(?:Phase|Step|Stage)\s*\d+(?:\.\d+)?\b",
+                              flags=re.IGNORECASE | re.MULTILINE)
+REPUBLISHED_RE = re.compile(
+    r"\b(?:transferred to confluence|originally (?:published|posted)|"
+    r"cross[- ]posted|wrote in my own time|check out the original)\b",
+    flags=re.IGNORECASE,
+)
+ANNOUNCEMENT_TITLE_RE = re.compile(
+    r"^(?:introducing|announcing|what'?s new)\b|\bis here\b|\bnow (?:available|live)\b|"
+    r"\bpilot\b|\blaunch(?:ed|ing)?\b|\bga\b|\bbeta\b",
+    flags=re.IGNORECASE,
+)
+# Below this a document is a notice rather than a piece of writing, whatever its
+# intent. Measured: two real product updates carried 0.0 and 0.97 first-person
+# words per 100, and admitting that register is what destroyed the first-person
+# floor in the voice profile.
+ANNOUNCEMENT_FIRST_PERSON = 1.5
+# Above this, prose is authored rather than administrative, which is what tells a
+# post explaining a process apart from the process material itself.
+AUTHORED_FIRST_PERSON = 2.0
 IMPERATIVE_PER_1K = 6.0
 # Below this, a document is a note rather than a post. A real 297-word notes file
 # of first-person prose otherwise classified as a blog post; the shortest genuine
@@ -124,12 +163,37 @@ def classify(title: str, body: str, min_words: int = MIN_POST_WORDS) -> tuple[st
     # bullets and would otherwise be reported as a stub.
     if m["prose_lines"] < 2:
         return "notes", f"{m['words']} words but no continuous prose; headings and lists only"
+    stage = len(STAGE_RE.findall(body))
+    if stage >= STAGE_DIRECTIONS_REQUIRED:
+        return "script", f"{stage} stage or camera directions; written to be performed"
+    # Numbered phases with prerequisites are a runbook: something to execute, not
+    # read. Measured on a real 1,957-word operational plan whose sections were
+    # Phase 0 through Phase 1.2 and which carried 0.15 first-person per 100.
+    if len(PHASE_HEADING_RE.findall(body)) >= 2 and m["first_person_per_100"] < 1.0:
+        return "notes", "sections are numbered execution phases; a runbook, not a post"
+    if len(DAY_HEADING_RE.findall(body)) >= 2:
+        return "event-recap", "sections are consecutive days of an event"
     if DIARY_TITLE_RE.search(title):
         return "diary", "title names a day, week, or recurring update"
+    if REPUBLISHED_RE.search(body):
+        return "republished", "body states it was published elsewhere first"
+    headings = [line for line in body.splitlines() if HEADING_RE.match(line)]
+    if len(headings) >= 3 and sum(1 for h in headings if "?" in h) / len(headings) >= 0.6:
+        return "interview", "most sections are questions put to the author"
     if GENERATED_TITLE_RE.search(title) and m["first_person_per_100"] < 1.0:
         return "generated", "report-style title with almost no authorial voice"
-    if ASSESSMENT_TITLE_RE.search(title):
-        return "assessment", "title names review, training, or goal-setting material"
+    if ANNOUNCEMENT_TITLE_RE.search(title):
+        return "announcement", (
+            f"launch or update notice, {m['first_person_per_100']} first-person per 100"
+        )
+    # An essay about a process is not the process material. Measured on a real
+    # 1,327-word post explaining how the author sets goals: the keyword rule alone
+    # rejected it, while its 2.26 first-person per 100 marks it as authored writing
+    # rather than a form or a curriculum.
+    if ASSESSMENT_TITLE_RE.search(title) and m["first_person_per_100"] < AUTHORED_FIRST_PERSON:
+        return "assessment", (
+            f"review or training material, only {m['first_person_per_100']} first-person per 100"
+        )
     if m["table_share"] >= 0.2 or m["field_share"] >= 0.15:
         return "metadata", f"{int(100 * max(m['table_share'], m['field_share']))}% of lines are table or field rows"
     if m["imperatives_per_1k"] >= IMPERATIVE_PER_1K or HOWTO_TITLE_RE.search(title):
