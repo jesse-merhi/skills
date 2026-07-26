@@ -382,12 +382,15 @@ def command_check(args: argparse.Namespace) -> None:
         "missing_numbers": checked["missing_numbers"],
         "missing_names": checked["missing_references"][:8],
         "lifted_from_corpus": lifted,
+        "too_short": scored["too_short"],
     }
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
         verdict = "in range" if passed else "not there yet"
         print(f"{verdict}: distance {scored['distance']} (target {args.target})")
+        if scored["too_short"]:
+            print(f"  note: {scored['too_short']}")
         for note in result["revise"]:
             print(f"  - {note}")
         if checked["missing_numbers"]:

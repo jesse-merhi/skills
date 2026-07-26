@@ -137,6 +137,16 @@ for name in common:
 assert "emphatic_caps" not in bands
 assert not hasattr(voice, "CAPS_RE")
 
+# Bands describe passages of a given size. Scoring a much shorter passage says
+# more about the window than the writing, so the tool has to say so. Measured on
+# a real 3,521-word article: its ~69-word paragraphs scored a median 0.073, the
+# same article re-chunked to the profile's 188-word scale scored 0.032, and the
+# whole piece scored 0.003.
+assert profile["median_words"] > 0
+assert voice.scale_warning(profile, " ".join(["word"] * 5)), "no warning on a tiny passage"
+assert not voice.scale_warning(profile, AUTHORED[0] * 3), "warned on a full-length passage"
+assert "too_short" in voice.score_text(profile, AUTHORED[0])
+
 # Percentiles must not blow up on degenerate input.
 assert voice.percentile([], 0.5) == 0.0
 assert voice.percentile([2.0], 0.9) == 2.0

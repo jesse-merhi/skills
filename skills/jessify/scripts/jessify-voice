@@ -38,6 +38,9 @@ LONG_SENTENCE_MIN = 30
 # A feature the author uses in at least this share of passages is expected in any
 # passage, so its complete absence is scored rather than tolerated.
 PRESENCE_REQUIRED = 0.8
+# Below this fraction of the profile's typical passage length, a score says more
+# about the window than about the writing.
+SHORT_PASSAGE_RATIO = 0.6
 ABSENCE_FLOOR = 0.25
 
 
@@ -154,7 +157,33 @@ def build_profile(passages: list[str]) -> dict[str, Any]:
             # fall back to the spread of the whole sample.
             "width": round(max(high - low, percentile(values, 0.75) - percentile(values, 0.25), 0.1), 3),
         }
-    return {"schema_version": SCHEMA_VERSION, "passages": len(passages), "features": bands}
+    lengths = sorted(len(words(text)) for text in passages)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "passages": len(passages),
+        # Bands describe passages of this size. Scoring something much shorter
+        # exaggerates the distance, because a short passage cannot average out.
+        "median_words": lengths[len(lengths) // 2],
+        "features": bands,
+    }
+
+
+def scale_warning(profile: dict[str, Any], text: str) -> str:
+    """Warn when a passage is too short for bands built from longer ones.
+
+    Measured on a real article: its paragraphs of about 69 words scored a median
+    0.073 against a profile built from 188-word chunks, the same article
+    re-chunked to that size scored 0.032, and the whole piece scored 0.003. The
+    prose did not change; only the window did.
+    """
+    expected = int(profile.get("median_words", 0))
+    actual = len(words(text))
+    if expected and actual < SHORT_PASSAGE_RATIO * expected:
+        return (
+            f"only {actual} words against a profile built from ~{expected}-word passages; "
+            "the distance is inflated, so judge a longer stretch"
+        )
+    return ""
 
 
 def score_text(profile: dict[str, Any], text: str) -> dict[str, Any]:
@@ -193,6 +222,7 @@ def score_text(profile: dict[str, Any], text: str) -> dict[str, Any]:
     total = sum(row["penalty"] for row in deviations)
     return {
         "distance": round(total / len(bands), 4),
+        "too_short": scale_warning(profile, text),
         "off_band": len(deviations),
         "deviations": deviations,
         "measured": sample,
@@ -338,6 +368,8 @@ def command_score(args: argparse.Namespace) -> None:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return
     print(f"distance {result['distance']}  ({result['off_band']} dimensions outside range)")
+    if result["too_short"]:
+        print(f"  note: {result['too_short']}")
     for note in revision_notes(result, limit=args.limit):
         print(f"  - {note}")
 
