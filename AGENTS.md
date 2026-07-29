@@ -21,6 +21,37 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
   itself as the primary proof.
 - Stay concise while preserving the explanation needed to understand the work.
 
+## Dependency-first implementation
+
+Prefer repository-owned or dependency-owned solutions over custom
+infrastructure logic.
+
+Before implementing common behavior:
+
+1. Search the repository for an existing utility, module, or established
+   pattern.
+2. Inspect already-installed dependencies for a native solution. Check the
+   installed version and read its current documentation or source.
+3. If no installed solution is suitable, assess whether a well-maintained
+   external dependency would be safer and simpler than custom code. Do not
+   install, replace, or upgrade a dependency without the user's explicit
+   permission. Explain the proposed package, why it is needed, and its important
+   maintenance, security, licensing, runtime, and bundle-size trade-offs.
+4. When selecting an existing or new dependency, search the codebase for other
+   custom implementations of the same behavior.
+   - Replace them in the current change only when they solve the same problem,
+     the replacement is small and low-risk, and relevant tests can prove
+     behavior was preserved.
+   - Otherwise, report the cleanup candidates and ask before expanding the task
+     or PR.
+5. Implement custom logic only when the repository and suitable dependencies do
+   not meet the requirement. State why the existing options were unsuitable and
+   test the important edge cases.
+
+Apply this especially to routing, parsing, validation, serialization, retries,
+queues, caching, middleware, request context, telemetry, date and time handling,
+resource lifecycle, and graceful shutdown.
+
 ## Working rules
 
 - Always work on a branch in a dedicated git worktree and deliver through a
@@ -28,6 +59,10 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.
+- During code review, compare new custom infrastructure logic with repository,
+  runtime, framework, and installed-dependency features. Treat duplicated
+  behavior as actionable when it creates competing implementations, semantic
+  drift, or missed edge cases.
 - Stop on the first test error. Diagnose before rerunning; never rerun to see
   if it passes the second time.
 - Never post PR or issue comments on the user's behalf. Report findings in
