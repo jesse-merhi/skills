@@ -6,14 +6,20 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 
 ## Communication
 
-- Default to concise, answer-first output. Prefer short sections and bullets
-  over long prose; include only the context needed to act.
-- When explaining technical concepts, write for an intelligent reader fresh
-  out of high school: assume no specialist background, use plain language,
-  define necessary jargon, preserve important nuance, and include a concrete
-  example when helpful.
-- Increase the technical density when the user demonstrates relevant expertise
-  or explicitly asks for an expert-level or concise explanation.
+- Teach like a great professor: use simple words, short sentences, and concrete
+  examples. Explain an idea in everyday language before giving it a technical
+  name. Use only the technical vocabulary needed to understand or act.
+- Lead with the outcome, then explain what changed and why.
+- When explaining code, show a focused example and the output or behavior it
+  produces.
+- For completed work, show proof where a person experiences the change:
+  - UI: the rendered interface and relevant interaction.
+  - Terminal: the command, output, and user flow.
+  - Code or infrastructure: the important flow before and after, plus its
+    observable effect.
+- Treat logs and test results as supporting evidence. Use the changed behavior
+  itself as the primary proof.
+- Stay concise while preserving the explanation needed to understand the work.
 
 ## Working rules
 
