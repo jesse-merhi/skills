@@ -1,56 +1,45 @@
-# html-effectiveness Pattern Map
+# HTML Explanation Pattern Map
 
-Source: `https://github.com/ThariqS/html-effectiveness`
+Local examples: `../assets/patterns/`
 
-Local vendored examples: `../assets/html-effectiveness/examples/`
-
-The repo is a gallery of standalone HTML files with no build step and no dependencies. Use it as a pattern library for choosing the shape of an HTML explanation.
+Choose the pattern by the question the reader needs answered. Visual style is
+secondary.
 
 ## Pattern Table
 
-| Source example | Use when | Useful page shape |
+| Pattern | Reader question | Required shape |
 | --- | --- | --- |
-| `01-exploration-code-approaches.html` | Comparing implementation options | Side-by-side approaches, code snippets, pros/cons, recommendation |
-| `02-exploration-visual-designs.html` | Comparing UI directions | Visual variants, criteria, notes per direction |
-| `03-code-review-pr.html` | Stored for upstream completeness; use only if the user explicitly asks for a review-style page | Findings, risk areas, changed files, review checklist |
-| `04-code-understanding.html` | Explaining how code works | Entry point, flow diagram, call chain, state changes |
-| `05-design-system.html` | Explaining design rules | Tokens, components, usage examples, do/don't pairs |
-| `06-component-variants.html` | Showing component variants | Matrix by state, size, theme, and behavior |
-| `07-prototype-animation.html` | Explaining animation behavior | Live animation, timing notes, state labels |
-| `08-prototype-interaction.html` | Explaining an interaction | Small interactive demo with reset and state display |
-| `09-slide-deck.html` | Presenting a short story | Full-screen slides, one point per slide |
-| `10-svg-illustrations.html` | Explaining visual metaphors | Inline SVG diagrams or illustrations |
-| `11-status-report.html` | Reporting work status | Progress bands, owners, blockers, timeline |
-| `12-incident-report.html` | Explaining an incident | Impact, timeline, cause, remediation, follow-ups |
-| `13-flowchart-diagram.html` | Showing process logic | Nodes, arrows, branch labels, annotations |
-| `14-research-feature-explainer.html` | Explaining a feature | Context, mechanics, examples, implementation notes |
-| `15-research-concept-explainer.html` | Teaching a concept | Definition, interactive example, edge cases |
-| `16-implementation-plan.html` | Planning implementation | Phases, dependencies, acceptance checks, risks |
-| `17-pr-writeup.html` | Explaining a PR | What changed, why, risk, verification |
-| `18-editor-triage-board.html` | Editing/prioritizing items | Kanban board, filters, item details |
-| `19-editor-feature-flags.html` | Explaining flags/config | Editable config table, environments, guardrails |
-| `20-editor-prompt-tuner.html` | Tuning prompts/content | Input/output panes, controls, diff/score display |
+| `decision-brief.html` | Which option should we choose, and why? | Recommendation first, shared criteria, evidence, trade-offs, next action |
+| `code-flow.html` | How does this behavior happen? | Observable result, invariant, numbered flow, exact files and symbols, proof |
+| `incident-report.html` | What happened and what prevents a repeat? | Impact, absolute timeline, causal chain, recovery, owners and follow-ups |
+| `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
+| `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
+| `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
 
-## Reusing The Vendored HTML
+## Reusing A Pattern
 
-When a source example closely matches the task:
+When a pattern closely matches the task:
 
-1. Copy the source file from `assets/html-effectiveness/examples/` into the task output location.
+1. Copy the closest file from `assets/patterns/` into the task output location.
 2. Replace all sample content with the user's real topic, files, symbols, data, or decision.
 3. Keep the standalone structure: inline CSS, inline JavaScript, no build step.
-4. Preserve the upstream copyright/SPDX header.
-5. Verify the copied page in a browser when possible.
+4. Delete irrelevant sections instead of preserving empty shells.
+5. Verify the copied page in a browser.
 
-Use `assets/explanation-template.html` only when none of the vendored examples fit.
+Use `assets/explanation-template.html` only when none of the six patterns fit.
 
 ## Choosing A Shape
 
-- If the user asks "which option should we pick?", use an approach comparison.
-- If the user asks "how does this work?", use a code flow or concept explainer.
+- If the user asks "which option should we pick?", use the decision brief.
+- If the user asks "how does this work?", use code flow.
+- If the user asks "teach me", use the concept lesson.
 - If the user asks "what happened?", use an incident timeline.
-- If the user asks "what should we do next?", use an implementation plan.
-- If the user asks "what changed in this PR?", use a PR writeup page.
-- If the user will edit or triage data, use a small editing UI.
+- If the user asks "what if this input changes?", use the interactive model.
+- If the user asks "what should we do next?", use the implementation plan.
+- For a PR walkthrough, adapt code flow when behavior changed and decision brief
+  when the page explains an architectural choice.
+- For status, adapt implementation plan and make completed, active, blocked,
+  and next work explicit.
 
 ## HTML Quality Bar
 
@@ -59,3 +48,11 @@ Use `assets/explanation-template.html` only when none of the vendored examples f
 - Keep the first viewport useful. The user should see the answer, not only a title.
 - Use plain CSS and semantic HTML. Add JavaScript only when interaction helps.
 - Keep generated assets local. Inline SVG is fine for diagrams.
+- Couple a claim with its evidence or inspectable example.
+- Hide only optional detail. Recommendations, required evidence, and next
+  actions stay visible.
+- Reflow at 320 CSS pixels. Code and tables may scroll inside their own
+  containers; the page must not.
+- Use a text label or shape as well as color for status.
+- Keep controls at least 44px in the dimension the user must target.
+- Support reduced motion and printable output.
