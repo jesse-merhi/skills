@@ -27,3 +27,24 @@ installer-owned copies so agent skill discovery cannot load the retired skill.
 For Claude Code, also remove hook entries whose command targets
 `skills/impeccable/scripts/hook.mjs` from `~/.claude/settings.local.json`.
 Preserve unrelated settings and delete the file only when nothing remains.
+
+Removing the skill directories is not enough. Impeccable's hook writes state
+outside them, and that state survived two reinstalls because the commands above
+never named it. Remove it on every reinstall, on every harness:
+
+```sh
+rm -rf ~/.impeccable ~/.codex/.impeccable
+```
+
+Every repository Impeccable ran in also holds its own `.impeccable/` hook cache.
+List them, then remove the ones git does not track:
+
+```sh
+find ~/repos -maxdepth 2 -type d -name .impeccable
+git -C <repo> ls-files .impeccable
+```
+
+Leave any `.impeccable/` path that `git ls-files` reports, such as a committed
+`.impeccable/live/config.json`. Deleting a tracked file is a change to that
+repository and belongs in its own branch and pull request, not in a reinstall.
+Report those paths to the user instead.

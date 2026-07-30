@@ -204,6 +204,10 @@ test_retired_impeccable_cleanup_is_documented() {
   assert_contains "$ROOT_DIR/external.md" "~/.config/opencode/.opencode/skills/impeccable"
   assert_contains "$ROOT_DIR/external.md" "~/.pi/skills/impeccable"
   assert_contains "$ROOT_DIR/external.md" "skills/impeccable/scripts/hook.mjs"
+  assert_contains "$ROOT_DIR/external.md" "rm -rf ~/.impeccable ~/.codex/.impeccable"
+  assert_contains "$ROOT_DIR/external.md" "find ~/repos -maxdepth 2 -type d -name .impeccable"
+  assert_contains "$ROOT_DIR/external.md" "git -C <repo> ls-files .impeccable"
+  assert_contains "$ROOT_DIR/external.md" "belongs in its own branch and pull request"
 }
 
 test_skill_frontmatter_is_valid
