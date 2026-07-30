@@ -210,7 +210,15 @@ test_retired_impeccable_cleanup_is_documented() {
   assert_contains "$ROOT_DIR/external.md" "belongs in its own branch and pull request"
 }
 
+test_external_teach_install_is_pinned() {
+  assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/v1.0.1/skills/productivity/teach"
+  assert_contains "$ROOT_DIR/external.md" "skills@1.5.20"
+  assert_contains "$ROOT_DIR/external.md" " --agent codex --skill teach"
+  assert_contains "$ROOT_DIR/external.md" "The installer owns the external skill files"
+}
+
 test_skill_frontmatter_is_valid
+test_external_teach_install_is_pinned
 test_retired_impeccable_cleanup_is_documented
 test_handoff_tmux_helper_builds_tmux_window_command
 
