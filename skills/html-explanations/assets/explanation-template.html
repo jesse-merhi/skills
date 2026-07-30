@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>HTML explanation</title>
 <style>
   :root {
@@ -21,6 +22,7 @@
   }
 
   * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
 
   body {
     margin: 0;
@@ -55,13 +57,21 @@
   }
 
   p {
-    max-width: 760px;
+    max-width: 72ch;
     margin: 0 0 12px;
   }
 
   .summary {
     color: var(--muted);
     font-size: 18px;
+  }
+
+  .answer {
+    max-width: 72ch;
+    margin-top: 20px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 16px 18px;
   }
 
   .grid {
@@ -93,9 +103,24 @@
     font-weight: 700;
   }
 
+  .badge::before {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+
   code, pre {
     font-family: var(--mono);
     font-size: 13px;
+  }
+
+  code {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #eeece4;
+    padding: .1em .32em;
   }
 
   pre {
@@ -104,6 +129,15 @@
     color: #f5f5f5;
     border-radius: 8px;
     padding: 14px;
+  }
+
+  pre code {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font: inherit;
   }
 
   .flow {
@@ -121,6 +155,21 @@
     main { width: min(100vw - 24px, 720px); padding-top: 20px; }
     .panel { grid-column: 1 / -1; }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
+  }
+
+  @media print {
+    body { background: #fff; }
+    main { width: 100%; padding: 0; }
+    .panel, .answer { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -129,6 +178,7 @@
     <span class="badge">Replace with state or topic</span>
     <h1>Replace with the answer in one sentence</h1>
     <p class="summary">Replace with a short explanation of what this page helps the reader understand.</p>
+    <p class="answer"><strong>Replace with the answer.</strong> State the result, recommendation, or invariant before the implementation detail.</p>
   </header>
 
   <section class="grid" aria-label="Explanation">
@@ -139,7 +189,7 @@
 
     <article class="panel">
       <h2>Evidence</h2>
-      <p>Use this panel for files, symbols, data, screenshots, logs, or observed behavior.</p>
+      <p>Use this panel for exact files, symbols, data, screenshots, logs, or observed behavior. Put each claim beside its proof.</p>
     </article>
 
     <article class="panel wide">
