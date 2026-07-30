@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Interactive model — Retry delay</title>
+<style>
+  :root {
+    --bg: #eef3f6;
+    --paper: #fff;
+    --ink: #14212a;
+    --muted: #60707b;
+    --line: #ccd7dd;
+    --accent: #006c8c;
+    --accent-soft: #d8eef5;
+    --risk: #a34220;
+    --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+  main { width: min(1060px, calc(100% - 32px)); margin: 0 auto; padding: 38px 0 72px; }
+  header { max-width: 780px; padding-bottom: 28px; }
+  .eyebrow { color: var(--accent); font: 800 13px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+  h1 { margin: 13px 0; font-size: clamp(2.3rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.045em; }
+  .lead { margin: 0; color: var(--muted); font-size: 1.15rem; }
+  .model {
+    display: grid;
+    grid-template-columns: minmax(260px, .75fr) minmax(0, 1.25fr);
+    gap: 18px;
+  }
+  .panel { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+  h2 { margin: 0 0 18px; font-size: 1.25rem; }
+  .control { margin-bottom: 24px; }
+  .control:last-child { margin-bottom: 0; }
+  .control-head { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; margin-bottom: 8px; }
+  label { font-weight: 750; }
+  output { color: var(--accent); font: 800 15px/1 var(--mono); }
+  input[type="range"] {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  input:focus-visible { outline: 3px solid #7cc7dd; outline-offset: 3px; }
+  .hint { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .result {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .metric { padding: 16px; border-radius: 10px; background: var(--accent-soft); }
+  .metric strong { display: block; font-size: clamp(1.7rem, 5vw, 2.5rem); line-height: 1.1; }
+  .metric span { color: var(--muted); }
+  .bars { display: grid; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 70px 1fr 64px; gap: 10px; align-items: center; font-size: 14px; }
+  .track { height: 18px; overflow: hidden; border-radius: 999px; background: #e7edf0; }
+  .fill { height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width 180ms ease-out; }
+  .fill.risk { background: var(--risk); }
+  .bar-value { text-align: right; font: 700 13px/1 var(--mono); }
+  .reading { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .reading strong { color: var(--accent); }
+  section { margin-top: 34px; }
+  .evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  details { border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.6); }
+  summary { min-height: 48px; padding: 13px 16px; cursor: pointer; font-weight: 750; }
+  details p { max-width: 68ch; margin: 0; padding: 0 16px 16px; color: var(--muted); }
+  code {
+    padding: .1em .34em;
+    border: 1px solid #c9d4da;
+    border-radius: 4px;
+    background: #e3edf1;
+    font: .9em var(--mono);
+  }
+  @media (max-width: 760px) {
+    main { width: min(100% - 24px, 680px); padding-top: 20px; }
+    .model, .evidence { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 420px) {
+    .result { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 58px minmax(0, 1fr) 52px; gap: 7px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+  @media print {
+    body { background: #fff; }
+    main { width: 100%; padding: 0; }
+    .controls { display: none; }
+    .model { grid-template-columns: 1fr; }
+    .panel { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Interactive model · change an assumption</div>
+    <h1>More retries recover more jobs—and delay the failures you need to see.</h1>
+    <p class="lead">Adjust attempts and base delay. The model shows the maximum wait before a job becomes terminal and the share expected to recover under a simple transient-failure assumption.</p>
+  </header>
+
+  <div class="model">
+    <section class="panel controls" aria-labelledby="assumptions-heading">
+      <h2 id="assumptions-heading">Assumptions</h2>
+      <div class="control">
+        <div class="control-head"><label for="attempts">Total attempts</label><output id="attempts-value" for="attempts">5</output></div>
+        <input id="attempts" type="range" min="1" max="8" value="5" step="1">
+        <p class="hint">Includes the first delivery attempt.</p>
+      </div>
+      <div class="control">
+        <div class="control-head"><label for="delay">Base delay</label><output id="delay-value" for="delay">30 sec</output></div>
+        <input id="delay" type="range" min="5" max="120" value="30" step="5">
+        <p class="hint">Each wait doubles: 30s, 60s, 120s…</p>
+      </div>
+      <div class="control">
+        <div class="control-head"><label for="recovery">Recovery per retry</label><output id="recovery-value" for="recovery">45%</output></div>
+        <input id="recovery" type="range" min="10" max="80" value="45" step="5">
+        <p class="hint">Illustrative probability, not production evidence.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="result-heading">
+      <h2 id="result-heading">Consequence</h2>
+      <div class="result" aria-live="polite">
+        <div class="metric"><strong id="wait-result">7m 30s</strong><span>maximum retry wait</span></div>
+        <div class="metric"><strong id="recover-result">91%</strong><span>transient jobs recovered</span></div>
+      </div>
+      <div class="bars" aria-label="Model comparison">
+        <div class="bar-row"><span>Recovered</span><div class="track"><div class="fill" id="recover-bar"></div></div><span class="bar-value" id="recover-bar-value">91%</span></div>
+        <div class="bar-row"><span>Terminal</span><div class="track"><div class="fill risk" id="terminal-bar"></div></div><span class="bar-value" id="terminal-bar-value">9%</span></div>
+      </div>
+      <p class="reading" id="reading"><strong>Reading:</strong> five attempts capture most transient recovery while keeping the terminal state inside eight minutes.</p>
+    </section>
+  </div>
+
+  <section class="evidence" aria-label="Formula and evidence">
+    <details>
+      <summary>Formula used</summary>
+      <p>Wait is the geometric sum of delays before retries:
+        <code>base × (2^(attempts - 1) - 1)</code>. Recovery is
+        <code>1 - (1 - probability)^(attempts - 1)</code>.</p>
+    </details>
+    <details>
+      <summary>Replace before using</summary>
+      <p>Swap the illustrative recovery rate for observed provider data. Add jitter and any maximum-delay cap used by the real queue. Label every modeled value separately from measured evidence.</p>
+    </details>
+  </section>
+</main>
+<script>
+  const attempts = document.getElementById('attempts');
+  const delay = document.getElementById('delay');
+  const recovery = document.getElementById('recovery');
+
+  function formatSeconds(total) {
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    if (minutes === 0) return `${seconds}s`;
+    return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+  }
+
+  function update() {
+    const attemptCount = Number(attempts.value);
+    const baseDelay = Number(delay.value);
+    const recoveryChance = Number(recovery.value) / 100;
+    const retries = Math.max(0, attemptCount - 1);
+    const totalWait = baseDelay * (2 ** retries - 1);
+    const recovered = Math.round((1 - (1 - recoveryChance) ** retries) * 100);
+    const terminal = 100 - recovered;
+
+    document.getElementById('attempts-value').value = String(attemptCount);
+    document.getElementById('delay-value').value = `${baseDelay} sec`;
+    document.getElementById('recovery-value').value = `${recovery.value}%`;
+    document.getElementById('wait-result').textContent = formatSeconds(totalWait);
+    document.getElementById('recover-result').textContent = `${recovered}%`;
+    document.getElementById('recover-bar').style.width = `${recovered}%`;
+    document.getElementById('terminal-bar').style.width = `${terminal}%`;
+    document.getElementById('recover-bar-value').textContent = `${recovered}%`;
+    document.getElementById('terminal-bar-value').textContent = `${terminal}%`;
+
+    const posture = totalWait > 1800
+      ? 'The recovery window is broad, but terminal failures stay hidden for more than 30 minutes.'
+      : recovered < 70
+        ? 'Failures surface quickly, but many transient jobs still need manual recovery.'
+        : 'The model balances transient recovery with a visible terminal state.';
+    document.getElementById('reading').innerHTML = `<strong>Reading:</strong> ${posture}`;
+  }
+
+  [attempts, delay, recovery].forEach((control) => control.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

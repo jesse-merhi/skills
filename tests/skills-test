@@ -98,6 +98,9 @@ for path in sorted(skill_paths):
         errors.append(f"name mismatch: {path}: {metadata.get('name')!r}")
     if not metadata.get("description"):
         errors.append(f"missing description: {path}")
+    openai_metadata = path.parent / "agents" / "openai.yaml"
+    if not openai_metadata.is_file():
+        errors.append(f"missing Codex metadata: {openai_metadata}")
     name = metadata.get("name")
     if name:
         if name == "impeccable":
@@ -211,8 +214,11 @@ test_retired_impeccable_cleanup_is_documented() {
 }
 
 test_external_teach_install_is_pinned() {
-  assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/v1.0.1/skills/productivity/teach"
+  assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
+  assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
+  assert_contains "$ROOT_DIR/external.md" "tree/codex-skill-metadata/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "skills@1.5.20"
+  assert_contains "$ROOT_DIR/external.md" "agents/openai.yaml"
   assert_contains "$ROOT_DIR/external.md" " --agent codex --skill teach"
   assert_contains "$ROOT_DIR/external.md" "The installer owns the external skill files"
 }

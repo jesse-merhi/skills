@@ -77,12 +77,16 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   `tdd` is still here as a supporting implementation discipline
   for handoff/orchestration workflows, not because I usually call it directly.
 - **Frontend work:** `frontend-design`, `design-engineering`,
-  `review-animations`, `frontend-ui-validation`, and
-  `acpx-frontend-delegation` split visual direction, interaction craft,
-  motion review, rendered proof, and optional delegation.
+  `find-animation-opportunities`, `review-animations`, `prototype`,
+  `frontend-ui-validation`, and `acpx-frontend-delegation` split visual
+  direction, interaction craft, motion discovery, motion review, divergent UI
+  exploration, rendered proof, and optional delegation.
 - **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
   `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
   `handoff`, and `session-recall`.
+- **Explanation:** `html-explanations` turns decisions, code flows, incidents,
+  models, lessons, and plans into standalone pages built around the reader's
+  question.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.
@@ -97,9 +101,10 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 
 Some of this started somewhere else.
 
-Matt Pocock's agent workflow ideas shaped the `grill`, PRD, slicing, and
-handoff parts of the loop. Emil Kowalski's design-engineering work shaped the
-interaction and motion skills; the adapted material retains its MIT notice.
+Matt Pocock's agent workflow ideas shaped the `grill`, PRD, slicing, teaching,
+and handoff parts of the loop. Emil Kowalski's design-engineering work shaped
+the interaction, motion-discovery, review, and UI-prototyping skills; the
+adapted material retains its MIT notice.
 `frontend-ui-validation` owns rendered proof separately from design direction.
 
 As usual, I took the shape, bent it around my own setup, and kept the parts
@@ -138,7 +143,7 @@ Rust helper syntax/builds.
 
 ## License
 
-MIT, with bundled third-party assets retaining their own notices.
+MIT, with adapted third-party material retaining its own notices.
 
 ## Public Snapshot
 

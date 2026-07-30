@@ -1,0 +1,4 @@
+interface:
+  display_name: "Find Animation Opportunities"
+  short_description: "Find the few UI moments where motion helps"
+  default_prompt: "Use $find-animation-opportunities to inspect this interface and report precise motion opportunities plus deliberate rejections."

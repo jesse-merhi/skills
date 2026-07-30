@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Code flow — How a job becomes delivered</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e1318;
+    --surface: #151c23;
+    --surface-2: #1b2630;
+    --ink: #edf4f7;
+    --muted: #a5b3bc;
+    --line: #33424d;
+    --accent: #72d5c2;
+    --accent-soft: #173a37;
+    --code: #0a0f13;
+    --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 var(--sans);
+  }
+  main {
+    width: min(1040px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 42px 0 72px;
+  }
+  header { max-width: 760px; }
+  .eyebrow {
+    color: var(--accent);
+    font: 700 13px/1 var(--mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 14px 0;
+    font-size: clamp(2.2rem, 6vw, 4.6rem);
+    line-height: 1;
+    letter-spacing: -.04em;
+  }
+  .lead { color: var(--muted); font-size: 1.15rem; }
+  .invariant {
+    margin-top: 28px;
+    padding: 18px 20px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+  }
+  .invariant strong { display: block; margin-bottom: 4px; }
+  section { margin-top: 42px; }
+  h2 { margin: 0 0 18px; font-size: 1.35rem; }
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 28px 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: flow;
+  }
+  .flow li {
+    position: relative;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    counter-increment: flow;
+  }
+  .flow li::before {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    margin-bottom: 16px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #09231e;
+    content: counter(flow);
+    font: 800 13px/1 var(--mono);
+  }
+  .flow li:not(:last-child)::after {
+    position: absolute;
+    top: 31px;
+    right: -22px;
+    width: 28px;
+    color: var(--accent);
+    content: "→";
+    text-align: center;
+  }
+  .flow strong { display: block; margin-bottom: 7px; }
+  .flow p { margin: 0; color: var(--muted); font-size: 14px; }
+  code {
+    padding: .1em .32em;
+    border: 1px solid #3a4a56;
+    border-radius: 4px;
+    background: #10171d;
+    color: #d8f6ef;
+    font: .88em var(--mono);
+  }
+  .evidence {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+    gap: 18px;
+  }
+  .files {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .files li {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .files li:last-child { border-bottom: 0; }
+  .files span { display: block; margin-top: 4px; color: var(--muted); font-size: 14px; }
+  details {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  summary {
+    min-height: 48px;
+    padding: 13px 16px;
+    cursor: pointer;
+    font-weight: 750;
+  }
+  pre {
+    max-width: 100%;
+    margin: 0;
+    overflow: auto;
+    border-top: 1px solid var(--line);
+    background: var(--code);
+    padding: 16px;
+    color: #dfe9ed;
+    font: 13px/1.6 var(--mono);
+  }
+  pre code {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+  }
+  .proof {
+    padding: 20px;
+    border: 1px solid #316a5f;
+    border-radius: 10px;
+    background: var(--accent-soft);
+  }
+  .proof p { margin-bottom: 0; color: #c5ded8; }
+  @media (max-width: 780px) {
+    .flow { grid-template-columns: 1fr 1fr; }
+    .flow li:nth-child(2)::after { display: none; }
+    .evidence { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    main { width: min(100% - 24px, 680px); padding-top: 22px; }
+    .flow { grid-template-columns: 1fr; }
+    .flow li::after { display: none; }
+  }
+  @media print {
+    :root { color-scheme: light; }
+    body { background: #fff; color: #111; }
+    .flow li, details, .proof { background: #fff; border-color: #bbb; }
+    .lead, .flow p, .files span, .proof p { color: #444; }
+    details { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Code flow · delivery pipeline</div>
+    <h1>A job is acknowledged only after the provider accepts it.</h1>
+    <p class="lead">The worker leases one queued job, validates its payload, sends it through the provider adapter, then records the provider receipt before acknowledging the lease.</p>
+    <div class="invariant">
+      <strong>The invariant</strong>
+      A worker crash may cause a safe retry, but it must never mark an unaccepted delivery as complete.
+    </div>
+  </header>
+
+  <section aria-labelledby="flow-heading">
+    <h2 id="flow-heading">The runtime path</h2>
+    <ol class="flow">
+      <li><strong>Lease</strong><p><code>worker.ts:run()</code> takes one visible job for 30 seconds.</p></li>
+      <li><strong>Validate</strong><p><code>payload.ts:parse()</code> rejects malformed input before any side effect.</p></li>
+      <li><strong>Deliver</strong><p><code>provider.send()</code> returns an external receipt or a typed failure.</p></li>
+      <li><strong>Commit</strong><p><code>completeJob()</code> stores the receipt, then acknowledges the lease.</p></li>
+    </ol>
+  </section>
+
+  <section class="evidence" aria-labelledby="evidence-heading">
+    <div>
+      <h2 id="evidence-heading">Read these files in order</h2>
+      <ul class="files">
+        <li><code>src/worker.ts:42</code><span>entrypoint and lease lifecycle</span></li>
+        <li><code>src/payload.ts:18</code><span>boundary validation</span></li>
+        <li><code>src/providers/mail.ts:67</code><span>external side effect</span></li>
+        <li><code>src/jobs/complete.ts:31</code><span>receipt and acknowledgment order</span></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Optional implementation detail</h2>
+      <details>
+        <summary>Show the commit boundary</summary>
+        <pre><code>const receipt = await provider.send(message);
+
+await database.transaction(async (tx) =&gt; {
+  await tx.receipts.insert(receipt);
+  await tx.jobs.complete(job.id);
+});
+
+await lease.acknowledge();</code></pre>
+      </details>
+    </div>
+  </section>
+
+  <section class="proof" aria-labelledby="proof-heading">
+    <h2 id="proof-heading">Observable proof</h2>
+    <p>The crash-after-send integration test restarts the worker between provider acceptance and lease acknowledgment. The provider sees one idempotency key, the receipt is retained, and the retried job completes without a second user-visible delivery.</p>
+  </section>
+</main>
+</body>
+</html>
