@@ -1,10 +1,35 @@
 # Third-party skills
 
-No third-party skill installs are currently required.
-
 Keep externally owned skills out of this repository unless their license and
 update model are intentionally adopted. Prefer a small repo-owned adapter when
 only part of an external workflow earns a permanent place in the skill loop.
+
+## teach
+
+- **Source:** <https://github.com/mattpocock/skills/tree/v1.0.1/skills/productivity/teach>
+- **License:** MIT
+- **What it is:** A stateful teaching workflow. It grounds lessons in a learner
+  mission, trusted resources, learning records, retrieval practice, reusable
+  HTML lesson components, and quick-reference material.
+- **Why it is external:** Matt Pocock owns the workflow and its update path. The
+  upstream installer should own the installed files; this repository only pins
+  the reviewed source and installer versions.
+- **Update model:** The source is pinned to the signed `v1.0.1` release and the
+  installer is pinned to `skills@1.5.20`. Review upstream changes before
+  deliberately updating either pin.
+
+### Install
+
+Run from the harness-level parent directory so the installer writes into the
+normal global skills folder. Only Codex has been verified here; other harnesses
+must skip this entry until a tested command is added.
+
+| Harness | Method |
+| --- | --- |
+| Codex | `(cd ~ && npx --yes skills@1.5.20 add 'https://github.com/mattpocock/skills/tree/v1.0.1/skills/productivity/teach' --global --agent codex --skill teach --yes)` |
+
+The installer owns the external skill files. Do not symlink `teach` from this
+repo.
 
 ## Retired third-party skills
 
