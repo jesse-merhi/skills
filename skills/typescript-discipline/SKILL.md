@@ -17,7 +17,8 @@ boundaries, and compiler-checked narrowing over casts or informal object shapes.
    [type-boundaries.md](references/type-boundaries.md).
 4. Avoid unsafe typing using [unsafe-types.md](references/unsafe-types.md).
 5. Before writing library/framework code, check installed versions and use
-   current docs for that version.
+   current docs for that version. Prefer the remote Context7 workflow in
+   [context7.md](references/context7.md) when its tools are available.
 6. Verify with repo scripts using [verification.md](references/verification.md).
 
 ## Required Discipline
