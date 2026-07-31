@@ -115,9 +115,9 @@ exchange; the agent never stands in for the human's side of it.
 - **Research** (AFK): invoke `research` to read primary sources such as docs,
   third-party APIs, source code, specs, or knowledge bases. Create a Markdown
   summary as a linked asset.
-- **Prototype** (HITL): invoke `prototype` to make a cheap concrete artifact to
-  react to, such as an outline, rough take, UI stub, or logic sketch. Link the
-  prototype as an asset.
+- **Prototype** (HITL): make a cheap concrete artifact to react to, such as an
+  outline, rough take, UI stub, or logic sketch. Link it as an asset. Invoke the
+  local `prototype` skill only for UI exploration the user explicitly requested.
 - **Grilling** (HITL): conversation via `grilling`, one question at a time. This
   is the default case.
 - **Task** (HITL or AFK): manual work that must happen before a decision can be
