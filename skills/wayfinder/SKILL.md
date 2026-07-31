@@ -29,9 +29,9 @@ decisions, not deliverables.
 ## Refer by name
 
 Refer to every map and ticket by its readable note title in narration and in the
-map's Decisions So Far. Wrap the title in an Obsidian wikilink. A file path or
-slug may identify the note internally, but never make a human decode it in place
-of the name.
+map's Decisions So Far. Wrap the title in an Obsidian wikilink. When the stored
+file path or slug differs from that title, use an alias such as
+`[[<ticket note>|<ticket title>]]` so the link stays valid and readable.
 
 ## The Map
 
@@ -64,7 +64,7 @@ Type: Wayfinder Map
 <domain, skills every session should consult, standing preferences>
 
 ## Decisions So Far
-- [[<closed ticket title>]] - <one-line gist>
+- [[<closed ticket note>|<closed ticket title>]] - <one-line gist>
 
 ## Not Yet Specified
 <in-scope fog that cannot be ticketed yet>
@@ -75,19 +75,20 @@ Type: Wayfinder Map
 
 ### Tickets
 
-Each ticket is an Obsidian issue note. Give it a readable question as its title
-and size the question to one 100K-token agent session:
+Each ticket is an Obsidian issue note. Give its heading a readable question,
+retain the vault's file-naming convention, and size the question to one
+100K-token agent session:
 
 ```markdown
 # Ticket: <question>
 
 Status: Open
 Type: Ticket
-Wayfinder: [[<map>]]
+Wayfinder: [[<map note>|<map title>]]
 Mode: AFK | HITL
 Kind: research | prototype | grilling | task
 Claimed By: <person or agent session> | None
-Blocked By: [[<ticket>]] | None
+Blocked By: [[<ticket note>|<ticket title>]] | None
 
 ## Question
 <the decision or investigation this ticket resolves>
@@ -133,7 +134,7 @@ Beyond the live tickets is fog: decisions and investigations you can tell are
 coming but cannot yet pin down because they hang on open questions. Write that
 dim view in Not Yet Specified. Resolving a ticket clears the fog ahead of it,
 graduating whatever is now specifiable into fresh tickets until the way to the
-destination is clear and no tickets remain.
+destination is clear and no open tickets remain.
 
 Fog or ticket? The test is whether you can state the question precisely now, not
 whether you can answer it now.
