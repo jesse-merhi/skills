@@ -176,9 +176,10 @@ tickets are the exception: independent research tickets may run in parallel.
 4. Create the tickets you can specify now as child notes, then wire `Blocked By`
    wikilinks in a second pass. Everything you cannot yet specify stays in Not
    Yet Specified.
-5. When isolated parallel work is available, claim each research ticket and
-   invoke `research` for them in parallel. Link each result and resolve its
-   ticket. Otherwise leave the research tickets on the frontier.
+5. When isolated parallel work is available, dispatch one `research` session
+   per research ticket. Have each session claim its assigned ticket before work,
+   then link the result and resolve the ticket. Otherwise leave the research
+   tickets on the frontier.
 6. Stop. Charting the map is one session's work; do not hand-resolve a
    non-research ticket too.
 

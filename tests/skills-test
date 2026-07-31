@@ -252,16 +252,22 @@ required_fields = {
     "Claimed By",
     "Blocked By",
 }
-template_fields = {
-    line.split(":", 1)[0]
-    for line in ticket_template.splitlines()
-    if ":" in line and not line.startswith("#")
-}
-missing_fields = sorted(required_fields - template_fields)
+template_fields = {}
+for line in ticket_template.splitlines():
+    if ":" in line and not line.startswith("#"):
+        key, value = line.split(":", 1)
+        template_fields[key] = value.strip()
+
+missing_fields = sorted(required_fields - template_fields.keys())
 if missing_fields:
     raise SystemExit(
         f"Wayfinder ticket template cannot represent its workflow: {missing_fields}"
     )
+for relationship in ("Wayfinder", "Blocked By"):
+    if "|" not in template_fields[relationship]:
+        raise SystemExit(
+            f"Wayfinder {relationship} links must keep note identity and readable title"
+        )
 
 
 def write_ticket(
@@ -270,6 +276,7 @@ def write_ticket(
     title,
     *,
     wayfinder="2026-07-31-ship-the-migration",
+    wayfinder_title="Ship the migration",
     status="Open",
     claimed_by="None",
     blocked_by="None",
@@ -282,7 +289,7 @@ def write_ticket(
                 "",
                 f"Status: {status}",
                 "Type: Ticket",
-                f"Wayfinder: [[{wayfinder}|Ship the migration]]",
+                f"Wayfinder: [[{wayfinder}|{wayfinder_title}]]",
                 "Mode: AFK",
                 "Kind: research",
                 f"Claimed By: {claimed_by}",
@@ -377,6 +384,7 @@ with tempfile.TemporaryDirectory() as tmp:
         "2026-07-31-unrelated-decision",
         "Unrelated decision",
         wayfinder="2026-07-31-another-map",
+        wayfinder_title="Another map",
     )
 
     if frontier(issues, map_note.stem) != ["2026-07-31-choose-source-format"]:
