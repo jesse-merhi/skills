@@ -223,9 +223,204 @@ test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "The installer owns the external skill files"
 }
 
+test_wayfinder_obsidian_map_can_advance_its_frontier() {
+  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+from pathlib import Path
+import os
+import re
+import tempfile
+
+
+root = Path(os.environ["ROOT_DIR"])
+skill = (root / "skills" / "wayfinder" / "SKILL.md").read_text()
+
+ticket_match = re.search(
+    r"### Tickets.*?```markdown\n(?P<template>.*?)\n```",
+    skill,
+    re.DOTALL,
+)
+if ticket_match is None:
+    raise SystemExit("Wayfinder ticket template is missing")
+
+ticket_template = ticket_match.group("template")
+required_fields = {
+    "Status",
+    "Type",
+    "Wayfinder",
+    "Mode",
+    "Kind",
+    "Claimed By",
+    "Blocked By",
+}
+template_fields = {}
+for line in ticket_template.splitlines():
+    if ":" in line and not line.startswith("#"):
+        key, value = line.split(":", 1)
+        template_fields[key] = value.strip()
+
+missing_fields = sorted(required_fields - template_fields.keys())
+if missing_fields:
+    raise SystemExit(
+        f"Wayfinder ticket template cannot represent its workflow: {missing_fields}"
+    )
+for relationship in ("Wayfinder", "Blocked By"):
+    if "|" not in template_fields[relationship]:
+        raise SystemExit(
+            f"Wayfinder {relationship} links must keep note identity and readable title"
+        )
+
+
+def write_ticket(
+    issues,
+    note_name,
+    title,
+    *,
+    wayfinder="2026-07-31-ship-the-migration",
+    wayfinder_title="Ship the migration",
+    status="Open",
+    claimed_by="None",
+    blocked_by="None",
+):
+    note = issues / f"{note_name}.md"
+    note.write_text(
+        "\n".join(
+            [
+                f"# Ticket: {title}",
+                "",
+                f"Status: {status}",
+                "Type: Ticket",
+                f"Wayfinder: [[{wayfinder}|{wayfinder_title}]]",
+                "Mode: AFK",
+                "Kind: research",
+                f"Claimed By: {claimed_by}",
+                f"Blocked By: {blocked_by}",
+                "",
+                "## Question",
+                f"What should {title} decide?",
+                "",
+            ]
+        )
+    )
+    return note
+
+
+def fields(note):
+    parsed = {}
+    for line in note.read_text().splitlines():
+        if ": " in line and not line.startswith("#"):
+            key, value = line.split(": ", 1)
+            parsed[key] = value
+    return parsed
+
+
+def wikilinks(value):
+    return [
+        link.split("|", 1)[0]
+        for link in re.findall(r"\[\[([^\]]+)\]\]", value)
+    ]
+
+
+def frontier(issues, map_name):
+    notes = {
+        note.stem: fields(note)
+        for note in issues.glob("*.md")
+        if fields(note).get("Type") == "Ticket"
+    }
+    ready = []
+    for name, ticket in notes.items():
+        if wikilinks(ticket["Wayfinder"]) != [map_name]:
+            continue
+        blockers_closed = all(
+            notes[blocker]["Status"] == "Closed"
+            for blocker in wikilinks(ticket["Blocked By"])
+        )
+        if (
+            ticket["Status"] == "Open"
+            and ticket["Claimed By"] == "None"
+            and blockers_closed
+        ):
+            ready.append(name)
+    return sorted(ready)
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    issues = Path(tmp) / "Issues"
+    issues.mkdir()
+    map_note = issues / "2026-07-31-ship-the-migration.md"
+    map_note.write_text(
+        "\n".join(
+            [
+                "# Wayfinder: Ship the migration",
+                "",
+                "Status: Active",
+                "Type: Wayfinder Map",
+                "",
+                "## Decisions So Far",
+                "",
+            ]
+        )
+    )
+    research = write_ticket(
+        issues,
+        "2026-07-31-choose-source-format",
+        "Choose the source format",
+    )
+    write_ticket(
+        issues,
+        "2026-07-31-choose-import-contract",
+        "Choose the import contract",
+        blocked_by=(
+            "[[2026-07-31-choose-source-format|Choose the source format]]"
+        ),
+    )
+    write_ticket(
+        issues,
+        "2026-07-31-choose-rollout",
+        "Choose the rollout",
+        claimed_by="another-session",
+    )
+    write_ticket(
+        issues,
+        "2026-07-31-unrelated-decision",
+        "Unrelated decision",
+        wayfinder="2026-07-31-another-map",
+        wayfinder_title="Another map",
+    )
+
+    if frontier(issues, map_note.stem) != ["2026-07-31-choose-source-format"]:
+        raise SystemExit("Wayfinder frontier did not exclude blocked and claimed tickets")
+
+    research.write_text(
+        research.read_text()
+        .replace("Status: Open", "Status: Closed")
+        .replace(
+            "What should Choose the source format decide?\n",
+            "What should Choose the source format decide?\n\n"
+            "## Resolution\nUse newline-delimited JSON.\n",
+        )
+    )
+    map_note.write_text(
+        map_note.read_text()
+        + "- [[2026-07-31-choose-source-format|Choose the source format]]"
+        + " - Use newline-delimited JSON.\n"
+    )
+
+    if frontier(issues, map_note.stem) != ["2026-07-31-choose-import-contract"]:
+        raise SystemExit("Wayfinder frontier did not advance after a resolution")
+    if "## Resolution" not in research.read_text():
+        raise SystemExit("Resolved ticket did not retain its answer")
+    if (
+        "[[2026-07-31-choose-source-format|Choose the source format]]"
+        not in map_note.read_text()
+    ):
+        raise SystemExit("Wayfinder map did not index the resolved ticket by name")
+PY
+}
+
 test_skill_frontmatter_is_valid
 test_external_teach_install_is_pinned
 test_retired_impeccable_cleanup_is_documented
 test_handoff_tmux_helper_builds_tmux_window_command
+test_wayfinder_obsidian_map_can_advance_its_frontier
 
 printf 'ok - skills tests\n'
