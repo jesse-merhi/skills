@@ -35,8 +35,9 @@ Validation
   stop on the first failure and diagnose it before continuing.
 
 Direction checkpoints
-  Discoveries, failures, scope changes, or proposed pivots that must be
-  reported before the worker continues.
+  Discoveries, failures, decisions, scope changes, or proposed pivots that emit
+  a mailbox event before the worker continues. Routine correct progress stays
+  quiet; completion returns the required final result.
 
 Delivery
   Required commit or artifact, changed-file summary, validation evidence, and
@@ -67,6 +68,11 @@ Stop conditions
   or define an observable manual check first.
 - Require the worker to stop and report evidence before a material change of
   approach. The assigning agent decides whether to steer, rescope, or continue.
+- For a native worker, make direction checkpoints, decision requests,
+  blockers, and completion the reporting events. Routine progress continues
+  without timer-based status messages. The assigning Sol agent waits with
+  `wait_agent({timeout_ms: 3600000})`; worker events wake it immediately, and
+  the timeout exists only for recovery.
 - Tell an independent Luna task that the parent task owns final delivery. Have
   it create one scoped local commit and return the commit SHA; it must not push
   or open a second pull request.

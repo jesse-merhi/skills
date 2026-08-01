@@ -35,8 +35,14 @@ during the implementation task.
 
 ## 3. Wait and Steer
 
-- Use the task-wait primitive with a bounded timeout; do useful independent
-  work between waits rather than polling repeatedly.
+- Use the event-driven task-wait primitive with the longest bounded timeout the
+  task API supports. For native Terra workers this is
+  `wait_agent({timeout_ms: 3600000})`. Task completion or a request for
+  attention wakes the creator immediately; a timeout is a recovery boundary
+  rather than a progress interval.
+- On a timeout without new evidence, inspect the latest task snapshot once to
+  diagnose a stall, missed event, or failure. Resume the event wait when the
+  task is healthy.
 - Treat waiting as supervision, not abandonment. Inspect progress at the
   contract's meaningful direction checkpoints.
 - When the task asks for a decision, supply it when it is inside the creator's
