@@ -1,6 +1,6 @@
 ---
 name: orchestrate-codex-workers
-description: 'Orchestrate change-making Codex work with Sol as the planning and review oracle, Terra Max native implementation agents, and optional Luna Max independent tasks created by Sol or Terra. Use when implementing features, fixing bugs, refactoring, migrating, or otherwise changing a repository under an authorized delegated workflow.'
+description: 'Orchestrate authorized repository changes across Sol, Terra Max, and Luna Max. Load before planning or implementing any repository change so Sol applies the delegation break-even gate, event-driven supervision, and independent validation.'
 ---
 
 # Orchestrate Codex Workers
@@ -55,21 +55,30 @@ and reviewer of the final diff.
 
 - Give each worker Sol's best known approach, relevant repository pattern,
   decisions already made, and likely failure modes before implementation.
-- Require a worker to report before a material change of approach instead of
-  silently pivoting after discovery or failure.
-- Watch meaningful progress, direction changes, test failures, and scope
-  growth. When Sol sees a mistaken assumption, repeated unproductive work, or
-  a better path, steer the worker immediately with concrete reasoning and an
+- Define direction checkpoints in the worker contract. Have the worker send a
+  mailbox event when it needs a decision, reaches a material discovery or
+  failure, proposes a scope or approach change, or completes its assignment.
+- After dispatching a native Terra worker, call
+  `wait_agent({timeout_ms: 3600000})`. Worker messages, completion, and new user
+  input wake Sol immediately; the one-hour timeout is only a recovery boundary
+  for a possibly stalled or lost worker. Never use shorter recurring timeouts
+  to monitor healthy progress. If the runtime rejects one hour, use its longest
+  supported bounded timeout.
+- On a mailbox event, inspect the reported evidence and any relevant shared
+  diff. When Sol sees a mistaken assumption, repeated unproductive work, or a
+  better path, steer the worker immediately with concrete reasoning and an
   updated approach.
+- On a timeout without new evidence, inspect worker state once to diagnose a
+  stall, missed event, or failure. Resume the event wait when the worker is
+  healthy. Reserve manual status listing for that recovery branch.
 - Have Terra actively supervise Luna tasks it creates and surface material
   pivots or repeated failures to Sol. Sol may steer Terra or Luna whenever its
   guidance is likely to save time or improve correctness.
 - Continue in the same worker context when correcting direction. Do not wait
   passively for completion once evidence shows the worker is wandering.
 
-Avoid ceremony during correct, deterministic progress. The purpose of
-supervision is to prevent expensive wrong turns, not to require approval for
-every edit.
+Let correct, deterministic progress remain quiet. Spend Sol turns on worker
+events, concrete evidence, steering, integration, and review.
 
 ## Workflow
 
@@ -108,6 +117,9 @@ every edit.
 
 4. Supervise implementation.
    - Have Terra implement its scope in the native shared workspace.
+   - Wait on Terra's mailbox events with `wait_agent({timeout_ms: 3600000})`.
+     Treat a timeout as the recovery branch, not a recurring progress
+     checkpoint.
    - If Sol or Terra selects Luna, read
      [session-lifecycle.md](references/session-lifecycle.md) and follow the full
      create, wait, integrate, validate, and archive lifecycle.
@@ -118,6 +130,9 @@ every edit.
    - Continue corrections in the same worker or task while its context is
      useful. Supply failing evidence and the expected behavior, not a vague
      request to try again.
+   - Complete this step when every worker has returned a result or a diagnosed
+     blocker, and every Sol intervention is tied to a worker event or concrete
+     evidence.
 
 5. Integrate and verify independently.
    - Inspect every worker diff and confirm it stayed inside assigned ownership.
