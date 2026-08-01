@@ -1,7 +1,7 @@
 # Worker Contract
 
-Write each worker prompt as an executable specification. Give the worker the
-decisions it needs; do not ask it to rediscover the parent agent's reasoning.
+Write each worker prompt as a concise opinionated brief. Give the worker the
+important decisions and boundaries without designing every ordinary edit.
 
 ## Required Fields
 
@@ -15,13 +15,9 @@ Starting point
 Context
   Entry points, symbols, supporting files, and prior decisions.
 
-Recommended approach
-  The assigning agent's best path, repository pattern to follow, known traps,
-  and alternatives already ruled out.
-
-Execution walkthrough
-  For Luna: ordered stages with exact files or symbols, intended changes,
-  expected intermediate states, validation, and consequential pause points.
+Sol's opinions
+  Preferred direction, important architecture or behavior choices, repository
+  patterns to follow, known traps, and alternatives already ruled out.
 
 Ownership
   Files or components the worker may change; concurrent areas it must leave
@@ -54,26 +50,25 @@ Stop conditions
 ## Prompting Rules
 
 - Assign one bounded outcome per worker.
-- Give the worker the best known implementation approach. Do not make it spend
-  time rediscovering guidance the assigning agent can already provide.
-- For Luna, translate the approach into a complete ordered walkthrough. Remove
-  unresolved design choices and broad instructions such as “inspect the repo
-  and decide.”
+- Give the worker Sol's important opinions and decisions. Do not spend Sol
+  tokens prescribing ordinary code-level choices the worker can resolve from
+  the bounded repository context.
+- Add exact steps only for fragile or non-obvious work where they materially
+  reduce risk. Otherwise let Luna or Terra inspect the owned area and implement.
 - When the native spawn tool cannot combine explicit model or effort overrides
   with a full-history fork, use a bounded or empty context fork and carry every
   required fact in this contract.
 - Name decisions positively and concretely. Replace “do not break auth” with
   the exact auth behavior that must remain true.
-- Point to the smallest useful context. Include file paths and symbols rather
-  than broad instructions to inspect the whole repository.
+- Point to the smallest useful starting context. Let the worker follow relevant
+  references inside its owned area instead of enumerating every file upfront.
 - Separate required behavior from optional cleanup. Keep optional work out of
   the assignment unless it is necessary for acceptance.
 - Specify how work integrates with concurrent changes. Give write ownership to
   one worker only.
 - Require validation before the worker reports completion. When no decisive
   validation exists, keep the work with the assigning agent or define an
-  observable manual check first. Use Terra only when its exception independently
-  clears the break-even gate.
+  observable manual check before delegating.
 - Require the worker to stop and report evidence before a material change of
   approach. The assigning agent decides whether to steer, rescope, or continue.
 - Make Luna request attention only at named decision gates, contradictory
