@@ -9,9 +9,9 @@ before choosing a worker tier.
 
 | Tier | Strength | Cost and speed | Default role |
 | --- | --- | --- | --- |
-| Sol Extra High | Best judgment under ambiguity and broad context | Highest relative cost | Default implementer, oracle, architecture, review |
-| Luna Max | Capable when direction is exact; most sensitive to missing context | Lowest relative cost and fastest throughput | Preferred guided delegation exception |
-| Terra Max | Strong implementation with better economics than Sol | Middle tier | Exceptional native implementer and optional Luna supervisor |
+| Sol Extra High | Best judgment under ambiguity and broad context | Highest relative cost | Oracle, important decisions, steering, review |
+| Luna Max | Capable with bounded direction; most sensitive to missing context | Lowest relative cost and fastest throughput | Preferred bounded implementer |
+| Terra Max | Strong implementation with better economics than Sol | Middle tier | Judgment-heavy native implementer and optional Luna supervisor |
 
 For local planning, treat the user's rough Sol `10/10` intelligence and cost,
 and Luna `6–7/10` intelligence with `1/10` cost, as a heuristic rather than a
@@ -33,14 +33,13 @@ Consider these dimensions together:
 - **Recovery cost:** Can the result be reviewed, corrected, or discarded
   cheaply?
 
-Start with Sol. Keep work there when ambiguity or blast radius dominates, or
-when review would require Sol to reconstruct most implementation decisions.
-When delegation clearly wins, prefer Luna if Sol can supply a complete ordered
-walkthrough, ownership is bounded, validation is decisive, and recovery is
-cheap. Use Terra only when implementation needs continuing judgment, native
-shared-workspace integration, or valuable parallel decomposition that Luna
-cannot provide. Terra applies the same cutoff before routing a bounded part of
-its assignment to Luna.
+Keep tiny implementation in Sol when delegation overhead would exceed the edit.
+For reasonably sized execution, prefer Luna when ownership is bounded,
+validation is decisive, and Sol can give important direction without planning
+every edit. Use Terra when implementation needs continuing judgment, native
+shared-workspace integration, or valuable parallel decomposition. Terra
+applies the same cutoff before routing a bounded part of its assignment to
+Luna.
 
 Any task category can land at any tier. A precise production change with a
 strong regression test may be a good Luna assignment. A short read-only task
@@ -52,13 +51,13 @@ Before creating a Luna task, its Sol or Terra creator must be able to answer yes
 to all of these:
 
 1. Can I state one bounded outcome and the decisions already made?
-2. Can I give an ordered walkthrough with exact files, symbols, invariants,
-   expected intermediate states, and validation?
+2. Can I give the important decisions, preferred direction, relevant context,
+   invariants, likely traps, and validation without planning every edit?
 3. Can I grant exclusive ownership or isolate the work in a worktree?
 4. Can I name validation that would expose the likely bad implementations?
 5. Can I inspect and integrate the result more cheaply than doing it myself?
 
-If the contract becomes longer or harder to reason about than the work, keep
-the work with its current owner. If Luna fails because the contract was
-incomplete, improve the walkthrough once. Escalate to Terra only when its
-continuing judgment now provides a clear advantage over direct Sol.
+If the brief becomes longer or harder to reason about than the work, keep the
+work with its current owner. If Luna fails because important guidance was
+missing, add that guidance once. Route to Terra when the remaining blocker is
+continuing implementation judgment rather than missing direction.

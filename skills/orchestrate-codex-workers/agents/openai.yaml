@@ -1,6 +1,6 @@
 interface:
   display_name: "Codex Worker Orchestration"
-  short_description: "Use Sol first, then guided Luna when justified"
-  default_prompt: "Use $orchestrate-codex-workers to implement this change with Sol-first routing and a guided Luna task only when delegation clearly wins."
+  short_description: "Delegate implementation with lightweight Sol guidance"
+  default_prompt: "Use $orchestrate-codex-workers to delegate non-trivial implementation while Sol supplies important opinions, steering, and targeted review."
 policy:
   allow_implicit_invocation: true
