@@ -10,13 +10,14 @@ creates it owns its entire lifecycle.
    surface exposes project listing, task creation, waiting, messaging, and
    archival tools.
 2. Confirm the assignment passes the Luna cutoff in `model-routing.md`.
-3. Prepare the complete contract from `worker-contract.md`.
+3. Prepare the complete contract and ordered walkthrough from
+   `worker-contract.md`.
 4. Choose a committed starting branch that contains every dependency the
    worker needs. Use a working-tree snapshot only when uncommitted state is
    essential and the snapshot cannot capture unrelated user changes.
 
-If these conditions are not met, Sol routes the work to Terra or Terra
-completes the work itself.
+If these conditions are not met, the current owner keeps the work. Route to
+Terra only when the Terra exception independently clears the break-even gate.
 
 ## 2. Create
 
@@ -25,13 +26,15 @@ completes the work itself.
    same-directory task that can race the parent workspace.
 3. Explicitly select `gpt-5.6-luna` with `max` reasoning.
 4. Title the task `luna: <bounded outcome>`.
-5. Include the full worker contract in the initial prompt.
+5. Include the full worker contract, ordered walkthrough, and named decision
+   gates in the initial prompt.
 6. Record the returned task ID, host ID, title, scope, and starting branch in a
    small parent-side ledger.
 
-If Luna or task creation is unavailable, record the fallback and route to
-Terra or continue with the current owner. Do not build a replacement MCP server
-during the implementation task.
+If Luna or task creation is unavailable, record the fallback and continue with
+the current owner by default. Use Terra only when its exception independently
+clears the break-even gate. Do not build a replacement MCP server during the
+implementation task.
 
 ## 3. Wait and Steer
 
@@ -43,8 +46,9 @@ during the implementation task.
 - On a timeout without new evidence, inspect the latest task snapshot once to
   diagnose a stall, missed event, or failure. Resume the event wait when the
   task is healthy.
-- Treat waiting as supervision, not abandonment. Inspect progress at the
-  contract's meaningful direction checkpoints.
+- Treat waiting as supervision, not abandonment. Have Luna request attention
+  with evidence at the contract's named decision gates; do not poll routine
+  commentary or deterministic progress.
 - When the task asks for a decision, supply it when it is inside the creator's
   authority. A Terra creator escalates product or architecture decisions to
   Sol.
@@ -68,7 +72,8 @@ during the implementation task.
 4. Run the contract's validation again in the integrated workspace.
 5. If validation fails, diagnose the first failure. Send a well-specified
    correction to the same Luna task when the fix remains bounded; otherwise
-   have the creator own it or route it to Terra.
+   have the creator own it. Route to Terra only when its exception independently
+   clears the break-even gate.
 
 Luna's validation report is evidence. The creator's post-integration validation
 is the acceptance gate.

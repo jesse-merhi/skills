@@ -19,6 +19,10 @@ Recommended approach
   The assigning agent's best path, repository pattern to follow, known traps,
   and alternatives already ruled out.
 
+Execution walkthrough
+  For Luna: ordered stages with exact files or symbols, intended changes,
+  expected intermediate states, validation, and consequential pause points.
+
 Ownership
   Files or components the worker may change; concurrent areas it must leave
   untouched.
@@ -52,6 +56,9 @@ Stop conditions
 - Assign one bounded outcome per worker.
 - Give the worker the best known implementation approach. Do not make it spend
   time rediscovering guidance the assigning agent can already provide.
+- For Luna, translate the approach into a complete ordered walkthrough. Remove
+  unresolved design choices and broad instructions such as “inspect the repo
+  and decide.”
 - When the native spawn tool cannot combine explicit model or effort overrides
   with a full-history fork, use a bounded or empty context fork and carry every
   required fact in this contract.
@@ -64,10 +71,14 @@ Stop conditions
 - Specify how work integrates with concurrent changes. Give write ownership to
   one worker only.
 - Require validation before the worker reports completion. When no decisive
-  validation exists, keep the work with the assigning agent, route it to Terra,
-  or define an observable manual check first.
+  validation exists, keep the work with the assigning agent or define an
+  observable manual check first. Use Terra only when its exception independently
+  clears the break-even gate.
 - Require the worker to stop and report evidence before a material change of
   approach. The assigning agent decides whether to steer, rescope, or continue.
+- Make Luna request attention only at named decision gates, contradictory
+  evidence, or failed required validation. Do not create timer-based or
+  edit-by-edit checkpoints.
 - For a native worker, make direction checkpoints, decision requests,
   blockers, and completion the reporting events. Routine progress continues
   without timer-based status messages. The assigning Sol agent waits with
