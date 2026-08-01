@@ -32,9 +32,10 @@ layer would add no useful judgment. Luna does not delegate further.
 
 ## Delegation Break-even
 
-Before creating any worker, compare the coordination cost with doing the work
-in Sol. Coordination includes writing the contract, waiting, reviewing the
-diff, integrating it, and rerunning validation.
+Delegate only when the expected effort to write the contract, coordinate the
+worker, review and integrate its diff, and independently validate the result is
+lower than implementing and validating the change in Sol. When the comparison
+is close or uncertain, keep the work in Sol.
 
 Keep the work in Sol when it is one focused local edit with limited context, no
 clean independent slice, and one straightforward validation path. A normal
@@ -45,6 +46,30 @@ Delegate only when the task has enough implementation volume, context-heavy
 reading, validation work, or separable ownership that the worker saves more
 Sol effort than coordination consumes. Judge size by workflow cost rather than
 predicted lines changed.
+
+## Active Oracle Supervision
+
+Treat Terra and Luna as capable but untrusted implementers. Sol remains the
+active guide throughout delegated work, not only the author of the first prompt
+and reviewer of the final diff.
+
+- Give each worker Sol's best known approach, relevant repository pattern,
+  decisions already made, and likely failure modes before implementation.
+- Require a worker to report before a material change of approach instead of
+  silently pivoting after discovery or failure.
+- Watch meaningful progress, direction changes, test failures, and scope
+  growth. When Sol sees a mistaken assumption, repeated unproductive work, or
+  a better path, steer the worker immediately with concrete reasoning and an
+  updated approach.
+- Have Terra actively supervise Luna tasks it creates and surface material
+  pivots or repeated failures to Sol. Sol may steer Terra or Luna whenever its
+  guidance is likely to save time or improve correctness.
+- Continue in the same worker context when correcting direction. Do not wait
+  passively for completion once evidence shows the worker is wandering.
+
+Avoid ceremony during correct, deterministic progress. The purpose of
+supervision is to prevent expensive wrong turns, not to require approval for
+every edit.
 
 ## Workflow
 
@@ -76,7 +101,8 @@ predicted lines changed.
    - Read [worker-contract.md](references/worker-contract.md) before writing a
      Terra or Luna prompt.
    - Give the worker decisions, file or symbol boundaries, invariants,
-     acceptance criteria, validation commands, and the required return shape.
+     Sol's recommended approach, acceptance criteria, validation commands, and
+     the required return shape.
    - Keep design and unresolved judgment with the assigning agent.
    - Complete this step only when the prompt is independently executable.
 
@@ -87,6 +113,8 @@ predicted lines changed.
      create, wait, integrate, validate, and archive lifecycle.
    - Make the Luna task's creator responsible for its prompt, decisions,
      integration, independent validation, and archival.
+   - Have Sol inspect meaningful progress and proactively steer mistaken
+     assumptions, direction changes, repeated failures, or unnecessary scope.
    - Continue corrections in the same worker or task while its context is
      useful. Supply failing evidence and the expected behavior, not a vague
      request to try again.
@@ -113,6 +141,8 @@ predicted lines changed.
 - The root retained specification, integration, and final judgment.
 - Delegation cleared the break-even gate; small focused changes remained in
   Sol.
+- Sol supplied an approach and promptly corrected every observed worker drift,
+  material pivot, or repeated failure.
 - Every native worker used Terra Max and no Terra worker spawned a native child.
 - Every Luna task used Max reasoning, received a complete contract, and was
   integrated, independently validated, and archived by its creator.
