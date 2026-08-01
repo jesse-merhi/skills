@@ -37,9 +37,17 @@ during the implementation task.
 
 - Use the task-wait primitive with a bounded timeout; do useful independent
   work between waits rather than polling repeatedly.
+- Treat waiting as supervision, not abandonment. Inspect progress at the
+  contract's meaningful direction checkpoints.
 - When the task asks for a decision, supply it when it is inside the creator's
   authority. A Terra creator escalates product or architecture decisions to
   Sol.
+- Steer as soon as evidence shows a mistaken assumption, scope drift, repeated
+  failure, or avoidable detour. Give the worker the diagnosis, preferred
+  approach, supporting repository evidence, and unchanged acceptance boundary.
+- Require Luna to report before materially changing its approach. A Terra
+  creator surfaces consequential pivots and repeated failures to Sol; Sol may
+  provide stronger guidance directly or through Terra.
 - Send corrections to the same task so it retains context. Include the failing
   command, observed output, expected behavior, and permitted scope.
 - Require the task to return one scoped commit. Treat the parent task's pull

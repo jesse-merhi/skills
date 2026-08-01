@@ -15,6 +15,10 @@ Starting point
 Context
   Entry points, symbols, supporting files, and prior decisions.
 
+Recommended approach
+  The assigning agent's best path, repository pattern to follow, known traps,
+  and alternatives already ruled out.
+
 Ownership
   Files or components the worker may change; concurrent areas it must leave
   untouched.
@@ -30,6 +34,10 @@ Validation
   Exact commands or manual checks, expected success, and the instruction to
   stop on the first failure and diagnose it before continuing.
 
+Direction checkpoints
+  Discoveries, failures, scope changes, or proposed pivots that must be
+  reported before the worker continues.
+
 Delivery
   Required commit or artifact, changed-file summary, validation evidence, and
   remaining risks or blockers.
@@ -41,6 +49,8 @@ Stop conditions
 ## Prompting Rules
 
 - Assign one bounded outcome per worker.
+- Give the worker the best known implementation approach. Do not make it spend
+  time rediscovering guidance the assigning agent can already provide.
 - When the native spawn tool cannot combine explicit model or effort overrides
   with a full-history fork, use a bounded or empty context fork and carry every
   required fact in this contract.
@@ -55,6 +65,8 @@ Stop conditions
 - Require validation before the worker reports completion. When no decisive
   validation exists, keep the work with the assigning agent, route it to Terra,
   or define an observable manual check first.
+- Require the worker to stop and report evidence before a material change of
+  approach. The assigning agent decides whether to steer, rescope, or continue.
 - Tell an independent Luna task that the parent task owns final delivery. Have
   it create one scoped local commit and return the commit SHA; it must not push
   or open a second pull request.
@@ -67,6 +79,7 @@ Behavior: what now works from the user's perspective
 Changed files: exact paths and why each changed
 Commit: SHA for an independent task, otherwise omitted
 Validation: commands/checks and exact result
+Direction changes: none | change, evidence, and guidance received
 Risks: unresolved uncertainty, assumptions, or none
 ```
 
