@@ -53,8 +53,8 @@ Stop conditions
 - Specify how work integrates with concurrent changes. Give write ownership to
   one worker only.
 - Require validation before the worker reports completion. When no decisive
-  validation exists, keep the work with Terra or define an observable manual
-  check first.
+  validation exists, keep the work with the assigning agent, route it to Terra,
+  or define an observable manual check first.
 - Tell an independent Luna task that the parent task owns final delivery. Have
   it create one scoped local commit and return the commit SHA; it must not push
   or open a second pull request.

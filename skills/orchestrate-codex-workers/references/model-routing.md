@@ -2,14 +2,15 @@
 
 Use a sliding judgment. Route according to how much uncontained judgment the
 work requires and how reliably the result can be checked, not according to a
-fixed list of task categories.
+fixed list of task categories. Apply the skill's delegation break-even gate
+before choosing a worker tier.
 
 ## Working Trade-off
 
 | Tier | Strength | Cost and speed | Default role |
 | --- | --- | --- | --- |
 | Sol Extra High | Best judgment under ambiguity and broad context | Highest relative cost | Oracle, specification, architecture, review |
-| Terra Max | Strong implementation with better economics | Middle tier | Default native implementer and Luna supervisor |
+| Terra Max | Strong implementation with better economics | Middle tier | Native implementer and optional Luna supervisor |
 | Luna Max | Capable when direction is exact; most sensitive to missing context | Lowest relative cost and fastest throughput | Optional independent worker |
 
 For local planning, treat the user's rough Sol `10/10` intelligence and cost,
@@ -32,9 +33,12 @@ Consider these dimensions together:
 - **Recovery cost:** Can the result be reviewed, corrected, or discarded
   cheaply?
 
-Keep work with Sol when ambiguity or blast radius dominates. Route
-implementation to Terra by default. Let Terra select Luna when the contract is
-complete, ownership is bounded, validation is decisive, and recovery is cheap.
+Keep work with Sol when ambiguity or blast radius dominates. Sol may route
+implementation directly to Luna when the contract is complete, ownership is
+bounded, validation is decisive, recovery is cheap, and Terra would only relay
+the same contract. Use Terra when implementation needs continuing judgment,
+shared-workspace integration, or further decomposition. Terra may apply the
+same cutoff to route a bounded part of its assignment to Luna.
 
 Any task category can land at any tier. A precise production change with a
 strong regression test may be a good Luna assignment. A short read-only task
@@ -42,7 +46,8 @@ that requires architectural interpretation may belong with Terra or Sol.
 
 ## Luna Cutoff
 
-Before creating a Luna task, Terra must be able to answer yes to all of these:
+Before creating a Luna task, its Sol or Terra creator must be able to answer yes
+to all of these:
 
 1. Can I state one bounded outcome and the decisions already made?
 2. Can I give the minimum relevant files, symbols, and invariants?
@@ -50,6 +55,7 @@ Before creating a Luna task, Terra must be able to answer yes to all of these:
 4. Can I name validation that would expose the likely bad implementations?
 5. Can I inspect and integrate the result more cheaply than doing it myself?
 
-If the contract becomes longer or harder to reason about than the work, keep
-the work in Terra. If Luna fails because the contract was incomplete, improve
-the contract once; if judgment remains the blocker, Terra owns the correction.
+If the contract becomes longer or harder to reason about than the work, Sol
+routes to Terra or Terra keeps the work. If Luna fails because the contract was
+incomplete, improve the contract once; if judgment remains the blocker, the
+creator owns the correction or escalates it to the appropriate tier.
