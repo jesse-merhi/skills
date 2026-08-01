@@ -1,14 +1,14 @@
 ---
 name: orchestrate-codex-workers
-description: 'Orchestrate authorized repository changes across Sol, Terra Max, and Luna Max. Load before planning or implementing any repository change so Sol applies the delegation break-even gate, event-driven supervision, and independent validation.'
+description: 'Route authorized repository changes with Sol as the default implementer and oracle, guided Luna Max tasks as the preferred delegation exception, and Terra Max only when continuing judgment or native parallelism justifies it. Load before planning or implementing any repository change.'
 ---
 
 # Orchestrate Codex Workers
 
 Apply this skill as the routing layer around repository and domain skills. Keep
-the primary Sol context focused on requirements, decisions, integration, and
-final judgment; move substantial implementation volume to cheaper workers
-without delegating accountability.
+implementation in Sol by default. Delegate only when a concrete advantage
+survives the cost of writing the contract, guiding the worker, reviewing the
+result, integrating it, and independently validating it.
 
 Respect an explicit user request to use a different model, work without
 delegation, or stop at a plan. If a required model or tool is unavailable, use
@@ -18,34 +18,37 @@ requested topology.
 ## Target Topology
 
 ```text
-Sol Extra High: oracle, specification, decomposition, review, final validation
-├── Luna Max: optional direct independent Codex task
-└── Terra Max: native implementation agent; native depth ends here
+Sol Extra High: default implementer, oracle, specification, review, validation
+├── Luna Max: preferred delegated implementer in an independent Codex task
+└── Terra Max: exceptional native implementer; native depth ends here
     └── Luna Max: optional independent Codex task
 ```
 
 Only the Sol root invokes native subagent tools. Explicitly select Terra with
-Max reasoning for every native worker. Sol or Terra may create an independent
-Luna Max Codex task when its routing judgment supports that choice and the task
-tools are available. Sol may route directly to Luna when a Terra supervision
-layer would add no useful judgment. Luna does not delegate further.
+Max reasoning for every native worker. When delegation clears the gate, prefer
+a direct independent Luna Max Codex task with a complete walkthrough. Use
+Terra only when Luna would need unresolved continuing judgment, native shared-
+workspace coordination, or valuable parallel decomposition. Sol or Terra may
+create Luna tasks. Luna does not delegate further.
 
 ## Delegation Break-even
 
-Delegate only when the expected effort to write the contract, coordinate the
-worker, review and integrate its diff, and independently validate the result is
-lower than implementing and validating the change in Sol. When the comparison
-is close or uncertain, keep the work in Sol.
+Use direct Sol implementation as the baseline. Delegate only when the expected
+Sol effort and total credit cost to write the contract, walk the worker through
+the change, coordinate it, review and integrate its diff, and independently
+validate the result are lower than implementing and validating directly in
+Sol. When the comparison is close or uncertain, keep the work in Sol.
 
-Keep the work in Sol when it is one focused local edit with limited context, no
-clean independent slice, and one straightforward validation path. A normal
-five-line change should remain in Sol. A tiny but high-risk change also remains
-in Sol because it needs judgment, not implementation capacity.
+Keep the work in Sol when it is one cohesive change and Sol would need to
+reconstruct most implementation decisions during review. Size alone does not
+clear the gate: a substantial single feature can still be faster and cheaper
+in Sol. A normal five-line change and a tiny high-risk change remain in Sol.
 
-Delegate only when the task has enough implementation volume, context-heavy
-reading, validation work, or separable ownership that the worker saves more
-Sol effort than coordination consumes. Judge size by workflow cost rather than
-predicted lines changed.
+Delegate when bounded mechanical volume, decisive validation, context
+isolation, or genuinely parallel ownership saves more Sol effort than
+coordination consumes. When delegating, test Luna first because its economics
+can tolerate more guidance. Escalate to Terra only when Terra's additional
+judgment is itself the concrete advantage.
 
 ## Active Oracle Supervision
 
@@ -55,6 +58,9 @@ and reviewer of the final diff.
 
 - Give each worker Sol's best known approach, relevant repository pattern,
   decisions already made, and likely failure modes before implementation.
+- For Luna, turn that approach into an ordered walkthrough with exact targets,
+  expected intermediate states, validation, and named decision gates. Do not
+  ask Luna to discover architecture or silently fill consequential gaps.
 - Define direction checkpoints in the worker contract. Have the worker send a
   mailbox event when it needs a decision, reaches a material discovery or
   failure, proposes a scope or approach change, or completes its assignment.
@@ -80,9 +86,28 @@ and reviewer of the final diff.
 Let correct, deterministic progress remain quiet. Spend Sol turns on worker
 events, concrete evidence, steering, integration, and review.
 
+## Guided Luna Execution
+
+Treat a Luna task like a fast implementer following a senior engineer's
+runbook.
+
+- Give one bounded outcome and an ordered sequence of implementation stages.
+- For each material stage, name the files or symbols, the intended change, the
+  invariants, the expected intermediate result, and the validation to run.
+- Resolve product and architecture choices before creation. List known traps
+  and rejected alternatives so Luna does not rediscover them.
+- Name only consequential pause points: a failed required check, contradictory
+  repository evidence, a missing decision, or a proposed change of approach.
+  Have Luna request attention with evidence at those gates. Routine correct
+  execution remains quiet.
+- Require Luna to run every specified validation before completion. A claim of
+  completion without evidence is not acceptable.
+- Keep corrections in the same Luna task while its context remains useful.
+  Archive it after accepting or rejecting the result.
+
 ## Workflow
 
-1. Frame the change before delegation.
+1. Frame the change before implementation or delegation.
    - Read the applicable repository instructions and domain skills.
    - Resolve consequential ambiguity or ask the user when it cannot be resolved
      safely.
@@ -93,18 +118,17 @@ events, concrete evidence, steering, integration, and review.
 
 2. Choose the worker tier.
    - Read [model-routing.md](references/model-routing.md).
-   - Apply the delegation break-even gate. Continue locally in Sol when the
-     task does not clear it.
+   - Start from direct Sol implementation. Apply the delegation break-even
+     gate and continue locally when the task does not clearly pass.
    - Keep architecture, cross-cutting trade-offs, risky debugging calls, and
      final review with Sol.
-   - For work that clears the gate, route directly from Sol to Luna when Sol can
-     provide a complete bounded contract, validation is decisive, and Terra
-     would only relay the prompt.
-   - Route substantial implementation to one or more Terra Max native workers.
-     Give parallel workers disjoint ownership.
+   - For work that clears the gate, prefer direct Luna Max when Sol can provide
+     a complete walkthrough, validation is decisive, and recovery is cheap.
+   - Use one or more Terra Max native workers only when continuing judgment,
+     native shared-workspace coordination, or disjoint parallel ownership
+     provides an advantage Luna cannot.
    - Let each Terra worker decide whether Luna improves its assigned scope.
-     Do not force Luna by task category or avoid it merely because code changes
-     are involved.
+     Terra applies the same Sol-first break-even test to that Luna task.
 
 3. Dispatch a complete contract.
    - Read [worker-contract.md](references/worker-contract.md) before writing a
@@ -113,16 +137,19 @@ events, concrete evidence, steering, integration, and review.
      Sol's recommended approach, acceptance criteria, validation commands, and
      the required return shape.
    - Keep design and unresolved judgment with the assigning agent.
+   - For Luna, include the full ordered walkthrough and its decision gates in
+     the initial prompt.
    - Complete this step only when the prompt is independently executable.
 
 4. Supervise implementation.
-   - Have Terra implement its scope in the native shared workspace.
-   - Wait on Terra's mailbox events with `wait_agent({timeout_ms: 3600000})`.
-     Treat a timeout as the recovery branch, not a recurring progress
-     checkpoint.
    - If Sol or Terra selects Luna, read
      [session-lifecycle.md](references/session-lifecycle.md) and follow the full
      create, wait, integrate, validate, and archive lifecycle.
+   - Have Terra implement its scope in the native shared workspace only when
+     the Terra exception applies.
+   - Wait on Terra's mailbox events with `wait_agent({timeout_ms: 3600000})`.
+     Treat a timeout as the recovery branch, not a recurring progress
+     checkpoint.
    - Make the Luna task's creator responsible for its prompt, decisions,
      integration, independent validation, and archival.
    - Have Sol inspect meaningful progress and proactively steer mistaken
@@ -154,8 +181,10 @@ events, concrete evidence, steering, integration, and review.
 ## Completion Criteria
 
 - The root retained specification, integration, and final judgment.
-- Delegation cleared the break-even gate; small focused changes remained in
-  Sol.
+- Direct Sol was the default; every delegation recorded a concrete advantage
+  that cleared the break-even gate.
+- Luna was the preferred delegated tier and received an ordered walkthrough.
+  Every Terra use identified why Luna was insufficient.
 - Sol supplied an approach and promptly corrected every observed worker drift,
   material pivot, or repeated failure.
 - Every native worker used Terra Max and no Terra worker spawned a native child.

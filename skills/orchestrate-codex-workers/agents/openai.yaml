@@ -1,6 +1,6 @@
 interface:
   display_name: "Codex Worker Orchestration"
-  short_description: "Route implementation across Sol, Terra, and Luna"
-  default_prompt: "Use $orchestrate-codex-workers to implement this change with Sol oversight and cost-aware worker routing."
+  short_description: "Use Sol first, then guided Luna when justified"
+  default_prompt: "Use $orchestrate-codex-workers to implement this change with Sol-first routing and a guided Luna task only when delegation clearly wins."
 policy:
   allow_implicit_invocation: true
