@@ -1,6 +1,6 @@
 interface:
   display_name: "Codex Worker Orchestration"
-  short_description: "Delegate implementation with lightweight Sol guidance"
-  default_prompt: "Use $orchestrate-codex-workers to delegate non-trivial implementation while Sol supplies important opinions, steering, and targeted review."
+  short_description: "Delegate implementation with worker-owned repairs"
+  default_prompt: "Use $orchestrate-codex-workers to delegate substantial implementation, keep Sol as the active oracle and reviewer, and return material fixes to the owning worker."
 policy:
   allow_implicit_invocation: true

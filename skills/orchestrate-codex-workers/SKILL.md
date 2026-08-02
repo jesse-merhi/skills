@@ -21,8 +21,9 @@ requested topology.
 ```text
 Sol Extra High: oracle, important decisions, steering, targeted final review
 ├── Luna Max: preferred bounded implementer in an independent Codex task
-└── Terra Max: judgment-heavy native implementer; native depth ends here
-    └── Luna Max: optional independent Codex task
+├── Terra Max: judgment-heavy native implementer; native depth ends here
+│   └── Luna Max: optional independent Codex task
+└── Fresh Sol High: optional read-only independent audit by exception
 ```
 
 Only the Sol root invokes native subagent tools. Explicitly select Terra with
@@ -168,14 +169,27 @@ making Sol pre-implement the change.
    - Re-run the specified validation in the integration workspace. Treat a
      worker's reported result as evidence, not proof.
    - Send material defects back to the worker that owns them when practical.
-     Use Sol for small integration edits or judgment-heavy corrections when
-     another delegation round would add more risk than value.
+     Keep a correction in Sol only when that correction independently falls
+     below the delegation break-even gate. If it changes behavior or needs new
+     regression coverage across more than one tightly local site, prefer the
+     worker that already owns the implementation context.
 
 6. Close with oracle review.
-   - Have Sol compare the integrated behavior and net diff with the original
-     acceptance criteria.
-   - Run the repository's final relevant verification.
-   - Confirm every independent Luna task is archived, including failed,
+   - Have the active root Sol review the integrated behavior and highest-risk
+     contracts in its existing context. During review, keep material code and
+     regression fixes with the owning Luna or Terra worker; root Sol retains
+     judgment rather than becoming a second implementer.
+   - After a worker repair, have root Sol rerun the failing evidence and resume
+     its targeted review. Escalate Luna work to Terra after a repeated material
+     miss instead of starting an unbounded repair loop.
+   - Use a fresh independent Sol High reviewer only when independence is worth
+     its cold-context cost: high blast radius, weak validation, material worker
+     drift, compromised root impartiality, or an explicit cold-review request.
+     Read [review-lifecycle.md](references/review-lifecycle.md) for that branch.
+   - Have root Sol compare the final evidence with the original acceptance
+     criteria and retain the accept, escalate, or rethink decision.
+   - Run the repository's final relevant verification and confirm every
+     independent implementation and review task is archived, including failed,
      cancelled, or abandoned tasks.
    - Report the implemented behavior, validation, worker fallbacks, and any
      residual risk.
@@ -195,4 +209,8 @@ making Sol pre-implement the change.
 - Every Luna task used Max reasoning, received an opinionated brief, and was
   integrated, independently validated, and archived by its creator.
 - The integration agent independently validated accepted worker changes.
-- Sol reviewed the integrated result against observable acceptance criteria.
+- Root Sol reviewed substantial delegated work without absorbing material
+  implementation fixes. When independence justified a fresh Sol High audit,
+  its reviewer remained read-only and its findings returned to the owning
+  implementer.
+- Root Sol judged the integrated result against observable acceptance criteria.
