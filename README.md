@@ -48,15 +48,16 @@ The skills snap together into the loop I actually run:
    in one session.
 6. **Hand off and let it run.** Use `handoff` for a clean session and
    `parallel-slice-orchestration` when several isolated worktrees should move
-   at once.
+   at once. Use the external `gh-stack` skill when one story needs two or more
+   dependency-ordered review groups.
 7. **Talk to it. Test it.** Use `test-audit`, `frontend-ui-validation`, and
    `diagnose` to prove the thing works instead of trusting the transcript.
 8. **Review it like I hate it.** Use `code-review`, `review-until-clean`,
    `cold-pr-review`, `cold-pr-review-until-clean`, `finding-discipline`,
    and `pr-rubbish-audit`.
-9. **Ship it.** Use `pr-proof-pack`, `monitoring-gh-actions`, and
-   `review-guardrails` to make the evidence, CI state, and review loop
-   readable.
+9. **Ship it.** Use `gh-stack` for dependent PR groups, then
+   `pr-proof-pack`, `monitoring-gh-actions`, and `review-guardrails` to make
+   each layer's evidence, CI state, and review loop readable.
 10. **Bonus: point it at the changelog and tell it to break things.** Findings
    from that usually go straight back through `diagnose`, `handoff`,
    `test-audit`, and `code-review`.
@@ -84,6 +85,9 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 - **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
   `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
   `handoff`, and `session-recall`.
+- **PR delivery:** `pr-proof-pack` and `monitoring-gh-actions` keep review
+  evidence current. GitHub's external `gh-stack` skill, pinned in
+  `external.md`, turns one dependency-ordered story into small logical PRs.
 - **Explanation:** `html-explanations` turns decisions, code flows, incidents,
   models, lessons, and plans into standalone pages built around the reader's
   question.

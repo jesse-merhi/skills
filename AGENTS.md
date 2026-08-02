@@ -56,6 +56,11 @@ resource lifecycle, and graceful shutdown.
 
 - Always work on a branch in a dedicated git worktree and deliver through a
   PR. Never commit directly to main.
+- Choose the PR delivery shape before implementation. Keep one cohesive change
+  in one PR. When one story contains two or more dependent review units, load
+  `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
+  unrelated work in separate PRs or stacks; never invent a dependency merely
+  to group changes.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.
