@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Concept lesson — Idempotency keys</title>
+<style>
+  :root {
+    --bg: #f8f3e8;
+    --paper: #fffdf7;
+    --ink: #211c16;
+    --muted: #6c6459;
+    --line: #ded4c4;
+    --accent: #7446a6;
+    --accent-soft: #eee3f7;
+    --good: #276545;
+    --good-soft: #dfefe5;
+    --bad: #9a3d32;
+    --bad-soft: #f6e2de;
+    --sans: Georgia, "Times New Roman", serif;
+    --ui: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 18px/1.65 var(--sans); }
+  main { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 38px 0 76px; }
+  article { max-width: 74ch; }
+  .eyebrow { color: var(--accent); font: 800 13px/1 var(--ui); letter-spacing: .08em; text-transform: uppercase; }
+  h1 { max-width: 13ch; margin: 14px 0; font: 750 clamp(2.5rem, 7vw, 5rem)/.98 var(--ui); letter-spacing: -.05em; }
+  .lead { color: var(--muted); font-size: 1.15rem; }
+  .mission { margin: 28px 0; padding: 18px 20px; border-left: 4px solid var(--accent); background: var(--accent-soft); font-family: var(--ui); }
+  .mission strong { display: block; margin-bottom: 5px; }
+  h2 { margin: 42px 0 14px; font: 750 1.45rem/1.2 var(--ui); }
+  code { padding: .1em .34em; border: 1px solid #d6cbdc; border-radius: 4px; background: #eee7f2; font: .85em var(--mono); }
+  .sequence {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    max-width: 980px;
+    margin-top: 18px;
+  }
+  .step { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); font-family: var(--ui); }
+  .step span { color: var(--accent); font: 800 12px/1 var(--mono); text-transform: uppercase; }
+  .step h3 { margin: 8px 0; font-size: 1rem; }
+  .step p { margin: 0; color: var(--muted); font-size: 15px; }
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 980px;
+  }
+  .example { padding: 18px; border-radius: 12px; font-family: var(--ui); }
+  .example.bad { border: 1px solid #d9aea6; background: var(--bad-soft); }
+  .example.good { border: 1px solid #a9cdb9; background: var(--good-soft); }
+  .example strong { display: block; margin-bottom: 6px; }
+  .example p { margin: 0; font-size: 15px; }
+  .quiz {
+    max-width: 760px;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+    font-family: var(--ui);
+  }
+  .quiz p { margin-top: 0; }
+  .answers { display: grid; gap: 8px; }
+  button {
+    min-height: 48px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    font: 650 15px/1.3 var(--ui);
+    text-align: left;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 3px solid #b994d7; outline-offset: 2px; }
+  button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .feedback { min-height: 28px; margin: 14px 0 0; color: var(--muted); }
+  .feedback.good { color: var(--good); }
+  .feedback.bad { color: var(--bad); }
+  details { max-width: 760px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  summary { min-height: 48px; padding: 12px 0; cursor: pointer; font: 750 15px/1.4 var(--ui); }
+  details p { margin-top: 0; color: var(--muted); }
+  @media (max-width: 680px) {
+    main { width: min(100% - 24px, 680px); padding-top: 20px; }
+    .sequence, .pair { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff; }
+    main { width: 100%; padding: 0; }
+    .quiz { display: none; }
+    .step, .example { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <article>
+    <div class="eyebrow">Concept lesson · one invariant</div>
+    <h1>Retry the request, not the effect.</h1>
+    <p class="lead">An idempotency key lets a server recognize that two network requests represent the same intended action. The client may retry; the server performs the action once and returns the saved result.</p>
+    <div class="mission"><strong>Mission</strong>After this lesson, you should be able to explain where the key is created, what the server stores, and why generating a new key on retry defeats the protection.</div>
+
+    <h2>The invariant</h2>
+    <p>All attempts for one user intention carry the same key. Different intentions carry different keys.</p>
+  </article>
+
+  <section class="sequence" aria-label="Worked example">
+    <div class="step"><span>Attempt 1</span><h3>Client sends payment</h3><p><code>Idempotency-Key: pay_7F2</code>. The network drops after the server commits.</p></div>
+    <div class="step"><span>Attempt 2</span><h3>Client retries</h3><p>The same body and the same key reach the server.</p></div>
+    <div class="step"><span>Result</span><h3>Server returns receipt</h3><p>It finds <code>pay_7F2</code>, skips the charge, and returns the stored response.</p></div>
+  </section>
+
+  <article>
+    <h2>The boundary that matters</h2>
+  </article>
+  <section class="pair" aria-label="Incorrect and correct retries">
+    <div class="example bad"><strong>Wrong · new key per attempt</strong><p><code>pay_7F2</code> then <code>pay_9A1</code>. The server sees two intentions and may charge twice.</p></div>
+    <div class="example good"><strong>Right · one key per intention</strong><p><code>pay_7F2</code> on both attempts. The server can replay the original result.</p></div>
+  </section>
+
+  <article>
+    <h2>Check the mental model</h2>
+    <div class="quiz" id="quiz">
+      <p><strong>A user double-clicks “Pay”, but the UI creates a fresh idempotency key for each click. What can the server safely conclude?</strong></p>
+      <div class="answers">
+        <button type="button" data-correct="false">Both requests are retries of one payment.</button>
+        <button type="button" data-correct="true">The requests may be two separate payment intentions.</button>
+        <button type="button" data-correct="false">The second request must be discarded.</button>
+      </div>
+      <p class="feedback" id="feedback" aria-live="polite">Choose an answer, then explain why before reading the feedback.</p>
+    </div>
+
+    <h2>Edge case</h2>
+    <details>
+      <summary>What if the same key arrives with a different request body?</summary>
+      <p>Reject it. A key identifies one intention and its original parameters. Reusing it with different input is ambiguous and should not silently return or perform a different action.</p>
+    </details>
+  </article>
+</main>
+<script>
+  const feedback = document.getElementById('feedback');
+  document.querySelectorAll('#quiz button').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('#quiz button').forEach((candidate) => {
+        candidate.setAttribute('aria-pressed', String(candidate === button));
+      });
+      const correct = button.dataset.correct === 'true';
+      feedback.className = `feedback ${correct ? 'good' : 'bad'}`;
+      feedback.textContent = correct
+        ? 'Correct. Different keys mean the server cannot prove the clicks belong to one intention.'
+        : 'Not quite. The server only sees different keys, so it must treat the requests as potentially separate intentions.';
+    });
+  });
+</script>
+</body>
+</html>

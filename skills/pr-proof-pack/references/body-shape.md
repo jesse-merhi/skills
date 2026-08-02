@@ -54,6 +54,11 @@ what happens now. Include the previous behavior only when the contrast matters.>
 - <Important scenario or rule and its observable outcome.>
 - <Second distinct scenario or rule, if needed.>
 
+## Stack context
+
+<Include only for stacked PRs. Example: "Part 2 of 3 — API endpoints. Depends
+on #41; followed by #43.">
+
 ## UI proof
 
 <Include for human-visible UI changes. Put each image directly in the PR body.>
@@ -83,9 +88,15 @@ decision, rollout detail, or risk that materially helps review.>
 ````
 
 Keep `New behavior` first. After that, order proof by usefulness to a reviewer:
-visible UI, request/response or state-transition proof, manual verification,
-then automated checks. Put optional implementation notes last unless a warning
-must be read before verification.
+for a stacked PR, one short `Stack context` section; then visible UI,
+request/response or state-transition proof, manual verification, and automated
+checks. Put optional implementation notes last unless a warning must be read
+before verification.
+
+Keep stack context navigational, not explanatory. Name the layer's position,
+purpose, direct dependency, and next PR when present. Do not repeat the whole
+feature summary in every PR; the GitHub stack map already provides the full
+chain.
 
 For a tiny change, a short paragraph plus checks may be enough. Do not create
 empty sections or pad the body to match the template.
@@ -195,6 +206,7 @@ or verify the new behavior:
 - raw terminal dumps, secrets, tokens, and verbose CI output;
 - claims such as "works as expected" or "tests pass" without saying what
   behavior was exercised.
+- changes owned by another stack layer or a repeated whole-stack summary.
 
 Implementation detail belongs in the body only when it explains a meaningful
 constraint, risk, migration, compatibility decision, rollout concern, or review

@@ -1,4 +1,4 @@
 interface:
-  display_name: Parallel Slice Orchestration
-  short_description: Decompose tickets into parallel subagent TDD work.
-  default_prompt: Implement this spec or ticket plan with subagents using TDD, preserving AFK/HITL checkpoints.
+  display_name: "Parallel Slice Orchestration"
+  short_description: "Parallelize slices and plan logical PR delivery."
+  default_prompt: "Use $parallel-slice-orchestration to implement this plan with isolated subagents, preserve AFK/HITL checkpoints, and choose one PR, separate PRs, or a dependency-ordered gh-stack from the dependency map."

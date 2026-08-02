@@ -20,8 +20,11 @@ Good fits:
 ## Workflow
 
 1. Decide the one thing the page should help the user understand.
-2. Pick a format from `references/html-effectiveness-patterns.md`.
-3. Create a local standalone HTML file. Use `assets/explanation-template.html` for a small starter, or copy a closer template from `assets/html-effectiveness/examples/`.
+2. Pick a reader question and format from
+   `references/html-effectiveness-patterns.md`.
+3. Create a local standalone HTML file. Use
+   `assets/explanation-template.html` for a small starter or copy the closest
+   repo-owned pattern from `assets/patterns/`.
 4. Keep the final chat reply short: what file you created, an absolute
    Markdown link to open it, what it covers, and how it was verified.
 
@@ -36,7 +39,11 @@ Good fits:
   lower sections or `<details>` blocks unless the user's explicit goal
   is code reading.
 - Use real labels from the task: filenames, functions, API names, states, events, dates, and decisions.
-- Prefer compact sections, tables, flow diagrams, timelines, side-by-side cards, and toggles over long paragraphs.
+- Keep primary prose near 70–75 characters per line.
+- Prefer compact sections, tables, flow diagrams, timelines, comparisons, and
+  controls that reveal consequences over long paragraphs or repeated cards.
+- Use interaction only when it lets the reader test a claim, change an
+  assumption, inspect a state, or check their understanding.
 - Put long code snippets inside `<details>` blocks or side-by-side panels.
 - If styling inline `<code>` and block `<pre><code>`, add a dedicated
   `pre code` rule that resets inline-code backgrounds, borders, padding,
@@ -46,6 +53,14 @@ Good fits:
 - If the page explains code, link or label the exact files and symbols used as evidence.
 - If the page includes user data or secrets from local files, keep it local and do not add external scripts, fonts, analytics, or image URLs.
 - Make it readable on mobile and desktop.
+- At 320 CSS pixels, reflow into one column without page-level horizontal
+  scrolling. Let wide tables and code blocks scroll inside their own
+  containers.
+- Use color and a text label or shape together for status.
+- Give interactive controls visible labels, keyboard behavior, visible focus,
+  and comfortable touch targets.
+- Honor `prefers-reduced-motion` and include print styles that remove controls
+  and decorative backgrounds without removing the argument.
 
 ## Page Shapes
 
@@ -91,18 +106,21 @@ Before saying the work is done:
   clear what the recommendation or explanation is before any code
   block, rewrite the top of the page.
 - Check at least one narrow viewport if the page is meant to be read on mobile.
+- Check for page-level horizontal overflow at both wide and 320px viewports.
+- Print-preview or otherwise inspect print CSS when the page is a report,
+  handoff, plan, or lesson likely to be saved.
 - Report anything you did not verify.
 - Always include a clickable absolute local-file Markdown link in the final
   reply, using the file path format supported by the current harness.
 
-## Source Inspiration
+## Pattern Library
 
-This skill vendors examples from `ThariqS/html-effectiveness` under `assets/html-effectiveness/examples/`. Read `references/html-effectiveness-patterns.md` when choosing a page shape.
+Read `references/html-effectiveness-patterns.md` before choosing a page shape.
+The six examples in `assets/patterns/` are intentionally different reasoning
+structures, not visual themes. Copy the closest structure, replace all sample
+facts, and remove sections that do not help the reader.
 
-When reusing one of those example files:
-
-- Copy the closest HTML file into the task output location.
-- Replace the fictional sample data with task-specific facts.
-- Keep the existing copyright/SPDX header.
-- Keep the vendored `assets/html-effectiveness/LICENSE` available with the skill.
-- Preserve the standalone no-build style unless the user asks for something else.
+The library was informed by GOV.UK content patterns, WCAG reflow guidance,
+MDN live examples, Distill, Tufte CSS, Observable Plot, and a review of
+`ThariqS/html-effectiveness`. The full research and source links live in
+[`research/html-explanation-patterns.md`](../../research/html-explanation-patterns.md).

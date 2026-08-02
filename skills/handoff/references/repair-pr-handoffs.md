@@ -10,18 +10,26 @@ When the next session is expected to fix code:
   but make clear that implementation should happen in the repair worktree
 - tell it to load the relevant project, testing, vertical-slice/TDD, and
   proof-pack skills before claiming repair readiness
-- tell it to create a branch and draft PR when the repair is complete unless the
-  user explicitly requested local-only work
-- tell it to run `pr-proof-pack` after the draft PR exists, then run
-  `code-review` on the PR or branch until both review phases are clean or
-  honestly blocked
+- make it choose the PR delivery shape before implementation: one PR for one
+  cohesive review unit, one bottom-to-top stack for two or more dependent
+  review units, and separate PRs or stacks for independent work
+- for a dependent multi-PR story, tell it to load `gh-stack`, name the logical
+  layers in dependency order, and keep all work for that stack inside its
+  dedicated task worktree
+- tell it to create a branch and draft PR, or submit the planned draft stack,
+  when the repair is complete unless the user explicitly requested local-only
+  work
+- tell it to run `pr-proof-pack` for each draft PR after it exists, then run
+  `code-review` bottom-to-top on each PR or branch until both review phases are
+  clean or honestly blocked
 - tell it to resolve in-scope review findings, rerun affected validation, and
   refresh `pr-proof-pack` after any review fixes before calling the PR ready
 - tell it to keep the PR draft/not-ready when proof-pack, review, validation,
   model, tooling, budget, or consult blockers remain
 - require the final report to explain the original bug, root cause, changed
-  files, verification commands, proof artifacts, PR URL/status, `code-review`
-  result, and any residual risk or follow-up
+  files, verification commands, proof artifacts, the ordered PR/stack map with
+  every URL and status, `code-review` results, and any residual risk or
+  follow-up
 
 Do not let a repair handoff end with only "fixed it" or a terse file list. The
 handoff should make the next agent produce enough context for the user to decide

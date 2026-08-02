@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Decision brief — Queue retry policy</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f1e8;
+    --paper: #fffdf8;
+    --ink: #17201b;
+    --muted: #5d675f;
+    --line: #d8d7cc;
+    --accent: #176b4d;
+    --accent-soft: #dcebe3;
+    --warn: #925b12;
+    --warn-soft: #f7ead1;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 var(--sans);
+  }
+  main {
+    width: min(1080px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 36px 0 72px;
+  }
+  header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+    gap: 32px;
+    padding: 28px 0 34px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 14ch;
+    margin: 10px 0 14px;
+    font-size: clamp(2.25rem, 6vw, 4.75rem);
+    line-height: .98;
+    letter-spacing: -.045em;
+  }
+  .lead {
+    max-width: 66ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: 1.15rem;
+  }
+  .decision {
+    align-self: end;
+    padding: 20px;
+    border: 1px solid #a8c8b8;
+    border-radius: 14px;
+    background: var(--accent-soft);
+  }
+  .decision strong { display: block; margin-bottom: 6px; }
+  .decision p { margin: 0; }
+  section { margin-top: 34px; }
+  h2 { margin: 0 0 14px; font-size: 1.35rem; }
+  h3 { margin: 0 0 8px; font-size: 1rem; }
+  p { max-width: 72ch; }
+  .criteria {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .criterion {
+    padding: 18px;
+    border-top: 3px solid var(--line);
+    background: rgba(255,255,255,.48);
+  }
+  .criterion strong { display: block; font-size: 1.65rem; }
+  .criterion span { color: var(--muted); }
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+  }
+  table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  th { color: var(--muted); font-size: 13px; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .recommended td { background: #eef7f1; }
+  .marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 750;
+  }
+  .marker::before {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+  .tradeoffs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .note {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+  }
+  .note.warn { border-color: #d8bd86; background: var(--warn-soft); }
+  .note p, .note ul { margin-bottom: 0; }
+  code {
+    padding: .1em .35em;
+    border: 1px solid #d7d5ca;
+    border-radius: 4px;
+    background: #ebe9df;
+    font: .9em var(--mono);
+  }
+  footer {
+    margin-top: 38px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  @media (max-width: 720px) {
+    main { width: min(100% - 24px, 680px); padding-top: 16px; }
+    header, .criteria, .tradeoffs { grid-template-columns: 1fr; }
+    header { gap: 22px; }
+    h1 { max-width: 11ch; }
+  }
+  @media print {
+    body { background: #fff; }
+    main { width: 100%; padding: 0; }
+    .decision, .note, .criterion { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Decision brief · 31 July 2026</div>
+      <h1>Retry later, without hiding failures.</h1>
+      <p class="lead">Use bounded exponential backoff for transient delivery failures, then move exhausted jobs to the existing dead-letter queue. It gives the queue time to recover without retrying forever.</p>
+    </div>
+    <aside class="decision" aria-label="Recommendation">
+      <strong>Recommendation</strong>
+      <p>Choose option B: 5 attempts over about 15 minutes, with jitter and a visible terminal state.</p>
+    </aside>
+  </header>
+
+  <section aria-labelledby="criteria-heading">
+    <h2 id="criteria-heading">The decision turns on three constraints</h2>
+    <div class="criteria">
+      <div class="criterion"><strong>5 min</strong><span>ordinary provider recovery window</span></div>
+      <div class="criterion"><strong>&lt; 1%</strong><span>acceptable duplicate-delivery risk</span></div>
+      <div class="criterion"><strong>1 owner</strong><span>must be able to inspect every exhausted job</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="comparison-heading">
+    <h2 id="comparison-heading">Options against the same criteria</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Option</th><th>Recovery</th><th>Failure visibility</th><th>Operational cost</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A · Fail once</strong></td>
+            <td>Poor during brief outages</td>
+            <td>Clear</td>
+            <td>Low, but creates manual replay work</td>
+          </tr>
+          <tr class="recommended">
+            <td><span class="marker">B · Bounded backoff</span></td>
+            <td>Strong for transient faults</td>
+            <td>Clear after attempt 5</td>
+            <td>Moderate and predictable</td>
+          </tr>
+          <tr>
+            <td><strong>C · Retry forever</strong></td>
+            <td>Eventually recovers</td>
+            <td>Poor; poison jobs never resolve</td>
+            <td>Unbounded queue pressure</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tradeoffs" aria-label="Trade-offs and next action">
+    <article class="note warn">
+      <h3>Cost we accept</h3>
+      <p>A transient failure may now take 15 minutes to become terminal. The job UI must show attempt count and next retry time so this delay is visible.</p>
+    </article>
+    <article class="note">
+      <h3>Next action</h3>
+      <p>Implement the policy in <code>delivery/retryPolicy.ts</code>, then prove the five-attempt boundary with the fake-clock integration test.</p>
+    </article>
+  </section>
+
+  <footer>
+    Evidence: provider incident log, queue depth chart, and
+    <a href="#comparison-heading">the shared comparison above</a>. Replace these
+    labels with exact task sources.
+  </footer>
+</main>
+</body>
+</html>

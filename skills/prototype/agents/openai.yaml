@@ -1,0 +1,7 @@
+interface:
+  display_name: "Prototype UI Variants"
+  short_description: "Explore distinct UI directions behind a picker"
+  default_prompt: "Use $prototype to build three genuinely different versions of this UI piece behind the standard picker, then wait for my selection."
+
+policy:
+  allow_implicit_invocation: false
