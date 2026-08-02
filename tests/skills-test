@@ -223,6 +223,22 @@ test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "The installer owns the external skill files"
 }
 
+test_gh_stack_workflow_is_pinned_and_wired() {
+  assert_contains "$ROOT_DIR/external.md" "github/gh-stack/tree/v0.1.0/skills/gh-stack"
+  assert_contains "$ROOT_DIR/external.md" "a1b4a3d4d0bcde9ec3a78ab99b2d63af121857a9"
+  assert_contains "$ROOT_DIR/external.md" "gh extension install github/gh-stack --pin v0.1.0 --force"
+  assert_contains "$ROOT_DIR/external.md" "gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent codex --scope user --force"
+  assert_contains "$ROOT_DIR/AGENTS.md" '`gh-stack` and plan a bottom-to-top stack'
+  assert_contains "$ROOT_DIR/skills/parallel-slice-orchestration/SKILL.md" 'GitHub stacks are linear'
+  assert_contains "$ROOT_DIR/skills/handoff/references/repair-pr-handoffs.md" 'tell it to load `gh-stack`'
+  assert_contains "$ROOT_DIR/skills/code-review/references/pr-closeout.md" 'inspect it with `gh stack view --json`'
+  assert_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "scope proof to that layer's direct base"
+  assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" "## PR Delivery"
+  assert_contains "$ROOT_DIR/skills/to-spec/SKILL.md" 'record the logical'
+  assert_contains "$ROOT_DIR/skills/to-tickets/references/ticket-design.md" "Do not assume one"
+  assert_contains "$ROOT_DIR/skills/to-tickets/references/note-template.md" "PR Group Depends On:"
+}
+
 test_wayfinder_obsidian_map_can_advance_its_frontier() {
   ROOT_DIR="$ROOT_DIR" python3 <<'PY'
 from pathlib import Path
@@ -419,6 +435,7 @@ PY
 
 test_skill_frontmatter_is_valid
 test_external_teach_install_is_pinned
+test_gh_stack_workflow_is_pinned_and_wired
 test_retired_impeccable_cleanup_is_documented
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier

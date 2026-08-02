@@ -40,6 +40,13 @@ Excluded:
 - <for frontend UI work: required `frontend-ui-validation` evidence such as mobile/desktop screenshots, layout audit, console check, or trace>
 - <what does not need dedicated coverage>
 
+## PR Delivery
+- Shape: Single PR | Stack | Separate PRs/stacks | Open question
+- Review groups, in dependency order when stacked:
+  1. <logical review unit> — depends on <group or None>; proves <reviewer-visible outcome>
+- Boundary rule: <why these changes belong together or need separate review>
+- Keep independent groups out of a linear stack; do not turn every acceptance criterion into its own PR.
+
 ## Open Questions
 - <decision still needed>
 

@@ -1,6 +1,6 @@
 ---
 name: to-tickets
-description: 'Break a plan, spec, or conversation into tracer-bullet tickets with blocking edges, then publish them as Obsidian Issues.'
+description: 'Break a plan, spec, or conversation into tracer-bullet tickets with blocking edges and logical PR delivery groups, then publish them as Obsidian Issues.'
 ---
 
 # To Tickets
@@ -21,18 +21,23 @@ Obsidian `Issues/`.
 4. Draft tracer-bullet tickets using [ticket-design.md](references/ticket-design.md).
    Give each ticket its blocking edges. A ticket with no blockers can start
    immediately.
-5. Mark each ticket `AFK` or `HITL`.
-6. Present the proposed breakdown as a numbered list. For each ticket, show:
-   title, blocked by, mode, what it delivers, covered acceptance criteria, and
-   any frontend validation state/viewport.
-7. Ask the user whether the granularity feels right, whether the blocking edges
-   are correct, and whether any tickets should be merged or split.
-8. Iterate until the user approves the breakdown.
-9. Publish the approved tickets to Obsidian `Issues/` using
+5. Derive PR delivery groups from the ticket graph using
+   [ticket-design.md](references/ticket-design.md). Preserve an approved spec
+   shape unless the detailed blocker graph disproves it. Load `gh-stack` for a
+   strict dependency chain of two or more review groups. Keep independent graph
+   paths as standalone PRs or separate stacks.
+6. Mark each ticket `AFK` or `HITL`.
+7. Present the proposed breakdown as a numbered list. For each ticket, show:
+   title, blocked by, mode, PR group/delivery, what it delivers, covered
+   acceptance criteria, and any frontend validation state/viewport.
+8. Ask the user whether the granularity, blocking edges, and PR grouping feel
+   right, and whether any tickets or review groups should be merged or split.
+9. Iterate until the user approves both the ticket graph and PR delivery map.
+10. Publish the approved tickets to Obsidian `Issues/` using
    [note-template.md](references/note-template.md) and
    [naming.md](references/naming.md). If write access is missing, return the
    Markdown bodies and proposed paths.
-10. Do not close or modify any parent spec unless the user explicitly asks.
+11. Do not close or modify any parent spec unless the user explicitly asks.
 
 ## Context Pointers
 

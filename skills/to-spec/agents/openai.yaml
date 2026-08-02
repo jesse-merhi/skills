@@ -1,7 +1,7 @@
 interface:
   display_name: "To Spec"
-  short_description: "Synthesize a spec into Obsidian Specs."
-  default_prompt: "Use $to-spec to turn this discussion into an Obsidian spec with implementation decisions, agreed testing seams, and open questions."
+  short_description: "Write specs with test and PR delivery seams."
+  default_prompt: "Use $to-spec to turn this discussion into an Obsidian spec with implementation decisions, agreed testing seams, and a single-PR, stacked-PR, or separate-PR delivery shape."
 
 policy:
   allow_implicit_invocation: false
