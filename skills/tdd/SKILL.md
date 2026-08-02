@@ -5,6 +5,10 @@ description: 'Test-driven development. Use when the user wants to build features
 
 # Test-Driven Development
 
+This skill adapts Matt Pocock’s upstream `tdd` skill. Preserve its pre-agreed
+seam and red -> green loop semantics unless this repository intentionally
+documents a fork.
+
 TDD is the red -> green loop. This skill is the reference that makes that loop
 produce tests worth keeping: what a good test is, where tests go, the
 anti-patterns, and the rules of the loop. Every section applies on every cycle;

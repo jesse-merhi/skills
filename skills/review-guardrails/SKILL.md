@@ -1,6 +1,6 @@
 ---
 name: review-guardrails
-description: 'Bound autonomous review loops with wall-clock, diff-growth, scope, consult-queue, provisional-fix, and tracked-finding rules.'
+description: 'Own the shared budgets, scope, tracked findings, consult queue, provisional fixes, and fixed-point rules for autonomous review loops.'
 ---
 
 # Review Guardrails

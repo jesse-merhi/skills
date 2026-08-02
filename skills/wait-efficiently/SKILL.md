@@ -5,8 +5,9 @@ description: 'Wait without token-heavy polling. Use when the user asks to wait, 
 
 # Wait Efficiently
 
-Keep one tool call pending for the whole wait. Do not return unchanged state to
-the model between polls.
+Before waiting, state what is being awaited and when the next meaningful update
+will occur. Use the product-native wait mechanism, avoid unchanged heartbeat
+updates, and return only for action, a deadline, or a meaningful state change.
 
 ## Direct waits
 

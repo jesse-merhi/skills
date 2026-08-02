@@ -46,7 +46,7 @@ There are two gates:
    - Add tests only for verified reachable risks introduced by the PR.
    - Prefer one test that exercises the user/API contract over several tests
      that assert internals.
-6. Verify after edits.
+6. Edit tests only when implementation is authorized. After edits:
    - Run the focused test file or package test script.
    - Run typecheck/lint when test helpers, fixtures, route contracts, or shared
      types changed.

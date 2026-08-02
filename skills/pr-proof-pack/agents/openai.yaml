@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
-  short_description: "Write self-contained, behavior-first PR proof."
-  default_prompt: "Use $pr-proof-pack to update this PR with a self-contained description that shows the new behavior first and backs it with reviewer-checkable proof. Prefer concrete user actions, API request/response examples, state transitions, PR-visible screenshots, or diagrams over implementation inventories. For human-visible UI changes, upload screenshots through GitHub's PR UI, preferably with CDP in an agent-owned browser window, then place each generated user-attachment image directly in the main PR body with its claim and state below it; never put images in tables. Keep checks secondary and terse; avoid generic summary/proof buckets, net-diff tables, long command dumps, agent-process context, local planning labels, decision logs, or unexplained task shorthand."
+  short_description: "Write direct-base, behavior-first PR proof."
+  default_prompt: "Use $pr-proof-pack to write self-contained, behavior-first proof from this PR's direct-base diff. For stacked PRs, state the layer position and adjacent dependencies, cover only behavior owned by this layer, and refresh affected upstack proof after lower-layer changes."

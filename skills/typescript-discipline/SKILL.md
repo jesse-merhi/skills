@@ -1,6 +1,6 @@
 ---
 name: typescript-discipline
-description: 'Write or review TypeScript production code, shared domain types, schemas, API/client contracts, exported functions, typed React, casts, any/unknown, ts-ignore, narrowing, and package-script verification.'
+description: 'Write or review production TypeScript with shared domain types, explicit boundary validation, safe narrowing, and targeted package verification.'
 ---
 
 # TypeScript Discipline
@@ -17,7 +17,8 @@ boundaries, and compiler-checked narrowing over casts or informal object shapes.
    [type-boundaries.md](references/type-boundaries.md).
 4. Avoid unsafe typing using [unsafe-types.md](references/unsafe-types.md).
 5. Before writing library/framework code, check installed versions and use
-   current docs for that version.
+   current docs for that version. Prefer the remote Context7 workflow in
+   [context7.md](references/context7.md) when its tools are available.
 6. Verify with repo scripts using [verification.md](references/verification.md).
 
 ## Required Discipline

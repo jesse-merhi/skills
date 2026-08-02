@@ -18,6 +18,7 @@ For each proposed ticket, show:
 - title
 - mode: `AFK` or `HITL`
 - blocked by
+- PR group and delivery: single PR, standalone PR, or stack name/position
 - user stories or acceptance criteria covered, when the source has them
 - for frontend UI tickets, the viewport/state that must be proven with
   `frontend-ui-validation`
@@ -28,7 +29,27 @@ Ask the user:
 - Are the dependency relationships correct?
 - Does each blocker genuinely gate the blocked ticket?
 - Should any tickets be merged or split further?
+- Do the PR groups form cohesive review units?
+- Are stack edges real code dependencies rather than convenient ordering?
 - Are the correct tickets marked `AFK` and `HITL`?
+
+## PR Delivery Groups
+
+Tickets organize implementation; PR groups organize review. Do not assume one
+ticket equals one PR or that every ticket blocker becomes a PR base.
+
+1. Group tickets that form one cohesive, independently verifiable review unit.
+2. Collapse ticket edges inside each group, then derive dependencies between
+   the remaining review groups.
+3. Use one PR when only one review group remains.
+4. Use one `gh-stack` stack only when two or more review groups form a strict
+   linear dependency path. Put foundations at the bottom and consumers above.
+5. Use standalone PRs or separate stacks for independent or forked paths. Never
+   serialize independent groups merely to fit GitHub's linear stack model.
+
+Every review group must name the outcome a reviewer can accept independently.
+If grouping tickets would make the PR too broad, or a group cannot stay green
+against its direct base, split or reorder the groups before asking for approval.
 
 ## Good Tickets
 
@@ -63,3 +84,8 @@ Use expand-contract:
 If migration batches cannot stay green independently, keep the same order but
 name a final integrate-and-verify ticket. In that case, green is promised there,
 not by every intermediate batch.
+
+Do not automatically put parallel migration batches into one stack. The expand
+group may be the bottom of a linear stack only when every later group truly
+depends on the previous one. Otherwise publish the independent batches as
+standalone PRs or separate stacks, then gate contract work on all of them.

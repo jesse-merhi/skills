@@ -42,21 +42,23 @@ The skills snap together into the loop I actually run:
 3. **Make it grill me.** Use `grilling`, or `grill-with-docs` when project
    context matters, until the missing decisions are obvious.
 4. **Turn the conversation into a spec.** Use `to-spec` to freeze the plan in
-   Obsidian `Specs/`, and `to-tickets` when the work needs to become
-   blocker-aware Obsidian `Issues/`.
+   Obsidian `Specs/`, including the intended PR delivery shape. Use
+   `to-tickets` when the work needs to become blocker-aware Obsidian `Issues/`
+   with logical review groups derived from those blocking edges.
 5. **Map it if it is too big.** Use `wayfinder` for foggy work that will not fit
    in one session.
 6. **Hand off and let it run.** Use `handoff` for a clean session and
    `parallel-slice-orchestration` when several isolated worktrees should move
-   at once.
+   at once. Use the external `gh-stack` skill when one story needs two or more
+   dependency-ordered review groups.
 7. **Talk to it. Test it.** Use `test-audit`, `frontend-ui-validation`, and
    `diagnose` to prove the thing works instead of trusting the transcript.
 8. **Review it like I hate it.** Use `code-review`, `review-until-clean`,
    `cold-pr-review`, `cold-pr-review-until-clean`, `finding-discipline`,
    and `pr-rubbish-audit`.
-9. **Ship it.** Use `pr-proof-pack`, `monitoring-gh-actions`, and
-   `review-guardrails` to make the evidence, CI state, and review loop
-   readable.
+9. **Ship it.** Use `gh-stack` for dependent PR groups, then
+   `pr-proof-pack`, `monitoring-gh-actions`, and `review-guardrails` to make
+   each layer's evidence, CI state, and review loop readable.
 10. **Bonus: point it at the changelog and tell it to break things.** Findings
    from that usually go straight back through `diagnose`, `handoff`,
    `test-audit`, and `code-review`.
@@ -77,12 +79,19 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   `tdd` is still here as a supporting implementation discipline
   for handoff/orchestration workflows, not because I usually call it directly.
 - **Frontend work:** `frontend-design`, `design-engineering`,
-  `review-animations`, `frontend-ui-validation`, and
-  `acpx-frontend-delegation` split visual direction, interaction craft,
-  motion review, rendered proof, and optional delegation.
+  `find-animation-opportunities`, `review-animations`, `prototype`,
+  `frontend-ui-validation`, and `acpx-frontend-delegation` split visual
+  direction, interaction craft, motion discovery, motion review, divergent UI
+  exploration, rendered proof, and optional delegation.
 - **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
   `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
   `handoff`, and `session-recall`.
+- **PR delivery:** `pr-proof-pack` and `monitoring-gh-actions` keep review
+  evidence current. GitHub's external `gh-stack` skill, pinned in
+  `external.md`, turns one dependency-ordered story into small logical PRs.
+- **Explanation:** `html-explanations` turns decisions, code flows, incidents,
+  models, lessons, and plans into standalone pages built around the reader's
+  question.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.
@@ -97,9 +106,10 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 
 Some of this started somewhere else.
 
-Matt Pocock's agent workflow ideas shaped the `grill`, PRD, slicing, and
-handoff parts of the loop. Emil Kowalski's design-engineering work shaped the
-interaction and motion skills; the adapted material retains its MIT notice.
+Matt Pocock's agent workflow ideas shaped the `grill`, PRD, slicing, teaching,
+and handoff parts of the loop. Emil Kowalski's design-engineering work shaped
+the interaction, motion-discovery, review, and UI-prototyping skills; the
+adapted material retains its MIT notice.
 `frontend-ui-validation` owns rendered proof separately from design direction.
 
 As usual, I took the shape, bent it around my own setup, and kept the parts
@@ -138,7 +148,7 @@ Rust helper syntax/builds.
 
 ## License
 
-MIT, with bundled third-party assets retaining their own notices.
+MIT, with adapted third-party material retaining its own notices.
 
 ## Public Snapshot
 

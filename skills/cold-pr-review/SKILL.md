@@ -1,6 +1,6 @@
 ---
 name: cold-pr-review
-description: 'Run an independent cold review of a PR, branch, or major feature using changed-flow mapping, relevant review lenses, and finding-discipline.'
+description: 'Run an independent cold review of a PR, branch, or major feature with neutral context, changed-flow coverage, and actionable findings only.'
 ---
 
 # Cold PR Review

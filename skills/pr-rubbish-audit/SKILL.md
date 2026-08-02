@@ -29,9 +29,10 @@ compatibility that the feature needs.
    - files/hunks to revert and why
    - tests/docs to add or restore
    - validation to run
-6. Apply focused cleanup. Revert hunks surgically. Never reset the whole
-   worktree. Do not touch unrelated dirty user changes.
-7. Validate with focused tests for changed behavior, typecheck/lint/format gates
+6. Stop after the cleanup plan unless the user authorized implementation.
+   When authorized, apply focused cleanup surgically without touching unrelated
+   user changes.
+7. After authorized edits, validate with focused tests, typecheck/lint/format gates
    available in the repo, and a final diff/stat check. If a repo wrapper
    deadlocks or cannot run, run its constituent commands and state the caveat.
 8. Report using [output.md](references/output.md).

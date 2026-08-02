@@ -1,6 +1,6 @@
 ---
 name: openclaw-local-test
-description: 'Spin up and manage a local OpenClaw manual-test Gateway in a browser, with optional local Atlassian AIGW, Slack, Discord, and fresh ports.'
+description: 'Start and manage an isolated local OpenClaw manual-test Gateway, inspect its actual runtime configuration, and clean up its lease.'
 ---
 
 # OpenClaw Local Test

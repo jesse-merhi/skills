@@ -8,5 +8,8 @@
   typecheck directly. A referenced package may need to build first.
 
 Before writing code against a library or framework, check the installed version
-in `package.json`, then use current docs such as Context7 or the project's
-official docs for that version.
+in `package.json`, then use the project's official docs or the remote Context7
+workflow in [context7.md](context7.md) for that version. A configuration entry
+alone does not prove Context7 is callable; verify it with an actual tool call.
+If it is unavailable, use the official docs or installed package source. Do not
+install or start a local Context7 helper as a fallback.

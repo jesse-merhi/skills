@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>HTML explanation patterns</title>
+<style>
+  :root {
+    --bg: #111512;
+    --paper: #19201b;
+    --ink: #f0f4ef;
+    --muted: #aab5ab;
+    --line: #354039;
+    --accent: #b9df65;
+    --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+  main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 44px 0 74px; }
+  .eyebrow { color: var(--accent); font: 800 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  h1 { max-width: 13ch; margin: 14px 0; font-size: clamp(2.5rem, 7vw, 5.25rem); line-height: .95; letter-spacing: -.05em; }
+  .lead { max-width: 68ch; margin: 0; color: var(--muted); font-size: 1.15rem; }
+  .principle { max-width: 740px; margin: 28px 0 38px; padding: 18px 20px; border-left: 4px solid var(--accent); background: #202a22; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  a {
+    display: block;
+    min-height: 180px;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+    color: inherit;
+    text-decoration: none;
+  }
+  a:hover { border-color: var(--accent); }
+  a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .number { color: var(--accent); font: 800 12px/1 var(--mono); }
+  h2 { margin: 14px 0 8px; font-size: 1.25rem; }
+  a p { margin: 0; color: var(--muted); }
+  a strong { display: block; margin-top: 18px; color: var(--accent); font-size: 14px; }
+  footer { max-width: 68ch; margin-top: 30px; color: var(--muted); }
+  @media (max-width: 650px) {
+    main { width: min(100% - 24px, 680px); padding-top: 24px; }
+    .grid { grid-template-columns: 1fr; }
+    a { min-height: 0; }
+  }
+  @media print {
+    body { background: #fff; color: #111; }
+    main { width: 100%; padding: 0; }
+    a { break-inside: avoid; background: #fff; color: #111; }
+    a p, footer { color: #444; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Repo-owned pattern library</div>
+  <h1>Start with the reader's question.</h1>
+  <p class="lead">These six pages differ in reasoning structure, not merely in visual theme. Copy the closest one, replace every sample fact, and delete anything that does not help the reader.</p>
+  <p class="principle"><strong>Quality test:</strong> the first viewport gives the answer; every later section either proves it, lets the reader test it, or tells them what to do next.</p>
+
+  <div class="grid">
+    <a href="decision-brief.html"><span class="number">01</span><h2>Decision brief</h2><p>Which option should we choose, and why?</p><strong>Recommendation → criteria → trade-offs</strong></a>
+    <a href="code-flow.html"><span class="number">02</span><h2>Code flow</h2><p>How does this behavior happen?</p><strong>Invariant → runtime path → exact proof</strong></a>
+    <a href="incident-report.html"><span class="number">03</span><h2>Incident report</h2><p>What happened, and what prevents a repeat?</p><strong>Impact → timeline → causal chain</strong></a>
+    <a href="interactive-model.html"><span class="number">04</span><h2>Interactive model</h2><p>What changes when an assumption moves?</p><strong>Inputs → consequence → formula</strong></a>
+    <a href="concept-lesson.html"><span class="number">05</span><h2>Concept lesson</h2><p>What mental model should I retain?</p><strong>Mission → invariant → retrieval check</strong></a>
+    <a href="implementation-plan.html"><span class="number">06</span><h2>Implementation plan</h2><p>What happens next, in what order?</p><strong>Target → dependencies → acceptance proof</strong></a>
+  </div>
+
+  <footer>All examples are standalone, dependency-free, responsive, printable, and designed to keep primary evidence visible rather than hiding it behind decorative interaction.</footer>
+</main>
+</body>
+</html>

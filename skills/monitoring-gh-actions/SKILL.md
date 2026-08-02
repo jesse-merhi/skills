@@ -1,6 +1,6 @@
 ---
 name: monitoring-gh-actions
-description: 'Use when monitoring ongoing GitHub Actions workflow runs or pull request checks through GitHub CLI and needing history-aware waiting that avoids token-heavy polling and rate limits.'
+description: 'Monitor ongoing GitHub Actions runs with history-aware waiting and report meaningful state changes. Switch workflows before diagnosing or fixing failures.'
 ---
 
 # Monitoring GitHub Actions
