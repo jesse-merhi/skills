@@ -233,6 +233,10 @@ test_gh_stack_workflow_is_pinned_and_wired() {
   assert_contains "$ROOT_DIR/skills/handoff/references/repair-pr-handoffs.md" 'tell it to load `gh-stack`'
   assert_contains "$ROOT_DIR/skills/code-review/references/pr-closeout.md" 'inspect it with `gh stack view --json`'
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "scope proof to that layer's direct base"
+  assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" "## PR Delivery"
+  assert_contains "$ROOT_DIR/skills/to-spec/SKILL.md" 'record the logical'
+  assert_contains "$ROOT_DIR/skills/to-tickets/references/ticket-design.md" "Do not assume one"
+  assert_contains "$ROOT_DIR/skills/to-tickets/references/note-template.md" "PR Group Depends On:"
 }
 
 test_wayfinder_obsidian_map_can_advance_its_frontier() {

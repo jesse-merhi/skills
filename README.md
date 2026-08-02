@@ -42,8 +42,9 @@ The skills snap together into the loop I actually run:
 3. **Make it grill me.** Use `grilling`, or `grill-with-docs` when project
    context matters, until the missing decisions are obvious.
 4. **Turn the conversation into a spec.** Use `to-spec` to freeze the plan in
-   Obsidian `Specs/`, and `to-tickets` when the work needs to become
-   blocker-aware Obsidian `Issues/`.
+   Obsidian `Specs/`, including the intended PR delivery shape. Use
+   `to-tickets` when the work needs to become blocker-aware Obsidian `Issues/`
+   with logical review groups derived from those blocking edges.
 5. **Map it if it is too big.** Use `wayfinder` for foggy work that will not fit
    in one session.
 6. **Hand off and let it run.** Use `handoff` for a clean session and

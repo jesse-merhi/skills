@@ -1,6 +1,6 @@
 ---
 name: to-spec
-description: 'Turn the current conversation into a spec and publish it to Obsidian Specs. Use after grilling has already resolved the important decisions.'
+description: 'Turn the current conversation into a spec with testing seams and PR delivery shape, then publish it to Obsidian Specs. Use after grilling has already resolved the important decisions.'
 ---
 
 # To Spec
@@ -27,12 +27,18 @@ unclear, return the Markdown body and proposed `Specs/` path.
    choice is not already settled.
 5. For frontend UI work, capture the design direction and rendered validation
    bar from [frontend-spec.md](references/frontend-spec.md) before publishing.
-6. Write the spec using [note-template.md](references/note-template.md).
-7. Publish to Obsidian `Specs/` using [naming.md](references/naming.md). If
+6. Choose the PR delivery shape before implementation. Keep one cohesive review
+   unit in one PR. When the outcome needs two or more independently reviewable
+   units on a strict dependency path, load `gh-stack` and record the logical
+   groups bottom-to-top. Keep independent work in standalone PRs or separate
+   stacks. If the shape was not settled in the conversation, record it as an
+   open question instead of inventing an order.
+7. Write the spec using [note-template.md](references/note-template.md).
+8. Publish to Obsidian `Specs/` using [naming.md](references/naming.md). If
    write access is missing, return the Markdown body and proposed path.
-8. Do not write specs into the product repo unless the user explicitly asks for
+9. Do not write specs into the product repo unless the user explicitly asks for
    repo-local docs.
-9. Avoid brittle file-path inventories and code snippets. Exception: if a
+10. Avoid brittle file-path inventories and code snippets. Exception: if a
    prototype produced a snippet that encodes a decision more precisely than
    prose can, inline the decision-rich part and name or link the prototype.
 
