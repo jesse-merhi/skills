@@ -4,6 +4,37 @@ Keep externally owned skills out of this repository unless their license and
 update model are intentionally adopted. Prefer a small repo-owned adapter when
 only part of an external workflow earns a permanent place in the skill loop.
 
+## gh-stack
+
+- **Source:** <https://github.com/github/gh-stack/tree/v0.1.0/skills/gh-stack>
+- **CLI extension:** <https://github.com/github/gh-stack/releases/tag/v0.1.0>
+- **License:** MIT
+- **What it is:** GitHub's maintained agent workflow and CLI extension for
+  planning, creating, submitting, syncing, and reviewing dependent pull
+  requests as a stack.
+- **Why it is external:** GitHub owns both the stack semantics and the CLI. The
+  official skill should stay aligned with the installed extension instead of
+  being copied into this repository.
+- **Update model:** The skill and extension are pinned to `v0.1.0` at commit
+  `a1b4a3d4d0bcde9ec3a78ab99b2d63af121857a9`. Review GitHub's release and
+  skill changes together before updating the pin.
+
+### Install
+
+Install the pinned extension, then install its official skill at user scope for
+the current harness. `--force` makes a reinstall converge on the reviewed
+version instead of silently retaining a different version.
+
+| Harness | Method |
+| --- | --- |
+| Claude Code | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent claude-code --scope user --force` |
+| Codex | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent codex --scope user --force` |
+| opencode | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent opencode --scope user --force` |
+| Pi | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent pi --scope user --force` |
+
+The installers own the external `gh-stack` skill and extension. Do not symlink
+`gh-stack` from this repository.
+
 ## teach
 
 - **Source:** <https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach>

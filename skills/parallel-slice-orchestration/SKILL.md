@@ -24,18 +24,24 @@ same slice plan sequentially and say that parallel execution was not available.
    instructions.
 2. Identify externally meaningful behaviors and acceptance criteria.
 3. Build a dependency map using [decomposition.md](references/decomposition.md).
-4. Convert work into vertical slices, not layers.
-5. Do blocking foundation work locally or assign exactly one worker to it.
-6. Spawn workers only for independent slices with disjoint write ownership.
+4. Choose the PR delivery shape before implementation using
+   [decomposition.md](references/decomposition.md). Load `gh-stack` when one
+   story has two or more dependency-ordered review units.
+5. Convert implementation work into vertical slices, not architectural layers.
+6. Do blocking foundation work locally or assign exactly one worker to it.
+7. Spawn workers only for independent slices with disjoint write ownership.
    Keep the immediate critical-path task local.
-7. Give each worker the assignment contract in
+8. Give each worker the assignment contract in
    [worker-contract.md](references/worker-contract.md).
-8. Preserve `AFK` and `HITL` modes. Use
+9. Preserve `AFK` and `HITL` modes. Use
    [hitl-checkpoints.md](references/hitl-checkpoints.md) for review stops.
-9. Review each worker result before integrating, using the checklist in
+10. Review each worker result before integrating, using the checklist in
    [integration.md](references/integration.md).
-10. Resolve integration issues locally, then run the feature's relevant package
+11. Resolve integration issues locally, then run the feature's relevant package
     verification commands.
+12. Publish the chosen delivery shape. For a stack, keep foundation at the
+    bottom, dependent behavior above it, and run `pr-proof-pack` separately for
+    every PR layer.
 
 ## Slice Rules
 
@@ -49,6 +55,20 @@ same slice plan sequentially and say that parallel execution was not available.
 - Prefer fewer well-scoped workers over many tiny workers that create
   integration overhead.
 
+## PR Delivery Shape
+
+- Use one PR when the result is one cohesive review unit.
+- Use one `gh-stack` stack when two or more independently reviewable concerns
+  form a strict dependency chain. Plan branch names and order before editing.
+- Keep independent parallel slices as standalone PRs or separate stacks.
+  GitHub stacks are linear; do not serialize independent work merely to put it
+  in one stack.
+- Keep each stacked PR buildable and reviewable against the branch directly
+  below it. Put a dependency in the same layer or a lower layer, never above.
+- Have the orchestrator own stack submission and per-layer proof. Workers return
+  scoped changes and evidence; they do not independently publish branches from
+  a shared stack.
+
 ## Completion Criteria
 
 - Every worker result has been read before integration.
@@ -61,6 +81,8 @@ same slice plan sequentially and say that parallel execution was not available.
 - HITL slices stopped at named checkpoints and returned evidence before
   continuation.
 - Final verification ran in the integrated tree.
+- The delivery shape matches the dependency map, and every stacked layer has
+  its own focused `pr-proof-pack` evidence.
 
 ## Context Pointers
 

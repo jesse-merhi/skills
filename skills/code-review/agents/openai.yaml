@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
-  short_description: "Native and cold review until clean, then PR proof."
-  default_prompt: "Use $code-review; include the Standards lenses and Fowler smell baseline, record findings with the configured helper, validate, and include proof."
+  short_description: "Review until clean, then preserve PR delivery shape."
+  default_prompt: "Use $code-review; run the native and cold-review gates, record findings, validate, preserve any planned gh-stack during closeout, and refresh reviewer-checkable proof for each affected PR layer."
 
 policy:
   allow_implicit_invocation: false
