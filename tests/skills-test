@@ -213,6 +213,21 @@ test_retired_impeccable_cleanup_is_documented() {
   assert_contains "$ROOT_DIR/external.md" "belongs in its own branch and pull request"
 }
 
+test_codex_default_mode_questions_are_configured() {
+  assert_contains "$ROOT_DIR/INSTALL.md" "codex features enable default_mode_request_user_input"
+  assert_contains "$ROOT_DIR/INSTALL.md" "A new Codex task or app restart may be required"
+  assert_contains "$ROOT_DIR/AGENTS.md" "native structured"
+  assert_contains "$ROOT_DIR/AGENTS.md" "including outside planning-only modes"
+}
+
+test_implementation_design_requires_user_decisions() {
+  assert_contains "$ROOT_DIR/AGENTS.md" "Treat backward compatibility as the user's decision"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Do not add compatibility layers by default"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Never trade a working product for unfinished complexity"
+  assert_contains "$ROOT_DIR/AGENTS.md" "without the user's explicit approval"
+  assert_contains "$ROOT_DIR/AGENTS.md" "the durable alternative"
+}
+
 test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
@@ -437,6 +452,8 @@ test_skill_frontmatter_is_valid
 test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
 test_retired_impeccable_cleanup_is_documented
+test_codex_default_mode_questions_are_configured
+test_implementation_design_requires_user_decisions
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier
 
