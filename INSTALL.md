@@ -44,7 +44,24 @@ The extra `~/.claude/AGENTS.md` symlink exists only so the relative
 resolves imports against the symlink location or the real file. Claude Code
 does not load `~/.claude/AGENTS.md` by itself.
 
-## 3. Survey Existing Skills
+## 3. Configure Codex Interaction
+
+For Codex, enable the native structured question UI in Default mode when the
+installed build supports it:
+
+```sh
+codex features list
+codex features enable default_mode_request_user_input
+```
+
+If `default_mode_request_user_input` is absent from the feature list, report
+that the installed Codex version does not support it and continue installing
+the skills. A new Codex task or app restart may be required before an existing
+session exposes the question UI.
+
+Skip this step for other harnesses.
+
+## 4. Survey Existing Skills
 
 Before touching anything, inventory the target skills directory for the current
 harness:
@@ -65,7 +82,7 @@ Classify existing entries:
 4. A dead symlink: safe to remove.
 5. Obvious junk: ask before deleting.
 
-## 4. Link Skills
+## 5. Link Skills
 
 Always use per-skill symlinks. The target skills directory should remain a real
 directory; each repo skill gets its own symlink inside it.
@@ -90,7 +107,7 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 5. Reconcile Third-Party Skills
+## 6. Reconcile Third-Party Skills
 
 Read `external.md`. For each active or retired entry, run only the install or
 removal command for the current harness. Skip entries that do not list your
@@ -101,7 +118,7 @@ not survive after this repository stops using them.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 6. Install Repo-Owned Helper Binaries
+## 7. Install Repo-Owned Helper Binaries
 
 Some skills include local helper binaries. Install the Rust `review-findings`
 binary so `code-review` can record findings, verification commands, and
@@ -127,7 +144,7 @@ Verify:
 ${AGENT_REVIEW_FINDINGS_BIN:-$HOME/.local/bin/review-findings} path
 ```
 
-## 7. Verify
+## 8. Verify
 
 Run:
 
@@ -139,6 +156,7 @@ Run:
 Report:
 
 - harness detected
+- Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
 - existing local skills preserved
 - third-party installs run or skipped

@@ -20,6 +20,10 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
 - Stay concise while preserving the explanation needed to understand the work.
+- When user input is genuinely required, use the harness's native structured
+  question UI when it is available, including outside planning-only modes. Do
+  not ask questions when repository evidence, safe investigation, or a
+  reasonable low-risk assumption can resolve the uncertainty.
 
 ## Dependency-first implementation
 
