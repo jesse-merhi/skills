@@ -20,6 +20,25 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
 - Stay concise while preserving the explanation needed to understand the work.
+- When user input is genuinely required, use the harness's native structured
+  question UI when it is available, including outside planning-only modes. Do
+  not ask questions when repository evidence, safe investigation, or a
+  reasonable low-risk assumption can resolve the uncertainty.
+
+## Implementation design
+
+- Treat backward compatibility as the user's decision. If the preferred design
+  requires breaking changes, explain why, what will break, and the migration
+  path, then ask before proceeding. Do not add compatibility layers by default.
+- Choose the simplest implementation that fully meets the current requirements.
+  Avoid speculative abstractions, configuration, and indirection.
+- Grow the system in layers. Start from the smallest version that works end to
+  end, and add each new capability on top of a product that already works.
+  Never trade a working product for unfinished complexity.
+- Keep components modular and concerns clearly separated.
+- Make architectural decisions for the long term. Do not implement a stopgap
+  intended to be replaced later without the user's explicit approval. Explain
+  the durable alternative and why the stopgap is necessary.
 
 ## Dependency-first implementation
 
