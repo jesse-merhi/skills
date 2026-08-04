@@ -115,6 +115,13 @@ behavior in plain language, or omit the shorthand.
    `gh-stack` to rebase or sync first, then refresh proof for every affected
    upstack PR.
 
+10. Hand completed proof back to the publishing or review-closeout workflow.
+
+    Once proof, review, validation, and CI pass, that workflow must ask the user
+    for a thumbs-up (`+1`) reaction on every open stack PR and verify each
+    reaction belongs to `jesse-merhi`. Never add or remove that reaction on the
+    user's behalf.
+
 ## Done Means
 
 - The PR body is self-contained for a repository reviewer.
@@ -131,6 +138,8 @@ behavior in plain language, or omit the shorthand.
 - Every Mermaid diagram in the final body was validated, or Mermaid was omitted.
 - Verification is reviewer-checkable: concrete command, request/response,
   screenshot state, API example, state transition, or CI coverage summary.
+- The closeout workflow has enough evidence to ask for human sign-off on every
+  ready stack layer.
 
 ## Avoid
 
