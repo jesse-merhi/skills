@@ -25,6 +25,12 @@ The helper:
 - verifies the Gateway listener belongs to the Gateway it just started and the
   browser proxy route belongs to the shared proxy daemon before reporting
   success
+- checks Gateway and browser-proxy HTTP health independently, then starts a
+  typed wizard readiness probe and cancels that exact session in a cleanup trap
+  if it remains running; an immediately completed session is already terminal
+  and requires no cancellation before the browser URL is reported
+- stops the Gateway and removes its proxy route if startup is interrupted after
+  the managed processes begin but before the lease watchdog is registered
 - leaves the browser closed by default and prints the proxied Control UI URL.
   Use `--open` when the browser should launch automatically.
 - writes a local lease file and starts a detached watchdog that auto-stops the

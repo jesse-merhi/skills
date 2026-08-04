@@ -456,5 +456,7 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier
+node --test "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/shared-browser-proxy.test.mjs"
+node --test "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/openclaw-local-test.test.mjs"
 
 printf 'ok - skills tests\n'

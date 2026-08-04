@@ -21,6 +21,7 @@ foreground=0
 skip_channels=0
 action="start"
 lock_acquired=0
+startup_cleanup_needed=0
 
 node_bin="${OPENCLAW_LOCAL_TEST_NODE:-${OPENCLAW_DIA_TEST_NODE:-}}"
 if [[ -z "$node_bin" ]]; then
@@ -40,7 +41,7 @@ Usage:
 
 Starts a local OpenClaw test Gateway on a free port, mirrors the selected
 source config into an isolated state dir, adds the local ${provider_id} model
-provider, and starts a per-instance browser proxy.
+provider, and registers a route with the shared browser proxy.
 
 Options:
   --repo <path>          OpenClaw checkout/worktree to run (required for start)
@@ -237,7 +238,7 @@ shared_proxy_route_dir="$shared_proxy_dir/routes"
 shared_proxy_log_dir="$shared_proxy_dir/logs"
 shared_proxy_script="$shared_proxy_dir/shared-browser-proxy.js"
 shared_proxy_pid_file="$shared_proxy_dir/shared-browser-proxy.pid"
-shared_proxy_version="2026-05-19.2"
+shared_proxy_version="2026-08-04.1"
 shared_proxy_version_file="$shared_proxy_dir/shared-browser-proxy.version"
 gateway_pid_file="$pid_dir/gateway.pid"
 proxy_pid_file="$pid_dir/browser-proxy.pid"
@@ -314,6 +315,26 @@ wait_for_port_owner() {
   return 1
 }
 
+http_healthy() {
+  local url="$1"
+  curl -fsS --max-time 2 "$url" >/dev/null 2>&1
+}
+
+wait_for_http_health() {
+  local url="$1"
+  local name="$2"
+
+  for _ in {1..50}; do
+    if http_healthy "$url"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  log "$name health check failed: $url"
+  return 1
+}
+
 write_shared_proxy_script() {
   mkdir -p "$shared_proxy_dir" "$shared_proxy_route_dir" "$shared_proxy_log_dir"
   cat >"$shared_proxy_script" <<'NODE'
@@ -370,6 +391,18 @@ function readRoutes() {
 
 function proxyHttp(route, req, res) {
   const headers = { ...req.headers, host: `${route.targetHost}:${route.targetPort}` };
+  let upstreamResponse;
+
+  const failDownstream = (error) => {
+    if (res.destroyed) return;
+    if (res.headersSent || res.writableEnded) {
+      res.destroy(error);
+      return;
+    }
+    res.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
+    res.end(`OpenClaw shared proxy error: ${error.message}\n`);
+  };
+
   const upstream = http.request({
     host: route.targetHost,
     port: route.targetPort,
@@ -377,12 +410,23 @@ function proxyHttp(route, req, res) {
     path: req.url,
     headers,
   }, (up) => {
+    upstreamResponse = up;
     res.writeHead(up.statusCode || 502, up.statusMessage, up.headers);
+    up.on("error", failDownstream);
     up.pipe(res);
   });
-  upstream.on("error", (error) => {
-    res.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
-    res.end(`OpenClaw shared proxy error: ${error.message}\n`);
+
+  upstream.on("error", failDownstream);
+  req.on("aborted", () => upstream.destroy());
+  req.on("error", (error) => upstream.destroy(error));
+  res.on("error", (error) => {
+    upstreamResponse?.destroy(error);
+    upstream.destroy(error);
+  });
+  res.on("close", () => {
+    if (res.writableFinished) return;
+    upstreamResponse?.destroy();
+    upstream.destroy();
   });
   req.pipe(upstream);
 }
@@ -589,11 +633,15 @@ stop_pid_file() {
 }
 
 status() {
-  local gateway_pid proxy_pid status_proxy_port shared_proxy_pid
+  local gateway_pid proxy_pid status_gateway_port status_proxy_port shared_proxy_pid
   gateway_pid="$(read_pid_file "$gateway_pid_file")"
   proxy_pid="$(read_pid_file "$proxy_pid_file")"
   if [[ -z "$proxy_pid" ]]; then
     proxy_pid="$(read_pid_file "$legacy_proxy_pid_file")"
+  fi
+  status_gateway_port="$(env_file_value "$ports_file" "OPENCLAW_LOCAL_TEST_GATEWAY_PORT")"
+  if [[ -z "$status_gateway_port" ]]; then
+    status_gateway_port="$(env_file_value "$ports_file" "OPENCLAW_DIA_TEST_GATEWAY_PORT")"
   fi
   status_proxy_port="$(env_file_value "$ports_file" "OPENCLAW_LOCAL_TEST_PROXY_PORT")"
   if [[ -z "$status_proxy_port" ]]; then
@@ -615,12 +663,22 @@ status() {
   else
     printf 'Gateway: stopped\n'
   fi
+  if [[ -n "$status_gateway_port" ]] && http_healthy "http://127.0.0.1:$status_gateway_port/healthz"; then
+    printf 'Gateway health: healthy http://127.0.0.1:%s/healthz\n' "$status_gateway_port"
+  else
+    printf 'Gateway health: unhealthy\n'
+  fi
   if [[ -n "$status_proxy_port" ]] && port_owned_by_pid_file "$status_proxy_port" "$shared_proxy_pid_file"; then
     printf 'browser proxy: running shared daemon pid %s route port %s\n' "$shared_proxy_pid" "$status_proxy_port"
   elif pid_running "$proxy_pid"; then
     printf 'browser proxy: running pid %s\n' "$proxy_pid"
   else
     printf 'browser proxy: stopped\n'
+  fi
+  if [[ -n "$status_proxy_port" ]] && http_healthy "http://127.0.0.1:$status_proxy_port/healthz"; then
+    printf 'browser proxy health: healthy http://127.0.0.1:%s/healthz\n' "$status_proxy_port"
+  else
+    printf 'browser proxy health: unhealthy\n'
   fi
 }
 
@@ -644,6 +702,33 @@ stop_all() {
   rm -f "$instance_file"
 }
 
+# Invoked indirectly by the EXIT/INT/TERM traps armed after the Gateway starts.
+# shellcheck disable=SC2329
+cleanup_interrupted_start() {
+  local original_status=$?
+  trap - EXIT INT TERM
+  if [[ "$startup_cleanup_needed" == "1" ]]; then
+    startup_cleanup_needed=0
+    stop_all
+  fi
+  release_start_lock
+  exit "$original_status"
+}
+
+arm_startup_cleanup() {
+  startup_cleanup_needed=1
+  trap cleanup_interrupted_start EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+}
+
+disarm_startup_cleanup() {
+  startup_cleanup_needed=0
+  trap release_start_lock EXIT
+  trap 'release_start_lock; exit 130' INT
+  trap 'release_start_lock; exit 143' TERM
+}
+
 rotate_agent_sessions() {
   local agents_dir stamp rotated
   if is_truthy "$keep_sessions"; then
@@ -652,7 +737,7 @@ rotate_agent_sessions() {
   fi
 
   agents_dir="$state_dir/agents"
-  [[ -d "$agents_dir" ]] || return
+  [[ -d "$agents_dir" ]] || return 0
 
   stamp="$(date -u '+%Y-%m-%dT%H-%M-%SZ')"
   rotated=0
@@ -904,14 +989,112 @@ if [[ "$skip_channels" == "1" ]]; then
 fi
 
 if [[ -f "$repo/scripts/run-node.mjs" ]]; then
+  gateway_cli_args=("$node_bin" "$repo/scripts/run-node.mjs")
   gateway_args=("$node_bin" "$repo/scripts/run-node.mjs" "gateway" "run" "--port" "$gateway_port" "--bind" "loopback")
 else
   entrypoint="$repo/openclaw.mjs"
   if [[ ! -f "$entrypoint" ]]; then
     entrypoint="$repo/dist/index.js"
   fi
+  gateway_cli_args=("$node_bin" "$entrypoint")
   gateway_args=("$node_bin" "$entrypoint" "gateway" "run" "--port" "$gateway_port" "--bind" "loopback")
 fi
+
+run_gateway_rpc() {
+  local method="$1"
+  local params="$2"
+  env "${gateway_env[@]}" "${gateway_cli_args[@]}" \
+    gateway call "$method" \
+    --url "ws://127.0.0.1:$gateway_port" \
+    --params "$params" \
+    --timeout 5000 \
+    --json
+}
+
+verify_no_active_wizard() (
+  local start_disposition start_result start_state status_result session_id=""
+
+  # Invoked indirectly by the EXIT/INT/TERM traps below.
+  # shellcheck disable=SC2329
+  cleanup_wizard_probe() {
+    local cancel_result original_status=$?
+    trap - EXIT INT TERM
+    if [[ -n "$session_id" ]]; then
+      if ! cancel_result="$(run_gateway_rpc "wizard.cancel" "{\"sessionId\":\"$session_id\"}")"; then
+        log "wizard readiness probe could not cancel session $session_id"
+        original_status=1
+      elif ! printf '%s' "$cancel_result" | "$node_bin" -e '
+        let input = "";
+        process.stdin.setEncoding("utf8");
+        process.stdin.on("data", (chunk) => { input += chunk; });
+        process.stdin.on("end", () => {
+          const result = JSON.parse(input);
+          process.exit(result.status === "cancelled" ? 0 : 1);
+        });
+      '; then
+        log "wizard readiness probe cancellation was not confirmed for session $session_id"
+        original_status=1
+      fi
+    fi
+    exit "$original_status"
+  }
+
+  trap cleanup_wizard_probe EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  if ! start_result="$(run_gateway_rpc "wizard.start" '{"mode":"local"}')"; then
+    log "wizard readiness probe could not start; another wizard may already be running"
+    return 1
+  fi
+  if ! start_state="$(printf '%s' "$start_result" | "$node_bin" -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const result = JSON.parse(input);
+      if (result.done === true && result.status === "done") {
+        process.stdout.write("completed");
+        return;
+      }
+      if (
+        result.done === false &&
+        result.status === "running" &&
+        typeof result.sessionId === "string" &&
+        result.sessionId.length > 0
+      ) {
+        process.stdout.write(`running ${result.sessionId}`);
+        return;
+      }
+      process.exitCode = 1;
+    });
+  ')"; then
+    log "wizard readiness probe returned an unexpected start result"
+    return 1
+  fi
+  read -r start_disposition session_id <<<"$start_state"
+  if [[ "$start_disposition" == "completed" ]]; then
+    return 0
+  fi
+  if ! status_result="$(run_gateway_rpc "wizard.status" "{\"sessionId\":\"$session_id\"}")"; then
+    log "wizard readiness probe could not verify session $session_id"
+    return 1
+  fi
+  if ! printf '%s' "$status_result" | "$node_bin" -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const result = JSON.parse(input);
+      process.exit(result.status === "running" ? 0 : 1);
+    });
+  '; then
+    log "wizard readiness probe did not enter the running state"
+    return 1
+  fi
+
+  return 0
+)
 
 if [[ "$foreground" == "1" ]]; then
   log "running gateway in foreground"
@@ -922,6 +1105,7 @@ fi
 
 log "starting OpenClaw gateway from $repo"
 cd "$repo"
+arm_startup_cleanup
 run_detached env "${gateway_env[@]}" "${gateway_args[@]}" >"$log_dir/gateway.log" 2>"$log_dir/gateway.err.log"
 printf '%s\n' "$!" >"$gateway_pid_file"
 log "registering browser proxy route with shared daemon"
@@ -960,6 +1144,22 @@ if ! wait_for_port_owner "$proxy_port" "$shared_proxy_pid_file" "browser proxy";
   exit 1
 fi
 
+if ! wait_for_http_health "http://127.0.0.1:$gateway_port/healthz" "gateway"; then
+  stop_all
+  exit 1
+fi
+
+if ! wait_for_http_health "http://127.0.0.1:$proxy_port/healthz" "browser proxy"; then
+  stop_all
+  exit 1
+fi
+
+log "verifying no wizard session is active"
+if ! verify_no_active_wizard; then
+  stop_all
+  exit 1
+fi
+
 dashboard_url="http://localhost:$proxy_port/"
 log "dashboard: $dashboard_url"
 
@@ -992,6 +1192,8 @@ else
   rm -f "$watchdog_pid_file"
   log "lease disabled; remember to run: $script_name --state-dir \"$state_dir\" --stop"
 fi
+
+disarm_startup_cleanup
 
 if [[ "$open_browser" == "1" ]]; then
   open -a "$browser_app" "$dashboard_url"
