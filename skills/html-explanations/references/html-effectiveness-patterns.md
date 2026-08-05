@@ -15,7 +15,7 @@ secondary.
 | `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
 | `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
 | `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
-| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Changed behavior first, optional stack navigation, direct-base implementation flow, real code, plain-language proof, review orientation |
+| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, direct-base flow, highlighted implementation/test code, inline explanation, secondary proof |
 
 ## Reusing A Pattern
 
@@ -42,9 +42,10 @@ Use `assets/explanation-template.html` only when none of the seven patterns fit.
 - For a reader who wants to understand a PR or stack, use the change
   walkthrough. Lead with changed behavior. For a stack, navigate layers
   bottom-to-top and explain each direct-base diff separately. For a standalone
-  PR, omit the navigator. Keep implementation primary; move tests, fixtures,
-  infrastructure, CI, generated files, docs, and rollout notes into a secondary
-  proof view when that separation helps.
+  PR, omit the navigator. Keep implementation primary and put real changed test
+  code one compact tab away. Keep fixtures, infrastructure, CI, generated
+  files, docs, and rollout notes in collapsed proof only when they add evidence
+  not already visible in the test code.
 - For status, adapt implementation plan and make completed, active, blocked,
   and next work explicit.
 
@@ -52,10 +53,19 @@ Use `assets/explanation-template.html` only when none of the seven patterns fit.
 
 - The page should reduce reading effort. If it is just paragraphs in a browser, use chat instead.
 - Use layout to encode meaning: columns for comparison, timelines for time, arrows for flow, badges for state, tables for repeated facts.
+- Use one compact row-based list for a short flow or summary of changes. Reserve
+  card grids for independent concepts, not steps that should be read in order.
+- Write each summary row as one specific statement. Omit generic mini-headings
+  that restate the sentence beside them.
 - Keep the first viewport useful. The user should see the answer, not only a title.
+- For PR reading, make the first viewport reach the selected layer's changed
+  flow or code. Do not spend it on review-order prose, diff metrics, repeated
+  summaries, or generic architecture teaching.
 - Use plain CSS and semantic HTML. Add JavaScript only when interaction helps.
 - Keep generated assets local. Inline SVG is fine for diagrams.
 - Couple a claim with its evidence or inspectable example.
+- Put code explanations inline between the highlighted code segments they
+  describe. Keep editorial boxes visually distinct from real source comments.
 - Hide only optional detail. Recommendations, required evidence, and next
   actions stay visible.
 - Reflow at 320 CSS pixels. Code and tables may scroll inside their own

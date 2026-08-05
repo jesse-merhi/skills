@@ -32,12 +32,15 @@ Good fits:
 
 - Use one self-contained `.html` file with inline CSS and inline JavaScript.
 - Do not add a build step or remote runtime dependency.
-- Put the answer first in the page: a short headline, a one-paragraph summary, then the visual/interactive body.
+- Put the answer first in the page: a short headline, a brief summary when it
+  adds information, then the visual/interactive body. Do not preserve a
+  summary slot when the headline or first visual already says the same thing.
 - The first screen must be understandable without reading code. Explain
   the decision, bug, or concept in plain English before showing
   implementation details. Put code, dense mechanics, and caveats in
   lower sections or `<details>` blocks unless the user's explicit goal
-  is code reading.
+  is code or PR reading. For code and PR reading, reach the changed flow or
+  real code in the first viewport after one concise outcome statement.
 - Assume the reader knows the desired behavior, not the repository's internal
   vocabulary. Use everyday words before technical names.
 - Do not make acronyms or specialist terms carry the explanation. Prefer
@@ -50,9 +53,31 @@ Good fits:
 - Keep primary prose near 70–75 characters per line.
 - Prefer compact sections, tables, flow diagrams, timelines, comparisons, and
   controls that reveal consequences over long paragraphs or repeated cards.
+- Present a short sequence or summary of changes as one compact ordered list
+  with rows and separators. Use separate cards only when the items are
+  independent concepts that benefit from spatial grouping; do not turn every
+  step in a flow into its own card.
+- Make every summary row one concrete statement that names the changed file,
+  symbol, behavior, or boundary. Delete generic process labels such as
+  "Validate," "Translate," "Handle safely," or "How it works" when the
+  adjacent sentence contains the actual information. Do not add a short title
+  that merely restates its description.
+- Default to the smallest page that answers the reader's question. Treat every
+  section as optional. Remove review-process narration, repeated summaries,
+  dashboards, metrics, and orientation that do not help the reader understand
+  what changed, where it changed, or how it works.
 - Use interaction only when it lets the reader test a claim, change an
   assumption, inspect a state, or check their understanding.
 - Put long code snippets inside `<details>` blocks or side-by-side panels.
+- Syntax-highlight code excerpts with self-contained token markup and CSS or a
+  small inline highlighter. Do not use remote scripts or runtime dependencies.
+  Use a small, high-contrast token palette rather than coloring every
+  identifier.
+- Attach code explanations to the lines they describe. Prefer compact,
+  GitHub-style editorial boxes between highlighted code segments over a
+  separate annotation column. Clearly label these boxes as explanation,
+  visually separate them from the source lines, and never disguise editorial
+  text as a source-code comment.
 - If styling inline `<code>` and block `<pre><code>`, add a dedicated
   `pre code` rule that resets inline-code backgrounds, borders, padding,
   radius, and font sizing inside code blocks. Inline code pill styles must
@@ -106,36 +131,46 @@ When the reader wants to understand what changed in a PR or stack, use
   one-item tab rail or explain that the PR is not stacked.
 - For a stack, add a compact bottom-to-top navigator before the selected PR.
   Label each layer with its PR number, short outcome, base, and position. Make
-  the recommended review order clear and keep the selected layer visible.
+  the recommended review order clear through the navigator and keep the
+  selected layer visible. Do not add a separate section explaining review
+  order unless the dependency itself is surprising and affects correctness.
 - Explain one layer at a time from its direct-base diff. Never attribute changes
   inherited from lower layers to the selected PR. Switching layers should
   update the summary, changed flow, code excerpts, files, and proof together.
 - State what the whole stack delivers once, then state what the selected layer
   adds. Keep shared context stable while the reader moves between layers.
-- Use a secondary **How it works** / **Proof and rollout** view when the split
-  helps. Put tests, fixtures, infrastructure, CI, generated files, docs, and
-  deployment notes in the proof view, grouped by category. Omit empty groups or
-  name an important absence such as "No deployment changes."
+- When meaningful tests changed, use a compact secondary **Implementation** /
+  **Tests** switch. Keep implementation selected by default. In the test view,
+  show real test excerpts with exact filenames and inline notes that explain
+  the behavior each excerpt proves; do not replace test code with pass counts
+  or prose cards. Prefer tests changed in the direct-base diff. When the PR
+  relies on relevant unchanged coverage, include the exact existing test and
+  label it **Existing coverage — unchanged in this PR**. Keep CI, fixtures,
+  infrastructure, generated files, docs, and rollout facts in a small
+  collapsed proof area only when they add evidence not visible in the test
+  code. Omit empty groups.
 - Order implementation excerpts by learning dependency, not file path or diff
   order. A common sequence is contract/schema -> parsing/normalization ->
   orchestration -> canonical runtime/owner -> output/lifecycle/persistence.
 - Use real code excerpts. Label omissions as omissions; never invent helper
   names to shorten code.
-- Pair numbered markers in each code block with adjacent notes that answer:
+- Pair each inline editorial box with the code segment it follows. Answer:
   **what changed, where is it, and how does it work?** Add why only when it
   clarifies a non-obvious constraint or trade-off.
 - Give code notes outcome-first, everyday headings. Prefer "Send one form, not
   both" over "Reject ambiguous shapes," "Reject the whole list before
   starting" over "Validate first," and "Limit the whole request" over "Bound
   amplification."
+- Rewrite any heading or sentence that could be pasted unchanged onto an
+  unrelated PR. Every word should carry task-specific information.
 - In the proof view, explain what each group proves in plain
   language. Examples: "the old one-search request still works," "bad input is
   rejected before any search starts," and "one search call is followed by one
   tool call." Put harness, fixture, storage, and protocol details second.
 - Show the unchanged canonical owner or path when reuse is an important part of
   the design. This makes delegation visible and rules out duplicate logic.
-- End with review orientation: what to inspect first, what behavior the proof
-  covers, and any open question. Add a complexity judgment only when requested.
+- Add review orientation or a complexity judgment only when requested or when
+  an unresolved question materially changes how the diff should be read.
 
 ## Plans, Reports, Incidents, And Handoffs
 
