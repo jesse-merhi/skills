@@ -53,6 +53,10 @@ Good fits:
 - Keep primary prose near 70–75 characters per line.
 - Prefer compact sections, tables, flow diagrams, timelines, comparisons, and
   controls that reveal consequences over long paragraphs or repeated cards.
+- Present a short sequence or summary of changes as one compact ordered list
+  with rows and separators. Use separate cards only when the items are
+  independent concepts that benefit from spatial grouping; do not turn every
+  step in a flow into its own card.
 - Default to the smallest page that answers the reader's question. Treat every
   section as optional. Remove review-process narration, repeated summaries,
   dashboards, metrics, and orientation that do not help the reader understand

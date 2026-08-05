@@ -53,6 +53,8 @@ Use `assets/explanation-template.html` only when none of the seven patterns fit.
 
 - The page should reduce reading effort. If it is just paragraphs in a browser, use chat instead.
 - Use layout to encode meaning: columns for comparison, timelines for time, arrows for flow, badges for state, tables for repeated facts.
+- Use one compact row-based list for a short flow or summary of changes. Reserve
+  card grids for independent concepts, not steps that should be read in order.
 - Keep the first viewport useful. The user should see the answer, not only a title.
 - For PR reading, make the first viewport reach the selected layer's changed
   flow or code. Do not spend it on review-order prose, diff metrics, repeated

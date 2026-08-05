@@ -172,20 +172,16 @@
   .view-tab[aria-selected="true"] { background: var(--blue-soft); color: var(--blue); }
   .view-tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
-  .flow {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 24px 9px;
-    margin-top: 8px;
-    counter-reset: flow;
-  }
+  .summary-title { margin: 14px 0 0; font-size: 1.08rem; }
+  .flow { margin-top: 5px; border-top: 1px solid var(--line); counter-reset: flow; }
   .flow-step {
-    position: relative;
+    display: grid;
+    grid-template-columns: 28px minmax(145px, .38fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
     min-width: 0;
-    padding: 13px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--surface-2);
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--line);
   }
   .flow-step::before {
     counter-increment: flow;
@@ -193,23 +189,14 @@
     display: grid;
     width: 23px;
     height: 23px;
-    margin-bottom: 8px;
     place-items: center;
     border-radius: 50%;
     background: var(--blue-soft);
     color: var(--blue);
     font: 800 11px/1 var(--mono);
   }
-  .flow-step:not(:last-child)::after {
-    position: absolute;
-    top: 50%;
-    right: -18px;
-    color: var(--blue);
-    content: "→";
-    font-size: 18px;
-  }
   .flow-step strong { display: block; }
-  .flow-step p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+  .flow-step p { margin: 0; color: var(--muted); font-size: 12.5px; }
 
   .implementation { margin-top: 12px; }
   .implementation > h3, .files > h3 { margin: 0 0 9px; font-size: 1.08rem; }
@@ -352,8 +339,9 @@
     .layer-title { align-items: flex-start; }
     .view-tabs { display: flex; width: 100%; }
     .view-tab { flex: 1; }
-    .flow { grid-template-columns: 1fr; gap: 8px; }
-    .flow-step::after { display: none; }
+    .flow-step { grid-template-columns: 26px minmax(0, 1fr); gap: 4px 10px; }
+    .flow-step::before { grid-row: 1 / span 2; }
+    .flow-step p { grid-column: 2; }
     .code-head { display: block; }
     .code-head span { display: block; }
     .code-head span + span { margin-top: 3px; }
@@ -412,6 +400,7 @@
       <p><code>startSession</code> returns the actor and session through typed success, rejection, and outage channels; Express only translates them into HTTP.</p>
     </div>
 
+    <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Session implementation flow">
       <article class="flow-step"><strong>Find and verify</strong><p>Prisma lookup and Argon2 verification become Effect operations.</p></article>
       <article class="flow-step"><strong>Reject safely</strong><p><code>LoginRejected</code> distinguishes internal reasons without exposing them.</p></article>
@@ -555,6 +544,7 @@ return success(200, { token: session.token });</code></pre>
       <p>Validation, locking, writes, session creation, and confirmation move out of Express while the existing cookie and response behavior remain.</p>
     </div>
 
+    <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Onboarding implementation flow">
       <article class="flow-step"><strong>Resolve token</strong><p>One lifecycle owner finds an active, usable token.</p></article>
       <article class="flow-step"><strong>Validate and hash</strong><p>Association rules stop bad combinations before writes.</p></article>
@@ -749,6 +739,7 @@ if (Either.isLeft(result)) {
       <p>Issue and atomic exchange become Effect programs with Effect Clock, typed rejection, and unchanged 401/500 translation.</p>
     </div>
 
+    <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Auth code implementation flow">
       <article class="flow-step"><strong>Issue</strong><p>Generate 32 random bytes and store a one-minute code.</p></article>
       <article class="flow-step"><strong>Compose</strong><p>Code login yields session creation then code issue in one Effect.</p></article>
@@ -921,6 +912,7 @@ if (Either.isLeft(result)) {
       <p>Token issue, throttling, email compensation, and atomic password save become named Effect operations without changing the privacy-safe response.</p>
     </div>
 
+    <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Password reset implementation flow">
       <article class="flow-step"><strong>Resolve safely</strong><p>Workspace and account lookup never reveal whether the account exists.</p></article>
       <article class="flow-step"><strong>Issue atomically</strong><p>Locks, throttles, stale cleanup, invalidation, and creation share one transaction.</p></article>
