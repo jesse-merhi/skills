@@ -189,7 +189,7 @@
   </section>
 
   <section aria-labelledby="part-two">
-    <h2 id="part-two">2. A new parser protects both contracts</h2>
+    <h2 id="part-two">2. Bad input is rejected before any search starts</h2>
     <div class="annotated">
       <div class="code-panel">
         <div class="code-head"><span>src/agents/tool-search-request.ts:50</span><span>exact excerpts; middle validation omitted</span></div>
@@ -253,14 +253,14 @@ if (serializedQueryBytes &gt; MAX_TOOL_SEARCH_BATCH_QUERY_BYTES) {
 return { kind: "batch", searches };</code></pre>
       </div>
       <div class="notes">
-        <div class="note"><strong><span class="badge">1</span>Reject ambiguous shapes</strong><p>Both fields or neither field is an input error.</p></div>
-        <div class="note"><strong><span class="badge">2</span>Preserve odd scalar behavior</strong><p>The branch deliberately retains old empty, whitespace, long-query, and <code>options.limit</code> behavior.</p></div>
-        <div class="note"><strong><span class="badge">3</span>Bound work</strong><p>At most 16 inner searches.</p></div>
-        <div class="note"><strong><span class="badge">4</span>Validate first</strong><p><code>map()</code> completes before execution begins. One invalid item causes zero searches.</p></div>
-        <div class="note"><strong><span class="badge">5</span>Bound amplification</strong><p>Total result demand and echoed query bytes are capped across the whole batch, not just per item.</p></div>
+        <div class="note"><strong><span class="badge">1</span>Send one form, not both</strong><p>Use <code>query</code> for one search or <code>queries</code> for a list. Sending both—or neither—gives a clear error.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Keep old requests working</strong><p>A one-search request is handled exactly as before.</p></div>
+        <div class="note"><strong><span class="badge">3</span>Limit the number of searches</strong><p>One request may contain at most 16 searches.</p></div>
+        <div class="note"><strong><span class="badge">4</span>Reject the whole list before starting</strong><p>Every list item is checked first. If one is bad, no search runs.</p></div>
+        <div class="note"><strong><span class="badge">5</span>Limit the whole request</strong><p>All item limits together may ask for at most 50 results, and the combined query text has one fixed size limit.</p></div>
       </div>
     </div>
-    <p class="lead"><strong>Why this is ~79 net lines:</strong> the new file is 104 lines, but roughly 25 lines are the old scalar limit/parser logic moved out of <code>tool-search-runtime.ts</code>. The extraction keeps request parsing out of the ranking/execution owner.</p>
+    <p class="lead"><strong>Why this is ~79 net lines:</strong> the file is 104 lines, but about 25 were moved from <code>tool-search-runtime.ts</code>. The truly new input-checking code is therefore about 79 lines.</p>
   </section>
 
   <section aria-labelledby="part-three">

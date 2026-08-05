@@ -109,6 +109,10 @@ code grew or how files compose—use `assets/patterns/annotated-diff.html`:
   names to shorten code.
 - Pair numbered markers in each code block with adjacent notes that answer:
   **where is this, how does it work, and why did we need it?**
+- Give code notes outcome-first, everyday headings. Prefer "Send one form, not
+  both" over "Reject ambiguous shapes," "Reject the whole list before
+  starting" over "Validate first," and "Limit the whole request" over "Bound
+  amplification."
 - In the Supporting changes tab, explain what each group proves in plain
   language. Examples: "the old one-search request still works," "bad input is
   rejected before any search starts," and "one search call is followed by one
