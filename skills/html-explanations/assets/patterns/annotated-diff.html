@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Why batched Tool Search changed 254 production lines</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c1117;
+    --surface: #151c24;
+    --surface-2: #1c2631;
+    --ink: #edf3f6;
+    --muted: #aab7c0;
+    --line: #33434f;
+    --blue: #78b9ff;
+    --blue-soft: #152c42;
+    --green: #7fd3a1;
+    --green-soft: #173426;
+    --amber: #efc56c;
+    --amber-soft: #382d17;
+    --pink: #e9a4c6;
+    --purple: #bca2ff;
+    --code: #080d12;
+    --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+  main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 42px 0 80px; }
+  header { max-width: 850px; }
+  .eyebrow { color: var(--blue); font: 800 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  h1 { margin: 14px 0; font-size: clamp(2.3rem, 6vw, 4.8rem); line-height: .98; letter-spacing: -.045em; }
+  .lead { max-width: 75ch; color: var(--muted); font-size: 1.15rem; }
+  .answer { margin-top: 25px; padding: 18px 20px; border-left: 4px solid var(--green); background: var(--green-soft); }
+  .answer strong { display: block; margin-bottom: 5px; }
+  section { margin-top: 48px; }
+  h2 { margin: 0 0 17px; font-size: 1.5rem; }
+  h3 { margin: 0 0 8px; font-size: 1.08rem; }
+  p { max-width: 75ch; }
+  code { padding: .1em .32em; border: 1px solid #3b4a56; border-radius: 4px; background: #111820; color: #d8f1ff; font: .88em var(--mono); }
+  .delta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .delta-card { min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .delta-card b { display: block; margin-bottom: 5px; font-size: 1.8rem; line-height: 1; }
+  .delta-card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .delta-card.feature b { color: var(--blue); }
+  .delta-card.input b { color: var(--purple); }
+  .delta-card.output b { color: var(--amber); }
+  .delta-card.glue b { color: var(--green); }
+  .bar { display: flex; height: 18px; margin-top: 14px; overflow: hidden; border-radius: 999px; background: var(--surface-2); }
+  .bar span { display: block; }
+  .bar .feature { width: 17%; background: var(--blue); }
+  .bar .input { width: 31%; background: var(--purple); }
+  .bar .output { width: 46%; background: var(--amber); }
+  .bar .glue { width: 6%; background: var(--green); }
+  .annotated {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(260px, .75fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .code-panel { min-width: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--code); }
+  .code-head { display: flex; justify-content: space-between; gap: 16px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); font: 700 13px/1.3 var(--mono); }
+  .code-head span:last-child { color: var(--muted); font-weight: 500; }
+  pre { max-width: 100%; margin: 0; overflow: auto; padding: 16px; color: #dfe9ed; font: 13px/1.65 var(--mono); tab-size: 2; }
+  pre code { padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; }
+  .num { color: var(--amber); font-weight: 800; }
+  .old { color: var(--green); }
+  .new { color: var(--blue); }
+  .guard { color: var(--purple); }
+  .comment { color: #8b9aa5; }
+  .notes { display: grid; gap: 10px; }
+  .note { padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+  .note strong { display: block; margin-bottom: 4px; }
+  .note p { margin: 0; color: var(--muted); font-size: 14px; }
+  .note .badge { display: inline-grid; width: 22px; height: 22px; margin-right: 6px; place-items: center; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font: 800 12px var(--mono); }
+  .callout { padding: 17px 19px; border: 1px solid #6c592f; border-radius: 10px; background: var(--amber-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .file-table { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: var(--surface-2); font-size: 13px; }
+  td { background: var(--surface); }
+  tr:last-child td { border-bottom: 0; }
+  details { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  details + details { margin-top: 10px; }
+  summary { min-height: 48px; padding: 13px 16px; cursor: pointer; font-weight: 750; }
+  details > div { padding: 0 16px 16px; }
+  .tabs { margin-top: 34px; }
+  .tablist { display: flex; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+  .tablist button { min-height: 46px; padding: 9px 18px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); font: 750 15px var(--sans); cursor: pointer; }
+  .tablist button:hover { color: var(--ink); }
+  .tablist button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .tablist button[aria-selected="true"] { border-color: #3e6a91; background: var(--blue-soft); color: var(--ink); }
+  .tabpanel[hidden] { display: none; }
+  .support-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .support-card { padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .support-card p { margin-bottom: 0; color: var(--muted); }
+  .support-card .kind { display: inline-block; margin-bottom: 9px; color: var(--blue); font: 800 12px var(--mono); text-transform: uppercase; }
+  .conclusion { padding: 21px; border: 1px solid #3c7554; border-radius: 10px; background: var(--green-soft); }
+  .conclusion p:last-child { margin-bottom: 0; }
+  @media (max-width: 900px) {
+    .delta { grid-template-columns: 1fr 1fr; }
+    .annotated { grid-template-columns: 1fr; }
+    .support-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    main { width: min(100% - 24px, 680px); padding-top: 24px; }
+    .delta { grid-template-columns: 1fr; }
+    .code-head { flex-direction: column; gap: 4px; }
+    .tablist { flex-direction: column; }
+    .tablist button { width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  @media print {
+    :root { color-scheme: light; }
+    body { background: white; color: #111; }
+    .delta-card, .note, td, th, details, .conclusion { background: white; border-color: #aaa; }
+    .lead, .delta-card p, .note p { color: #444; }
+    .annotated, .delta-card, details { break-inside: avoid; }
+    .tablist { display: none; }
+    .tabpanel[hidden] { display: block; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">PR #118623 · production diff anatomy</div>
+    <h1>Why did this need +254 production lines?</h1>
+    <p class="lead">The actual “run several searches” logic is tiny. Most of the new code exists because the tool now accepts a larger, hostile model-generated input and can return many more model-visible results in one response.</p>
+    <div class="answer">
+      <strong>The answer in one sentence</strong>
+      About 17% is the API/execution change; about 77% validates the larger input and keeps the larger output bounded; the rest is shared constants and types.
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tablist" role="tablist" aria-label="Diff categories">
+      <button id="tab-production" type="button" role="tab" aria-controls="panel-production" aria-selected="true">Production</button>
+      <button id="tab-supporting" type="button" role="tab" aria-controls="panel-supporting" aria-selected="false">Supporting changes</button>
+    </div>
+
+    <div id="panel-production" class="tabpanel" role="tabpanel" aria-labelledby="tab-production">
+  <section aria-labelledby="breakdown">
+    <h2 id="breakdown">Where the +254 net lines went</h2>
+    <div class="delta">
+      <div class="delta-card feature"><b>~43</b><h3>Schema + execution</h3><p>The actual feature: expose <code>queries</code>, keep scalar behavior, loop over searches.</p></div>
+      <div class="delta-card input"><b>~79</b><h3>Input validation</h3><p>Net growth after moving the old scalar parser out of <code>runtime.ts</code>.</p></div>
+      <div class="delta-card output"><b>118</b><h3>Output bounding</h3><p>Compact descriptions and fairly trim grouped candidates to the response budget.</p></div>
+      <div class="delta-card glue"><b>14</b><h3>Types + constants</h3><p>Named limits, a request union, and replacing one hard-coded 50.</p></div>
+    </div>
+    <div class="bar" aria-label="Approximate share of production delta"><span class="feature"></span><span class="input"></span><span class="output"></span><span class="glue"></span></div>
+    <p class="lead">The important insight: the batch loop is not what made the diff large. Defensive boundaries did.</p>
+  </section>
+
+  <section aria-labelledby="part-one">
+    <h2 id="part-one">1. The model-facing schema grew</h2>
+    <div class="annotated">
+      <div class="code-panel">
+        <div class="code-head"><span>src/agents/tool-search.ts:316</span><span>schema excerpt</span></div>
+        <pre><code>parameters: Type.Object({
+  <span class="num">①</span> query: Type.Optional(Type.String(...)),
+  limit: Type.Optional(Type.Integer(...)),
+
+  <span class="num">②</span> queries: Type.Optional(
+    Type.Array(
+      Type.Object({
+        query: Type.String({ maxLength: 512 }),
+        limit: Type.Optional(Type.Integer({ minimum: 1 })),
+      }),
+      { minItems: 1, maxItems: 16 },
+    ),
+  ),
+})</code></pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong><span class="badge">1</span>Scalar stays visible</strong><p>The old request is not wrapped or renamed. That is why existing models keep working.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Batch is additive</strong><p><code>queries</code> is a list of the same query/limit pair. The schema communicates simple per-item bounds.</p></div>
+        <div class="callout"><strong>Why both are optional</strong><p>The plain object schema cannot cleanly express “exactly one of these” across every provider. The runtime parser enforces that rule and returns a clear error.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="part-two">
+    <h2 id="part-two">2. A new parser protects both contracts</h2>
+    <div class="annotated">
+      <div class="code-panel">
+        <div class="code-head"><span>src/agents/tool-search-request.ts:50</span><span>exact excerpts; middle validation omitted</span></div>
+        <pre><code>const hasQuery = params.query !== undefined;
+const hasQueries = params.queries !== undefined;
+
+<span class="num">①</span> if (hasQuery === hasQueries) {
+  throw new ToolInputError("provide exactly one of query or queries.");
+}
+
+<span class="num">②</span> if (hasQuery) {
+  return { kind: "single", search: readToolSearchArgs(params, config) };
+}
+
+<span class="num">③</span> if (!Array.isArray(params.queries) || params.queries.length === 0) {
+  throw new ToolInputError("queries must be a non-empty array.");
+}
+if (params.queries.length &gt; MAX_TOOL_SEARCH_BATCH_QUERIES) {
+  throw new ToolInputError(
+    `queries may contain at most ${MAX_TOOL_SEARCH_BATCH_QUERIES} entries.`,
+  );
+}
+
+<span class="num">④</span> const searches = params.queries.map((value, index) =&gt; {
+  if (!isRecord(value)) {
+    throw new ToolInputError(`queries[${index}] must be an object.`);
+  }
+  const query = readBatchToolSearchQuery(
+    value.query,
+    `queries[${index}].query`,
+    MAX_TOOL_SEARCH_BATCH_QUERY_GRAPHEMES,
+  );
+  try {
+    return { query, limit: readToolSearchLimit(value.limit, config) };
+  } catch (error) {
+    if (error instanceof ToolInputError) {
+      throw new ToolInputError(`queries[${index}].${error.message}`);
+    }
+    throw error;
+  }
+});
+
+<span class="num">⑤</span> const requestedResults = searches.reduce(
+  (total, search) =&gt; total + search.limit,
+  0,
+);
+if (requestedResults &gt; MAX_TOOL_SEARCH_RESULTS) {
+  throw new ToolInputError(
+    `batch queries resolve to ${requestedResults} results, but may request at most ${MAX_TOOL_SEARCH_RESULTS} in total. An omitted limit counts as ${config.searchDefaultLimit}; set smaller per-query limits and retry.`,
+  );
+}
+
+const serializedQueries = JSON.stringify(searches.map((search) =&gt; search.query));
+const serializedQueryBytes = new TextEncoder().encode(serializedQueries).byteLength;
+if (serializedQueryBytes &gt; MAX_TOOL_SEARCH_BATCH_QUERY_BYTES) {
+  throw new ToolInputError(
+    `serialized batch query text may use at most ${MAX_TOOL_SEARCH_BATCH_QUERY_BYTES} UTF-8 bytes.`,
+  );
+}
+
+return { kind: "batch", searches };</code></pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong><span class="badge">1</span>Reject ambiguous shapes</strong><p>Both fields or neither field is an input error.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Preserve odd scalar behavior</strong><p>The branch deliberately retains old empty, whitespace, long-query, and <code>options.limit</code> behavior.</p></div>
+        <div class="note"><strong><span class="badge">3</span>Bound work</strong><p>At most 16 inner searches.</p></div>
+        <div class="note"><strong><span class="badge">4</span>Validate first</strong><p><code>map()</code> completes before execution begins. One invalid item causes zero searches.</p></div>
+        <div class="note"><strong><span class="badge">5</span>Bound amplification</strong><p>Total result demand and echoed query bytes are capped across the whole batch, not just per item.</p></div>
+      </div>
+    </div>
+    <p class="lead"><strong>Why this is ~79 net lines:</strong> the new file is 104 lines, but roughly 25 lines are the old scalar limit/parser logic moved out of <code>tool-search-runtime.ts</code>. The extraction keeps request parsing out of the ranking/execution owner.</p>
+  </section>
+
+  <section aria-labelledby="part-three">
+    <h2 id="part-three">3. The actual execution change is this small</h2>
+    <div class="annotated">
+      <div class="code-panel">
+        <div class="code-head"><span>src/agents/tool-search.ts:349</span><span>complete execution branch</span></div>
+        <pre><code>const request = readToolSearchRequest(args, config);
+
+<span class="num">①</span> if (request.kind === "single") {
+  return jsonResult(
+    await runtime.search(request.search.query, {
+      limit: request.search.limit,
+    }),
+  );
+}
+
+<span class="num">②</span> const results = await Promise.all(
+  request.searches.map(async (search) =&gt; ({
+    query: search.query,
+    <span class="num">③</span> candidates: await runtime.search(search.query, {
+      limit: search.limit,
+    }),
+  })),
+);
+
+<span class="num">④</span> return jsonResult(boundToolSearchBatchResponse(results));</code></pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong><span class="badge">1</span>Old path is explicit</strong><p>A tagged union makes the unchanged scalar response easy to see and test.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Order is stable</strong><p><code>Promise.all</code> returns results in input order even if work completes in another order.</p></div>
+        <div class="note"><strong><span class="badge">3</span>No new search engine</strong><p>Every item calls the same <code>runtime.search()</code> used by a scalar request.</p></div>
+        <div class="note"><strong><span class="badge">4</span>Batch-only shaping</strong><p>Only grouped output goes through the new response bounder.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="same-search">
+    <h2 id="same-search">4. The existing search engine was not rewritten</h2>
+    <div class="annotated">
+      <div class="code-panel">
+        <div class="code-head"><span>src/agents/tool-search-runtime.ts:458</span><span>exact excerpts; index construction omitted</span></div>
+        <pre><code>search = async (query: string, options?: { limit?: number } &amp; CatalogVisibilityOptions) =&gt; {
+  const catalog = resolveCatalog(this.ctx);
+  <span class="num">①</span> catalog.searchCount += 1;
+  const limit = readToolSearchLimit(options?.limit, this.config);
+  const entries = visibleCatalogEntries(catalog, options);
+
+  const exact = query.trim().toLowerCase();
+  const isExact = (entry: ToolSearchCatalogEntry) =&gt;
+    entry.name.toLowerCase() === exact || entry.id.toLowerCase() === exact;
+  <span class="num">②</span> const exactMatches = entries.filter(isExact);
+  if (limit === 1 &amp;&amp; exactMatches.length === 1) {
+    return exactMatches.slice(0, limit).map(compactToolSearchCatalogEntry);
+  }
+
+  <span class="comment">// Existing cached-index construction omitted.</span>
+
+  <span class="num">③</span> const ranked = scoreLexical(cachedIndex.index, tokenizeQuery(query))
+    .toSorted(
+      (a, b) =&gt;
+        Number(isExact(b.value)) - Number(isExact(a.value)) ||
+        Number(b.matchedLiteral) - Number(a.matchedLiteral) ||
+        b.score - a.score ||
+        a.value.id.localeCompare(b.value.id),
+    )
+    .map((hit) =&gt; hit.value);
+
+  return [...exactEntries, ...ranked]
+    .slice(0, limit)
+    .map((entry) =&gt; compactToolSearchCatalogEntry(entry));
+};</code></pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong><span class="badge">1</span>Same telemetry</strong><p>A three-query batch records three ordinary searches.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Same visibility</strong><p>Each query sees the same effective, policy-filtered catalog.</p></div>
+        <div class="note"><strong><span class="badge">3</span>Same ranking</strong><p>Exact lookup, cached lexical index, scoring, tie-breaks, and candidate projection are unchanged.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="part-five">
+    <h2 id="part-five">5. The largest addition is output bounding</h2>
+    <p class="lead">One scalar search previously returned at most one result list. A batch can repeat candidates across 16 groups, including descriptions supplied by MCP or client tools. Returning that naively can multiply untrusted text into the model transcript.</p>
+    <div class="annotated">
+      <div class="code-panel">
+        <div class="code-head"><span>src/agents/tool-search.ts:98</span><span>exact excerpts; MCP size calculation omitted</span></div>
+        <pre><code><span class="num">①</span> const prefix = truncateUtf16Safe(
+  candidate.description,
+  MAX_BATCH_CANDIDATE_DESCRIPTION_SCAN_CHARS,
+);
+const normalized = prefix.replace(/\s+/g, " ").trim();
+const compacted = truncateUtf16Safe(
+  normalized,
+  MAX_BATCH_CANDIDATE_DESCRIPTION_CHARS - 3,
+).trimEnd();
+
+<span class="comment">// Later, in compactBatchCandidate:</span>
+
+<span class="num">②</span> const mandatoryChars =
+  candidate.id.length + candidate.source.length +
+  candidate.name.length + candidate.input.length;
+
+if (mandatoryChars &gt; MAX_BATCH_CANDIDATE_METADATA_CHARS) {
+  return undefined;
+}
+
+let remaining = MAX_BATCH_CANDIDATE_METADATA_CHARS - mandatoryChars;
+const retain = (value: string | undefined): string | undefined =&gt; {
+  if (value === undefined || value.length &gt; remaining) return undefined;
+  remaining -= value.length;
+  return value;
+};
+
+<span class="num">③</span> return {
+  ...compactBatchCandidateDescription(candidate),
+  sourceName: retain(candidate.sourceName),
+  label: retain(candidate.label),
+  <span class="comment">// Exact MCP size calculation omitted.</span>
+  mcp,
+  output: retain(candidate.output),
+};</code></pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong><span class="badge">1</span>Bound before normalizing</strong><p>It scans at most 720 characters even if a remote tool supplies a multi-megabyte description.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Protect callable identity</strong><p><code>id</code>, <code>name</code>, <code>source</code>, and <code>input</code> are mandatory and never shortened. A pathological identity is dropped rather than corrupted.</p></div>
+        <div class="note"><strong><span class="badge">3</span>Optional metadata loses first</strong><p>Labels and provenance can disappear when oversized; the exact callable fields remain.</p></div>
+      </div>
+    </div>
+
+    <div class="annotated" style="margin-top:16px">
+      <div class="code-panel">
+        <div class="code-head"><span>src/agents/tool-search.ts:160</span><span>complete response-bounder body</span></div>
+        <pre><code>const bounded: ToolSearchBatchGroup[] = results.map((result) =&gt; {
+  const candidates = result.candidates
+    .map(compactBatchCandidate)
+    .filter((candidate): candidate is ToolSearchCandidate =&gt; candidate !== undefined);
+  const groupTruncated = candidates.length &lt; result.candidates.length;
+  return {
+    ...result,
+    candidates,
+    ...(groupTruncated ? { truncated: true as const } : {}),
+  };
+});
+
+let truncated = bounded.some((result) =&gt; result.truncated);
+const render = () =&gt; ({
+  results: bounded,
+  ...(truncated ? { truncated: true as const } : {}),
+});
+
+<span class="num">①</span> while (JSON.stringify(render(), null, 2).length &gt;
+    MAX_TOOL_SEARCH_BATCH_RESPONSE_CHARS) {
+  const removable = bounded
+    .map((result, index) =&gt; ({
+      index,
+      <span class="num">②</span> rank: result.candidates.length,
+      candidate: result.candidates.at(-1),
+    }))
+    .filter(
+      (item): item is { index: number; rank: number; candidate: ToolSearchCandidate } =&gt;
+        item.candidate !== undefined,
+    )
+    .toSorted(
+      (a, b) =&gt;
+        b.rank - a.rank ||
+        JSON.stringify(b.candidate).length - JSON.stringify(a.candidate).length ||
+        a.index - b.index,
+    )[0];
+  if (!removable) {
+    break;
+  }
+
+  const group = bounded[removable.index];
+  <span class="num">③</span> group?.candidates.pop();
+  if (group) group.truncated = true;
+  truncated = true;
+}
+
+return render();</code></pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong><span class="badge">1</span>Hard transcript ceiling</strong><p>The final grouped JSON cannot silently grow beyond the model-visible budget.</p></div>
+        <div class="note"><strong><span class="badge">2</span>Trim fairly</strong><p>The group with the most candidates loses its lowest-ranked candidate first. One dominant query cannot consume the whole response.</p></div>
+        <div class="note"><strong><span class="badge">3</span>Never fake “no matches”</strong><p>Both the group and response say <code>truncated: true</code> when candidates were removed.</p></div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:16px"><strong>This is the debatable complexity.</strong><p>The 118-line compactor is not needed to make batching function. It is needed to satisfy OpenClaw's prompt-budget and untrusted-catalog rules. If you want to simplify production code, this is the area to challenge—but removing it means choosing a different bounded-output contract, not merely deleting defensive noise.</p></div>
+  </section>
+
+  <section aria-labelledby="files">
+    <h2 id="files">Production files, without the noise</h2>
+    <div class="file-table">
+      <table>
+        <thead><tr><th>File</th><th>Net</th><th>What actually changed</th></tr></thead>
+        <tbody>
+          <tr><td><code>tool-search.ts</code></td><td>+161</td><td>118-line batch response bounder plus schema/execution wiring.</td></tr>
+          <tr><td><code>tool-search-request.ts</code></td><td>+104</td><td>New parser module; includes scalar parser code moved from runtime.</td></tr>
+          <tr><td><code>tool-search-runtime.ts</code></td><td>−25</td><td>Old request/limit parsing removed; ranking behavior untouched.</td></tr>
+          <tr><td><code>tool-search-types.ts</code></td><td>+10</td><td>Batch request union and shared hard limits.</td></tr>
+          <tr><td><code>tool-search-config.ts</code></td><td>+4</td><td>Uses shared <code>MAX_TOOL_SEARCH_RESULTS</code> instead of literal <code>50</code>.</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>+254</strong></td><td>No Codex files, persistence, migrations, or second ranking path.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+    </div>
+
+    <div id="panel-supporting" class="tabpanel" role="tabpanel" aria-labelledby="tab-supporting" hidden>
+      <section aria-labelledby="supporting">
+        <h2 id="supporting">Supporting changes, grouped by purpose</h2>
+        <p class="lead">These files prove, document, or exercise production behavior. They do not implement catalog ranking or dispatch.</p>
+        <div class="support-grid">
+          <article class="support-card"><span class="kind">Tests · +497</span><h3><code>src/agents/tool-search.test.ts</code></h3><p>Covers scalar compatibility, XOR validation, atomic rejection, limits, Unicode, duplicates, order, fair truncation, hostile descriptions, tools mode, and directory mode.</p></article>
+          <article class="support-card"><span class="kind">Private QA</span><h3><code>extensions/qa-lab/**</code></h3><p>Teaches the fake provider to issue one batch, inspect grouped candidates, and call the target. The Gateway fixture verifies the real transcript and plugin result.</p></article>
+          <article class="support-card"><span class="kind">Scenario</span><h3><code>qa/scenarios/runtime/tool-search-gateway-e2e.yaml</code></h3><p>Adds the structured-tools lane beside direct and code modes. Retries are disabled so a failed first attempt cannot be hidden.</p></article>
+          <article class="support-card"><span class="kind">Documentation · +37 net</span><h3><code>docs/tools/tool-search.md</code></h3><p>Defines scalar versus batch request/response shapes, all limits, truncation semantics, and the exact E2E command.</p></article>
+          <article class="support-card"><span class="kind">CI / infrastructure</span><h3>No workflow or deployment changes</h3><p>The PR uses existing build and changed-check lanes. It adds no CI trigger, service, database, migration, state file, or environment variable.</p></article>
+          <article class="support-card"><span class="kind">Why this split matters</span><h3>Proof stays out of the production story</h3><p>A reader can understand runtime ownership without parsing fixture machinery, then switch tabs to verify how each promise is tested and documented.</p></article>
+        </div>
+
+        <section aria-labelledby="support-flow">
+          <h2 id="support-flow">The supporting flow, in its own dependency order</h2>
+          <div class="annotated">
+            <div class="code-panel">
+              <div class="code-head"><span>extensions/qa-lab/src/providers/mock-openai/server.ts:798</span><span>exact excerpts reordered by learning dependency</span></div>
+              <pre><code><span class="num">①</span> if (
+  !hasCompletedToolOutput &amp;&amp;
+  targetTool &amp;&amp;
+  !hasDeclaredTool(body, targetTool) &amp;&amp;
+  hasDeclaredTool(body, "tool_search")
+) {
+  return buildToolCallEventsWithArgs("tool_search", {
+    queries: [
+      { query: targetTool, limit: 1 },
+      { query: QA_TOOL_SEARCH_SECONDARY_TARGET, limit: 1 },
+    ],
+  });
+}
+
+<span class="comment">// ... Gateway executes the real production tool ...</span>
+
+<span class="num">②</span> if (
+  targetTool &amp;&amp;
+  hasCompletedToolOutput &amp;&amp;
+  completedToolName === "tool_search" &amp;&amp;
+  toolSearchOutputHasCandidate(parseToolOutputJson(toolOutput), targetTool) &amp;&amp;
+  hasDeclaredTool(body, "tool_call")
+) {
+  return buildToolCallEventsWithArgs("tool_call", {
+    id: targetTool,
+    args: plannedArgs,
+  });
+}</code></pre>
+            </div>
+            <div class="notes">
+              <div class="note"><strong><span class="badge">1</span>Where / how</strong><p>The fake model emits the new batch shape through the ordinary provider protocol.</p></div>
+              <div class="note"><strong><span class="badge">2</span>Why</strong><p>It only advances after the actual grouped output contains the target, so the scenario cannot pass on an empty or failed search.</p></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </div>
+
+  <section class="conclusion" aria-labelledby="conclusion">
+    <h2 id="conclusion">My honest conclusion</h2>
+    <p><strong>The core feature is straightforward:</strong> parse a tagged request, reuse <code>runtime.search()</code> for every entry, and group the results.</p>
+    <p><strong>The production size comes from two deliberate policies:</strong> preserve every scalar edge case and never let a batch amplify untrusted text into an unbounded model response.</p>
+    <p><strong>The line count is therefore explainable, but not inevitable:</strong> maintainers could choose a simpler response contract with stricter candidate limits. The current version spends code to preserve richer per-query results fairly under one shared 4,000-character ceiling.</p>
+  </section>
+</main>
+<script>
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+  function selectTab(selected) {
+    tabs.forEach((tab) => tab.setAttribute('aria-selected', String(tab === selected)));
+    panels.forEach((panel) => { panel.hidden = panel.id !== selected.getAttribute('aria-controls'); });
+  }
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => selectTab(tab));
+    tab.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      const next = tabs[(index + direction + tabs.length) % tabs.length];
+      selectTab(next);
+      next.focus();
+    });
+  });
+</script>
+</body>
+</html>

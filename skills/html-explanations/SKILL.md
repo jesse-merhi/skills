@@ -72,6 +72,7 @@ Use these as starting points:
 - **Architecture map**: modules as nodes, arrows for calls/data/events, notes on ownership boundaries.
 - **Bug explanation**: broken behavior, evidence, cause, smallest fix, verification.
 - **PR/diff walkthrough**: what changed, changed flow map, files to read, before/after behavior, tests, open questions.
+- **Annotated diff**: production/supporting tabs, line-count anatomy, dependency-ordered real code excerpts, numbered why/how/where annotations, unchanged owner path, complexity judgment.
 - **Plan/report**: goal or current state, phases or timeline, blockers, risks, checks, decisions needed, next actions.
 - **Incident report**: impact, timeline, trigger, cause, fix, follow-ups, evidence.
 
@@ -83,6 +84,27 @@ Use these as starting points:
 - Include exact files and symbols to search.
 - Put long snippets in expandable sections.
 - Use review language only when a review already happened or the user asked for one.
+
+When the reader wants to understand the diff itself—especially why production
+code grew or how files compose—use `assets/patterns/annotated-diff.html`:
+
+- Split the page into a default **Production** tab and a **Supporting changes**
+  tab. Put tests, fixtures, infrastructure, CI, generated files, and docs in the
+  supporting tab, grouped by category. Omit empty categories or name an
+  important absence such as "No CI workflow changes."
+- Quantify the net production delta first. Separate genuinely new logic from
+  moved or renamed code, and keep test/docs growth out of the production total.
+- Order production excerpts by learning dependency, not file path or diff
+  order. A common sequence is contract/schema -> parsing/normalization ->
+  orchestration -> canonical runtime/owner -> output/lifecycle/persistence.
+- Use real code excerpts. Label omissions as omissions; never invent helper
+  names to shorten code.
+- Pair numbered markers in each code block with adjacent notes that answer:
+  **where is this, how does it work, and why did we need it?**
+- Show the unchanged canonical owner or path when reuse is an important part of
+  the design. This makes delegation visible and rules out duplicate logic.
+- End by separating irreducible feature complexity from optional or debatable
+  policy complexity.
 
 ## Plans, Reports, Incidents, And Handoffs
 
