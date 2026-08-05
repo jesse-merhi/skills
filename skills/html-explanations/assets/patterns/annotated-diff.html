@@ -4,68 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>What changed in the onboarding stack?</title>
+<title>Uplinked Effect auth stack — direct-base walkthrough</title>
 <style>
   :root {
     color-scheme: dark;
-    --bg: #0b1016;
-    --surface: #141c25;
-    --surface-2: #1a2531;
-    --surface-3: #202e3c;
-    --ink: #edf4f7;
-    --muted: #a9b6bf;
-    --line: #344655;
-    --blue: #82c3ff;
+    --bg: #0a1016;
+    --surface: #131c25;
+    --surface-2: #192531;
+    --surface-3: #20303e;
+    --ink: #eef5f7;
+    --muted: #a6b7c0;
+    --line: #334857;
+    --blue: #7bc7ff;
     --blue-soft: #15324a;
-    --green: #83d9a6;
-    --green-soft: #153626;
-    --amber: #f0c979;
-    --amber-soft: #392e18;
-    --purple: #c5adff;
+    --amber: #f3c774;
+    --amber-soft: #392d17;
     --code: #070c11;
     --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  html { overflow-x: hidden; }
+  html, body { overflow-x: hidden; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 16px/1.55 var(--sans);
+    font: 15px/1.52 var(--sans);
   }
   main {
-    width: min(1160px, calc(100% - 32px));
+    width: min(1180px, calc(100% - 28px));
     margin: 0 auto;
-    padding: 42px 0 80px;
+    padding: 24px 0 64px;
   }
-  header { max-width: 900px; }
-  h1 {
-    max-width: 14ch;
-    margin: 14px 0;
-    font-size: clamp(2.35rem, 6vw, 4.9rem);
-    line-height: .98;
-    letter-spacing: -.045em;
+  a { color: var(--blue); text-underline-offset: 3px; }
+  button { font: inherit; }
+  button:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 3px;
   }
-  h2 { margin: 0 0 14px; font-size: clamp(1.35rem, 3vw, 1.8rem); }
-  h3 { margin: 0 0 7px; font-size: 1.05rem; }
-  p { max-width: 75ch; }
-  a { color: var(--blue); }
   code {
     padding: .1em .32em;
-    border: 1px solid #3b4d5b;
+    border: 1px solid #3b4f5e;
     border-radius: 4px;
-    background: #101820;
-    color: #dbf2ff;
+    background: #0f1820;
+    color: #dcf4ff;
     font: .88em var(--mono);
   }
   pre {
     min-width: 0;
     margin: 0;
     overflow-x: auto;
-    padding: 18px;
-    color: #dce7ed;
-    font: 13px/1.65 var(--mono);
+    padding: 16px;
+    color: #dce8ed;
+    font: 12.5px/1.58 var(--mono);
     tab-size: 2;
   }
   pre code {
@@ -76,65 +67,35 @@
     color: inherit;
     font: inherit;
   }
-  button { font: inherit; }
-  button:focus-visible {
-    outline: 3px solid var(--blue);
-    outline-offset: 3px;
+  [hidden] { display: none !important; }
+
+  .page-head {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
   }
-  .eyebrow {
-    color: var(--blue);
-    font: 800 13px/1 var(--mono);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-  .lead {
+  .page-head h1 {
     margin: 0;
-    color: var(--muted);
-    font-size: 1.13rem;
+    font-size: clamp(1.4rem, 3vw, 1.9rem);
+    line-height: 1.05;
+    letter-spacing: -.035em;
   }
-  .answer {
-    max-width: 870px;
-    margin-top: 25px;
-    padding: 18px 20px;
-    border-left: 4px solid var(--green);
-    background: var(--green-soft);
-  }
-  .answer strong { display: block; margin-bottom: 5px; }
-  .stack-nav {
-    margin-top: 45px;
-    padding: 22px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--surface);
-  }
-  .stack-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 16px;
-  }
-  .stack-heading h2 { margin-bottom: 3px; }
-  .stack-heading p { margin: 0; color: var(--muted); }
-  .review-order {
-    flex: 0 0 auto;
-    color: var(--green);
-    font: 800 12px/1 var(--mono);
-    letter-spacing: .06em;
-    text-transform: uppercase;
-  }
+
+  .stack-nav { margin-top: 10px; }
   .stack-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    display: flex;
+    gap: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 2px 2px 5px;
   }
   .stack-tab {
+    flex: 1 0 215px;
     min-width: 0;
-    min-height: 98px;
-    padding: 15px;
+    min-height: 58px;
+    padding: 8px 11px;
     border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--surface-2);
+    border-radius: 9px;
+    background: var(--surface);
     color: inherit;
     text-align: left;
     cursor: pointer;
@@ -144,271 +105,259 @@
     background: var(--blue-soft);
     box-shadow: inset 0 0 0 1px var(--blue);
   }
-  .tab-top {
+  .tab-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 9px;
+    gap: 7px;
     color: var(--muted);
-    font: 700 12px/1 var(--mono);
+    font: 700 11px/1 var(--mono);
   }
   .step {
     display: inline-grid;
-    width: 24px;
-    height: 24px;
+    width: 21px;
+    height: 21px;
     place-items: center;
     border-radius: 50%;
     background: var(--surface-3);
     color: var(--blue);
   }
-  .stack-tab[aria-selected="true"] .step {
-    background: var(--blue);
-    color: #07111a;
-  }
-  .stack-tab strong { display: block; margin-bottom: 4px; }
-  .stack-tab small { display: block; color: var(--muted); line-height: 1.4; }
-  .standalone-note {
-    margin: 15px 0 0;
-    color: var(--muted);
-    font-size: 14px;
-  }
-  .standalone-note strong { color: var(--ink); }
-  .layer-panel { margin-top: 38px; }
+  .stack-tab[aria-selected="true"] .step { background: var(--blue); color: #08131c; }
+  .stack-tab strong { display: block; margin-top: 6px; font-size: 13px; }
+
+  .layer { margin-top: 8px; }
   .layer-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 22px;
-    align-items: start;
-    padding-bottom: 23px;
-    border-bottom: 1px solid var(--line);
-  }
-  .layer-kicker {
-    margin-bottom: 8px;
-    color: var(--purple);
-    font: 800 12px/1 var(--mono);
-    letter-spacing: .06em;
-    text-transform: uppercase;
-  }
-  .layer-head h2 { margin-bottom: 8px; font-size: clamp(1.8rem, 4vw, 2.7rem); }
-  .layer-head p { margin: 0; color: var(--muted); }
-  .stats {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 7px;
-  }
-  .stat {
-    padding: 7px 10px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--muted);
-    font: 700 12px/1 var(--mono);
-    white-space: nowrap;
-  }
-  .view-switcher {
-    display: inline-flex;
-    gap: 6px;
-    margin-top: 22px;
-    padding: 5px;
+    padding: 12px 14px;
     border: 1px solid var(--line);
     border-radius: 11px;
     background: var(--surface);
   }
-  .view-switcher button {
-    min-height: 44px;
-    padding: 9px 14px;
-    border: 0;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--muted);
-    font-weight: 800;
-    cursor: pointer;
-  }
-  .view-switcher button[aria-pressed="true"] {
-    background: var(--blue-soft);
-    color: var(--blue);
-  }
-  .view-panel > section,
-  .view-panel > div { margin-top: 44px; }
-  .change-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .layer-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 12px;
   }
-  .change-card {
-    min-width: 0;
-    padding: 18px;
+  .layer-head h2 { margin: 0; font-size: clamp(1.2rem, 2.5vw, 1.55rem); line-height: 1.15; }
+  .layer-head p { max-width: 88ch; margin: 5px 0 0; color: var(--muted); font-size: 13.5px; }
+  .pr-link {
+    flex: 0 0 auto;
+    padding: 5px 8px;
     border: 1px solid var(--line);
-    border-radius: 11px;
+    border-radius: 999px;
+    color: var(--blue);
+    font: 700 11px/1 var(--mono);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .view-tabs {
+    display: inline-flex;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
     background: var(--surface);
   }
-  .change-card .label {
-    display: block;
-    margin-bottom: 12px;
-    color: var(--blue);
-    font: 800 12px/1 var(--mono);
-    letter-spacing: .05em;
-    text-transform: uppercase;
+  .view-tab {
+    min-height: 40px;
+    padding: 8px 13px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font: 750 12px/1 var(--sans);
   }
-  .change-card p { margin: 0; color: var(--muted); }
-  .change-card.observable { border-color: #3c7050; background: var(--green-soft); }
-  .change-card.observable .label { color: var(--green); }
+  .view-tab[aria-selected="true"] { background: var(--blue-soft); color: var(--blue); }
+  .view-tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
   .flow {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px 9px;
+    margin-top: 8px;
     counter-reset: flow;
   }
   .flow-step {
     position: relative;
     min-width: 0;
-    padding: 18px;
+    padding: 13px;
     border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--surface);
+    border-radius: 9px;
+    background: var(--surface-2);
   }
   .flow-step::before {
     counter-increment: flow;
     content: counter(flow);
     display: grid;
-    width: 27px;
-    height: 27px;
-    margin-bottom: 13px;
+    width: 23px;
+    height: 23px;
+    margin-bottom: 8px;
     place-items: center;
     border-radius: 50%;
     background: var(--blue-soft);
     color: var(--blue);
-    font: 800 12px var(--mono);
+    font: 800 11px/1 var(--mono);
   }
   .flow-step:not(:last-child)::after {
-    content: "→";
     position: absolute;
     top: 50%;
-    right: -21px;
+    right: -18px;
     color: var(--blue);
-    font-size: 22px;
+    content: "→";
+    font-size: 18px;
   }
-  .flow-step p { margin: 0; color: var(--muted); }
+  .flow-step strong { display: block; }
+  .flow-step p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+
+  .implementation { margin-top: 12px; }
+  .implementation > h3, .files > h3 { margin: 0 0 9px; font-size: 1.08rem; }
   .excerpt {
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(260px, .8fr);
-    gap: 14px;
-    align-items: start;
-    margin-top: 15px;
+    display: block;
   }
+  .excerpt + .excerpt { margin-top: 11px; }
   .code-panel {
     min-width: 0;
     overflow: hidden;
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 9px;
     background: var(--code);
   }
   .code-head {
     display: flex;
     justify-content: space-between;
-    gap: 16px;
-    padding: 11px 14px;
+    gap: 12px;
+    padding: 9px 12px;
     border-bottom: 1px solid var(--line);
     background: var(--surface-2);
-    font: 700 13px/1.35 var(--mono);
+    font: 700 11.5px/1.3 var(--mono);
   }
   .code-head span:last-child { color: var(--muted); font-weight: 500; }
   .marker {
     display: inline-grid;
-    width: 20px;
-    height: 20px;
-    margin-right: 7px;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
     place-items: center;
     border-radius: 50%;
     background: var(--blue);
-    color: #07111a;
-    font: 900 11px/1 var(--mono);
+    color: #07121b;
+    font: 900 10px/1 var(--mono);
     user-select: none;
   }
-  .notes { display: grid; gap: 10px; }
+  .notes { display: grid; gap: 8px; }
   .note {
-    padding: 14px;
+    padding: 11px 12px;
     border: 1px solid var(--line);
-    border-radius: 9px;
+    border-radius: 8px;
     background: var(--surface);
   }
-  .note strong { display: block; margin-bottom: 5px; }
-  .note p { margin: 0; color: var(--muted); font-size: 14px; }
-  .note .badge {
+  .note strong { display: block; font-size: 13px; }
+  .note p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+  .badge {
     display: inline-grid;
-    width: 22px;
-    height: 22px;
-    margin-right: 7px;
+    width: 19px;
+    height: 19px;
+    margin-right: 6px;
     place-items: center;
     border-radius: 50%;
     background: var(--blue-soft);
     color: var(--blue);
-    font: 800 12px var(--mono);
+    font: 800 10px/1 var(--mono);
   }
+  .enhanced-code .marker, .enhanced-code .notes { display: none; }
+  .review-note {
+    display: block;
+    margin: 10px -4px;
+    padding: 10px 12px;
+    border: 1px solid #37698f;
+    border-left: 4px solid var(--blue);
+    border-radius: 7px;
+    background: #10283a;
+    color: #dceaf2;
+    font: 13px/1.45 var(--sans);
+    white-space: normal;
+  }
+  .review-label {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--blue);
+    font: 800 10px/1.2 var(--mono);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .review-title { display: block; margin-bottom: 2px; color: var(--ink); font-weight: 750; }
+  .tok-comment { color: #8598a5; font-style: italic; }
+  .tok-keyword { color: #ff8fb3; }
+  .tok-string { color: #a9dc76; }
+  .tok-number, .tok-literal { color: #ffd080; }
+  .tok-type { color: #82c3ff; }
+  .tok-call { color: #c7a7ff; }
+
+  .files { margin-top: 18px; }
   .file-table {
     max-width: 100%;
     overflow-x: auto;
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 9px;
   }
-  table { width: 100%; border-collapse: collapse; }
-  th, td {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--line);
-    text-align: left;
-    vertical-align: top;
-  }
-  th {
-    color: var(--muted);
-    background: var(--surface-2);
-    font: 800 12px/1.3 var(--mono);
-    text-transform: uppercase;
-  }
+  table { width: 100%; min-width: 620px; border-collapse: collapse; background: var(--surface); }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--muted); background: var(--surface-2); font: 800 10.5px/1.3 var(--mono); text-transform: uppercase; }
   tr:last-child td { border-bottom: 0; }
   td:last-child { color: var(--muted); }
-  .proof-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-  .proof-card {
-    min-width: 0;
-    padding: 18px;
+
+  details.proof {
+    margin-top: 13px;
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 9px;
     background: var(--surface);
   }
-  .proof-card .kind {
-    display: inline-block;
-    margin-bottom: 9px;
-    color: var(--green);
-    font: 800 12px/1 var(--mono);
-    letter-spacing: .05em;
-    text-transform: uppercase;
+  details.proof[open] { border-color: #4a614f; }
+  summary {
+    min-height: 44px;
+    padding: 11px 13px;
+    cursor: pointer;
+    font-weight: 800;
   }
-  .proof-card p { margin: 0; color: var(--muted); }
-  .review-callout {
-    padding: 18px 20px;
-    border-left: 4px solid var(--amber);
-    background: var(--amber-soft);
+  .proof-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 12px 12px;
   }
-  .review-callout strong { display: block; margin-bottom: 5px; }
-  .review-callout p { margin: 0; color: #dfd1ae; }
-  [hidden] { display: none !important; }
-  @media (max-width: 820px) {
-    .layer-head { grid-template-columns: 1fr; }
-    .stats { justify-content: flex-start; }
-    .change-grid, .flow { grid-template-columns: 1fr; gap: 12px; }
-    .flow-step:not(:last-child)::after { display: none; }
+  .proof-item {
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  .proof-item strong { display: block; font-size: 13px; }
+  .proof-item p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+  .proof-item.caveat { border-color: #6b5933; background: var(--amber-soft); }
+  .proof-item.caveat strong { color: var(--amber); }
+
+  @media (max-width: 880px) {
+    .flow { grid-template-columns: 1fr 1fr; }
+    .flow-step:nth-child(2)::after { display: none; }
     .excerpt { grid-template-columns: 1fr; }
   }
-  @media (max-width: 620px) {
-    main { width: min(100% - 24px, 680px); padding-top: 25px; }
-    .stack-heading { align-items: start; flex-direction: column; }
-    .stack-tabs, .proof-grid { grid-template-columns: 1fr; }
-    .view-switcher { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-    .view-switcher button { padding-inline: 8px; }
-    .code-head { align-items: start; flex-direction: column; gap: 4px; }
+  @media (max-width: 520px) {
+    main { width: calc(100% - 18px); padding-top: 16px; }
+    .page-head h1 { font-size: 1.4rem; }
+    .stack-tab { flex-basis: 190px; }
+    .layer-head { padding: 11px; }
+    .layer-title { align-items: flex-start; }
+    .view-tabs { display: flex; width: 100%; }
+    .view-tab { flex: 1; }
+    .flow { grid-template-columns: 1fr; gap: 8px; }
+    .flow-step::after { display: none; }
+    .code-head { display: block; }
+    .code-head span { display: block; }
+    .code-head span + span { margin-top: 3px; }
+    .proof-body { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
@@ -417,296 +366,276 @@
     :root { color-scheme: light; }
     body { background: #fff; color: #111; }
     main { width: 100%; padding: 0; }
-    .stack-nav, .change-card, .flow-step, .note, .proof-card, .file-table, .code-panel {
-      background: #fff;
-      color: #111;
-      break-inside: avoid;
-    }
-    .stack-tabs, .view-switcher { display: none; }
-    .standalone-note { display: none; }
-    [hidden] { display: block !important; }
-    .layer-panel { break-before: page; }
-    .layer-panel:first-of-type { break-before: auto; }
+    .stack-nav, .view-tabs { display: none; }
+    .layer[hidden] { display: block !important; break-before: page; }
+    .view-panel[hidden] { display: block !important; }
+    .layer:first-of-type { break-before: auto; }
+    .layer-head, .flow-step, .code-panel, .review-note, .file-table, details.proof, .proof-item { background: #fff; break-inside: avoid; }
+    .layer-head p, .flow-step p, .note p, td:last-child, .proof-item p { color: #444; }
     pre { color: #111; white-space: pre-wrap; }
-    .lead, .layer-head p, .change-card p, .flow-step p, .note p, .proof-card p, td:last-child {
-      color: #444;
-    }
   }
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <div class="eyebrow">Uplinked · onboarding stack · 2 review layers</div>
-    <h1>Onboarding now finishes through one safe, reusable workflow.</h1>
-    <p class="lead">Read this stack from the bottom up. The first PR fixes the session rule. The second moves the full completion workflow behind a typed Effect boundary while keeping the HTTP contract unchanged.</p>
-    <div class="answer">
-      <strong>What changed across the stack</strong>
-      Non-worker onboarding sessions now expire like normal sign-ins, and onboarding completion now has one atomic workflow with explicit failures. Worker behavior, cookies, status codes, and response shapes stay the same.
-    </div>
+  <header class="page-head">
+    <h1>Effect HTTP authentication stack</h1>
   </header>
 
-  <nav class="stack-nav" aria-labelledby="stack-title">
-    <div class="stack-heading">
-      <div>
-        <h2 id="stack-title">Review the stack bottom-to-top</h2>
-        <p>Each tab is one direct-base PR diff, not the cumulative branch.</p>
-      </div>
-      <div class="review-order">Main → #727 → #728</div>
-    </div>
-    <div class="stack-tabs" role="tablist" aria-label="Pull requests in this stack">
-      <button class="stack-tab" id="stack-tab-727" type="button" role="tab" aria-controls="layer-727" aria-selected="true">
-        <span class="tab-top"><span class="step">1</span>PR #727 · base: main</span>
-        <strong>Expire onboarding sessions like normal sign-ins</strong>
-        <small>Introduces the shared session rule that the next layer reuses.</small>
+  <nav class="stack-nav" aria-label="Effect auth pull request stack">
+    <div class="stack-tabs" role="tablist" aria-label="Stack layers, bottom to top">
+      <button class="stack-tab" id="tab-727" type="button" role="tab" aria-controls="layer-727" aria-selected="true">
+        <span class="tab-meta"><span class="step">1</span>#727 · base main</span>
+        <strong>Sessions and login</strong>
       </button>
-      <button class="stack-tab" id="stack-tab-728" type="button" role="tab" aria-controls="layer-728" aria-selected="false">
-        <span class="tab-top"><span class="step">2</span>PR #728 · base: #727</span>
-        <strong>Make onboarding completion atomic and effectful</strong>
-        <small>Moves orchestration out of Express without changing wire behavior.</small>
+      <button class="stack-tab" id="tab-728" type="button" role="tab" aria-controls="layer-728" aria-selected="false" tabindex="-1">
+        <span class="tab-meta"><span class="step">2</span>#728 · base #727</span>
+        <strong>Onboarding completion</strong>
+      </button>
+      <button class="stack-tab" id="tab-742" type="button" role="tab" aria-controls="layer-742" aria-selected="false" tabindex="-1">
+        <span class="tab-meta"><span class="step">3</span>#742 · base #728</span>
+        <strong>One-time auth codes</strong>
+      </button>
+      <button class="stack-tab" id="tab-743" type="button" role="tab" aria-controls="layer-743" aria-selected="false" tabindex="-1">
+        <span class="tab-meta"><span class="step">4</span>#743 · base #742</span>
+        <strong>Password reset</strong>
       </button>
     </div>
-    <p class="standalone-note"><strong>Standalone PR:</strong> omit this entire navigator and begin at the PR summary below. Do not show a one-item stack.</p>
   </nav>
 
-  <section id="layer-727" class="layer-panel" role="tabpanel" aria-labelledby="stack-tab-727">
+  <section class="layer" id="layer-727" role="tabpanel" aria-labelledby="tab-727">
     <div class="layer-head">
-      <div>
-        <div class="layer-kicker">Selected layer · 1 of 2 · direct base: main</div>
-        <h2>Sessions created during onboarding now expire after 30 days.</h2>
-        <p>This layer changes one rule and proves it through the real HTTP journey. It deliberately leaves the larger onboarding workflow in place for the next PR.</p>
+      <div class="layer-title">
+        <h2>Login and onboarding share one Effectful session rule.</h2>
+        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/727" target="_blank" rel="noreferrer">PR #727</a>
       </div>
-      <div class="stats" aria-label="Pull request size">
-        <span class="stat">3 files</span>
-        <span class="stat">+105 / −18</span>
-        <span class="stat">backend only</span>
+      <p><code>startSession</code> returns the actor and session through typed success, rejection, and outage channels; Express only translates them into HTTP.</p>
+    </div>
+
+    <div class="flow" aria-label="Session implementation flow">
+      <article class="flow-step"><strong>Find and verify</strong><p>Prisma lookup and Argon2 verification become Effect operations.</p></article>
+      <article class="flow-step"><strong>Reject safely</strong><p><code>LoginRejected</code> distinguishes internal reasons without exposing them.</p></article>
+      <article class="flow-step"><strong>Create session</strong><p>The shared owner writes a 30-day session and returns only ID and token.</p></article>
+      <article class="flow-step"><strong>Translate HTTP</strong><p>Express maps 401/500, sets the cookie, and records the audit actor.</p></article>
+    </div>
+
+    <div class="implementation">
+      <h3>Changed code</h3>
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/auth/session.ts</span><span>typed use case</span></div>
+          <pre><code>type LoginRejectedReason = "InvalidCredentials" | "AccountInactive";
+
+<span class="marker">1</span>export class LoginRejected extends Data.TaggedError("LoginRejected")&lt;{
+  readonly reason: LoginRejectedReason;
+}&gt; {}
+
+export class SessionUnavailable extends Data.TaggedError("SessionUnavailable")&lt;{
+  readonly cause: unknown;
+}&gt; {}
+
+export const startSession = Effect.fn("auth.startSession")(function* (input: StartSessionInput) {
+  const user = yield* Effect.tryPromise({
+    try: () =&gt; prisma.user.findFirst({ where: { email: input.email } }),
+    catch: sessionUnavailable,
+  });
+<span class="marker">2</span> if (!user) return yield* loginRejected.invalidCredentials;
+
+  // ... password verification and active-account check omitted ...
+
+<span class="marker">3</span> const session = yield* createSession({ userId: user.id, label: input.label, ip: input.ip });
+  return {
+    session: { id: session.id, token: session.token },
+    actor: { id: user.id, type: user.type },
+  };
+});</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Failure meaning is typed</strong><p>Expected rejection and infrastructure failure no longer look like successful Promise values.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Public wording is absent</strong><p>The use case yields a reason; it does not decide the HTTP message.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Success is the useful value</strong><p>No <code>kind: "started"</code> wrapper survives into callers.</p></div>
+      </div>
+
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/router/auth.ts</span><span>Express adapter</span></div>
+          <pre><code><span class="marker">1</span>const result = await apiRuntime().runPromise(
+  Effect.either(startSession({ email, password: body.password, label: sessionLabel, ip })),
+);
+
+if (Either.isLeft(result)) {
+<span class="marker">2</span> if (result.left._tag === "LoginRejected") {
+    logger.warn({ email, statusCode: 401, reason: result.left.reason }, "auth.login_failed");
+    return error(401, AUTHENTICATION_FAILED_MESSAGE);
+  }
+
+  logger.error({ cause: result.left.cause, email }, "auth.login_unavailable");
+  return error(500, SESSION_UNAVAILABLE_MESSAGE);
+}
+
+<span class="marker">3</span>const { actor, session } = result.right;
+setAuthenticatedAuditContext(getRequestContext(req), actor);
+res.cookie("session", session.token, { httpOnly: true, sameSite: "strict", secure: req.protocol === "https" });
+return success(200, { token: session.token });</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>One runtime crossing</strong><p>The route does not construct or dispose an Effect runtime.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Transport policy stays here</strong><p>HTTP status, public text, logging, and account-state privacy remain visible together.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Cookie and audit stay at the edge</strong><p>HTTP-only behavior does not leak into <code>startSession</code>.</p></div>
+        </div>
       </div>
     </div>
 
-    <div class="view-switcher" aria-label="Selected PR view">
-      <button type="button" data-select-view="how" aria-pressed="true">How it works</button>
-      <button type="button" data-select-view="proof" aria-pressed="false">Proof and rollout</button>
-    </div>
-
-    <div class="view-panel" data-view="how">
-      <section>
-        <h2>What this layer changes</h2>
-        <div class="change-grid">
-          <article class="change-card">
-            <span class="label">Before</span>
-            <h3>Onboarding created its own session</h3>
-            <p>The route wrote a session directly and left <code>expiresAt</code> unset.</p>
-          </article>
-          <article class="change-card">
-            <span class="label">Changed</span>
-            <h3>One helper owns session creation</h3>
-            <p>Normal sign-in and onboarding both call <code>createSession</code>.</p>
-          </article>
-          <article class="change-card observable">
-            <span class="label">Observable result</span>
-            <h3>The cookie works, and storage expires</h3>
-            <p>The next request authenticates normally; the saved session ends exactly 30 days later.</p>
-          </article>
-        </div>
-      </section>
-
-      <section>
-        <h2>The changed path</h2>
-        <div class="flow">
-          <article class="flow-step"><h3>Complete onboarding</h3><p>The route finishes account creation and decides whether this user receives a browser session.</p></article>
-          <article class="flow-step"><h3>Create the shared session</h3><p><code>createSession</code> records the user, label, IP, and common 30-day expiry.</p></article>
-          <article class="flow-step"><h3>Return the existing cookie</h3><p>The route keeps the same cookie options and response body clients already consume.</p></article>
-        </div>
-      </section>
-
-      <section>
-        <h2>1. Session policy moves into one owner</h2>
+    <template class="test-template">
+      <div class="implementation tests-view">
+        <h3>Changed test code</h3>
         <div class="excerpt">
           <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/auth/session.ts</span><span>new shared helper</span></div>
-            <pre><code>export const createSession = async (
-  input: CreateSessionInput,
-): Promise&lt;{ id: number; token: string }&gt; =&gt; {
-  const session = await prisma.session.create({
-    data: {
-      user: { connect: { id: input.userId } },
-      label: input.label,
-      loginIP: input.ip,
-<span class="marker">1</span>     expiresAt: new Date(Date.now() + THIRTY_DAYS_MS),
-    },
+            <div class="code-head"><span>packages/backend/tests/integration/router/auth-login.test.ts</span><span>changed in #727</span></div>
+            <pre><code>test("does not create a session for invalid credentials or an inactive account", async () =&gt; {
+  const active = await createTestUser({
+    email: "invalid-password@test.com",
+    passwordHash: await argon2.hash(PASSWORD),
+  });
+  const inactive = await createTestUser({
+    email: "inactive-login@test.com",
+    passwordHash: await argon2.hash(PASSWORD),
+    accountState: "PENDING_INVITE",
   });
 
-<span class="marker">2</span> return { id: session.id, token: session.token };
-};</code></pre>
+  for (const login of [
+    { email: active.email, password: "wrong-password" },
+    { email: inactive.email, password: PASSWORD },
+  ]) {
+    const response = await fetch(`${server.baseUrl}/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: login.email, password: login.password }),
+    });
+
+<span class="marker">1</span>   expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Invalid Credentials" });
+  }
+
+<span class="marker">2</span> expect(await prisma.session.count()).toBe(0);
+});</code></pre>
           </div>
           <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>Every browser session gets the same lifetime</strong><p>The 30-day rule now applies whether the user signs in or completes onboarding.</p></div>
-            <div class="note"><strong><span class="badge">2</span>Callers receive only what they use</strong><p>The helper keeps database details local and returns the stable session identity.</p></div>
+            <div class="note"><strong><span class="badge">1</span>One public rejection</strong><p>Wrong passwords and inactive accounts deliberately expose the same response, so login does not reveal account state.</p></div>
+            <div class="note"><strong><span class="badge">2</span>No rejected session survives</strong><p>Both failure paths leave the session table unchanged.</p></div>
           </div>
         </div>
-      </section>
-
-      <section>
-        <h2>2. Onboarding reuses that owner</h2>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/router/onboarding.ts</span><span>completion route excerpt</span></div>
-            <pre><code>if (!isWorker) {
-<span class="marker">1</span> const session = await createSession({
-    userId: user.id,
-    label: req.headers["user-agent"] ?? "onboarding",
-    ip: req.ip ?? "unknown",
-  });
-
-<span class="marker">2</span> res.cookie("session", session.token, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: req.protocol === "https",
-  });
-}</code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>The duplicate write is gone</strong><p>The route supplies request facts; it no longer decides session persistence rules.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The HTTP contract stays put</strong><p>Cookie name and security options remain in the route, where transport behavior belongs.</p></div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h2>Implementation files</h2>
-        <div class="file-table">
-          <table>
-            <thead><tr><th>File</th><th>Change in this layer</th></tr></thead>
-            <tbody>
-              <tr><td><code>auth/session.ts</code></td><td>Extracts shared session creation and keeps the 30-day expiry rule in one place.</td></tr>
-              <tr><td><code>router/onboarding.ts</code></td><td>Replaces its direct database write with the shared helper; cookie behavior remains local.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <div class="review-callout">
-        <strong>Review this layer for one invariant</strong>
-        <p>Every non-worker browser session has the same lifetime, regardless of whether it started through sign-in or onboarding. The next PR depends on this helper; review it before moving up the stack.</p>
       </div>
+    </template>
+
+    <div class="files">
+      <h3>Direct-base files</h3>
+      <div class="file-table"><table><thead><tr><th>File</th><th>Change in #727 only</th></tr></thead><tbody>
+        <tr><td><code>auth/session.ts</code></td><td>Effectful login/session owner and typed failures.</td></tr>
+        <tr><td><code>effect/runtime.ts</code> + <code>index.ts</code></td><td>One lazily shared API runtime, disposed once during shutdown.</td></tr>
+        <tr><td><code>router/auth.ts</code> + <code>router/onboarding.ts</code></td><td>Adapters use the shared owner; cookie and public response remain local.</td></tr>
+        <tr><td><code>auth-login.test.ts</code> + <code>onboarding-access.test.ts</code></td><td>Login privacy and reusable onboarding session behavior.</td></tr>
+      </tbody></table></div>
     </div>
 
-    <div class="view-panel" data-view="proof" hidden>
-      <section>
-        <h2>What the proof establishes</h2>
-        <div class="proof-grid">
-          <article class="proof-card"><span class="kind">Real request journey</span><h3>The returned cookie authenticates</h3><p>The onboarding integration test sends the cookie to <code>GET /sessions</code> and receives <code>200</code>.</p></article>
-          <article class="proof-card"><span class="kind">Stored rule</span><h3>The expiry is exactly 30 days</h3><p>The same test reads the saved session and checks its expiry against the creation time.</p></article>
-          <article class="proof-card"><span class="kind">Unchanged behavior</span><h3>Workers still receive no browser session</h3><p>The shared helper is called only for non-worker onboarding, preserving the existing worker flow.</p></article>
-          <article class="proof-card"><span class="kind">Scope boundary</span><h3>No UI or API shape changed</h3><p>This is backend persistence behavior. Cookie settings, response fields, and onboarding eligibility stay unchanged.</p></article>
-        </div>
-      </section>
-      <section>
-        <h2>Supporting file</h2>
-        <div class="file-table">
-          <table>
-            <thead><tr><th>File</th><th>What it proves</th></tr></thead>
-            <tbody><tr><td><code>tests/integration/router/onboarding-access.test.ts</code></td><td>The completed onboarding cookie works on the next request and the persisted session has the normal expiry.</td></tr></tbody>
-          </table>
-        </div>
-      </section>
-      <div class="review-callout">
-        <strong>Rollout impact</strong>
-        <p>No deployment, database migration, mobile version, or UI proof is required for this layer.</p>
-      </div>
-    </div>
+    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
+      <div class="proof-item"><strong>Login behavior</strong><p>4 password-login integration cases pass, including inactive-account privacy.</p></div>
+      <div class="proof-item"><strong>Onboarding reuse</strong><p>79 onboarding-access cases pass; non-worker cookies authenticate and sessions expire after 30 days.</p></div>
+      <div class="proof-item"><strong>Repository gates</strong><p>Typecheck, lint, React Doctor, unit, integration, browser E2E, Docker, migration-image, and 4 Android shards passed.</p></div>
+      <div class="proof-item"><strong>Rollout</strong><p>No API shape, UI, database migration, or deployment configuration change.</p></div>
+    </div></details>
   </section>
 
-  <section id="layer-728" class="layer-panel" role="tabpanel" aria-labelledby="stack-tab-728" hidden>
+  <section class="layer" id="layer-728" role="tabpanel" aria-labelledby="tab-728" hidden>
     <div class="layer-head">
-      <div>
-        <div class="layer-kicker">Selected layer · 2 of 2 · direct base: PR #727</div>
+      <div class="layer-title">
         <h2>Onboarding completion becomes one atomic Effect workflow.</h2>
-        <p>This layer changes the internal ownership and failure model. The route still returns the same statuses, cookie, and success payload.</p>
+        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/728" target="_blank" rel="noreferrer">PR #728</a>
       </div>
-      <div class="stats" aria-label="Pull request size">
-        <span class="stat">11 files</span>
-        <span class="stat">+576 / −454</span>
-        <span class="stat">backend + contract</span>
-      </div>
+      <p>Validation, locking, writes, session creation, and confirmation move out of Express while the existing cookie and response behavior remain.</p>
     </div>
 
-    <div class="view-switcher" aria-label="Selected PR view">
-      <button type="button" data-select-view="how" aria-pressed="true">How it works</button>
-      <button type="button" data-select-view="proof" aria-pressed="false">Proof and rollout</button>
+    <div class="flow" aria-label="Onboarding implementation flow">
+      <article class="flow-step"><strong>Resolve token</strong><p>One lifecycle owner finds an active, usable token.</p></article>
+      <article class="flow-step"><strong>Validate and hash</strong><p>Association rules stop bad combinations before writes.</p></article>
+      <article class="flow-step"><strong>Commit atomically</strong><p>User, relationship, token, and optional session share one transaction.</p></article>
+      <article class="flow-step"><strong>Translate result</strong><p>Express maps typed failures and sets the non-worker cookie.</p></article>
     </div>
 
-    <div class="view-panel" data-view="how">
-      <section>
-        <h2>What this layer changes</h2>
-        <div class="change-grid">
-          <article class="change-card">
-            <span class="label">Before</span>
-            <h3>Express owned the whole workflow</h3>
-            <p>The route mixed request handling, validation, locking, database work, session creation, and email.</p>
-          </article>
-          <article class="change-card">
-            <span class="label">Changed</span>
-            <h3>A domain workflow owns completion</h3>
-            <p><code>completeOnboarding</code> returns an Effect with three explicit failure types.</p>
-          </article>
-          <article class="change-card observable">
-            <span class="label">Observable result</span>
-            <h3>The endpoint behaves the same</h3>
-            <p>Clients still receive the existing <code>400</code>, <code>404</code>, <code>500</code>, cookie, and success response.</p>
-          </article>
-        </div>
-      </section>
+    <div class="implementation">
+      <h3>Changed code</h3>
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/onboarding/completion.ts</span><span>failure contract</span></div>
+          <pre><code><span class="marker">1</span>export type OnboardingRejectedReason =
+  | "InvalidAssociation"
+  | "MultipleAccounts"
+  | "AccountDeactivated"
+  | "AccountActive"
+  | "RoleMismatch"
+  | "AssociationMismatch"
+  | "UserNoLongerEligible";
 
-      <section>
-        <h2>The changed path</h2>
-        <div class="flow">
-          <article class="flow-step"><h3>Route supplies HTTP facts</h3><p>Body, IP, and session label enter the workflow through a small typed input.</p></article>
-          <article class="flow-step"><h3>Effect owns the operation</h3><p>Validation, hashing, transaction, session, and best-effort email run in one named flow.</p></article>
-          <article class="flow-step"><h3>Route maps typed outcomes</h3><p>Three failure tags become the existing HTTP statuses; success sets the existing cookie.</p></article>
-        </div>
-      </section>
+export class OnboardingRejected extends Data.TaggedError("OnboardingRejected")&lt;{
+  readonly reason: OnboardingRejectedReason;
+}&gt; {}
 
-      <section>
-        <h2>1. Failures become explicit data</h2>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/onboarding/completion.ts</span><span>new domain workflow</span></div>
-            <pre><code><span class="marker">1</span>export class InvalidOnboarding
-  extends Data.TaggedError("InvalidOnboarding")&lt;{
-    readonly message: string;
-  }&gt; {}
+<span class="marker">2</span>export class OnboardingTokenNotFound extends Data.TaggedError("OnboardingTokenNotFound") {}
 
-export class OnboardingTokenNotFound
-  extends Data.TaggedError("OnboardingTokenNotFound")&lt;{
-    readonly message: string;
-  }&gt; {}
+export class OnboardingUnavailable extends Data.TaggedError("OnboardingUnavailable")&lt;{
+  readonly cause: unknown;
+}&gt; {}
 
-export class OnboardingUnavailable
-  extends Data.TaggedError("OnboardingUnavailable")&lt;{
-    readonly message: string;
-    readonly cause: unknown;
-  }&gt; {}
-
-<span class="marker">2</span>export type CompleteOnboardingError =
-  | InvalidOnboarding
+<span class="marker">3</span>export type CompleteOnboardingError =
+  | OnboardingRejected
   | OnboardingTokenNotFound
   | OnboardingUnavailable;</code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>Each failure has a stable meaning</strong><p>Invalid state, missing token, and unavailable infrastructure no longer travel as hand-written result objects.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The workflow advertises every expected failure</strong><p>Callers can exhaustively translate the error channel without inspecting strings.</p></div>
-          </div>
         </div>
-      </section>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Expected rejection is closed</strong><p>The route can exhaustively map every business reason without parsing a message.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Missing token has its own meaning</strong><p>Expired, used, or absent tokens stay distinct from invalid account state.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Operational failure retains cause</strong><p>Database, hashing, lock, and session errors remain diagnosable.</p></div>
+        </div>
+      </div>
 
-      <section>
-        <h2>2. Express becomes a transport adapter</h2>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/router/onboarding.ts</span><span>direct-base replacement</span></div>
-            <pre><code><span class="marker">1</span>const result = await apiRuntime().runPromise(
-  Effect.either(
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/onboarding/completion.ts</span><span>atomic save</span></div>
+          <pre><code>const saveOnboarding = Effect.fn("onboarding.save")(function* (input: SaveOnboardingInput) {
+<span class="marker">1</span> const runtime = yield* Effect.runtime&lt;never&gt;();
+  return yield* Effect.tryPromise({
+    try: () =&gt;
+      withOnboardingTokenEmailLock(input.token.email, async (lease) =&gt; {
+        lease.assertHeld();
+<span class="marker">2</span>       const result = await prisma.$transaction((tx) =&gt;
+          saveOnboardingTransaction(tx, input, runtime),
+        );
+        lease.markCommitted();
+        return result;
+      }),
+    catch: unavailable,
+  });
+});
+
+// Inside saveOnboardingTransaction:
+<span class="marker">3</span>const session = user.type === UserType.WORKER
+  ? undefined
+  : await Runtime.runPromise(runtime)(
+      createSession({ userId: user.id, label: input.sessionLabel, ip: input.ip }, tx),
+    );</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Reuse the parent runtime</strong><p>The Prisma Promise callback does not start a second default Effect runtime.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Writes commit together</strong><p>User, token, relationship, and session cannot leave a half-finished onboarding.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Worker behavior remains explicit</strong><p>Only non-workers receive a browser session.</p></div>
+        </div>
+      </div>
+
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/router/onboarding.ts</span><span>thin HTTP adapter</span></div>
+          <pre><code>const result = await apiRuntime().runPromise(
+<span class="marker">1</span> Effect.either(
     completeOnboarding({
       body,
       ip: req.ip ?? "unknown",
@@ -717,126 +646,662 @@ export class OnboardingUnavailable
 
 if (Either.isLeft(result)) {
 <span class="marker">2</span> switch (result.left._tag) {
-    case "InvalidOnboarding":
-      return error(400, result.left.message);
+    case "OnboardingRejected":
+      return error(400, ONBOARDING_REJECTION_MESSAGES[result.left.reason]);
     case "OnboardingTokenNotFound":
-      return error(404, result.left.message);
+      return error(404, ONBOARDING_TOKEN_NOT_FOUND_MESSAGE);
     case "OnboardingUnavailable":
-      return error(500, result.left.message);
+      return error(500, ONBOARDING_UNAVAILABLE_MESSAGE);
   }
+}
+
+<span class="marker">3</span>if (result.right.sessionToken) {
+  res.cookie("session", result.right.sessionToken, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: req.protocol === "https",
+  });
 }</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>No reconstructed Express request</strong><p>The workflow receives only body, IP, and session label.</p></div>
+          <div class="note"><strong><span class="badge">2</span>HTTP mapping is exhaustive</strong><p>Adding a failure reason without a public message becomes a type error.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Cookie stays transport-owned</strong><p>The use case returns an optional token; Express decides how to send it.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <template class="test-template">
+      <div class="implementation tests-view">
+        <h3>Changed test code</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/tests/integration/router/onboarding-access.test.ts</span><span>changed in #728</span></div>
+            <pre><code>test("rolls back onboarding when the session cannot be created", async () =&gt; {
+  const supplier = await createTestSupplier({ name: "Onboarding Session Failure Supplier" });
+  const email = `onboarding-session-failure-${Date.now()}@test.com`;
+  const onboardingToken = await prisma.onboardingToken.create({
+    data: {
+      email,
+      userType: UserRoles.SUPPLIER_ADMIN,
+      supplierId: supplier.id,
+      createdById: baseline.adminUser.id,
+      expiresAt: expiresAt(),
+    },
+  });
+
+<span class="marker">1</span> vi.spyOn(sessionService, "createSession")
+    .mockRejectedValueOnce(new Error("session unavailable"));
+
+  const response = await fetch(`${server.baseUrl}/onboarding/complete`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      token: onboardingToken.token,
+      name: "Onboarding Session Failure",
+      phoneNumber: "+61400000000",
+      password: "CorrectHorseBatteryStaple123!",
+      address: "123 Test Street",
+      dob: "1990-01-01T00:00:00.000Z",
+    }),
+  });
+
+<span class="marker">2</span> expect(response.status).toBe(500);
+  expect(await prisma.user.findUnique({ where: { email } })).toBeNull();
+  await expect(
+    prisma.onboardingToken.findUniqueOrThrow({ where: { id: onboardingToken.id } }),
+  ).resolves.toEqual(expect.objectContaining({ usedAt: null }));
+});</code></pre>
           </div>
           <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>The existing managed runtime runs the workflow</strong><p>The route does not create a second Effect runtime or rebuild an Express-shaped request.</p></div>
-            <div class="note"><strong><span class="badge">2</span>Wire behavior remains visible</strong><p>The adapter still owns the exact status mapping, making compatibility easy to inspect.</p></div>
+            <div class="note"><strong><span class="badge">1</span>Force the late failure</strong><p>The test makes session creation fail after onboarding has already entered the write workflow.</p></div>
+            <div class="note"><strong><span class="badge">2</span>The whole workflow rolls back</strong><p>The response is 500, no user remains, and the token is still unused.</p></div>
           </div>
         </div>
-      </section>
-
-      <section>
-        <h2>Implementation map</h2>
-        <div class="file-table">
-          <table>
-            <thead><tr><th>File or group</th><th>Change in this layer</th></tr></thead>
-            <tbody>
-              <tr><td><code>onboarding/completion.ts</code></td><td>New domain workflow: validation, transaction, session creation, and best-effort confirmation email.</td></tr>
-              <tr><td><code>router/onboarding.ts</code></td><td>Removes the embedded workflow and keeps only request facts, status mapping, cookie, and response.</td></tr>
-              <tr><td><code>onboarding/token-lifecycle.ts</code></td><td>Owns reusable token lookup, identity matching, and transactional revalidation.</td></tr>
-              <tr><td><code>common/contract/**</code></td><td>Reuses one role/client/supplier rule and makes the password contract match existing enforcement.</td></tr>
-              <tr><td><code>auth/session.ts</code></td><td>Accepts the active transaction so user, token, and session changes commit or roll back together.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <div class="review-callout">
-        <strong>Review this layer in dependency order</strong>
-        <p>Start with the shared association and password contracts, then read the new completion workflow, then confirm the thin route preserves the old HTTP behavior. PR #727 already established the shared session rule this layer calls.</p>
       </div>
+    </template>
+
+    <div class="files">
+      <h3>Direct-base files</h3>
+      <div class="file-table"><table><thead><tr><th>File or group</th><th>Change in #728 only</th></tr></thead><tbody>
+        <tr><td><code>onboarding/completion.ts</code></td><td>New Effect workflow, failure model, atomic save, and best-effort confirmation.</td></tr>
+        <tr><td><code>onboarding/token-lifecycle.ts</code></td><td>Shared token lookup, identity matching, locking, and transactional revalidation.</td></tr>
+        <tr><td><code>router/onboarding.ts</code></td><td>Removes 419 embedded lines; keeps status mapping, cookie, and response.</td></tr>
+        <tr><td><code>common/contract/onboarding.ts</code> + <code>users.ts</code></td><td>Reuses strong-password and role/client/supplier association rules.</td></tr>
+        <tr><td><code>mobile/app.json</code> + release notes</td><td>Contract policy bumps mobile to 1.0.45; no mobile UI changes.</td></tr>
+      </tbody></table></div>
     </div>
 
-    <div class="view-panel" data-view="proof" hidden>
-      <section>
-        <h2>What the proof establishes</h2>
-        <div class="proof-grid">
-          <article class="proof-card"><span class="kind">Atomicity</span><h3>A failed session leaves nothing half-finished</h3><p>User changes, supplier-worker links, token consumption, and non-worker session creation share one Prisma transaction.</p></article>
-          <article class="proof-card"><span class="kind">Compatibility</span><h3>Clients see the same endpoint</h3><p>Invalid state remains <code>400</code>, missing token remains <code>404</code>, infrastructure failure remains <code>500</code>, and success keeps its cookie and body.</p></article>
-          <article class="proof-card"><span class="kind">Role behavior</span><h3>Workers still receive no session</h3><p>The workflow returns a session token only for non-worker users, preserving the prior branch.</p></article>
-          <article class="proof-card"><span class="kind">Shared rule</span><h3>Invalid account associations stop before side effects</h3><p>The common role/client/supplier rule now validates requests and persisted token data consistently.</p></article>
-        </div>
-      </section>
-      <section>
-        <h2>Proof and rollout files</h2>
-        <div class="file-table">
-          <table>
-            <thead><tr><th>Group</th><th>What it proves or requires</th></tr></thead>
-            <tbody>
-              <tr><td>Onboarding integration tests</td><td>79 cases preserve token, user, cookie, rollback, and response behavior through the real route.</td></tr>
-              <tr><td>Common contract tests</td><td>412 cases cover the shared account-association and password rules.</td></tr>
-              <tr><td>Effect runtime tests</td><td>9 cases prove the managed runtime used by the route behaves as expected.</td></tr>
-              <tr><td><code>packages/mobile/app.json</code></td><td>The shared-contract edit triggers repository policy: mobile version 1.0.42 → 1.0.43 and the affected Android Maestro gate.</td></tr>
-              <tr><td>CI</td><td>Typecheck, lint, unit, integration, migration, build, browser E2E, contract compatibility, and Android Maestro passed.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <div class="review-callout">
-        <strong>End-of-stack check</strong>
-        <p>After both layers, onboarding session policy has one owner and completion has one atomic workflow. The main review question is whether the new domain boundary preserves every existing route outcome—not whether the diff is large.</p>
-      </div>
-    </div>
+    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
+      <div class="proof-item"><strong>Atomicity and compatibility</strong><p>79 onboarding cases cover token, user, association, cookie, rollback, and existing 400/404/500 behavior.</p></div>
+      <div class="proof-item"><strong>Contract safety</strong><p>Common contract tests and the paid backward-compatibility diff passed.</p></div>
+      <div class="proof-item"><strong>Repository gates</strong><p>Typecheck, lint, React Doctor, unit, integration, migration, browser E2E, Docker, and 4 Android shards passed.</p></div>
+      <div class="proof-item"><strong>Rollout</strong><p>Mobile version 1.0.45 and store notes satisfy shared-contract policy; there is no changed UI.</p></div>
+    </div></details>
   </section>
-</main>
-<script>
-  const stackTabs = [...document.querySelectorAll('[role="tab"]')];
-  const layerPanels = [...document.querySelectorAll('.layer-panel')];
-  const viewButtons = [...document.querySelectorAll('[data-select-view]')];
-  let activeView = 'how';
 
-  function applyView() {
-    document.querySelectorAll('[data-view]').forEach((panel) => {
-      panel.hidden = panel.dataset.view !== activeView;
-    });
-    viewButtons.forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.selectView === activeView));
-    });
+  <section class="layer" id="layer-742" role="tabpanel" aria-labelledby="tab-742" hidden>
+    <div class="layer-head">
+      <div class="layer-title">
+        <h2>One-time codes stop returning hand-written result objects.</h2>
+        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/742" target="_blank" rel="noreferrer">PR #742</a>
+      </div>
+      <p>Issue and atomic exchange become Effect programs with Effect Clock, typed rejection, and unchanged 401/500 translation.</p>
+    </div>
+
+    <div class="flow" aria-label="Auth code implementation flow">
+      <article class="flow-step"><strong>Issue</strong><p>Generate 32 random bytes and store a one-minute code.</p></article>
+      <article class="flow-step"><strong>Compose</strong><p>Code login yields session creation then code issue in one Effect.</p></article>
+      <article class="flow-step"><strong>Exchange</strong><p>Atomically consume an active, unused code and session.</p></article>
+      <article class="flow-step"><strong>Translate</strong><p>Express maps rejection to 401 and outages to 500.</p></article>
+    </div>
+
+    <div class="implementation">
+      <h3>Changed code</h3>
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/auth/code.ts</span><span>issue and exchange</span></div>
+          <pre><code>type AuthCodeRejectedReason = "InvalidOrExpired";
+
+export class AuthCodeRejected extends Data.TaggedError("AuthCodeRejected")&lt;{
+  readonly reason: AuthCodeRejectedReason;
+}&gt; {}
+
+export class AuthCodeUnavailable extends Data.TaggedError("AuthCodeUnavailable")&lt;{
+  readonly cause: unknown;
+}&gt; {}
+
+export const issueCode = Effect.fn("auth.issueCode")(function* (input: IssueCodeInput) {
+<span class="marker">1</span> const code = yield* Effect.try({
+    try: () =&gt; crypto.randomBytes(32).toString("hex"),
+    catch: unavailable,
+  });
+<span class="marker">2</span> const now = yield* Clock.currentTimeMillis;
+  yield* Effect.tryPromise({
+    try: () =&gt; prisma.authCode.create({
+      data: { code, purpose: input.purpose, session: { connect: { id: input.sessionId } }, expiresAt: new Date(now + EXPIRY_MS) },
+    }),
+    catch: unavailable,
+  });
+  return { code, expiresIn: EXPIRY_SECONDS };
+});</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Crypto failure is operational</strong><p>It cannot be mistaken for an invalid caller-supplied code.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Expiry is testable</strong><p>Effect Clock replaces direct <code>Date.now()</code> ownership.</p></div>
+        </div>
+      </div>
+
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/auth/code.ts</span><span>atomic single-use exchange</span></div>
+          <pre><code>export const exchangeCode = Effect.fn("auth.exchangeCode")(function* (code: string) {
+  const now = new Date(yield* Clock.currentTimeMillis);
+<span class="marker">1</span> const [authCode] = yield* Effect.tryPromise({
+    try: () =&gt; prisma.authCode.updateManyAndReturn({
+      where: { code, usedAt: null, expiresAt: { gt: now }, session: activeSession },
+      data: { usedAt: now },
+      include: { session: { include: { user: true } } },
+    }),
+    catch: unavailable,
+  });
+
+<span class="marker">2</span> if (!authCode) return yield* authCodeRejected.invalidOrExpired;
+
+  return {
+    session: { token: authCode.session.token },
+    actor: { id: authCode.session.user.id, type: authCode.session.user.type },
+  };
+});</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>The race-safe write remains</strong><p>Consumption is still conditional and atomic, so two exchanges cannot both win.</p></div>
+          <div class="note"><strong><span class="badge">2</span>No message in the domain</strong><p>The adapter owns “Invalid or expired code.”</p></div>
+        </div>
+      </div>
+
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/router/auth.ts</span><span>one composed runtime crossing</span></div>
+          <pre><code>const result = await apiRuntime().runPromise(
+  Effect.either(
+<span class="marker">1</span>   Effect.gen(function* () {
+      const started = yield* startSession({ email, password, label, ip });
+      const code = yield* issueCode({ sessionId: started.session.id, purpose: "LOGIN" });
+      return { ...started, code };
+    }),
+  ),
+);
+
+if (Either.isLeft(result)) {
+<span class="marker">2</span> if (result.left._tag === "LoginRejected") {
+    return error(401, AUTHENTICATION_FAILED_MESSAGE);
   }
 
-  function selectLayer(selected) {
-    stackTabs.forEach((tab) => {
-      const active = tab === selected;
-      tab.setAttribute('aria-selected', String(active));
-      tab.tabIndex = active ? 0 : -1;
+  logger.error({ cause: result.left.cause, email }, "auth.login_code_unavailable");
+  return error(
+    500,
+    result.left._tag === "SessionUnavailable"
+      ? SESSION_UNAVAILABLE_MESSAGE
+      : AUTH_CODE_UNAVAILABLE_MESSAGE,
+  );
+}</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Session and code compose normally</strong><p>The route crosses the managed runtime once instead of awaiting two independent Promise use cases.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Failures remain distinguishable</strong><p>Authentication rejection, session outage, and code outage map separately.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <template class="test-template">
+      <div class="implementation tests-view">
+        <h3>Test code</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/tests/integration/router/auth-handoff.test.ts</span><span>existing coverage — unchanged in #742</span></div>
+            <pre><code>test("exchanges a single-use handoff code for the existing authenticated session", async () =&gt; {
+  const user = await createTestUser({ email: "docs-handoff@example.com" });
+  const session = await createTestSession(user.id);
+
+  const handoffResponse = await fetch(`${server.baseUrl}/auth/handoff`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${session.token}` },
+  });
+  const handoff = contract.auth.handoff.responses[200].parse(await handoffResponse.json());
+
+  const exchangeResponse = await fetch(`${server.baseUrl}/auth/exchange`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code: handoff.data.code }),
+  });
+
+<span class="marker">1</span> expect(exchangeResponse.status).toBe(200);
+  await expect(exchangeResponse.json()).resolves.toEqual({ data: { token: session.token } });
+  expect(exchangeResponse.headers.get("set-cookie")).toContain(`session=${session.token}`);
+
+  const replayResponse = await fetch(`${server.baseUrl}/auth/exchange`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code: handoff.data.code }),
+  });
+<span class="marker">2</span> expect(replayResponse.status).toBe(401);
+});</code></pre>
+          </div>
+          <div class="notes">
+            <div class="note"><strong><span class="badge">1</span>Exchange preserves the session</strong><p>The one-time handoff returns the existing token and sets the same session cookie.</p></div>
+            <div class="note"><strong><span class="badge">2</span>The code remains single-use</strong><p>A replay is rejected after the first atomic exchange consumes the code.</p></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div class="files">
+      <h3>Direct-base files</h3>
+      <div class="file-table"><table><thead><tr><th>File</th><th>Change in #742 only</th></tr></thead><tbody>
+        <tr><td><code>auth/code.ts</code></td><td>Effect error model, Clock expiry, crypto wrapping, issue, and atomic exchange.</td></tr>
+        <tr><td><code>router/auth.ts</code></td><td>Composes code login, runs handoff/exchange, and owns 401/500 messages.</td></tr>
+      </tbody></table></div>
+    </div>
+
+    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
+      <div class="proof-item"><strong>One-time behavior</strong><p>11 focused login and handoff cases cover replay, expiry boundary, revoked/expired sessions, and inactive accounts.</p></div>
+      <div class="proof-item"><strong>Repository checks</strong><p>Backend typecheck, focused lint, and direct-base whitespace checks passed.</p></div>
+      <div class="proof-item"><strong>Scope</strong><p>Two production files only. No contract, database migration, UI, or deployment change.</p></div>
+      <div class="proof-item"><strong>Stack state</strong><p>Draft PR with clean stack-aware required checks; it becomes reviewable after lower layers merge.</p></div>
+    </div></details>
+  </section>
+
+  <section class="layer" id="layer-743" role="tabpanel" aria-labelledby="tab-743" hidden>
+    <div class="layer-head">
+      <div class="layer-title">
+        <h2>Password reset exposes its real behavior boundaries.</h2>
+        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/743" target="_blank" rel="noreferrer">PR #743</a>
+      </div>
+      <p>Token issue, throttling, email compensation, and atomic password save become named Effect operations without changing the privacy-safe response.</p>
+    </div>
+
+    <div class="flow" aria-label="Password reset implementation flow">
+      <article class="flow-step"><strong>Resolve safely</strong><p>Workspace and account lookup never reveal whether the account exists.</p></article>
+      <article class="flow-step"><strong>Issue atomically</strong><p>Locks, throttles, stale cleanup, invalidation, and creation share one transaction.</p></article>
+      <article class="flow-step"><strong>Deliver and compensate</strong><p>A runtime-owned fiber emails; failure invalidates the token and releases account throttle.</p></article>
+      <article class="flow-step"><strong>Save once</strong><p>Confirmation consumes the token, changes the password, and revokes sessions atomically.</p></article>
+    </div>
+
+    <div class="implementation">
+      <h3>Changed code</h3>
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/auth/password-reset.ts</span><span>request orchestration</span></div>
+          <pre><code>export const requestPasswordReset = Effect.fn("auth.requestPasswordReset")(function* (input) {
+<span class="marker">1</span> const startedAtMs = yield* Clock.currentTimeMillis;
+  const workspace = resolvePasswordResetWorkspace(input.hostname, input.requestedWorkspace);
+  if (!workspace) return yield* response(startedAtMs);
+
+  // ... account lookup and throttle-key preparation omitted ...
+
+<span class="marker">2</span> const resetToken = yield* issueResetToken({
+    user, workspace, ipHash, ipLock, accountThrottleKeys, now, windowStart,
+  });
+  if (!resetToken) return yield* response(startedAtMs);
+
+<span class="marker">3</span> yield* Effect.forkDaemon(
+    deliverResetEmail({ request: input, workspace, resetToken, accountThrottleKeys, requestedAt: now }),
+  );
+
+<span class="marker">4</span> return yield* response(startedAtMs);
+});</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Privacy time uses Effect Clock</strong><p>The 250 ms floor uses <code>Effect.sleep</code>, not a custom timer Promise.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Issuance owns its transaction</strong><p>The exported use case reads as orchestration instead of database detail.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Email is runtime-owned</strong><p>The old floating Promise becomes an Effect fiber with compensation behavior.</p></div>
+          <div class="note"><strong><span class="badge">4</span>The safe response stays uniform</strong><p>Missing, invalid, or throttled requests reveal nothing about account existence.</p></div>
+        </div>
+      </div>
+
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/auth/password-reset.ts</span><span>atomic password save</span></div>
+          <pre><code>const savePassword = (input: {
+  resetToken: ResetTokenWithUser;
+  passwordHash: string;
+  now: Date;
+}): Effect.Effect&lt;boolean, PasswordResetUnavailable&gt; =&gt;
+  Effect.tryPromise({
+    try: () =&gt; prisma.$transaction(async (tx) =&gt; {
+<span class="marker">1</span>     const consumed = await tx.passwordResetToken.updateMany({
+        where: { id: input.resetToken.id, usedAt: null, invalidatedAt: null, expiresAt: { gt: input.now } },
+        data: { usedAt: input.now },
+      });
+      if (consumed.count === 0) return false;
+
+<span class="marker">2</span>     await tx.passwordResetToken.updateMany({
+        where: { userId: input.resetToken.userId, id: { not: input.resetToken.id }, usedAt: null, invalidatedAt: null },
+        data: { invalidatedAt: input.now },
+      });
+<span class="marker">3</span>     await tx.user.update({
+        where: { id: input.resetToken.userId },
+        data: { passwordHash: input.passwordHash },
+      });
+<span class="marker">4</span>     await tx.session.updateMany({
+        where: { userId: input.resetToken.userId, revoked: false },
+        data: { revoked: true },
+      });
+      return true;
+    }),
+    catch: unavailable,
+  });</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>One confirmation wins</strong><p>The conditional consume closes the replay and concurrency race.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Sibling tokens are retired</strong><p>A successful reset leaves no other active reset link.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Password changes in the same commit</strong><p>No consumed token can coexist with an unchanged password.</p></div>
+          <div class="note"><strong><span class="badge">4</span>Existing sessions are revoked</strong><p>The reset removes access from every prior browser session.</p></div>
+        </div>
+      </div>
+
+      <div class="excerpt">
+        <div class="code-panel">
+          <div class="code-head"><span>packages/backend/src/router/auth.ts</span><span>typed confirmation mapping</span></div>
+          <pre><code>const result = await apiRuntime().runPromise(
+  Effect.either(
+    resetPassword({
+      token: body.token,
+      requestedWorkspace: body.workspace,
+      password: body.password,
+      hostname: req.hostname,
+    }),
+  ),
+);
+
+if (Either.isLeft(result)) {
+<span class="marker">1</span> if (result.left._tag === "PasswordResetRejected") {
+    return error(400, PASSWORD_RESET_REJECTION_MESSAGES[result.left.reason]);
+  }
+<span class="marker">2</span> logger.error({ cause: result.left.cause }, "auth.password_reset_confirm_unavailable");
+  return error(500, PASSWORD_RESET_UNAVAILABLE_MESSAGE);
+}
+
+<span class="marker">3</span>setAuthenticatedAuditContext(getRequestContext(req), result.right.actor);
+return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
+        </div>
+        <div class="notes">
+          <div class="note"><strong><span class="badge">1</span>Reason chooses the 400 message</strong><p>Invalid/expired token and weak password are exhaustive typed reasons.</p></div>
+          <div class="note"><strong><span class="badge">2</span>Operational failure stays a 500</strong><p>Hashing and database causes remain available to logs.</p></div>
+          <div class="note"><strong><span class="badge">3</span>Audit context uses the real actor</strong><p>Success carries identity without a <code>kind: "reset"</code> wrapper.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <template class="test-template">
+      <div class="implementation tests-view">
+        <h3>Changed test code</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/tests/unit/auth/password-reset.test.ts</span><span>changed in #743</span></div>
+            <pre><code>test("keeps early responses pending for the 250 millisecond privacy floor", async () =&gt; {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-07-31T00:00:00.000Z"));
+  let settled = false;
+
+<span class="marker">1</span> const result = Effect.runPromise(
+    requestPasswordReset({
+      email: "person@example.com",
+      requestedWorkspace: "acme",
+      hostname: "other.uplinked.com",
+      protocol: "https",
+      ip: "203.0.113.42",
+    }),
+  ).then((value) =&gt; {
+    settled = true;
+    return value;
+  });
+
+  await vi.advanceTimersByTimeAsync(249);
+<span class="marker">2</span> expect(settled).toBe(false);
+
+  await vi.advanceTimersByTimeAsync(1);
+  await expect(result).resolves.toEqual({
+    message: "If an active account exists for that email, a reset link has been sent.",
+  });
+});</code></pre>
+          </div>
+          <div class="notes">
+            <div class="note"><strong><span class="badge">1</span>The test runs the real Effect</strong><p>The privacy delay is part of the Effect program rather than a Promise helper around it.</p></div>
+            <div class="note"><strong><span class="badge">2</span>The timing floor is observable</strong><p>The response cannot settle at 249 ms and resolves with the safe public message at 250 ms.</p></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div class="files">
+      <h3>Direct-base files</h3>
+      <div class="file-table"><table><thead><tr><th>File</th><th>Change in #743 only</th></tr></thead><tbody>
+        <tr><td><code>auth/password-reset.ts</code></td><td>Typed errors, Clock/sleep, transactional issue/save, runtime-owned delivery, and compensation.</td></tr>
+        <tr><td><code>router/auth.ts</code></td><td>Runs request/confirm Effects and owns safe 200, rejection 400, outage 500, audit, and success text.</td></tr>
+        <tr><td><code>auth-password-reset.test.ts</code></td><td>Concurrency, replay, workspace isolation, inactive account, throttling, and email compensation.</td></tr>
+        <tr><td><code>unit/auth/password-reset.test.ts</code></td><td>Effect Clock proves the 250 ms privacy floor without wall-clock waiting.</td></tr>
+      </tbody></table></div>
+    </div>
+
+    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
+      <div class="proof-item"><strong>Privacy and throttling</strong><p>1 timing test plus 20 integration cases preserve the safe response, 15-minute account throttle, and 20-request IP ceiling.</p></div>
+      <div class="proof-item"><strong>Concurrency and cleanup</strong><p>Tests cover one active token, one confirmation winner, replay, failed-email invalidation, and throttle compensation.</p></div>
+      <div class="proof-item"><strong>Scope</strong><p>No contract, database migration, UI, or deployment configuration change.</p></div>
+      <div class="proof-item caveat"><strong>Known lifecycle limit</strong><p>The daemon fiber is runtime-owned but not durable across a full restart. BullMQ needs a separate design so the raw reset secret is not stored in Redis.</p></div>
+    </div></details>
+  </section>
+</main>
+
+<script>
+  const stackTabs = Array.from(document.querySelectorAll('.stack-tab'));
+  const layers = Array.from(document.querySelectorAll('.layer'));
+
+  function selectLayer(tab, focus = false) {
+    stackTabs.forEach((candidate) => {
+      const selected = candidate === tab;
+      candidate.setAttribute('aria-selected', String(selected));
+      candidate.tabIndex = selected ? 0 : -1;
     });
-    layerPanels.forEach((panel) => {
-      panel.hidden = panel.id !== selected.getAttribute('aria-controls');
+    layers.forEach((layer) => {
+      layer.hidden = layer.id !== tab.getAttribute('aria-controls');
     });
-    applyView();
+    document.title = `${tab.textContent.trim().replace(/\s+/g, ' ')} — Uplinked Effect auth stack`;
+    if (focus) tab.focus();
   }
 
   stackTabs.forEach((tab, index) => {
     tab.addEventListener('click', () => selectLayer(tab));
     tab.addEventListener('keydown', (event) => {
-      const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
-      if (!keys.includes(event.key)) return;
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
-      let nextIndex = index;
-      if (event.key === 'ArrowLeft') nextIndex = (index - 1 + stackTabs.length) % stackTabs.length;
-      if (event.key === 'ArrowRight') nextIndex = (index + 1) % stackTabs.length;
-      if (event.key === 'Home') nextIndex = 0;
-      if (event.key === 'End') nextIndex = stackTabs.length - 1;
-      selectLayer(stackTabs[nextIndex]);
-      stackTabs[nextIndex].focus();
+      let next = index;
+      if (event.key === 'ArrowLeft') next = (index - 1 + stackTabs.length) % stackTabs.length;
+      if (event.key === 'ArrowRight') next = (index + 1) % stackTabs.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = stackTabs.length - 1;
+      selectLayer(stackTabs[next], true);
     });
   });
 
-  viewButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      activeView = button.dataset.selectView;
-      applyView();
-    });
-  });
+  function setupViewTabs(layer) {
+    const flow = layer.querySelector('.flow');
+    const implementation = layer.querySelector('.implementation');
+    const testTemplate = layer.querySelector('.test-template');
+    if (!flow || !implementation || !testTemplate) return;
 
+    const pr = layer.id.replace('layer-', '');
+    const viewTabs = document.createElement('div');
+    viewTabs.className = 'view-tabs';
+    viewTabs.setAttribute('role', 'tablist');
+    viewTabs.setAttribute('aria-label', `PR ${pr} code view`);
+
+    const implementationTab = document.createElement('button');
+    implementationTab.className = 'view-tab';
+    implementationTab.type = 'button';
+    implementationTab.id = `view-tab-${pr}-implementation`;
+    implementationTab.setAttribute('role', 'tab');
+    implementationTab.setAttribute('aria-controls', `view-${pr}-implementation`);
+    implementationTab.setAttribute('aria-selected', 'true');
+    implementationTab.textContent = 'Implementation';
+
+    const testsTab = document.createElement('button');
+    testsTab.className = 'view-tab';
+    testsTab.type = 'button';
+    testsTab.id = `view-tab-${pr}-tests`;
+    testsTab.setAttribute('role', 'tab');
+    testsTab.setAttribute('aria-controls', `view-${pr}-tests`);
+    testsTab.setAttribute('aria-selected', 'false');
+    testsTab.tabIndex = -1;
+    testsTab.textContent = 'Tests';
+    viewTabs.append(implementationTab, testsTab);
+
+    const implementationView = document.createElement('section');
+    implementationView.className = 'view-panel';
+    implementationView.id = `view-${pr}-implementation`;
+    implementationView.setAttribute('role', 'tabpanel');
+    implementationView.setAttribute('aria-labelledby', implementationTab.id);
+
+    const testsView = document.createElement('section');
+    testsView.className = 'view-panel';
+    testsView.id = `view-${pr}-tests`;
+    testsView.setAttribute('role', 'tabpanel');
+    testsView.setAttribute('aria-labelledby', testsTab.id);
+    testsView.hidden = true;
+    testsView.append(testTemplate.content.cloneNode(true));
+
+    layer.insertBefore(viewTabs, flow);
+    layer.insertBefore(implementationView, flow);
+    implementationView.append(flow, implementation);
+    implementationView.after(testsView);
+    testTemplate.remove();
+
+    const localTabs = [implementationTab, testsTab];
+    const localViews = [implementationView, testsView];
+    function selectView(tab, focus = false) {
+      localTabs.forEach((candidate) => {
+        const selected = candidate === tab;
+        candidate.setAttribute('aria-selected', String(selected));
+        candidate.tabIndex = selected ? 0 : -1;
+      });
+      localViews.forEach((view) => {
+        view.hidden = view.id !== tab.getAttribute('aria-controls');
+      });
+      if (focus) tab.focus();
+    }
+
+    localTabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectView(tab));
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        let next = index;
+        if (event.key === 'ArrowLeft') next = (index - 1 + localTabs.length) % localTabs.length;
+        if (event.key === 'ArrowRight') next = (index + 1) % localTabs.length;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = localTabs.length - 1;
+        selectView(localTabs[next], true);
+      });
+    });
+  }
+
+  function placeInlineNotes() {
+    document.querySelectorAll('.excerpt').forEach((excerpt) => {
+      const code = excerpt.querySelector('pre code');
+      const markers = Array.from(excerpt.querySelectorAll('.marker'));
+      const notes = Array.from(excerpt.querySelectorAll('.notes .note'));
+      if (!code || markers.length === 0 || markers.length !== notes.length) return;
+
+      markers.forEach((marker, index) => {
+        const sourceLine = marker.nextSibling;
+        const note = notes[index];
+        const heading = note.querySelector('strong')?.cloneNode(true);
+        heading?.querySelector('.badge')?.remove();
+
+        const callout = document.createElement('span');
+        callout.className = 'review-note';
+        callout.setAttribute('role', 'note');
+
+        const label = document.createElement('span');
+        label.className = 'review-label';
+        label.textContent = note.closest('.tests-view') ? 'What this proves' : 'What changed';
+
+        const title = document.createElement('span');
+        title.className = 'review-title';
+        title.textContent = heading?.textContent.trim() || 'Explanation';
+
+        const copy = document.createElement('span');
+        copy.textContent = note.querySelector('p')?.textContent.trim() || '';
+        callout.append(label, title, copy);
+
+        if (sourceLine?.nodeType === Node.TEXT_NODE) {
+          const lineEnd = sourceLine.data.indexOf('\n');
+          if (lineEnd >= 0) {
+            const remainder = sourceLine.splitText(lineEnd + 1);
+            code.insertBefore(callout, remainder);
+            return;
+          }
+        }
+        marker.after(callout);
+      });
+
+      excerpt.classList.add('enhanced-code');
+    });
+  }
+
+  const keywords = new Set([
+    'as', 'async', 'await', 'catch', 'class', 'const', 'else', 'export', 'extends',
+    'for', 'from', 'function', 'if', 'import', 'in', 'interface', 'let', 'new', 'of',
+    'readonly', 'return', 'static', 'switch', 'throw', 'try', 'type', 'typeof', 'while', 'yield',
+  ]);
+  const literals = new Set(['false', 'null', 'true', 'undefined']);
+  const tokenPattern = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:as|async|await|catch|class|const|else|export|extends|false|for|from|function|if|import|in|interface|let|new|null|of|readonly|return|static|switch|throw|true|try|type|typeof|undefined|while|yield)\b|\b\d+(?:\.\d+)?\b|\b[A-Z][A-Za-z0-9_$]*\b|\b[A-Za-z_$][\w$]*(?=\s*\())/g;
+
+  function tokenClass(token) {
+    if (token.startsWith('//') || token.startsWith('/*')) return 'tok-comment';
+    if (token.startsWith('"') || token.startsWith("'") || token.startsWith('`')) return 'tok-string';
+    if (literals.has(token)) return 'tok-literal';
+    if (keywords.has(token)) return 'tok-keyword';
+    if (/^\d/.test(token)) return 'tok-number';
+    if (/^[A-Z]/.test(token)) return 'tok-type';
+    return 'tok-call';
+  }
+
+  function highlightCode() {
+    document.querySelectorAll('pre code').forEach((code) => {
+      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          return node.parentElement?.closest('.review-note, .marker')
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+      textNodes.forEach((node) => {
+        const fragment = document.createDocumentFragment();
+        let cursor = 0;
+        for (const match of node.data.matchAll(tokenPattern)) {
+          if (match.index > cursor) fragment.append(document.createTextNode(node.data.slice(cursor, match.index)));
+          const token = document.createElement('span');
+          token.className = tokenClass(match[0]);
+          token.textContent = match[0];
+          fragment.append(token);
+          cursor = match.index + match[0].length;
+        }
+        if (cursor === 0) return;
+        fragment.append(document.createTextNode(node.data.slice(cursor)));
+        node.replaceWith(fragment);
+      });
+    });
+  }
+
+  layers.forEach(setupViewTabs);
+  placeInlineNotes();
+  highlightCode();
+  document.body.classList.add('enhanced-code');
   selectLayer(stackTabs[0]);
 </script>
 </body>
