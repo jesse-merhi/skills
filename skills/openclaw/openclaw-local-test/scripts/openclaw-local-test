@@ -315,6 +315,22 @@ wait_for_port_owner() {
   return 1
 }
 
+wait_for_port_release() {
+  local port="$1"
+  local name="$2"
+
+  for _ in {1..50}; do
+    if ! port_in_use "$port"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  log "$name port $port is still listening after cleanup"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN >&2 2>/dev/null || true
+  return 1
+}
+
 http_healthy() {
   local url="$1"
   curl -fsS --max-time 2 "$url" >/dev/null 2>&1
@@ -544,6 +560,7 @@ remove_browser_proxy_route() {
   fi
   if [[ -n "$route_proxy_port" ]]; then
     /bin/rm -f "$(browser_proxy_route_file_for_port "$route_proxy_port")"
+    wait_for_port_release "$route_proxy_port" "browser proxy"
   fi
 }
 
