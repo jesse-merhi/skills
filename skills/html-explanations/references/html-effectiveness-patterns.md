@@ -15,6 +15,7 @@ secondary.
 | `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
 | `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
 | `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
+| `annotated-diff.html` | Why is this diff this size, and how do its files compose? | Production/supporting tabs, net-line anatomy, dependency-ordered real code, plain-language proof cards, numbered why/how/where notes, complexity boundary |
 
 ## Reusing A Pattern
 
@@ -26,7 +27,7 @@ When a pattern closely matches the task:
 4. Delete irrelevant sections instead of preserving empty shells.
 5. Verify the copied page in a browser.
 
-Use `assets/explanation-template.html` only when none of the six patterns fit.
+Use `assets/explanation-template.html` only when none of the seven patterns fit.
 
 ## Choosing A Shape
 
@@ -38,6 +39,10 @@ Use `assets/explanation-template.html` only when none of the six patterns fit.
 - If the user asks "what should we do next?", use the implementation plan.
 - For a PR walkthrough, adapt code flow when behavior changed and decision brief
   when the page explains an architectural choice.
+- For a reader who understands the target behavior but wants to understand the
+  implementation diff, use the annotated diff. Default to production code;
+  move tests, fixtures, infrastructure, CI, generated files, and docs into the
+  supporting tab. Order code by what the reader must understand first.
 - For status, adapt implementation plan and make completed, active, blocked,
   and next work explicit.
 
