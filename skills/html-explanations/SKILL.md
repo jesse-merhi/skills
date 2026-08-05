@@ -138,7 +138,7 @@ Before saying the work is done:
 ## Pattern Library
 
 Read `references/html-effectiveness-patterns.md` before choosing a page shape.
-The six examples in `assets/patterns/` are intentionally different reasoning
+The seven examples in `assets/patterns/` are intentionally different reasoning
 structures, not visual themes. Copy the closest structure, replace all sample
 facts, and remove sections that do not help the reader.
 
