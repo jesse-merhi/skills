@@ -4,6 +4,10 @@
   then `gateway.log`.
 - If the browser proxy route fails, inspect
   `~/.openclaw-local-test-proxy/logs/shared-browser-proxy.err.log`.
+- If startup reports that the wizard readiness probe could not start, another
+  client raced startup and owns the singleton wizard. The helper stops its
+  isolated Gateway without cancelling an unknown session; retry startup, and
+  identify the competing automation if the collision repeats.
 - If another agent is starting OpenClaw at the same time, the helper may briefly
   print `waiting for OpenClaw startup lock`; let it wait instead of manually
   choosing a port.

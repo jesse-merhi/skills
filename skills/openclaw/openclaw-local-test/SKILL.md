@@ -37,12 +37,17 @@ Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
    [references/config-inspection.md](references/config-inspection.md) for the
    redacted inspection command and reporting rules.
 
-4. Verify both endpoints after startup:
+4. Verify both endpoints and wizard readiness after startup:
 
    ```bash
    curl -fsS http://127.0.0.1:<gateway-port>/healthz
    curl -fsS http://localhost:<browser-proxy-port>/healthz
    ```
+
+   Startup also performs a typed `wizard.start` readiness probe. It cancels an
+   acquired running session through `wizard.cancel`, including when a later
+   probe step fails; an immediately completed session needs no cancellation.
+   Do not hand off the URL if that check fails.
 
 5. Check logs when channel/provider readiness matters:
 
@@ -74,6 +79,8 @@ Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
 - The helper path is installed or already present.
 - The instance started from the intended OpenClaw repo and explicit base config.
 - Health checks passed for both Gateway and browser proxy.
+- The wizard readiness probe confirmed no earlier session was active and left
+  no running session behind before the URL was handed off.
 - The active generated config was inspected with secrets redacted.
 - The report includes URL, ports, provider/model, relevant config summary, lease
   expiry, channel status, and stop/status commands.
