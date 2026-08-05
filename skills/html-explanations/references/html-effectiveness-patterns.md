@@ -15,7 +15,7 @@ secondary.
 | `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
 | `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
 | `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
-| `annotated-diff.html` | Why is this diff this size, and how do its files compose? | Production/supporting tabs, net-line anatomy, dependency-ordered real code, numbered why/how/where notes, complexity boundary |
+| `annotated-diff.html` | Why is this diff this size, and how do its files compose? | Production/supporting tabs, net-line anatomy, dependency-ordered real code, plain-language proof cards, numbered why/how/where notes, complexity boundary |
 
 ## Reusing A Pattern
 

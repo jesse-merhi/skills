@@ -38,6 +38,14 @@ Good fits:
   implementation details. Put code, dense mechanics, and caveats in
   lower sections or `<details>` blocks unless the user's explicit goal
   is code reading.
+- Assume the reader knows the desired behavior, not the repository's internal
+  vocabulary. Use everyday words before technical names.
+- Do not make acronyms or specialist terms carry the explanation. Prefer
+  "exactly one of these fields" over "XOR," and "reads both saved transcript
+  formats" over naming storage implementations. Keep exact terms in filenames,
+  code, or secondary evidence when they help someone inspect the change.
+- In summary cards, state the user-visible promise or failure being checked.
+  Describe the test machinery only after that promise is clear.
 - Use real labels from the task: filenames, functions, API names, states, events, dates, and decisions.
 - Keep primary prose near 70–75 characters per line.
 - Prefer compact sections, tables, flow diagrams, timelines, comparisons, and
@@ -101,6 +109,10 @@ code grew or how files compose—use `assets/patterns/annotated-diff.html`:
   names to shorten code.
 - Pair numbered markers in each code block with adjacent notes that answer:
   **where is this, how does it work, and why did we need it?**
+- In the Supporting changes tab, explain what each group proves in plain
+  language. Examples: "the old one-search request still works," "bad input is
+  rejected before any search starts," and "one search call is followed by one
+  tool call." Put harness, fixture, storage, and protocol details second.
 - Show the unchanged canonical owner or path when reuse is an important part of
   the design. This makes delegation visible and rules out duplicate logic.
 - End by separating irreducible feature complexity from optional or debatable

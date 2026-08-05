@@ -471,19 +471,19 @@ return render();</code></pre>
 
     <div id="panel-supporting" class="tabpanel" role="tabpanel" aria-labelledby="tab-supporting" hidden>
       <section aria-labelledby="supporting">
-        <h2 id="supporting">Supporting changes, grouped by purpose</h2>
-        <p class="lead">These files prove, document, or exercise production behavior. They do not implement catalog ranking or dispatch.</p>
+        <h2 id="supporting">The remaining files prove the feature works</h2>
+        <p class="lead">These files check the promises made by the production code. They do not add another search engine.</p>
         <div class="support-grid">
-          <article class="support-card"><span class="kind">Tests · +497</span><h3><code>src/agents/tool-search.test.ts</code></h3><p>Covers scalar compatibility, XOR validation, atomic rejection, limits, Unicode, duplicates, order, fair truncation, hostile descriptions, tools mode, and directory mode.</p></article>
-          <article class="support-card"><span class="kind">Private QA</span><h3><code>extensions/qa-lab/**</code></h3><p>Teaches the fake provider to issue one batch, inspect grouped candidates, and call the target. The Gateway fixture verifies the real transcript and plugin result.</p></article>
-          <article class="support-card"><span class="kind">Scenario</span><h3><code>qa/scenarios/runtime/tool-search-gateway-e2e.yaml</code></h3><p>Adds the structured-tools lane beside direct and code modes. Retries are disabled so a failed first attempt cannot be hidden.</p></article>
-          <article class="support-card"><span class="kind">Documentation · +37 net</span><h3><code>docs/tools/tool-search.md</code></h3><p>Defines scalar versus batch request/response shapes, all limits, truncation semantics, and the exact E2E command.</p></article>
-          <article class="support-card"><span class="kind">CI / infrastructure</span><h3>No workflow or deployment changes</h3><p>The PR uses existing build and changed-check lanes. It adds no CI trigger, service, database, migration, state file, or environment variable.</p></article>
-          <article class="support-card"><span class="kind">Why this split matters</span><h3>Proof stays out of the production story</h3><p>A reader can understand runtime ownership without parsing fixture machinery, then switch tabs to verify how each promise is tested and documented.</p></article>
+          <article class="support-card"><span class="kind">Tests · +497</span><h3><code>src/agents/tool-search.test.ts</code></h3><p>Checks that the old one-search form still works, the new list form rejects bad input before starting, results stay in order, and the response never grows too large.</p></article>
+          <article class="support-card"><span class="kind">Complete journey tests</span><h3><code>extensions/qa-lab/**</code></h3><p>A fake model asks for two searches at once, waits for the real grouped answer, then calls the chosen tool exactly once.</p></article>
+          <article class="support-card"><span class="kind">Runnable scenario</span><h3><code>qa/scenarios/runtime/tool-search-gateway-e2e.yaml</code></h3><p>Runs all three supported Tool Search modes with retries turned off, so a hidden second attempt cannot make a failure look successful.</p></article>
+          <article class="support-card"><span class="kind">Documentation · +37 net</span><h3><code>docs/tools/tool-search.md</code></h3><p>Shows the old and new request forms, their limits, the grouped answer, and how the tool reports removed results.</p></article>
+          <article class="support-card"><span class="kind">CI / infrastructure</span><h3>No workflow or deployment changes</h3><p>No build workflow, service, database, setting, state file, or deployment changed.</p></article>
+          <article class="support-card"><span class="kind">Why this split matters</span><h3>Proof stays out of the production story</h3><p>The Production tab explains how the feature works. This tab shows why we believe each promise is true.</p></article>
         </div>
 
         <section aria-labelledby="support-flow">
-          <h2 id="support-flow">The supporting flow, in its own dependency order</h2>
+          <h2 id="support-flow">How the complete test works</h2>
           <div class="annotated">
             <div class="code-panel">
               <div class="code-head"><span>extensions/qa-lab/src/providers/mock-openai/server.ts:798</span><span>exact excerpts reordered by learning dependency</span></div>
@@ -517,8 +517,8 @@ return render();</code></pre>
 }</code></pre>
             </div>
             <div class="notes">
-              <div class="note"><strong><span class="badge">1</span>Where / how</strong><p>The fake model emits the new batch shape through the ordinary provider protocol.</p></div>
-              <div class="note"><strong><span class="badge">2</span>Why</strong><p>It only advances after the actual grouped output contains the target, so the scenario cannot pass on an empty or failed search.</p></div>
+              <div class="note"><strong><span class="badge">1</span>Send one batch</strong><p>The fake model puts two searches into one <code>tool_search</code> call.</p></div>
+              <div class="note"><strong><span class="badge">2</span>Wait for the answer</strong><p>It calls the chosen tool only after the real grouped answer contains it. An empty or failed search cannot pass.</p></div>
             </div>
           </div>
         </section>
