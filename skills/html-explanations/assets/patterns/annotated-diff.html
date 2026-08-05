@@ -176,7 +176,7 @@
   .flow { margin-top: 5px; border-top: 1px solid var(--line); counter-reset: flow; }
   .flow-step {
     display: grid;
-    grid-template-columns: 28px minmax(145px, .38fr) minmax(0, 1fr);
+    grid-template-columns: 28px minmax(0, 1fr);
     gap: 12px;
     align-items: center;
     min-width: 0;
@@ -195,7 +195,6 @@
     color: var(--blue);
     font: 800 11px/1 var(--mono);
   }
-  .flow-step strong { display: block; }
   .flow-step p { margin: 0; color: var(--muted); font-size: 12.5px; }
 
   .implementation { margin-top: 12px; }
@@ -402,10 +401,10 @@
 
     <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Session implementation flow">
-      <article class="flow-step"><strong>Find and verify</strong><p>Prisma lookup and Argon2 verification become Effect operations.</p></article>
-      <article class="flow-step"><strong>Reject safely</strong><p><code>LoginRejected</code> distinguishes internal reasons without exposing them.</p></article>
-      <article class="flow-step"><strong>Create session</strong><p>The shared owner writes a 30-day session and returns only ID and token.</p></article>
-      <article class="flow-step"><strong>Translate HTTP</strong><p>Express maps 401/500, sets the cookie, and records the audit actor.</p></article>
+      <article class="flow-step"><p><code>startSession</code> wraps the Prisma lookup and Argon2 verification in Effect failures.</p></article>
+      <article class="flow-step"><p><code>LoginRejected.reason</code> distinguishes invalid credentials from inactive accounts; Express returns the same 401 body for both.</p></article>
+      <article class="flow-step"><p><code>createSession</code> owns the 30-day expiry and returns only the session ID and token.</p></article>
+      <article class="flow-step"><p><code>router/auth.ts</code> maps typed failures to 401/500, sets the cookie, and records the authenticated actor.</p></article>
     </div>
 
     <div class="implementation">
@@ -546,10 +545,10 @@ return success(200, { token: session.token });</code></pre>
 
     <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Onboarding implementation flow">
-      <article class="flow-step"><strong>Resolve token</strong><p>One lifecycle owner finds an active, usable token.</p></article>
-      <article class="flow-step"><strong>Validate and hash</strong><p>Association rules stop bad combinations before writes.</p></article>
-      <article class="flow-step"><strong>Commit atomically</strong><p>User, relationship, token, and optional session share one transaction.</p></article>
-      <article class="flow-step"><strong>Translate result</strong><p>Express maps typed failures and sets the non-worker cookie.</p></article>
+      <article class="flow-step"><p><code>token-lifecycle.ts</code> owns active-token lookup, identity matching, locks, and transactional revalidation.</p></article>
+      <article class="flow-step"><p><code>completeOnboarding</code> validates role associations and hashes the password before opening the write transaction.</p></article>
+      <article class="flow-step"><p>One Prisma transaction writes the user and relationship, consumes the token, and optionally creates a session.</p></article>
+      <article class="flow-step"><p><code>router/onboarding.ts</code> maps typed failures to the existing 400/404/500 responses and sets the cookie when a session token is returned.</p></article>
     </div>
 
     <div class="implementation">
@@ -741,10 +740,10 @@ if (Either.isLeft(result)) {
 
     <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Auth code implementation flow">
-      <article class="flow-step"><strong>Issue</strong><p>Generate 32 random bytes and store a one-minute code.</p></article>
-      <article class="flow-step"><strong>Compose</strong><p>Code login yields session creation then code issue in one Effect.</p></article>
-      <article class="flow-step"><strong>Exchange</strong><p>Atomically consume an active, unused code and session.</p></article>
-      <article class="flow-step"><strong>Translate</strong><p>Express maps rejection to 401 and outages to 500.</p></article>
+      <article class="flow-step"><p><code>issueCode</code> creates 32 random bytes, reads expiry from Effect Clock, and stores a one-minute code.</p></article>
+      <article class="flow-step"><p>The code-login route runs <code>startSession</code> then <code>issueCode</code> inside one Effect runtime crossing.</p></article>
+      <article class="flow-step"><p><code>exchangeCode</code> atomically marks one active, unused code as consumed and returns its session.</p></article>
+      <article class="flow-step"><p><code>router/auth.ts</code> maps <code>AuthCodeRejected</code> to 401 and operational failures to 500.</p></article>
     </div>
 
     <div class="implementation">
@@ -914,10 +913,10 @@ if (Either.isLeft(result)) {
 
     <h3 class="summary-title">Summary of changes</h3>
     <div class="flow" aria-label="Password reset implementation flow">
-      <article class="flow-step"><strong>Resolve safely</strong><p>Workspace and account lookup never reveal whether the account exists.</p></article>
-      <article class="flow-step"><strong>Issue atomically</strong><p>Locks, throttles, stale cleanup, invalidation, and creation share one transaction.</p></article>
-      <article class="flow-step"><strong>Deliver and compensate</strong><p>A runtime-owned fiber emails; failure invalidates the token and releases account throttle.</p></article>
-      <article class="flow-step"><strong>Save once</strong><p>Confirmation consumes the token, changes the password, and revokes sessions atomically.</p></article>
+      <article class="flow-step"><p><code>requestPasswordReset</code> returns the same privacy-safe response for missing, inactive, and cross-workspace accounts.</p></article>
+      <article class="flow-step"><p><code>issueResetToken</code> performs locks, throttling, stale-token cleanup, invalidation, and creation in one transaction.</p></article>
+      <article class="flow-step"><p><code>deliverResetEmail</code> runs in a runtime-owned fiber; failure invalidates the token and releases account throttle.</p></article>
+      <article class="flow-step"><p><code>resetPassword</code> consumes the token, changes the password, and revokes sessions in one transaction.</p></article>
     </div>
 
     <div class="implementation">
@@ -1118,10 +1117,11 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
   });
 
   function setupViewTabs(layer) {
+    const summaryTitle = layer.querySelector('.summary-title');
     const flow = layer.querySelector('.flow');
     const implementation = layer.querySelector('.implementation');
     const testTemplate = layer.querySelector('.test-template');
-    if (!flow || !implementation || !testTemplate) return;
+    if (!summaryTitle || !flow || !implementation || !testTemplate) return;
 
     const pr = layer.id.replace('layer-', '');
     const viewTabs = document.createElement('div');
@@ -1165,7 +1165,7 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
 
     layer.insertBefore(viewTabs, flow);
     layer.insertBefore(implementationView, flow);
-    implementationView.append(flow, implementation);
+    implementationView.append(summaryTitle, flow, implementation);
     implementationView.after(testsView);
     testTemplate.remove();
 

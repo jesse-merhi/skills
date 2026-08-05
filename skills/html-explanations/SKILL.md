@@ -57,6 +57,11 @@ Good fits:
   with rows and separators. Use separate cards only when the items are
   independent concepts that benefit from spatial grouping; do not turn every
   step in a flow into its own card.
+- Make every summary row one concrete statement that names the changed file,
+  symbol, behavior, or boundary. Delete generic process labels such as
+  "Validate," "Translate," "Handle safely," or "How it works" when the
+  adjacent sentence contains the actual information. Do not add a short title
+  that merely restates its description.
 - Default to the smallest page that answers the reader's question. Treat every
   section as optional. Remove review-process narration, repeated summaries,
   dashboards, metrics, and orientation that do not help the reader understand
@@ -156,6 +161,8 @@ When the reader wants to understand what changed in a PR or stack, use
   both" over "Reject ambiguous shapes," "Reject the whole list before
   starting" over "Validate first," and "Limit the whole request" over "Bound
   amplification."
+- Rewrite any heading or sentence that could be pasted unchanged onto an
+  unrelated PR. Every word should carry task-specific information.
 - In the proof view, explain what each group proves in plain
   language. Examples: "the old one-search request still works," "bad input is
   rejected before any search starts," and "one search call is followed by one
