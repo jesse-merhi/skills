@@ -104,7 +104,7 @@ Use these as starting points:
 - **Concept explainer**: short definition, concrete example, diagram, edge cases, small interactive control.
 - **Architecture map**: modules as nodes, arrows for calls/data/events, notes on ownership boundaries.
 - **Bug explanation**: broken behavior, evidence, cause, smallest fix, verification.
-- **PR/diff walkthrough**: what changed, changed flow map, files to read, before/after behavior, tests, open questions.
+- **PR/diff walkthrough**: what changed, annotated direct-base diff, implementation, tests, files to read, open questions.
 - **PR change walkthrough**: changed behavior, optional stack navigation, direct-base implementation flow, real code excerpts, proof and rollout notes.
 - **Plan/report**: goal or current state, phases or timeline, blockers, risks, checks, decisions needed, next actions.
 - **Incident report**: impact, timeline, trigger, cause, fix, follow-ups, evidence.
@@ -139,9 +139,19 @@ When the reader wants to understand what changed in a PR or stack, use
   update the summary, changed flow, code excerpts, files, and proof together.
 - State what the whole stack delivers once, then state what the selected layer
   adds. Keep shared context stable while the reader moves between layers.
-- When meaningful tests changed, use a compact secondary **Implementation** /
-  **Tests** switch. Keep implementation selected by default. In the test view,
-  show real test excerpts with exact filenames and inline notes that explain
+- For code-reading pages, lead with a compact **Diff** view and keep the longer
+  **Implementation** walkthrough one tab away. Add **Tests** when meaningful
+  tests changed. Keep Diff selected by default so the reader can compare the
+  old and new code before opening the walkthrough. Omit Diff only when the
+  direct-base source is unavailable or a comparison would be deceptive. Prefer
+  one to three representative unified hunks over the full patch. Use exact
+  source lines, label omitted context, and never invent helper names to shorten
+  a hunk.
+- Annotate the diff itself. Attach sparse GitHub-style explanation boxes to the
+  added or removed lines that change behavior. Each note must say what that
+  line changes and why it matters in this PR. Do not add a prose footer that
+  repeats the inline notes.
+- In the test view, show real test excerpts with exact filenames and inline notes that explain
   the behavior each excerpt proves; do not replace test code with pass counts
   or prose cards. Prefer tests changed in the direct-base diff. When the PR
   relies on relevant unchanged coverage, include the exact existing test and
