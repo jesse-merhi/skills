@@ -17,6 +17,10 @@
     --line: #334857;
     --blue: #7bc7ff;
     --blue-soft: #15324a;
+    --red: #ff7b86;
+    --red-soft: #321a20;
+    --green: #78d9aa;
+    --green-soft: #122c24;
     --amber: #f3c774;
     --amber-soft: #392d17;
     --code: #070c11;
@@ -140,8 +144,11 @@
   .layer-head h2 { margin: 0; font-size: clamp(1.2rem, 2.5vw, 1.55rem); line-height: 1.15; }
   .layer-head p { max-width: 88ch; margin: 5px 0 0; color: var(--muted); font-size: 13.5px; }
   .pr-link {
+    display: inline-flex;
     flex: 0 0 auto;
+    min-height: 44px;
     padding: 5px 8px;
+    align-items: center;
     border: 1px solid var(--line);
     border-radius: 999px;
     color: var(--blue);
@@ -160,7 +167,7 @@
     background: var(--surface);
   }
   .view-tab {
-    min-height: 40px;
+    min-height: 44px;
     padding: 8px 13px;
     border: 0;
     border-radius: 6px;
@@ -197,8 +204,8 @@
   }
   .flow-step p { margin: 0; color: var(--muted); font-size: 12.5px; }
 
-  .implementation { margin-top: 12px; }
-  .implementation > h3, .files > h3 { margin: 0 0 9px; font-size: 1.08rem; }
+  .implementation, .diff-view { margin-top: 12px; }
+  .implementation > h3, .diff-view > h3, .files > h3 { margin: 0 0 9px; font-size: 1.08rem; }
   .excerpt {
     display: block;
   }
@@ -220,6 +227,25 @@
     font: 700 11.5px/1.3 var(--mono);
   }
   .code-head span:last-child { color: var(--muted); font-weight: 500; }
+  pre.diff { padding: 12px 0; }
+  .diff-line {
+    display: block;
+    min-width: max-content;
+    padding-right: 16px;
+  }
+  .diff-line.remove { background: rgba(255, 123, 134, .12); }
+  .diff-line.add { background: rgba(120, 217, 170, .11); }
+  .diff-line.skip { color: #8598a5; font-style: italic; }
+  .diff-mark {
+    display: inline-block;
+    width: 28px;
+    margin-right: 8px;
+    color: #71818d;
+    text-align: center;
+    user-select: none;
+  }
+  .diff-line.remove .diff-mark { color: var(--red); }
+  .diff-line.add .diff-mark { color: var(--green); }
   .marker {
     display: inline-grid;
     width: 18px;
@@ -274,6 +300,10 @@
     text-transform: uppercase;
   }
   .review-title { display: block; margin-bottom: 2px; color: var(--ink); font-weight: 750; }
+  .diff-view .review-note {
+    width: min(720px, calc(100vw - 92px));
+    margin: 10px 16px 10px 38px;
+  }
   .tok-comment { color: #8598a5; font-style: italic; }
   .tok-keyword { color: #ff8fb3; }
   .tok-string { color: #a9dc76; }
@@ -406,6 +436,46 @@
       <article class="flow-step"><p><code>createSession</code> owns the 30-day expiry and returns only the session ID and token.</p></article>
       <article class="flow-step"><p><code>router/auth.ts</code> maps typed failures to 401/500, sets the cookie, and records the authenticated actor.</p></article>
     </div>
+
+    <template class="diff-template">
+      <div class="diff-view">
+        <h3>Direct-base diff</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/src/auth/session.ts</span><span>main → #727</span></div>
+            <pre class="diff"><code><span class="diff-line remove"><span class="diff-mark">−</span>export type StartSessionResult =</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "started"; session: { id: number; token: string }; actor: SessionActor }</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "invalid-credentials"; message: "Invalid Credentials" }</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "inactive-account"; message: "Account is not active" };</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>type LoginRejectedReason = "InvalidCredentials" | "AccountInactive";</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>export class LoginRejected extends Data.TaggedError("LoginRejected")&lt;{</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  readonly reason: LoginRejectedReason;</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>}&gt; {}</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged input types omitted</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>export const startSession = async (input: StartSessionInput): Promise&lt;StartSessionResult&gt; =&gt; {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const user = await prisma.user.findFirst({ where: { email: input.email } });</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  if (!user || !(await argon2.verify(user.passwordHash, input.password))) {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>    return { kind: "invalid-credentials", message: "Invalid Credentials" };</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>export const startSession = Effect.fn("auth.startSession")(function* (input: StartSessionInput) {</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  const user = yield* Effect.tryPromise({</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    try: () =&gt; prisma.user.findFirst({ where: { email: input.email } }),</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    catch: sessionUnavailable,</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  });</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  if (!user) return yield* loginRejected.invalidCredentials;</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>password and active-account checks omitted</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>    kind: "started",</span><!--
+--><span class="diff-line"><span class="diff-mark"> </span>    session: { id: session.id, token: session.token },</span><!--
+--><span class="diff-line"><span class="diff-mark"> </span>    actor: { id: user.id, type: user.type },</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>});</span></code></pre>
+          </div>
+          <div class="notes">
+            <div class="note"><strong><span class="badge">1</span>Failures become typed channels</strong><p>Expected rejection and infrastructure failure stop masquerading as successful result objects.</p></div>
+            <div class="note"><strong><span class="badge">2</span>The use case becomes an Effect</strong><p>Lookup and password failures now stay distinct while success returns only the actor and session.</p></div>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <div class="implementation">
       <h3>Changed code</h3>
@@ -550,6 +620,48 @@ return success(200, { token: session.token });</code></pre>
       <article class="flow-step"><p>One Prisma transaction writes the user and relationship, consumes the token, and optionally creates a session.</p></article>
       <article class="flow-step"><p><code>router/onboarding.ts</code> maps typed failures to the existing 400/404/500 responses and sets the cookie when a session token is returned.</p></article>
     </div>
+
+    <template class="diff-template">
+      <div class="diff-view">
+        <h3>Direct-base diff</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/src/router/onboarding.ts</span><span>#727 → #728</span></div>
+            <pre class="diff"><code><span class="diff-line"><span class="diff-mark"> </span>completeOnboarding: async ({ body, req, res }) =&gt; {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const { token, name, phoneNumber, password, address, dob } = body;</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const passwordResult = StrongPassword.safeParse(password);</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  if (!passwordResult.success) {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>    return error(400, passwordResult.error.issues[0]?.message ?? "Password is invalid");</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  }</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const onboardingToken = await resolveOnboardingTokenForUse(token);</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>about 180 lines of inline locking, validation, writes, and email omitted</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>  const result = await apiRuntime().runPromise(</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    Effect.either(</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>      completeOnboarding({</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>        body,</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>        ip: req.ip ?? "unknown",</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>        sessionLabel: req.headers["user-agent"] ?? "onboarding",</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>      }),</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    ),</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  );</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>  if (Either.isLeft(result)) {</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    switch (result.left._tag) {</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>      case "OnboardingRejected":</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>        return error(400, ONBOARDING_REJECTION_MESSAGES[result.left.reason]);</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>      case "OnboardingTokenNotFound":</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>        return error(404, ONBOARDING_TOKEN_NOT_FOUND_MESSAGE);</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>      case "OnboardingUnavailable":</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>        return error(500, ONBOARDING_UNAVAILABLE_MESSAGE);</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    }</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  }</span></code></pre>
+          </div>
+          <div class="notes">
+            <div class="note"><strong><span class="badge">1</span>The route delegates one workflow</strong><p>Validation, locking, writes, session creation, and confirmation move behind <code>completeOnboarding</code>.</p></div>
+            <div class="note"><strong><span class="badge">2</span>HTTP policy remains visible</strong><p>The route still owns the existing 400, 404, and 500 responses; it no longer owns the transaction.</p></div>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <div class="implementation">
       <h3>Changed code</h3>
@@ -746,6 +858,45 @@ if (Either.isLeft(result)) {
       <article class="flow-step"><p><code>router/auth.ts</code> maps <code>AuthCodeRejected</code> to 401 and operational failures to 500.</p></article>
     </div>
 
+    <template class="diff-template">
+      <div class="diff-view">
+        <h3>Direct-base diff</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/src/auth/code.ts</span><span>#728 → #742</span></div>
+            <pre class="diff"><code><span class="diff-line remove"><span class="diff-mark">−</span>export type ExchangeCodeResult =</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "exchanged"; session: { token: string }; actor: SessionActor }</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "invalid-code"; message: typeof INVALID_CODE_MESSAGE };</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>type AuthCodeRejectedReason = "InvalidOrExpired";</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>export class AuthCodeRejected extends Data.TaggedError("AuthCodeRejected")&lt;{</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  readonly reason: AuthCodeRejectedReason;</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>}&gt; {}</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged active-session filter omitted</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>export const exchangeCode = async (code: string): Promise&lt;ExchangeCodeResult&gt; =&gt; {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const now = new Date();</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>export const exchangeCode = Effect.fn("auth.exchangeCode")(function* (code: string) {</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  const now = new Date(yield* Clock.currentTimeMillis);</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const [authCode] = await prisma.authCode.updateManyAndReturn({</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  const [authCode] = yield* Effect.tryPromise({</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    try: () =&gt; prisma.authCode.updateManyAndReturn({</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged atomic consume query omitted</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    }),</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    catch: unavailable,</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  });</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>    return { kind: "invalid-code", message: INVALID_CODE_MESSAGE };</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>    return yield* authCodeRejected.invalidOrExpired;</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>    kind: "exchanged",</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>});</span></code></pre>
+          </div>
+          <div class="notes">
+            <div class="note"><strong><span class="badge">1</span>Clock and database failures enter Effect</strong><p>The same atomic consume now uses Effect Clock and preserves operational failure as a separate channel.</p></div>
+            <div class="note"><strong><span class="badge">2</span>Invalid codes stop carrying HTTP text</strong><p>The domain yields a typed reason; the route chooses the public 401 message.</p></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <div class="implementation">
       <h3>Changed code</h3>
       <div class="excerpt">
@@ -918,6 +1069,47 @@ if (Either.isLeft(result)) {
       <article class="flow-step"><p><code>deliverResetEmail</code> runs in a runtime-owned fiber; failure invalidates the token and releases account throttle.</p></article>
       <article class="flow-step"><p><code>resetPassword</code> consumes the token, changes the password, and revokes sessions in one transaction.</p></article>
     </div>
+
+    <template class="diff-template">
+      <div class="diff-view">
+        <h3>Direct-base diff</h3>
+        <div class="excerpt">
+          <div class="code-panel">
+            <div class="code-head"><span>packages/backend/src/auth/password-reset.ts</span><span>#742 → #743</span></div>
+            <pre class="diff"><code><span class="diff-line remove"><span class="diff-mark">−</span>const response = async (startedAtMs: number): Promise&lt;{ message: typeof RESPONSE_MESSAGE }&gt; =&gt; {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const remainingMs = MIN_RESPONSE_MS - (Date.now() - startedAtMs);</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>const response = Effect.fn("auth.passwordResetResponse")(function* (startedAtMs: number) {</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  const now = yield* Clock.currentTimeMillis;</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  const remainingMs = MIN_RESPONSE_MS - (now - startedAtMs);</span><!--
+--><span class="diff-line"><span class="diff-mark"> </span>  if (remainingMs &gt; 0) {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>    await new Promise((resolve) =&gt; setTimeout(resolve, remainingMs));</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>    yield* Effect.sleep(remainingMs);</span><!--
+--><span class="diff-line"><span class="diff-mark"> </span>  }</span><!--
+--><span class="diff-line"><span class="diff-mark"> </span>  return { message: RESPONSE_MESSAGE };</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>});</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>token issue and delivery helpers omitted</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>export const requestPasswordReset = async (</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  input: RequestPasswordResetInput,</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>): Promise&lt;{ message: typeof RESPONSE_MESSAGE }&gt; =&gt; {</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  const startedAtMs = Date.now();</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>export const requestPasswordReset = Effect.fn("auth.requestPasswordReset")(function* (</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  input: RequestPasswordResetInput,</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>) {</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  const startedAtMs = yield* Clock.currentTimeMillis;</span><!--
+--><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged privacy-safe early exits omitted</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>  return response(startedAtMs);</span><!--
+--><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>  return yield* response(startedAtMs);</span><!--
+--><span class="diff-line add"><span class="diff-mark">+</span>});</span></code></pre>
+          </div>
+          <div class="notes">
+            <div class="note"><strong><span class="badge">1</span>The privacy delay uses Effect Clock</strong><p>The 250 ms floor becomes deterministic without changing the safe public response.</p></div>
+            <div class="note"><strong><span class="badge">2</span>The whole request becomes one Effect</strong><p>Early exits, token issue, background delivery, and the timing floor now compose in one runtime-owned program.</p></div>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <div class="implementation">
       <h3>Changed code</h3>
@@ -1120,8 +1312,9 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
     const summaryTitle = layer.querySelector('.summary-title');
     const flow = layer.querySelector('.flow');
     const implementation = layer.querySelector('.implementation');
+    const diffTemplate = layer.querySelector('.diff-template');
     const testTemplate = layer.querySelector('.test-template');
-    if (!summaryTitle || !flow || !implementation || !testTemplate) return;
+    if (!summaryTitle || !flow || !implementation || !diffTemplate || !testTemplate) return;
 
     const pr = layer.id.replace('layer-', '');
     const viewTabs = document.createElement('div');
@@ -1129,13 +1322,23 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
     viewTabs.setAttribute('role', 'tablist');
     viewTabs.setAttribute('aria-label', `PR ${pr} code view`);
 
+    const diffTab = document.createElement('button');
+    diffTab.className = 'view-tab';
+    diffTab.type = 'button';
+    diffTab.id = `view-tab-${pr}-diff`;
+    diffTab.setAttribute('role', 'tab');
+    diffTab.setAttribute('aria-controls', `view-${pr}-diff`);
+    diffTab.setAttribute('aria-selected', 'true');
+    diffTab.textContent = 'Diff';
+
     const implementationTab = document.createElement('button');
     implementationTab.className = 'view-tab';
     implementationTab.type = 'button';
     implementationTab.id = `view-tab-${pr}-implementation`;
     implementationTab.setAttribute('role', 'tab');
     implementationTab.setAttribute('aria-controls', `view-${pr}-implementation`);
-    implementationTab.setAttribute('aria-selected', 'true');
+    implementationTab.setAttribute('aria-selected', 'false');
+    implementationTab.tabIndex = -1;
     implementationTab.textContent = 'Implementation';
 
     const testsTab = document.createElement('button');
@@ -1147,13 +1350,21 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
     testsTab.setAttribute('aria-selected', 'false');
     testsTab.tabIndex = -1;
     testsTab.textContent = 'Tests';
-    viewTabs.append(implementationTab, testsTab);
+    viewTabs.append(diffTab, implementationTab, testsTab);
+
+    const diffView = document.createElement('section');
+    diffView.className = 'view-panel';
+    diffView.id = `view-${pr}-diff`;
+    diffView.setAttribute('role', 'tabpanel');
+    diffView.setAttribute('aria-labelledby', diffTab.id);
+    diffView.append(diffTemplate.content.cloneNode(true));
 
     const implementationView = document.createElement('section');
     implementationView.className = 'view-panel';
     implementationView.id = `view-${pr}-implementation`;
     implementationView.setAttribute('role', 'tabpanel');
     implementationView.setAttribute('aria-labelledby', implementationTab.id);
+    implementationView.hidden = true;
 
     const testsView = document.createElement('section');
     testsView.className = 'view-panel';
@@ -1164,13 +1375,15 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
     testsView.append(testTemplate.content.cloneNode(true));
 
     layer.insertBefore(viewTabs, flow);
+    layer.insertBefore(diffView, flow);
     layer.insertBefore(implementationView, flow);
     implementationView.append(summaryTitle, flow, implementation);
     implementationView.after(testsView);
+    diffTemplate.remove();
     testTemplate.remove();
 
-    const localTabs = [implementationTab, testsTab];
-    const localViews = [implementationView, testsView];
+    const localTabs = [diffTab, implementationTab, testsTab];
+    const localViews = [diffView, implementationView, testsView];
     function selectView(tab, focus = false) {
       localTabs.forEach((candidate) => {
         const selected = candidate === tab;
@@ -1217,7 +1430,11 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
 
         const label = document.createElement('span');
         label.className = 'review-label';
-        label.textContent = note.closest('.tests-view') ? 'What this proves' : 'What changed';
+        label.textContent = note.closest('.tests-view')
+          ? 'What this proves'
+          : note.closest('.diff-view')
+            ? 'On this line'
+            : 'What changed';
 
         const title = document.createElement('span');
         title.className = 'review-title';
@@ -1227,11 +1444,16 @@ return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
         copy.textContent = note.querySelector('p')?.textContent.trim() || '';
         callout.append(label, title, copy);
 
+        const diffLine = marker.closest('.diff-line');
+        if (diffLine) {
+          diffLine.after(callout);
+          return;
+        }
         if (sourceLine?.nodeType === Node.TEXT_NODE) {
           const lineEnd = sourceLine.data.indexOf('\n');
           if (lineEnd >= 0) {
             const remainder = sourceLine.splitText(lineEnd + 1);
-            code.insertBefore(callout, remainder);
+            remainder.parentNode?.insertBefore(callout, remainder);
             return;
           }
         }

@@ -15,7 +15,7 @@ secondary.
 | `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
 | `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
 | `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
-| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, direct-base flow, highlighted implementation/test code, inline explanation, secondary proof |
+| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, annotated direct-base diff, highlighted implementation/test code, secondary proof |
 
 ## Reusing A Pattern
 
@@ -42,8 +42,9 @@ Use `assets/explanation-template.html` only when none of the seven patterns fit.
 - For a reader who wants to understand a PR or stack, use the change
   walkthrough. Lead with changed behavior. For a stack, navigate layers
   bottom-to-top and explain each direct-base diff separately. For a standalone
-  PR, omit the navigator. Keep implementation primary and put real changed test
-  code one compact tab away. Keep fixtures, infrastructure, CI, generated
+  PR, omit the navigator. Put a small annotated direct-base diff first, with
+  implementation and real changed test code one compact tab away. Keep
+  fixtures, infrastructure, CI, generated
   files, docs, and rollout notes in collapsed proof only when they add evidence
   not already visible in the test code.
 - For status, adapt implementation plan and make completed, active, blocked,
