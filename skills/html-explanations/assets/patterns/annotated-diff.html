@@ -331,6 +331,7 @@
     background: var(--surface);
   }
   details.proof[open] { border-color: #4a614f; }
+  details.proof:not([open]) > :not(summary) { display: none; }
   summary {
     min-height: 44px;
     padding: 11px 13px;
