@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: 'Ground a plan in repo docs, code, Obsidian notes, glossary, ADRs, specs, and tickets, then run grilling to stress-test the decisions one question at a time.'
+description: 'Ground a plan or design in repo docs, code, Obsidian notes, glossary, ADRs, specs, and tickets, then grill its decision tree in frontier rounds.'
 ---
 
 # Grill With Docs
@@ -17,8 +17,9 @@ context before the questioning starts.
    transitions, user-visible outcomes, and implied invariants.
 3. Compare those terms against existing docs and code. Prefer existing
    vocabulary. Flag invented terms, overloaded names, and domain gaps.
-4. Run `grilling`: ask one concrete question at a time, provide your
-   recommended answer, look up facts yourself, and put decisions to the user.
+4. Run `grilling`: map the decision tree, ask the whole settled frontier in a
+   numbered round, provide a recommended answer for each question, dispatch
+   background fact-finding, and put decisions to the user.
 5. Use these prompts as useful pressure points during grilling:
    - Which existing decision or ADR does this rely on?
    - Which code path proves the plan is implementable?
@@ -46,11 +47,11 @@ Prefer short sections:
 - `What Holds Up`: parts supported by evidence
 - `Gaps`: unclear terms, missing decisions, weak assumptions
 - `Tightened Plan`: revised plan or first ticket
-- `Next Question`: the single question the user should answer next
+- `Next Round`: the settled frontier the user should answer next
 
 When the plan is ready, stop asking and give the tightened plan. If the user has
 not confirmed the shared understanding, make the confirmation request the next
-question instead of proceeding.
+round instead of proceeding.
 
 ## Context Pointers
 

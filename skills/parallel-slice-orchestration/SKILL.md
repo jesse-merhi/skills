@@ -1,11 +1,11 @@
 ---
 name: parallel-slice-orchestration
-description: 'Implement an existing PRD, slice plan, or feature plan with parallel subagents, disjoint slice ownership, integration, and verification.'
+description: 'Implement an existing spec, slice plan, or feature plan with parallel subagents, disjoint slice ownership, integration, and verification.'
 ---
 
 # Parallel Slice Orchestration
 
-Use this when the user wants an existing PRD or slice plan implemented with
+Use this when the user wants an existing spec or slice plan implemented with
 subagents. The orchestrator owns decomposition, dependency order, integration,
 and final verification. Workers own narrow vertical slices.
 
@@ -20,7 +20,7 @@ same slice plan sequentially and say that parallel execution was not available.
 
 ## Orchestrator Workflow
 
-1. Read the PRD, slice notes, issue, or plan plus the relevant repo
+1. Read the spec, slice notes, issue, or plan plus the relevant repo
    instructions.
 2. Identify externally meaningful behaviors and acceptance criteria.
 3. Build a dependency map using [decomposition.md](references/decomposition.md).

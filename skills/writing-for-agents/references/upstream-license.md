@@ -1,6 +1,6 @@
 # Upstream License
 
-This skill is adapted from Matt Pocock's `writing-great-skills` skill in
+This skill is adapted from Matt Pocock's `writing-for-agents` skill in
 `mattpocock/skills`.
 
 ```text

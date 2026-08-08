@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing For Agents"
+  short_description: "Write predictable instructions for agents"
+  default_prompt: "Use $writing-for-agents to improve these agent instructions, their context pointers, hierarchy, and completion criteria."

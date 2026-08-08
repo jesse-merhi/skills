@@ -4,7 +4,7 @@ Locate project context before judging or questioning the plan:
 
 - `AGENTS.md`, `CLAUDE.md`, `README.md`, `CONTEXT.md`
 - `CONTEXT-MAP.md` for multi-context repos
-- `docs/`, `docs/adr/`, `docs/agents/`, `docs/prds/`
+- `docs/`, `docs/adr/`, `docs/agents/`, `docs/specs/`
 - user-provided project notes when available
 - domain notes in Obsidian when the user points at them or the Obsidian MCP is
   available

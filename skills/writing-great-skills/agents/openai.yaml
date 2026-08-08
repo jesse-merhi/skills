@@ -1,7 +1,0 @@
-interface:
-  display_name: "Writing Great Skills"
-  short_description: "Matt Pocock's vocabulary for skill design."
-  default_prompt: "Use $writing-great-skills to review or improve this skill's invocation, hierarchy, pruning, and predictability."
-
-policy:
-  allow_implicit_invocation: false

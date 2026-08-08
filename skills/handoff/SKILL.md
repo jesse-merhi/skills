@@ -21,7 +21,7 @@ session will focus on and tailor the document accordingly.
 
    Include the objective, current state, files and commands already touched,
    blockers, validation state, suggested skills, and next concrete steps.
-   Reference existing PRDs, plans, ADRs, issues, commits, diffs, or artifacts by
+   Reference existing specs, plans, ADRs, issues, commits, diffs, or artifacts by
    path or URL instead of duplicating them. Redact secrets and personally
    identifiable information.
 

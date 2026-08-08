@@ -16,15 +16,19 @@ alternative interfaces for a chosen candidate, read
 
 ## Workflow
 
-1. Read the current code and tests before proposing structure.
-2. Load user-provided project notes when available so domain language and prior
+1. Scope before scanning. If the user names a module, subsystem, pain point, or
+   direction, focus there. Otherwise inspect roughly the last 20 commit messages
+   and weight the review toward code that changes repeatedly. Widen the scan
+   only when recent changes show no useful hotspot.
+2. Read the current code and tests in that scope before proposing structure.
+3. Load user-provided project notes when available so domain language and prior
    decisions come from Obsidian instead of repo-local scratch docs.
-3. Identify the behavior or change pressure causing the architectural concern.
-4. Describe the current shape with concrete files and symbols.
-5. Name the architectural smell only after showing evidence.
-6. Propose one or two scoped changes, not a rewrite.
-7. Explain the migration path and what tests would preserve behavior.
-8. Ask before cross-cutting edits that touch more than a handful of files unless
+4. Identify the behavior or change pressure causing the architectural concern.
+5. Describe the current shape with concrete files and symbols.
+6. Name the architectural smell only after showing evidence.
+7. Propose one or two scoped changes, not a rewrite.
+8. Explain the migration path and what tests would preserve behavior.
+9. Ask before cross-cutting edits that touch more than a handful of files unless
    the user already requested that scope.
 
 ## Storage

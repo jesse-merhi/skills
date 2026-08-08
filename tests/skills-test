@@ -33,6 +33,7 @@ test_skill_frontmatter_is_valid() {
 from pathlib import Path
 import ast
 import os
+import re
 import sys
 
 
@@ -109,6 +110,55 @@ for path in sorted(skill_paths):
         if previous is not None:
             errors.append(f"duplicate skill name: {name}: {previous} and {path}")
         seen_names[name] = path
+
+behavior_checks = {
+    root / "skills/grilling/SKILL.md": [
+        "Ask the whole frontier",
+        "dispatch a background subagent",
+    ],
+    root / "skills/grill-with-docs/SKILL.md": [
+        "`Next Round`",
+        "background fact-finding",
+    ],
+    root / "skills/improve-codebase-architecture/SKILL.md": [
+        "last 20 commit messages",
+    ],
+    root / "skills/wayfinder/SKILL.md": [
+        "frontier in numbered rounds",
+    ],
+    root / "skills/writing-for-agents/SKILL.md": [
+        "name: writing-for-agents",
+        "The Two Loads",
+        "Treat the environment as a source of truth",
+    ],
+    root / "skills/writing-for-agents/SKILL-MECHANICS.md": [
+        "policy.allow_implicit_invocation: false",
+    ],
+    root / "INSTALL.md": [
+        "writing-great-skills` becoming",
+    ],
+}
+
+for path, required_text in behavior_checks.items():
+    if not path.is_file():
+        errors.append(f"missing refreshed skill file: {path}")
+        continue
+    text = path.read_text()
+    for required in required_text:
+        if required not in text:
+            errors.append(f"missing refreshed behavior: {path}: {required!r}")
+
+old_writing_skill = root / "skills/writing-great-skills"
+if old_writing_skill.exists():
+    errors.append(f"retired writing skill still exists: {old_writing_skill}")
+
+writing_metadata = root / "skills/writing-for-agents/agents/openai.yaml"
+if "allow_implicit_invocation: false" in writing_metadata.read_text():
+    errors.append("writing-for-agents must remain model-invoked")
+
+for path in [root / "README.md", *sorted((root / "skills").rglob("*.md"))]:
+    if re.search(r"\bPRDs?\b", path.read_text(), re.IGNORECASE):
+        errors.append(f"retired PRD terminology remains: {path}")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

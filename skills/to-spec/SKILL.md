@@ -7,7 +7,7 @@ description: 'Turn the current conversation into a spec with testing seams and P
 
 This skill takes the current conversation context and codebase understanding and
 produces a spec. Do not interview the user; synthesize what has already been
-discussed. The user may know this artifact as a PRD.
+discussed.
 
 Publish specs to Obsidian. If the vault is unavailable or the target path is
 unclear, return the Markdown body and proposed `Specs/` path.

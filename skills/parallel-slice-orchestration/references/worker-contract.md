@@ -2,7 +2,7 @@
 
 Each worker prompt must include:
 
-- the exact PRD/slice acceptance criterion they own
+- the exact spec/slice acceptance criterion they own
 - the slice mode: `AFK`, `HITL`, or "unspecified"
 - for HITL slices, the exact checkpoint where the worker must stop
 - the expected vertical path through the system

@@ -97,7 +97,11 @@ Procedure:
 1. Create the target skills directory if it does not exist.
 2. If the target skills directory is a symlink, stop and ask unless it points at
    an old whole-directory install of this repo.
-3. For each discovered skill:
+3. Remove dead symlinks identified during the survey. This retires repo-owned
+   skills after a rename, such as `writing-great-skills` becoming
+   `writing-for-agents`, without touching real directories or live third-party
+   links.
+4. For each discovered skill:
    - read `SKILL.md` frontmatter `name`
    - stop if two repo skills have the same name
    - create `<target>/<name>` as a symlink to the directory containing
