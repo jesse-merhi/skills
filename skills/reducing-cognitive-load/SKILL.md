@@ -13,8 +13,7 @@ smaller mental stack for the next maintainer.
 
 Prefer code that exposes domain concepts, invariants, and data shapes. Avoid
 code that makes readers reverse-engineer hidden protocols, positional fields,
-duplicated types, clever inline transformations, or defenses against states the
-current system cannot plausibly produce.
+duplicated types, or clever inline transformations.
 
 ## Workflow
 
@@ -32,10 +31,7 @@ current system cannot plausibly produce.
    authorized.
 6. Use the extraction test in [extraction-test.md](references/extraction-test.md)
    before adding helper functions.
-7. Trace each new guard, fallback, normalization, or sanitization to an actual
-   input producer, documented contract, observed failure, or credible boundary
-   condition. Do not accept "just in case" as evidence.
-8. When reviewing a diff, use [review-checklist.md](references/review-checklist.md)
+7. When reviewing a diff, use [review-checklist.md](references/review-checklist.md)
    and prefer concrete rewrites over vague "make this cleaner" comments.
 
 ## Completion Criteria
@@ -43,9 +39,8 @@ current system cannot plausibly produce.
 - The code exposes the domain concept before the encoding detail.
 - Shared contracts use shared types instead of duplicated local shapes.
 - Serialization boundaries have names and tests when the protocol matters.
-- Helpers name concepts, invariants, boundaries, or meaningful duplication.
-- Defensive code handles a state that a current producer, contract, or boundary
-  can plausibly create.
+- Defensive code passes the plausibility test; helpers pass the extraction and
+  proxy tests.
 - The reader can see what is being built before studying how it is encoded.
 
 ## Context Pointers

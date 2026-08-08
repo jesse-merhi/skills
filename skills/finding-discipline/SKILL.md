@@ -25,9 +25,6 @@ PR author can fix.
 - Put non-actionable but useful context in residual risk or notes, not findings.
 - Merge duplicates under one root cause.
 - Remove findings that depend on unproven assumptions.
-- Allow maintainability findings only when repository evidence proves a current
-  cost such as unsupported defensive logic or needless indirection; do not use
-  this exception for taste or hypothetical cleanup.
 - Check each line reference still overlaps the reviewed change when possible.
 - Make titles action-oriented, not diagnostic labels.
 

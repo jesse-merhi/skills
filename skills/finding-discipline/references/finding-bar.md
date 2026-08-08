@@ -10,10 +10,7 @@ A review finding must satisfy all of these:
 - Gives a specific fix direction.
 - Has enough confidence that a maintainer would likely want the author to act.
 
-A maintenance finding must cite repository evidence for the unnecessary code:
-for example, no current producer or contract makes the defended state plausible,
-or a one-use helper only forwards or trivially transforms a value without
-preserving a domain concept, boundary, dependency direction, or useful test
-seam.
+A maintenance finding must use repository evidence to prove the changed code
+has no current job and name the reading, change, test, or ownership cost it adds.
 
 Prefer no finding over a weak finding.

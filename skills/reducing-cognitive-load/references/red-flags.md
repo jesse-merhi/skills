@@ -15,8 +15,5 @@
 - Helper functions that merely hide one expression without naming a real
   concept, invariant, boundary, or test seam.
 - Generic helpers introduced before there are multiple real call sites.
-- One-use proxy helpers that only forward, round-trip, convert, or lightly
-  transform a value.
 - Guards, fallbacks, normalization, or sanitization for states with no plausible
   producer, documented contract, observed failure, or boundary condition.
-- Trivial helpers whose only purpose is an unsupported defensive transformation.
