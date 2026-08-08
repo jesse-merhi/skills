@@ -5,8 +5,9 @@ description: 'Filter review observations into confirmed, actionable, root-cause-
 
 # Finding Discipline
 
-Use this skill after you have inspected enough code to know a concrete failure
-mode. The goal is fewer, sharper findings that a PR author can fix.
+Use this skill after you have inspected enough code to know a concrete runtime
+failure or present maintenance cost. The goal is fewer, sharper findings that a
+PR author can fix.
 
 ## Workflow
 

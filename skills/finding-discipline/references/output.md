@@ -14,6 +14,15 @@ Include file and line references as tightly as the harness supports. In Codex
 app reviews, emit `::code-comment{...}` findings when the user asked for review
 findings.
 
+For a maintenance finding, use this body instead:
+
+```md
+The changed code in `path/to/file.ts` adds <defense or indirection>, but
+<caller/producer/contract evidence> shows it has no current job. This makes
+<specific reading/change/test cost> harder without preserving <behavior or
+boundary>. Fix by <specific simplification>.
+```
+
 ## Severity
 
 - `P0`: data loss, credential exposure, remote code execution, auth bypass, or
@@ -23,7 +32,7 @@ findings.
 - `P2`: real bug with bounded impact, common edge case, or blocked expected
   workflow.
 - `P3`: small correctness issue, rare edge case, confusing but fixable behavior,
-  or low-risk reviewer-blocker.
+  evidence-backed unnecessary complexity, or low-risk reviewer-blocker.
 
 Do not inflate severity to make a point. A precise `P2` beats a theatrical
 `P1`.

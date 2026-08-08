@@ -27,7 +27,8 @@ overlay changes.
      structural issue should be fixed in this PR.
    - `reducing-cognitive-load`: check for hidden protocols, duplicated or weak
      types, stringly typed data, dense branching, shallow helpers, and code that
-     makes future maintainers reverse-engineer the domain shape.
+     makes future maintainers reverse-engineer the domain shape. Apply its
+     plausibility and proxy tests to changed defensive code and one-use helpers.
    - `typescript-discipline`: evaluate whether the diff has TypeScript
      production code, API/client contracts, schemas, exported functions, typed
      React code, or type-system escape hatches. If none, record `not

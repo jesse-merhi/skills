@@ -39,7 +39,8 @@ duplicated types, or clever inline transformations.
 - The code exposes the domain concept before the encoding detail.
 - Shared contracts use shared types instead of duplicated local shapes.
 - Serialization boundaries have names and tests when the protocol matters.
-- Helpers name concepts, invariants, boundaries, or meaningful duplication.
+- Defensive code passes the plausibility test; helpers pass the extraction and
+  proxy tests.
 - The reader can see what is being built before studying how it is encoded.
 
 ## Context Pointers

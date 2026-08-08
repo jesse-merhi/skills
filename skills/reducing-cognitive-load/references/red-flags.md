@@ -15,3 +15,5 @@
 - Helper functions that merely hide one expression without naming a real
   concept, invariant, boundary, or test seam.
 - Generic helpers introduced before there are multiple real call sites.
+- Guards, fallbacks, normalization, or sanitization for states with no plausible
+  producer, documented contract, observed failure, or boundary condition.
