@@ -32,6 +32,10 @@ Use its output as the source for these exact sections:
 - `Still open`: consult queue, deferred findings, skipped validation, and
   residual risk.
 
+Before those sections, state the exact reviewed head SHA and target, or the
+dirty snapshot identity. A later PR workflow must be able to compare this
+identity with the current head without relying on chat memory or CI state.
+
 Do not invent or reconstruct those sections from chat history. If the CLI output
 is incomplete, record the missing finding or command first, rerun
 `"$review_findings_bin" closeout`, then answer.
@@ -51,7 +55,8 @@ recorded findings for this repo/branch/target.
 Report iterations, the Phase 1 engine used, `review-until-clean` result,
 `cold-pr-review-until-clean` result, `Findings found`, `Changes made while
 reviewing`, `Verification run`, `Still open`, PR evidence, required-lens
-results, PR URL or PR blocker, `pr-proof-pack` result, context updates, the
+results, exact reviewed head or snapshot identity, PR URL or PR blocker,
+`pr-proof-pack` result, context updates, the
 configured `review-findings closeout` command used, findings database query
 command, structured JSON ledger path when one was written, budget use (elapsed
 wall clock and diff growth against the baseline), the consult queue awaiting the

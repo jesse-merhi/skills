@@ -120,7 +120,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    Read [references/pr-closeout.md](references/pr-closeout.md) for PR creation
    or update, evidence, `pr-proof-pack`, pending GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
-   final response.
+   final response. Record the exact final head or dirty snapshot identity in
+   the closeout so a later PR workflow can detect whether the review is current.
 
 ## Done Means
 
@@ -138,6 +139,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or
   the PR/proof blocker is reported separately from the review result.
 - The final answer is backed by `review-findings closeout`, not chat memory.
+- The final answer identifies the exact reviewed head or dirty snapshot.
 
 ## Stop Honestly
 

@@ -43,11 +43,12 @@ evidence:
    for that layer before updating its PR. If a lower layer changed, follow the
    `gh-stack` rebase/sync workflow, then refresh every affected upstack proof.
 
-5. Once proof, review, validation, and CI are complete, apply the human sign-off
-   gate from `AGENTS.md`. Ask the user to add a thumbs-up (`+1`) reaction to
-   every open PR in a stack, bottom-to-top, and verify that each reaction belongs
-   to `jesse-merhi`. Never create or remove that reaction on the user's behalf.
-   A reaction is an agent workflow gate, not a GitHub review approval.
+5. Once proof, review, validation, and CI are complete, summarize the findings,
+   review fixes, verification, and anything still open from `review-findings
+   closeout`. Apply the PR review and human sign-off gates from `AGENTS.md`.
+   This run satisfies the review gate only for its exact final head; any later
+   branch change makes it stale. For a stack, apply both gates to every open PR
+   bottom-to-top. Never create or remove the user's reaction.
 
 If the target is a local-only patch, detached commit, non-GitHub repo,
 uncommitted default-branch worktree, or another target where PR creation would
