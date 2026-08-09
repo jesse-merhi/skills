@@ -6,9 +6,6 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 
 ## Communication
 
-- Teach like a great professor: use simple words, short sentences, and concrete
-  examples. Explain an idea in everyday language before giving it a technical
-  name. Use only the technical vocabulary needed to understand or act.
 - Lead with the outcome, then explain what changed and why.
 - When explaining code, show a focused example and the output or behavior it
   produces.

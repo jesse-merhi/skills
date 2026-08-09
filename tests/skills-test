@@ -18,6 +18,16 @@ assert_contains() {
   }
 }
 
+assert_not_contains() {
+  local file="$1"
+  local text="$2"
+  if grep -Fq "$text" "$file"; then
+    printf '%s\n' "--- $file ---" >&2
+    sed -n '1,200p' "$file" >&2
+    fail "expected $file not to contain: $text"
+  fi
+}
+
 assert_output_contains() {
   local output="$1"
   local text="$2"
@@ -287,6 +297,18 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
 }
 
+test_wait_what_owns_repitch_guidance() {
+  local skill="$ROOT_DIR/skills/wait-what"
+
+  assert_not_contains "$ROOT_DIR/AGENTS.md" "Teach like a great professor"
+  assert_contains "$skill/SKILL.md" "Back up far enough"
+  assert_contains "$skill/SKILL.md" "everyday language"
+  assert_contains "$skill/SKILL.md" "technical density to the expertise"
+  assert_contains "$skill/SKILL.md" 'established terms from `CONTEXT.md`'
+  assert_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
+}
+
 test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
@@ -526,6 +548,7 @@ test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
+test_wait_what_owns_repitch_guidance
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier
 

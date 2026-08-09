@@ -95,6 +95,8 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.
+- **Communication:** `wait-what` re-pitches an explanation when it stops making
+  sense, using the reader's level and the project's own language.
 - **Meta tools:** `writing-for-agents` shapes skills and instruction files;
   `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
   prompt-budget pressure.
