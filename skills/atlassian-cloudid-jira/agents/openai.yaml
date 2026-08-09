@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlassian via Rovo Dev"
+  short_description: "Query Jira and Confluence through Rovo Dev"
+  default_prompt: "Use $atlassian-cloudid-jira to inspect this Jira project through the authenticated Rovo Dev gateway."
