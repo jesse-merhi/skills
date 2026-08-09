@@ -333,14 +333,16 @@ test_gh_stack_workflow_is_pinned_and_wired() {
   assert_contains "$ROOT_DIR/skills/to-spec/SKILL.md" 'record the logical'
   assert_contains "$ROOT_DIR/skills/to-tickets/references/ticket-design.md" "Do not assume one"
   assert_contains "$ROOT_DIR/skills/to-tickets/references/note-template.md" "PR Group Depends On:"
-  assert_contains "$ROOT_DIR/AGENTS.md" 'thumbs-up (`+1`) reaction as human sign-off'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Review gate:'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Sign-off gate:'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'thumbs-up (`+1`) reaction'
   assert_contains "$ROOT_DIR/AGENTS.md" 'Never add, remove, or modify that reaction'
   assert_contains "$ROOT_DIR/AGENTS.md" 'exact current head'
   assert_contains "$ROOT_DIR/AGENTS.md" 'Do not start'
   assert_contains "$ROOT_DIR/AGENTS.md" 'An unanswered review decision blocks'
   assert_contains \
     "$ROOT_DIR/skills/parallel-slice-orchestration/SKILL.md" \
-    'do not start it automatically'
+    'Review gate and Sign-off gate from'
   assert_contains \
     "$ROOT_DIR/skills/code-review/references/pr-closeout.md" \
     'exact final head'
@@ -350,10 +352,10 @@ test_gh_stack_workflow_is_pinned_and_wired() {
   assert_contains \
     "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" \
     'Proof-pack does not count as review.'
-  assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" 'Review and sign-off gates:'
+  assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" 'PR gates:'
   assert_contains \
     "$ROOT_DIR/skills/to-tickets/references/ticket-design.md" \
-    'If `code-review` is missing or stale'
+    'Review gate and Sign-off gate from'
 }
 
 test_wayfinder_obsidian_map_can_advance_its_frontier() {

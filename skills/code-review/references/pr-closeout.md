@@ -44,8 +44,9 @@ evidence:
    `gh-stack` rebase/sync workflow, then refresh every affected upstack proof.
 
 5. Once proof, review, validation, and CI are complete, summarize the findings,
-   review fixes, verification, and anything still open from `review-findings
-   closeout`. Apply the PR review and human sign-off gates from `AGENTS.md`.
+   review fixes, verification, and anything still open from the
+   `review-findings closeout` output. Apply the Review gate and Sign-off gate
+   from `AGENTS.md`.
    This run satisfies the review gate only for its exact final head; any later
    branch change makes it stale. For a stack, apply both gates to every open PR
    bottom-to-top. Never create or remove the user's reaction.

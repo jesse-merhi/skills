@@ -45,10 +45,8 @@ Excluded:
   1. <logical review unit> — depends on <group or None>; proves <reviewer-visible outcome>
 - Boundary rule: <why these changes belong together or need separate review>
 - Keep independent groups out of a linear stack; do not turn every acceptance criterion into its own PR.
-- Review and sign-off gates: before readiness or merge, verify `code-review` on
-  each PR's exact head. If it is missing or stale, ask whether to run it or
-  proceed without it; never start it automatically. Summarize the review or
-  waiver before requiring a `jesse-merhi` thumbs-up (`+1`) reaction on each PR.
+- PR gates: before readiness or merge, apply the Review gate and Sign-off gate
+  from `AGENTS.md` to each PR and exact head.
 
 ## Open Questions
 - <decision still needed>

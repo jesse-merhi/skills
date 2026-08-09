@@ -20,17 +20,13 @@ When the next session is expected to fix code:
   when the repair is complete unless the user explicitly requested local-only
   work
 - tell it to run `pr-proof-pack` for each draft PR after it exists, then apply
-  the PR review gate from `AGENTS.md` bottom-to-top; when `code-review` is
-  missing or stale, ask whether to run it or proceed without it instead of
-  starting the expensive review automatically
+  the Review gate and Sign-off gate from `AGENTS.md` bottom-to-top
 - tell it to resolve in-scope review findings, rerun affected validation, and
   refresh `pr-proof-pack` after any review fixes before calling the PR ready
 - tell it to keep the PR draft/not-ready when proof-pack, review, validation,
   model, tooling, budget, or consult blockers remain
-- tell it to summarize the `code-review` findings and fixes, or the explicit
-  waiver, before asking for and verifying a `jesse-merhi` thumbs-up (`+1`)
-  reaction on every ready PR; require it never to create or remove that
-  reaction on the user's behalf
+- tell it to summarize each review decision before human sign-off and require
+  it never to create or remove the user's reaction
 - require the final report to explain the original bug, root cause, changed
   files, verification commands, proof artifacts, the ordered PR/stack map with
   every URL and status, `code-review` results, and any residual risk or

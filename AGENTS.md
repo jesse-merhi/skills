@@ -77,24 +77,23 @@ resource lifecycle, and graceful shutdown.
   `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
-- Before marking any PR ready, asking for human sign-off, or merging, verify
-  whether `code-review` completed on the exact current head. Count only a
-  closeout from the configured `code-review` workflow that records the native
-  phase, cold phase, findings, review fixes, verification, and anything still
-  open. CI, proof-pack, an ad hoc review, or a review of an older head does not
-  count. When completion cannot be verified, treat the PR as not reviewed,
-  tell the user, and use the native structured question UI to ask whether to
-  run `code-review` or proceed without it for this PR and head. Do not start
-  the expensive review automatically. An unanswered review decision blocks
-  readiness and merge; an explicit waiver must be recorded in the closeout.
-- After the review decision, proof, validation, and CI gates pass, summarize
-  the review findings and fixes, or the explicit waiver, then ask the user to
-  add a thumbs-up (`+1`) reaction as human sign-off. For a stack, apply the
-  review decision and require a separate `jesse-merhi` reaction on every open
-  PR, not only the top PR. Never add, remove, or modify that reaction on the
-  user's behalf; only read GitHub reactions and proceed after the expected
-  reaction exists. Treat this as an agent workflow gate, not a GitHub approval
-  or branch-protection rule.
+- Review gate: before marking any PR ready, asking for human sign-off, or
+  merging, verify that `code-review` completed on the exact current head. A
+  valid closeout names that head and records the native phase, cold phase,
+  findings, review fixes, verification, and anything still open. Treat missing,
+  stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
+  review do not count. Tell the user and use the native structured question UI
+  to ask whether to run `code-review` or proceed without it for this PR and
+  head. Do not start the expensive review automatically.
+  An unanswered review decision blocks readiness and merge. Record an explicit
+  waiver in closeout.
+- Sign-off gate: after the review decision, proof, validation, and CI pass,
+  summarize the review findings and fixes or the explicit waiver, then ask the
+  user for a thumbs-up (`+1`) reaction. For a stack, apply both gates and require
+  a separate `jesse-merhi` reaction on every open PR, not only the top PR.
+  Never add, remove, or modify that reaction on the user's behalf; only read
+  GitHub reactions and proceed after the expected reaction exists. This is an
+  agent workflow gate, not a GitHub approval or branch-protection rule.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.

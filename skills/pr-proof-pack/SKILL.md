@@ -117,13 +117,9 @@ behavior in plain language, or omit the shorthand.
 
 10. Hand completed proof back to the publishing or review-closeout workflow.
 
-    That workflow must apply the PR review gate from `AGENTS.md` to every PR and
-    exact head. If `code-review` completion is missing, stale, or unverifiable,
-    it must ask whether to run the review or proceed without it.
-    Proof-pack does not count as review. It must not trigger the expensive
-    review automatically.
-    After the review decision, proof, validation, and CI pass, summarize the
-    review or waiver and apply the thumbs-up gate to every open stack PR.
+    Before readiness, human sign-off, or merge, that workflow must apply the
+    Review gate and Sign-off gate from `AGENTS.md` to every PR and exact head.
+    Proof-pack does not count as review.
 
 ## Done Means
 
@@ -141,8 +137,8 @@ behavior in plain language, or omit the shorthand.
 - Every Mermaid diagram in the final body was validated, or Mermaid was omitted.
 - Verification is reviewer-checkable: concrete command, request/response,
   screenshot state, API example, state transition, or CI coverage summary.
-- The closeout workflow has enough evidence to resolve the review decision and
-  ask for human sign-off on every ready stack layer.
+- The closeout workflow received this proof and can resolve both `AGENTS.md`
+  gates for every ready stack layer.
 
 ## Avoid
 
