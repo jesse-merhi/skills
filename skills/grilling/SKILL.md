@@ -1,21 +1,38 @@
 ---
 name: grilling
-description: 'Grill the user relentlessly about a plan or design. Use when the user wants to stress-test a plan before building, or uses any grill trigger phrase.'
+description: 'Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking or uses a grill trigger phrase.'
 ---
 
 # Grilling
 
-Interview the user relentlessly about every aspect of this plan until you reach
-a shared understanding. Walk down each branch of the design tree, resolving
-dependencies between decisions one by one. For each question, provide your
-recommended answer.
+Interview the user relentlessly until you reach a shared understanding. Map the
+subject as a design tree: every decision branches into the decisions that hang
+off it.
 
-Ask questions one at a time, waiting for feedback on each question before
-continuing. Asking multiple questions at once is bewildering.
+Work the tree in rounds. The frontier is every decision whose prerequisites are
+already settled: the questions you can ask now without guessing at answers you
+have not heard yet. Ask the whole frontier in one numbered round and give your
+recommended answer for every question. Then wait for the user's answers before
+continuing.
 
-If a fact can be found by exploring the codebase, docs, notes, or project
-context, look it up rather than asking the user. Decisions belong to the user:
-put each one to them and wait for their answer.
+Format every question as:
 
-Do not enact the plan until the user confirms you have reached a shared
-understanding.
+```markdown
+❓ **Q1** - **<question title>**: <question body or choices>
+
+➡️ <recommended answer>
+```
+
+Each answer reshapes the tree. Recompute the frontier after every round. A
+question that depends on another question still open in this round belongs to a
+later round.
+
+Finding facts is your job. When a frontier question needs a fact from the
+environment, dispatch a background subagent to find it. Keep asking the rest of
+the frontier while that exploration runs; only questions downstream of the
+unsettled fact wait. Decisions belong to the user: put each one to them and wait
+for their answer.
+
+The session is done when the frontier is empty: every branch has been visited
+and nothing is left silently assumed. Do not act on the result until the user
+confirms you have reached a shared understanding.

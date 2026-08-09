@@ -119,8 +119,8 @@ exchange; the agent never stands in for the human's side of it.
 - **Prototype** (HITL): make a cheap concrete artifact to react to, such as an
   outline, rough take, UI stub, or logic sketch. Link it as an asset. Invoke the
   local `prototype` skill only for UI exploration the user explicitly requested.
-- **Grilling** (HITL): conversation via `grilling`, one question at a time. This
-  is the default case.
+- **Grilling** (HITL): conversation via `grilling`, working the settled
+  frontier in numbered rounds. This is the default case.
 - **Task** (HITL or AFK): manual work that must happen before a decision can be
   made, such as provisioning access or moving data. It is the one type that
   does rather than decides, and earns its place by unblocking a decision, not by
@@ -168,18 +168,19 @@ tickets are the exception: independent research tickets may run in parallel.
 1. Name the destination. Run `grilling` to pin down what this map is finding the
    way to: a spec, decision, or change. The destination fixes the scope, so
    settle it first.
-2. Map the frontier. Grill breadth-first, fanning out across the space rather
-   than going deep on one thread. If this surfaces no fog, the journey is small
-   enough for one session; stop and ask how the user wants to proceed.
+2. Map the frontier. Grill breadth-first in frontier rounds, fanning out across
+   the space rather than going deep on one thread. If this surfaces no fog, the
+   journey is small enough for one session; stop and ask how the user wants to
+   proceed.
 3. Create the map with Destination, Notes, empty Decisions So Far, and the fog
    sketched into Not Yet Specified.
 4. Create the tickets you can specify now as child notes, then wire `Blocked By`
    wikilinks in a second pass. Everything you cannot yet specify stays in Not
    Yet Specified.
-5. When isolated parallel work is available, dispatch one `research` session
-   per research ticket. Have each session claim its assigned ticket before work,
-   then link the result and resolve the ticket. Otherwise leave the research
-   tickets on the frontier.
+5. Dispatch one `research` subagent per research ticket. Have each subagent
+   claim its assigned ticket before work, then link the result and resolve the
+   ticket. If the harness cannot dispatch subagents, leave the research tickets
+   on the frontier and report that limitation.
 6. Stop. Charting the map is one session's work; do not hand-resolve a
    non-research ticket too.
 

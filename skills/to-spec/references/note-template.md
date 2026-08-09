@@ -6,7 +6,6 @@
 Status: Draft
 Type: Spec
 Created: <YYYY-MM-DD>
-Alias: PRD
 
 ## Outcome
 <One or two sentences describing the user/system outcome.>

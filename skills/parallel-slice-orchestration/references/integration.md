@@ -21,7 +21,7 @@ verification commands.
 
 - "Backend agent", "frontend agent", and "tests agent" splits unless each is
   still part of a vertical behavior slice.
-- Giving a worker the whole PRD and hoping it chooses a safe subset.
+- Giving a worker the whole spec and hoping it chooses a safe subset.
 - Parallel edits to shared contracts without one owner.
 - Waiting idly for workers when the orchestrator can do non-overlapping
   critical-path work.

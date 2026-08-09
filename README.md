@@ -95,8 +95,9 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.
-- **Meta tools:** `skill-cleaner` audits loaded skills, duplicates, unused
-  candidates, and prompt-budget pressure.
+- **Meta tools:** `writing-for-agents` shapes skills and instruction files;
+  `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
+  prompt-budget pressure.
 - **Local helpers:** `code-review` includes the Rust `review-findings` CLI for
   durable review findings, verification records, semantic-ish local search, and
   CLI-backed closeouts. Install it with
@@ -106,7 +107,7 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 
 Some of this started somewhere else.
 
-Matt Pocock's agent workflow ideas shaped the `grill`, PRD, slicing, teaching,
+Matt Pocock's agent workflow ideas shaped the `grill`, spec, slicing, teaching,
 and handoff parts of the loop. Emil Kowalski's design-engineering work shaped
 the interaction, motion-discovery, review, and UI-prototyping skills; the
 adapted material retains its MIT notice.
