@@ -104,8 +104,8 @@ Use these as starting points:
 - **Concept explainer**: short definition, concrete example, diagram, edge cases, small interactive control.
 - **Architecture map**: modules as nodes, arrows for calls/data/events, notes on ownership boundaries.
 - **Bug explanation**: broken behavior, evidence, cause, smallest fix, verification.
-- **PR/diff walkthrough**: what changed, annotated direct-base diff, implementation, tests, files to read, open questions.
-- **PR change walkthrough**: changed behavior, optional stack navigation, direct-base implementation flow, real code excerpts, proof and rollout notes.
+- **PR/diff walkthrough**: what changed, complete annotated direct-base diff, files to read, proof, open questions.
+- **PR change walkthrough**: changed behavior, optional stack navigation, complete annotated direct-base diff, optional proof and rollout notes.
 - **Plan/report**: goal or current state, phases or timeline, blockers, risks, checks, decisions needed, next actions.
 - **Incident report**: impact, timeline, trigger, cause, fix, follow-ups, evidence.
 
@@ -118,7 +118,8 @@ Use these as starting points:
   shared outcome the stack is building toward.
 - Group files by changed flow: UI, API, persistence, background job, configuration, tests, docs, or similar.
 - Include exact files and symbols to search.
-- Put long snippets in expandable sections.
+- Put files in collapsible sections when the patch is long. Keep the primary file
+  open and generated or unusually large files closed by default.
 - Use review language only when a review already happened or the user asked for one.
 
 When the reader wants to understand what changed in a PR or stack, use
@@ -136,34 +137,42 @@ When the reader wants to understand what changed in a PR or stack, use
   order unless the dependency itself is surprising and affects correctness.
 - Explain one layer at a time from its direct-base diff. Never attribute changes
   inherited from lower layers to the selected PR. Switching layers should
-  update the summary, changed flow, code excerpts, files, and proof together.
+  update the outcome, files, diff, and optional proof together.
 - State what the whole stack delivers once, then state what the selected layer
   adds. Keep shared context stable while the reader moves between layers.
-- For code-reading pages, lead with a compact **Diff** view and keep the longer
-  **Implementation** walkthrough one tab away. Add **Tests** when meaningful
-  tests changed. Keep Diff selected by default so the reader can compare the
-  old and new code before opening the walkthrough. Omit Diff only when the
-  direct-base source is unavailable or a comparison would be deceptive. Prefer
-  one to three representative unified hunks over the full patch. Use exact
-  source lines, label omitted context, and never invent helper names to shorten
-  a hunk.
-- Annotate the diff itself. Attach sparse GitHub-style explanation boxes to the
-  added or removed lines that change behavior. Each note must say what that
-  line changes and why it matters in this PR. Do not add a prose footer that
-  repeats the inline notes.
-- In the test view, show real test excerpts with exact filenames and inline notes that explain
-  the behavior each excerpt proves; do not replace test code with pass counts
-  or prose cards. Prefer tests changed in the direct-base diff. When the PR
-  relies on relevant unchanged coverage, include the exact existing test and
-  label it **Existing coverage — unchanged in this PR**. Keep CI, fixtures,
-  infrastructure, generated files, docs, and rollout facts in a small
-  collapsed proof area only when they add evidence not visible in the test
-  code. Omit empty groups.
-- Order implementation excerpts by learning dependency, not file path or diff
-  order. A common sequence is contract/schema -> parsing/normalization ->
-  orchestration -> canonical runtime/owner -> output/lifecycle/persistence.
-- Use real code excerpts. Label omissions as omissions; never invent helper
-  names to shorten code.
+- Lead with the complete direct-base diff when the user wants to review code.
+  Show every changed file and every added, removed, and context line returned by
+  the patch. Do not substitute curated or illustrative snippets. Omit the diff
+  only when the source is unavailable or comparison would be deceptive, and
+  say why.
+- Remove patch syntax that helps machines but not readers: `diff --git`,
+  `index`, `---`, `+++`, and raw `@@` coordinates. Replace each hunk header
+  with a compact `... unchanged lines` divider. Do not remove source lines.
+- Give every changed file one inline explanation of its purpose in this PR,
+  placed after the first hunk divider. Add more line-level notes only where a
+  particular change carries an important behavior, constraint, or trade-off.
+  Each note must say what changed and why it matters here. Fail generation when
+  an intended annotation cannot be anchored to the exact diff line. For a
+  binary, rename-only, or metadata-only change with no hunk, place the file
+  explanation directly under its header and state the exact change kind.
+- Treat tests as changed files in the same complete diff. Their notes should
+  say what behavior the test proves. Add a separate **Tests** or
+  **Implementation** view only when it contributes evidence or explanation the
+  annotated diff does not already contain; never create tabs just to repeat the
+  same code.
+- Render diff rows back-to-back with compact code leading (about 1.3–1.4).
+  Never create blank text rows between ordinary source lines. Use syntax
+  highlighting on the source text while preserving old/new line numbers and
+  added/removed/context styling.
+- For a multi-file review, include filename search and expand/collapse controls.
+  Add a GitHub-like **Viewed** checkbox and per-PR `x of y viewed` progress when
+  it will help the reader resume a substantial review. Checking a file should
+  collapse it. Persist state against the PR, exact diff revision, and file path
+  so a new revision cannot inherit stale progress.
+- Keep top-level statistics, file inventories, and proof sections only when
+  they answer a reader question not already answered by the file headers and
+  annotations. Do not put raw diff machinery or aggregate line counts above
+  the code by default.
 - Pair each inline editorial box with the code segment it follows. Answer:
   **what changed, where is it, and how does it work?** Add why only when it
   clarifies a non-obvious constraint or trade-off.
@@ -181,6 +190,10 @@ When the reader wants to understand what changed in a PR or stack, use
   the design. This makes delegation visible and rules out duplicate logic.
 - Add review orientation or a complexity judgment only when requested or when
   an unresolved question materially changes how the diff should be read.
+- Capture the base and head identities before fetching a live PR diff, then
+  verify them again after generation. Fail if either changed mid-render. Check
+  parsed file and line counts against the source metadata, and retain a digest
+  of the exact diff for revision-keyed state and reproducibility.
 
 ## Plans, Reports, Incidents, And Handoffs
 
