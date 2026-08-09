@@ -45,6 +45,9 @@ Excluded:
   1. <logical review unit> — depends on <group or None>; proves <reviewer-visible outcome>
 - Boundary rule: <why these changes belong together or need separate review>
 - Keep independent groups out of a linear stack; do not turn every acceptance criterion into its own PR.
+- Human sign-off gate: after proof, review, validation, and CI pass, require a
+  `jesse-merhi` thumbs-up (`+1`) reaction on every PR. The agent must never add
+  or remove this reaction.
 
 ## Open Questions
 - <decision still needed>

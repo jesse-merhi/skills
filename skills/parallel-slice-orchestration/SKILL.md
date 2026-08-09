@@ -42,6 +42,9 @@ same slice plan sequentially and say that parallel execution was not available.
 12. Publish the chosen delivery shape. For a stack, keep foundation at the
     bottom, dependent behavior above it, and run `pr-proof-pack` separately for
     every PR layer.
+13. After every layer's proof, review, validation, and CI pass, ask the user for
+    a thumbs-up (`+1`) reaction on every open PR. Verify each reaction belongs to
+    `jesse-merhi`; never create or remove it on the user's behalf.
 
 ## Slice Rules
 
@@ -83,6 +86,7 @@ same slice plan sequentially and say that parallel execution was not available.
 - Final verification ran in the integrated tree.
 - The delivery shape matches the dependency map, and every stacked layer has
   its own focused `pr-proof-pack` evidence.
+- Every ready PR has a verified `jesse-merhi` thumbs-up reaction before merge.
 
 ## Context Pointers
 
