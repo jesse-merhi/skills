@@ -309,6 +309,13 @@ test_wait_what_owns_repitch_guidance() {
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
 }
 
+test_openclaw_local_test_helpers() {
+  node --test \
+    "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/runtime-profile.test.mjs" \
+    "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/shared-browser-proxy.test.mjs" \
+    "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/openclaw-local-test.test.mjs"
+}
+
 test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
@@ -549,6 +556,7 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
+test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier
 

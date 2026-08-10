@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenClaw Local Test"
+  short_description: "Test OpenClaw through the current Codex or Claude login"
+  default_prompt: "Use $openclaw-local-test to inspect native Codex and Claude routes, then start an isolated leased OpenClaw instance with the intended runtime."
