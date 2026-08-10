@@ -44,13 +44,15 @@ jobs:
           bash -n \
             tests/skills-test \
             tests/review-findings-test \
+            skills/agent-aquarium/agent-aquarium-local-test/scripts/agent-aquarium-local-test \
+            skills/agent-aquarium/agent-aquarium-local-test/scripts/install-agent-aquarium-local-test \
             skills/handoff/scripts/codex-handoff-tmux \
             skills/code-review/scripts/review-findings \
             skills/code-review/scripts/install-review-findings \
             skills/code-review/scripts/check-review-models \
             skills/code-review/scripts/calibrate-structured-review \
             skills/code-review/scripts/test-codex-review-helper
-          python3 -m py_compile skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
+          python3 -m py_compile skills/agent-aquarium/agent-aquarium-local-test/scripts/*.py skills/code-review/scripts/*.py skills/pr-proof-pack/scripts/*.py skills/wait-efficiently/scripts/*.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
 
       - name: Check review-findings Rust helper

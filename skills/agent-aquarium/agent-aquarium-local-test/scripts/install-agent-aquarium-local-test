@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source_path="$script_dir/agent-aquarium-local-test"
+install_dir="${AGENT_AQUARIUM_LOCAL_TEST_INSTALL_DIR:-$HOME/.local/bin}"
+target="$install_dir/agent-aquarium-local-test"
+
+mkdir -p "$install_dir"
+
+if [[ -L "$target" ]]; then
+  existing="$(readlink "$target")"
+  if [[ "$existing" == "$source_path" ]]; then
+    printf '%s\n' "$target"
+    exit 0
+  fi
+  printf 'Refusing to replace existing symlink: %s -> %s\n' "$target" "$existing" >&2
+  exit 1
+fi
+
+if [[ -e "$target" ]]; then
+  printf 'Refusing to replace existing file: %s\n' "$target" >&2
+  exit 1
+fi
+
+ln -s "$source_path" "$target"
+printf '%s\n' "$target"

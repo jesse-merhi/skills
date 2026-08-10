@@ -259,6 +259,129 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "$handoff"
 }
 
+test_agent_aquarium_local_test_helper_is_guarded() {
+  local tmp repo state helper installer installed output
+  tmp="$(mktemp -d)"
+  repo="$tmp/agent-aquarium"
+  state="$tmp/state"
+  mkdir -p "$repo"
+  printf '{"name": "agent-aquarium"}\n' >"$repo/package.json"
+
+  helper="$ROOT_DIR/skills/agent-aquarium/agent-aquarium-local-test/scripts/agent-aquarium-local-test"
+  installer="$ROOT_DIR/skills/agent-aquarium/agent-aquarium-local-test/scripts/install-agent-aquarium-local-test"
+  output="$(
+    "$helper" \
+      --repo "$repo" \
+      --state-dir "$state" \
+      --empty \
+      --port 4242 \
+      --dry-run
+  )"
+
+  assert_output_contains "$output" "repo: $repo"
+  assert_output_contains "$output" "snapshot_mode: empty"
+  assert_output_contains "$output" "aquarium_snapshot: 0"
+  assert_output_contains "$output" "provider_snapshot: 0"
+  assert_output_contains "$output" "database: $state/run/runtime/aquarium-home/agent-aquarium.sqlite"
+  assert_output_contains "$output" "listener: 127.0.0.1"
+  assert_output_contains "$output" "remote_access: disabled"
+  assert_output_contains "$output" "provider_credentials: excluded"
+  assert_output_contains "$output" "tmux: isolated"
+  assert_output_contains "$output" "port: 4242"
+  assert_output_contains "$output" "provider_max_files: 300"
+  assert_output_contains "$output" "provider_max_mb: 512"
+  assert_output_contains "$output" "include_codex_state_db: 0"
+
+  assert_contains \
+    "$ROOT_DIR/skills/agent-aquarium/agent-aquarium-local-test/SKILL.md" \
+    "agent-aquarium-local-test --status"
+  assert_contains \
+    "$ROOT_DIR/skills/agent-aquarium/agent-aquarium-local-test/SKILL.md" \
+    "agent-aquarium-local-test --stop"
+  assert_contains "$helper" "AQUARIUM_BIND_HOST=127.0.0.1"
+  assert_contains "$helper" "AQUARIUM_REMOTE_ACCESS=0"
+  assert_contains "$helper" "umask 077"
+  assert_contains "$helper" "snapshot_matches_request"
+  assert_contains "$helper" "pid_is_managed"
+  assert_contains "$helper" "TMUX_TMPDIR=\"\$runtime_dir/tmux\""
+  assert_contains "$helper" "    -u ANTHROPIC_API_KEY"
+  assert_contains "$helper" "    -u OPENAI_API_KEY"
+  assert_not_contains "$helper" 'copy_directory "$source_claude_config_dir/projects"'
+
+  installed="$(AGENT_AQUARIUM_LOCAL_TEST_INSTALL_DIR="$tmp/bin" "$installer")"
+  test -L "$installed" || fail "installed Aquarium helper should be a symlink"
+  test "$(readlink "$installed")" = "$helper" \
+    || fail "installed Aquarium helper should retain its companion scripts"
+  output="$("$installed" --repo "$repo" --state-dir "$tmp/installed-state" --empty --dry-run)"
+  assert_output_contains "$output" "repo: $repo"
+
+  if "$helper" --repo "$repo" --state-dir "$tmp/invalid-port" --port 70000 --dry-run \
+    >"$tmp/invalid-port.out" 2>&1; then
+    fail "out-of-range port should be rejected"
+  fi
+  assert_contains "$tmp/invalid-port.out" "port must be between 1 and 65535"
+
+  if "$helper" --repo "$repo" --state-dir "$tmp/conflicting-mode" \
+    --empty --with-provider-snapshot --dry-run >"$tmp/conflicting-mode.out" 2>&1; then
+    fail "conflicting empty and snapshot modes should be rejected"
+  fi
+  assert_contains "$tmp/conflicting-mode.out" "cannot be combined with snapshot options"
+
+  mkdir -p "$tmp/unowned-state"
+  printf 'keep\n' >"$tmp/unowned-state/unrelated.txt"
+  if "$helper" --repo "$repo" --state-dir "$tmp/unowned-state" --empty --skip-install \
+    >"$tmp/unowned-state.out" 2>&1; then
+    fail "non-empty unowned state root should be rejected"
+  fi
+  assert_contains "$tmp/unowned-state.out" "refusing to use a non-empty unowned state root"
+  assert_contains "$tmp/unowned-state/unrelated.txt" "keep"
+}
+
+test_agent_aquarium_provider_snapshot_is_bounded() {
+  local tmp snapshotter output
+  tmp="$(mktemp -d)"
+  snapshotter="$ROOT_DIR/skills/agent-aquarium/agent-aquarium-local-test/scripts/snapshot-provider-state.py"
+  mkdir -p "$tmp/codex/sessions/2026/08/10" "$tmp/claude/projects/demo"
+
+  TEST_ROOT="$tmp" python3 <<'PY'
+from pathlib import Path
+import os
+
+root = Path(os.environ["TEST_ROOT"])
+files = [
+    (root / "codex/sessions/2026/08/10/old.jsonl", "old", 1),
+    (root / "codex/sessions/2026/08/10/new.jsonl", "new", 2),
+    (root / "claude/projects/demo/old.jsonl", "old", 1),
+    (root / "claude/projects/demo/new.jsonl", "new", 2),
+]
+for path, content, modified in files:
+    path.write_text(content)
+    os.utime(path, (modified, modified))
+PY
+
+  output="$(
+    python3 "$snapshotter" \
+      --codex-home "$tmp/codex" \
+      --claude-config-dir "$tmp/claude" \
+      --destination "$tmp/snapshot" \
+      --max-files 1 \
+      --max-bytes 100
+  )"
+
+  assert_output_contains "$output" '"copiedFiles": 1'
+  test -f "$tmp/snapshot/codex/sessions/2026/08/10/new.jsonl" \
+    || fail "newest Codex session should be copied"
+  test "$(python3 -c 'from pathlib import Path; import stat, sys; print(oct(stat.S_IMODE(Path(sys.argv[1]).stat().st_mode)))' \
+    "$tmp/snapshot/codex/sessions/2026/08/10/new.jsonl")" = 0o600 \
+    || fail "copied provider sessions should be owner-readable only"
+  test ! -e "$tmp/snapshot/codex/sessions/2026/08/10/old.jsonl" \
+    || fail "older Codex session should be excluded by the file budget"
+  test -f "$tmp/snapshot/claude/projects/demo/new.jsonl" \
+    || fail "newest Claude session should be copied"
+  test ! -e "$tmp/snapshot/claude/projects/demo/old.jsonl" \
+    || fail "older Claude session should be excluded by the file budget"
+}
+
 test_retired_impeccable_cleanup_is_documented() {
   assert_contains "$ROOT_DIR/INSTALL.md" "Retired entries are intentional cleanup"
   assert_contains "$ROOT_DIR/external.md" "### impeccable"
@@ -550,6 +673,8 @@ test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
 test_handoff_tmux_helper_builds_tmux_window_command
+test_agent_aquarium_local_test_helper_is_guarded
+test_agent_aquarium_provider_snapshot_is_bounded
 test_wayfinder_obsidian_map_can_advance_its_frontier
 
 printf 'ok - skills tests\n'

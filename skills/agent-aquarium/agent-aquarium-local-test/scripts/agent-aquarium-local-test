@@ -1,0 +1,746 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+script_name="$(basename "$0")"
+
+resolve_script_path() {
+  local source="${BASH_SOURCE[0]}"
+  local directory target
+  while [[ -L "$source" ]]; do
+    directory="$(cd "$(dirname "$source")" && pwd)"
+    target="$(readlink "$source")"
+    case "$target" in
+      /*) source="$target" ;;
+      *) source="$directory/$target" ;;
+    esac
+  done
+  directory="$(cd "$(dirname "$source")" && pwd)"
+  printf '%s/%s\n' "$directory" "$(basename "$source")"
+}
+
+default_repo="$PWD"
+if [[ ! -f "$default_repo/package.json" ]] || ! grep -Fq '"name": "agent-aquarium"' "$default_repo/package.json"; then
+  default_repo="$HOME/repos/agent-aquarium"
+fi
+
+repo="${AGENT_AQUARIUM_LOCAL_TEST_REPO:-$default_repo}"
+state_dir="${AGENT_AQUARIUM_LOCAL_TEST_STATE_DIR:-$HOME/.agent-aquarium-local-test}"
+start_port="${AGENT_AQUARIUM_LOCAL_TEST_PORT:-4141}"
+app_port=""
+snapshot_max_age_hours="${AGENT_AQUARIUM_LOCAL_TEST_SNAPSHOT_MAX_AGE_HOURS:-24}"
+ttl="${AGENT_AQUARIUM_LOCAL_TEST_TTL:-8h}"
+browser_app="${AGENT_AQUARIUM_LOCAL_TEST_BROWSER:-Google Chrome}"
+source_aquarium_home="${AGENT_AQUARIUM_SOURCE_HOME:-}"
+source_codex_home="${AGENT_AQUARIUM_SOURCE_CODEX_HOME:-$HOME/.codex}"
+source_claude_config_dir="${AGENT_AQUARIUM_SOURCE_CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+provider_max_files="${AGENT_AQUARIUM_LOCAL_TEST_PROVIDER_MAX_FILES:-300}"
+provider_max_mb="${AGENT_AQUARIUM_LOCAL_TEST_PROVIDER_MAX_MB:-512}"
+action="start"
+refresh_mode="auto"
+empty_mode=0
+aquarium_snapshot=0
+provider_snapshot=0
+include_codex_state_db=0
+open_browser=0
+skip_install=0
+dry_run=0
+runtime_prefix=()
+
+usage() {
+  cat <<USAGE
+Usage:
+  $script_name [options]
+  $script_name --status
+  $script_name --stop
+
+Starts an isolated, loopback-only Agent Aquarium instance. By default it uses
+empty state. Aquarium and credential-free provider snapshots are opt-in.
+
+Options:
+  --repo <path>                     Agent Aquarium checkout/worktree
+  --state-dir <path>                Managed state root (default: ~/.agent-aquarium-local-test)
+  --port <port>                     Web port; otherwise choose from ${start_port} upward
+  --refresh                         Refresh the local-state snapshot
+  --no-refresh                      Reuse the cached snapshot
+  --snapshot-max-age <hours>        Auto-refresh age (default: ${snapshot_max_age_hours})
+  --empty                           Start with an empty database and provider homes
+  --with-aquarium-snapshot          Import current portable Aquarium state
+  --with-provider-snapshot          Add bounded credential-free provider sessions
+  --provider-max-files <count>      Newest files per provider (default: ${provider_max_files})
+  --provider-max-mb <megabytes>     Maximum transcript MiB per provider (default: ${provider_max_mb})
+  --include-codex-state-db          Include global Codex metadata DBs for deep discovery diagnosis
+  --source-aquarium-home <path>     Source Aquarium home
+  --source-codex-home <path>        Source Codex home
+  --source-claude-config-dir <path> Source Claude config directory
+  --skip-install                    Fail instead of installing missing dependencies
+  --open                            Open the local URL after startup
+  --browser <app>                   Browser for --open (default: ${browser_app})
+  --ttl <duration>                  Auto-stop lease, e.g. 30m, 8h, 1d (default: ${ttl})
+  --no-ttl                          Disable the auto-stop lease
+  --dry-run                         Print the guarded plan without copying or starting
+  --status                          Show managed instance status
+  --stop                            Stop managed app/watchdog processes
+  -h, --help                        Show this help
+USAGE
+}
+
+die() {
+  printf '%s: %s\n' "$script_name" "$*" >&2
+  exit 1
+}
+
+log() {
+  printf '[%s] %s\n' "$script_name" "$*" >&2
+}
+
+expand_path() {
+  local value="$1"
+  case "$value" in
+    "~") printf '%s\n' "$HOME" ;;
+    "~"/*) printf '%s/%s\n' "$HOME" "${value#\~/}" ;;
+    *) printf '%s\n' "$value" ;;
+  esac
+}
+
+require_absolute() {
+  local label="$1"
+  local value="$2"
+  [[ "$value" == /* ]] || die "$label must be an absolute path: $value"
+}
+
+default_aquarium_home() {
+  case "$(uname -s)" in
+    Darwin) printf '%s/Library/Application Support/Agent Aquarium\n' "$HOME" ;;
+    *) printf '%s/.agent-aquarium\n' "$HOME" ;;
+  esac
+}
+
+parse_ttl_seconds() {
+  local value="$1"
+  local amount unit
+  case "$value" in
+    ""|0|none|never|off) printf '0\n' ;;
+    *)
+      [[ "$value" =~ ^([0-9]+)([smhd]?)$ ]] || die "invalid --ttl value: $value"
+      amount="${BASH_REMATCH[1]}"
+      unit="${BASH_REMATCH[2]}"
+      case "$unit" in
+        ""|s) printf '%s\n' "$amount" ;;
+        m) printf '%s\n' "$((amount * 60))" ;;
+        h) printf '%s\n' "$((amount * 60 * 60))" ;;
+        d) printf '%s\n' "$((amount * 24 * 60 * 60))" ;;
+      esac
+      ;;
+  esac
+}
+
+format_epoch() {
+  local value="${1:-0}"
+  if [[ "$value" == 0 || -z "$value" ]]; then
+    printf 'none\n'
+  elif date -r "$value" '+%Y-%m-%d %H:%M:%S %z' >/dev/null 2>&1; then
+    date -r "$value" '+%Y-%m-%d %H:%M:%S %z'
+  else
+    date -d "@$value" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || printf '%s\n' "$value"
+  fi
+}
+
+mtime_epoch() {
+  local path="$1"
+  stat -f '%m' "$path" 2>/dev/null || stat -c '%Y' "$path" 2>/dev/null || printf '0\n'
+}
+
+pid_running() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+pid_is_managed() {
+  local pid="${1:-}"
+  local command
+  command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  [[ "$command" == *"$supervisor_path"* && "$command" == *"$runtime_dir"* ]]
+}
+
+read_pid() {
+  local path="$1"
+  [[ -f "$path" ]] && sed -n '1p' "$path" || true
+}
+
+write_meta() {
+  local key="$1"
+  local value="$2"
+  printf '%s\n' "$value" >"$meta_dir/$key"
+}
+
+read_meta() {
+  local key="$1"
+  [[ -f "$meta_dir/$key" ]] && sed -n '1p' "$meta_dir/$key" || true
+}
+
+safe_reset_dir() {
+  local target="$1"
+  local expected="$2"
+  [[ "$target" == "$expected" ]] || die "refusing to reset unexpected path: $target"
+  [[ "$target" == "$state_dir"/* ]] || die "refusing to reset path outside state root: $target"
+  rm -rf "$target"
+  mkdir -p "$target"
+}
+
+ensure_managed_state_root() {
+  if [[ -e "$state_dir" && ! -d "$state_dir" ]]; then
+    die "state root is not a directory: $state_dir"
+  fi
+  if [[ -d "$state_dir" && ! -f "$state_marker" ]] \
+    && find "$state_dir" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+    die "refusing to use a non-empty unowned state root: $state_dir"
+  fi
+  mkdir -p "$state_dir"
+  chmod 700 "$state_dir"
+  : >"$state_marker"
+}
+
+port_in_use() {
+  nc -z 127.0.0.1 "$1" >/dev/null 2>&1
+}
+
+port_in_range() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9]+$ ]] && (( 10#$value >= 1 && 10#$value <= 65535 ))
+}
+
+choose_port() {
+  local candidate="${app_port:-$start_port}"
+  while port_in_use "$candidate"; do
+    candidate="$((candidate + 1))"
+    (( candidate <= 65535 )) || die "no available port at or above ${app_port:-$start_port}"
+  done
+  printf '%s\n' "$candidate"
+}
+
+wait_for_url() {
+  local url="$1"
+  local timeout_seconds="$2"
+  local started
+  started="$(date +%s)"
+  while (( $(date +%s) - started < timeout_seconds )); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+run_detached() {
+  local stdout_path="$1"
+  local stderr_path="$2"
+  shift 2
+  python3 -c 'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' "$@" \
+    </dev/null >"$stdout_path" 2>"$stderr_path" &
+  printf '%s\n' "$!"
+}
+
+stop_pid_file() {
+  local label="$1"
+  local pid_file="$2"
+  local pid
+  pid="$(read_pid "$pid_file")"
+  if pid_running "$pid"; then
+    if ! pid_is_managed "$pid"; then
+      log "refusing to signal unrecognized pid $pid from $pid_file"
+      rm -f "$pid_file"
+      return
+    fi
+    log "stopping $label pid $pid"
+    kill -TERM "-$pid" >/dev/null 2>&1 || kill -TERM "$pid" >/dev/null 2>&1 || true
+    local attempts=0
+    while pid_running "$pid" && (( attempts < 20 )); do
+      sleep 0.25
+      attempts="$((attempts + 1))"
+    done
+    if pid_running "$pid"; then
+      kill -KILL "-$pid" >/dev/null 2>&1 || kill -KILL "$pid" >/dev/null 2>&1 || true
+    fi
+  fi
+  rm -f "$pid_file"
+}
+
+stop_all() {
+  stop_pid_file "app" "$app_pid_file"
+  safe_reset_dir "$meta_dir" "$run_dir/meta"
+}
+
+show_status() {
+  if [[ ! -f "$meta_dir/URL" ]]; then
+    printf 'No managed Agent Aquarium local-test instance recorded at %s\n' "$state_dir"
+    return
+  fi
+  local app_pid
+  app_pid="$(read_pid "$app_pid_file")"
+  cat <<STATUS
+state_dir: $state_dir
+repo: $(read_meta REPO)
+url: $(read_meta URL)
+database: $(read_meta DATABASE)
+snapshot: $(read_meta SNAPSHOT_STATE)
+codex_snapshot: $(read_meta CODEX_SNAPSHOT)
+claude_snapshot: $(read_meta CLAUDE_SNAPSHOT)
+listener: loopback-only
+provider_credentials: excluded
+tmux: isolated
+app_pid: ${app_pid:-none} ($(pid_running "$app_pid" && printf running || printf stopped))
+lease_supervision: integrated with app process
+started_at: $(format_epoch "$(read_meta STARTED_AT)")
+lease_expires: $(format_epoch "$(read_meta EXPIRES_AT)")
+app_log: $app_log
+app_err_log: $app_err_log
+STATUS
+}
+
+ensure_repo() {
+  [[ -d "$repo" ]] || die "repo not found: $repo"
+  [[ -f "$repo/package.json" ]] || die "package.json not found in $repo"
+  grep -Fq '"name": "agent-aquarium"' "$repo/package.json" || die "not an Agent Aquarium checkout: $repo"
+}
+
+resolve_runtime() {
+  local requested="24"
+  if [[ -f "$repo/.node-version" ]]; then
+    requested="$(sed -n '1p' "$repo/.node-version")"
+  fi
+
+  if command -v node >/dev/null 2>&1 && [[ "$(node -p 'process.versions.node.split(".")[0]')" == 24 ]]; then
+    runtime_prefix=()
+  elif command -v fnm >/dev/null 2>&1 && fnm exec --using "$requested" node --version >/dev/null 2>&1; then
+    runtime_prefix=(fnm exec --using "$requested")
+  else
+    die "Agent Aquarium requires Node 24; activate $requested from $repo/.node-version"
+  fi
+
+  [[ "$("${runtime_prefix[@]}" node -p 'process.versions.node.split(".")[0]')" == 24 ]] \
+    || die "resolved runtime is not Node 24"
+  "${runtime_prefix[@]}" corepack --version >/dev/null 2>&1 || die "Corepack is required"
+}
+
+ensure_dependencies() {
+  resolve_runtime
+  if [[ -d "$repo/node_modules/.pnpm" ]]; then
+    return
+  fi
+  [[ "$skip_install" != 1 ]] || die "dependencies are missing and --skip-install was requested"
+  log "installing frozen dependencies in $repo"
+  (cd "$repo" && "${runtime_prefix[@]}" corepack pnpm install --frozen-lockfile)
+}
+
+backup_sqlite() {
+  local source="$1"
+  local destination="$2"
+  [[ -f "$source" ]] || return 0
+  mkdir -p "$(dirname "$destination")"
+  (
+    cd "$repo"
+    AA_LOCAL_TEST_SOURCE_DB="$source" AA_LOCAL_TEST_DEST_DB="$destination" \
+      "${runtime_prefix[@]}" node --input-type=module <<'NODE'
+import Database from "better-sqlite3";
+
+const source = process.env.AA_LOCAL_TEST_SOURCE_DB;
+const destination = process.env.AA_LOCAL_TEST_DEST_DB;
+if (!source || !destination) throw new Error("Missing SQLite backup paths.");
+const database = new Database(source, { readonly: true, fileMustExist: true });
+try {
+  await database.backup(destination);
+} finally {
+  database.close();
+}
+NODE
+  )
+}
+
+copy_directory() {
+  local source="$1"
+  local destination="$2"
+  [[ -d "$source" ]] || return 0
+  mkdir -p "$destination"
+  cp -R "$source"/. "$destination"/
+}
+
+snapshot_is_fresh() {
+  [[ -f "$snapshot_dir/manifest" ]] || return 1
+  snapshot_matches_request || return 1
+  local age_seconds max_seconds modified
+  modified="$(mtime_epoch "$snapshot_dir/manifest")"
+  age_seconds="$(( $(date +%s) - modified ))"
+  max_seconds="$((snapshot_max_age_hours * 60 * 60))"
+  (( age_seconds <= max_seconds ))
+}
+
+snapshot_matches_request() {
+  local expected
+  if [[ "$aquarium_snapshot" == 1 && ! -f "$snapshot_dir/aquarium.aquarium" ]]; then
+    return 1
+  fi
+  if [[ "$provider_snapshot" == 1 && ! -f "$snapshot_dir/provider-snapshot.json" ]]; then
+    return 1
+  fi
+  while IFS= read -r expected; do
+    grep -Fqx -- "$expected" "$snapshot_dir/manifest" || return 1
+  done <<MANIFEST
+aquarium_snapshot=$aquarium_snapshot
+provider_snapshot=$provider_snapshot
+include_codex_state_db=$include_codex_state_db
+source_aquarium_home=$source_aquarium_home
+source_codex_home=$source_codex_home
+source_claude_config_dir=$source_claude_config_dir
+provider_max_files=$provider_max_files
+provider_max_mb=$provider_max_mb
+MANIFEST
+}
+
+write_snapshot_manifest() {
+  cat >"$1" <<MANIFEST
+created_at=$(date +%s)
+aquarium_snapshot=$aquarium_snapshot
+provider_snapshot=$provider_snapshot
+include_codex_state_db=$include_codex_state_db
+source_aquarium_home=$source_aquarium_home
+source_codex_home=$source_codex_home
+source_claude_config_dir=$source_claude_config_dir
+provider_max_files=$provider_max_files
+provider_max_mb=$provider_max_mb
+MANIFEST
+}
+
+refresh_snapshot() {
+  local next="$snapshots_root/.next"
+  safe_reset_dir "$next" "$snapshots_root/.next"
+
+  local source_database="$source_aquarium_home/agent-aquarium.sqlite"
+  if [[ "$aquarium_snapshot" == 1 ]]; then
+    [[ -f "$source_database" ]] || die "Aquarium source database not found: $source_database"
+    log "exporting portable Aquarium state from a consistent SQLite copy"
+    backup_sqlite "$source_database" "$next/aquarium-source.sqlite"
+    (
+      cd "$repo"
+      env DATABASE_URL="$next/aquarium-source.sqlite" \
+        "${runtime_prefix[@]}" corepack pnpm cli portable-export \
+        "$next/aquarium.aquarium" plaintext "I UNDERSTAND" \
+        >"$next/aquarium-export.json"
+    )
+    rm -f "$next/aquarium-source.sqlite"
+  fi
+
+  if [[ "$provider_snapshot" == 1 ]]; then
+    log "snapshotting bounded, credential-free Codex and Claude session state"
+    python3 "$provider_snapshot_script" \
+      --codex-home "$source_codex_home" \
+      --claude-config-dir "$source_claude_config_dir" \
+      --destination "$next" \
+      --max-files "$provider_max_files" \
+      --max-bytes "$((provider_max_mb * 1024 * 1024))" \
+      >"$next/provider-snapshot.json"
+    if [[ "$include_codex_state_db" == 1 ]]; then
+      while IFS= read -r source_db; do
+        local relative
+        relative="${source_db#"$source_codex_home"/}"
+        backup_sqlite "$source_db" "$next/codex/$relative"
+      done < <(find "$source_codex_home" -maxdepth 2 -type f -name 'state*.sqlite' -print 2>/dev/null | sort)
+    fi
+    mkdir -p "$next/codex"
+    : >"$next/codex/config.toml"
+  fi
+
+  write_snapshot_manifest "$next/manifest"
+  safe_reset_dir "$snapshot_dir" "$snapshots_root/current"
+  rmdir "$snapshot_dir"
+  mv "$next" "$snapshot_dir"
+}
+
+restore_portable_database() {
+  local bundle="$snapshot_dir/aquarium.aquarium"
+  [[ -f "$bundle" ]] || return 0
+  local plan="$runtime_dir/tmp/portable-import-plan.json"
+  local result="$runtime_dir/tmp/portable-import-result.json"
+  (
+    cd "$repo"
+    env DATABASE_URL="$runtime_database" \
+      "${runtime_prefix[@]}" corepack pnpm cli portable-import-preview \
+      "$bundle" replace "$plan" >/dev/null
+  )
+  local plan_hash
+  plan_hash="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["planHash"])' "$plan")"
+  (
+    cd "$repo"
+    env DATABASE_URL="$runtime_database" \
+      "${runtime_prefix[@]}" corepack pnpm cli portable-import-apply \
+      "$bundle" "$plan" "$plan_hash" "REPLACE AQUARIUM" >"$result"
+  )
+}
+
+prepare_snapshot() {
+  snapshot_state="empty"
+  codex_snapshot="empty"
+  claude_snapshot="empty"
+  if [[ "$empty_mode" == 1 ]]; then
+    return
+  fi
+  if [[ "$aquarium_snapshot" == 0 && "$provider_snapshot" == 0 ]]; then
+    return
+  fi
+
+  case "$refresh_mode" in
+    force)
+      refresh_snapshot
+      snapshot_state="refreshed"
+      ;;
+    none)
+      [[ -f "$snapshot_dir/manifest" ]] || die "no cached snapshot exists; remove --no-refresh or use --empty"
+      snapshot_matches_request \
+        || die "cached snapshot does not match the requested sources or limits; use --refresh"
+      snapshot_state="reused"
+      ;;
+    auto)
+      if snapshot_is_fresh; then
+        snapshot_state="reused"
+      else
+        refresh_snapshot
+        snapshot_state="refreshed"
+      fi
+      ;;
+  esac
+
+  if [[ "$provider_snapshot" == 1 ]]; then
+    [[ -d "$snapshot_dir/codex" ]] && codex_snapshot="copied" || true
+    [[ -d "$snapshot_dir/claude/projects" ]] && claude_snapshot="copied" || true
+  fi
+}
+
+prepare_runtime() {
+  safe_reset_dir "$runtime_dir" "$run_dir/runtime"
+  mkdir -p \
+    "$runtime_dir/aquarium-home" \
+    "$runtime_dir/codex" \
+    "$runtime_dir/claude/projects" \
+    "$runtime_dir/providers" \
+    "$runtime_dir/xdg-data" \
+    "$runtime_dir/tmp" \
+    "$runtime_dir/tmux"
+
+  if [[ "$empty_mode" != 1 ]]; then
+    restore_portable_database
+    if [[ "$provider_snapshot" == 1 ]]; then
+      copy_directory "$snapshot_dir/codex" "$runtime_dir/codex"
+      copy_directory "$snapshot_dir/claude/projects" "$runtime_dir/claude/projects"
+    fi
+  fi
+  : >"$runtime_dir/codex/config.toml"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo) repo="${2:?missing value for --repo}"; shift 2 ;;
+    --state-dir) state_dir="${2:?missing value for --state-dir}"; shift 2 ;;
+    --port) app_port="${2:?missing value for --port}"; shift 2 ;;
+    --refresh) refresh_mode="force"; shift ;;
+    --no-refresh) refresh_mode="none"; shift ;;
+    --snapshot-max-age) snapshot_max_age_hours="${2:?missing value for --snapshot-max-age}"; shift 2 ;;
+    --empty) empty_mode=1; shift ;;
+    --with-aquarium-snapshot) aquarium_snapshot=1; shift ;;
+    --with-provider-snapshot) provider_snapshot=1; shift ;;
+    --provider-max-files) provider_max_files="${2:?missing value for --provider-max-files}"; shift 2 ;;
+    --provider-max-mb) provider_max_mb="${2:?missing value for --provider-max-mb}"; shift 2 ;;
+    --include-codex-state-db) include_codex_state_db=1; shift ;;
+    --source-aquarium-home) source_aquarium_home="${2:?missing value for --source-aquarium-home}"; shift 2 ;;
+    --source-codex-home) source_codex_home="${2:?missing value for --source-codex-home}"; shift 2 ;;
+    --source-claude-config-dir) source_claude_config_dir="${2:?missing value for --source-claude-config-dir}"; shift 2 ;;
+    --skip-install) skip_install=1; shift ;;
+    --open) open_browser=1; shift ;;
+    --browser) browser_app="${2:?missing value for --browser}"; shift 2 ;;
+    --ttl) ttl="${2:?missing value for --ttl}"; shift 2 ;;
+    --no-ttl) ttl="0"; shift ;;
+    --dry-run) dry_run=1; shift ;;
+    --status) action="status"; shift ;;
+    --stop) action="stop"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "unknown option: $1" ;;
+  esac
+done
+
+repo="$(expand_path "$repo")"
+state_dir="$(expand_path "$state_dir")"
+source_codex_home="$(expand_path "$source_codex_home")"
+source_claude_config_dir="$(expand_path "$source_claude_config_dir")"
+if [[ -z "$source_aquarium_home" ]]; then
+  source_aquarium_home="$(default_aquarium_home)"
+else
+  source_aquarium_home="$(expand_path "$source_aquarium_home")"
+fi
+
+repo="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$repo")"
+state_dir="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$state_dir")"
+source_aquarium_home="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$source_aquarium_home")"
+source_codex_home="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$source_codex_home")"
+source_claude_config_dir="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$source_claude_config_dir")"
+
+require_absolute "repo" "$repo"
+require_absolute "state directory" "$state_dir"
+require_absolute "source Aquarium home" "$source_aquarium_home"
+require_absolute "source Codex home" "$source_codex_home"
+require_absolute "source Claude config directory" "$source_claude_config_dir"
+[[ "$state_dir" != / && "$state_dir" != "$HOME" ]] || die "unsafe state directory: $state_dir"
+[[ "$snapshot_max_age_hours" =~ ^[0-9]+$ ]] || die "snapshot age must be a non-negative integer"
+[[ "$provider_max_files" =~ ^[1-9][0-9]*$ ]] || die "provider file limit must be positive"
+[[ "$provider_max_mb" =~ ^[1-9][0-9]*$ ]] || die "provider MiB limit must be positive"
+if [[ "$empty_mode" == 1 && ( "$aquarium_snapshot" == 1 || "$provider_snapshot" == 1 ) ]]; then
+  die "--empty cannot be combined with snapshot options"
+fi
+if [[ "$include_codex_state_db" == 1 && "$provider_snapshot" == 0 ]]; then
+  die "--include-codex-state-db requires --with-provider-snapshot"
+fi
+port_in_range "$start_port" || die "starting port must be between 1 and 65535"
+[[ -z "$app_port" ]] || port_in_range "$app_port" \
+  || die "port must be between 1 and 65535"
+
+snapshots_root="$state_dir/snapshots"
+snapshot_dir="$snapshots_root/current"
+run_dir="$state_dir/run"
+runtime_dir="$run_dir/runtime"
+meta_dir="$run_dir/meta"
+log_dir="$state_dir/logs"
+app_pid_file="$run_dir/app.pid"
+app_log="$log_dir/app.log"
+app_err_log="$log_dir/app.err.log"
+runtime_database="$runtime_dir/aquarium-home/agent-aquarium.sqlite"
+self_path="$(resolve_script_path)"
+supervisor_path="$(dirname "$self_path")/process-supervisor.py"
+provider_snapshot_script="$(dirname "$self_path")/snapshot-provider-state.py"
+state_marker="$state_dir/.agent-aquarium-local-test-state"
+
+case "$action" in
+  status) show_status; exit 0 ;;
+  stop)
+    if [[ ! -f "$state_marker" ]]; then
+      printf 'No managed Agent Aquarium local-test instance recorded at %s\n' "$state_dir"
+      exit 0
+    fi
+    stop_all
+    exit 0
+    ;;
+esac
+
+ensure_repo
+
+if [[ "$dry_run" == 1 ]]; then
+  cat <<PLAN
+repo: $repo
+state_dir: $state_dir
+source_aquarium_home: $source_aquarium_home
+source_codex_home: $source_codex_home
+source_claude_config_dir: $source_claude_config_dir
+snapshot_mode: $([[ "$empty_mode" == 1 || ( "$aquarium_snapshot" == 0 && "$provider_snapshot" == 0 ) ]] && printf empty || printf '%s' "$refresh_mode")
+aquarium_snapshot: $aquarium_snapshot
+provider_snapshot: $provider_snapshot
+provider_max_files: $provider_max_files
+provider_max_mb: $provider_max_mb
+include_codex_state_db: $include_codex_state_db
+database: $runtime_database
+listener: 127.0.0.1
+remote_access: disabled
+provider_credentials: excluded
+tmux: isolated
+port: ${app_port:-auto from $start_port}
+ttl: $ttl
+PLAN
+  exit 0
+fi
+
+ensure_managed_state_root
+mkdir -p "$snapshots_root" "$run_dir" "$meta_dir" "$log_dir"
+ensure_dependencies
+stop_all
+prepare_snapshot
+prepare_runtime
+app_port="$(choose_port)"
+url="http://127.0.0.1:$app_port/"
+ttl_seconds="$(parse_ttl_seconds "$ttl")"
+started_at="$(date +%s)"
+expires_at=0
+if [[ "$ttl_seconds" != 0 ]]; then
+  expires_at="$((started_at + ttl_seconds))"
+fi
+
+log "starting Agent Aquarium from $repo"
+cd "$repo"
+app_pid="$(run_detached "$app_log" "$app_err_log" \
+  python3 "$supervisor_path" --ttl "$ttl_seconds" -- \
+  env \
+    -u AGENT_OPENAI_API_KEY \
+    -u ANTHROPIC_API_KEY \
+    -u AQUARIUM_OWNER_TOKEN \
+    -u AWS_ACCESS_KEY_ID \
+    -u AWS_SECRET_ACCESS_KEY \
+    -u AWS_SESSION_TOKEN \
+    -u CODEX_API_KEY \
+    -u OPENAI_API_KEY \
+    -u OTEL_EXPORTER_OTLP_ENDPOINT \
+    -u OTEL_EXPORTER_OTLP_TRACES_ENDPOINT \
+    AQUARIUM_BIND_HOST=127.0.0.1 \
+    AQUARIUM_CLAUDE_HOOK_SETTINGS_PATH="$runtime_dir/providers/claude-hook-settings.json" \
+    AQUARIUM_E2E_STATE_DIR="$runtime_dir/e2e" \
+    AQUARIUM_HOME="$runtime_dir/aquarium-home" \
+    AQUARIUM_PROVIDER_STATE_DIR="$runtime_dir/providers" \
+    AQUARIUM_REMOTE_ACCESS=0 \
+    AQUARIUM_WEB_ORIGINS= \
+    CLAUDE_CONFIG_DIR="$runtime_dir/claude" \
+    CLAUDE_PROJECTS_ROOT="$runtime_dir/claude/projects" \
+    CLI_STATUS_REFRESH_MS=2000 \
+    CODEX_HOME="$runtime_dir/codex" \
+    CODEX_SESSION_ACTIVE_ONLY=0 \
+    CODEX_SESSION_LOOKBACK_HOURS=720 \
+    DATABASE_URL="$runtime_database" \
+    NODE_ENV=development \
+    PORT="$app_port" \
+    PROVIDER_INVENTORY_REFRESH_MS=2000 \
+    TMPDIR="$runtime_dir/tmp" \
+    TMUX_TMPDIR="$runtime_dir/tmux" \
+    XDG_DATA_HOME="$runtime_dir/xdg-data" \
+    "${runtime_prefix[@]}" corepack pnpm dev)"
+printf '%s\n' "$app_pid" >"$app_pid_file"
+
+if ! wait_for_url "$url" 120; then
+  stop_pid_file "app" "$app_pid_file"
+  die "Agent Aquarium did not become ready; inspect $app_err_log and $app_log"
+fi
+
+write_meta REPO "$repo"
+write_meta URL "$url"
+write_meta DATABASE "$runtime_database"
+write_meta SNAPSHOT_STATE "$snapshot_state"
+write_meta CODEX_SNAPSHOT "$codex_snapshot"
+write_meta CLAUDE_SNAPSHOT "$claude_snapshot"
+write_meta STARTED_AT "$started_at"
+write_meta EXPIRES_AT "$expires_at"
+
+if [[ "$open_browser" == 1 ]]; then
+  open -a "$browser_app" "$url"
+fi
+
+cat <<DONE
+Agent Aquarium local test is ready.
+
+URL: $url
+Repo: $repo
+Database: $runtime_database
+Snapshot: $snapshot_state
+Codex snapshot: $codex_snapshot
+Claude snapshot: $claude_snapshot
+Isolation: loopback-only; provider credentials excluded; tmux isolated
+Logs:
+  app: $app_log
+  app_err: $app_err_log
+Lease expires: $(format_epoch "$expires_at")
+
+Status: $script_name --status
+Stop:   $script_name --stop
+DONE

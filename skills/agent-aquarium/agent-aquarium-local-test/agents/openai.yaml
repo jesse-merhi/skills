@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Aquarium Local Test"
+  short_description: "Run a guarded local Aquarium test instance"
+  default_prompt: "Use $agent-aquarium-local-test to start a guarded local Agent Aquarium instance from this worktree."
