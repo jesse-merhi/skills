@@ -1,0 +1,1134 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_name="$(basename "$0")"
+script_dir="$(cd -- "$(dirname -- "$0")" && pwd)"
+
+repo="${OPENCLAW_LOCAL_TEST_REPO:-}"
+state_dir="${OPENCLAW_LOCAL_TEST_STATE_DIR:-$HOME/.openclaw-local-test}"
+base_config="${OPENCLAW_LOCAL_TEST_BASE_CONFIG:-}"
+runtime="${OPENCLAW_LOCAL_TEST_RUNTIME:-auto}"
+model_id="${OPENCLAW_LOCAL_TEST_MODEL:-}"
+start_port="${OPENCLAW_LOCAL_TEST_PORT:-19010}"
+gateway_port=""
+proxy_port="${OPENCLAW_LOCAL_TEST_PROXY_PORT:-}"
+browser_app="${OPENCLAW_LOCAL_TEST_BROWSER:-Google Chrome}"
+ttl="${OPENCLAW_LOCAL_TEST_TTL:-8h}"
+start_lock_dir="${OPENCLAW_LOCAL_TEST_LOCK_DIR:-$HOME/.openclaw-local-test-start.lock}"
+shared_proxy_dir="${OPENCLAW_LOCAL_TEST_PROXY_DIR:-$HOME/.openclaw-local-test-proxy}"
+keep_sessions="${OPENCLAW_LOCAL_TEST_KEEP_SESSIONS:-0}"
+open_browser=0
+foreground=0
+skip_channels=0
+action="start"
+lock_acquired=0
+startup_cleanup_needed=0
+
+node_bin="${OPENCLAW_LOCAL_TEST_NODE:-}"
+if [[ -z "$node_bin" ]]; then
+  if [[ -x /opt/homebrew/opt/node/bin/node ]]; then
+    node_bin="/opt/homebrew/opt/node/bin/node"
+  else
+    node_bin="$(command -v node)"
+  fi
+fi
+
+usage() {
+  cat <<USAGE
+Usage:
+  $script_name [options]
+  $script_name --stop
+  $script_name --status
+
+Starts an isolated OpenClaw test Gateway on a free port. The selected native
+Codex or Claude runtime keeps ownership of its existing login, settings, and
+custom endpoint or proxy configuration.
+
+Options:
+  --repo <path>          OpenClaw checkout/worktree to run (required for start)
+  --state-dir <path>     Isolated state dir (default: ~/.openclaw-local-test)
+  --base-config <path>   Optional OpenClaw config to mirror before safe overlays
+  --runtime <name>       auto, codex, or claude (default: ${runtime})
+  --inspect              Report usable runtimes without printing secrets
+  --port <port>          Gateway port; otherwise choose from ${start_port} upward
+  --proxy-port <port>    browser proxy port; otherwise gateway port + 1
+  --model <id>           Override the selected runtime's configured model
+  --open                 Open the browser after startup
+  --browser <app>        Browser app to use with --open (default: ${browser_app})
+  --ttl <duration>       Auto-stop lease, e.g. 30m, 8h, 1d (default: ${ttl})
+  --no-ttl               Disable the auto-stop watchdog for this instance
+  --no-open              Do not open a browser
+  --no-channels          Start with OPENCLAW_SKIP_CHANNELS=1
+  --foreground           Run gateway in the foreground after starting proxy
+  --status               Show managed process and port status
+  --stop                 Stop processes started by this script
+  -h, --help             Show this help
+
+Environment overrides use OPENCLAW_LOCAL_TEST_* names.
+USAGE
+}
+
+die() {
+  printf '%s: %s\n' "$script_name" "$*" >&2
+  exit 1
+}
+
+log() {
+  printf '[%s] %s\n' "$script_name" "$*" >&2
+}
+
+run_detached() {
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$@" </dev/null &
+  else
+    nohup "$@" </dev/null &
+  fi
+}
+
+is_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+parse_ttl_seconds() {
+  local value="$1"
+  local amount unit
+  case "$value" in
+    ""|"0"|"none"|"never"|"off")
+      printf '0\n'
+      ;;
+    *)
+      if [[ ! "$value" =~ ^([0-9]+)([smhd]?)$ ]]; then
+        die "invalid --ttl value: $value"
+      fi
+      amount="${BASH_REMATCH[1]}"
+      unit="${BASH_REMATCH[2]}"
+      case "$unit" in
+        ""|"s") printf '%s\n' "$amount" ;;
+        "m") printf '%s\n' "$((amount * 60))" ;;
+        "h") printf '%s\n' "$((amount * 60 * 60))" ;;
+        "d") printf '%s\n' "$((amount * 24 * 60 * 60))" ;;
+      esac
+      ;;
+  esac
+}
+
+format_epoch() {
+  local value="$1"
+  if [[ -z "$value" || "$value" == "0" ]]; then
+    printf 'none\n'
+  else
+    date -r "$value" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || printf '%s\n' "$value"
+  fi
+}
+
+write_env_var() {
+  local key="$1"
+  local value="$2"
+  printf '%s=%q\n' "$key" "$value"
+}
+
+release_start_lock() {
+  if [[ "$lock_acquired" == "1" ]]; then
+    /bin/rm -f "$start_lock_dir/owner.env" 2>/dev/null || true
+    /bin/rmdir "$start_lock_dir" 2>/dev/null || true
+    lock_acquired=0
+  fi
+}
+
+expand_path() {
+  local value="$1"
+  case "$value" in
+    "~") printf '%s\n' "$HOME" ;;
+    \~/*) printf '%s/%s\n' "$HOME" "${value#"~/"}" ;;
+    *) printf '%s\n' "$value" ;;
+  esac
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo)
+      repo="${2:?missing value for --repo}"
+      shift 2
+      ;;
+    --state-dir)
+      state_dir="${2:?missing value for --state-dir}"
+      shift 2
+      ;;
+    --base-config)
+      base_config="${2:?missing value for --base-config}"
+      shift 2
+      ;;
+    --runtime)
+      runtime="${2:?missing value for --runtime}"
+      shift 2
+      ;;
+    --inspect)
+      action="inspect"
+      shift
+      ;;
+    --port)
+      gateway_port="${2:?missing value for --port}"
+      shift 2
+      ;;
+    --proxy-port)
+      proxy_port="${2:?missing value for --proxy-port}"
+      shift 2
+      ;;
+    --model)
+      model_id="${2:?missing value for --model}"
+      shift 2
+      ;;
+    --browser)
+      browser_app="${2:?missing value for --browser}"
+      if [[ "$browser_app" == "none" ]]; then
+        open_browser=0
+      fi
+      shift 2
+      ;;
+    --open)
+      open_browser=1
+      shift
+      ;;
+    --ttl)
+      ttl="${2:?missing value for --ttl}"
+      shift 2
+      ;;
+    --no-ttl)
+      ttl="0"
+      shift
+      ;;
+    --no-open)
+      open_browser=0
+      shift
+      ;;
+    --no-channels)
+      skip_channels=1
+      shift
+      ;;
+    --foreground)
+      foreground=1
+      shift
+      ;;
+    --status)
+      action="status"
+      shift
+      ;;
+    --stop)
+      action="stop"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown option: $1"
+      ;;
+  esac
+done
+
+repo="$(expand_path "$repo")"
+state_dir="$(expand_path "$state_dir")"
+base_config="$(expand_path "$base_config")"
+start_lock_dir="$(expand_path "$start_lock_dir")"
+shared_proxy_dir="$(expand_path "$shared_proxy_dir")"
+config_path="$state_dir/openclaw.json"
+workspace_dir="$state_dir/workspace"
+pid_dir="$state_dir/run"
+log_dir="$state_dir/logs"
+shared_proxy_route_dir="$shared_proxy_dir/routes"
+shared_proxy_log_dir="$shared_proxy_dir/logs"
+shared_proxy_script="$shared_proxy_dir/shared-browser-proxy.js"
+shared_proxy_pid_file="$shared_proxy_dir/shared-browser-proxy.pid"
+shared_proxy_version="2026-08-04.1"
+shared_proxy_version_file="$shared_proxy_dir/shared-browser-proxy.version"
+gateway_pid_file="$pid_dir/gateway.pid"
+proxy_pid_file="$pid_dir/browser-proxy.pid"
+ports_file="$pid_dir/ports.env"
+instance_file="$pid_dir/instance.env"
+watchdog_pid_file="$pid_dir/watchdog.pid"
+runtime_profile_script="$script_dir/runtime-profile.mjs"
+
+pid_running() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+read_pid_file() {
+  local file="$1"
+  [[ -f "$file" ]] && sed -n '1p' "$file" || true
+}
+
+env_file_value() {
+  local file="$1"
+  local key="$2"
+  [[ -f "$file" ]] && sed -n "s/^${key}=//p" "$file" | sed -n '1p' || true
+}
+
+port_in_use() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
+}
+
+process_group_id() {
+  local pid="$1"
+  ps -o pgid= -p "$pid" 2>/dev/null | tr -d '[:space:]' || true
+}
+
+process_parent_id() {
+  local pid="$1"
+  ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]' || true
+}
+
+pid_descends_from() {
+  local current_pid="$1"
+  local ancestor_pid="$2"
+  local parent_pid
+
+  for _ in {1..64}; do
+    [[ "$current_pid" == "$ancestor_pid" ]] && return 0
+    parent_pid="$(process_parent_id "$current_pid")"
+    [[ -n "$parent_pid" && "$parent_pid" != "$current_pid" && "$parent_pid" != "0" ]] || break
+    current_pid="$parent_pid"
+  done
+
+  return 1
+}
+
+listener_pids() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | sort -u || true
+}
+
+port_owned_by_pid_file() {
+  local port="$1"
+  local file="$2"
+  local owner_pid owner_pgid listener_pid listener_pgid
+
+  owner_pid="$(read_pid_file "$file")"
+  owner_pgid="$(process_group_id "$owner_pid")"
+  [[ -n "$owner_pid" && -n "$owner_pgid" ]] || return 1
+
+  while IFS= read -r listener_pid; do
+    [[ -n "$listener_pid" ]] || continue
+    listener_pgid="$(process_group_id "$listener_pid")"
+    if [[ "$listener_pid" == "$owner_pid" || "$listener_pgid" == "$owner_pgid" ]] ||
+      pid_descends_from "$listener_pid" "$owner_pid"; then
+      return 0
+    fi
+  done < <(listener_pids "$port")
+
+  return 1
+}
+
+wait_for_port_owner() {
+  local port="$1"
+  local file="$2"
+  local name="$3"
+
+  for _ in {1..50}; do
+    if port_owned_by_pid_file "$port" "$file"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  log "$name port $port is not owned by the process this helper started"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN >&2 2>/dev/null || true
+  return 1
+}
+
+wait_for_port_release() {
+  local port="$1"
+  local name="$2"
+
+  for _ in {1..50}; do
+    if ! port_in_use "$port"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  log "$name port $port is still listening after cleanup"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN >&2 2>/dev/null || true
+  return 1
+}
+
+http_healthy() {
+  local url="$1"
+  curl -fsS --max-time 2 "$url" >/dev/null 2>&1
+}
+
+wait_for_http_health() {
+  local url="$1"
+  local name="$2"
+
+  for _ in {1..50}; do
+    if http_healthy "$url"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  log "$name health check failed: $url"
+  return 1
+}
+
+write_shared_proxy_script() {
+  mkdir -p "$shared_proxy_dir" "$shared_proxy_route_dir" "$shared_proxy_log_dir"
+  cat >"$shared_proxy_script" <<'NODE'
+const fs = require("node:fs");
+const http = require("node:http");
+const net = require("node:net");
+const path = require("node:path");
+
+const LISTEN_HOST = process.env.OPENCLAW_SHARED_PROXY_HOST || "127.0.0.1";
+const ROUTE_DIR = process.env.OPENCLAW_SHARED_PROXY_ROUTE_DIR;
+const IDLE_EXIT_MS = Number(process.env.OPENCLAW_SHARED_PROXY_IDLE_EXIT_MS || 120000);
+
+if (!ROUTE_DIR) {
+  console.error("[openclaw-shared-proxy] missing OPENCLAW_SHARED_PROXY_ROUTE_DIR");
+  process.exit(1);
+}
+
+const servers = new Map();
+let emptySince = Date.now();
+
+function pidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readRoutes() {
+  fs.mkdirSync(ROUTE_DIR, { recursive: true });
+  const routes = new Map();
+  for (const entry of fs.readdirSync(ROUTE_DIR)) {
+    if (!entry.endsWith(".json")) continue;
+    const filePath = path.join(ROUTE_DIR, entry);
+    try {
+      const route = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      const proxyPort = Number(route.proxyPort);
+      const targetPort = Number(route.targetPort);
+      const gatewayPid = Number(route.gatewayPid);
+      const targetHost = route.targetHost || "127.0.0.1";
+      if (!Number.isInteger(proxyPort) || !Number.isInteger(targetPort) || !pidAlive(gatewayPid)) {
+        fs.rmSync(filePath, { force: true });
+        continue;
+      }
+      routes.set(proxyPort, { proxyPort, targetHost, targetPort, gatewayPid, filePath });
+    } catch (error) {
+      console.error(`[openclaw-shared-proxy] ignoring ${filePath}: ${error.message}`);
+    }
+  }
+  return routes;
+}
+
+function proxyHttp(route, req, res) {
+  const headers = { ...req.headers, host: `${route.targetHost}:${route.targetPort}` };
+  let upstreamResponse;
+
+  const failDownstream = (error) => {
+    if (res.destroyed) return;
+    if (res.headersSent || res.writableEnded) {
+      res.destroy(error);
+      return;
+    }
+    res.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
+    res.end(`OpenClaw shared proxy error: ${error.message}\n`);
+  };
+
+  const upstream = http.request({
+    host: route.targetHost,
+    port: route.targetPort,
+    method: req.method,
+    path: req.url,
+    headers,
+  }, (up) => {
+    upstreamResponse = up;
+    res.writeHead(up.statusCode || 502, up.statusMessage, up.headers);
+    up.on("error", failDownstream);
+    up.pipe(res);
+  });
+
+  upstream.on("error", failDownstream);
+  req.on("aborted", () => upstream.destroy());
+  req.on("error", (error) => upstream.destroy(error));
+  res.on("error", (error) => {
+    upstreamResponse?.destroy(error);
+    upstream.destroy(error);
+  });
+  res.on("close", () => {
+    if (res.writableFinished) return;
+    upstreamResponse?.destroy();
+    upstream.destroy();
+  });
+  req.pipe(upstream);
+}
+
+function proxyUpgrade(route, req, socket, head) {
+  const upstream = net.connect(route.targetPort, route.targetHost, () => {
+    const headers = { ...req.headers, host: `${route.targetHost}:${route.targetPort}` };
+    let raw = `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`;
+    for (const [key, value] of Object.entries(headers)) {
+      if (Array.isArray(value)) {
+        for (const item of value) raw += `${key}: ${item}\r\n`;
+      } else if (value != null) {
+        raw += `${key}: ${value}\r\n`;
+      }
+    }
+    raw += "\r\n";
+    upstream.write(raw);
+    if (head?.length) upstream.write(head);
+    socket.pipe(upstream).pipe(socket);
+  });
+  upstream.on("error", () => socket.destroy());
+  socket.on("error", () => upstream.destroy());
+}
+
+function startServer(route) {
+  const server = http.createServer((req, res) => proxyHttp(route, req, res));
+  server.on("upgrade", (req, socket, head) => proxyUpgrade(route, req, socket, head));
+  server.on("error", (error) => {
+    console.error(`[openclaw-shared-proxy] port ${route.proxyPort}: ${error.stack || error.message}`);
+  });
+  server.listen(route.proxyPort, LISTEN_HOST, () => {
+    console.log(`[openclaw-shared-proxy] listening http://${LISTEN_HOST}:${route.proxyPort} -> http://${route.targetHost}:${route.targetPort}`);
+  });
+  servers.set(route.proxyPort, { server, route });
+}
+
+function closeServer(proxyPort) {
+  const current = servers.get(proxyPort);
+  if (!current) return;
+  current.server.close();
+  servers.delete(proxyPort);
+  console.log(`[openclaw-shared-proxy] closed port ${proxyPort}`);
+}
+
+function syncRoutes() {
+  const routes = readRoutes();
+  for (const [proxyPort, current] of servers) {
+    const next = routes.get(proxyPort);
+    if (!next || next.targetHost !== current.route.targetHost || next.targetPort !== current.route.targetPort) {
+      closeServer(proxyPort);
+    }
+  }
+  for (const route of routes.values()) {
+    if (!servers.has(route.proxyPort)) {
+      startServer(route);
+    }
+  }
+  if (servers.size === 0) {
+    if (Date.now() - emptySince >= IDLE_EXIT_MS) {
+      console.log("[openclaw-shared-proxy] no routes remain; exiting");
+      process.exit(0);
+    }
+  } else {
+    emptySince = Date.now();
+  }
+}
+
+syncRoutes();
+setInterval(syncRoutes, 500);
+NODE
+  chmod 700 "$shared_proxy_script"
+}
+
+ensure_shared_browser_proxy() {
+  local proxy_pid current_version
+
+  write_shared_proxy_script
+  proxy_pid="$(read_pid_file "$shared_proxy_pid_file")"
+  current_version="$(read_pid_file "$shared_proxy_version_file")"
+  if pid_running "$proxy_pid" && [[ "$current_version" == "$shared_proxy_version" ]]; then
+    return
+  fi
+
+  if pid_running "$proxy_pid"; then
+    log "restarting shared browser proxy daemon"
+    kill "$proxy_pid" 2>/dev/null || true
+    for _ in {1..40}; do
+      pid_running "$proxy_pid" || break
+      sleep 0.1
+    done
+  fi
+
+  log "starting shared browser proxy daemon"
+  run_detached env \
+    OPENCLAW_SHARED_PROXY_HOST=127.0.0.1 \
+    OPENCLAW_SHARED_PROXY_ROUTE_DIR="$shared_proxy_route_dir" \
+    "$node_bin" "$shared_proxy_script" >"$shared_proxy_log_dir/shared-browser-proxy.log" 2>"$shared_proxy_log_dir/shared-browser-proxy.err.log"
+  printf '%s\n' "$!" >"$shared_proxy_pid_file"
+  printf '%s\n' "$shared_proxy_version" >"$shared_proxy_version_file"
+}
+
+browser_proxy_route_file_for_port() {
+  local port="$1"
+  printf '%s/%s.json\n' "$shared_proxy_route_dir" "$port"
+}
+
+remove_browser_proxy_route() {
+  local route_proxy_port
+  route_proxy_port="$proxy_port"
+  if [[ -z "$route_proxy_port" ]]; then
+    route_proxy_port="$(env_file_value "$ports_file" "OPENCLAW_LOCAL_TEST_PROXY_PORT")"
+  fi
+  if [[ -n "$route_proxy_port" ]]; then
+    /bin/rm -f "$(browser_proxy_route_file_for_port "$route_proxy_port")"
+    wait_for_port_release "$route_proxy_port" "browser proxy"
+  fi
+}
+
+register_browser_proxy_route() {
+  local route_file tmp_file gateway_pid
+  mkdir -p "$shared_proxy_route_dir"
+  gateway_pid="$(read_pid_file "$gateway_pid_file")"
+  route_file="$(browser_proxy_route_file_for_port "$proxy_port")"
+  tmp_file="$route_file.$$"
+  "$node_bin" - "$tmp_file" "$proxy_port" "$gateway_port" "$gateway_pid" "$state_dir" <<'NODE'
+const fs = require("node:fs");
+const [routePath, proxyPortRaw, targetPortRaw, gatewayPidRaw, stateDir] = process.argv.slice(2);
+const route = {
+  proxyPort: Number(proxyPortRaw),
+  targetHost: "127.0.0.1",
+  targetPort: Number(targetPortRaw),
+  gatewayPid: Number(gatewayPidRaw),
+  stateDir,
+  updatedAt: new Date().toISOString(),
+};
+fs.writeFileSync(routePath, JSON.stringify(route, null, 2) + "\n", { mode: 0o600 });
+NODE
+  mv "$tmp_file" "$route_file"
+}
+
+acquire_start_lock() {
+  local attempt owner_pid lock_parent
+
+  lock_parent="${start_lock_dir%/*}"
+  if [[ "$lock_parent" != "$start_lock_dir" ]]; then
+    mkdir -p "$lock_parent"
+  fi
+
+  for attempt in {1..600}; do
+    if mkdir "$start_lock_dir" 2>/dev/null; then
+      lock_acquired=1
+      {
+        write_env_var pid "$$"
+        write_env_var state_dir "$state_dir"
+        write_env_var started_at "$(date +%s)"
+      } >"$start_lock_dir/owner.env"
+      trap release_start_lock EXIT
+      trap 'release_start_lock; exit 130' INT
+      trap 'release_start_lock; exit 143' TERM
+      return
+    fi
+
+    owner_pid="$(sed -n 's/^pid=//p' "$start_lock_dir/owner.env" 2>/dev/null || true)"
+    if [[ -n "$owner_pid" ]] && ! pid_running "$owner_pid"; then
+      /bin/rm -f "$start_lock_dir/owner.env" 2>/dev/null || true
+      /bin/rmdir "$start_lock_dir" 2>/dev/null || true
+      continue
+    fi
+
+    if [[ "$attempt" == "1" ]]; then
+      log "waiting for OpenClaw startup lock: $start_lock_dir"
+    fi
+    sleep 0.5
+  done
+
+  die "timed out waiting for OpenClaw startup lock: $start_lock_dir"
+}
+
+stop_pid_file() {
+  local file="$1"
+  local name="$2"
+  local pid
+  pid="$(read_pid_file "$file")"
+  if [[ "$pid" == "$$" ]]; then
+    rm -f "$file"
+    return
+  fi
+  if pid_running "$pid"; then
+    log "stopping $name pid $pid"
+    kill -TERM "-$pid" 2>/dev/null || true
+    kill "$pid" 2>/dev/null || true
+    for _ in {1..40}; do
+      pid_running "$pid" || break
+      sleep 0.1
+    done
+    if pid_running "$pid"; then
+      kill -KILL "-$pid" 2>/dev/null || true
+      kill -KILL "$pid" 2>/dev/null || true
+    fi
+  fi
+  rm -f "$file"
+}
+
+status() {
+  local gateway_pid proxy_pid status_gateway_port status_proxy_port shared_proxy_pid
+  gateway_pid="$(read_pid_file "$gateway_pid_file")"
+  proxy_pid="$(read_pid_file "$proxy_pid_file")"
+  status_gateway_port="$(env_file_value "$ports_file" "OPENCLAW_LOCAL_TEST_GATEWAY_PORT")"
+  status_proxy_port="$(env_file_value "$ports_file" "OPENCLAW_LOCAL_TEST_PROXY_PORT")"
+  shared_proxy_pid="$(read_pid_file "$shared_proxy_pid_file")"
+
+  printf 'State: %s\n' "$state_dir"
+  if [[ -f "$ports_file" ]]; then
+    sed -n 's/^/Port: /p' "$ports_file"
+  fi
+  if [[ -f "$instance_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$instance_file"
+    printf 'Lease: ttl=%s expires=%s\n' "${OPENCLAW_LOCAL_TEST_TTL:-unknown}" "$(format_epoch "${OPENCLAW_LOCAL_TEST_EXPIRES_AT:-0}")"
+  fi
+  if pid_running "$gateway_pid"; then
+    printf 'Gateway: running pid %s\n' "$gateway_pid"
+  else
+    printf 'Gateway: stopped\n'
+  fi
+  if [[ -n "$status_gateway_port" ]] && http_healthy "http://127.0.0.1:$status_gateway_port/healthz"; then
+    printf 'Gateway health: healthy http://127.0.0.1:%s/healthz\n' "$status_gateway_port"
+  else
+    printf 'Gateway health: unhealthy\n'
+  fi
+  if [[ -n "$status_proxy_port" ]] && port_owned_by_pid_file "$status_proxy_port" "$shared_proxy_pid_file"; then
+    printf 'browser proxy: running shared daemon pid %s route port %s\n' "$shared_proxy_pid" "$status_proxy_port"
+  elif pid_running "$proxy_pid"; then
+    printf 'browser proxy: running pid %s\n' "$proxy_pid"
+  else
+    printf 'browser proxy: stopped\n'
+  fi
+  if [[ -n "$status_proxy_port" ]] && http_healthy "http://127.0.0.1:$status_proxy_port/healthz"; then
+    printf 'browser proxy health: healthy http://127.0.0.1:%s/healthz\n' "$status_proxy_port"
+  else
+    printf 'browser proxy health: unhealthy\n'
+  fi
+}
+
+stop_all() {
+  local proxy_pid shared_proxy_pid
+  stop_pid_file "$gateway_pid_file" "gateway"
+  remove_browser_proxy_route
+  proxy_pid="$(read_pid_file "$proxy_pid_file")"
+  shared_proxy_pid="$(read_pid_file "$shared_proxy_pid_file")"
+  if [[ -n "$proxy_pid" && "$proxy_pid" == "$shared_proxy_pid" ]]; then
+    rm -f "$proxy_pid_file"
+  else
+    stop_pid_file "$proxy_pid_file" "browser proxy"
+  fi
+  if [[ "${OPENCLAW_LOCAL_TEST_FROM_WATCHDOG:-0}" == "1" ]]; then
+    rm -f "$watchdog_pid_file"
+  else
+    stop_pid_file "$watchdog_pid_file" "watchdog"
+  fi
+  rm -f "$instance_file"
+}
+
+# Invoked indirectly by the EXIT/INT/TERM traps armed after the Gateway starts.
+# shellcheck disable=SC2329
+cleanup_interrupted_start() {
+  local original_status=$?
+  trap - EXIT INT TERM
+  if [[ "$startup_cleanup_needed" == "1" ]]; then
+    startup_cleanup_needed=0
+    stop_all
+  fi
+  release_start_lock
+  exit "$original_status"
+}
+
+arm_startup_cleanup() {
+  startup_cleanup_needed=1
+  trap cleanup_interrupted_start EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+}
+
+disarm_startup_cleanup() {
+  startup_cleanup_needed=0
+  trap release_start_lock EXIT
+  trap 'release_start_lock; exit 130' INT
+  trap 'release_start_lock; exit 143' TERM
+}
+
+rotate_agent_sessions() {
+  local agents_dir stamp rotated
+  if is_truthy "$keep_sessions"; then
+    log "keeping previous agent sessions because OPENCLAW_LOCAL_TEST_KEEP_SESSIONS=$keep_sessions"
+    return
+  fi
+
+  agents_dir="$state_dir/agents"
+  [[ -d "$agents_dir" ]] || return 0
+
+  stamp="$(date -u '+%Y-%m-%dT%H-%M-%SZ')"
+  rotated=0
+  while IFS= read -r -d '' dir; do
+    local has_entries suffix target
+    has_entries="$(find "$dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null || true)"
+    [[ -n "$has_entries" ]] || continue
+    target="$dir.bak.$stamp"
+    suffix=1
+    while [[ -e "$target" ]]; do
+      target="$dir.bak.$stamp.$suffix"
+      suffix=$((suffix + 1))
+    done
+    mv "$dir" "$target"
+    rotated=$((rotated + 1))
+  done < <(find "$agents_dir" -mindepth 2 -maxdepth 2 -type d -name sessions -print0 2>/dev/null)
+
+  if [[ "$rotated" != "0" ]]; then
+    log "rotated $rotated previous agent session dir(s)"
+  fi
+}
+
+[[ -x "$node_bin" ]] || die "node not executable: $node_bin"
+[[ -f "$runtime_profile_script" ]] || die "runtime profile helper not found: $runtime_profile_script"
+
+if [[ "$action" == "inspect" ]]; then
+  runtime_profile_args=(inspect --runtime "$runtime")
+  if [[ -n "$model_id" ]]; then
+    runtime_profile_args+=(--model "$model_id")
+  fi
+  exec "$node_bin" "$runtime_profile_script" "${runtime_profile_args[@]}"
+fi
+
+if [[ "$action" == "status" ]]; then
+  status
+  exit 0
+fi
+
+if [[ "$action" == "stop" ]]; then
+  stop_all
+  exit 0
+fi
+
+ttl_seconds="$(parse_ttl_seconds "$ttl")"
+
+[[ -n "$repo" ]] || die "repo is required for start; pass --repo <path>"
+[[ -d "$repo" ]] || die "repo not found: $repo"
+[[ -f "$repo/openclaw.mjs" || -f "$repo/dist/index.js" ]] || die "not an OpenClaw checkout: $repo"
+if [[ -n "$base_config" && ! -f "$base_config" ]]; then
+  die "base config not found: $base_config"
+fi
+
+acquire_start_lock
+
+mkdir -p "$state_dir" "$workspace_dir" "$pid_dir" "$log_dir"
+chmod 700 "$state_dir" "$workspace_dir" "$pid_dir" "$log_dir"
+
+stop_all
+rotate_agent_sessions
+
+pick_ports() {
+  local candidate="$start_port"
+  if [[ -n "$gateway_port" ]]; then
+    candidate="$gateway_port"
+  fi
+
+  while true; do
+    local candidate_proxy="${proxy_port:-$((candidate + 1))}"
+    local candidate_browser=$((candidate + 2))
+    if ! port_in_use "$candidate" && ! port_in_use "$candidate_proxy" && ! port_in_use "$candidate_browser" && [[ ! -f "$(browser_proxy_route_file_for_port "$candidate_proxy")" ]]; then
+      gateway_port="$candidate"
+      proxy_port="$candidate_proxy"
+      return
+    fi
+    [[ -n "${OPENCLAW_LOCAL_TEST_PORT:-}" || -n "$gateway_port" ]] && die "requested port range is busy: gateway=$candidate proxy=$candidate_proxy browser=$candidate_browser"
+    candidate=$((candidate + 10))
+  done
+}
+
+pick_ports
+
+log "using gateway port $gateway_port and browser proxy port $proxy_port"
+
+runtime_profile_args=(
+  configure
+  --runtime "$runtime"
+  --config-out "$config_path"
+  --state-dir "$state_dir"
+  --workspace-dir "$workspace_dir"
+  --gateway-port "$gateway_port"
+  --proxy-port "$proxy_port"
+)
+if [[ -n "$model_id" ]]; then
+  runtime_profile_args+=(--model "$model_id")
+fi
+if [[ -n "$base_config" ]]; then
+  runtime_profile_args+=(--base-config "$base_config")
+fi
+if ! profile_json="$("$node_bin" "$runtime_profile_script" "${runtime_profile_args[@]}")"; then
+  die "could not resolve a usable Codex or Claude runtime"
+fi
+
+read_profile_field() {
+  "$node_bin" -e '
+    const profile = JSON.parse(process.argv[1]);
+    const value = profile[process.argv[2]];
+    if (value === undefined || value === null) process.exit(1);
+    process.stdout.write(String(value));
+  ' "$profile_json" "$1"
+}
+
+runtime="$(read_profile_field id)"
+model_id="$(read_profile_field model)"
+model_ref="$(read_profile_field modelRef)"
+provider_id="${model_ref%%/*}"
+profile_auth="$(read_profile_field auth)"
+profile_route="$(read_profile_field route)"
+log "selected $runtime runtime ($model_ref; auth=$profile_auth; route=$profile_route)"
+
+cat >"$ports_file" <<PORTS
+OPENCLAW_LOCAL_TEST_GATEWAY_PORT=$gateway_port
+OPENCLAW_LOCAL_TEST_PROXY_PORT=$proxy_port
+OPENCLAW_LOCAL_TEST_RUNTIME=$runtime
+OPENCLAW_LOCAL_TEST_PROVIDER_ID=$provider_id
+OPENCLAW_LOCAL_TEST_MODEL_ID=$model_id
+OPENCLAW_LOCAL_TEST_MODEL_REF=$model_ref
+OPENCLAW_LOCAL_TEST_BROWSER=$browser_app
+PORTS
+
+started_at="$(date +%s)"
+if [[ "$ttl_seconds" == "0" ]]; then
+  expires_at="0"
+else
+  expires_at="$((started_at + ttl_seconds))"
+fi
+
+log "preparing shared browser proxy daemon"
+ensure_shared_browser_proxy
+
+gateway_env=(
+  "OPENCLAW_STATE_DIR=$state_dir"
+  "OPENCLAW_CONFIG_PATH=$config_path"
+  "OPENCLAW_GATEWAY_PORT=$gateway_port"
+  "PATH=$(cd -- "$(dirname -- "$node_bin")" && pwd):$PATH"
+)
+if [[ "$skip_channels" == "1" ]]; then
+  gateway_env+=("OPENCLAW_SKIP_CHANNELS=1")
+fi
+
+if [[ -f "$repo/scripts/run-node.mjs" ]]; then
+  gateway_cli_args=("$node_bin" "$repo/scripts/run-node.mjs")
+  gateway_args=("$node_bin" "$repo/scripts/run-node.mjs" "gateway" "run" "--port" "$gateway_port" "--bind" "loopback")
+else
+  entrypoint="$repo/openclaw.mjs"
+  if [[ ! -f "$entrypoint" ]]; then
+    entrypoint="$repo/dist/index.js"
+  fi
+  gateway_cli_args=("$node_bin" "$entrypoint")
+  gateway_args=("$node_bin" "$entrypoint" "gateway" "run" "--port" "$gateway_port" "--bind" "loopback")
+fi
+
+run_gateway_rpc() {
+  local method="$1"
+  local params="$2"
+  env "${gateway_env[@]}" "${gateway_cli_args[@]}" \
+    gateway call "$method" \
+    --params "$params" \
+    --timeout 5000 \
+    --json
+}
+
+verify_no_active_wizard() (
+  local start_disposition start_result start_state status_result session_id=""
+
+  # Invoked indirectly by the EXIT/INT/TERM traps below.
+  # shellcheck disable=SC2329
+  cleanup_wizard_probe() {
+    local cancel_result original_status=$?
+    trap - EXIT INT TERM
+    if [[ -n "$session_id" ]]; then
+      if ! cancel_result="$(run_gateway_rpc "wizard.cancel" "{\"sessionId\":\"$session_id\"}")"; then
+        log "wizard readiness probe could not cancel session $session_id"
+        original_status=1
+      elif ! printf '%s' "$cancel_result" | "$node_bin" -e '
+        let input = "";
+        process.stdin.setEncoding("utf8");
+        process.stdin.on("data", (chunk) => { input += chunk; });
+        process.stdin.on("end", () => {
+          const result = JSON.parse(input);
+          process.exit(result.status === "cancelled" ? 0 : 1);
+        });
+      '; then
+        log "wizard readiness probe cancellation was not confirmed for session $session_id"
+        original_status=1
+      fi
+    fi
+    exit "$original_status"
+  }
+
+  trap cleanup_wizard_probe EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  if ! start_result="$(run_gateway_rpc "wizard.start" '{"mode":"local"}')"; then
+    log "wizard readiness probe could not start; another wizard may already be running"
+    return 1
+  fi
+  # The JavaScript template expression belongs to Node, not this shell.
+  # shellcheck disable=SC2016
+  if ! start_state="$(printf '%s' "$start_result" | "$node_bin" -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const result = JSON.parse(input);
+      if (result.done === true && result.status === "done") {
+        process.stdout.write("completed");
+        return;
+      }
+      if (
+        result.done === false &&
+        result.status === "running" &&
+        typeof result.sessionId === "string" &&
+        result.sessionId.length > 0
+      ) {
+        process.stdout.write(`running ${result.sessionId}`);
+        return;
+      }
+      process.exitCode = 1;
+    });
+  ')"; then
+    log "wizard readiness probe returned an unexpected start result"
+    return 1
+  fi
+  read -r start_disposition session_id <<<"$start_state"
+  if [[ "$start_disposition" == "completed" ]]; then
+    return 0
+  fi
+  if ! status_result="$(run_gateway_rpc "wizard.status" "{\"sessionId\":\"$session_id\"}")"; then
+    log "wizard readiness probe could not verify session $session_id"
+    return 1
+  fi
+  if ! printf '%s' "$status_result" | "$node_bin" -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const result = JSON.parse(input);
+      process.exit(result.status === "running" ? 0 : 1);
+    });
+  '; then
+    log "wizard readiness probe did not enter the running state"
+    return 1
+  fi
+
+  return 0
+)
+
+if [[ "$foreground" == "1" ]]; then
+  log "running gateway in foreground"
+  cd "$repo"
+  env "${gateway_env[@]}" "${gateway_args[@]}"
+  exit $?
+fi
+
+log "starting OpenClaw gateway from $repo"
+cd "$repo"
+arm_startup_cleanup
+run_detached env "${gateway_env[@]}" "${gateway_args[@]}" >"$log_dir/gateway.log" 2>"$log_dir/gateway.err.log"
+printf '%s\n' "$!" >"$gateway_pid_file"
+log "registering browser proxy route with shared daemon"
+register_browser_proxy_route
+
+ready=0
+for _ in {1..2000}; do
+  if curl -fsS --max-time 1 "http://127.0.0.1:$gateway_port/readyz" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  if curl -fsS --max-time 1 "http://127.0.0.1:$gateway_port/healthz" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  if ! pid_running "$(read_pid_file "$gateway_pid_file")"; then
+    break
+  fi
+  sleep 0.15
+done
+
+if [[ "$ready" != "1" ]]; then
+  log "gateway did not become ready; recent stderr follows"
+  tail -80 "$log_dir/gateway.err.log" >&2 || true
+  stop_all
+  exit 1
+fi
+
+if ! wait_for_port_owner "$gateway_port" "$gateway_pid_file" "gateway"; then
+  stop_all
+  exit 1
+fi
+
+if ! wait_for_port_owner "$proxy_port" "$shared_proxy_pid_file" "browser proxy"; then
+  stop_all
+  exit 1
+fi
+
+if ! wait_for_http_health "http://127.0.0.1:$gateway_port/healthz" "gateway"; then
+  stop_all
+  exit 1
+fi
+
+if ! wait_for_http_health "http://127.0.0.1:$proxy_port/healthz" "browser proxy"; then
+  stop_all
+  exit 1
+fi
+
+log "verifying no wizard session is active"
+if ! verify_no_active_wizard; then
+  stop_all
+  exit 1
+fi
+
+dashboard_url="http://localhost:$proxy_port/"
+log "dashboard: $dashboard_url"
+
+{
+  write_env_var OPENCLAW_LOCAL_TEST_STATE_DIR "$state_dir"
+  write_env_var OPENCLAW_LOCAL_TEST_GATEWAY_PORT "$gateway_port"
+  write_env_var OPENCLAW_LOCAL_TEST_PROXY_PORT "$proxy_port"
+  write_env_var OPENCLAW_LOCAL_TEST_PROVIDER_ID "$provider_id"
+  write_env_var OPENCLAW_LOCAL_TEST_MODEL_ID "$model_id"
+  write_env_var OPENCLAW_LOCAL_TEST_BROWSER "$browser_app"
+  write_env_var OPENCLAW_LOCAL_TEST_TTL "$ttl"
+  write_env_var OPENCLAW_LOCAL_TEST_STARTED_AT "$started_at"
+  write_env_var OPENCLAW_LOCAL_TEST_EXPIRES_AT "$expires_at"
+} >"$instance_file"
+
+if [[ "$ttl_seconds" != "0" ]]; then
+  script_dir="$(cd -- "$(dirname -- "$0")" && pwd)"
+  script_path="$script_dir/$(basename -- "$0")"
+  log "lease expires at $(format_epoch "$expires_at")"
+  # Positional parameters expand in the child shell.
+  # shellcheck disable=SC2016
+  run_detached bash -c '
+    ttl_seconds="$1"
+    script_path="$2"
+    state_dir="$3"
+    log_path="$4"
+    sleep "$ttl_seconds"
+    OPENCLAW_LOCAL_TEST_FROM_WATCHDOG=1 "$script_path" --state-dir "$state_dir" --stop >>"$log_path" 2>&1
+  ' _ "$ttl_seconds" "$script_path" "$state_dir" "$log_dir/watchdog.log"
+  printf '%s\n' "$!" >"$watchdog_pid_file"
+else
+  rm -f "$watchdog_pid_file"
+  log "lease disabled; remember to run: $script_name --state-dir \"$state_dir\" --stop"
+fi
+
+disarm_startup_cleanup
+
+if [[ "$open_browser" == "1" ]]; then
+  open -a "$browser_app" "$dashboard_url"
+fi
+
+status
