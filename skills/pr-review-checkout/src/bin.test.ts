@@ -465,6 +465,34 @@ exit 99
         { cwd: repository, encoding: "utf8" }
       )
       assert.strictEqual(removedTrackingRef.status, 1, removedTrackingRef.stderr)
+
+      git(repository, ["update-ref", "refs/remotes/agent-pr-review/pr-43/head", "pr-tip"])
+      git(repository, ["config", `branch.${deletedHeadBranch}.remote`, "."])
+      git(repository, [
+        "config",
+        `branch.${deletedHeadBranch}.merge`,
+        "refs/remotes/agent-pr-review/pr-43/head"
+      ])
+      git(repository, ["commit", "--quiet", "--allow-empty", "--message", "restored fork tip"])
+      git(repository, ["branch", "--force", "pr-tip", "HEAD"])
+      const restoredForkResult = spawnSync(executable, ["43"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_CROSS: "true",
+          PR_REVIEW_HEAD: "fork/restored-head",
+          PR_REVIEW_TEST_LOG: ghLog,
+          PR_REVIEW_URL: basePullRequestUrl
+        }
+      })
+      assert.strictEqual(restoredForkResult.status, 0, restoredForkResult.stderr)
+      assert.strictEqual(
+        git(deletedHeadWorktree, ["rev-parse", "@{upstream}"]),
+        git(repository, ["rev-parse", "pr-tip"])
+      )
       git(repository, ["worktree", "remove", deletedHeadWorktree])
       git(repository, ["branch", "--delete", "--force", deletedHeadBranch])
     } finally {

@@ -527,6 +527,14 @@ export const ReviewToolsLive = Layer.effect(
         ["config", "--get", `branch.${managedBranch}.merge`],
         input.repository
       ).pipe(Effect.catchTag("ExternalToolError", () => Effect.succeed("")))
+      if (mergeRef.trim() === pullRefTrackingRef(input.prNumber)) {
+        yield* runChecked(
+          "git",
+          ["update-ref", pullRefTrackingRef(input.prNumber), "HEAD"],
+          input.path
+        )
+        return
+      }
       if (mergeRef.trim().startsWith("refs/heads/")) {
         yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
       }
