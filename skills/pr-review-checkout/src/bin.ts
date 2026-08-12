@@ -17,13 +17,9 @@ const prReview = Command.make(
 
 const Live = ReviewToolsLive.pipe(Layer.provideMerge(NodeServices.layer))
 
-const externalErrorMessage = (error: ExternalToolError) => {
-  const stderr = error.stderr?.trimEnd()
-  if (stderr !== undefined && stderr.length > 0) {
-    return stderr
-  }
-  return error.cause instanceof Error ? error.cause.message : error.operation
-}
+const reportExternalError = (error: ExternalToolError) => error.stderr !== undefined
+  ? Effect.sync(() => globalThis.process.stderr.write(error.stderr ?? ""))
+  : Console.error(error.cause instanceof Error ? error.cause.message : error.operation)
 
 prReview.pipe(
   Command.run({ version: "1.0.0" }),
@@ -34,9 +30,9 @@ prReview.pipe(
     if (CliError.isCliError(failure)) {
       return Effect.void
     }
-    return Console.error(
-      failure instanceof ExternalToolError ? externalErrorMessage(failure) : Cause.pretty(cause)
-    )
+    return failure instanceof ExternalToolError
+      ? reportExternalError(failure)
+      : Console.error(Cause.pretty(cause))
   }),
   NodeRuntime.runMain({ disableErrorReporting: true })
 )

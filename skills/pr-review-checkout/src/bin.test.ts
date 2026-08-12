@@ -81,7 +81,7 @@ describe("pr-review.sh", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-test-"))
     const gh = join(directory, "gh")
     try {
-      writeFileSync(gh, "#!/bin/sh\nprintf 'authentication required\\n' >&2\nexit 4\n")
+      writeFileSync(gh, "#!/bin/sh\nprintf 'authentication required  ' >&2\nexit 4\n")
       chmodSync(gh, 0o755)
       const result = spawnSync(executable, ["--log-level", "error", "42"], {
         encoding: "utf8",
@@ -91,7 +91,27 @@ describe("pr-review.sh", () => {
 
       assert.strictEqual(result.status, 4)
       assert.strictEqual(result.stdout, "")
-      assert.strictEqual(result.stderr, "authentication required\n")
+      assert.strictEqual(result.stderr, "authentication required  ")
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("preserves a subprocess signal as its shell-compatible exit status", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pr-review-signal-test-"))
+    const gh = join(directory, "gh")
+    try {
+      writeFileSync(gh, "#!/bin/sh\nkill -TERM $$\n")
+      chmodSync(gh, 0o755)
+      const result = spawnSync(executable, ["42"], {
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: { ...process.env, PATH: `${directory}:${process.env.PATH ?? ""}` }
+      })
+
+      assert.strictEqual(result.status, 143)
+      assert.strictEqual(result.stdout, "")
+      assert.strictEqual(result.stderr, "")
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }

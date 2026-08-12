@@ -14,7 +14,8 @@ import {
   createWorktreeWithRollback,
   parseWorktrees,
   pullRequestCheckoutArgs,
-  repositoryIdentity
+  repositoryIdentity,
+  signalExitCode
 } from "./ReviewToolsLive.ts"
 
 interface TestToolsOptions {
@@ -211,6 +212,13 @@ describe("authenticatedGitArgs", () => {
       "origin",
       "pull/42/head"
     ])
+  })
+})
+
+describe("signalExitCode", () => {
+  it("maps platform signal failures to shell-compatible statuses", () => {
+    assert.strictEqual(signalExitCode(new Error("Process interrupted due to receipt of signal: 'SIGTERM'")), 143)
+    assert.isUndefined(signalExitCode(new Error("not a signal failure")))
   })
 })
 

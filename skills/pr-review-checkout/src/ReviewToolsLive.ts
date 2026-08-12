@@ -1,4 +1,5 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
+import { constants as osConstants } from "node:os"
 import {
   Cause,
   Crypto,
@@ -20,6 +21,27 @@ interface CommandResult {
   readonly exitCode: number
   readonly stderr: string
   readonly stdout: string
+}
+
+export const signalExitCode = (cause: unknown) => {
+  const messages: Array<string> = []
+  let current: unknown = cause
+  for (let depth = 0; depth < 4 && current !== undefined; depth += 1) {
+    messages.push(current instanceof Error ? current.message : globalThis.String(current))
+    if (current instanceof PlatformError.PlatformError && "cause" in current.reason) {
+      current = current.reason.cause
+    } else if (typeof current === "object" && current !== null && "cause" in current) {
+      current = current.cause
+    } else {
+      current = undefined
+    }
+  }
+  const signal = messages.flatMap((message) => /signal: '([^']+)'/.exec(message)?.[1] ?? []).at(0)
+  if (signal === undefined) {
+    return undefined
+  }
+  const number = osConstants.signals[signal as keyof typeof osConstants.signals]
+  return number === undefined ? undefined : 128 + number
 }
 
 export class ManagedWorktreeOwner extends Schema.Class<ManagedWorktreeOwner>(
@@ -64,7 +86,7 @@ const run = Effect.fn("ReviewTools.run")(function*(
     )
     const result = yield* Effect.all(
       {
-        exitCode: handle.exitCode,
+        exitCode: Effect.exit(handle.exitCode),
         stderr: Stream.mkString(Stream.decodeText(handle.stderr)),
         stdout: Stream.mkString(Stream.decodeText(handle.stdout))
       },
@@ -72,7 +94,21 @@ const run = Effect.fn("ReviewTools.run")(function*(
     ).pipe(
       Effect.mapError((cause) => new ExternalToolError({ cause, operation: `${executable} ${args.join(" ")}` }))
     )
-    return result satisfies CommandResult
+    if (Exit.isFailure(result.exitCode)) {
+      const cause = Cause.squash(result.exitCode.cause)
+      const exitCode = signalExitCode(cause)
+      return yield* new ExternalToolError({
+        cause,
+        ...(exitCode === undefined ? {} : { exitCode }),
+        stderr: result.stderr,
+        operation: `${executable} ${args.join(" ")}`
+      })
+    }
+    return {
+      exitCode: result.exitCode.value,
+      stderr: result.stderr,
+      stdout: result.stdout
+    } satisfies CommandResult
   }))
 })
 
