@@ -8,6 +8,7 @@ import {
   Layer,
   Option,
   Path,
+  PlatformError,
   Schema,
   Stream,
   String
@@ -51,7 +52,14 @@ const run = Effect.fn("ReviewTools.run")(function*(
   return yield* Effect.scoped(Effect.gen(function*() {
     const command = ChildProcess.make(executable, args, cwd === undefined ? undefined : { cwd })
     const handle = yield* spawner.spawn(command).pipe(
-      Effect.mapError((cause) => new ExternalToolError({ cause, operation: `${executable} ${args.join(" ")}` }))
+      Effect.mapError((cause) => {
+        const notFound = cause instanceof PlatformError.PlatformError && cause.reason._tag === "NotFound"
+        return new ExternalToolError({
+          cause: notFound ? new Error(`${executable}: command not found`) : cause,
+          ...(notFound ? { exitCode: 127 } : {}),
+          operation: `${executable} ${args.join(" ")}`
+        })
+      })
     )
     const result = yield* Effect.all(
       {

@@ -97,6 +97,22 @@ describe("pr-review.sh", () => {
     }
   })
 
+  it("preserves the shell command-not-found exit status", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pr-review-missing-command-test-"))
+    try {
+      const result = spawnSync(process.execPath, [fileURLToPath(new URL("./bin.ts", import.meta.url)), "--", "42"], {
+        encoding: "utf8",
+        env: { ...process.env, PATH: directory }
+      })
+
+      assert.strictEqual(result.status, 127)
+      assert.strictEqual(result.stdout, "")
+      assert.strictEqual(result.stderr, "gh: command not found\n")
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
   it("does not reset an unattached local branch with the PR head name", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-branch-test-"))
     const repository = join(directory, "repo")
