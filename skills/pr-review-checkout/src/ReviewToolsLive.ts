@@ -540,23 +540,18 @@ export const ReviewToolsLive = Layer.effect(
       if (!input.isCrossRepository) {
         return yield* restoreManagedBranchHeadTracking(input, managedBranch)
       }
-
-      const mergeRef = yield* runChecked(
+      const trackingRef = pullRefTrackingRef(input.prNumber)
+      yield* runChecked("git", ["update-ref", trackingRef, "HEAD"], input.path)
+      yield* runChecked(
         "git",
-        ["config", "--get", `branch.${managedBranch}.merge`],
+        ["config", `branch.${managedBranch}.remote`, "."],
         input.repository
-      ).pipe(Effect.catchTag("ExternalToolError", () => Effect.succeed("")))
-      if (mergeRef.trim() === pullRefTrackingRef(input.prNumber)) {
-        yield* runChecked(
-          "git",
-          ["update-ref", pullRefTrackingRef(input.prNumber), "HEAD"],
-          input.path
-        )
-        return
-      }
-      if (mergeRef.trim().startsWith("refs/heads/")) {
-        yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
-      }
+      )
+      yield* runChecked(
+        "git",
+        ["config", `branch.${managedBranch}.merge`, trackingRef],
+        input.repository
+      )
     })
     const validateManagedCheckout = Effect.fn("ReviewTools.validateManagedCheckout")(function*(
       input: PrepareManagedWorktreeInput,

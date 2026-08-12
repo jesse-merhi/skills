@@ -271,7 +271,7 @@ exit 99
       assert.strictEqual(forkRenameResult.status, 0, forkRenameResult.stderr)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/pull/42/head"
+        "refs/remotes/agent-pr-review/pr-42/head"
       )
 
       git(repository, ["config", `branch.${managedBranch}.merge`, "refs/heads/fork/renamed-again"])
@@ -290,7 +290,7 @@ exit 99
       assert.strictEqual(configuredForkRenameResult.status, 0, configuredForkRenameResult.stderr)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/heads/fork/final-name"
+        "refs/remotes/agent-pr-review/pr-42/head"
       )
 
       const commitBeforeFailedRefresh = git(managedWorktree, ["rev-parse", "HEAD"])
@@ -507,6 +507,68 @@ exit 99
       rmSync(directory, { force: true, recursive: true })
     }
   }, 15_000)
+
+  it("configures a valid helper upstream for a fresh cross-repository checkout", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pr-review-cross-upstream-test-"))
+    const repository = join(directory, "repo")
+    const forkRepository = join(directory, "fork.git")
+    const binaries = join(directory, "bin")
+    const gh = join(binaries, "gh")
+    const code = join(binaries, "code")
+    try {
+      git(directory, ["init", "--quiet", "--initial-branch", "main", repository])
+      git(repository, ["config", "user.name", "Test"])
+      git(repository, ["config", "user.email", "test@example.com"])
+      writeFileSync(join(repository, ".gitignore"), ".worktrees/\n")
+      git(repository, ["add", ".gitignore"])
+      git(repository, ["commit", "--quiet", "--message", "initial"])
+      git(directory, ["clone", "--quiet", "--bare", repository, forkRepository])
+      git(repository, ["remote", "add", "fork", forkRepository])
+      mkdirSync(binaries)
+      writeFileSync(gh, `#!/bin/sh
+set -eu
+if [ "$1 $2" = "pr view" ]; then
+  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/base/pull/42","isCrossRepository":true}'
+  exit 0
+fi
+if [ "$1 $2" = "pr checkout" ]; then
+  shift 3
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --branch) branch="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  git checkout --quiet "$branch"
+  git reset --quiet --hard main
+  exit 0
+fi
+exit 99
+`)
+      writeFileSync(code, "#!/bin/sh\nexit 0\n")
+      chmodSync(gh, 0o755)
+      chmodSync(code, 0o755)
+
+      const result = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: { ...process.env, PATH: `${binaries}:${process.env.PATH ?? ""}` }
+      })
+
+      assert.strictEqual(result.status, 0, result.stderr)
+      const worktree = join(repository, ".worktrees", "pr-42")
+      const managedBranch = git(worktree, ["branch", "--show-current"])
+      assert.strictEqual(git(repository, ["config", "--get", `branch.${managedBranch}.remote`]), ".")
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        "refs/remotes/agent-pr-review/pr-42/head"
+      )
+      assert.strictEqual(git(worktree, ["rev-parse", "@{upstream}"]), git(worktree, ["rev-parse", "HEAD"]))
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
 
   it("rolls back both the worktree and generated branch when checkout fails", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-rollback-test-"))
