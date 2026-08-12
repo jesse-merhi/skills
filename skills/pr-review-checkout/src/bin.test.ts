@@ -604,6 +604,8 @@ exit 99
         "refs/pull/42/head"
       )
       assert.strictEqual(git(worktree, ["rev-parse", "@{upstream}"]), git(worktree, ["rev-parse", "HEAD"]))
+      const fetch = spawnSync("git", ["fetch", managedRemote], { cwd: worktree, encoding: "utf8" })
+      assert.strictEqual(fetch.status, 0, fetch.stderr)
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }

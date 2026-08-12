@@ -17,6 +17,7 @@ import {
   pullRequestCheckoutArgs,
   pullRefTrackingRef,
   repositoryIdentity,
+  repositoryPathIdentity,
   signalExitCode
 } from "./ReviewToolsLive.ts"
 
@@ -201,6 +202,13 @@ describe("repositoryIdentity", () => {
     assert.strictEqual(repositoryIdentity("https://github.com/Example/Private-Repo.git"), expected)
     assert.strictEqual(repositoryIdentity("ssh://git@github.com/example/private-repo.git"), expected)
     assert.strictEqual(repositoryIdentity("git@github.com:example/private-repo.git"), expected)
+  })
+
+  it("matches repository coordinates across SSH host aliases", () => {
+    assert.strictEqual(
+      repositoryPathIdentity("git@github-work:Example/Private-Repo.git"),
+      repositoryPathIdentity("https://github.com/example/private-repo.git")
+    )
   })
 })
 

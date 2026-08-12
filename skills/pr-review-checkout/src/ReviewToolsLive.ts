@@ -189,6 +189,14 @@ export const repositoryIdentity = (value: string) => {
   }
 }
 
+export const repositoryPathIdentity = (value: string) => {
+  const identity = repositoryIdentity(value)
+  if (identity === null || identity.startsWith("file:/")) {
+    return identity
+  }
+  return identity.slice(identity.indexOf("/") + 1)
+}
+
 export const authenticatedGitArgs = (args: ReadonlyArray<string>) => [
   "-c",
   "credential.helper=",
@@ -400,12 +408,16 @@ export const ReviewToolsLive = Layer.effect(
       input: PrepareManagedWorktreeInput
     ) {
       const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
+      const basePathIdentity = repositoryPathIdentity(input.baseRepositoryUrl)
       const remotes = yield* runChecked("git", ["remote"], input.repository).pipe(
         Effect.map((output) => output.split("\n").filter((remote) => remote.length > 0))
       )
       for (const remote of remotes) {
         const remoteUrl = yield* runChecked("git", ["remote", "get-url", remote], input.repository)
-        if (repositoryIdentity(remoteUrl.trim()) === baseIdentity) {
+        if (
+          repositoryIdentity(remoteUrl.trim()) === baseIdentity ||
+          (basePathIdentity !== null && repositoryPathIdentity(remoteUrl.trim()) === basePathIdentity)
+        ) {
           return Option.some(remote)
         }
       }
@@ -521,15 +533,21 @@ export const ReviewToolsLive = Layer.effect(
           input.repository
         ).pipe(Effect.map(String.trim), Effect.option)
         : Option.none<string>()
+      const baseRemote = yield* resolveBaseRemote(input)
+      const baseRemoteUrl = Option.isSome(baseRemote)
+        ? yield* runChecked("git", ["remote", "get-url", baseRemote.value], input.repository).pipe(
+          Effect.map(String.trim)
+        )
+        : input.baseRepositoryUrl
       const remoteUrl = source === "pull-ref"
-        ? input.baseRepositoryUrl
+        ? baseRemoteUrl
         : Option.getOrElse(
           configuredRemoteUrl,
           () => Option.isSome(configuredRemote) && configuredRemote.value !== "." && (
-              configuredRemote.value.includes(":") || configuredRemote.value.includes("/")
+            configuredRemote.value.includes(":") || configuredRemote.value.includes("/")
             )
             ? configuredRemote.value
-            : input.baseRepositoryUrl
+            : baseRemoteUrl
         )
       const sourceRef = source === "pull-ref"
         ? `refs/pull/${input.prNumber}/head`
