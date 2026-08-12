@@ -15,7 +15,7 @@ interface TestToolsOptions {
   readonly existingWorktree: Option.Option<string>
   readonly failDiff?: boolean
   readonly failMergeBase?: boolean
-  readonly hasManagedWorktree?: boolean
+  readonly worktreeCreated?: boolean
 }
 
 const prNumber = Schema.decodeSync(PullRequestNumber)(42)
@@ -27,13 +27,15 @@ const makeTestTools = (options: TestToolsOptions) => {
     checkoutPullRequest: (path) => Effect.sync(() => calls.push(`checkout:${path}`)).pipe(
       Effect.andThen(options.checkout ?? Effect.void)
     ),
-    createWorktree: ({ path }) => Effect.sync(() => calls.push(`create:${path}`)).pipe(Effect.asVoid),
+    ensureWorktree: ({ path }) => Effect.sync(() => {
+      calls.push(`ensure:${path}`)
+      return options.worktreeCreated !== false
+    }),
     diffStat: (_worktree, mergeBase) =>
       options.failDiff === true
         ? Effect.fail(failure("diff"))
         : Effect.succeed(` file.ts | 2 +-${mergeBase}`),
     findBranchWorktree: () => Effect.succeed(options.existingWorktree),
-    hasWorktree: () => Effect.succeed(options.hasManagedWorktree === true),
     mergeBase: () =>
       options.failMergeBase === true
         ? Effect.fail(failure("merge-base"))
@@ -75,11 +77,30 @@ describe("checkoutForReview", () => {
         assert.isTrue(result.created)
         assert.strictEqual(result.worktree, "/repo/.worktrees/pr-42")
         assert.deepStrictEqual(test.calls, [
-          "create:/repo/.worktrees/pr-42",
+          "ensure:/repo/.worktrees/pr-42",
           "checkout:/repo/.worktrees/pr-42",
           "open:/repo/.worktrees/pr-42"
         ])
         assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
+      })
+    )
+  })
+
+  it.effect("rechecks managed-path ownership after acquiring the lock", () => {
+    const test = makeTestTools({
+      existingWorktree: Option.none(),
+      worktreeCreated: false
+    })
+    return checkoutForReview(prNumber).pipe(
+      // @effect-diagnostics-next-line strictEffectProvide:off
+      Effect.provide(test.layer),
+      Effect.map((result) => {
+        assert.isFalse(result.created)
+        assert.deepStrictEqual(test.calls, [
+          "ensure:/repo/.worktrees/pr-42",
+          "checkout:/repo/.worktrees/pr-42",
+          "open:/repo/.worktrees/pr-42"
+        ])
       })
     )
   })
@@ -121,7 +142,7 @@ describe("checkoutForReview", () => {
       yield* Fiber.interrupt(fiber)
 
       assert.deepStrictEqual(test.calls, [
-        "create:/repo/.worktrees/pr-42",
+        "ensure:/repo/.worktrees/pr-42",
         "checkout:/repo/.worktrees/pr-42",
         "remove:/repo/.worktrees/pr-42"
       ])
@@ -197,6 +218,6 @@ describe("PullRequestNumber", () => {
 
 describe("pullRequestCheckoutArgs", () => {
   it("keeps the managed worktree on the named PR branch", () => {
-    assert.deepStrictEqual(pullRequestCheckoutArgs(prNumber), ["pr", "checkout", "42"])
+    assert.deepStrictEqual(pullRequestCheckoutArgs(prNumber), ["pr", "checkout", "42", "--force"])
   })
 })

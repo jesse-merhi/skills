@@ -18,7 +18,7 @@ export class ExternalToolError extends Schema.TaggedError<ExternalToolError>()("
   operation: Schema.String
 }) {}
 
-export interface CreateWorktreeInput {
+export interface EnsureWorktreeInput {
   readonly path: string
   readonly repository: string
 }
@@ -26,12 +26,11 @@ export interface CreateWorktreeInput {
 export class ReviewTools extends Context.Service<ReviewTools, {
   readonly diffStat: (worktree: string, mergeBase: string) => Effect.Effect<string, ExternalToolError>
   readonly findBranchWorktree: (branch: string) => Effect.Effect<Option.Option<string>, ExternalToolError>
-  readonly hasWorktree: (path: string) => Effect.Effect<boolean, ExternalToolError>
   readonly mergeBase: (worktree: string, base: string) => Effect.Effect<string, ExternalToolError>
   readonly openEditor: (worktree: string) => Effect.Effect<void, ExternalToolError>
   readonly pullRequest: (prNumber: PullRequestNumber) => Effect.Effect<PullRequest, ExternalToolError>
   readonly repositoryRoot: Effect.Effect<string, ExternalToolError>
-  readonly createWorktree: (input: CreateWorktreeInput) => Effect.Effect<void, ExternalToolError>
+  readonly ensureWorktree: (input: EnsureWorktreeInput) => Effect.Effect<boolean, ExternalToolError>
   readonly checkoutPullRequest: (
     worktree: string,
     prNumber: PullRequestNumber
@@ -52,14 +51,11 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const repository = yield* tools.repositoryRoot
   const managedWorktreePath = path.join(repository, ".worktrees", `pr-${prNumber}`)
   const branchWorktree = yield* tools.findBranchWorktree(pullRequest.headRefName)
-  const hasManagedWorktree = Option.isNone(branchWorktree) && (yield* tools.hasWorktree(managedWorktreePath))
-  const created = Option.isNone(branchWorktree) && !hasManagedWorktree
   const worktree = Option.getOrElse(branchWorktree, () => managedWorktreePath)
   const managed = worktree === managedWorktreePath
-
-  if (created) {
-    yield* tools.createWorktree({ path: worktree, repository })
-  }
+  const created = Option.isNone(branchWorktree)
+    ? yield* tools.ensureWorktree({ path: worktree, repository })
+    : false
 
   const prepareReview = Effect.gen(function*() {
     if (managed) {

@@ -1,5 +1,5 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
-import { Effect, Exit, Layer, Option, Schema, Stream, String } from "effect"
+import { Effect, Exit, FileSystem, Layer, Option, Path, Schema, Stream, String } from "effect"
 import { PullRequest, ExternalToolError, ReviewTools } from "./PrReview.ts"
 import type { PullRequestNumber } from "./PrReview.ts"
 
@@ -71,13 +71,15 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
 )
 
 export const pullRequestCheckoutArgs = (prNumber: PullRequestNumber) =>
-  ["pr", "checkout", globalThis.String(prNumber)] as const
+  ["pr", "checkout", globalThis.String(prNumber), "--force"] as const
 
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
 
 export const ReviewToolsLive = Layer.effect(
   ReviewTools,
   Effect.gen(function*() {
+    const fileSystem = yield* FileSystem.FileSystem
+    const pathService = yield* Path.Path
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const runChecked = (executable: string, args: ReadonlyArray<string>, cwd?: string) =>
       checked(spawner, executable, args, cwd)
@@ -88,12 +90,29 @@ export const ReviewToolsLive = Layer.effect(
       checkoutPullRequest: Effect.fn("ReviewTools.checkoutPullRequest")((worktree, prNumber) =>
         Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(prNumber), worktree))
       ),
-      createWorktree: Effect.fn("ReviewTools.createWorktree")(({ path, repository }) =>
-        createWorktreeWithRollback(
-          Effect.asVoid(runChecked("git", ["worktree", "add", "--detach", path], repository)),
-          removeWorktree(repository, path).pipe(Effect.ignore)
+      ensureWorktree: Effect.fn("ReviewTools.ensureWorktree")(function*({ path, repository }) {
+        const lockPath = `${path}.lock`
+        yield* fileSystem.makeDirectory(pathService.dirname(path), { recursive: true }).pipe(
+          Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create worktree parent directory" }))
         )
-      ),
+        return yield* Effect.acquireUseRelease(
+          fileSystem.makeDirectory(lockPath).pipe(
+            Effect.mapError((cause) => new ExternalToolError({ cause, operation: `acquire ${lockPath}` }))
+          ),
+          () => Effect.gen(function*() {
+            const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
+            if (parseWorktrees(output).some((entry) => entry.worktree === path)) {
+              return false
+            }
+            yield* createWorktreeWithRollback(
+              Effect.asVoid(runChecked("git", ["worktree", "add", "--detach", path], repository)),
+              removeWorktree(repository, path).pipe(Effect.ignore)
+            )
+            return true
+          }),
+          () => fileSystem.remove(lockPath, { force: true }).pipe(Effect.ignore)
+        )
+      }),
       diffStat: Effect.fn("ReviewTools.diffStat")((worktree, mergeBase) =>
         runChecked("git", ["diff", "--stat", `${mergeBase}...HEAD`], worktree)
       ),
@@ -102,10 +121,6 @@ export const ReviewToolsLive = Layer.effect(
         return Option.fromNullishOr(
           parseWorktrees(output).find((entry) => entry.branch === `refs/heads/${branch}`)?.worktree
         )
-      }),
-      hasWorktree: Effect.fn("ReviewTools.hasWorktree")(function*(path) {
-        const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
-        return parseWorktrees(output).some((entry) => entry.worktree === path)
       }),
       mergeBase: Effect.fn("ReviewTools.mergeBase")((worktree, base) =>
         runChecked("git", ["merge-base", `origin/${base}`, "HEAD"], worktree).pipe(Effect.map(String.trim))

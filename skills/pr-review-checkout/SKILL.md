@@ -62,7 +62,9 @@ one exists, or creates a dedicated `.worktrees/pr-<n>` worktree otherwise. The
 helper lets `gh pr checkout` attach its managed worktree to the PR's named branch
 so VS Code can recognize the active pull request, then opens that folder and
 prints the PR's net diff summary. Running the helper again refreshes a managed
-worktree before opening it.
+worktree before opening it, including after the PR branch is force-pushed. This
+reset applies only to the helper-owned `.worktrees/pr-<n>` path; an existing
+developer worktree is reused without resetting it.
 
 A branch can be checked out in only one worktree. Never check an in-flight PR
 branch out in the main repository or a second worktree.
