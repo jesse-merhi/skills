@@ -1,0 +1,26 @@
+{
+  "name": "@jesse-merhi/skills",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "diagnostics": "effect-language-service diagnostics --project tsconfig.json --strict",
+    "test": "vitest run",
+    "validate:effect": "pnpm check && pnpm diagnostics && pnpm test"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.107",
+    "effect": "4.0.0-beta.107"
+  },
+  "devDependencies": {
+    "@effect/language-service": "0.87.2",
+    "@effect/vitest": "4.0.0-beta.107",
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

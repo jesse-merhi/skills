@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+ignoredOptionalDependencies:
+  - "msgpackr-extract"
+allowBuilds:
+  msgpackr-extract: set this to true or false

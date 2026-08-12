@@ -28,7 +28,16 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+          run_install: false
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Set up Rust
         run: rustup default stable
@@ -39,6 +48,7 @@ jobs:
           ./tests/review-findings-test
           python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py'
           python3 -m unittest discover -s skills/wait-efficiently/scripts -p 'test_*.py'
+          pnpm validate:effect
 
       - name: Check shell, Python, and JavaScript syntax
         run: |
@@ -50,7 +60,8 @@ jobs:
             skills/code-review/scripts/install-review-findings \
             skills/code-review/scripts/check-review-models \
             skills/code-review/scripts/calibrate-structured-review \
-            skills/code-review/scripts/test-codex-review-helper
+            skills/code-review/scripts/test-codex-review-helper \
+            skills/pr-review-checkout/scripts/pr-review.sh
           python3 -m py_compile \
             skills/code-review/scripts/*.py \
             skills/openclaw/openclaw-stg-test/scripts/openclaw-stg-test \

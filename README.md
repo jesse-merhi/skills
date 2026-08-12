@@ -147,11 +147,12 @@ Run:
 ```sh
 ./tests/skills-test
 ./tests/review-findings-test
+pnpm validate:effect
 ```
 
-The tests check skill frontmatter, handoff tmux helper behavior, and the
-review-findings CLI lifecycle. CI also checks shell, Python, JavaScript, and
-Rust helper syntax/builds.
+The tests check skill frontmatter, handoff tmux helper behavior, the
+review-findings CLI lifecycle, and Effect-based TypeScript helpers. CI also
+checks shell, Python, JavaScript, and Rust helper syntax/builds.
 
 ## License
 

@@ -101,3 +101,9 @@ resource lifecycle, and graceful shutdown.
 - No decorative comment separators (`=====`, `-----`) in code.
 - E2E and Maestro test workflows stay manually triggered. Do not add
   automatic triggers.
+
+## Effect code
+
+Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
+completely. Resolve API questions against the exact installed package source;
+the v4 APIs used here include prerelease `effect/unstable/*` modules.
