@@ -27,6 +27,7 @@ export class ExternalToolError extends Schema.TaggedError<ExternalToolError>()("
 
 export interface PrepareManagedWorktreeInput {
   readonly headRefName: string
+  readonly isCrossRepository: boolean
   readonly path: string
   readonly prNumber: PullRequestNumber
   readonly repository: string
@@ -69,6 +70,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const preparation = managed
     ? yield* tools.prepareManagedWorktree({
       headRefName: pullRequest.headRefName,
+      isCrossRepository: pullRequest.isCrossRepository,
       path: worktree,
       prNumber,
       repository

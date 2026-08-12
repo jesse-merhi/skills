@@ -341,7 +341,9 @@ export const ReviewToolsLive = Layer.effect(
               const owner = yield* validateOwner(input)
               yield* validateManagedCheckout(input, owner.managedBranch)
               yield* checkoutPullRequest(input, owner.managedBranch, true)
-              yield* updateManagedBranchMerge(input.repository, owner.managedBranch, input.headRefName)
+              if (!input.isCrossRepository) {
+                yield* updateManagedBranchMerge(input.repository, owner.managedBranch, input.headRefName)
+              }
               yield* writeOwner(input, owner.managedBranch)
               return { branch: owner.managedBranch, created: false }
             }
@@ -355,7 +357,9 @@ export const ReviewToolsLive = Layer.effect(
                 yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
                 yield* writeOwner(input, managedBranch)
                 yield* checkoutPullRequest(input, managedBranch, false)
-                yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+                if (!input.isCrossRepository) {
+                  yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+                }
                 return { branch: managedBranch, created: true }
               }),
               removeWorktree(input.repository, input.path).pipe(

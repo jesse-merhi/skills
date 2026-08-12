@@ -123,7 +123,8 @@ set -eu
 printf '%s\n' "$*" >> "$PR_REVIEW_TEST_LOG"
 if [ "$1 $2" = "pr view" ]; then
   head_ref="\${PR_REVIEW_HEAD:-feature/review}"
-  printf '{"headRefName":"%s","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}\n' "$head_ref"
+  cross="\${PR_REVIEW_CROSS:-false}"
+  printf '{"headRefName":"%s","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":%s}\n' "$head_ref" "$cross"
   exit 0
 fi
 if [ "$1 $2" = "pr checkout" ]; then
@@ -198,6 +199,25 @@ exit 99
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
         "refs/heads/feature/renamed"
+      )
+
+      git(repository, ["config", `branch.${managedBranch}.merge`, "refs/pull/42/head"])
+      const forkRenameResult = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_CROSS: "true",
+          PR_REVIEW_HEAD: "fork/renamed-again",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(forkRenameResult.status, 0, forkRenameResult.stderr)
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        "refs/pull/42/head"
       )
 
       writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")

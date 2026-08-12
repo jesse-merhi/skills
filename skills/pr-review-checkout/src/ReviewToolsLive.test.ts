@@ -33,6 +33,7 @@ describe("ReviewToolsLive.prepareManagedWorktree", () => {
         const tools = yield* ReviewTools
         const error = yield* tools.prepareManagedWorktree({
           headRefName: "feature/review",
+          isCrossRepository: false,
           path: managedPath,
           prNumber: Schema.decodeSync(PullRequestNumber)(42),
           repository
