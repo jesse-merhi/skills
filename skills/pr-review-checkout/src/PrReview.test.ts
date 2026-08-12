@@ -17,7 +17,10 @@ import {
   pullRequestCheckoutArgs,
   pullRefTrackingRef,
   repositoryIdentity,
+  repositoryHost,
   repositoryPathIdentity,
+  isVerifiedRepositoryAlias,
+  sshResolvedHost,
   signalExitCode
 } from "./ReviewToolsLive.ts"
 
@@ -209,6 +212,23 @@ describe("repositoryIdentity", () => {
       repositoryPathIdentity("git@github-work:Example/Private-Repo.git"),
       repositoryPathIdentity("https://github.com/example/private-repo.git")
     )
+  })
+
+  it("distinguishes SSH aliases from unrelated same-path mirrors", () => {
+    assert.strictEqual(repositoryHost("git@github-work:Example/Private-Repo.git"), "github-work")
+    assert.strictEqual(repositoryHost("https://github.com/example/private-repo.git"), "github.com")
+    assert.strictEqual(sshResolvedHost("host github-work\nhostname github.com\nuser git\n"), "github.com")
+    assert.strictEqual(sshResolvedHost("host github-work\nuser git\n"), null)
+    assert.isTrue(isVerifiedRepositoryAlias(
+      "https://github.com/example/private-repo.git",
+      "git@github-work:example/private-repo.git",
+      "github.com"
+    ))
+    assert.isFalse(isVerifiedRepositoryAlias(
+      "https://github.com/example/private-repo.git",
+      "git@mirror.test:example/private-repo.git",
+      "mirror.test"
+    ))
   })
 })
 

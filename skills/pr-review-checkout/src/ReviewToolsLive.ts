@@ -197,6 +197,43 @@ export const repositoryPathIdentity = (value: string) => {
   return identity.slice(identity.indexOf("/") + 1)
 }
 
+export const repositoryHost = (value: string) => {
+  const scp = value.includes("://") ? null : /^(?:[^@]+@)?([^:]+):.+$/.exec(value)
+  const scpHost = scp?.[1]
+  if (scpHost !== undefined) {
+    return scpHost.toLowerCase()
+  }
+  try {
+    const url = new URL(value)
+    return url.protocol === "ssh:" ? url.hostname.toLowerCase() :
+      url.protocol === "http:" || url.protocol === "https:" ? url.hostname.toLowerCase() : null
+  } catch {
+    return null
+  }
+}
+
+export const isSshRepository = (value: string) =>
+  (!value.includes("://") && /^(?:[^@]+@)?[^:]+:.+$/.test(value)) || value.startsWith("ssh://")
+
+export const sshResolvedHost = (configuration: string) => {
+  for (const line of configuration.split("\n")) {
+    const match = /^hostname\s+(.+)$/i.exec(line.trim())
+    if (match?.[1] !== undefined) {
+      return match[1].toLowerCase()
+    }
+  }
+  return null
+}
+
+export const isVerifiedRepositoryAlias = (
+  baseUrl: string,
+  candidateUrl: string,
+  resolvedCandidateHost: string
+) => isSshRepository(candidateUrl) &&
+  repositoryHost(baseUrl) === resolvedCandidateHost.toLowerCase() &&
+  repositoryPathIdentity(baseUrl) !== null &&
+  repositoryPathIdentity(candidateUrl) === repositoryPathIdentity(baseUrl)
+
 export const authenticatedGitArgs = (args: ReadonlyArray<string>) => [
   "-c",
   "credential.helper=",
@@ -408,17 +445,40 @@ export const ReviewToolsLive = Layer.effect(
       input: PrepareManagedWorktreeInput
     ) {
       const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
-      const basePathIdentity = repositoryPathIdentity(input.baseRepositoryUrl)
+      const baseHost = repositoryHost(input.baseRepositoryUrl)
       const remotes = yield* runChecked("git", ["remote"], input.repository).pipe(
         Effect.map((output) => output.split("\n").filter((remote) => remote.length > 0))
       )
-      for (const remote of remotes) {
-        const remoteUrl = yield* runChecked("git", ["remote", "get-url", remote], input.repository)
-        if (
-          repositoryIdentity(remoteUrl.trim()) === baseIdentity ||
-          (basePathIdentity !== null && repositoryPathIdentity(remoteUrl.trim()) === basePathIdentity)
-        ) {
-          return Option.some(remote)
+      const remoteUrls = yield* Effect.forEach(remotes, (remote) =>
+        runChecked("git", ["remote", "get-url", remote], input.repository).pipe(
+          Effect.map((url) => ({ remote, url: url.trim() }))
+        ))
+      for (const candidate of remoteUrls) {
+        if (repositoryIdentity(candidate.url) === baseIdentity) {
+          return Option.some(candidate.remote)
+        }
+      }
+      if (baseHost !== null) {
+        for (const candidate of remoteUrls) {
+          if (!isSshRepository(candidate.url)) {
+            continue
+          }
+          const candidateHost = repositoryHost(candidate.url)
+          if (candidateHost === null) {
+            continue
+          }
+          const configuration = yield* runChecked("ssh", ["-G", candidateHost], input.repository).pipe(Effect.option)
+          const resolvedHost = Option.isSome(configuration) ? sshResolvedHost(configuration.value) : null
+          if (
+            resolvedHost !== null &&
+            isVerifiedRepositoryAlias(
+              input.baseRepositoryUrl,
+              candidate.url,
+              resolvedHost
+            )
+          ) {
+            return Option.some(candidate.remote)
+          }
         }
       }
       return Option.none<string>()
