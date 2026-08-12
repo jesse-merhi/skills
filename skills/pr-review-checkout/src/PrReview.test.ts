@@ -8,7 +8,7 @@ import {
   PullRequestNumber,
   ReviewTools
 } from "./PrReview.ts"
-import { parseWorktrees } from "./ReviewToolsLive.ts"
+import { createWorktreeWithRollback, parseWorktrees } from "./ReviewToolsLive.ts"
 
 interface TestToolsOptions {
   readonly checkout?: Effect.Effect<void, ExternalToolError>
@@ -169,6 +169,22 @@ describe("parseWorktrees", () => {
       { branch: null, worktree: "/repo/.worktrees/pr-42" }
     ])
   })
+})
+
+describe("createWorktreeWithRollback", () => {
+  it.effect("installs rollback before worktree creation can be interrupted", () =>
+    Effect.gen(function*() {
+      const creationStarted = yield* Deferred.make<void>()
+      const calls: Array<string> = []
+      const create = Deferred.succeed(creationStarted, undefined).pipe(Effect.andThen(Effect.never))
+      const rollback = Effect.sync(() => calls.push("rollback")).pipe(Effect.asVoid)
+      const fiber = yield* createWorktreeWithRollback(create, rollback).pipe(Effect.forkChild)
+
+      yield* Deferred.await(creationStarted)
+      yield* Fiber.interrupt(fiber)
+
+      assert.deepStrictEqual(calls, ["rollback"])
+    }))
 })
 
 describe("PullRequestNumber", () => {

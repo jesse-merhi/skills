@@ -1,5 +1,5 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
-import { Effect, Layer, Option, Path, Schema, Stream, String } from "effect"
+import { Effect, Exit, Layer, Option, Schema, Stream, String } from "effect"
 import { PullRequest, ExternalToolError, ReviewTools } from "./PrReview.ts"
 
 interface CommandResult {
@@ -62,22 +62,33 @@ export const parseWorktrees = (output: string): ReadonlyArray<WorktreeRecord> =>
     return worktree === undefined ? [] : [{ branch: branch ?? null, worktree }]
   })
 
+export const createWorktreeWithRollback = <A, E, R, R2>(
+  create: Effect.Effect<A, E, R>,
+  rollback: Effect.Effect<void, never, R2>
+) => create.pipe(
+  Effect.onExit((exit) => Exit.isFailure(exit) ? rollback : Effect.void)
+)
+
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
 
 export const ReviewToolsLive = Layer.effect(
   ReviewTools,
   Effect.gen(function*() {
-    const path = yield* Path.Path
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const runChecked = (executable: string, args: ReadonlyArray<string>, cwd?: string) =>
       checked(spawner, executable, args, cwd)
+    const removeWorktree = (repository: string, worktree: string) =>
+      Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
 
     return ReviewTools.of({
       checkoutPullRequest: Effect.fn("ReviewTools.checkoutPullRequest")((worktree, prNumber) =>
         Effect.asVoid(runChecked("gh", ["pr", "checkout", globalThis.String(prNumber), "--detach"], worktree))
       ),
       createWorktree: Effect.fn("ReviewTools.createWorktree")(({ path, repository }) =>
-        Effect.asVoid(runChecked("git", ["worktree", "add", "--detach", path], repository))
+        createWorktreeWithRollback(
+          Effect.asVoid(runChecked("git", ["worktree", "add", "--detach", path], repository)),
+          removeWorktree(repository, path).pipe(Effect.ignore)
+        )
       ),
       diffStat: Effect.fn("ReviewTools.diffStat")((worktree, mergeBase) =>
         runChecked("git", ["diff", "--stat", `${mergeBase}...HEAD`], worktree)
@@ -110,12 +121,18 @@ export const ReviewToolsLive = Layer.effect(
           Effect.mapError((cause) => new ExternalToolError({ cause, operation: "decode gh pr view output" }))
         )
       }),
-      removeWorktree: Effect.fn("ReviewTools.removeWorktree")((repository, worktree) =>
-        Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
-      ),
-      repositoryRoot: runChecked("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"]).pipe(
-        Effect.map((commonDirectory) => path.dirname(String.trim(commonDirectory)))
-      )
+      removeWorktree: Effect.fn("ReviewTools.removeWorktree")(removeWorktree),
+      repositoryRoot: Effect.gen(function*() {
+        const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
+        const mainWorktree = parseWorktrees(output)[0]
+        if (mainWorktree === undefined) {
+          return yield* new ExternalToolError({
+            cause: new Error("git worktree list returned no worktrees"),
+            operation: "resolve main worktree"
+          })
+        }
+        return mainWorktree.worktree
+      })
     })
   })
 )
