@@ -151,6 +151,11 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
   Effect.onExit((exit) => Exit.isFailure(exit) ? rollback : Effect.void)
 )
 
+export const createAndArmWorktreeOwnership = <A, E, R>(
+  create: Effect.Effect<A, E, R>,
+  ownsWorktree: Ref.Ref<boolean>
+) => Effect.uninterruptible(create.pipe(Effect.andThen(Ref.set(ownsWorktree, true))))
+
 export const pullRequestCheckoutArgs = (
   prNumber: PullRequestNumberType,
   managedBranch: string,
@@ -666,8 +671,10 @@ export const ReviewToolsLive = Layer.effect(
             const ownsWorktree = yield* Ref.make(false)
             return yield* createWorktreeWithRollback(
               Effect.gen(function*() {
-                yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
-                yield* Ref.set(ownsWorktree, true)
+                yield* createAndArmWorktreeOwnership(
+                  runChecked("git", ["worktree", "add", "--detach", input.path], input.repository),
+                  ownsWorktree
+                )
                 yield* writeOwner(input, managedBranch)
                 const source = yield* checkoutPullRequest(input, managedBranch, false)
                 yield* refreshManagedBranchMerge(input, managedBranch, source)

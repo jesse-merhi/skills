@@ -11,6 +11,7 @@ import {
 import {
   acquireProcessLock,
   authenticatedGitArgs,
+  createAndArmWorktreeOwnership,
   createWorktreeWithRollback,
   parseWorktrees,
   pullRequestCheckoutArgs,
@@ -242,6 +243,26 @@ describe("createWorktreeWithRollback", () => {
       yield* Fiber.interrupt(fiber)
 
       assert.deepStrictEqual(calls, ["rollback"])
+    }))
+})
+
+describe("createAndArmWorktreeOwnership", () => {
+  it.effect("delays cancellation until a successful registration is marked owned", () =>
+    Effect.gen(function*() {
+      const creationStarted = yield* Deferred.make<void>()
+      const finishCreation = yield* Deferred.make<void>()
+      const ownsWorktree = yield* Ref.make(false)
+      const fiber = yield* createAndArmWorktreeOwnership(
+        Deferred.succeed(creationStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCreation))),
+        ownsWorktree
+      ).pipe(Effect.forkChild)
+
+      yield* Deferred.await(creationStarted)
+      const interrupted = yield* Fiber.interrupt(fiber).pipe(Effect.forkChild)
+      yield* Deferred.succeed(finishCreation, undefined)
+      yield* Fiber.await(interrupted)
+
+      assert.isTrue(yield* Ref.get(ownsWorktree))
     }))
 })
 
