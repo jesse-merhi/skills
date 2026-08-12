@@ -144,6 +144,10 @@ if [ "$1 $2" = "pr view" ]; then
   exit 0
 fi
 if [ "$1 $2" = "pr checkout" ]; then
+  if [ "\${PR_REVIEW_GH_CHECKOUT_FAIL:-false}" = "true" ]; then
+    printf '%s\n' "fatal: couldn't find remote ref refs/heads/\${PR_REVIEW_HEAD:-feature/review}" >&2
+    exit 8
+  fi
   shift 3
   branch=""
   force=0
@@ -344,6 +348,31 @@ exit 99
       git(repository, ["worktree", "remove", managedWorktree])
       git(repository, ["branch", "--delete", "--force", managedBranch])
       assert.strictEqual(git(repository, ["branch", "--list", managedBranch]), "")
+
+      git(repository, ["remote", "add", "origin", repository])
+      git(repository, ["update-ref", "refs/pull/43/head", "pr-tip"])
+      const deletedHeadResult = spawnSync(executable, ["43"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_GH_CHECKOUT_FAIL: "true",
+          PR_REVIEW_HEAD: "deleted/head",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(deletedHeadResult.status, 0, deletedHeadResult.stderr)
+      const deletedHeadWorktree = join(repository, ".worktrees", "pr-43")
+      const deletedHeadBranch = git(deletedHeadWorktree, ["branch", "--show-current"])
+      assert.strictEqual(git(deletedHeadWorktree, ["rev-parse", "HEAD"]), git(repository, ["rev-parse", "pr-tip"]))
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${deletedHeadBranch}.merge`]),
+        "refs/pull/43/head"
+      )
+      git(repository, ["worktree", "remove", deletedHeadWorktree])
+      git(repository, ["branch", "--delete", "--force", deletedHeadBranch])
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
