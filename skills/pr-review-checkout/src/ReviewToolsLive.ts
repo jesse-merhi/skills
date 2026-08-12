@@ -10,6 +10,7 @@ import {
   Option,
   Path,
   PlatformError,
+  Ref,
   Schema,
   Stream,
   String
@@ -190,6 +191,9 @@ export const authenticatedGitArgs = (args: ReadonlyArray<string>) => [
   "credential.helper=!gh auth git-credential",
   ...args
 ] as const
+
+export const pullRefTrackingRef = (prNumber: PullRequestNumberType) =>
+  `refs/remotes/agent-pr-review/pr-${prNumber}/head`
 
 const isProcessAlive = (pid: number) => Effect.sync(() => {
   try {
@@ -436,16 +440,6 @@ export const ReviewToolsLive = Layer.effect(
         } else {
           yield* runChecked("git", ["checkout", "--quiet", "-b", managedBranch, "FETCH_HEAD"], input.path)
         }
-        yield* runChecked(
-          "git",
-          ["config", `branch.${managedBranch}.remote`, source],
-          input.repository
-        )
-        yield* runChecked(
-          "git",
-          ["config", `branch.${managedBranch}.merge`, `refs/pull/${input.prNumber}/head`],
-          input.repository
-        )
         return "pull-ref" as const
       }))
     )
@@ -490,6 +484,18 @@ export const ReviewToolsLive = Layer.effect(
       source: "head" | "pull-ref"
     ) {
       if (source === "pull-ref") {
+        const trackingRef = pullRefTrackingRef(input.prNumber)
+        yield* runChecked("git", ["update-ref", trackingRef, "FETCH_HEAD"], input.path)
+        yield* runChecked(
+          "git",
+          ["config", `branch.${managedBranch}.remote`, "."],
+          input.repository
+        )
+        yield* runChecked(
+          "git",
+          ["config", `branch.${managedBranch}.merge`, trackingRef],
+          input.repository
+        )
         return
       }
       if (!input.isCrossRepository) {
@@ -585,6 +591,12 @@ export const ReviewToolsLive = Layer.effect(
               )
               const previousMerge = yield* readManagedBranchConfig(input.repository, owner.managedBranch, "merge")
               const previousRemote = yield* readManagedBranchConfig(input.repository, owner.managedBranch, "remote")
+              const trackingRef = pullRefTrackingRef(input.prNumber)
+              const previousTrackingRef = yield* runChecked(
+                "git",
+                ["rev-parse", "--verify", trackingRef],
+                input.repository
+              ).pipe(Effect.map(String.trim), Effect.option)
               return yield* createWorktreeWithRollback(
                 Effect.gen(function*() {
                   const source = yield* checkoutPullRequest(input, owner.managedBranch, true)
@@ -606,6 +618,14 @@ export const ReviewToolsLive = Layer.effect(
                     "remote",
                     previousRemote
                   )),
+                  Effect.andThen(Option.match(previousTrackingRef, {
+                    onNone: () => runChecked("git", ["update-ref", "--delete", trackingRef], input.repository).pipe(
+                      Effect.ignore
+                    ),
+                    onSome: (commit) => runChecked("git", ["update-ref", trackingRef, commit], input.repository).pipe(
+                      Effect.ignore
+                    )
+                  })),
                   Effect.andThen(writeManagedOwner(ownerPath, owner).pipe(Effect.ignore))
                 )
               )
@@ -615,20 +635,27 @@ export const ReviewToolsLive = Layer.effect(
               Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create managed branch name" }))
             )
             const managedBranch = `agent-pr-review/pr-${input.prNumber}-${nonce}`
+            const ownsWorktree = yield* Ref.make(false)
             return yield* createWorktreeWithRollback(
               Effect.gen(function*() {
                 yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
+                yield* Ref.set(ownsWorktree, true)
                 yield* writeOwner(input, managedBranch)
                 const source = yield* checkoutPullRequest(input, managedBranch, false)
-                if (source === "head" && !input.isCrossRepository) {
-                  yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
-                }
+                yield* refreshManagedBranchMerge(input, managedBranch, source)
                 return { branch: managedBranch, created: true }
               }),
-              removeWorktree(input.repository, input.path).pipe(
-                Effect.ignore,
-                Effect.andThen(deleteBranch(input.repository, managedBranch).pipe(Effect.ignore))
-              )
+              Ref.get(ownsWorktree).pipe(Effect.flatMap((owned) => owned
+                ? removeWorktree(input.repository, input.path).pipe(
+                  Effect.ignore,
+                  Effect.andThen(deleteBranch(input.repository, managedBranch).pipe(Effect.ignore)),
+                  Effect.andThen(runChecked(
+                    "git",
+                    ["update-ref", "--delete", pullRefTrackingRef(input.prNumber)],
+                    input.repository
+                  ).pipe(Effect.ignore))
+                )
+                : Effect.void))
             )
           }),
           () => fileSystem.remove(lockPath, { force: true, recursive: true }).pipe(Effect.ignore)

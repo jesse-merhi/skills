@@ -428,11 +428,15 @@ exit 99
       assert.strictEqual(git(deletedHeadWorktree, ["rev-parse", "HEAD"]), git(repository, ["rev-parse", "pr-tip"]))
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.merge`]),
-        "refs/pull/43/head"
+        "refs/remotes/agent-pr-review/pr-43/head"
       )
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.remote`]),
-        "upstream"
+        "."
+      )
+      assert.strictEqual(
+        git(deletedHeadWorktree, ["rev-parse", "@{upstream}"]),
+        git(repository, ["rev-parse", "pr-tip"])
       )
       git(repository, ["worktree", "remove", deletedHeadWorktree])
       git(repository, ["branch", "--delete", "--force", deletedHeadBranch])

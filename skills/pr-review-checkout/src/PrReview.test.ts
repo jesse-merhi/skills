@@ -14,6 +14,7 @@ import {
   createWorktreeWithRollback,
   parseWorktrees,
   pullRequestCheckoutArgs,
+  pullRefTrackingRef,
   repositoryIdentity,
   signalExitCode
 } from "./ReviewToolsLive.ts"
@@ -219,6 +220,12 @@ describe("signalExitCode", () => {
   it("maps platform signal failures to shell-compatible statuses", () => {
     assert.strictEqual(signalExitCode(new Error("Process interrupted due to receipt of signal: 'SIGTERM'")), 143)
     assert.isUndefined(signalExitCode(new Error("not a signal failure")))
+  })
+})
+
+describe("pullRefTrackingRef", () => {
+  it("uses a deterministic helper-owned namespace", () => {
+    assert.strictEqual(pullRefTrackingRef(prNumber), "refs/remotes/agent-pr-review/pr-42/head")
   })
 })
 
