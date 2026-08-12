@@ -1,4 +1,4 @@
-import { Context, Effect, Exit, Option, Path, Schema, String } from "effect"
+import { Context, Effect, Option, Path, Schema, String } from "effect"
 
 export const PullRequestNumber = Schema.Int.pipe(
   Schema.check(Schema.isGreaterThan(0)),
@@ -18,8 +18,10 @@ export class ExternalToolError extends Schema.TaggedError<ExternalToolError>()("
   operation: Schema.String
 }) {}
 
-export interface EnsureWorktreeInput {
+export interface PrepareManagedWorktreeInput {
+  readonly headRefName: string
   readonly path: string
+  readonly prNumber: PullRequestNumber
   readonly repository: string
 }
 
@@ -30,12 +32,9 @@ export class ReviewTools extends Context.Service<ReviewTools, {
   readonly openEditor: (worktree: string) => Effect.Effect<void, ExternalToolError>
   readonly pullRequest: (prNumber: PullRequestNumber) => Effect.Effect<PullRequest, ExternalToolError>
   readonly repositoryRoot: Effect.Effect<string, ExternalToolError>
-  readonly ensureWorktree: (input: EnsureWorktreeInput) => Effect.Effect<boolean, ExternalToolError>
-  readonly checkoutPullRequest: (
-    worktree: string,
-    prNumber: PullRequestNumber
-  ) => Effect.Effect<void, ExternalToolError>
-  readonly removeWorktree: (repository: string, worktree: string) => Effect.Effect<void, ExternalToolError>
+  readonly prepareManagedWorktree: (
+    input: PrepareManagedWorktreeInput
+  ) => Effect.Effect<boolean, ExternalToolError>
 }>()("@jesse-merhi/skills/skills/pr-review-checkout/src/PrReview/ReviewTools") {}
 
 export interface ReviewCheckout {
@@ -53,15 +52,16 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const branchWorktree = yield* tools.findBranchWorktree(pullRequest.headRefName)
   const worktree = Option.getOrElse(branchWorktree, () => managedWorktreePath)
   const managed = worktree === managedWorktreePath
-  const created = Option.isNone(branchWorktree)
-    ? yield* tools.ensureWorktree({ path: worktree, repository })
+  const created = managed
+    ? yield* tools.prepareManagedWorktree({
+      headRefName: pullRequest.headRefName,
+      path: worktree,
+      prNumber,
+      repository
+    })
     : false
 
-  const prepareReview = Effect.gen(function*() {
-    if (managed) {
-      yield* tools.checkoutPullRequest(worktree, prNumber)
-    }
-
+  return yield* Effect.gen(function*() {
     const mergeBase = yield* tools.mergeBase(worktree, pullRequest.baseRefName).pipe(
       Effect.orElseSucceed(() => pullRequest.baseRefName)
     )
@@ -104,14 +104,4 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
 
     return { created, lines, worktree } satisfies ReviewCheckout
   })
-
-  return yield* created
-    ? prepareReview.pipe(
-      Effect.onExit((exit) =>
-        Exit.isFailure(exit)
-          ? tools.removeWorktree(repository, worktree).pipe(Effect.ignore)
-          : Effect.void
-      )
-    )
-    : prepareReview
 })

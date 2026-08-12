@@ -1,13 +1,44 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
-import { Effect, Exit, FileSystem, Layer, Option, Path, Schema, Stream, String } from "effect"
-import { PullRequest, ExternalToolError, ReviewTools } from "./PrReview.ts"
-import type { PullRequestNumber } from "./PrReview.ts"
+import {
+  Cause,
+  Effect,
+  Exit,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  Schema,
+  Stream,
+  String
+} from "effect"
+import { ExternalToolError, PullRequest, PullRequestNumber, ReviewTools } from "./PrReview.ts"
+import type { PrepareManagedWorktreeInput, PullRequestNumber as PullRequestNumberType } from "./PrReview.ts"
 
 interface CommandResult {
   readonly exitCode: number
   readonly stderr: string
   readonly stdout: string
 }
+
+export class ManagedWorktreeOwner extends Schema.Class<ManagedWorktreeOwner>(
+  "skills/pr-review-checkout/ManagedWorktreeOwner"
+)({
+  headRefName: Schema.NonEmptyString,
+  prNumber: PullRequestNumber,
+  repository: Schema.NonEmptyString
+}) {}
+
+export class ProcessLockOwner extends Schema.Class<ProcessLockOwner>("skills/pr-review-checkout/ProcessLockOwner")({
+  nonce: Schema.NonEmptyString,
+  pid: Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)))
+}) {}
+
+const managedOwnerCodec = Schema.fromJsonString(ManagedWorktreeOwner)
+const processLockOwnerCodec = Schema.fromJsonString(ProcessLockOwner)
+const decodeManagedOwner = Schema.decodeUnknownEffect(managedOwnerCodec)
+const decodeProcessLockOwner = Schema.decodeUnknownEffect(processLockOwnerCodec)
+const encodeManagedOwner = Schema.encodeEffect(managedOwnerCodec)
+const encodeProcessLockOwner = Schema.encodeEffect(processLockOwnerCodec)
 
 const run = Effect.fn("ReviewTools.run")(function*(
   spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
@@ -70,10 +101,108 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
   Effect.onExit((exit) => Exit.isFailure(exit) ? rollback : Effect.void)
 )
 
-export const pullRequestCheckoutArgs = (prNumber: PullRequestNumber) =>
+export const pullRequestCheckoutArgs = (prNumber: PullRequestNumberType) =>
   ["pr", "checkout", globalThis.String(prNumber), "--force"] as const
 
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
+
+const isProcessAlive = (pid: number) => Effect.sync(() => {
+  try {
+    globalThis.process.kill(pid, 0)
+    return true
+  } catch (cause) {
+    if (typeof cause === "object" && cause !== null && "code" in cause && cause.code === "ESRCH") {
+      return false
+    }
+    return true
+  }
+})
+
+export interface ProcessLockOptions {
+  readonly isAlive?: (pid: number) => Effect.Effect<boolean>
+  readonly lockPath: string
+  readonly pid?: number
+}
+
+export const acquireProcessLock = Effect.fn("ReviewTools.acquireProcessLock")(function*(
+  options: ProcessLockOptions
+) {
+  const fileSystem = yield* FileSystem.FileSystem
+  const pathService = yield* Path.Path
+  const pid = options.pid ?? globalThis.process.pid
+  const alive = options.isAlive ?? isProcessAlive
+
+  const createLock = Effect.gen(function*() {
+    const candidate = yield* fileSystem.makeTempDirectory({
+      directory: pathService.dirname(options.lockPath),
+      prefix: ".pr-review-lock-"
+    })
+    return yield* Effect.gen(function*() {
+      const nonce = pathService.basename(candidate)
+      const encoded = yield* encodeProcessLockOwner(new ProcessLockOwner({ nonce, pid }))
+      yield* fileSystem.writeFileString(pathService.join(candidate, `owner-${nonce}.json`), encoded)
+      yield* fileSystem.rename(candidate, options.lockPath)
+    }).pipe(
+      Effect.onExit(() => fileSystem.remove(candidate, { force: true, recursive: true }).pipe(Effect.ignore))
+    )
+  })
+
+  const acquire = (retries: number): Effect.Effect<void, ExternalToolError> => Effect.gen(function*() {
+    const attempt = yield* Effect.exit(createLock)
+    if (Exit.isSuccess(attempt)) {
+      return
+    }
+
+    const lockExists = yield* fileSystem.exists(options.lockPath).pipe(
+      Effect.mapError((cause) => new ExternalToolError({ cause, operation: `inspect ${options.lockPath}` }))
+    )
+    if (!lockExists) {
+      if (retries > 0) {
+        return yield* acquire(retries - 1)
+      }
+      return yield* new ExternalToolError({
+        cause: Cause.squash(attempt.cause),
+        operation: `acquire ${options.lockPath}`
+      })
+    }
+
+    const ownerFile = yield* fileSystem.readDirectory(options.lockPath).pipe(
+      Effect.map((entries) => entries.find((entry) => entry.startsWith("owner-") && entry.endsWith(".json"))),
+      Effect.mapError((cause) => new ExternalToolError({ cause, operation: `inspect owner of ${options.lockPath}` }))
+    )
+    const existingOwner = ownerFile === undefined
+      ? Option.none<ProcessLockOwner>()
+      : yield* fileSystem.readFileString(pathService.join(options.lockPath, ownerFile)).pipe(
+        Effect.flatMap(decodeProcessLockOwner),
+        Effect.option
+      )
+    if (Option.isSome(existingOwner) && (yield* alive(existingOwner.value.pid))) {
+      return yield* new ExternalToolError({
+        cause: new Error(`another pr-review process (${existingOwner.value.pid}) owns the lock`),
+        operation: `acquire ${options.lockPath}`
+      })
+    }
+
+    if (Option.isSome(existingOwner)) {
+      yield* fileSystem.remove(
+        pathService.join(options.lockPath, `owner-${existingOwner.value.nonce}.json`),
+        { force: true }
+      ).pipe(
+        Effect.mapError((cause) => new ExternalToolError({ cause, operation: `remove stale owner of ${options.lockPath}` }))
+      )
+    }
+    yield* fileSystem.remove(options.lockPath).pipe(Effect.ignore)
+    if (retries > 0) {
+      return yield* acquire(retries - 1)
+    }
+    return yield* new ExternalToolError({
+      cause: new Error("could not acquire process lock after removing its stale owner"),
+      operation: `acquire ${options.lockPath}`
+    })
+  })
+
+  return yield* acquire(2)
+})
 
 export const ReviewToolsLive = Layer.effect(
   ReviewTools,
@@ -85,32 +214,89 @@ export const ReviewToolsLive = Layer.effect(
       checked(spawner, executable, args, cwd)
     const removeWorktree = (repository: string, worktree: string) =>
       Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
+    const markerPath = Effect.fn("ReviewTools.markerPath")(function*(worktree: string) {
+      const gitDirectory = yield* runChecked("git", ["rev-parse", "--git-dir"], worktree).pipe(Effect.map(String.trim))
+      return pathService.join(
+        pathService.isAbsolute(gitDirectory) ? gitDirectory : pathService.join(worktree, gitDirectory),
+        "agent-pr-review-owner.json"
+      )
+    })
+    const expectedOwner = (input: PrepareManagedWorktreeInput) => new ManagedWorktreeOwner({
+      headRefName: input.headRefName,
+      prNumber: input.prNumber,
+      repository: input.repository
+    })
+    const validateOwner = Effect.fn("ReviewTools.validateOwner")(function*(input: PrepareManagedWorktreeInput) {
+      const ownerPath = yield* markerPath(input.path)
+      const actual = yield* fileSystem.readFileString(ownerPath).pipe(
+        Effect.flatMap(decodeManagedOwner),
+        Effect.mapError((cause) => new ExternalToolError({
+          cause,
+          operation: `validate managed worktree ownership at ${input.path}`
+        }))
+      )
+      const expected = expectedOwner(input)
+      if (
+        actual.prNumber !== expected.prNumber ||
+        actual.headRefName !== expected.headRefName ||
+        actual.repository !== expected.repository
+      ) {
+        return yield* new ExternalToolError({
+          cause: new Error("the worktree ownership marker belongs to a different pull request"),
+          operation: `validate managed worktree ownership at ${input.path}`
+        })
+      }
+    })
+    const writeOwner = Effect.fn("ReviewTools.writeOwner")(function*(input: PrepareManagedWorktreeInput) {
+      const ownerPath = yield* markerPath(input.path)
+      const encoded = yield* encodeManagedOwner(expectedOwner(input)).pipe(
+        Effect.mapError((cause) => new ExternalToolError({ cause, operation: "encode managed worktree ownership" }))
+      )
+      yield* fileSystem.writeFileString(ownerPath, encoded).pipe(
+        Effect.mapError((cause) => new ExternalToolError({ cause, operation: `record ownership at ${input.path}` }))
+      )
+    })
+    const checkoutPullRequest = (input: PrepareManagedWorktreeInput) =>
+      Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(input.prNumber), input.path))
 
     return ReviewTools.of({
-      checkoutPullRequest: Effect.fn("ReviewTools.checkoutPullRequest")((worktree, prNumber) =>
-        Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(prNumber), worktree))
-      ),
-      ensureWorktree: Effect.fn("ReviewTools.ensureWorktree")(function*({ path, repository }) {
-        const lockPath = `${path}.lock`
-        yield* fileSystem.makeDirectory(pathService.dirname(path), { recursive: true }).pipe(
+      prepareManagedWorktree: Effect.fn("ReviewTools.prepareManagedWorktree")(function*(input) {
+        const lockPath = `${input.path}.lock`
+        yield* fileSystem.makeDirectory(pathService.dirname(input.path), { recursive: true }).pipe(
           Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create worktree parent directory" }))
         )
         return yield* Effect.acquireUseRelease(
-          fileSystem.makeDirectory(lockPath).pipe(
-            Effect.mapError((cause) => new ExternalToolError({ cause, operation: `acquire ${lockPath}` }))
+          acquireProcessLock({ lockPath }).pipe(
+            Effect.provideService(FileSystem.FileSystem, fileSystem),
+            Effect.provideService(Path.Path, pathService)
           ),
           () => Effect.gen(function*() {
-            const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
-            if (parseWorktrees(output).some((entry) => entry.worktree === path)) {
+            const output = yield* runChecked(
+              "git",
+              ["worktree", "list", "--porcelain", "-z"],
+              input.repository
+            )
+            const registeredPath = yield* fileSystem.realPath(input.path).pipe(
+              Effect.orElseSucceed(() => input.path)
+            )
+            const exists = parseWorktrees(output).some((entry) => entry.worktree === registeredPath)
+            if (exists) {
+              yield* validateOwner(input)
+              yield* checkoutPullRequest(input)
               return false
             }
-            yield* createWorktreeWithRollback(
-              Effect.asVoid(runChecked("git", ["worktree", "add", "--detach", path], repository)),
-              removeWorktree(repository, path).pipe(Effect.ignore)
+
+            return yield* createWorktreeWithRollback(
+              Effect.gen(function*() {
+                yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
+                yield* writeOwner(input)
+                yield* checkoutPullRequest(input)
+                return true
+              }),
+              removeWorktree(input.repository, input.path).pipe(Effect.ignore)
             )
-            return true
           }),
-          () => fileSystem.remove(lockPath, { force: true }).pipe(Effect.ignore)
+          () => fileSystem.remove(lockPath, { force: true, recursive: true }).pipe(Effect.ignore)
         )
       }),
       diffStat: Effect.fn("ReviewTools.diffStat")((worktree, mergeBase) =>
@@ -140,7 +326,6 @@ export const ReviewToolsLive = Layer.effect(
           Effect.mapError((cause) => new ExternalToolError({ cause, operation: "decode gh pr view output" }))
         )
       }),
-      removeWorktree: Effect.fn("ReviewTools.removeWorktree")(removeWorktree),
       repositoryRoot: Effect.gen(function*() {
         const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
         const mainWorktree = parseWorktrees(output)[0]

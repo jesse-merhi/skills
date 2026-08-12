@@ -1,6 +1,6 @@
-import { NodePath } from "@effect/platform-node"
+import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Layer, Option, Schema } from "effect"
+import { Deferred, Effect, Fiber, FileSystem, Layer, Option, Schema } from "effect"
 import {
   checkoutForReview,
   ExternalToolError,
@@ -8,13 +8,18 @@ import {
   PullRequestNumber,
   ReviewTools
 } from "./PrReview.ts"
-import { createWorktreeWithRollback, parseWorktrees, pullRequestCheckoutArgs } from "./ReviewToolsLive.ts"
+import {
+  acquireProcessLock,
+  createWorktreeWithRollback,
+  parseWorktrees,
+  pullRequestCheckoutArgs
+} from "./ReviewToolsLive.ts"
 
 interface TestToolsOptions {
-  readonly checkout?: Effect.Effect<void, ExternalToolError>
   readonly existingWorktree: Option.Option<string>
   readonly failDiff?: boolean
   readonly failMergeBase?: boolean
+  readonly prepare?: Effect.Effect<void, ExternalToolError>
   readonly worktreeCreated?: boolean
 }
 
@@ -24,13 +29,10 @@ const makeTestTools = (options: TestToolsOptions) => {
   const calls: Array<string> = []
   const failure = (operation: string) => new ExternalToolError({ cause: new Error(operation), operation })
   const layer = Layer.succeed(ReviewTools)(ReviewTools.of({
-    checkoutPullRequest: (path) => Effect.sync(() => calls.push(`checkout:${path}`)).pipe(
-      Effect.andThen(options.checkout ?? Effect.void)
+    prepareManagedWorktree: ({ path }) => Effect.sync(() => calls.push(`prepare:${path}`)).pipe(
+      Effect.andThen(options.prepare ?? Effect.void),
+      Effect.as(options.worktreeCreated ?? Option.isNone(options.existingWorktree))
     ),
-    ensureWorktree: ({ path }) => Effect.sync(() => {
-      calls.push(`ensure:${path}`)
-      return options.worktreeCreated !== false
-    }),
     diffStat: (_worktree, mergeBase) =>
       options.failDiff === true
         ? Effect.fail(failure("diff"))
@@ -47,7 +49,6 @@ const makeTestTools = (options: TestToolsOptions) => {
       isCrossRepository: false,
       url: "https://github.com/example/repo/pull/42"
     })),
-    removeWorktree: (_repository, path) => Effect.sync(() => calls.push(`remove:${path}`)).pipe(Effect.asVoid),
     repositoryRoot: Effect.succeed("/repo")
   }))
   return { calls, layer: Layer.merge(layer, NodePath.layer) }
@@ -77,8 +78,7 @@ describe("checkoutForReview", () => {
         assert.isTrue(result.created)
         assert.strictEqual(result.worktree, "/repo/.worktrees/pr-42")
         assert.deepStrictEqual(test.calls, [
-          "ensure:/repo/.worktrees/pr-42",
-          "checkout:/repo/.worktrees/pr-42",
+          "prepare:/repo/.worktrees/pr-42",
           "open:/repo/.worktrees/pr-42"
         ])
         assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
@@ -97,8 +97,7 @@ describe("checkoutForReview", () => {
       Effect.map((result) => {
         assert.isFalse(result.created)
         assert.deepStrictEqual(test.calls, [
-          "ensure:/repo/.worktrees/pr-42",
-          "checkout:/repo/.worktrees/pr-42",
+          "prepare:/repo/.worktrees/pr-42",
           "open:/repo/.worktrees/pr-42"
         ])
       })
@@ -116,7 +115,7 @@ describe("checkoutForReview", () => {
         assert.isFalse(result.created)
         assert.strictEqual(result.worktree, "/repo/.worktrees/pr-42")
         assert.deepStrictEqual(test.calls, [
-          "checkout:/repo/.worktrees/pr-42",
+          "prepare:/repo/.worktrees/pr-42",
           "open:/repo/.worktrees/pr-42"
         ])
         assert.isTrue(result.lines.includes("Refreshing managed review worktree for PR #42:"))
@@ -127,10 +126,10 @@ describe("checkoutForReview", () => {
 
   it.effect("removes a newly created worktree when checkout is interrupted", () =>
     Effect.gen(function*() {
-      const checkoutStarted = yield* Deferred.make<void>()
+      const preparationStarted = yield* Deferred.make<void>()
       const test = makeTestTools({
-        checkout: Deferred.succeed(checkoutStarted, undefined).pipe(Effect.andThen(Effect.never)),
-        existingWorktree: Option.none()
+        existingWorktree: Option.none(),
+        prepare: Deferred.succeed(preparationStarted, undefined).pipe(Effect.andThen(Effect.never))
       })
       const fiber = yield* checkoutForReview(prNumber).pipe(
         // @effect-diagnostics-next-line strictEffectProvide:off
@@ -138,13 +137,11 @@ describe("checkoutForReview", () => {
         Effect.forkChild
       )
 
-      yield* Deferred.await(checkoutStarted)
+      yield* Deferred.await(preparationStarted)
       yield* Fiber.interrupt(fiber)
 
       assert.deepStrictEqual(test.calls, [
-        "ensure:/repo/.worktrees/pr-42",
-        "checkout:/repo/.worktrees/pr-42",
-        "remove:/repo/.worktrees/pr-42"
+        "prepare:/repo/.worktrees/pr-42"
       ])
     }))
 
@@ -205,6 +202,56 @@ describe("createWorktreeWithRollback", () => {
 
       assert.deepStrictEqual(calls, ["rollback"])
     }))
+})
+
+describe("acquireProcessLock", () => {
+  const platformLayer = Layer.merge(NodeFileSystem.layer, NodePath.layer)
+
+  it.effect("reclaims a lock whose process is no longer alive", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const fileSystem = yield* FileSystem.FileSystem
+      const directory = yield* fileSystem.makeTempDirectoryScoped({ prefix: "pr-review-lock-test-" })
+      const lockPath = `${directory}/review.lock`
+      yield* fileSystem.makeDirectory(lockPath)
+      yield* fileSystem.writeFileString(`${lockPath}/owner-dead.json`, '{"nonce":"dead","pid":111}')
+
+      yield* acquireProcessLock({
+        isAlive: () => Effect.succeed(false),
+        lockPath,
+        pid: 222
+      })
+
+      const entries = yield* fileSystem.readDirectory(lockPath)
+      assert.lengthOf(entries, 1)
+      assert.match(yield* fileSystem.readFileString(`${lockPath}/${entries[0]}`), /"pid":222/)
+    })).pipe(
+      // @effect-diagnostics-next-line strictEffectProvide:off
+      Effect.provide(platformLayer)
+    ))
+
+  it.effect("does not steal a lock from a live process", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const fileSystem = yield* FileSystem.FileSystem
+      const directory = yield* fileSystem.makeTempDirectoryScoped({ prefix: "pr-review-lock-test-" })
+      const lockPath = `${directory}/review.lock`
+      yield* fileSystem.makeDirectory(lockPath)
+      yield* fileSystem.writeFileString(`${lockPath}/owner-live.json`, '{"nonce":"live","pid":111}')
+
+      const error = yield* acquireProcessLock({
+        isAlive: () => Effect.succeed(true),
+        lockPath,
+        pid: 222
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(error.operation, `acquire ${lockPath}`)
+      assert.strictEqual(
+        yield* fileSystem.readFileString(`${lockPath}/owner-live.json`),
+        '{"nonce":"live","pid":111}'
+      )
+    })).pipe(
+      // @effect-diagnostics-next-line strictEffectProvide:off
+      Effect.provide(platformLayer)
+    ))
 })
 
 describe("PullRequestNumber", () => {
