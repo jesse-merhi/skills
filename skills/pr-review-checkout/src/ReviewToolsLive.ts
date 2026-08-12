@@ -292,6 +292,23 @@ export const ReviewToolsLive = Layer.effect(
       ["config", `branch.${managedBranch}.merge`, `refs/heads/${headRefName}`],
       repository
     )))
+    const refreshManagedBranchMerge = Effect.fn("ReviewTools.refreshManagedBranchMerge")(function*(
+      input: PrepareManagedWorktreeInput,
+      managedBranch: string
+    ) {
+      if (!input.isCrossRepository) {
+        return yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+      }
+
+      const mergeRef = yield* runChecked(
+        "git",
+        ["config", "--get", `branch.${managedBranch}.merge`],
+        input.repository
+      ).pipe(Effect.catchTag("ExternalToolError", () => Effect.succeed("")))
+      if (mergeRef.trim().startsWith("refs/heads/")) {
+        yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+      }
+    })
     const validateManagedCheckout = Effect.fn("ReviewTools.validateManagedCheckout")(function*(
       input: PrepareManagedWorktreeInput,
       managedBranch: string
@@ -341,9 +358,7 @@ export const ReviewToolsLive = Layer.effect(
               const owner = yield* validateOwner(input)
               yield* validateManagedCheckout(input, owner.managedBranch)
               yield* checkoutPullRequest(input, owner.managedBranch, true)
-              if (!input.isCrossRepository) {
-                yield* updateManagedBranchMerge(input.repository, owner.managedBranch, input.headRefName)
-              }
+              yield* refreshManagedBranchMerge(input, owner.managedBranch)
               yield* writeOwner(input, owner.managedBranch)
               return { branch: owner.managedBranch, created: false }
             }

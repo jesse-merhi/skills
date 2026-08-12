@@ -220,6 +220,25 @@ exit 99
         "refs/pull/42/head"
       )
 
+      git(repository, ["config", `branch.${managedBranch}.merge`, "refs/heads/fork/renamed-again"])
+      const configuredForkRenameResult = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_CROSS: "true",
+          PR_REVIEW_HEAD: "fork/final-name",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(configuredForkRenameResult.status, 0, configuredForkRenameResult.stderr)
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        "refs/heads/fork/final-name"
+      )
+
       writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")
       const dirtyResult = spawnSync(executable, ["42"], {
         cwd: repository,
