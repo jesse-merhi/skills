@@ -540,6 +540,14 @@ export const ReviewToolsLive = Layer.effect(
       if (!input.isCrossRepository) {
         return yield* restoreManagedBranchHeadTracking(input, managedBranch)
       }
+      const mergeRef = yield* readManagedBranchConfig(input.repository, managedBranch, "merge")
+      const remote = yield* readManagedBranchConfig(input.repository, managedBranch, "remote")
+      if (Option.isSome(mergeRef) && Option.isSome(remote) && remote.value !== ".") {
+        if (mergeRef.value.startsWith("refs/heads/")) {
+          yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+        }
+        return
+      }
       const trackingRef = pullRefTrackingRef(input.prNumber)
       yield* runChecked("git", ["update-ref", trackingRef, "HEAD"], input.path)
       yield* runChecked(

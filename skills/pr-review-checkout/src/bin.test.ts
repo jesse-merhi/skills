@@ -523,6 +523,7 @@ exit 99
       git(repository, ["add", ".gitignore"])
       git(repository, ["commit", "--quiet", "--message", "initial"])
       git(directory, ["clone", "--quiet", "--bare", repository, forkRepository])
+      git(forkRepository, ["update-ref", "refs/heads/feature/review", "refs/heads/main"])
       git(repository, ["remote", "add", "fork", forkRepository])
       mkdirSync(binaries)
       writeFileSync(gh, `#!/bin/sh
@@ -539,8 +540,11 @@ if [ "$1 $2" = "pr checkout" ]; then
       *) shift ;;
     esac
   done
+  git fetch --quiet fork refs/heads/feature/review:refs/remotes/fork/feature/review
   git checkout --quiet "$branch"
-  git reset --quiet --hard main
+  git reset --quiet --hard refs/remotes/fork/feature/review
+  git config "branch.$branch.remote" fork
+  git config "branch.$branch.merge" refs/heads/feature/review
   exit 0
 fi
 exit 99
@@ -559,10 +563,10 @@ exit 99
       assert.strictEqual(result.status, 0, result.stderr)
       const worktree = join(repository, ".worktrees", "pr-42")
       const managedBranch = git(worktree, ["branch", "--show-current"])
-      assert.strictEqual(git(repository, ["config", "--get", `branch.${managedBranch}.remote`]), ".")
+      assert.strictEqual(git(repository, ["config", "--get", `branch.${managedBranch}.remote`]), "fork")
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/remotes/agent-pr-review/pr-42/head"
+        "refs/heads/feature/review"
       )
       assert.strictEqual(git(worktree, ["rev-parse", "@{upstream}"]), git(worktree, ["rev-parse", "HEAD"]))
     } finally {
