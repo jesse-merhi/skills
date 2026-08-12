@@ -97,7 +97,8 @@ describe("pr-review.sh", () => {
 set -eu
 printf '%s\n' "$*" >> "$PR_REVIEW_TEST_LOG"
 if [ "$1 $2" = "pr view" ]; then
-  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}'
+  head_ref="\${PR_REVIEW_HEAD:-feature/review}"
+  printf '{"headRefName":"%s","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}\n' "$head_ref"
   exit 0
 fi
 if [ "$1 $2" = "pr checkout" ]; then
@@ -144,6 +145,22 @@ exit 99
       const managedBranch = git(managedWorktree, ["branch", "--show-current"])
       assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
       assert.match(result.stdout, new RegExp(`branch --delete --force '${managedBranch}'`))
+
+      const renamedHeadResult = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_HEAD: "feature/renamed",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(renamedHeadResult.status, 0, renamedHeadResult.stderr)
+      const gitDirectory = git(managedWorktree, ["rev-parse", "--path-format=absolute", "--git-dir"])
+      const ownerPath = join(gitDirectory, "agent-pr-review-owner.json")
+      assert.strictEqual(JSON.parse(readFileSync(ownerPath, "utf8")).headRefName, "feature/renamed")
 
       writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")
       const dirtyResult = spawnSync(executable, ["42"], {

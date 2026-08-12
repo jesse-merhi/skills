@@ -256,7 +256,6 @@ export const ReviewToolsLive = Layer.effect(
       const expectedBranchPrefix = `agent-pr-review/pr-${input.prNumber}-`
       if (
         actual.prNumber !== input.prNumber ||
-        actual.headRefName !== input.headRefName ||
         actual.repository !== input.repository ||
         !actual.managedBranch.startsWith(expectedBranchPrefix)
       ) {
@@ -333,6 +332,7 @@ export const ReviewToolsLive = Layer.effect(
               const owner = yield* validateOwner(input)
               yield* validateManagedCheckout(input, owner.managedBranch)
               yield* checkoutPullRequest(input, owner.managedBranch, true)
+              yield* writeOwner(input, owner.managedBranch)
               return { branch: owner.managedBranch, created: false }
             }
 
