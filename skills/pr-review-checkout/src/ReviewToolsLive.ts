@@ -383,6 +383,21 @@ export const ReviewToolsLive = Layer.effect(
       const ownerPath = yield* markerPath(input.path)
       yield* writeManagedOwner(ownerPath, expectedOwner(input, managedBranch))
     })
+    const resolveBaseSource = Effect.fn("ReviewTools.resolveBaseSource")(function*(
+      input: PrepareManagedWorktreeInput
+    ) {
+      const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
+      const remotes = yield* runChecked("git", ["remote"], input.repository).pipe(
+        Effect.map((output) => output.split("\n").filter((remote) => remote.length > 0))
+      )
+      for (const remote of remotes) {
+        const remoteUrl = yield* runChecked("git", ["remote", "get-url", remote], input.repository)
+        if (repositoryIdentity(remoteUrl.trim()) === baseIdentity) {
+          return remote
+        }
+      }
+      return input.baseRepositoryUrl
+    })
     const checkoutPullRequest = (
       input: PrepareManagedWorktreeInput,
       managedBranch: string,
@@ -390,27 +405,31 @@ export const ReviewToolsLive = Layer.effect(
     ) => runChecked("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path).pipe(
       Effect.as("head" as const),
       Effect.catchTag("ExternalToolError", (error) => Effect.gen(function*() {
-        const stderr = error.stderr ?? ""
-        if (!stderr.includes("couldn't find remote ref") && !stderr.includes("remote ref does not exist")) {
-          return yield* error
-        }
-        const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
-        const remotes = yield* runChecked("git", ["remote"], input.repository).pipe(
-          Effect.map((output) => output.split("\n").filter((remote) => remote.length > 0))
-        )
-        let source = input.baseRepositoryUrl
-        for (const remote of remotes) {
-          const remoteUrl = yield* runChecked("git", ["remote", "get-url", remote], input.repository)
-          if (repositoryIdentity(remoteUrl.trim()) === baseIdentity) {
-            source = remote
-            break
+        const source = yield* resolveBaseSource(input).pipe(Effect.mapError(() => error))
+        if (!input.isCrossRepository) {
+          const headProbe = yield* Effect.exit(runChecked(
+            "git",
+            authenticatedGitArgs([
+              "ls-remote",
+              "--exit-code",
+              source,
+              `refs/heads/${input.headRefName}`
+            ]),
+            input.path
+          ))
+          if (Exit.isSuccess(headProbe)) {
+            return yield* error
+          }
+          const probeError = Cause.squash(headProbe.cause)
+          if (!(probeError instanceof ExternalToolError) || probeError.exitCode !== 2) {
+            return yield* error
           }
         }
         yield* runChecked(
           "git",
           authenticatedGitArgs(["fetch", "--quiet", source, `pull/${input.prNumber}/head`]),
           input.path
-        )
+        ).pipe(Effect.mapError(() => error))
         if (force) {
           yield* runChecked("git", ["checkout", "--quiet", managedBranch], input.path)
           yield* runChecked("git", ["reset", "--quiet", "--hard", "FETCH_HEAD"], input.path)

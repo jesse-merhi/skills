@@ -166,7 +166,7 @@ if [ "$1 $2" = "pr view" ]; then
 fi
 if [ "$1 $2" = "pr checkout" ]; then
   if [ "\${PR_REVIEW_GH_CHECKOUT_FAIL:-false}" = "true" ]; then
-    printf '%s\n' "fatal: couldn't find remote ref refs/heads/\${PR_REVIEW_HEAD:-feature/review}" >&2
+    printf '%s\n' "fatal: la référence distante est introuvable" >&2
     exit 8
   fi
   shift 3
