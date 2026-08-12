@@ -10,6 +10,7 @@ import {
 } from "./PrReview.ts"
 import {
   acquireProcessLock,
+  authenticatedGitArgs,
   createWorktreeWithRollback,
   parseWorktrees,
   pullRequestCheckoutArgs,
@@ -199,6 +200,20 @@ describe("repositoryIdentity", () => {
   })
 })
 
+describe("authenticatedGitArgs", () => {
+  it("runs fallback fetches through the GitHub CLI credential helper", () => {
+    assert.deepStrictEqual(authenticatedGitArgs(["fetch", "origin", "pull/42/head"]), [
+      "-c",
+      "credential.helper=",
+      "-c",
+      "credential.helper=!gh auth git-credential",
+      "fetch",
+      "origin",
+      "pull/42/head"
+    ])
+  })
+})
+
 describe("createWorktreeWithRollback", () => {
   it.effect("installs rollback before worktree creation can be interrupted", () =>
     Effect.gen(function*() {
@@ -259,6 +274,34 @@ describe("acquireProcessLock", () => {
         yield* fileSystem.readFileString(`${lockPath}/owner-live.json`),
         '{"nonce":"live","pid":111}'
       )
+    })).pipe(
+      // @effect-diagnostics-next-line strictEffectProvide:off
+      Effect.provide(platformLayer)
+    ))
+
+  it.effect("reclaims a lock after its PID has been reused by another process", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const fileSystem = yield* FileSystem.FileSystem
+      const directory = yield* fileSystem.makeTempDirectoryScoped({ prefix: "pr-review-lock-pid-reuse-test-" })
+      const lockPath = `${directory}/review.lock`
+      yield* fileSystem.makeDirectory(lockPath)
+      yield* fileSystem.writeFileString(
+        `${lockPath}/owner-old.json`,
+        '{"identity":"old-start","nonce":"old","pid":111}'
+      )
+
+      yield* acquireProcessLock({
+        isAlive: () => Effect.succeed(true),
+        lockPath,
+        pid: 222,
+        processIdentity: (pid) => Effect.succeed(Option.some(pid === 111 ? "new-start" : "current-start"))
+      })
+
+      const entries = yield* fileSystem.readDirectory(lockPath)
+      assert.lengthOf(entries, 1)
+      const owner = yield* fileSystem.readFileString(`${lockPath}/${entries[0]}`)
+      assert.match(owner, /"identity":"current-start"/)
+      assert.match(owner, /"pid":222/)
     })).pipe(
       // @effect-diagnostics-next-line strictEffectProvide:off
       Effect.provide(platformLayer)

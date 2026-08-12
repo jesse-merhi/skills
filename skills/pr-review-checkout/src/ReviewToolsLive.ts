@@ -32,6 +32,7 @@ export class ManagedWorktreeOwner extends Schema.Class<ManagedWorktreeOwner>(
 }) {}
 
 export class ProcessLockOwner extends Schema.Class<ProcessLockOwner>("skills/pr-review-checkout/ProcessLockOwner")({
+  identity: Schema.optional(Schema.NonEmptyString),
   nonce: Schema.NonEmptyString,
   pid: Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)))
 }) {}
@@ -146,6 +147,14 @@ export const repositoryIdentity = (value: string) => {
   }
 }
 
+export const authenticatedGitArgs = (args: ReadonlyArray<string>) => [
+  "-c",
+  "credential.helper=",
+  "-c",
+  "credential.helper=!gh auth git-credential",
+  ...args
+] as const
+
 const isProcessAlive = (pid: number) => Effect.sync(() => {
   try {
     globalThis.process.kill(pid, 0)
@@ -162,6 +171,7 @@ export interface ProcessLockOptions {
   readonly isAlive?: (pid: number) => Effect.Effect<boolean>
   readonly lockPath: string
   readonly pid?: number
+  readonly processIdentity?: (pid: number) => Effect.Effect<Option.Option<string>>
 }
 
 export const acquireProcessLock = Effect.fn("ReviewTools.acquireProcessLock")(function*(
@@ -171,6 +181,7 @@ export const acquireProcessLock = Effect.fn("ReviewTools.acquireProcessLock")(fu
   const pathService = yield* Path.Path
   const pid = options.pid ?? globalThis.process.pid
   const alive = options.isAlive ?? isProcessAlive
+  const processIdentity = options.processIdentity ?? (() => Effect.succeed(Option.none()))
 
   const createLock = Effect.gen(function*() {
     const candidate = yield* fileSystem.makeTempDirectory({
@@ -179,7 +190,12 @@ export const acquireProcessLock = Effect.fn("ReviewTools.acquireProcessLock")(fu
     })
     return yield* Effect.gen(function*() {
       const nonce = pathService.basename(candidate)
-      const encoded = yield* encodeProcessLockOwner(new ProcessLockOwner({ nonce, pid }))
+      const identity = yield* processIdentity(pid)
+      const encoded = yield* encodeProcessLockOwner(new ProcessLockOwner({
+        ...(Option.isSome(identity) ? { identity: identity.value } : {}),
+        nonce,
+        pid
+      }))
       yield* fileSystem.writeFileString(pathService.join(candidate, `owner-${nonce}.json`), encoded)
       yield* fileSystem.rename(candidate, options.lockPath)
     }).pipe(
@@ -217,10 +233,15 @@ export const acquireProcessLock = Effect.fn("ReviewTools.acquireProcessLock")(fu
         Effect.option
       )
     if (Option.isSome(existingOwner) && (yield* alive(existingOwner.value.pid))) {
-      return yield* new ExternalToolError({
-        cause: new Error(`another pr-review process (${existingOwner.value.pid}) owns the lock`),
-        operation: `acquire ${options.lockPath}`
-      })
+      const currentIdentity = yield* processIdentity(existingOwner.value.pid)
+      const sameProcess = existingOwner.value.identity === undefined || Option.isNone(currentIdentity) ||
+        currentIdentity.value === existingOwner.value.identity
+      if (sameProcess) {
+        return yield* new ExternalToolError({
+          cause: new Error(`another pr-review process (${existingOwner.value.pid}) owns the lock`),
+          operation: `acquire ${options.lockPath}`
+        })
+      }
     }
 
     if (Option.isSome(existingOwner)) {
@@ -255,6 +276,11 @@ export const ReviewToolsLive = Layer.effect(
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const runChecked = (executable: string, args: ReadonlyArray<string>, cwd?: string) =>
       checked(spawner, executable, args, cwd)
+    const processIdentity = (pid: number) => runChecked("ps", ["-o", "lstart=", "-p", globalThis.String(pid)]).pipe(
+      Effect.map(String.trim),
+      Effect.map((identity) => identity.length > 0 ? Option.some(identity) : Option.none()),
+      Effect.catchTag("ExternalToolError", () => Effect.succeed(Option.none()))
+    )
     const removeWorktree = (repository: string, worktree: string) =>
       Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
     const deleteBranch = (repository: string, branch: string) =>
@@ -346,7 +372,7 @@ export const ReviewToolsLive = Layer.effect(
         }
         yield* runChecked(
           "git",
-          ["fetch", "--quiet", source, `pull/${input.prNumber}/head`],
+          authenticatedGitArgs(["fetch", "--quiet", source, `pull/${input.prNumber}/head`]),
           input.path
         )
         if (force) {
@@ -467,7 +493,7 @@ export const ReviewToolsLive = Layer.effect(
           Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create worktree parent directory" }))
         )
         return yield* Effect.acquireUseRelease(
-          acquireProcessLock({ lockPath }).pipe(
+          acquireProcessLock({ lockPath, processIdentity }).pipe(
             Effect.provideService(FileSystem.FileSystem, fileSystem),
             Effect.provideService(Path.Path, pathService)
           ),
