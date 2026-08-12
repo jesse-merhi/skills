@@ -50,7 +50,7 @@ const makeTestTools = (options: TestToolsOptions) => {
       baseRefName: "main",
       headRefName: "feature/review",
       isCrossRepository: false,
-      url: "https://github.com/example/repo/pull/42"
+      url: new URL("https://github.com/example/repo/pull/42")
     })),
     repositoryRoot: Effect.succeed("/repo")
   }))

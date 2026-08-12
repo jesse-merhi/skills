@@ -32,6 +32,7 @@ describe("ReviewToolsLive.prepareManagedWorktree", () => {
       return Effect.gen(function*() {
         const tools = yield* ReviewTools
         const error = yield* tools.prepareManagedWorktree({
+          baseRepositoryUrl: "https://example.test/repo.git",
           headRefName: "feature/review",
           isCrossRepository: false,
           path: managedPath,

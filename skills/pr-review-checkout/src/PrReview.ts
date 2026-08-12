@@ -10,7 +10,7 @@ export class PullRequest extends Schema.Class<PullRequest>("skills/pr-review-che
   baseRefName: Schema.NonEmptyString,
   headRefName: Schema.NonEmptyString,
   isCrossRepository: Schema.Boolean,
-  url: Schema.NonEmptyString
+  url: Schema.URLFromString
 }) {}
 
 export class ExternalToolError extends Schema.TaggedError<ExternalToolError>()("ExternalToolError", {
@@ -26,6 +26,7 @@ export class ExternalToolError extends Schema.TaggedError<ExternalToolError>()("
 }
 
 export interface PrepareManagedWorktreeInput {
+  readonly baseRepositoryUrl: string
   readonly headRefName: string
   readonly isCrossRepository: boolean
   readonly path: string
@@ -67,8 +68,13 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const branchWorktree = yield* tools.findBranchWorktree(pullRequest.headRefName)
   const worktree = Option.getOrElse(branchWorktree, () => managedWorktreePath)
   const managed = Option.isNone(branchWorktree)
+  const baseRepositoryUrl = new URL(pullRequest.url)
+  baseRepositoryUrl.pathname = baseRepositoryUrl.pathname.replace(/\/pull\/\d+\/?$/, ".git")
+  baseRepositoryUrl.search = ""
+  baseRepositoryUrl.hash = ""
   const preparation = managed
     ? yield* tools.prepareManagedWorktree({
+      baseRepositoryUrl: baseRepositoryUrl.href,
       headRefName: pullRequest.headRefName,
       isCrossRepository: pullRequest.isCrossRepository,
       path: worktree,
@@ -94,7 +100,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
         : `Reusing existing worktree for '${pullRequest.headRefName}':`,
       `  ${worktree}`,
       "",
-      `PR #${prNumber}  (${pullRequest.url})`,
+      `PR #${prNumber}  (${pullRequest.url.href})`,
       `branch : ${pullRequest.headRefName}`,
       `base   : ${pullRequest.baseRefName}   (cross-repo: ${pullRequest.isCrossRepository})`,
       "",

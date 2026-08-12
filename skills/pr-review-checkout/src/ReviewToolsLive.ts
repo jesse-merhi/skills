@@ -314,14 +314,22 @@ export const ReviewToolsLive = Layer.effect(
         if (!stderr.includes("couldn't find remote ref") && !stderr.includes("remote ref does not exist")) {
           return yield* error
         }
-        yield* runChecked("git", ["fetch", "--quiet", "origin", `pull/${input.prNumber}/head`], input.path)
+        yield* runChecked(
+          "git",
+          ["fetch", "--quiet", input.baseRepositoryUrl, `pull/${input.prNumber}/head`],
+          input.path
+        )
         if (force) {
           yield* runChecked("git", ["checkout", "--quiet", managedBranch], input.path)
           yield* runChecked("git", ["reset", "--quiet", "--hard", "FETCH_HEAD"], input.path)
         } else {
           yield* runChecked("git", ["checkout", "--quiet", "-b", managedBranch, "FETCH_HEAD"], input.path)
         }
-        yield* runChecked("git", ["config", `branch.${managedBranch}.remote`, "origin"], input.repository)
+        yield* runChecked(
+          "git",
+          ["config", `branch.${managedBranch}.remote`, input.baseRepositoryUrl],
+          input.repository
+        )
         yield* runChecked(
           "git",
           ["config", `branch.${managedBranch}.merge`, `refs/pull/${input.prNumber}/head`],

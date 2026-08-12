@@ -5,7 +5,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { assert, describe, it } from "@effect/vitest"
 import { shellQuote } from "./PrReview.ts"
 
@@ -140,7 +140,8 @@ printf '%s\n' "$*" >> "$PR_REVIEW_TEST_LOG"
 if [ "$1 $2" = "pr view" ]; then
   head_ref="\${PR_REVIEW_HEAD:-feature/review}"
   cross="\${PR_REVIEW_CROSS:-false}"
-  printf '{"headRefName":"%s","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":%s}\n' "$head_ref" "$cross"
+  url="\${PR_REVIEW_URL:-https://example.test/repo/pull/42}"
+  printf '{"headRefName":"%s","baseRefName":"main","url":"%s","isCrossRepository":%s}\n' "$head_ref" "$url" "$cross"
   exit 0
 fi
 if [ "$1 $2" = "pr checkout" ]; then
@@ -349,8 +350,14 @@ exit 99
       git(repository, ["branch", "--delete", "--force", managedBranch])
       assert.strictEqual(git(repository, ["branch", "--list", managedBranch]), "")
 
-      git(repository, ["remote", "add", "origin", repository])
-      git(repository, ["update-ref", "refs/pull/43/head", "pr-tip"])
+      const forkRepository = join(directory, "fork.git")
+      const baseRepository = join(directory, "base.git")
+      git(directory, ["clone", "--quiet", "--bare", repository, forkRepository])
+      git(directory, ["clone", "--quiet", "--bare", repository, baseRepository])
+      git(repository, ["remote", "add", "origin", forkRepository])
+      git(baseRepository, ["update-ref", "refs/pull/43/head", git(repository, ["rev-parse", "pr-tip"])])
+      const basePullRequestUrl = pathToFileURL(join(directory, "base", "pull", "43")).href
+      const baseFetchUrl = pathToFileURL(baseRepository).href
       const deletedHeadResult = spawnSync(executable, ["43"], {
         cwd: repository,
         encoding: "utf8",
@@ -360,7 +367,8 @@ exit 99
           PATH: `${binaries}:${process.env.PATH ?? ""}`,
           PR_REVIEW_GH_CHECKOUT_FAIL: "true",
           PR_REVIEW_HEAD: "deleted/head",
-          PR_REVIEW_TEST_LOG: ghLog
+          PR_REVIEW_TEST_LOG: ghLog,
+          PR_REVIEW_URL: basePullRequestUrl
         }
       })
       assert.strictEqual(deletedHeadResult.status, 0, deletedHeadResult.stderr)
@@ -370,6 +378,10 @@ exit 99
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.merge`]),
         "refs/pull/43/head"
+      )
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${deletedHeadBranch}.remote`]),
+        baseFetchUrl
       )
       git(repository, ["worktree", "remove", deletedHeadWorktree])
       git(repository, ["branch", "--delete", "--force", deletedHeadBranch])
