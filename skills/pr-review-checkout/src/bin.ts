@@ -1,12 +1,12 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Console, Effect, Layer } from "effect"
+import { Cause, Console, Effect, Layer } from "effect"
 import { Argument, Command } from "effect/unstable/cli"
-import { checkoutForReview } from "./PrReview.ts"
+import { checkoutForReview, PullRequestNumber } from "./PrReview.ts"
 import { ReviewToolsLive } from "./ReviewToolsLive.ts"
 
 const prReview = Command.make(
   "pr-review.sh",
-  { prNumber: Argument.integer("pr-number") },
+  { prNumber: Argument.integer("pr-number").pipe(Argument.withSchema(PullRequestNumber)) },
   Effect.fn("prReview.handler")(function*({ prNumber }) {
     const result = yield* checkoutForReview(prNumber)
     yield* Console.log(result.lines.join("\n"))
@@ -19,5 +19,6 @@ prReview.pipe(
   Command.run({ version: "1.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live),
-  NodeRuntime.runMain
+  Effect.tapCause((cause) => Console.error(Cause.pretty(cause))),
+  NodeRuntime.runMain({ disableErrorReporting: true })
 )

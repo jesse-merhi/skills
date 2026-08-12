@@ -61,7 +61,8 @@ It resolves the PR branch and base, reuses the branch's existing worktree when
 one exists, creates a dedicated detached `.worktrees/pr-<n>` worktree through
 `gh pr checkout --detach` otherwise, opens that folder in VS Code, and prints
 the PR's net diff summary. The detached checkout reviews the current PR head
-without resetting or reusing a stale local branch.
+without resetting or reusing a stale local branch. Running the helper again for
+the same PR refreshes and reuses that detached worktree.
 
 A branch can be checked out in only one worktree. Never check an in-flight PR
 branch out in the main repository or a second worktree.

@@ -1,5 +1,5 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
-import { Effect, Layer, Option, Schema, Stream, String } from "effect"
+import { Effect, Layer, Option, Path, Schema, Stream, String } from "effect"
 import { PullRequest, ExternalToolError, ReviewTools } from "./PrReview.ts"
 
 interface CommandResult {
@@ -49,12 +49,17 @@ const checked = Effect.fn("ReviewTools.checked")(function*(
   return result.stdout
 })
 
-export const parseWorktrees = (output: string): ReadonlyArray<{ readonly branch: string; readonly worktree: string }> =>
+export interface WorktreeRecord {
+  readonly branch: string | null
+  readonly worktree: string
+}
+
+export const parseWorktrees = (output: string): ReadonlyArray<WorktreeRecord> =>
   output.split("\0\0").flatMap((record) => {
     const fields = record.split("\0")
     const branch = fields.find((field) => field.startsWith("branch "))?.slice("branch ".length)
     const worktree = fields.find((field) => field.startsWith("worktree "))?.slice("worktree ".length)
-    return branch === undefined || worktree === undefined ? [] : [{ branch, worktree }]
+    return worktree === undefined ? [] : [{ branch: branch ?? null, worktree }]
   })
 
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
@@ -62,27 +67,18 @@ const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullR
 export const ReviewToolsLive = Layer.effect(
   ReviewTools,
   Effect.gen(function*() {
+    const path = yield* Path.Path
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const runChecked = (executable: string, args: ReadonlyArray<string>, cwd?: string) =>
       checked(spawner, executable, args, cwd)
 
-    const createWorktree: ReviewTools["Service"]["createWorktree"] = Effect.fn("ReviewTools.createWorktree")(
-      function*({ path, prNumber, repository }) {
-        yield* runChecked("git", ["worktree", "add", "--detach", path], repository)
-        const checkout = runChecked("gh", ["pr", "checkout", globalThis.String(prNumber), "--detach"], path)
-        yield* checkout.pipe(
-          Effect.catch((checkoutError) =>
-            runChecked("git", ["worktree", "remove", "--force", path], repository).pipe(
-              Effect.ignore,
-              Effect.andThen(Effect.fail(checkoutError))
-            )
-          )
-        )
-      }
-    )
-
     return ReviewTools.of({
-      createWorktree,
+      checkoutPullRequest: Effect.fn("ReviewTools.checkoutPullRequest")((worktree, prNumber) =>
+        Effect.asVoid(runChecked("gh", ["pr", "checkout", globalThis.String(prNumber), "--detach"], worktree))
+      ),
+      createWorktree: Effect.fn("ReviewTools.createWorktree")(({ path, repository }) =>
+        Effect.asVoid(runChecked("git", ["worktree", "add", "--detach", path], repository))
+      ),
       diffStat: Effect.fn("ReviewTools.diffStat")((worktree, mergeBase) =>
         runChecked("git", ["diff", "--stat", `${mergeBase}...HEAD`], worktree)
       ),
@@ -91,6 +87,10 @@ export const ReviewToolsLive = Layer.effect(
         return Option.fromNullishOr(
           parseWorktrees(output).find((entry) => entry.branch === `refs/heads/${branch}`)?.worktree
         )
+      }),
+      hasWorktree: Effect.fn("ReviewTools.hasWorktree")(function*(path) {
+        const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
+        return parseWorktrees(output).some((entry) => entry.worktree === path)
       }),
       mergeBase: Effect.fn("ReviewTools.mergeBase")((worktree, base) =>
         runChecked("git", ["merge-base", `origin/${base}`, "HEAD"], worktree).pipe(Effect.map(String.trim))
@@ -110,7 +110,12 @@ export const ReviewToolsLive = Layer.effect(
           Effect.mapError((cause) => new ExternalToolError({ cause, operation: "decode gh pr view output" }))
         )
       }),
-      repositoryRoot: runChecked("git", ["rev-parse", "--show-toplevel"]).pipe(Effect.map(String.trim))
+      removeWorktree: Effect.fn("ReviewTools.removeWorktree")((repository, worktree) =>
+        Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
+      ),
+      repositoryRoot: runChecked("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"]).pipe(
+        Effect.map((commonDirectory) => path.dirname(String.trim(commonDirectory)))
+      )
     })
   })
 )

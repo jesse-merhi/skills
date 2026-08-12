@@ -7,4 +7,11 @@ if [[ $# -ne 1 ]]; then
 fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec node "$script_dir/../src/bin.ts" "$1"
+case "$1" in
+  --help|-h|--version|-v)
+    exec node "$script_dir/../src/bin.ts" "$1"
+    ;;
+  *)
+    exec node "$script_dir/../src/bin.ts" -- "$1"
+    ;;
+esac
