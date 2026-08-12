@@ -283,21 +283,15 @@ export const ReviewToolsLive = Layer.effect(
       managedBranch: string,
       force: boolean
     ) => Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path))
-    const clearManagedBranchConfig = Effect.fn("ReviewTools.clearManagedBranchConfig")(function*(
+    const updateManagedBranchMerge = Effect.fn("ReviewTools.updateManagedBranchMerge")((
       repository: string,
-      managedBranch: string
-    ) {
-      const args = ["config", "--remove-section", `branch.${managedBranch}`]
-      const result = yield* run(spawner, "git", args, repository)
-      if (result.exitCode !== 0 && result.exitCode !== 5) {
-        return yield* new ExternalToolError({
-          cause: new Error(result.stderr.trim() || `git exited with ${result.exitCode}`),
-          exitCode: result.exitCode,
-          stderr: result.stderr,
-          operation: `git ${args.join(" ")}`
-        })
-      }
-    })
+      managedBranch: string,
+      headRefName: string
+    ) => Effect.asVoid(runChecked(
+      "git",
+      ["config", `branch.${managedBranch}.merge`, `refs/heads/${headRefName}`],
+      repository
+    )))
     const validateManagedCheckout = Effect.fn("ReviewTools.validateManagedCheckout")(function*(
       input: PrepareManagedWorktreeInput,
       managedBranch: string
@@ -346,10 +340,8 @@ export const ReviewToolsLive = Layer.effect(
             if (exists) {
               const owner = yield* validateOwner(input)
               yield* validateManagedCheckout(input, owner.managedBranch)
-              if (owner.headRefName !== input.headRefName) {
-                yield* clearManagedBranchConfig(input.repository, owner.managedBranch)
-              }
               yield* checkoutPullRequest(input, owner.managedBranch, true)
+              yield* updateManagedBranchMerge(input.repository, owner.managedBranch, input.headRefName)
               yield* writeOwner(input, owner.managedBranch)
               return { branch: owner.managedBranch, created: false }
             }
@@ -363,6 +355,7 @@ export const ReviewToolsLive = Layer.effect(
                 yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
                 yield* writeOwner(input, managedBranch)
                 yield* checkoutPullRequest(input, managedBranch, false)
+                yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
                 return { branch: managedBranch, created: true }
               }),
               removeWorktree(input.repository, input.path).pipe(

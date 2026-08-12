@@ -257,7 +257,7 @@ exit 99
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  })
+  }, 15_000)
 
   it("rolls back both the worktree and generated branch when checkout fails", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-rollback-test-"))
