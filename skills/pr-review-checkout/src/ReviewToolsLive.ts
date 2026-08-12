@@ -521,14 +521,16 @@ export const ReviewToolsLive = Layer.effect(
           input.repository
         ).pipe(Effect.map(String.trim), Effect.option)
         : Option.none<string>()
-      const remoteUrl = Option.getOrElse(
-        configuredRemoteUrl,
-        () => Option.isSome(configuredRemote) && configuredRemote.value !== "." && (
-            configuredRemote.value.includes(":") || configuredRemote.value.includes("/")
-          )
-          ? configuredRemote.value
-          : input.baseRepositoryUrl
-      )
+      const remoteUrl = source === "pull-ref"
+        ? input.baseRepositoryUrl
+        : Option.getOrElse(
+          configuredRemoteUrl,
+          () => Option.isSome(configuredRemote) && configuredRemote.value !== "." && (
+              configuredRemote.value.includes(":") || configuredRemote.value.includes("/")
+            )
+            ? configuredRemote.value
+            : input.baseRepositoryUrl
+        )
       const sourceRef = source === "pull-ref"
         ? `refs/pull/${input.prNumber}/head`
         : Option.isSome(configuredMerge) && configuredMerge.value.startsWith("refs/heads/")

@@ -514,6 +514,7 @@ exit 99
   it("configures a valid helper upstream for a fresh cross-repository checkout", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-cross-upstream-test-"))
     const repository = join(directory, "repo")
+    const baseRepository = join(directory, "base.git")
     const forkRepository = join(directory, "fork.git")
     const binaries = join(directory, "bin")
     const gh = join(binaries, "gh")
@@ -525,17 +526,25 @@ exit 99
       writeFileSync(join(repository, ".gitignore"), ".worktrees/\n")
       git(repository, ["add", ".gitignore"])
       git(repository, ["commit", "--quiet", "--message", "initial"])
+      git(directory, ["clone", "--quiet", "--bare", repository, baseRepository])
       git(directory, ["clone", "--quiet", "--bare", repository, forkRepository])
+      git(baseRepository, ["update-ref", "refs/pull/42/head", "refs/heads/main"])
       git(forkRepository, ["update-ref", "refs/heads/feature/review", "refs/heads/main"])
       git(repository, ["remote", "add", "fork", forkRepository])
+      const basePullRequestUrl = pathToFileURL(join(directory, "base", "pull", "42")).href
+      const baseFetchUrl = pathToFileURL(baseRepository).href
       mkdirSync(binaries)
       writeFileSync(gh, `#!/bin/sh
 set -eu
 if [ "$1 $2" = "pr view" ]; then
-  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/base/pull/42","isCrossRepository":true}'
+  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"${basePullRequestUrl}","isCrossRepository":true}'
   exit 0
 fi
 if [ "$1 $2" = "pr checkout" ]; then
+  if [ "\${PR_REVIEW_GH_CHECKOUT_FAIL:-false}" = "true" ]; then
+    printf 'fork head unavailable\n' >&2
+    exit 8
+  fi
   shift 3
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -575,6 +584,24 @@ exit 99
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
         "refs/heads/feature/review"
+      )
+      assert.strictEqual(git(worktree, ["rev-parse", "@{upstream}"]), git(worktree, ["rev-parse", "HEAD"]))
+
+      const fallback = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_GH_CHECKOUT_FAIL: "true"
+        }
+      })
+      assert.strictEqual(fallback.status, 0, fallback.stderr)
+      assert.strictEqual(git(repository, ["remote", "get-url", managedRemote]), baseFetchUrl)
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        "refs/pull/42/head"
       )
       assert.strictEqual(git(worktree, ["rev-parse", "@{upstream}"]), git(worktree, ["rev-parse", "HEAD"]))
     } finally {
