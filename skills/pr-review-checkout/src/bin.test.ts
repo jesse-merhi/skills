@@ -220,20 +220,22 @@ exit 99
       assert.match(readFileSync(ghLog, "utf8"), /pr checkout 42 --branch agent-pr-review\/pr-42-/)
       const managedWorktree = join(repository, ".worktrees", "pr-42")
       const managedBranch = git(managedWorktree, ["branch", "--show-current"])
+      const managedRemote = managedBranch.replaceAll("/", "-")
       assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/remotes/agent-pr-review/pr-42/head"
+        "refs/heads/feature/review"
       )
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.remote`]),
-        "."
+        managedRemote
       )
       assert.strictEqual(
         git(managedWorktree, ["rev-parse", "@{upstream}"]),
         git(managedWorktree, ["rev-parse", "HEAD"])
       )
       assert.match(result.stdout, new RegExp(`branch --delete --force '${managedBranch}'`))
+      assert.match(result.stdout, new RegExp(`remote remove '${managedRemote}'`))
 
       const renamedHeadResult = spawnSync(executable, ["42"], {
         cwd: repository,
@@ -252,7 +254,7 @@ exit 99
       assert.strictEqual(JSON.parse(readFileSync(ownerPath, "utf8")).headRefName, "feature/renamed")
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/remotes/agent-pr-review/pr-42/head"
+        "refs/heads/feature/renamed"
       )
 
       git(repository, ["config", `branch.${managedBranch}.merge`, "refs/pull/42/head"])
@@ -271,7 +273,7 @@ exit 99
       assert.strictEqual(forkRenameResult.status, 0, forkRenameResult.stderr)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/remotes/agent-pr-review/pr-42/head"
+        "refs/pull/42/head"
       )
 
       git(repository, ["config", `branch.${managedBranch}.merge`, "refs/heads/fork/renamed-again"])
@@ -290,7 +292,7 @@ exit 99
       assert.strictEqual(configuredForkRenameResult.status, 0, configuredForkRenameResult.stderr)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/remotes/agent-pr-review/pr-42/head"
+        "refs/heads/fork/final-name"
       )
 
       const commitBeforeFailedRefresh = git(managedWorktree, ["rev-parse", "HEAD"])
@@ -433,14 +435,15 @@ exit 99
       assert.strictEqual(deletedHeadResult.status, 0, deletedHeadResult.stderr)
       const deletedHeadWorktree = join(repository, ".worktrees", "pr-43")
       const deletedHeadBranch = git(deletedHeadWorktree, ["branch", "--show-current"])
+      const deletedHeadRemote = deletedHeadBranch.replaceAll("/", "-")
       assert.strictEqual(git(deletedHeadWorktree, ["rev-parse", "HEAD"]), git(repository, ["rev-parse", "pr-tip"]))
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.merge`]),
-        "refs/remotes/agent-pr-review/pr-43/head"
+        "refs/pull/43/head"
       )
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.remote`]),
-        "."
+        deletedHeadRemote
       )
       assert.strictEqual(
         git(deletedHeadWorktree, ["rev-parse", "@{upstream}"]),
@@ -461,18 +464,18 @@ exit 99
       assert.strictEqual(restoredHeadResult.status, 0, restoredHeadResult.stderr)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.remote`]),
-        "upstream"
+        deletedHeadRemote
       )
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.merge`]),
         "refs/heads/restored/head"
       )
-      const removedTrackingRef = spawnSync(
+      const trackingRef = spawnSync(
         "git",
         ["show-ref", "--verify", "--quiet", "refs/remotes/agent-pr-review/pr-43/head"],
         { cwd: repository, encoding: "utf8" }
       )
-      assert.strictEqual(removedTrackingRef.status, 1, removedTrackingRef.stderr)
+      assert.strictEqual(trackingRef.status, 0, trackingRef.stderr)
 
       git(repository, ["update-ref", "refs/remotes/agent-pr-review/pr-43/head", "pr-tip"])
       git(repository, ["config", `branch.${deletedHeadBranch}.remote`, "."])
@@ -543,7 +546,7 @@ if [ "$1 $2" = "pr checkout" ]; then
   git fetch --quiet fork refs/heads/feature/review:refs/remotes/fork/feature/review
   git checkout --quiet "$branch"
   git reset --quiet --hard refs/remotes/fork/feature/review
-  git config "branch.$branch.remote" fork
+  git config "branch.$branch.remote" '${forkRepository}'
   git config "branch.$branch.merge" refs/heads/feature/review
   exit 0
 fi
@@ -563,7 +566,12 @@ exit 99
       assert.strictEqual(result.status, 0, result.stderr)
       const worktree = join(repository, ".worktrees", "pr-42")
       const managedBranch = git(worktree, ["branch", "--show-current"])
-      assert.strictEqual(git(repository, ["config", "--get", `branch.${managedBranch}.remote`]), "fork")
+      const managedRemote = managedBranch.replaceAll("/", "-")
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.remote`]),
+        managedRemote
+      )
+      assert.strictEqual(git(repository, ["remote", "get-url", managedRemote]), forkRepository)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
         "refs/heads/feature/review"

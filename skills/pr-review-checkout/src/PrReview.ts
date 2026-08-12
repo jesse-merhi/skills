@@ -37,6 +37,7 @@ export interface PrepareManagedWorktreeInput {
 export interface ManagedWorktreePreparation {
   readonly branch: string
   readonly created: boolean
+  readonly remote: string
 }
 
 export class ReviewTools extends Context.Service<ReviewTools, {
@@ -121,6 +122,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
         "When done reviewing this PR, remove the throwaway worktree:",
         `  git worktree remove ${shellQuote(worktree)}`,
         `  git -C ${shellQuote(repository)} branch --delete --force ${shellQuote(preparation.branch)}`,
+        `  git -C ${shellQuote(repository)} remote remove ${shellQuote(preparation.remote)}`,
         `  git -C ${shellQuote(repository)} update-ref -d ${shellQuote(
           `refs/remotes/agent-pr-review/pr-${prNumber}/head`
         )}`

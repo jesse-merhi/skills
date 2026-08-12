@@ -38,7 +38,8 @@ const makeTestTools = (options: TestToolsOptions) => {
       Effect.andThen(options.prepare ?? Effect.void),
       Effect.as({
         branch: "agent-pr-review/pr-42-test",
-        created: options.worktreeCreated ?? Option.isNone(options.existingWorktree)
+        created: options.worktreeCreated ?? Option.isNone(options.existingWorktree),
+        remote: "agent-pr-review-pr-42-test"
       })
     ),
     diffStat: (_worktree, mergeBase) =>
