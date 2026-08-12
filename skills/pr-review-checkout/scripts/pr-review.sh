@@ -4,7 +4,7 @@ set -euo pipefail
 forward_cli=false
 for argument in "$@"; do
   case "$argument" in
-    --help|-h|--version|-v|--wizard|--completions|--log-level)
+    --help|-h|--version|-v|--wizard|--completions|--completions=*|--log-level|--log-level=*)
       forward_cli=true
       ;;
   esac

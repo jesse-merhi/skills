@@ -50,6 +50,7 @@ describe("pr-review.sh", () => {
     assert.strictEqual(result.status, 1)
     assert.match(result.stdout, /USAGE/)
     assert.match(result.stderr, /Expected a value greater than 0/)
+    assert.notMatch(result.stderr, /CliError|ShowHelp|\.ts:/)
   })
 
   it("prints typed CLI help", () => {
@@ -62,6 +63,14 @@ describe("pr-review.sh", () => {
 
   it("forwards the completion flag advertised by typed CLI help", () => {
     const result = run("--completions", "bash")
+
+    assert.strictEqual(result.status, 0, result.stderr)
+    assert.match(result.stdout, /begin-pr-review\.sh-completions/)
+    assert.strictEqual(result.stderr, "")
+  })
+
+  it("forwards equals-form global flags", () => {
+    const result = run("--completions=bash")
 
     assert.strictEqual(result.status, 0, result.stderr)
     assert.match(result.stdout, /begin-pr-review\.sh-completions/)

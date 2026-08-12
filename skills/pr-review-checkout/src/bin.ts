@@ -1,6 +1,6 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Cause, Console, Effect, Layer } from "effect"
-import { Argument, Command } from "effect/unstable/cli"
+import { Argument, CliError, Command } from "effect/unstable/cli"
 import { checkoutForReview, ExternalToolError, PullRequestNumber, ReviewTools } from "./PrReview.ts"
 import { ReviewToolsLive } from "./ReviewToolsLive.ts"
 
@@ -31,6 +31,9 @@ prReview.pipe(
   Effect.provide(Live),
   Effect.tapCause((cause) => {
     const failure = Cause.squash(cause)
+    if (CliError.isCliError(failure)) {
+      return Effect.void
+    }
     return Console.error(
       failure instanceof ExternalToolError ? externalErrorMessage(failure) : Cause.pretty(cause)
     )
