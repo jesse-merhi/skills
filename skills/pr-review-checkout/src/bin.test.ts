@@ -157,6 +157,11 @@ if [ "$1 $2" = "pr checkout" ]; then
   if [ "$force" -eq 1 ]; then
     git checkout --quiet "$branch"
     git reset --quiet --hard pr-tip
+    if [ "\${PR_REVIEW_FAIL_AFTER_CHECKOUT:-false}" = "true" ]; then
+      git config "branch.$branch.remote" changed-remote
+      git config "branch.$branch.merge" refs/heads/changed-head
+      exit 9
+    fi
   else
     git checkout --quiet -b "$branch" pr-tip
   fi
@@ -253,6 +258,36 @@ exit 99
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
         "refs/heads/fork/final-name"
+      )
+
+      const commitBeforeFailedRefresh = git(managedWorktree, ["rev-parse", "HEAD"])
+      const ownerBeforeFailedRefresh = readFileSync(ownerPath, "utf8")
+      const mergeBeforeFailedRefresh = git(repository, ["config", "--get", `branch.${managedBranch}.merge`])
+      const remoteBeforeFailedRefresh = git(repository, ["config", "--get", `branch.${managedBranch}.remote`])
+      git(repository, ["commit", "--quiet", "--allow-empty", "--message", "new PR tip"])
+      git(repository, ["branch", "--force", "pr-tip", "HEAD"])
+      const failedRefresh = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_FAIL_AFTER_CHECKOUT: "true",
+          PR_REVIEW_HEAD: "fork/interrupted-name",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(failedRefresh.status, 9)
+      assert.strictEqual(git(managedWorktree, ["rev-parse", "HEAD"]), commitBeforeFailedRefresh)
+      assert.strictEqual(readFileSync(ownerPath, "utf8"), ownerBeforeFailedRefresh)
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        mergeBeforeFailedRefresh
+      )
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.remote`]),
+        remoteBeforeFailedRefresh
       )
 
       writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")

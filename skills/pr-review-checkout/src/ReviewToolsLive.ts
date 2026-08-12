@@ -252,6 +252,26 @@ export const ReviewToolsLive = Layer.effect(
       prNumber: input.prNumber,
       repository: input.repository
     })
+    const writeManagedOwner = Effect.fn("ReviewTools.writeManagedOwner")(function*(
+      ownerPath: string,
+      owner: ManagedWorktreeOwner
+    ) {
+      const encoded = yield* encodeManagedOwner(owner).pipe(
+        Effect.mapError((cause) => new ExternalToolError({ cause, operation: "encode managed worktree ownership" }))
+      )
+      const nonce = yield* crypto.randomUUIDv4.pipe(
+        Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create ownership temporary file" }))
+      )
+      const temporaryPath = `${ownerPath}.tmp-${nonce}`
+      yield* fileSystem.writeFileString(temporaryPath, encoded).pipe(
+        Effect.andThen(fileSystem.rename(temporaryPath, ownerPath)),
+        Effect.ensuring(fileSystem.remove(temporaryPath, { force: true }).pipe(Effect.ignore)),
+        Effect.mapError((cause) => new ExternalToolError({
+          cause,
+          operation: `record ownership at ${ownerPath}`
+        }))
+      )
+    })
     const validateOwner = Effect.fn("ReviewTools.validateOwner")(function*(input: PrepareManagedWorktreeInput) {
       const ownerPath = yield* markerPath(input.path)
       const actual = yield* fileSystem.readFileString(ownerPath).pipe(
@@ -279,12 +299,7 @@ export const ReviewToolsLive = Layer.effect(
       managedBranch: string
     ) {
       const ownerPath = yield* markerPath(input.path)
-      const encoded = yield* encodeManagedOwner(expectedOwner(input, managedBranch)).pipe(
-        Effect.mapError((cause) => new ExternalToolError({ cause, operation: "encode managed worktree ownership" }))
-      )
-      yield* fileSystem.writeFileString(ownerPath, encoded).pipe(
-        Effect.mapError((cause) => new ExternalToolError({ cause, operation: `record ownership at ${input.path}` }))
-      )
+      yield* writeManagedOwner(ownerPath, expectedOwner(input, managedBranch))
     })
     const checkoutPullRequest = (
       input: PrepareManagedWorktreeInput,
@@ -300,6 +315,32 @@ export const ReviewToolsLive = Layer.effect(
       ["config", `branch.${managedBranch}.merge`, `refs/heads/${headRefName}`],
       repository
     )))
+    const readManagedBranchConfig = (
+      repository: string,
+      managedBranch: string,
+      name: "merge" | "remote"
+    ) => runChecked(
+      "git",
+      ["config", "--get", `branch.${managedBranch}.${name}`],
+      repository
+    ).pipe(Effect.map(String.trim), Effect.option)
+    const restoreManagedBranchConfig = (
+      repository: string,
+      managedBranch: string,
+      name: "merge" | "remote",
+      value: Option.Option<string>
+    ) => Option.match(value, {
+      onNone: () => runChecked(
+        "git",
+        ["config", "--unset-all", `branch.${managedBranch}.${name}`],
+        repository
+      ).pipe(Effect.ignore),
+      onSome: (configured) => runChecked(
+        "git",
+        ["config", `branch.${managedBranch}.${name}`, configured],
+        repository
+      ).pipe(Effect.ignore)
+    })
     const refreshManagedBranchMerge = Effect.fn("ReviewTools.refreshManagedBranchMerge")(function*(
       input: PrepareManagedWorktreeInput,
       managedBranch: string
@@ -365,10 +406,36 @@ export const ReviewToolsLive = Layer.effect(
             if (exists) {
               const owner = yield* validateOwner(input)
               yield* validateManagedCheckout(input, owner.managedBranch)
-              yield* checkoutPullRequest(input, owner.managedBranch, true)
-              yield* refreshManagedBranchMerge(input, owner.managedBranch)
-              yield* writeOwner(input, owner.managedBranch)
-              return { branch: owner.managedBranch, created: false }
+              const ownerPath = yield* markerPath(input.path)
+              const previousCommit = yield* runChecked("git", ["rev-parse", "HEAD"], input.path).pipe(
+                Effect.map(String.trim)
+              )
+              const previousMerge = yield* readManagedBranchConfig(input.repository, owner.managedBranch, "merge")
+              const previousRemote = yield* readManagedBranchConfig(input.repository, owner.managedBranch, "remote")
+              return yield* createWorktreeWithRollback(
+                Effect.gen(function*() {
+                  yield* checkoutPullRequest(input, owner.managedBranch, true)
+                  yield* refreshManagedBranchMerge(input, owner.managedBranch)
+                  yield* writeOwner(input, owner.managedBranch)
+                  return { branch: owner.managedBranch, created: false }
+                }),
+                runChecked("git", ["reset", "--hard", previousCommit], input.path).pipe(
+                  Effect.ignore,
+                  Effect.andThen(restoreManagedBranchConfig(
+                    input.repository,
+                    owner.managedBranch,
+                    "merge",
+                    previousMerge
+                  )),
+                  Effect.andThen(restoreManagedBranchConfig(
+                    input.repository,
+                    owner.managedBranch,
+                    "remote",
+                    previousRemote
+                  )),
+                  Effect.andThen(writeManagedOwner(ownerPath, owner).pipe(Effect.ignore))
+                )
+              )
             }
 
             const nonce = yield* crypto.randomUUIDv4.pipe(
