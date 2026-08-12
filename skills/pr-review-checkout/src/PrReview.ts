@@ -50,18 +50,19 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const tools = yield* ReviewTools
   const pullRequest = yield* tools.pullRequest(prNumber)
   const repository = yield* tools.repositoryRoot
-  const detachedWorktree = path.join(repository, ".worktrees", `pr-${prNumber}`)
+  const managedWorktreePath = path.join(repository, ".worktrees", `pr-${prNumber}`)
   const branchWorktree = yield* tools.findBranchWorktree(pullRequest.headRefName)
-  const hasDetachedWorktree = Option.isNone(branchWorktree) && (yield* tools.hasWorktree(detachedWorktree))
-  const created = Option.isNone(branchWorktree) && !hasDetachedWorktree
-  const worktree = Option.getOrElse(branchWorktree, () => detachedWorktree)
+  const hasManagedWorktree = Option.isNone(branchWorktree) && (yield* tools.hasWorktree(managedWorktreePath))
+  const created = Option.isNone(branchWorktree) && !hasManagedWorktree
+  const worktree = Option.getOrElse(branchWorktree, () => managedWorktreePath)
+  const managed = worktree === managedWorktreePath
 
   if (created) {
     yield* tools.createWorktree({ path: worktree, repository })
   }
 
   const prepareReview = Effect.gen(function*() {
-    if (Option.isNone(branchWorktree)) {
+    if (managed) {
       yield* tools.checkoutPullRequest(worktree, prNumber)
     }
 
@@ -76,9 +77,9 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
 
     const lines = [
       created
-        ? `No worktree bound to '${pullRequest.headRefName}' — created a detached review worktree at:`
-        : Option.isNone(branchWorktree)
-        ? `Refreshing existing detached review worktree for PR #${prNumber}:`
+        ? `No worktree bound to '${pullRequest.headRefName}' — created a managed review worktree at:`
+        : managed
+        ? `Refreshing managed review worktree for PR #${prNumber}:`
         : `Reusing existing worktree for '${pullRequest.headRefName}':`,
       `  ${worktree}`,
       "",
@@ -97,7 +98,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
       "  • A locked tab or 'Partial mode' means the wrong remote-preview surface is open."
     ]
 
-    if (Option.isNone(branchWorktree)) {
+    if (managed) {
       lines.push(
         "",
         "When done reviewing this PR, remove the throwaway worktree:",

@@ -8,14 +8,14 @@ import {
   PullRequestNumber,
   ReviewTools
 } from "./PrReview.ts"
-import { createWorktreeWithRollback, parseWorktrees } from "./ReviewToolsLive.ts"
+import { createWorktreeWithRollback, parseWorktrees, pullRequestCheckoutArgs } from "./ReviewToolsLive.ts"
 
 interface TestToolsOptions {
   readonly checkout?: Effect.Effect<void, ExternalToolError>
   readonly existingWorktree: Option.Option<string>
   readonly failDiff?: boolean
   readonly failMergeBase?: boolean
-  readonly hasDetachedWorktree?: boolean
+  readonly hasManagedWorktree?: boolean
 }
 
 const prNumber = Schema.decodeSync(PullRequestNumber)(42)
@@ -33,7 +33,7 @@ const makeTestTools = (options: TestToolsOptions) => {
         ? Effect.fail(failure("diff"))
         : Effect.succeed(` file.ts | 2 +-${mergeBase}`),
     findBranchWorktree: () => Effect.succeed(options.existingWorktree),
-    hasWorktree: () => Effect.succeed(options.hasDetachedWorktree === true),
+    hasWorktree: () => Effect.succeed(options.hasManagedWorktree === true),
     mergeBase: () =>
       options.failMergeBase === true
         ? Effect.fail(failure("merge-base"))
@@ -66,7 +66,7 @@ describe("checkoutForReview", () => {
     )
   })
 
-  it.effect("creates a detached PR worktree without replacing an existing branch", () => {
+  it.effect("creates a managed PR worktree without replacing an existing branch", () => {
     const test = makeTestTools({ existingWorktree: Option.none() })
     return checkoutForReview(prNumber).pipe(
       // @effect-diagnostics-next-line strictEffectProvide:off
@@ -84,10 +84,9 @@ describe("checkoutForReview", () => {
     )
   })
 
-  it.effect("refreshes the detached PR worktree created by an earlier invocation", () => {
+  it.effect("refreshes the managed PR worktree created by an earlier invocation", () => {
     const test = makeTestTools({
-      existingWorktree: Option.none(),
-      hasDetachedWorktree: true
+      existingWorktree: Option.some("/repo/.worktrees/pr-42")
     })
     return checkoutForReview(prNumber).pipe(
       // @effect-diagnostics-next-line strictEffectProvide:off
@@ -99,7 +98,7 @@ describe("checkoutForReview", () => {
           "checkout:/repo/.worktrees/pr-42",
           "open:/repo/.worktrees/pr-42"
         ])
-        assert.isTrue(result.lines.includes("Refreshing existing detached review worktree for PR #42:"))
+        assert.isTrue(result.lines.includes("Refreshing managed review worktree for PR #42:"))
         assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
       })
     )
@@ -193,5 +192,11 @@ describe("PullRequestNumber", () => {
     assert.isFalse(Schema.is(PullRequestNumber)(0))
     assert.isFalse(Schema.is(PullRequestNumber)(-1))
     assert.isFalse(Schema.is(PullRequestNumber)(1.5))
+  })
+})
+
+describe("pullRequestCheckoutArgs", () => {
+  it("keeps the managed worktree on the named PR branch", () => {
+    assert.deepStrictEqual(pullRequestCheckoutArgs(prNumber), ["pr", "checkout", "42"])
   })
 })

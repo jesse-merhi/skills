@@ -1,6 +1,7 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
 import { Effect, Exit, Layer, Option, Schema, Stream, String } from "effect"
 import { PullRequest, ExternalToolError, ReviewTools } from "./PrReview.ts"
+import type { PullRequestNumber } from "./PrReview.ts"
 
 interface CommandResult {
   readonly exitCode: number
@@ -69,6 +70,9 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
   Effect.onExit((exit) => Exit.isFailure(exit) ? rollback : Effect.void)
 )
 
+export const pullRequestCheckoutArgs = (prNumber: PullRequestNumber) =>
+  ["pr", "checkout", globalThis.String(prNumber)] as const
+
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
 
 export const ReviewToolsLive = Layer.effect(
@@ -82,7 +86,7 @@ export const ReviewToolsLive = Layer.effect(
 
     return ReviewTools.of({
       checkoutPullRequest: Effect.fn("ReviewTools.checkoutPullRequest")((worktree, prNumber) =>
-        Effect.asVoid(runChecked("gh", ["pr", "checkout", globalThis.String(prNumber), "--detach"], worktree))
+        Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(prNumber), worktree))
       ),
       createWorktree: Effect.fn("ReviewTools.createWorktree")(({ path, repository }) =>
         createWorktreeWithRollback(

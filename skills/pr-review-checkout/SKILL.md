@@ -58,11 +58,11 @@ Run the helper from anywhere inside the repository:
 ```
 
 It resolves the PR branch and base, reuses the branch's existing worktree when
-one exists, creates a dedicated detached `.worktrees/pr-<n>` worktree through
-`gh pr checkout --detach` otherwise, opens that folder in VS Code, and prints
-the PR's net diff summary. The detached checkout reviews the current PR head
-without resetting or reusing a stale local branch. Running the helper again for
-the same PR refreshes and reuses that detached worktree.
+one exists, or creates a dedicated `.worktrees/pr-<n>` worktree otherwise. The
+helper lets `gh pr checkout` attach its managed worktree to the PR's named branch
+so VS Code can recognize the active pull request, then opens that folder and
+prints the PR's net diff summary. Running the helper again refreshes a managed
+worktree before opening it.
 
 A branch can be checked out in only one worktree. Never check an in-flight PR
 branch out in the main repository or a second worktree.

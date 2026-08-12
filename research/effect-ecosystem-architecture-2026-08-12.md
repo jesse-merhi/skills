@@ -368,7 +368,7 @@ whether two clean passes are required belongs in application policy, not SQL.
 ### PR review checkout
 
 This is the best first production slice. Replace shell orchestration with
-Effect CLI plus structured `gh pr checkout --detach` and `git worktree`
+Effect CLI plus structured `gh pr checkout` and `git worktree`
 commands. It is small enough to prove:
 
 - packaging and startup;
@@ -600,9 +600,9 @@ rewrite began:
   these tools do not use MessagePack, avoiding an unnecessary install script;
 - the first Effect CLI preserved the old missing-argument exit code and usage,
   added typed help, and passed four focused tests;
-- the implementation delegates PR resolution to `gh pr checkout --detach`,
-  uses structured subprocess arguments, and removes a newly created worktree
-  if checkout fails.
+- the implementation delegates PR resolution to a named `gh pr checkout` so
+  VS Code can recognize the active pull request, uses structured subprocess
+  arguments, and removes a newly created worktree if checkout fails.
 
 This evidence supports continuing the stack, but it also narrows “fullest
 extent”: TypeScript-Go should wait until the Effect codebase itself adopts the
