@@ -66,7 +66,7 @@ describe("checkoutForReview", () => {
       Effect.map((result) => {
         assert.isFalse(result.created)
         assert.strictEqual(result.worktree, "/repo worktrees/feature")
-        assert.deepStrictEqual(test.calls, ["open:/repo worktrees/feature"])
+        assert.deepStrictEqual(test.calls, [])
         assert.isTrue(result.lines.includes(" file.ts | 2 +-abc123"))
       })
     )
@@ -81,8 +81,7 @@ describe("checkoutForReview", () => {
         assert.isTrue(result.created)
         assert.strictEqual(result.worktree, "/repo/.worktrees/pr-42")
         assert.deepStrictEqual(test.calls, [
-          "prepare:/repo/.worktrees/pr-42",
-          "open:/repo/.worktrees/pr-42"
+          "prepare:/repo/.worktrees/pr-42"
         ])
         assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
         assert.isTrue(result.lines.includes(
@@ -103,14 +102,13 @@ describe("checkoutForReview", () => {
       Effect.map((result) => {
         assert.isFalse(result.created)
         assert.deepStrictEqual(test.calls, [
-          "prepare:/repo/.worktrees/pr-42",
-          "open:/repo/.worktrees/pr-42"
+          "prepare:/repo/.worktrees/pr-42"
         ])
       })
     )
   })
 
-  it.effect("refreshes the managed PR worktree created by an earlier invocation", () => {
+  it.effect("reuses a legacy helper worktree already bound to the PR branch", () => {
     const test = makeTestTools({
       existingWorktree: Option.some("/repo/.worktrees/pr-42")
     })
@@ -120,12 +118,9 @@ describe("checkoutForReview", () => {
       Effect.map((result) => {
         assert.isFalse(result.created)
         assert.strictEqual(result.worktree, "/repo/.worktrees/pr-42")
-        assert.deepStrictEqual(test.calls, [
-          "prepare:/repo/.worktrees/pr-42",
-          "open:/repo/.worktrees/pr-42"
-        ])
-        assert.isTrue(result.lines.includes("Refreshing managed review worktree for PR #42:"))
-        assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
+        assert.deepStrictEqual(test.calls, [])
+        assert.isTrue(result.lines.includes("Reusing existing worktree for 'feature/review':"))
+        assert.isFalse(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
       })
     )
   })
@@ -162,7 +157,7 @@ describe("checkoutForReview", () => {
       Effect.provide(test.layer),
       Effect.map((result) => {
         assert.isTrue(result.lines.includes("Changed files (net diff vs main):"))
-        assert.deepStrictEqual(test.calls, ["open:/repo/feature"])
+        assert.deepStrictEqual(test.calls, [])
       })
     )
   })

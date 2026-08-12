@@ -63,7 +63,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const managedWorktreePath = path.join(repository, ".worktrees", `pr-${prNumber}`)
   const branchWorktree = yield* tools.findBranchWorktree(pullRequest.headRefName)
   const worktree = Option.getOrElse(branchWorktree, () => managedWorktreePath)
-  const managed = worktree === managedWorktreePath
+  const managed = Option.isNone(branchWorktree)
   const preparation = managed
     ? yield* tools.prepareManagedWorktree({
       headRefName: pullRequest.headRefName,
@@ -81,8 +81,6 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
     const diffStat = yield* tools.diffStat(worktree, mergeBase).pipe(
       Effect.orElseSucceed(() => "")
     )
-
-    yield* tools.openEditor(worktree)
 
     const lines = [
       created

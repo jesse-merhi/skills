@@ -1,7 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Cause, Console, Effect, Layer } from "effect"
 import { Argument, Command } from "effect/unstable/cli"
-import { checkoutForReview, ExternalToolError, PullRequestNumber } from "./PrReview.ts"
+import { checkoutForReview, ExternalToolError, PullRequestNumber, ReviewTools } from "./PrReview.ts"
 import { ReviewToolsLive } from "./ReviewToolsLive.ts"
 
 const prReview = Command.make(
@@ -10,6 +10,8 @@ const prReview = Command.make(
   Effect.fn("prReview.handler")(function*({ prNumber }) {
     const result = yield* checkoutForReview(prNumber)
     yield* Console.log(result.lines.join("\n"))
+    const tools = yield* ReviewTools
+    yield* tools.openEditor(result.worktree)
   })
 ).pipe(Command.withDescription("Open a GitHub pull request in a local-backed VS Code review worktree"))
 

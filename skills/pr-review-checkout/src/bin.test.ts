@@ -94,19 +94,25 @@ fi
 if [ "$1 $2" = "pr checkout" ]; then
   shift 3
   branch=""
+  force=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --branch) branch="$2"; shift 2 ;;
-      --force) exit 91 ;;
+      --force) force=1; shift ;;
       *) shift ;;
     esac
   done
-  git checkout --quiet -b "$branch" pr-tip
+  if [ "$force" -eq 1 ]; then
+    git checkout --quiet "$branch"
+    git reset --quiet --hard pr-tip
+  else
+    git checkout --quiet -b "$branch" pr-tip
+  fi
   exit 0
 fi
 exit 99
 `)
-      writeFileSync(code, "#!/bin/sh\nexit 0\n")
+      writeFileSync(code, "#!/bin/sh\nexit \"${PR_REVIEW_CODE_EXIT:-0}\"\n")
       chmodSync(gh, 0o755)
       chmodSync(code, 0o755)
 
@@ -130,9 +136,111 @@ exit 99
       assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
       assert.match(result.stdout, new RegExp(`branch --delete --force "${managedBranch}"`))
 
+      writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")
+      const dirtyResult = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(dirtyResult.status, 1)
+      assert.match(dirtyResult.stderr, /uncommitted changes/)
+      assert.strictEqual(readFileSync(join(managedWorktree, "uncommitted.txt"), "utf8"), "preserve me\n")
+      rmSync(join(managedWorktree, "uncommitted.txt"))
+
+      git(managedWorktree, ["switch", "--quiet", "--create", "repurposed"])
+      writeFileSync(join(managedWorktree, "repurposed.txt"), "also preserve me\n")
+      const repurposedResult = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(repurposedResult.status, 1)
+      assert.match(repurposedResult.stderr, /managed worktree is on "repurposed"/)
+      assert.strictEqual(git(managedWorktree, ["branch", "--show-current"]), "repurposed")
+      assert.strictEqual(readFileSync(join(managedWorktree, "repurposed.txt"), "utf8"), "also preserve me\n")
+      rmSync(join(managedWorktree, "repurposed.txt"))
+      git(managedWorktree, ["switch", "--quiet", managedBranch])
+      git(repository, ["branch", "--delete", "--force", "repurposed"])
+
+      const editorFailure = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_CODE_EXIT: "9",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(editorFailure.status, 9)
+      assert.match(editorFailure.stdout, /When done reviewing this PR/)
+      assert.match(editorFailure.stdout, new RegExp(`branch --delete --force "${managedBranch}"`))
+
       git(repository, ["worktree", "remove", managedWorktree])
       git(repository, ["branch", "--delete", "--force", managedBranch])
       assert.strictEqual(git(repository, ["branch", "--list", managedBranch]), "")
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("rolls back both the worktree and generated branch when checkout fails", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pr-review-rollback-test-"))
+    const repository = join(directory, "repo")
+    const binaries = join(directory, "bin")
+    const gh = join(binaries, "gh")
+    try {
+      git(directory, ["init", "--quiet", "--initial-branch", "main", repository])
+      git(repository, ["config", "user.name", "Test"])
+      git(repository, ["config", "user.email", "test@example.com"])
+      writeFileSync(join(repository, ".gitignore"), ".worktrees/\n")
+      git(repository, ["add", ".gitignore"])
+      git(repository, ["commit", "--quiet", "--message", "initial"])
+      mkdirSync(binaries)
+      writeFileSync(gh, `#!/bin/sh
+set -eu
+if [ "$1 $2" = "pr view" ]; then
+  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}'
+  exit 0
+fi
+if [ "$1 $2" = "pr checkout" ]; then
+  shift 3
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --branch) branch="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  git checkout --quiet -b "$branch"
+  printf 'checkout failed\n' >&2
+  exit 7
+fi
+exit 99
+`)
+      chmodSync(gh, 0o755)
+
+      const result = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: { ...process.env, PATH: `${binaries}:${process.env.PATH ?? ""}` }
+      })
+
+      assert.strictEqual(result.status, 7)
+      assert.strictEqual(result.stderr, "checkout failed\n")
+      assert.notMatch(git(repository, ["worktree", "list", "--porcelain"]), /\.worktrees\/pr-42/)
+      assert.strictEqual(git(repository, ["branch", "--list", "agent-pr-review/*"]), "")
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }

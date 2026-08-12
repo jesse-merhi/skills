@@ -229,6 +229,8 @@ export const ReviewToolsLive = Layer.effect(
       checked(spawner, executable, args, cwd)
     const removeWorktree = (repository: string, worktree: string) =>
       Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
+    const deleteBranch = (repository: string, branch: string) =>
+      Effect.asVoid(runChecked("git", ["branch", "--delete", "--force", branch], repository))
     const markerPath = Effect.fn("ReviewTools.markerPath")(function*(worktree: string) {
       const gitDirectory = yield* runChecked("git", ["rev-parse", "--git-dir"], worktree).pipe(Effect.map(String.trim))
       return pathService.join(
@@ -282,6 +284,29 @@ export const ReviewToolsLive = Layer.effect(
       managedBranch: string,
       force: boolean
     ) => Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path))
+    const validateManagedCheckout = Effect.fn("ReviewTools.validateManagedCheckout")(function*(
+      input: PrepareManagedWorktreeInput,
+      managedBranch: string
+    ) {
+      const activeBranch = yield* runChecked("git", ["branch", "--show-current"], input.path).pipe(
+        Effect.map(String.trim)
+      )
+      if (activeBranch !== managedBranch) {
+        return yield* new ExternalToolError({
+          cause: new Error(
+            `managed worktree is on ${JSON.stringify(activeBranch || "detached HEAD")}, expected ${JSON.stringify(managedBranch)}`
+          ),
+          operation: `validate active branch at ${input.path}`
+        })
+      }
+      const status = yield* runChecked("git", ["status", "--porcelain", "--untracked-files=all"], input.path)
+      if (status.length > 0) {
+        return yield* new ExternalToolError({
+          cause: new Error("managed worktree has uncommitted changes; refusing to force-refresh it"),
+          operation: `validate clean worktree at ${input.path}`
+        })
+      }
+    })
 
     return ReviewTools.of({
       prepareManagedWorktree: Effect.fn("ReviewTools.prepareManagedWorktree")(function*(input) {
@@ -306,22 +331,26 @@ export const ReviewToolsLive = Layer.effect(
             const exists = parseWorktrees(output).some((entry) => entry.worktree === registeredPath)
             if (exists) {
               const owner = yield* validateOwner(input)
+              yield* validateManagedCheckout(input, owner.managedBranch)
               yield* checkoutPullRequest(input, owner.managedBranch, true)
               return { branch: owner.managedBranch, created: false }
             }
 
+            const nonce = yield* crypto.randomUUIDv4.pipe(
+              Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create managed branch name" }))
+            )
+            const managedBranch = `agent-pr-review/pr-${input.prNumber}-${nonce}`
             return yield* createWorktreeWithRollback(
               Effect.gen(function*() {
-                const nonce = yield* crypto.randomUUIDv4.pipe(
-                  Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create managed branch name" }))
-                )
-                const managedBranch = `agent-pr-review/pr-${input.prNumber}-${nonce}`
                 yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
                 yield* writeOwner(input, managedBranch)
                 yield* checkoutPullRequest(input, managedBranch, false)
                 return { branch: managedBranch, created: true }
               }),
-              removeWorktree(input.repository, input.path).pipe(Effect.ignore)
+              removeWorktree(input.repository, input.path).pipe(
+                Effect.ignore,
+                Effect.andThen(deleteBranch(input.repository, managedBranch).pipe(Effect.ignore))
+              )
             )
           }),
           () => fileSystem.remove(lockPath, { force: true, recursive: true }).pipe(Effect.ignore)
