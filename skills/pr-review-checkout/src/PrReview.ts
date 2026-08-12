@@ -55,6 +55,8 @@ export interface ReviewCheckout {
   readonly worktree: string
 }
 
+export const shellQuote = (value: string) => `'${value.replaceAll("'", `'"'"'`)}'`
+
 export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumber: PullRequestNumber) {
   const path = yield* Path.Path
   const tools = yield* ReviewTools
@@ -109,8 +111,8 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
       lines.push(
         "",
         "When done reviewing this PR, remove the throwaway worktree:",
-        `  git worktree remove ${JSON.stringify(worktree)}`,
-        `  git -C ${JSON.stringify(repository)} branch --delete --force ${JSON.stringify(preparation.branch)}`
+        `  git worktree remove ${shellQuote(worktree)}`,
+        `  git -C ${shellQuote(repository)} branch --delete --force ${shellQuote(preparation.branch)}`
       )
     }
 

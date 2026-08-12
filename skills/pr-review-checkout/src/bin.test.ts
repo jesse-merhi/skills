@@ -7,6 +7,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assert, describe, it } from "@effect/vitest"
+import { shellQuote } from "./PrReview.ts"
 
 const executable = fileURLToPath(new URL("../scripts/pr-review.sh", import.meta.url))
 
@@ -19,6 +20,14 @@ const git = (repository: string, args: ReadonlyArray<string>) => {
 }
 
 describe("pr-review.sh", () => {
+  it("prints POSIX-safe cleanup arguments for every shell-significant character", () => {
+    const value = "repo $HOME `command` \\ 'quote'\nand newline"
+    const result = spawnSync("/bin/sh", ["-c", `printf %s ${shellQuote(value)}`], { encoding: "utf8" })
+
+    assert.strictEqual(result.status, 0, result.stderr)
+    assert.strictEqual(result.stdout, value)
+  })
+
   it("preserves the missing-argument usage and exit code", () => {
     const result = run()
 
@@ -134,7 +143,7 @@ exit 99
       const managedWorktree = join(repository, ".worktrees", "pr-42")
       const managedBranch = git(managedWorktree, ["branch", "--show-current"])
       assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
-      assert.match(result.stdout, new RegExp(`branch --delete --force "${managedBranch}"`))
+      assert.match(result.stdout, new RegExp(`branch --delete --force '${managedBranch}'`))
 
       writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")
       const dirtyResult = spawnSync(executable, ["42"], {
@@ -185,7 +194,7 @@ exit 99
       })
       assert.strictEqual(editorFailure.status, 9)
       assert.match(editorFailure.stdout, /When done reviewing this PR/)
-      assert.match(editorFailure.stdout, new RegExp(`branch --delete --force "${managedBranch}"`))
+      assert.match(editorFailure.stdout, new RegExp(`branch --delete --force '${managedBranch}'`))
 
       git(repository, ["worktree", "remove", managedWorktree])
       git(repository, ["branch", "--delete", "--force", managedBranch])

@@ -83,9 +83,9 @@ describe("checkoutForReview", () => {
         assert.deepStrictEqual(test.calls, [
           "prepare:/repo/.worktrees/pr-42"
         ])
-        assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
+        assert.isTrue(result.lines.includes("  git worktree remove '/repo/.worktrees/pr-42'"))
         assert.isTrue(result.lines.includes(
-          "  git -C \"/repo\" branch --delete --force \"agent-pr-review/pr-42-test\""
+          "  git -C '/repo' branch --delete --force 'agent-pr-review/pr-42-test'"
         ))
       })
     )
@@ -120,7 +120,7 @@ describe("checkoutForReview", () => {
         assert.strictEqual(result.worktree, "/repo/.worktrees/pr-42")
         assert.deepStrictEqual(test.calls, [])
         assert.isTrue(result.lines.includes("Reusing existing worktree for 'feature/review':"))
-        assert.isFalse(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
+        assert.isFalse(result.lines.includes("  git worktree remove '/repo/.worktrees/pr-42'"))
       })
     )
   })
