@@ -31,7 +31,10 @@ const makeTestTools = (options: TestToolsOptions) => {
   const layer = Layer.succeed(ReviewTools)(ReviewTools.of({
     prepareManagedWorktree: ({ path }) => Effect.sync(() => calls.push(`prepare:${path}`)).pipe(
       Effect.andThen(options.prepare ?? Effect.void),
-      Effect.as(options.worktreeCreated ?? Option.isNone(options.existingWorktree))
+      Effect.as({
+        branch: "agent-pr-review/pr-42-test",
+        created: options.worktreeCreated ?? Option.isNone(options.existingWorktree)
+      })
     ),
     diffStat: (_worktree, mergeBase) =>
       options.failDiff === true
@@ -82,6 +85,9 @@ describe("checkoutForReview", () => {
           "open:/repo/.worktrees/pr-42"
         ])
         assert.isTrue(result.lines.includes("  git worktree remove \"/repo/.worktrees/pr-42\""))
+        assert.isTrue(result.lines.includes(
+          "  git -C \"/repo\" branch --delete --force \"agent-pr-review/pr-42-test\""
+        ))
       })
     )
   })

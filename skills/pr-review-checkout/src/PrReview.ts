@@ -1,4 +1,4 @@
-import { Context, Effect, Option, Path, Schema, String } from "effect"
+import { Context, Effect, Option, Path, Runtime, Schema, String } from "effect"
 
 export const PullRequestNumber = Schema.Int.pipe(
   Schema.check(Schema.isGreaterThan(0)),
@@ -15,14 +15,26 @@ export class PullRequest extends Schema.Class<PullRequest>("skills/pr-review-che
 
 export class ExternalToolError extends Schema.TaggedError<ExternalToolError>()("ExternalToolError", {
   cause: Schema.Defect(),
+  exitCode: Schema.optional(Schema.Int),
+  stderr: Schema.optional(Schema.String),
   operation: Schema.String
-}) {}
+}) {
+  override readonly [Runtime.errorReported] = false
+  override get [Runtime.errorExitCode]() {
+    return this.exitCode ?? 1
+  }
+}
 
 export interface PrepareManagedWorktreeInput {
   readonly headRefName: string
   readonly path: string
   readonly prNumber: PullRequestNumber
   readonly repository: string
+}
+
+export interface ManagedWorktreePreparation {
+  readonly branch: string
+  readonly created: boolean
 }
 
 export class ReviewTools extends Context.Service<ReviewTools, {
@@ -34,7 +46,7 @@ export class ReviewTools extends Context.Service<ReviewTools, {
   readonly repositoryRoot: Effect.Effect<string, ExternalToolError>
   readonly prepareManagedWorktree: (
     input: PrepareManagedWorktreeInput
-  ) => Effect.Effect<boolean, ExternalToolError>
+  ) => Effect.Effect<ManagedWorktreePreparation, ExternalToolError>
 }>()("@jesse-merhi/skills/skills/pr-review-checkout/src/PrReview/ReviewTools") {}
 
 export interface ReviewCheckout {
@@ -52,14 +64,15 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
   const branchWorktree = yield* tools.findBranchWorktree(pullRequest.headRefName)
   const worktree = Option.getOrElse(branchWorktree, () => managedWorktreePath)
   const managed = worktree === managedWorktreePath
-  const created = managed
+  const preparation = managed
     ? yield* tools.prepareManagedWorktree({
       headRefName: pullRequest.headRefName,
       path: worktree,
       prNumber,
       repository
     })
-    : false
+    : null
+  const created = preparation?.created ?? false
 
   return yield* Effect.gen(function*() {
     const mergeBase = yield* tools.mergeBase(worktree, pullRequest.baseRefName).pipe(
@@ -94,11 +107,12 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
       "  • A locked tab or 'Partial mode' means the wrong remote-preview surface is open."
     ]
 
-    if (managed) {
+    if (preparation !== null) {
       lines.push(
         "",
         "When done reviewing this PR, remove the throwaway worktree:",
-        `  git worktree remove ${JSON.stringify(worktree)}`
+        `  git worktree remove ${JSON.stringify(worktree)}`,
+        `  git -C ${JSON.stringify(repository)} branch --delete --force ${JSON.stringify(preparation.branch)}`
       )
     }
 

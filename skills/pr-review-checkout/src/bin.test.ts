@@ -43,11 +43,11 @@ describe("pr-review.sh", () => {
     assert.strictEqual(result.stderr, "")
   })
 
-  it("keeps external-tool failures off stdout", () => {
+  it("preserves an external tool's exit status and raw stderr", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-test-"))
     const gh = join(directory, "gh")
     try {
-      writeFileSync(gh, "#!/bin/sh\nprintf 'gh failed\\n' >&2\nexit 1\n")
+      writeFileSync(gh, "#!/bin/sh\nprintf 'authentication required\\n' >&2\nexit 4\n")
       chmodSync(gh, 0o755)
       const result = spawnSync(executable, ["42"], {
         encoding: "utf8",
@@ -55,9 +55,9 @@ describe("pr-review.sh", () => {
         env: { ...process.env, PATH: `${directory}:${process.env.PATH ?? ""}` }
       })
 
-      assert.strictEqual(result.status, 1)
+      assert.strictEqual(result.status, 4)
       assert.strictEqual(result.stdout, "")
-      assert.match(result.stderr, /gh failed/)
+      assert.strictEqual(result.stderr, "authentication required\n")
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
@@ -125,10 +125,14 @@ exit 99
       assert.strictEqual(git(repository, ["rev-parse", "feature/review"]), localCommit)
       assert.match(git(repository, ["status", "--short"]), /^$/)
       assert.match(readFileSync(ghLog, "utf8"), /pr checkout 42 --branch agent-pr-review\/pr-42-/)
-      assert.match(
-        git(join(repository, ".worktrees", "pr-42"), ["branch", "--show-current"]),
-        /^agent-pr-review\/pr-42-/
-      )
+      const managedWorktree = join(repository, ".worktrees", "pr-42")
+      const managedBranch = git(managedWorktree, ["branch", "--show-current"])
+      assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
+      assert.match(result.stdout, new RegExp(`branch --delete --force "${managedBranch}"`))
+
+      git(repository, ["worktree", "remove", managedWorktree])
+      git(repository, ["branch", "--delete", "--force", managedBranch])
+      assert.strictEqual(git(repository, ["branch", "--list", managedBranch]), "")
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }

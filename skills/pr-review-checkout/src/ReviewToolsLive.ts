@@ -77,6 +77,8 @@ const checked = Effect.fn("ReviewTools.checked")(function*(
   if (result.exitCode !== 0) {
     return yield* new ExternalToolError({
       cause: new Error(result.stderr.trim() || `${executable} exited with ${result.exitCode}`),
+      exitCode: result.exitCode,
+      stderr: result.stderr,
       operation: `${executable} ${args.join(" ")}`
     })
   }
@@ -305,7 +307,7 @@ export const ReviewToolsLive = Layer.effect(
             if (exists) {
               const owner = yield* validateOwner(input)
               yield* checkoutPullRequest(input, owner.managedBranch, true)
-              return false
+              return { branch: owner.managedBranch, created: false }
             }
 
             return yield* createWorktreeWithRollback(
@@ -317,7 +319,7 @@ export const ReviewToolsLive = Layer.effect(
                 yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
                 yield* writeOwner(input, managedBranch)
                 yield* checkoutPullRequest(input, managedBranch, false)
-                return true
+                return { branch: managedBranch, created: true }
               }),
               removeWorktree(input.repository, input.path).pipe(Effect.ignore)
             )
