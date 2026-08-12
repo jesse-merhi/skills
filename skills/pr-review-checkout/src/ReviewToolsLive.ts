@@ -283,6 +283,21 @@ export const ReviewToolsLive = Layer.effect(
       managedBranch: string,
       force: boolean
     ) => Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path))
+    const clearManagedBranchConfig = Effect.fn("ReviewTools.clearManagedBranchConfig")(function*(
+      repository: string,
+      managedBranch: string
+    ) {
+      const args = ["config", "--remove-section", `branch.${managedBranch}`]
+      const result = yield* run(spawner, "git", args, repository)
+      if (result.exitCode !== 0 && result.exitCode !== 5) {
+        return yield* new ExternalToolError({
+          cause: new Error(result.stderr.trim() || `git exited with ${result.exitCode}`),
+          exitCode: result.exitCode,
+          stderr: result.stderr,
+          operation: `git ${args.join(" ")}`
+        })
+      }
+    })
     const validateManagedCheckout = Effect.fn("ReviewTools.validateManagedCheckout")(function*(
       input: PrepareManagedWorktreeInput,
       managedBranch: string
@@ -331,6 +346,9 @@ export const ReviewToolsLive = Layer.effect(
             if (exists) {
               const owner = yield* validateOwner(input)
               yield* validateManagedCheckout(input, owner.managedBranch)
+              if (owner.headRefName !== input.headRefName) {
+                yield* clearManagedBranchConfig(input.repository, owner.managedBranch)
+              }
               yield* checkoutPullRequest(input, owner.managedBranch, true)
               yield* writeOwner(input, owner.managedBranch)
               return { branch: owner.managedBranch, created: false }

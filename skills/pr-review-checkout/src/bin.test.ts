@@ -36,6 +36,14 @@ describe("pr-review.sh", () => {
     assert.strictEqual(result.stderr, "usage: pr-review.sh <pr-number>\n")
   })
 
+  it("preserves the extra-argument usage and exit code", () => {
+    const result = run("42", "43")
+
+    assert.strictEqual(result.status, 2)
+    assert.strictEqual(result.stdout, "")
+    assert.strictEqual(result.stderr, "usage: pr-review.sh <pr-number>\n")
+  })
+
   it("rejects negative PR numbers before invoking gh", () => {
     const result = run("-1")
 
@@ -52,13 +60,21 @@ describe("pr-review.sh", () => {
     assert.strictEqual(result.stderr, "")
   })
 
+  it("forwards the completion flag advertised by typed CLI help", () => {
+    const result = run("--completions", "bash")
+
+    assert.strictEqual(result.status, 0, result.stderr)
+    assert.match(result.stdout, /begin-pr-review\.sh-completions/)
+    assert.strictEqual(result.stderr, "")
+  })
+
   it("preserves an external tool's exit status and raw stderr", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-test-"))
     const gh = join(directory, "gh")
     try {
       writeFileSync(gh, "#!/bin/sh\nprintf 'authentication required\\n' >&2\nexit 4\n")
       chmodSync(gh, 0o755)
-      const result = spawnSync(executable, ["42"], {
+      const result = spawnSync(executable, ["--log-level", "error", "42"], {
         encoding: "utf8",
         // @effect-diagnostics-next-line processEnv:off
         env: { ...process.env, PATH: `${directory}:${process.env.PATH ?? ""}` }
@@ -118,6 +134,11 @@ if [ "$1 $2" = "pr checkout" ]; then
   else
     git checkout --quiet -b "$branch" pr-tip
   fi
+  if ! git config --get "branch.$branch.merge" >/dev/null; then
+    head_ref="\${PR_REVIEW_HEAD:-feature/review}"
+    git config "branch.$branch.remote" origin
+    git config "branch.$branch.merge" "refs/heads/$head_ref"
+  fi
   exit 0
 fi
 exit 99
@@ -144,6 +165,10 @@ exit 99
       const managedWorktree = join(repository, ".worktrees", "pr-42")
       const managedBranch = git(managedWorktree, ["branch", "--show-current"])
       assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        "refs/heads/feature/review"
+      )
       assert.match(result.stdout, new RegExp(`branch --delete --force '${managedBranch}'`))
 
       const renamedHeadResult = spawnSync(executable, ["42"], {
@@ -161,6 +186,10 @@ exit 99
       const gitDirectory = git(managedWorktree, ["rev-parse", "--path-format=absolute", "--git-dir"])
       const ownerPath = join(gitDirectory, "agent-pr-review-owner.json")
       assert.strictEqual(JSON.parse(readFileSync(ownerPath, "utf8")).headRefName, "feature/renamed")
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
+        "refs/heads/feature/renamed"
+      )
 
       writeFileSync(join(managedWorktree, "uncommitted.txt"), "preserve me\n")
       const dirtyResult = spawnSync(executable, ["42"], {
