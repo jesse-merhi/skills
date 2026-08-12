@@ -350,11 +350,42 @@ exit 99
       git(repository, ["branch", "--delete", "--force", managedBranch])
       assert.strictEqual(git(repository, ["branch", "--list", managedBranch]), "")
 
+      const interruptedWorktree = join(repository, ".worktrees", "pr-44")
+      const interruptedBranch = "agent-pr-review/pr-44-interrupted"
+      git(repository, ["worktree", "add", "--detach", interruptedWorktree])
+      const interruptedGitDirectory = git(
+        interruptedWorktree,
+        ["rev-parse", "--path-format=absolute", "--git-dir"]
+      )
+      const canonicalRepository = git(repository, ["rev-parse", "--show-toplevel"])
+      writeFileSync(join(interruptedGitDirectory, "agent-pr-review-owner.json"), JSON.stringify({
+        headRefName: "feature/interrupted",
+        managedBranch: interruptedBranch,
+        prNumber: 44,
+        repository: canonicalRepository
+      }))
+      const recoveredResult = spawnSync(executable, ["44"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_HEAD: "feature/interrupted",
+          PR_REVIEW_TEST_LOG: ghLog
+        }
+      })
+      assert.strictEqual(recoveredResult.status, 0, recoveredResult.stderr)
+      assert.strictEqual(git(interruptedWorktree, ["branch", "--show-current"]), interruptedBranch)
+      git(repository, ["worktree", "remove", interruptedWorktree])
+      git(repository, ["branch", "--delete", "--force", interruptedBranch])
+
       const forkRepository = join(directory, "fork.git")
       const baseRepository = join(directory, "base.git")
       git(directory, ["clone", "--quiet", "--bare", repository, forkRepository])
       git(directory, ["clone", "--quiet", "--bare", repository, baseRepository])
       git(repository, ["remote", "add", "origin", forkRepository])
+      git(repository, ["remote", "add", "upstream", pathToFileURL(baseRepository).href])
       git(baseRepository, ["update-ref", "refs/pull/43/head", git(repository, ["rev-parse", "pr-tip"])])
       const basePullRequestUrl = pathToFileURL(join(directory, "base", "pull", "43")).href
       const baseFetchUrl = pathToFileURL(baseRepository).href
@@ -381,7 +412,7 @@ exit 99
       )
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${deletedHeadBranch}.remote`]),
-        baseFetchUrl
+        "upstream"
       )
       git(repository, ["worktree", "remove", deletedHeadWorktree])
       git(repository, ["branch", "--delete", "--force", deletedHeadBranch])

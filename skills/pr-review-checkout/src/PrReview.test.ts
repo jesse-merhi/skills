@@ -12,7 +12,8 @@ import {
   acquireProcessLock,
   createWorktreeWithRollback,
   parseWorktrees,
-  pullRequestCheckoutArgs
+  pullRequestCheckoutArgs,
+  repositoryIdentity
 } from "./ReviewToolsLive.ts"
 
 interface TestToolsOptions {
@@ -186,6 +187,15 @@ describe("parseWorktrees", () => {
       { branch: "refs/heads/feature/review", worktree: "/repo worktrees/feature" },
       { branch: null, worktree: "/repo/.worktrees/pr-42" }
     ])
+  })
+})
+
+describe("repositoryIdentity", () => {
+  it("matches HTTPS, SSH, and scp-style URLs for the same repository", () => {
+    const expected = "github.com/example/private-repo"
+    assert.strictEqual(repositoryIdentity("https://github.com/Example/Private-Repo.git"), expected)
+    assert.strictEqual(repositoryIdentity("ssh://git@github.com/example/private-repo.git"), expected)
+    assert.strictEqual(repositoryIdentity("git@github.com:example/private-repo.git"), expected)
   })
 })
 

@@ -128,6 +128,24 @@ export const pullRequestCheckoutArgs = (
 
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
 
+export const repositoryIdentity = (value: string) => {
+  const scp = value.includes("://") ? null : /^(?:[^@]+@)?([^:]+):(.+)$/.exec(value)
+  const scpHost = scp?.[1]
+  const scpPath = scp?.[2]
+  if (scpHost !== undefined && scpPath !== undefined) {
+    return `${scpHost.toLowerCase()}/${scpPath.replace(/\.git\/?$/, "").toLowerCase()}`
+  }
+  try {
+    const url = new URL(value)
+    const path = decodeURIComponent(url.pathname).replace(/^\//, "").replace(/\.git\/?$/, "")
+    return url.protocol === "file:"
+      ? `file:/${path}`
+      : `${url.hostname.toLowerCase()}/${path.toLowerCase()}`
+  } catch {
+    return null
+  }
+}
+
 const isProcessAlive = (pid: number) => Effect.sync(() => {
   try {
     globalThis.process.kill(pid, 0)
@@ -314,9 +332,21 @@ export const ReviewToolsLive = Layer.effect(
         if (!stderr.includes("couldn't find remote ref") && !stderr.includes("remote ref does not exist")) {
           return yield* error
         }
+        const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
+        const remotes = yield* runChecked("git", ["remote"], input.repository).pipe(
+          Effect.map((output) => output.split("\n").filter((remote) => remote.length > 0))
+        )
+        let source = input.baseRepositoryUrl
+        for (const remote of remotes) {
+          const remoteUrl = yield* runChecked("git", ["remote", "get-url", remote], input.repository)
+          if (repositoryIdentity(remoteUrl.trim()) === baseIdentity) {
+            source = remote
+            break
+          }
+        }
         yield* runChecked(
           "git",
-          ["fetch", "--quiet", input.baseRepositoryUrl, `pull/${input.prNumber}/head`],
+          ["fetch", "--quiet", source, `pull/${input.prNumber}/head`],
           input.path
         )
         if (force) {
@@ -327,7 +357,7 @@ export const ReviewToolsLive = Layer.effect(
         }
         yield* runChecked(
           "git",
-          ["config", `branch.${managedBranch}.remote`, input.baseRepositoryUrl],
+          ["config", `branch.${managedBranch}.remote`, source],
           input.repository
         )
         yield* runChecked(
@@ -401,10 +431,10 @@ export const ReviewToolsLive = Layer.effect(
       const activeBranch = yield* runChecked("git", ["branch", "--show-current"], input.path).pipe(
         Effect.map(String.trim)
       )
-      if (activeBranch !== managedBranch) {
+      if (activeBranch.length > 0 && activeBranch !== managedBranch) {
         return yield* new ExternalToolError({
           cause: new Error(
-            `managed worktree is on ${JSON.stringify(activeBranch || "detached HEAD")}, expected ${JSON.stringify(managedBranch)}`
+            `managed worktree is on ${JSON.stringify(activeBranch)}, expected ${JSON.stringify(managedBranch)}`
           ),
           operation: `validate active branch at ${input.path}`
         })
@@ -416,6 +446,18 @@ export const ReviewToolsLive = Layer.effect(
           operation: `validate clean worktree at ${input.path}`
         })
       }
+      if (activeBranch === managedBranch) {
+        return { _tag: "ready" as const }
+      }
+      if (activeBranch.length === 0) {
+        const branch = yield* runChecked(
+          "git",
+          ["branch", "--list", "--format=%(refname:short)", managedBranch],
+          input.repository
+        ).pipe(Effect.map(String.trim))
+        return { _tag: "incomplete" as const, branchExists: branch === managedBranch }
+      }
+      return { _tag: "incomplete" as const, branchExists: false }
     })
 
     return ReviewTools.of({
@@ -441,7 +483,21 @@ export const ReviewToolsLive = Layer.effect(
             const exists = parseWorktrees(output).some((entry) => entry.worktree === registeredPath)
             if (exists) {
               const owner = yield* validateOwner(input)
-              yield* validateManagedCheckout(input, owner.managedBranch)
+              const state = yield* validateManagedCheckout(input, owner.managedBranch)
+              if (state._tag === "incomplete") {
+                return yield* createWorktreeWithRollback(
+                  Effect.gen(function*() {
+                    const source = yield* checkoutPullRequest(input, owner.managedBranch, state.branchExists)
+                    yield* refreshManagedBranchMerge(input, owner.managedBranch, source)
+                    yield* writeOwner(input, owner.managedBranch)
+                    return { branch: owner.managedBranch, created: true }
+                  }),
+                  removeWorktree(input.repository, input.path).pipe(
+                    Effect.ignore,
+                    Effect.andThen(deleteBranch(input.repository, owner.managedBranch).pipe(Effect.ignore))
+                  )
+                )
+              }
               const ownerPath = yield* markerPath(input.path)
               const previousCommit = yield* runChecked("git", ["rev-parse", "HEAD"], input.path).pipe(
                 Effect.map(String.trim)
