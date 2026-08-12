@@ -213,7 +213,9 @@ export const acquireProcessLock = Effect.fn("ReviewTools.acquireProcessLock")(fu
         Effect.mapError((cause) => new ExternalToolError({ cause, operation: `remove stale owner of ${options.lockPath}` }))
       )
     }
-    yield* fileSystem.remove(options.lockPath).pipe(Effect.ignore)
+    // The non-recursive removal is the compare-and-delete step: if another
+    // process has already installed its owner file, ENOTEMPTY preserves it.
+    yield* fileSystem.remove(options.lockPath, { recursive: false }).pipe(Effect.ignore)
     if (retries > 0) {
       return yield* acquire(retries - 1)
     }

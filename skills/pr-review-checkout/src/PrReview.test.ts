@@ -1,6 +1,6 @@
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, FileSystem, Layer, Option, Schema } from "effect"
+import { Deferred, Effect, Exit, Fiber, FileSystem, Layer, Option, Ref, Schema } from "effect"
 import {
   checkoutForReview,
   ExternalToolError,
@@ -249,6 +249,39 @@ describe("acquireProcessLock", () => {
         yield* fileSystem.readFileString(`${lockPath}/owner-live.json`),
         '{"nonce":"live","pid":111}'
       )
+    })).pipe(
+      // @effect-diagnostics-next-line strictEffectProvide:off
+      Effect.provide(platformLayer)
+    ))
+
+  it.effect("does not let a stale reclaimer delete a concurrently acquired lock", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const fileSystem = yield* FileSystem.FileSystem
+      const directory = yield* fileSystem.makeTempDirectoryScoped({ prefix: "pr-review-lock-race-test-" })
+      const lockPath = `${directory}/review.lock`
+      yield* fileSystem.makeDirectory(lockPath)
+      yield* fileSystem.writeFileString(`${lockPath}/owner-dead.json`, '{"nonce":"dead","pid":111}')
+      const staleChecks = yield* Ref.make(0)
+      const bothObservedStale = yield* Deferred.make<void>()
+      const isAlive = (pid: number) => pid === 111
+        ? Ref.updateAndGet(staleChecks, (count) => count + 1).pipe(
+          Effect.tap((count) => count === 2 ? Deferred.succeed(bothObservedStale, undefined) : Effect.void),
+          Effect.andThen(Deferred.await(bothObservedStale)),
+          Effect.as(false)
+        )
+        : Effect.succeed(true)
+
+      const outcomes = yield* Effect.all([
+        Effect.exit(acquireProcessLock({ isAlive, lockPath, pid: 222 })),
+        Effect.exit(acquireProcessLock({ isAlive, lockPath, pid: 333 }))
+      ], { concurrency: "unbounded" })
+
+      assert.strictEqual(outcomes.filter(Exit.isSuccess).length, 1)
+      assert.strictEqual(outcomes.filter(Exit.isFailure).length, 1)
+      const entries = yield* fileSystem.readDirectory(lockPath)
+      assert.lengthOf(entries, 1)
+      const owner = yield* fileSystem.readFileString(`${lockPath}/${entries[0]}`)
+      assert.match(owner, /"pid":(?:222|333)/)
     })).pipe(
       // @effect-diagnostics-next-line strictEffectProvide:off
       Effect.provide(platformLayer)
