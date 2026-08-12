@@ -264,7 +264,14 @@ describe("PullRequestNumber", () => {
 })
 
 describe("pullRequestCheckoutArgs", () => {
-  it("keeps the managed worktree on the named PR branch", () => {
-    assert.deepStrictEqual(pullRequestCheckoutArgs(prNumber), ["pr", "checkout", "42", "--force"])
+  it("uses a dedicated branch and forces only an already-owned worktree", () => {
+    assert.deepStrictEqual(
+      pullRequestCheckoutArgs(prNumber, "agent-pr-review/pr-42-uuid", false),
+      ["pr", "checkout", "42", "--branch", "agent-pr-review/pr-42-uuid"]
+    )
+    assert.deepStrictEqual(
+      pullRequestCheckoutArgs(prNumber, "agent-pr-review/pr-42-uuid", true),
+      ["pr", "checkout", "42", "--branch", "agent-pr-review/pr-42-uuid", "--force"]
+    )
   })
 })

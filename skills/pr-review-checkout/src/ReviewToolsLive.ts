@@ -1,6 +1,7 @@
 import { ChildProcessSpawner, ChildProcess } from "effect/unstable/process"
 import {
   Cause,
+  Crypto,
   Effect,
   Exit,
   FileSystem,
@@ -24,6 +25,7 @@ export class ManagedWorktreeOwner extends Schema.Class<ManagedWorktreeOwner>(
   "skills/pr-review-checkout/ManagedWorktreeOwner"
 )({
   headRefName: Schema.NonEmptyString,
+  managedBranch: Schema.NonEmptyString,
   prNumber: PullRequestNumber,
   repository: Schema.NonEmptyString
 }) {}
@@ -101,8 +103,18 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
   Effect.onExit((exit) => Exit.isFailure(exit) ? rollback : Effect.void)
 )
 
-export const pullRequestCheckoutArgs = (prNumber: PullRequestNumberType) =>
-  ["pr", "checkout", globalThis.String(prNumber), "--force"] as const
+export const pullRequestCheckoutArgs = (
+  prNumber: PullRequestNumberType,
+  managedBranch: string,
+  force: boolean
+) => [
+  "pr",
+  "checkout",
+  globalThis.String(prNumber),
+  "--branch",
+  managedBranch,
+  ...(force ? ["--force"] : [])
+] as const
 
 const decodePullRequest = Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequest))
 
@@ -208,6 +220,7 @@ export const ReviewToolsLive = Layer.effect(
   ReviewTools,
   Effect.gen(function*() {
     const fileSystem = yield* FileSystem.FileSystem
+    const crypto = yield* Crypto.Crypto
     const pathService = yield* Path.Path
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const runChecked = (executable: string, args: ReadonlyArray<string>, cwd?: string) =>
@@ -221,8 +234,9 @@ export const ReviewToolsLive = Layer.effect(
         "agent-pr-review-owner.json"
       )
     })
-    const expectedOwner = (input: PrepareManagedWorktreeInput) => new ManagedWorktreeOwner({
+    const expectedOwner = (input: PrepareManagedWorktreeInput, managedBranch: string) => new ManagedWorktreeOwner({
       headRefName: input.headRefName,
+      managedBranch,
       prNumber: input.prNumber,
       repository: input.repository
     })
@@ -235,29 +249,37 @@ export const ReviewToolsLive = Layer.effect(
           operation: `validate managed worktree ownership at ${input.path}`
         }))
       )
-      const expected = expectedOwner(input)
+      const expectedBranchPrefix = `agent-pr-review/pr-${input.prNumber}-`
       if (
-        actual.prNumber !== expected.prNumber ||
-        actual.headRefName !== expected.headRefName ||
-        actual.repository !== expected.repository
+        actual.prNumber !== input.prNumber ||
+        actual.headRefName !== input.headRefName ||
+        actual.repository !== input.repository ||
+        !actual.managedBranch.startsWith(expectedBranchPrefix)
       ) {
         return yield* new ExternalToolError({
           cause: new Error("the worktree ownership marker belongs to a different pull request"),
           operation: `validate managed worktree ownership at ${input.path}`
         })
       }
+      return actual
     })
-    const writeOwner = Effect.fn("ReviewTools.writeOwner")(function*(input: PrepareManagedWorktreeInput) {
+    const writeOwner = Effect.fn("ReviewTools.writeOwner")(function*(
+      input: PrepareManagedWorktreeInput,
+      managedBranch: string
+    ) {
       const ownerPath = yield* markerPath(input.path)
-      const encoded = yield* encodeManagedOwner(expectedOwner(input)).pipe(
+      const encoded = yield* encodeManagedOwner(expectedOwner(input, managedBranch)).pipe(
         Effect.mapError((cause) => new ExternalToolError({ cause, operation: "encode managed worktree ownership" }))
       )
       yield* fileSystem.writeFileString(ownerPath, encoded).pipe(
         Effect.mapError((cause) => new ExternalToolError({ cause, operation: `record ownership at ${input.path}` }))
       )
     })
-    const checkoutPullRequest = (input: PrepareManagedWorktreeInput) =>
-      Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(input.prNumber), input.path))
+    const checkoutPullRequest = (
+      input: PrepareManagedWorktreeInput,
+      managedBranch: string,
+      force: boolean
+    ) => Effect.asVoid(runChecked("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path))
 
     return ReviewTools.of({
       prepareManagedWorktree: Effect.fn("ReviewTools.prepareManagedWorktree")(function*(input) {
@@ -281,16 +303,20 @@ export const ReviewToolsLive = Layer.effect(
             )
             const exists = parseWorktrees(output).some((entry) => entry.worktree === registeredPath)
             if (exists) {
-              yield* validateOwner(input)
-              yield* checkoutPullRequest(input)
+              const owner = yield* validateOwner(input)
+              yield* checkoutPullRequest(input, owner.managedBranch, true)
               return false
             }
 
             return yield* createWorktreeWithRollback(
               Effect.gen(function*() {
+                const nonce = yield* crypto.randomUUIDv4.pipe(
+                  Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create managed branch name" }))
+                )
+                const managedBranch = `agent-pr-review/pr-${input.prNumber}-${nonce}`
                 yield* runChecked("git", ["worktree", "add", "--detach", input.path], input.repository)
-                yield* writeOwner(input)
-                yield* checkoutPullRequest(input)
+                yield* writeOwner(input, managedBranch)
+                yield* checkoutPullRequest(input, managedBranch, false)
                 return true
               }),
               removeWorktree(input.repository, input.path).pipe(Effect.ignore)
