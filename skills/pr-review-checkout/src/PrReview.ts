@@ -121,7 +121,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
         "When done reviewing this PR, remove the throwaway worktree:",
         `  git worktree remove ${shellQuote(worktree)}`,
         `  git -C ${shellQuote(repository)} branch --delete --force ${shellQuote(preparation.branch)}`,
-        `  git -C ${shellQuote(repository)} update-ref --delete ${shellQuote(
+        `  git -C ${shellQuote(repository)} update-ref -d ${shellQuote(
           `refs/remotes/agent-pr-review/pr-${prNumber}/head`
         )}`
       )

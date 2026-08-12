@@ -438,6 +438,33 @@ exit 99
         git(deletedHeadWorktree, ["rev-parse", "@{upstream}"]),
         git(repository, ["rev-parse", "pr-tip"])
       )
+      const restoredHeadResult = spawnSync(executable, ["43"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_HEAD: "restored/head",
+          PR_REVIEW_TEST_LOG: ghLog,
+          PR_REVIEW_URL: basePullRequestUrl
+        }
+      })
+      assert.strictEqual(restoredHeadResult.status, 0, restoredHeadResult.stderr)
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${deletedHeadBranch}.remote`]),
+        "upstream"
+      )
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${deletedHeadBranch}.merge`]),
+        "refs/heads/restored/head"
+      )
+      const removedTrackingRef = spawnSync(
+        "git",
+        ["show-ref", "--verify", "--quiet", "refs/remotes/agent-pr-review/pr-43/head"],
+        { cwd: repository, encoding: "utf8" }
+      )
+      assert.strictEqual(removedTrackingRef.status, 1, removedTrackingRef.stderr)
       git(repository, ["worktree", "remove", deletedHeadWorktree])
       git(repository, ["branch", "--delete", "--force", deletedHeadBranch])
     } finally {

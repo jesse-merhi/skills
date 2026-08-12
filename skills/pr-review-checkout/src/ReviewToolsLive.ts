@@ -452,6 +452,26 @@ export const ReviewToolsLive = Layer.effect(
       ["config", `branch.${managedBranch}.merge`, `refs/heads/${headRefName}`],
       repository
     )))
+    const restoreManagedBranchHeadTracking = Effect.fn("ReviewTools.restoreManagedBranchHeadTracking")(function*(
+      input: PrepareManagedWorktreeInput,
+      managedBranch: string
+    ) {
+      const currentRemote = yield* readManagedBranchConfig(input.repository, managedBranch, "remote")
+      const remote = Option.isSome(currentRemote) && currentRemote.value !== "."
+        ? currentRemote.value
+        : yield* resolveBaseSource(input)
+      yield* runChecked(
+        "git",
+        ["config", `branch.${managedBranch}.remote`, remote],
+        input.repository
+      )
+      yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+      yield* runChecked(
+        "git",
+        ["update-ref", "-d", pullRefTrackingRef(input.prNumber)],
+        input.repository
+      )
+    })
     const readManagedBranchConfig = (
       repository: string,
       managedBranch: string,
@@ -499,7 +519,7 @@ export const ReviewToolsLive = Layer.effect(
         return
       }
       if (!input.isCrossRepository) {
-        return yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
+        return yield* restoreManagedBranchHeadTracking(input, managedBranch)
       }
 
       const mergeRef = yield* runChecked(
@@ -619,7 +639,7 @@ export const ReviewToolsLive = Layer.effect(
                     previousRemote
                   )),
                   Effect.andThen(Option.match(previousTrackingRef, {
-                    onNone: () => runChecked("git", ["update-ref", "--delete", trackingRef], input.repository).pipe(
+                    onNone: () => runChecked("git", ["update-ref", "-d", trackingRef], input.repository).pipe(
                       Effect.ignore
                     ),
                     onSome: (commit) => runChecked("git", ["update-ref", trackingRef, commit], input.repository).pipe(
@@ -651,7 +671,7 @@ export const ReviewToolsLive = Layer.effect(
                   Effect.andThen(deleteBranch(input.repository, managedBranch).pipe(Effect.ignore)),
                   Effect.andThen(runChecked(
                     "git",
-                    ["update-ref", "--delete", pullRefTrackingRef(input.prNumber)],
+                    ["update-ref", "-d", pullRefTrackingRef(input.prNumber)],
                     input.repository
                   ).pipe(Effect.ignore))
                 )
