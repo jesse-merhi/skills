@@ -11,7 +11,7 @@ import {
 import {
   acquireProcessLock,
   authenticatedGitArgs,
-  createAndArmWorktreeOwnership,
+  createAndArmBranchOwnership,
   createWorktreeWithRollback,
   parseWorktrees,
   pullRequestCheckoutArgs,
@@ -246,24 +246,24 @@ describe("createWorktreeWithRollback", () => {
     }))
 })
 
-describe("createAndArmWorktreeOwnership", () => {
-  it.effect("marks creation owned before the side effect and delays cancellation", () =>
+describe("createAndArmBranchOwnership", () => {
+  it.effect("delays cancellation until successful branch creation is marked owned", () =>
     Effect.gen(function*() {
       const creationStarted = yield* Deferred.make<void>()
       const finishCreation = yield* Deferred.make<void>()
-      const ownsWorktree = yield* Ref.make(false)
-      const fiber = yield* createAndArmWorktreeOwnership(
+      const ownsBranch = yield* Ref.make(false)
+      const fiber = yield* createAndArmBranchOwnership(
         Deferred.succeed(creationStarted, undefined).pipe(Effect.andThen(Deferred.await(finishCreation))),
-        ownsWorktree
+        ownsBranch
       ).pipe(Effect.forkChild)
 
       yield* Deferred.await(creationStarted)
-      assert.isTrue(yield* Ref.get(ownsWorktree))
+      assert.isFalse(yield* Ref.get(ownsBranch))
       const interrupted = yield* Fiber.interrupt(fiber).pipe(Effect.forkChild)
       yield* Deferred.succeed(finishCreation, undefined)
       yield* Fiber.await(interrupted)
 
-      assert.isTrue(yield* Ref.get(ownsWorktree))
+      assert.isTrue(yield* Ref.get(ownsBranch))
     }))
 })
 

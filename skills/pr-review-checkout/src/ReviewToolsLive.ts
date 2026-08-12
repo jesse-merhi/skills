@@ -151,10 +151,10 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
   Effect.onExit((exit) => Exit.isFailure(exit) ? rollback : Effect.void)
 )
 
-export const createAndArmWorktreeOwnership = <A, E, R>(
+export const createAndArmBranchOwnership = <A, E, R>(
   create: Effect.Effect<A, E, R>,
-  ownsWorktree: Ref.Ref<boolean>
-) => Effect.uninterruptible(Ref.set(ownsWorktree, true).pipe(Effect.andThen(create)))
+  ownsBranch: Ref.Ref<boolean>
+) => Effect.uninterruptible(create.pipe(Effect.andThen(Ref.set(ownsBranch, true))))
 
 export const pullRequestCheckoutArgs = (
   prNumber: PullRequestNumberType,
@@ -392,7 +392,7 @@ export const ReviewToolsLive = Layer.effect(
       const ownerPath = yield* markerPath(input.path)
       yield* writeManagedOwner(ownerPath, expectedOwner(input, managedBranch))
     })
-    const resolveBaseSource = Effect.fn("ReviewTools.resolveBaseSource")(function*(
+    const resolveBaseRemote = Effect.fn("ReviewTools.resolveBaseRemote")(function*(
       input: PrepareManagedWorktreeInput
     ) {
       const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
@@ -402,11 +402,13 @@ export const ReviewToolsLive = Layer.effect(
       for (const remote of remotes) {
         const remoteUrl = yield* runChecked("git", ["remote", "get-url", remote], input.repository)
         if (repositoryIdentity(remoteUrl.trim()) === baseIdentity) {
-          return remote
+          return Option.some(remote)
         }
       }
-      return input.baseRepositoryUrl
+      return Option.none<string>()
     })
+    const resolveBaseSource = Effect.fn("ReviewTools.resolveBaseSource")((input: PrepareManagedWorktreeInput) =>
+      resolveBaseRemote(input).pipe(Effect.map(Option.getOrElse(() => input.baseRepositoryUrl))))
     const checkoutPullRequest = (
       input: PrepareManagedWorktreeInput,
       managedBranch: string,
@@ -461,13 +463,25 @@ export const ReviewToolsLive = Layer.effect(
       input: PrepareManagedWorktreeInput,
       managedBranch: string
     ) {
-      const currentRemote = yield* readManagedBranchConfig(input.repository, managedBranch, "remote")
-      const remote = Option.isSome(currentRemote) && currentRemote.value !== "."
-        ? currentRemote.value
-        : yield* resolveBaseSource(input)
+      const remote = yield* resolveBaseRemote(input)
+      if (Option.isNone(remote)) {
+        const trackingRef = pullRefTrackingRef(input.prNumber)
+        yield* runChecked("git", ["update-ref", trackingRef, "HEAD"], input.path)
+        yield* runChecked(
+          "git",
+          ["config", `branch.${managedBranch}.remote`, "."],
+          input.repository
+        )
+        yield* runChecked(
+          "git",
+          ["config", `branch.${managedBranch}.merge`, trackingRef],
+          input.repository
+        )
+        return
+      }
       yield* runChecked(
         "git",
-        ["config", `branch.${managedBranch}.remote`, remote],
+        ["config", `branch.${managedBranch}.remote`, remote.value],
         input.repository
       )
       yield* updateManagedBranchMerge(input.repository, managedBranch, input.headRefName)
@@ -579,6 +593,20 @@ export const ReviewToolsLive = Layer.effect(
       }
       return { _tag: "incomplete" as const, branchExists: false }
     })
+    const removeOwnedWorktree = Effect.fn("ReviewTools.removeOwnedWorktree")(function*(
+      repository: string,
+      worktree: string,
+      managedBranch: string
+    ) {
+      const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"], repository)
+      const registeredPath = yield* fileSystem.realPath(worktree).pipe(Effect.orElseSucceed(() => worktree))
+      const owned = parseWorktrees(output).some((entry) =>
+        entry.worktree === registeredPath && entry.branch === `refs/heads/${managedBranch}`
+      )
+      if (owned) {
+        yield* removeWorktree(repository, worktree)
+      }
+    })
 
     return ReviewTools.of({
       prepareManagedWorktree: Effect.fn("ReviewTools.prepareManagedWorktree")(function*(input) {
@@ -668,20 +696,25 @@ export const ReviewToolsLive = Layer.effect(
               Effect.mapError((cause) => new ExternalToolError({ cause, operation: "create managed branch name" }))
             )
             const managedBranch = `agent-pr-review/pr-${input.prNumber}-${nonce}`
-            const ownsWorktree = yield* Ref.make(false)
+            const ownsBranch = yield* Ref.make(false)
             return yield* createWorktreeWithRollback(
               Effect.gen(function*() {
-                yield* createAndArmWorktreeOwnership(
-                  runChecked("git", ["worktree", "add", "--detach", input.path], input.repository),
-                  ownsWorktree
+                yield* createAndArmBranchOwnership(
+                  runChecked(
+                    "git",
+                    ["update-ref", `refs/heads/${managedBranch}`, "HEAD", ""],
+                    input.repository
+                  ),
+                  ownsBranch
                 )
+                yield* runChecked("git", ["worktree", "add", input.path, managedBranch], input.repository)
                 yield* writeOwner(input, managedBranch)
-                const source = yield* checkoutPullRequest(input, managedBranch, false)
+                const source = yield* checkoutPullRequest(input, managedBranch, true)
                 yield* refreshManagedBranchMerge(input, managedBranch, source)
                 return { branch: managedBranch, created: true }
               }),
-              Ref.get(ownsWorktree).pipe(Effect.flatMap((owned) => owned
-                ? removeWorktree(input.repository, input.path).pipe(
+              Ref.get(ownsBranch).pipe(Effect.flatMap((owned) => owned
+                ? removeOwnedWorktree(input.repository, input.path, managedBranch).pipe(
                   Effect.ignore,
                   Effect.andThen(deleteBranch(input.repository, managedBranch).pipe(Effect.ignore)),
                   Effect.andThen(runChecked(

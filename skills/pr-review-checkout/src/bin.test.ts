@@ -223,7 +223,15 @@ exit 99
       assert.match(managedBranch, /^agent-pr-review\/pr-42-/)
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/heads/feature/review"
+        "refs/remotes/agent-pr-review/pr-42/head"
+      )
+      assert.strictEqual(
+        git(repository, ["config", "--get", `branch.${managedBranch}.remote`]),
+        "."
+      )
+      assert.strictEqual(
+        git(managedWorktree, ["rev-parse", "@{upstream}"]),
+        git(managedWorktree, ["rev-parse", "HEAD"])
       )
       assert.match(result.stdout, new RegExp(`branch --delete --force '${managedBranch}'`))
 
@@ -244,7 +252,7 @@ exit 99
       assert.strictEqual(JSON.parse(readFileSync(ownerPath, "utf8")).headRefName, "feature/renamed")
       assert.strictEqual(
         git(repository, ["config", "--get", `branch.${managedBranch}.merge`]),
-        "refs/heads/feature/renamed"
+        "refs/remotes/agent-pr-review/pr-42/head"
       )
 
       git(repository, ["config", `branch.${managedBranch}.merge`, "refs/pull/42/head"])
@@ -527,7 +535,7 @@ if [ "$1 $2" = "pr checkout" ]; then
       *) shift ;;
     esac
   done
-  git checkout --quiet -b "$branch"
+  git checkout --quiet "$branch"
   printf 'checkout failed\n' >&2
   exit 7
 fi
@@ -586,6 +594,67 @@ exit 99
 
       assert.strictEqual(result.status, 7)
       assert.notMatch(git(repository, ["worktree", "list", "--porcelain"]), /\.worktrees\/pr-42/)
+      assert.strictEqual(git(repository, ["branch", "--list", "agent-pr-review/*"]), "")
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
+
+  it("preserves an unrelated worktree that wins the managed-path race", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pr-review-path-race-test-"))
+    const repository = join(directory, "repo")
+    const binaries = join(directory, "bin")
+    const gh = join(binaries, "gh")
+    const gitWrapper = join(binaries, "git")
+    const target = join(repository, ".worktrees", "pr-42")
+    const injected = join(directory, "injected")
+    try {
+      git(directory, ["init", "--quiet", "--initial-branch", "main", repository])
+      git(repository, ["config", "user.name", "Test"])
+      git(repository, ["config", "user.email", "test@example.com"])
+      writeFileSync(join(repository, ".gitignore"), ".worktrees/\n")
+      git(repository, ["add", ".gitignore"])
+      git(repository, ["commit", "--quiet", "--message", "initial"])
+      git(repository, ["branch", "victim"])
+      mkdirSync(binaries)
+      writeFileSync(gh, `#!/bin/sh
+set -eu
+if [ "$1 $2" = "pr view" ]; then
+  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}'
+  exit 0
+fi
+exit 99
+`)
+      writeFileSync(gitWrapper, `#!/bin/sh
+set -eu
+if [ "$1 $2" = "worktree add" ] && [ ! -e "$PR_REVIEW_INJECTED" ]; then
+  : > "$PR_REVIEW_INJECTED"
+  "$PR_REVIEW_REAL_GIT" -C "$PR_REVIEW_REPOSITORY" worktree add --quiet "$PR_REVIEW_TARGET" victim
+  printf 'preserve me\n' > "$PR_REVIEW_TARGET/uncommitted.txt"
+fi
+exec "$PR_REVIEW_REAL_GIT" "$@"
+`)
+      chmodSync(gh, 0o755)
+      chmodSync(gitWrapper, 0o755)
+      const realGit = spawnSync("/bin/sh", ["-c", "command -v git"], { encoding: "utf8" }).stdout.trim()
+
+      const result = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: {
+          ...process.env,
+          PATH: `${binaries}:${process.env.PATH ?? ""}`,
+          PR_REVIEW_INJECTED: injected,
+          PR_REVIEW_REAL_GIT: realGit,
+          PR_REVIEW_REPOSITORY: repository,
+          PR_REVIEW_TARGET: target
+        }
+      })
+
+      assert.strictEqual(result.status, 128)
+      assert.strictEqual(git(target, ["branch", "--show-current"]), "victim")
+      assert.strictEqual(readFileSync(join(target, "uncommitted.txt"), "utf8"), "preserve me\n")
       assert.strictEqual(git(repository, ["branch", "--list", "agent-pr-review/*"]), "")
     } finally {
       rmSync(directory, { force: true, recursive: true })
