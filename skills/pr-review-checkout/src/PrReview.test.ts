@@ -247,7 +247,7 @@ describe("createWorktreeWithRollback", () => {
 })
 
 describe("createAndArmWorktreeOwnership", () => {
-  it.effect("delays cancellation until a successful registration is marked owned", () =>
+  it.effect("marks creation owned before the side effect and delays cancellation", () =>
     Effect.gen(function*() {
       const creationStarted = yield* Deferred.make<void>()
       const finishCreation = yield* Deferred.make<void>()
@@ -258,6 +258,7 @@ describe("createAndArmWorktreeOwnership", () => {
       ).pipe(Effect.forkChild)
 
       yield* Deferred.await(creationStarted)
+      assert.isTrue(yield* Ref.get(ownsWorktree))
       const interrupted = yield* Fiber.interrupt(fiber).pipe(Effect.forkChild)
       yield* Deferred.succeed(finishCreation, undefined)
       yield* Fiber.await(interrupted)

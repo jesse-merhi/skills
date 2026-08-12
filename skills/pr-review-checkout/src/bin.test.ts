@@ -550,4 +550,45 @@ exit 99
       rmSync(directory, { force: true, recursive: true })
     }
   })
+
+  it("removes a worktree when its post-checkout hook makes creation report failure", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pr-review-hook-rollback-test-"))
+    const repository = join(directory, "repo")
+    const binaries = join(directory, "bin")
+    const gh = join(binaries, "gh")
+    try {
+      git(directory, ["init", "--quiet", "--initial-branch", "main", repository])
+      git(repository, ["config", "user.name", "Test"])
+      git(repository, ["config", "user.email", "test@example.com"])
+      writeFileSync(join(repository, ".gitignore"), ".worktrees/\n")
+      git(repository, ["add", ".gitignore"])
+      git(repository, ["commit", "--quiet", "--message", "initial"])
+      mkdirSync(binaries)
+      writeFileSync(gh, `#!/bin/sh
+set -eu
+if [ "$1 $2" = "pr view" ]; then
+  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}'
+  exit 0
+fi
+exit 99
+`)
+      chmodSync(gh, 0o755)
+      const postCheckout = join(repository, ".git", "hooks", "post-checkout")
+      writeFileSync(postCheckout, "#!/bin/sh\nexit 7\n")
+      chmodSync(postCheckout, 0o755)
+
+      const result = spawnSync(executable, ["42"], {
+        cwd: repository,
+        encoding: "utf8",
+        // @effect-diagnostics-next-line processEnv:off
+        env: { ...process.env, PATH: `${binaries}:${process.env.PATH ?? ""}` }
+      })
+
+      assert.strictEqual(result.status, 7)
+      assert.notMatch(git(repository, ["worktree", "list", "--porcelain"]), /\.worktrees\/pr-42/)
+      assert.strictEqual(git(repository, ["branch", "--list", "agent-pr-review/*"]), "")
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
 })

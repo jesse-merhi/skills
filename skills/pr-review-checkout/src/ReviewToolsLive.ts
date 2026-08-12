@@ -154,7 +154,7 @@ export const createWorktreeWithRollback = <A, E, R, R2>(
 export const createAndArmWorktreeOwnership = <A, E, R>(
   create: Effect.Effect<A, E, R>,
   ownsWorktree: Ref.Ref<boolean>
-) => Effect.uninterruptible(create.pipe(Effect.andThen(Ref.set(ownsWorktree, true))))
+) => Effect.uninterruptible(Ref.set(ownsWorktree, true).pipe(Effect.andThen(create)))
 
 export const pullRequestCheckoutArgs = (
   prNumber: PullRequestNumberType,
