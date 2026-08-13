@@ -30,7 +30,7 @@ export const validateConvexTarget = (url: string, deployment: string): ConvexTar
   throw new Error(`refusing to import into unapproved Convex deployment: ${deployment}`)
 }
 
-const portIsFree = (port: number) => Effect.callback<boolean>((resume) => {
+export const portIsFree = (port: number) => Effect.callback<boolean>((resume) => {
   let socket: Socket | undefined
   const done = (free: boolean) => { socket?.destroy(); resume(Effect.succeed(free)) }
   socket = createConnection({ host: "127.0.0.1", port }).once("connect", () => done(false)).once("error", () => done(true))
@@ -39,6 +39,11 @@ const portIsFree = (port: number) => Effect.callback<boolean>((resume) => {
 const choosePort = Effect.fn("Clawhub.choosePort")(function*(start: number) {
   for (let port = start; port <= 65_535; port += 1) if (yield* portIsFree(port)) return port
   return yield* new LocalTestError({ message: `no free port at or above ${start}` })
+})
+export const selectPort = Effect.fn("Clawhub.selectPort")(function*(port: Option.Option<number>, startPort: number) {
+  if (Option.isNone(port)) return yield* choosePort(startPort)
+  if (!(yield* portIsFree(port.value))) return yield* new LocalTestError({ message: `requested port ${port.value} is already in use` })
+  return port.value
 })
 
 export interface ClawhubOptions {
@@ -58,6 +63,7 @@ export const clawhubLocalTest = Effect.fn("Clawhub.localTest")(function*(raw: Cl
     const epoch = Number(value ?? 0)
     return Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1_000).toISOString() : "none"
   }
+  const port = raw.action === "start" ? yield* selectPort(raw.port, raw.startPort) : undefined
   yield* fs.makeDirectory(snapshots, { recursive: true }); yield* fs.makeDirectory(runDir, { recursive: true }); yield* fs.makeDirectory(logs, { recursive: true })
   const stop = Effect.gen(function*() { yield* stopPid("watchdog", files.watchdog); yield* stopPid("app", files.app); yield* stopPid("convex", files.convex); yield* fs.remove(files.instance, { force: true }) })
   if (raw.action === "stop") return yield* stop
@@ -75,7 +81,6 @@ export const clawhubLocalTest = Effect.fn("Clawhub.localTest")(function*(raw: Cl
   const convexUrl = env.VITE_CONVEX_URL, deployment = env.CONVEX_DEPLOYMENT
   if (convexUrl === undefined || deployment === undefined) return yield* new LocalTestError({ message: ".env.local requires VITE_CONVEX_URL and CONVEX_DEPLOYMENT" })
   const target = yield* Effect.try({ try: () => validateConvexTarget(convexUrl, deployment), catch: (cause) => new LocalTestError({ message: "invalid Convex target", cause }) })
-  const port = Option.isSome(raw.port) ? raw.port.value : yield* choosePort(raw.startPort)
   if (raw.dryRun) return yield* Console.log([`repo: ${repo}`, `state_dir: ${stateDir}`, `VITE_CONVEX_URL: ${convexUrl}`, `CONVEX_DEPLOYMENT: ${deployment}`, `convex_target_kind: ${target.kind}`, `convex_import_deployment: ${target.importDeployment}`, `refresh_mode: ${raw.refresh}`, `include_file_storage: ${Number(raw.includeFileStorage)}`, `skip_import: ${Number(raw.skipImport)}`, `seed_fixtures: ${Number(raw.seedFixtures)}`, `seed_abuse_fixtures: ${Number(raw.seedAbuseFixtures)}`, `port: ${port}`, `ttl: ${raw.ttl}`].join("\n"))
   const ttl = yield* Effect.try({ try: () => parseTtl(raw.ttl), catch: (cause) => new LocalTestError({ message: `invalid --ttl value: ${raw.ttl}`, cause }) })
   yield* stop
