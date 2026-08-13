@@ -37,15 +37,27 @@ or Keychain/browser cookie stores.
 Before any PR mutation:
 
 1. Load `computer-use`.
-2. Open an agent-owned browser window and reach the GitHub repository.
-3. Confirm the tool can read and operate the page and that GitHub access works.
+2. Open an agent-owned browser window and reach the repository's PR provider.
+3. Confirm the tool can read and operate the page and that provider access works.
 4. If any part fails, stop and ask the human to repair Computer Use or login.
 
 For a new PR, the publishing workflow may create a draft shell after this
-preflight. Upload each screenshot and recording through GitHub's attachment UI.
-Wait for a reviewer-visible `user-attachments` reference, place it in the main
-PR body without submitting a detached comment, save, and inspect the rendered
-image or playable recording.
+preflight. Use the same clipboard-first flow on GitHub, Bitbucket, and other PR
+editors:
+
+1. Copy the finished image or recording to the clipboard.
+2. Open the main PR body editor.
+3. Select the exact placeholder or stale attachment being replaced.
+4. Paste once.
+5. Wait for the editor to replace the temporary upload marker with a
+   provider-hosted attachment or playable-media reference.
+6. Add descriptive alt text or a label, save, and inspect the rendered media.
+
+Do not click an attachment control or open a native file picker before trying
+clipboard paste. Use those controls only when the editor does not support paste
+for that media type. On GitHub, the finished reference normally uses
+`user-attachments`; on Bitbucket or another provider, require its equivalent
+reviewer-visible hosted media rather than a local path.
 
 Follow the active Computer Use confirmation policy at the upload step. Do not
 commit proof media to the repository unless the project or user explicitly

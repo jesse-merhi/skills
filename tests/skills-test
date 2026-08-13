@@ -336,6 +336,8 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/SKILL.md" "do not repeat routine pass lists in the PR body"
   assert_contains "$skill/SKILL.md" "deliberately paced interaction video"
   assert_contains "$skill/SKILL.md" "before/after visual and a comparison table"
+  assert_contains "$skill/SKILL.md" "Prefer clipboard paste in the PR editor"
+  assert_contains "$skill/SKILL.md" "GitHub, Bitbucket, and other providers"
   assert_contains "$skill/SKILL.md" "PR titles and commit subjects must say the outcome"
   assert_contains "$skill/SKILL.md" 'Load `show-me`'
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
@@ -344,6 +346,8 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
   assert_contains "$skill/references/screenshots.md" "supporting checks, not"
   assert_contains "$skill/references/screenshots.md" "manual walkthrough video"
+  assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
+  assert_contains "$skill/references/screenshots.md" "Do not click an attachment control"
   assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
   assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"
