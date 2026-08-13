@@ -26,11 +26,11 @@ export interface NetDiffReport {
 
 const proofKind = (path: string) => {
   const lower = path.toLowerCase()
-  if (["/routes/", "/components/", "/app/", "/pages/", "src/styles", ".css"].some((marker) => lower.includes(marker))) return "PR-visible screenshot required if human-visible UI changed."
-  if (["cron", "queue", "job", "worker", "scheduler", "migration"].some((marker) => lower.includes(marker))) return "Mermaid/table: scheduled, queued, or cleanup behavior changed."
-  if (["api", "server", "route", "handler", "controller"].some((marker) => lower.includes(marker))) return "Mermaid/API example: request, response, or integration behavior changed."
-  if (["docs/", "specs/", ".md", ".mdx"].some((marker) => lower.includes(marker))) return "No screenshot by default: docs/spec text changed."
-  return "Mermaid/table/API example: explain the net behavior change; avoid screenshots by default."
+  if (["/routes/", "/components/", "/app/", "/pages/", "src/styles", ".css"].some((marker) => lower.includes(marker))) return "Practical UI proof required: upload a deliberately paced manual interaction video plus screenshots of every distinct changed state with Computer Use. Tests, builds, CI, and automated E2E output are supporting checks only."
+  if (["cron", "queue", "job", "worker", "scheduler", "migration"].some((marker) => lower.includes(marker))) return "Practical operator proof required: show the real input, run or dry run, and resulting resource, record, delivery, cleanup, or rollback. Add a flow diagram only when it would materially clarify the behavior; do not use test or CI output as evidence."
+  if (["api", "server", "route", "handler", "controller"].some((marker) => lower.includes(marker))) return "Practical backend proof required: show a representative real request, response, and persisted state or side effect. Add a copyable API example; use a boundary diagram only when it materially clarifies the behavior. Do not use contract-test output as evidence."
+  if (["docs/", "specs/", ".md", ".mdx"].some((marker) => lower.includes(marker))) return "Practical documentation proof required: show the rendered document being used to complete the changed task or the exact comprehension improvement. Leave validators and link checks in the check run; they are not Visual proof."
+  return "Practical behavior proof required: show the real product or operator outcome with uploaded visual evidence. Tests, builds, CI, validators, and green checks do not satisfy Visual proof. Add an explanation visual only when it materially helps."
 }
 
 const resolveBase = Effect.gen(function*() {
