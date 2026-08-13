@@ -17,10 +17,12 @@ without knowing the agent thread.
 
 - **Computer Use:** Load `computer-use` and prove it can inspect and operate an
   agent-owned browser before creating or updating the PR. Use it to upload the
-  evidence and inspect the final rendered PR. If Computer Use is missing,
-  unavailable, or cannot operate the browser, stop. Tell the human exactly what
-  failed and ask them to restore Computer Use before continuing. Do not publish
-  or update the PR through another path.
+  evidence and inspect the final rendered PR.
+  Prefer clipboard paste in the PR editor across GitHub, Bitbucket, and other providers.
+  Use an attachment control or native file picker only when paste is unsupported.
+  If Computer Use is missing, unavailable, or cannot operate the browser, stop.
+  Tell the human exactly what failed and ask them to restore Computer Use before
+  continuing. Do not publish or update the PR through another path.
 - **Practical visual evidence:** Every PR needs uploaded visual proof of the
   implemented behavior working in practice. Builds, tests, CI, linters,
   type-checkers, coverage, validators, and green checkmarks remain in the check
@@ -73,17 +75,20 @@ Every claim must be understandable from at least one of these sources:
 
 2. Pass the Computer Use preflight.
 
-   Load `computer-use`. Open an agent-owned browser, reach the repository on
-   GitHub, and confirm the tool can read and operate the page. Do this before a
-   publishing workflow creates or mutates a PR. When creating a new PR, the
-   publishing workflow may create a draft shell only after this preflight.
+   Load `computer-use`. Open an agent-owned browser, reach the repository on its
+   PR provider, and confirm the tool can read and operate the page. Do this
+   before a publishing workflow creates or mutates a PR. When creating a new
+   PR, the publishing workflow may create a draft shell only after this
+   preflight.
 
    Done when Computer Use is demonstrably usable, or the workflow has stopped
    with a concrete repair request to the human.
 
 3. Resolve the PR's direct base and stack context.
 
-   Use `gh pr view --json number,url,baseRefName,headRefName` when a PR exists.
+   On GitHub, use `gh pr view --json number,url,baseRefName,headRefName` when a
+   PR exists. On Bitbucket or another provider, use its equivalent read-only
+   metadata path.
    When the branch is part of a stack, load `gh-stack` and inspect the ordered
    branches with `gh stack view --json`. Record the current layer's position,
    direct parent PR, and direct child PR when present.
@@ -147,14 +152,17 @@ Every claim must be understandable from at least one of these sources:
 
 9. Upload the evidence with Computer Use.
 
-   Follow the GitHub attachment flow in
-   [references/screenshots.md](references/screenshots.md). Put each image and
-   recording directly in the main PR body, never in a table or a detached
-   comment. Follow the active Computer Use confirmation policy for uploads.
+   Follow the provider upload flow in
+   [references/screenshots.md](references/screenshots.md). Copy each finished
+   image or recording, select the exact placeholder or stale attachment in the
+   PR editor, and paste. Use the provider's attachment control or native file
+   picker only when clipboard paste is unsupported. Put media directly in the
+   main PR body, never in a table or detached comment. Follow the active
+   Computer Use confirmation policy for uploads.
 
-   Done when every image and recording uses a reviewer-visible attachment in the
-   main body. A local path, an unsubmitted attachment, a textual rationale, or
-   a screenshot of green checks is not done.
+   Done when every image and recording uses a reviewer-visible, provider-hosted
+   attachment in the main body. A local path, an unsubmitted attachment, a
+   textual rationale, or a screenshot of green checks is not done.
 
 10. Inspect the finished PR with Computer Use.
 
@@ -211,6 +219,8 @@ Every claim must be understandable from at least one of these sources:
 - creating or updating a PR before the Computer Use preflight passes;
 - treating CDP, browser automation, CLI output, or a textual blocker note as a
   substitute for required Computer Use;
+- opening an attachment control or native file picker before trying clipboard
+  paste in a PR editor that supports it;
 - omitting screenshots because a change is backend-only, terminal-based,
   documentation-only, test-only, or "not visual";
 - using test counts, builds, CI, coverage, linters, type-checkers, validators,
