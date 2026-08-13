@@ -53,8 +53,8 @@ export const stopPid = Effect.fn("LocalTest.stopPid")(function*(label: string, p
 })
 export const capture = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>) =>
   checkedTrimmedText(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }) })
-export const run = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>, displayCommand?: string) =>
-  checkedInherit(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }), ...(displayCommand === undefined ? {} : { displayCommand }) })
+export const run = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>, displayCommand?: string, stdin?: string) =>
+  checkedInherit(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }), ...(displayCommand === undefined ? {} : { displayCommand }), ...(stdin === undefined ? {} : { stdin }) })
 export const startDetached = Effect.fn("LocalTest.startDetached")(function*(command: string, args: ReadonlyArray<string>, options: { readonly cwd?: string; readonly env?: Record<string, string>; readonly stdout: string; readonly stderr: string }) {
   return yield* Effect.sync(() => {
     const stdout = openSync(options.stdout, "a", 0o600)

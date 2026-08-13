@@ -18,8 +18,9 @@ The helper resolves a concrete Git target, delegates review to the native
 command, prints its output unchanged, and propagates process or parallel-test
 failures. In auto mode a dirty branch runs both the branch review and an
 uncommitted-overlay review, so committed and local changes are both covered.
-A clean checkout uses `--base`, defaulting to `origin/main`. Pass the actual PR
-base explicitly when it differs.
+A clean checkout uses `--base`. Without it, the helper discovers the current
+PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
+in that order.
 
 The helper records the branch, tracked diff, and hashes of untracked files
 before and after each review. If the target changes while the reviewer is
@@ -29,8 +30,9 @@ claiming that an unstable target was reviewed.
 
 `--parallel-tests` runs the review and test command in one structured Effect
 scope. If either fails, the sibling is interrupted instead of being orphaned.
-`--output` persists the current invocation only after the reviewer succeeds,
-so stale output cannot masquerade as a new result.
+`--output` or `CODEX_REVIEW_OUTPUT` persists the current invocation only after
+the reviewer succeeds, creating parent directories as needed so stale output
+cannot masquerade as a new result.
 
 The review workflow—not this transport helper—triages findings and determines
 the clean stop condition. Accept ordinary clean summaries; never require one

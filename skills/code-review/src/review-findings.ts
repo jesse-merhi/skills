@@ -65,7 +65,9 @@ const query = Command.make("query", {
   const inferredBranch = yield* inferGit(["branch", "--show-current"])
   const repo = args.allRepos ? Option.getOrUndefined(args.repo) : Option.getOrUndefined(Option.orElse(args.repo, () => inferredRepo))
   const branch = args.allBranches ? Option.getOrUndefined(args.branch) : Option.getOrUndefined(Option.orElse(args.branch, () => inferredBranch))
-  const results = yield* queryFindings(args.query, { limit: args.limit, ...(repo === undefined ? {} : { repo }), ...(Option.isSome(args.repoPath) ? { repoPath: args.repoPath.value } : {}), ...(branch === undefined ? {} : { branch }), ...(Option.isSome(args.target) ? { target: args.target.value } : {}), ...(Option.isSome(args.status) ? { status: args.status.value } : {}) })
+  const inferredRepoPath = !args.allRepos && Option.isNone(args.repoPath) && Option.isSome(root) && Option.isSome(inferredRepo) && repo === inferredRepo.value ? root.value : undefined
+  const repoPath = Option.isSome(args.repoPath) ? args.repoPath.value : inferredRepoPath
+  const results = yield* queryFindings(args.query, { limit: args.limit, ...(repo === undefined ? {} : { repo }), ...(repoPath === undefined ? {} : { repoPath }), ...(branch === undefined ? {} : { branch }), ...(Option.isSome(args.target) ? { target: args.target.value } : {}), ...(Option.isSome(args.status) ? { status: args.status.value } : {}) })
   yield* printQueryResults(results, args.json, args.showPaths)
 })))
 const prune = Command.make("prune", {
@@ -80,7 +82,7 @@ const command = Command.make("review-findings").pipe(Command.withDescription("Lo
 const Live = Layer.mergeAll(NodeServices.layer)
 command.pipe(Command.run({ version: "2.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
-  Effect.provide(Live), Effect.tapError((error) => error instanceof MissingReviewRun ? Console.error(error.message) : Effect.void), Effect.tapCause((cause) => {
-  const error = Cause.squash(cause)
-  return error instanceof MissingReviewRun ? Console.error(error.message) : Effect.void
-}), NodeRuntime.runMain({ disableErrorReporting: true }))
+  Effect.provide(Live), Effect.tapCause((cause) => {
+    const error = Cause.squash(cause)
+    return Console.error(error instanceof MissingReviewRun ? error.message : Cause.pretty(cause))
+  }), NodeRuntime.runMain({ disableErrorReporting: true }))

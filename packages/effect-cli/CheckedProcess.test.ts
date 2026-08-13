@@ -34,10 +34,20 @@ describe("checked process boundary", () => {
     )
   ))
 
+  it.effect("pipes sensitive input without placing it in argv", () => live(
+    checkedText(process.execPath, ["-e", "process.stdin.pipe(process.stdout)"], { stdin: "secret-through-stdin" }).pipe(
+      Effect.map((output) => assert.strictEqual(output, "secret-through-stdin"))
+    )
+  ))
+
   it.effect("checks exit status while preserving inherited terminal I/O", () => live(
     checkedInherit(process.execPath, ["-e", "process.exit(9)"]).pipe(
       Effect.flip,
       Effect.map((error) => assert.strictEqual(error.exitCode, 9))
     )
+  ))
+
+  it.effect("supports stdin with inherited terminal output", () => live(
+    checkedInherit(process.execPath, ["-e", "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.exit(input === 'secret-through-stdin' ? 0 : 4))"], { stdin: "secret-through-stdin" })
   ))
 })

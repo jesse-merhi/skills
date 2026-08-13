@@ -343,10 +343,54 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
   assert_output_not_contains "$out" "pnpm test stale-base"
 }
 
+test_review_findings_upgrades_legacy_schema() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+db.exec(`
+  create table review_runs (id text primary key, repo_name text not null, repo_path text not null, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, updated_at integer not null);
+  create table issues (id text primary key, run_id text not null, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, decision text, text text not null, decision_log_path text, updated_at integer not null, unique(run_id, decision_id));
+`)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "active", "", 1, 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-issue", "legacy-run", "D0", "open", "legacy", "legacy", "Legacy finding", "", "legacy text", "", 1)
+NODE
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
+  assert_output_contains "$out" "$db"
+}
+
+test_review_findings_reports_database_failures() {
+  local tmp db
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  printf 'not a sqlite database\n' > "$db"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db" >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "corrupt database initialization should fail"
+  fi
+  test -s "$tmp/stderr" || fail "unexpected database failures must be reported on stderr"
+}
+
+test_review_findings_query_uses_latest_run_and_semantic_terms() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  for base in old-base current-base; do
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" record --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --base "$base" --decision-id D1 --status open --source review --fingerprint "invoice lookup" --summary "$base invoice regression" --text "$base invoice lookup failure" >/dev/null
+  done
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --json billing)"
+  assert_output_contains "$out" "current-base invoice regression"
+  assert_output_not_contains "$out" "old-base invoice regression"
+}
+
 test_review_findings_workflow_is_documented
 test_review_findings_runs_from_repo_launcher
 test_review_findings_record_command_without_base_requires_existing_run
 test_review_findings_cli_generates_closeout_from_records
 test_review_findings_cli_covers_full_review_lifecycle_closeout
+test_review_findings_upgrades_legacy_schema
+test_review_findings_reports_database_failures
+test_review_findings_query_uses_latest_run_and_semantic_terms
 
 printf 'ok - review-findings tests\n'

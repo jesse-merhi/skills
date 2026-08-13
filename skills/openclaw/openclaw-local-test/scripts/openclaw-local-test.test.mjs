@@ -93,6 +93,8 @@ const delayStatusPath = path.join(stateDir, "delay-status");
 const statusStartedPath = path.join(stateDir, "fake-status-started");
 const gatewayPidPath = path.join(stateDir, "fake-gateway-process.pid");
 const completeStartPath = path.join(stateDir, "complete-start");
+const invalidStartPath = path.join(stateDir, "invalid-start");
+const invalidCancelPath = path.join(stateDir, "invalid-cancel");
 const rpcLogPath = path.join(stateDir, "fake-rpc.log");
 
 if (args[0] === "gateway" && args[1] === "run") {
@@ -111,6 +113,10 @@ if (args[0] === "gateway" && args[1] === "run") {
   const params = JSON.parse(args[args.indexOf("--params") + 1]);
   fs.appendFileSync(rpcLogPath, method + "\\n");
   if (method === "wizard.start") {
+    if (fs.existsSync(invalidStartPath)) {
+      console.log(JSON.stringify({ done: true, status: "running" }));
+      process.exit(0);
+    }
     if (fs.existsSync(completeStartPath)) {
       console.log(JSON.stringify({ sessionId: "completed-session", done: true, status: "done" }));
       process.exit(0);
@@ -141,7 +147,7 @@ if (args[0] === "gateway" && args[1] === "run") {
   } else if (method === "wizard.cancel") {
     fs.appendFileSync(cancelLogPath, params.sessionId + "\\n");
     fs.rmSync(activePath, { force: true });
-    console.log(JSON.stringify({ status: "cancelled" }));
+    console.log(JSON.stringify({ status: fs.existsSync(invalidCancelPath) ? "running" : "cancelled" }));
   } else {
     process.exit(1);
   }
@@ -163,6 +169,9 @@ test("helper reports endpoint health, cancels its probe, and tears down interrup
   const failingState = path.join(tempDir, "failing-state");
   const interruptedState = path.join(tempDir, "interrupted-state");
   const completedState = path.join(tempDir, "completed-state");
+  const invalidStartState = path.join(tempDir, "invalid-start-state");
+  const invalidCancelState = path.join(tempDir, "invalid-cancel-state");
+  const invalidTtlState = path.join(tempDir, "invalid-ttl-state");
   await createFakeOpenClaw(repoDir);
   await mkdir(fakeBinDir, { recursive: true });
   await writeFile(
@@ -183,6 +192,10 @@ exit 1
   await writeFile(path.join(interruptedState, "delay-status"), "1\n");
   await mkdir(completedState, { recursive: true });
   await writeFile(path.join(completedState, "complete-start"), "1\n");
+  await mkdir(invalidStartState, { recursive: true });
+  await writeFile(path.join(invalidStartState, "invalid-start"), "1\n");
+  await mkdir(invalidCancelState, { recursive: true });
+  await writeFile(path.join(invalidCancelState, "invalid-cancel"), "1\n");
   const previousSessions = path.join(successfulState, "agents", "main", "sessions");
   await mkdir(previousSessions, { recursive: true });
   await writeFile(path.join(previousSessions, "previous.json"), "{}\n");
@@ -190,6 +203,9 @@ exit 1
   const secondPort = await findPortRange(firstPort + 10);
   const thirdPort = await findPortRange(secondPort + 10);
   const fourthPort = await findPortRange(thirdPort + 10);
+  const fifthPort = await findPortRange(fourthPort + 10);
+  const sixthPort = await findPortRange(fifthPort + 10);
+  const seventhPort = await findPortRange(sixthPort + 10);
 
   const baseEnv = {
     ...process.env,
@@ -330,8 +346,20 @@ exit 1
     await assert.rejects(access(completedEnv.OPENCLAW_LOCAL_TEST_LOCK_DIR));
     assert.equal(await readFile(path.join(completedState, "fake-rpc.log"), "utf8"), "wizard.start\n");
     await assert.rejects(readFile(path.join(completedState, "fake-active-wizard")));
+
+    for (const [stateDir, markerPort] of [[invalidStartState, fifthPort], [invalidCancelState, sixthPort]]) {
+      const invalid = await run(helperPath, args, { ...baseEnv, OPENCLAW_LOCAL_TEST_STATE_DIR: stateDir, OPENCLAW_LOCAL_TEST_LOCK_DIR: `${stateDir}.lock`, OPENCLAW_LOCAL_TEST_PORT: String(markerPort) });
+      assert.equal(invalid.code, 1, invalid.stdout + invalid.stderr);
+      await assert.rejects(readFile(path.join(stateDir, "run", "gateway.pid")));
+      assert.equal(await canListen(markerPort), true);
+    }
+
+    const invalidTtl = await run(helperPath, [...args.slice(0, -2), "--ttl", "tomorrow"], { ...baseEnv, OPENCLAW_LOCAL_TEST_STATE_DIR: invalidTtlState, OPENCLAW_LOCAL_TEST_LOCK_DIR: `${invalidTtlState}.lock`, OPENCLAW_LOCAL_TEST_PORT: String(seventhPort) });
+    assert.equal(invalidTtl.code, 1, invalidTtl.stdout + invalidTtl.stderr);
+    await assert.rejects(readFile(path.join(invalidTtlState, "run", "gateway.pid")));
+    assert.equal(await canListen(seventhPort), true);
   } finally {
-    for (const stateDir of [successfulState, failingState, interruptedState, completedState]) {
+    for (const stateDir of [successfulState, failingState, interruptedState, completedState, invalidStartState, invalidCancelState, invalidTtlState]) {
       await run(
         helperPath,
         ["--state-dir", stateDir, "--stop"],

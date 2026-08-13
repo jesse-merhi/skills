@@ -20,6 +20,7 @@ export class ReviewTargetChangedError extends Schema.TaggedError<ReviewTargetCha
 const capture = checkedTrimmedText
 
 const git = (args: ReadonlyArray<string>) => capture("git", args)
+const optionalCapture = (executable: string, args: ReadonlyArray<string>) => capture(executable, args).pipe(Effect.option)
 const branchTarget = (base: string, mode: "whole" | "branch" = "branch") => ({
   label: `${mode} against ${base}`,
   args: ["--base", base]
@@ -38,9 +39,25 @@ export const planReview = (mode: ReviewMode, base: string, commit: string, dirty
   return { label: branch.label, targets: [branch] }
 }
 
+export const reviewBaseCandidates = (prBase: string | undefined, remoteHead: string | undefined) => [
+  ...(prBase === undefined || prBase.length === 0 ? [] : [`origin/${prBase}`, prBase]),
+  ...(remoteHead === undefined || remoteHead.length === 0 ? [] : [remoteHead]),
+  "origin/main", "origin/master", "main", "master"
+].filter((candidate, index, all) => all.indexOf(candidate) === index)
+
+export const discoverReviewBase = Effect.fn("NativeReview.discoverBase")(function*() {
+  const prBase = yield* optionalCapture("gh", ["pr", "view", "--json", "baseRefName", "--jq", ".baseRefName"])
+  const remoteHead = yield* optionalCapture("git", ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
+  for (const candidate of reviewBaseCandidates(Option.getOrUndefined(prBase), Option.getOrUndefined(remoteHead))) {
+    if (Option.isSome(yield* optionalCapture("git", ["rev-parse", "--verify", `${candidate}^{commit}`]))) return candidate
+  }
+  return yield* git(["symbolic-ref", "--quiet", "--short", "HEAD"])
+})
+
 export const selectReviewPlan = Effect.fn("NativeReview.selectReviewPlan")(function*(mode: ReviewMode, base: Option.Option<string>, commit: string) {
-  const selectedBase = Option.getOrElse(base, () => "origin/main")
-  if (mode !== "commit" && mode !== "uncommitted" && mode !== "local") yield* git(["rev-parse", "--verify", `${selectedBase}^{commit}`])
+  const needsBase = mode !== "commit" && mode !== "uncommitted" && mode !== "local"
+  const selectedBase = Option.isSome(base) ? base.value : needsBase ? yield* discoverReviewBase() : "HEAD"
+  if (needsBase) yield* git(["rev-parse", "--verify", `${selectedBase}^{commit}`])
   const dirty = mode === "auto" && (yield* git(["status", "--porcelain"])) .length > 0
   return planReview(mode, selectedBase, commit, dirty)
 })

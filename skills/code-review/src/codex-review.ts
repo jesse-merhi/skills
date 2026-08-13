@@ -1,7 +1,11 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Console, Effect, FileSystem, Option } from "effect"
+import { Console, Effect, FileSystem, Option, Path } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
 import { reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable, type ReviewMode } from "./NativeReview.ts"
+
+// Environment defaults are captured once at the CLI boundary.
+// @effect-diagnostics-next-line processEnv:off
+const defaultOutput = Option.fromNullishOr(process.env.CODEX_REVIEW_OUTPUT)
 
 const review = Command.make("codex-review", {
   mode: Flag.choice("mode", ["auto", "whole", "local", "uncommitted", "branch", "commit"] as const).pipe(Flag.withDefault("auto")),
@@ -28,9 +32,12 @@ const review = Command.make("codex-review", {
     onChange: () => Console.error("review target changed while the review was running; reviewing the latest state")
   })
   const output = result.value.output
-  if (Option.isSome(args.output)) {
+  const outputPath = Option.orElse(args.output, () => defaultOutput)
+  if (Option.isSome(outputPath)) {
     const fileSystem = yield* FileSystem.FileSystem
-    yield* fileSystem.writeFileString(args.output.value, output)
+    const paths = yield* Path.Path
+    yield* fileSystem.makeDirectory(paths.dirname(outputPath.value), { recursive: true })
+    yield* fileSystem.writeFileString(outputPath.value, output)
   }
   if (output.length > 0) yield* Console.log(output)
   yield* Console.log(`codex-review complete${result.runs > 1 ? ` after ${result.runs} runs` : ""}`)

@@ -15,8 +15,12 @@ must never be production.
 1. Ensure the helper exists on `PATH`:
 
    ```bash
-   install -m 755 skills/openclaw/clawhub-local-test/scripts/clawhub-local-test ~/.local/bin/clawhub-local-test
+   mkdir -p ~/.local/bin
+   ln -sfn "${CODEX_HOME:-$HOME/.codex}/skills/clawhub-local-test/scripts/clawhub-local-test" ~/.local/bin/clawhub-local-test
    ```
+
+   The symlink preserves the launcher's Effect module tree. Do not copy the
+   launcher by itself.
 
 2. Start ClawHub with a prod-like development Convex database:
 

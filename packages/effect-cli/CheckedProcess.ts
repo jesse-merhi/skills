@@ -15,7 +15,12 @@ export interface CheckedProcessOptions {
   readonly env?: Record<string, string>
   readonly extendEnv?: boolean
   readonly displayCommand?: string
+  readonly stdin?: string
 }
+
+const commandInput = (stdin: string | undefined) => stdin === undefined
+  ? "inherit" as const
+  : Stream.make(stdin).pipe(Stream.encodeText)
 
 const processError = (executable: string, command: string, cause: PlatformError.PlatformError) => {
   const notFound = cause.reason._tag === "NotFound"
@@ -42,10 +47,10 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   options?: CheckedProcessOptions
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const { displayCommand, ...childOptions } = options ?? {}
+  const { displayCommand, stdin, ...childOptions } = options ?? {}
   const commandText = displayCommand ?? [executable, ...args].join(" ")
   return yield* Effect.scoped(Effect.gen(function*() {
-    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, childOptions)).pipe(
+    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, ...(stdin === undefined ? {} : { stdin: commandInput(stdin) }) })).pipe(
       Effect.mapError((cause) => processError(executable, commandText, cause))
     )
     const result = yield* Effect.all({
@@ -71,9 +76,9 @@ export const checkedTrimmedText = (executable: string, args: ReadonlyArray<strin
 
 export const checkedInherit = Effect.fn("CheckedProcess.inherit")(function*(executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const { displayCommand, ...childOptions } = options ?? {}
+  const { displayCommand, stdin, ...childOptions } = options ?? {}
   const command = displayCommand ?? [executable, ...args].join(" ")
-  const exitCode = yield* spawner.exitCode(ChildProcess.make(executable, args, { ...childOptions, stdin: "inherit", stdout: "inherit", stderr: "inherit" })).pipe(
+  const exitCode = yield* spawner.exitCode(ChildProcess.make(executable, args, { ...childOptions, stdin: commandInput(stdin), stdout: "inherit", stderr: "inherit" })).pipe(
     Effect.mapError((cause) => processError(executable, command, cause))
   )
   if (exitCode !== 0) return yield* new CheckedProcessError({ command, exitCode: Number(exitCode), message: `${command} exited ${exitCode}`, stderr: "" })

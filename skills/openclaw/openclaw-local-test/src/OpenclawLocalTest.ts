@@ -4,6 +4,12 @@ import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, p
 
 const RuntimeProfile = Schema.Struct({ id: Schema.String, auth: Schema.String, route: Schema.String, model: Schema.String, modelRef: Schema.String, runtimeId: Schema.String, pluginId: Schema.String })
 type RuntimeProfile = typeof RuntimeProfile.Type
+const WizardStart = Schema.Union([
+  Schema.Struct({ done: Schema.Literal(true), status: Schema.Literal("done") }),
+  Schema.Struct({ done: Schema.Literal(false), status: Schema.Literal("running"), sessionId: Schema.String })
+])
+const WizardStatus = Schema.Struct({ status: Schema.Literal("running") })
+const WizardCancel = Schema.Struct({ status: Schema.Literal("cancelled") })
 const portIsFree = (port: number) => Effect.callback<boolean>((resume) => { let socket: Socket | undefined; const done = (free: boolean) => { socket?.destroy(); resume(Effect.succeed(free)) }; socket = createConnection({ host: "127.0.0.1", port }).once("connect", () => done(false)).once("error", () => done(true)); return Effect.sync(() => socket?.destroy()) })
 const choosePorts = Effect.fn("Openclaw.choosePorts")(function*(start: number, gateway: Option.Option<number>, proxy: Option.Option<number>) {
   let candidate = Option.getOrElse(gateway, () => start)
@@ -84,6 +90,7 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
   const profileArgs = [raw.action === "inspect" ? "inspect" : "configure", "--runtime", raw.runtime, ...(Option.isSome(raw.model) ? ["--model", raw.model.value] : [])]
   if (raw.action === "inspect") { const output = yield* capture(process.execPath, [profileScript, ...profileArgs]); return yield* Console.log(output) }
   if (repo.length === 0 || (!(yield* fs.exists(paths.join(repo, "openclaw.mjs"))) && !(yield* fs.exists(paths.join(repo, "dist/index.js"))))) return yield* new LocalTestError({ message: `not an OpenClaw checkout: ${repo}` })
+  const ttl = yield* Effect.try({ try: () => parseTtl(raw.ttl), catch: (cause) => new LocalTestError({ message: `invalid --ttl value: ${raw.ttl}`, cause }) })
   const startup = Effect.gen(function*() {
   yield* stop
   yield* rotateAgentSessions
@@ -113,20 +120,23 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
     const proxyPid = yield* readPid(files.sharedProxy)
     if (proxyPid === undefined || !(yield* portOwnedByPid(ports.proxy, proxyPid))) return yield* new LocalTestError({ message: `browser proxy port ${ports.proxy} is not owned by the shared proxy process` })
     const cliArgs = [entrypoint, "gateway", "call"]
-    const rpc = (method: string, params: object) => capture(process.execPath, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(Effect.flatMap((output) => Effect.try(() => JSON.parse(output) as unknown)))
-    const started = yield* rpc("wizard.start", { mode: "local" })
-    if (typeof started !== "object" || started === null) return yield* new LocalTestError({ message: "wizard readiness probe returned an unexpected start result" })
-    const startRecord = started as Record<string, unknown>
-    if (startRecord.done !== true) {
-      const sessionId = typeof startRecord.sessionId === "string" ? startRecord.sessionId : undefined
-      if (sessionId === undefined) return yield* new LocalTestError({ message: "wizard readiness probe returned no session" })
-      yield* rpc("wizard.status", { sessionId }).pipe(Effect.tapError(() => Console.error(`wizard readiness probe could not verify session ${sessionId}`)), Effect.ensuring(rpc("wizard.cancel", { sessionId }).pipe(Effect.ignore)))
+    const rpc = (method: string, params: object) => capture(process.execPath, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(Effect.flatMap((output) => Effect.try({ try: () => JSON.parse(output) as unknown, catch: (cause) => new LocalTestError({ message: `${method} returned invalid JSON`, cause }) })))
+    const started = yield* rpc("wizard.start", { mode: "local" }).pipe(Effect.flatMap(Schema.decodeUnknownEffect(WizardStart)))
+    if (!started.done) {
+      const sessionId = started.sessionId
+      if (sessionId.trim().length === 0) return yield* new LocalTestError({ message: "wizard readiness probe returned an empty session" })
+      const cancel = rpc("wizard.cancel", { sessionId }).pipe(Effect.flatMap(Schema.decodeUnknownEffect(WizardCancel)))
+      yield* rpc("wizard.status", { sessionId }).pipe(
+        Effect.flatMap(Schema.decodeUnknownEffect(WizardStatus)),
+        Effect.tapError(() => Console.error(`wizard readiness probe could not verify session ${sessionId}`)),
+        Effect.ensuring(cancel.pipe(Effect.orDie))
+      )
     }
-    const ttl = parseTtl(raw.ttl), now = Math.floor(Date.now() / 1_000), expires = ttl === 0 ? 0 : now + ttl
+    const now = Math.floor(Date.now() / 1_000), expires = ttl === 0 ? 0 : now + ttl
     yield* fs.writeFileString(files.instance, encodeEnv({ OPENCLAW_LOCAL_TEST_STATE_DIR: state, OPENCLAW_LOCAL_TEST_GATEWAY_PORT: ports.gateway, OPENCLAW_LOCAL_TEST_PROXY_PORT: ports.proxy, OPENCLAW_LOCAL_TEST_PROVIDER_ID: profile.modelRef.split("/")[0] ?? "", OPENCLAW_LOCAL_TEST_MODEL_ID: profile.model, OPENCLAW_LOCAL_TEST_BROWSER: raw.browser, OPENCLAW_LOCAL_TEST_TTL: raw.ttl, OPENCLAW_LOCAL_TEST_STARTED_AT: now, OPENCLAW_LOCAL_TEST_EXPIRES_AT: expires }), { mode: 0o600 })
     if (ttl > 0) { const self = new URL("../scripts/openclaw-local-test", import.meta.url).pathname; const watchdog = yield* startDetached("sh", ["-c", `sleep ${ttl}; exec \"$1\" --state-dir \"$2\" --stop`, "watchdog", self, state], { stdout: `${logs}/watchdog.log`, stderr: `${logs}/watchdog.err.log` }); yield* fs.writeFileString(files.watchdog, `${watchdog}\n`) }
     if (raw.open) yield* run("open", ["-a", raw.browser, `http://localhost:${ports.proxy}/`])
-  }).pipe(Effect.tapError(() => stop), Effect.onInterrupt(() => stop))
+  }).pipe(Effect.onExit((exit) => Exit.isFailure(exit) ? stop : Effect.void))
   yield* start
   yield* status
   return profile satisfies RuntimeProfile
