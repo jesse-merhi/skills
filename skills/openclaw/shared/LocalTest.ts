@@ -61,15 +61,40 @@ export const capture = (command: string, args: ReadonlyArray<string>, cwd?: stri
 export const run = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>, displayCommand?: string, stdin?: string) =>
   checkedInherit(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }), ...(displayCommand === undefined ? {} : { displayCommand }), ...(stdin === undefined ? {} : { stdin }) })
 export const startDetached = Effect.fn("LocalTest.startDetached")(function*(command: string, args: ReadonlyArray<string>, options: { readonly cwd?: string; readonly env?: Record<string, string>; readonly stdout: string; readonly stderr: string }) {
-  return yield* Effect.sync(() => {
-    const stdout = openSync(options.stdout, "a", 0o600)
-    const stderr = openSync(options.stderr, "a", 0o600)
+  return yield* Effect.callback<number, LocalTestError>((resume) => {
+    let stdout: number | undefined
+    let stderr: number | undefined
+    let child
     try {
-      const child = spawn(command, [...args], { cwd: options.cwd, env: options.env === undefined ? process.env : { ...process.env, ...options.env }, detached: true, stdio: ["ignore", stdout, stderr] })
+      stdout = openSync(options.stdout, "a", 0o600)
+      stderr = openSync(options.stderr, "a", 0o600)
+      child = spawn(command, [...args], { cwd: options.cwd, env: options.env === undefined ? process.env : { ...process.env, ...options.env }, detached: true, stdio: ["ignore", stdout, stderr] })
+    } catch (cause) {
+      if (stdout !== undefined) closeSync(stdout)
+      if (stderr !== undefined) closeSync(stderr)
+      resume(Effect.fail(new LocalTestError({ message: `failed to start ${command}`, cause })))
+      return
+    }
+    closeSync(stdout)
+    closeSync(stderr)
+    const onError = (cause: Error) => {
+      child.off("spawn", onSpawn)
+      resume(Effect.fail(new LocalTestError({ message: `failed to start ${command}`, cause })))
+    }
+    const onSpawn = () => {
+      child?.off("error", onError)
+      const pid = child?.pid
+      if (pid === undefined) return resume(Effect.fail(new LocalTestError({ message: `failed to start ${command}` })))
       child.unref()
-      if (child.pid === undefined) throw new LocalTestError({ message: `failed to start ${command}` })
-      return child.pid
-    } finally { closeSync(stdout); closeSync(stderr) }
+      resume(Effect.succeed(pid))
+    }
+    child.once("error", onError)
+    child.once("spawn", onSpawn)
+    return Effect.sync(() => {
+      child.off("error", onError)
+      child.off("spawn", onSpawn)
+      if (child.pid !== undefined) try { process.kill(-child.pid, "SIGTERM") } catch { child.kill("SIGTERM") }
+    })
   })
 })
 export const waitForUrl = (url: string, attempts = 120) => Effect.tryPromise({ try: async () => {

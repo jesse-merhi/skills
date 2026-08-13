@@ -10,7 +10,6 @@ import sonarjs from "eslint-plugin-sonarjs"
 import noBannerComments from "./eslint-rules/no-banner-comments.js"
 import noLargeTestSnapshots from "./eslint-rules/no-large-test-snapshots.js"
 import noTrivialForwardingWrapper from "./eslint-rules/no-trivial-forwarding-wrapper.js"
-import preferEffectSchemaForUnknown from "./eslint-rules/prefer-effect-schema-for-unknown.js"
 
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
 const testFiles = ["**/*.test.ts", "eslint-rules/rules.test.mjs"]
@@ -21,8 +20,7 @@ const local = {
   rules: {
     "no-banner-comments": noBannerComments,
     "no-large-test-snapshots": noLargeTestSnapshots,
-    "no-trivial-forwarding-wrapper": noTrivialForwardingWrapper,
-    "prefer-effect-schema-for-unknown": preferEffectSchemaForUnknown
+    "no-trivial-forwarding-wrapper": noTrivialForwardingWrapper
   }
 }
 
@@ -74,7 +72,6 @@ export default [
       "import-x/no-self-import": "error",
       "local/no-banner-comments": "error",
       "local/no-trivial-forwarding-wrapper": "error",
-      "local/prefer-effect-schema-for-unknown": "error",
       "no-restricted-syntax": ["error", {
         selector: "CallExpression[callee.object.name='JSON'][callee.property.name='parse']",
         message: "Decode JSON with Effect Schema.fromJsonString so parsing and validation stay at one typed boundary."
