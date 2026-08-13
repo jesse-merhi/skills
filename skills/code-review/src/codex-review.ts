@@ -10,7 +10,7 @@ import { reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } 
 
 // Environment defaults are captured once at the CLI boundary.
 // @effect-diagnostics-next-line processEnv:off
-const defaultOutput = Option.fromNullishOr(process.env.CODEX_REVIEW_OUTPUT)
+const defaultOutput = Option.fromNullishOr(process.env.CODEX_REVIEW_OUTPUT).pipe(Option.filter((path) => path.length > 0))
 
 const review = Command.make("codex-review", {
   mode: Flag.choice("mode", ["auto", "whole", "local", "uncommitted", "branch", "commit"] as const).pipe(Flag.withDefault("auto")),
@@ -23,13 +23,20 @@ const review = Command.make("codex-review", {
   parallelTests: Flag.optional(Flag.string("parallel-tests")),
   dryRun: Flag.boolean("dry-run")
 }, Effect.fn("codexReview.handler")(function*(args) {
-  const plan = yield* selectReviewPlan(args.mode, args.base, args.commit)
+  const outputPath = Option.orElse(args.output, () => defaultOutput)
+  const fileSystem = yield* FileSystem.FileSystem
+  if (!args.dryRun && Option.isSome(outputPath)) yield* fileSystem.remove(outputPath.value, { force: true })
+  const plan = yield* selectReviewPlan(args.mode, args.base, args.commit, !args.dryRun)
   yield* Console.log(`codex-review target: ${plan.label}`)
   if (plan.targets.some((target) => target.snapshot)) yield* Console.log("snapshot: temporary worktree with local overlay")
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
   if (args.dryRun) return
+  const currentIdentity = selectReviewPlan(args.mode, args.base, args.commit).pipe(Effect.flatMap((currentPlan) => reviewIdentity(currentPlan.targets.flatMap((target) => {
+    const baseIndex = target.args.indexOf("--base")
+    return baseIndex < 0 ? [] : [target.args[baseIndex + 1] ?? ""]
+  }).filter((base) => base.length > 0))))
   const result = yield* untilReviewStable({
-    identity: reviewIdentity(),
+    identity: currentIdentity,
     operation: selectReviewPlan(args.mode, args.base, args.commit).pipe(
       Effect.flatMap((currentPlan) => runNativeReview({ codexBin: args.codexBin, plan: currentPlan, testCommand: args.parallelTests }).pipe(
         Effect.map((output) => ({ output, plan: currentPlan }))
@@ -38,9 +45,7 @@ const review = Command.make("codex-review", {
     onChange: () => Console.error("review target changed while the review was running; reviewing the latest state")
   })
   const output = result.value.output
-  const outputPath = Option.orElse(args.output, () => defaultOutput)
   if (Option.isSome(outputPath)) {
-    const fileSystem = yield* FileSystem.FileSystem
     const paths = yield* Path.Path
     yield* fileSystem.makeDirectory(paths.dirname(outputPath.value), { recursive: true })
     yield* fileSystem.writeFileString(outputPath.value, output)

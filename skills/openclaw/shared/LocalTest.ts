@@ -24,10 +24,19 @@ export const parseTtl = (value: string) => {
   const amount = Number(match[1])
   return amount * ({ "": 1, s: 1, m: 60, h: 3_600, d: 86_400 }[match[2] ?? ""] ?? 1)
 }
+const stripInlineComment = (value: string) => {
+  let quote: "'" | '"' | undefined
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]
+    if ((character === "'" || character === '"') && value[index - 1] !== "\\") quote = quote === character ? undefined : quote ?? character
+    if (character === "#" && quote === undefined && index > 0 && /\s/u.test(value[index - 1] ?? "")) return value.slice(0, index).trimEnd()
+  }
+  return value
+}
 export const readEnv = (source: string) => Object.fromEntries(source.split(/\r?\n/u).flatMap((line) => {
   const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/u.exec(line.trim())
   if (match === null) return []
-  return [[match[1], (match[2] ?? "").trim().replace(/^['"]|['"]$/gu, "")]]
+  return [[match[1], stripInlineComment(match[2] ?? "").trim().replace(/^['"]|['"]$/gu, "")]]
 }))
 export const encodeEnv = (values: Record<string, string | number>) => Object.entries(values).map(([key, value]) => `${key}=${JSON.stringify(String(value))}`).join("\n") + "\n"
 export const pidRunning = (pid: number | undefined) => Effect.sync(() => {
@@ -60,8 +69,9 @@ export const capture = (command: string, args: ReadonlyArray<string>, cwd?: stri
   checkedTrimmedText(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }) })
 export const run = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>, displayCommand?: string, stdin?: string) =>
   checkedInherit(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }), ...(displayCommand === undefined ? {} : { displayCommand }), ...(stdin === undefined ? {} : { stdin }) })
-export const startDetached = Effect.fn("LocalTest.startDetached")(function*(command: string, args: ReadonlyArray<string>, options: { readonly cwd?: string; readonly env?: Record<string, string>; readonly stdout: string; readonly stderr: string }) {
-  return yield* Effect.callback<number, LocalTestError>((resume) => {
+export interface DetachedProcess { readonly pid: number; readonly exited: Effect.Effect<number> }
+export const startDetachedObserved = Effect.fn("LocalTest.startDetachedObserved")(function*(command: string, args: ReadonlyArray<string>, options: { readonly cwd?: string; readonly env?: Record<string, string>; readonly stdout: string; readonly stderr: string }) {
+  return yield* Effect.callback<DetachedProcess, LocalTestError>((resume) => {
     let stdout: number | undefined
     let stderr: number | undefined
     let child
@@ -86,7 +96,14 @@ export const startDetached = Effect.fn("LocalTest.startDetached")(function*(comm
       const pid = child?.pid
       if (pid === undefined) return resume(Effect.fail(new LocalTestError({ message: `failed to start ${command}` })))
       child.unref()
-      resume(Effect.succeed(pid))
+      const exited = Effect.callback<number>((resumeExit) => {
+        if (child?.exitCode !== null && child?.exitCode !== undefined) return resumeExit(Effect.succeed(child.exitCode))
+        if (child?.signalCode !== null && child?.signalCode !== undefined) return resumeExit(Effect.succeed(1))
+        const onExit = (code: number | null) => resumeExit(Effect.succeed(code ?? 1))
+        child?.once("exit", onExit)
+        return Effect.sync(() => child?.off("exit", onExit))
+      })
+      resume(Effect.succeed({ pid, exited } satisfies DetachedProcess))
     }
     child.once("error", onError)
     child.once("spawn", onSpawn)
@@ -97,8 +114,10 @@ export const startDetached = Effect.fn("LocalTest.startDetached")(function*(comm
     })
   })
 })
-export const waitForUrl = (url: string, attempts = 120) => Effect.tryPromise({ try: async () => {
-  const response = await fetch(url)
+export const startDetached = (command: string, args: ReadonlyArray<string>, options: { readonly cwd?: string; readonly env?: Record<string, string>; readonly stdout: string; readonly stderr: string }) =>
+  startDetachedObserved(command, args, options).pipe(Effect.map((child) => child.pid))
+export const waitForUrl = (url: string, attempts = 120, requestTimeoutMs = 5_000) => Effect.tryPromise({ try: async () => {
+  const response = await fetch(url, { signal: AbortSignal.timeout(requestTimeoutMs) })
   if (!response.ok) throw new LocalTestError({ message: `${url} returned ${response.status}` })
 }, catch: (cause) => new LocalTestError({ message: `waiting for ${url}`, cause }) }).pipe(Effect.retry({ times: attempts, schedule: Schedule.spaced("1 second") }))
 

@@ -58,8 +58,20 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
    for scope classification, budgets, consult queue, tracked-finding notices,
-   and blocked-on-consult behavior. Done when `review-guardrails` is loaded and
-   the baseline is recorded.
+   and blocked-on-consult behavior. For a new run, persist the baseline before
+   any review fix:
+
+   ```sh
+   review_findings_bin="<skill-dir>/scripts/review-findings"
+   "$review_findings_bin" scope-start \
+     --repo <repo> --repo-path <repo-root> --branch <branch> \
+     --target <target> --base <base> --head <head> \
+     --scope-summary "<request, behavior, owner boundary, and files>"
+   ```
+
+   On a resumed run, use `scope-status`; never rerun `scope-start` to move the
+   baseline. Done when `review-guardrails` is loaded and the CLI has persisted
+   the baseline.
 
 4. Run one-time setup for the current target.
 
@@ -97,7 +109,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    - apply the fix in the real checkout;
    - record the finding and fix in the findings database;
    - run affected validation and record each command;
-   - inspect the diff and check the diff-growth budget;
+   - run `"$review_findings_bin" scope-check` with the run identity and a
+     concise `--reason` for any remaining work;
+   - if it exits non-zero, stop Phase 1 and present its completed-work, growth,
+     and scope-request report to the user;
    - return to Phase 1.
 
 9. After an accepted Phase 2 finding:
@@ -105,7 +120,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    - apply the fix in the real checkout;
    - record the finding and fix in the findings database;
    - run affected validation and record each command;
-   - inspect the diff and check the diff-growth budget;
+   - run `"$review_findings_bin" scope-check` with the run identity and a
+     concise `--reason` for any remaining work;
+   - if it exits non-zero, stop Phase 2 and present its completed-work, growth,
+     and scope-request report to the user;
    - stay in Phase 2 and dispatch the next fresh cold reviewer;
    - do not return to Phase 1 unless the user explicitly asks for a fresh
      native gate.
@@ -113,6 +131,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 10. Close out only after the Phase 1 native gate has passed and Phase 2 is
     clean on the final target.
 
+   Run one final `scope-check`. After it passes, run `scope-complete` with the
+   clean phase result so a later user-authorized review on the branch can start.
    Read [references/pr-closeout.md](references/pr-closeout.md) for PR creation
    or update, evidence, `pr-proof-pack`, pending GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
@@ -130,6 +150,9 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
+- `scope-start` persisted the original baseline, every accepted fix was followed
+  by `scope-check`, and the final check passed before `scope-complete`. Any
+  authorized reset records the user's words through `scope-authorize`.
 - Final validation for the affected surfaces passed, or blockers and residual
   risk are explicit.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or

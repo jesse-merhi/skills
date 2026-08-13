@@ -145,6 +145,11 @@ runtime and report its SQLite database path:
 REPO/skills/code-review/scripts/review-findings path
 ```
 
+Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration. That
+override belonged to the removed Rust installation and can silently select a
+CLI that lacks the required scope commands. The skill-owned launcher above is
+the only supported entrypoint.
+
 ## 9. Verify
 
 Run:

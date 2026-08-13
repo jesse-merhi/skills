@@ -1,8 +1,9 @@
 # Final Output
 
 Every closeout must be backed by the findings CLI. Before writing the final
-answer, resolve `review_findings_bin` from `AGENT_REVIEW_FINDINGS_BIN` or
-`<skill-dir>/scripts/review-findings`, record each validation command with
+answer, resolve `review_findings_bin` as `<skill-dir>/scripts/review-findings`.
+Do not use the retired `AGENT_REVIEW_FINDINGS_BIN` override: it may point to the
+old Rust CLI, which does not implement the deterministic scope commands. Record each validation command with
 `"$review_findings_bin" record-command`, then run:
 
 ```sh
@@ -12,6 +13,10 @@ answer, resolve `review_findings_bin` from `AGENT_REVIEW_FINDINGS_BIN` or
 
 Use its output as the source for these exact sections:
 
+- `Scope budget`: persisted baseline, current production changed lines, exact
+  allowed growth, excluded test/generated lines, status, and any user-authorized
+  reset. A missing, blocked, or non-complete scope budget prevents a clean
+  verdict.
 - `Material findings`: owner-facing review findings that change visible
   behavior, workflows, permissions, data correctness, audit/history,
   billing/payroll/finance, migrations/schema, or API contracts. Lead with this
@@ -53,8 +58,8 @@ Report iterations, the Phase 1 engine used, `review-until-clean` result,
 reviewing`, `Verification run`, `Still open`, PR evidence, required-lens
 results, PR URL or PR blocker, `pr-proof-pack` result, context updates, the
 configured `review-findings closeout` command used, findings database query
-command, budget use (elapsed
-wall clock and diff growth against the baseline), the consult queue awaiting the
+command, budget use (elapsed wall clock plus the CLI's deterministic diff growth
+against the persisted baseline), the consult queue awaiting the
 review owner, final verdict, and anything left for human judgment.
 
 When clean, say plainly that the Phase 1 native gate passed before Phase 2 and

@@ -7,10 +7,11 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 import { Command, Flag } from "effect/unstable/cli"
+import { fileURLToPath } from "node:url"
 
 import { checkedInherit, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
-const quote = (value: string) => value.replace(/([^A-Za-z0-9_./:%-])/gu, "\\$1")
+export const quote = (value: string) => /^[A-Za-z0-9_./:%-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
 class HandoffError extends Schema.TaggedError<HandoffError>()("HandoffError", { message: Schema.String }) {}
 const run = (command: string, args: ReadonlyArray<string>, cwd?: string) => checkedTrimmedText(command, args, cwd === undefined ? undefined : { cwd })
 
@@ -68,7 +69,7 @@ const cli = Command.make("codex-handoff-tmux", {
   const tmuxPane = yield* Config.option(Config.string("TMUX_PANE"))
   const target = Option.getOrElse(args.tmuxTarget, () => Option.getOrElse(tmuxPane, () => ""))
   if (args.pane && target.length === 0) return yield* new HandoffError({ message: "Pane placement requires TMUX_PANE or --tmux-target." })
-  const helper = new URL("../scripts/codex-handoff-tmux", import.meta.url).pathname
+  const helper = fileURLToPath(new URL("../scripts/codex-handoff-tmux", import.meta.url))
   const nested = [helper, "--run-codex", "--file", args.file, ...(args.focus.length === 0 ? [] : ["--focus", args.focus]), "--cd", workdir, "--mode", args.mode, ...(wantsWorktree ? ["--worktree", workdir] : [])].map(quote).join(" ")
   const tmuxArgs = args.pane ? ["split-window", "-h", "-c", workdir, "-t", target, nested] : ["new-window", "-c", workdir, "-n", args.windowName, nested]
   if (args.dryRun) yield* Console.log(`tmux ${tmuxArgs.map(quote).join(" ")}`)

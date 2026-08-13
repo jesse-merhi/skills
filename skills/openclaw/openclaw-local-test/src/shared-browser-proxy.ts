@@ -11,10 +11,10 @@ import * as Schema from "effect/Schema"
 // This file implements an HTTP/WebSocket server; Effect HttpClient is not a server replacement.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import http, { type IncomingMessage, type ServerResponse } from "node:http"
-import net from "node:net"
+import net, { type Socket } from "node:net"
 
 interface Route { readonly proxyPort: number; readonly targetHost: string; readonly targetPort: number; readonly gatewayPid: number; readonly filePath: string }
-interface Running { readonly route: Route; readonly server: http.Server }
+interface Running { readonly route: Route; readonly server: http.Server; readonly sockets: Set<Socket> }
 const PersistedRoute = Schema.Struct({
   gatewayPid: Schema.Int,
   proxyPort: Schema.Int,
@@ -70,20 +70,30 @@ const readRoutes = Effect.gen(function*() {
   return found
 })
 const startServer = (route: Route) => Effect.callback<void, Error>((resume) => {
+  const sockets = new Set<Socket>()
   const server = http.createServer((request, response) => proxyHttp(route, request, response)); server.on("upgrade", (request, socket, head) => proxyUpgrade(route, request, socket, head))
-  server.once("error", (error) => resume(Effect.fail(error))); server.listen(route.proxyPort, host, () => { routes.set(route.proxyPort, { route, server }); resume(Effect.void) })
+  server.on("connection", (socket) => { sockets.add(socket); socket.once("close", () => sockets.delete(socket)) })
+  server.once("error", (error) => resume(Effect.fail(error))); server.listen(route.proxyPort, host, () => { routes.set(route.proxyPort, { route, server, sockets }); resume(Effect.void) })
   return Effect.sync(() => server.close())
 })
-const closeServer = (port: number) => Effect.callback<void>((resume) => { const running = routes.get(port); if (running === undefined) return resume(Effect.void); running.server.close(() => { routes.delete(port); resume(Effect.void) }) })
+const closeServer = (port: number) => Effect.sync(() => {
+  const running = routes.get(port)
+  if (running === undefined) return
+  routes.delete(port)
+  running.server.close()
+  for (const socket of running.sockets) socket.destroy()
+})
 let emptySince = Date.now()
 const syncRoutes = Effect.gen(function*() {
   const next = yield* readRoutes
   for (const [port, current] of routes) { const route = next.get(port); if (route === undefined || route.targetHost !== current.route.targetHost || route.targetPort !== current.route.targetPort) yield* closeServer(port) }
-  for (const route of next.values()) if (!routes.has(route.proxyPort)) yield* startServer(route)
+  for (const route of next.values()) if (!routes.has(route.proxyPort)) {
+    yield* startServer(route).pipe(Effect.catch((error) => Console.error(`[openclaw-shared-proxy] route ${route.proxyPort} unavailable: ${error.message}`)))
+  }
   if (routes.size > 0) emptySince = Date.now()
   else if (Date.now() - emptySince >= idleExitMs) return yield* new ProxyError({ message: "no routes remain" })
 })
-const closeAll = Effect.forEach([...routes.keys()], closeServer, { discard: true })
+const closeAll = Effect.suspend(() => Effect.forEach([...routes.keys()], closeServer, { discard: true }))
 const program = syncRoutes.pipe(Effect.andThen(Effect.repeat(syncRoutes, Schedule.spaced("500 millis"))), Effect.ensuring(closeAll), Effect.catch((error) => Console.error(`[openclaw-shared-proxy] ${error.message}`)))
 program.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off

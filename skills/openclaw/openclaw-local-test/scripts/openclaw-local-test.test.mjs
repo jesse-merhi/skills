@@ -8,7 +8,7 @@ import { spawn } from "node:child_process";
 import test from "node:test";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { choosePorts } from "../src/OpenclawLocalTest.ts";
+import { choosePorts, shouldOpenBrowser } from "../src/OpenclawLocalTest.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const helperPath = path.join(scriptDir, "openclaw-local-test");
@@ -92,6 +92,30 @@ test("a fixed free proxy still allows searching for an automatic gateway", async
   }
 });
 
+test("the none browser sentinel disables opening", () => {
+  assert.equal(shouldOpenBrowser(true, false, "none"), false);
+  assert.equal(shouldOpenBrowser(true, false, "NONE"), false);
+  assert.equal(shouldOpenBrowser(true, false, "Google Chrome"), true);
+});
+
+test("status does not create state or proxy directories", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "openclaw-read-only-"));
+  const stateDir = path.join(directory, "state");
+  const proxyDir = path.join(directory, "proxy");
+  try {
+    const result = await run(helperPath, ["--status"], {
+      ...process.env,
+      OPENCLAW_LOCAL_TEST_STATE_DIR: stateDir,
+      OPENCLAW_LOCAL_TEST_PROXY_DIR: proxyDir,
+    });
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    await assert.rejects(access(stateDir));
+    await assert.rejects(access(proxyDir));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("an automatic gateway never collides with a fixed proxy", async () => {
   const start = await findPortRange();
   const fixedProxy = start + 10;
@@ -103,6 +127,13 @@ test("an automatic gateway never collides with a fixed proxy", async () => {
   } finally {
     await new Promise((resolve) => busyGateway.close(resolve));
   }
+});
+
+test("automatic ports skip live route reservations even when sockets are free", async () => {
+  const start = await findPortRange();
+  const selected = await Effect.runPromise(choosePorts(start, Option.none(), Option.none(), new Set([start + 1])));
+  assert.notEqual(selected.gateway, start);
+  assert.notEqual(selected.proxy, start + 1);
 });
 
 async function createFakeOpenClaw(repoDir) {
@@ -124,9 +155,11 @@ const gatewayPidPath = path.join(stateDir, "fake-gateway-process.pid");
 const completeStartPath = path.join(stateDir, "complete-start");
 const invalidStartPath = path.join(stateDir, "invalid-start");
 const invalidCancelPath = path.join(stateDir, "invalid-cancel");
+const exitGatewayPath = path.join(stateDir, "exit-gateway");
 const rpcLogPath = path.join(stateDir, "fake-rpc.log");
 
 if (args[0] === "gateway" && args[1] === "run") {
+  if (fs.existsSync(exitGatewayPath)) process.exit(12);
   const port = Number(args[args.indexOf("--port") + 1]);
   const server = http.createServer((_req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
@@ -201,6 +234,8 @@ test("helper reports endpoint health, cancels its probe, and tears down interrup
   const invalidStartState = path.join(tempDir, "invalid-start-state");
   const invalidCancelState = path.join(tempDir, "invalid-cancel-state");
   const invalidTtlState = path.join(tempDir, "invalid-ttl-state");
+  const missingConfigState = path.join(tempDir, "missing-config-state");
+  const exitedGatewayState = path.join(tempDir, "exited-gateway-state");
   await createFakeOpenClaw(repoDir);
   await mkdir(fakeBinDir, { recursive: true });
   await writeFile(
@@ -225,6 +260,8 @@ exit 1
   await writeFile(path.join(invalidStartState, "invalid-start"), "1\n");
   await mkdir(invalidCancelState, { recursive: true });
   await writeFile(path.join(invalidCancelState, "invalid-cancel"), "1\n");
+  await mkdir(exitedGatewayState, { recursive: true });
+  await writeFile(path.join(exitedGatewayState, "exit-gateway"), "1\n");
   const previousSessions = path.join(successfulState, "agents", "main", "sessions");
   await mkdir(previousSessions, { recursive: true });
   await writeFile(path.join(previousSessions, "previous.json"), "{}\n");
@@ -235,6 +272,8 @@ exit 1
   const fifthPort = await findPortRange(fourthPort + 10);
   const sixthPort = await findPortRange(fifthPort + 10);
   const seventhPort = await findPortRange(sixthPort + 10);
+  const eighthPort = await findPortRange(seventhPort + 10);
+  const ninthPort = await findPortRange(eighthPort + 10);
 
   const baseEnv = {
     ...process.env,
@@ -282,6 +321,7 @@ exit 1
 
     const status = await run(helperPath, ["--status"], successEnv);
     assert.equal(status.code, 0, status.stderr);
+    assert.match(status.stdout, /Lease: ttl=60s expires=/);
     assert.match(status.stdout, /Gateway health: healthy/);
     assert.match(status.stdout, /browser proxy health: healthy/);
     await run(helperPath, ["--stop"], successEnv);
@@ -394,8 +434,18 @@ exit 1
     assert.equal(invalidTtl.code, 1, invalidTtl.stdout + invalidTtl.stderr);
     await assert.rejects(readFile(path.join(invalidTtlState, "run", "gateway.pid")));
     assert.equal(await canListen(seventhPort), true);
+
+    const missingConfig = await run(helperPath, ["--repo", repoDir, "--base-config", path.join(tempDir, "missing.json"), "--no-open", "--no-ttl"], { ...baseEnv, OPENCLAW_LOCAL_TEST_STATE_DIR: missingConfigState, OPENCLAW_LOCAL_TEST_LOCK_DIR: `${missingConfigState}.lock`, OPENCLAW_LOCAL_TEST_PORT: String(eighthPort) });
+    assert.equal(missingConfig.code, 1, missingConfig.stdout + missingConfig.stderr);
+    assert.match(missingConfig.stdout + missingConfig.stderr, /base config is not a file/);
+
+    const exitStartedAt = Date.now();
+    const exitedGateway = await run(helperPath, args, { ...baseEnv, OPENCLAW_LOCAL_TEST_STATE_DIR: exitedGatewayState, OPENCLAW_LOCAL_TEST_LOCK_DIR: `${exitedGatewayState}.lock`, OPENCLAW_LOCAL_TEST_PORT: String(ninthPort) });
+    assert.equal(exitedGateway.code, 1, exitedGateway.stdout + exitedGateway.stderr);
+    assert.match(exitedGateway.stdout + exitedGateway.stderr, /exited with \d+ before becoming healthy/);
+    assert.ok(Date.now() - exitStartedAt < 10_000, "gateway exit should stop readiness polling promptly");
   } finally {
-    for (const stateDir of [successfulState, failingState, interruptedState, completedState, invalidStartState, invalidCancelState, invalidTtlState]) {
+    for (const stateDir of [successfulState, failingState, interruptedState, completedState, invalidStartState, invalidCancelState, invalidTtlState, missingConfigState, exitedGatewayState]) {
       await run(
         helperPath,
         ["--state-dir", stateDir, "--stop"],

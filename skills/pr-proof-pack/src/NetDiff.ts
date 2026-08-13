@@ -52,7 +52,8 @@ const resolveBase = Effect.gen(function*() {
 
 export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: ReadonlyArray<string>) {
   const base = yield* resolveBase
-  const pathspec = paths.length === 0 ? [] : ["--", ...paths]
+  const requestedPaths = paths.map((path) => path.replace(/^(?:\.\/)+/u, ""))
+  const pathspec = requestedPaths.length === 0 ? [] : ["--", ...requestedPaths]
   const [head, names, stat, log, touchedOutput] = yield* Effect.all([
     git(["rev-parse", "HEAD"]), git(["diff", "--name-status", `${base.comparisonBase}...HEAD`, ...pathspec]),
     git(["diff", "--stat", `${base.comparisonBase}...HEAD`, ...pathspec]), git(["log", "--oneline", `${base.comparisonBase}..HEAD`, ...pathspec]),
@@ -62,13 +63,13 @@ export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: Readonly
   const net = new Set(changedFiles.map(({ path }) => path))
   const touched = [...new Set(touchedOutput.split("\n").map((line) => line.trim()).filter(Boolean))].sort()
   const touchedPaths = new Set(touched)
-  const fileDetails = yield* Effect.forEach(paths, (path) => git(["log", "--oneline", `${base.comparisonBase}..HEAD`, "--", path]).pipe(Effect.map((output) => {
-    const status = net.has(path) ? "modified" : touchedPaths.has(path) ? "no net diff" : "not touched in branch"
+  const fileDetails = yield* Effect.forEach(paths.map((path, index) => ({ displayPath: path, gitPath: requestedPaths[index] ?? path })), ({ displayPath, gitPath }) => git(["log", "--oneline", `${base.comparisonBase}..HEAD`, "--", gitPath]).pipe(Effect.map((output) => {
+    const status = net.has(gitPath) ? "modified" : touchedPaths.has(gitPath) ? "no net diff" : "not touched in branch"
     return {
-      path,
+      path: displayPath,
       status,
       branch_commits: output.split("\n").filter(Boolean),
-      proof_hint: status === "modified" ? proofKind(path) : "Omit from PR proof unless needed for context."
+      proof_hint: status === "modified" ? proofKind(gitPath) : "Omit from PR proof unless needed for context."
     } as const
   })), { concurrency: "unbounded" })
   return { base, head, changedFiles, diffStat: stat, commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), fileDetails, proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofKind(path) })) } satisfies NetDiffReport

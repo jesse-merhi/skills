@@ -2,8 +2,9 @@ import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as PlatformError from "effect/PlatformError"
+import * as Runtime from "effect/Runtime"
 
-import { checkedInherit, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
+import { checkedInherit, CheckedProcessError, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
 
 const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off
@@ -20,6 +21,10 @@ describe("checked process boundary", () => {
     assert.isUndefined(platformErrorExitCode(unrelated))
   })
 
+  it("exposes child exit codes to the Effect runtime", () => {
+    assert.strictEqual(Runtime.getErrorExitCode(new CheckedProcessError({ command: "tool", exitCode: 127, message: "missing", stderr: "" })), 127)
+  })
+
   it.effect("rejects non-zero commands with their stderr and exit code", () => live(
     checkedText(process.execPath, ["-e", "process.stderr.write('broken\\n'); process.exit(7)", "secret-value"], { displayCommand: "node [redacted]" }).pipe(
       Effect.flip,
@@ -29,6 +34,13 @@ describe("checked process boundary", () => {
         assert.strictEqual(error.command, "node [redacted]")
         assert.notMatch(error.message, /secret-value/u)
       })
+    )
+  ))
+
+  it.effect("preserves stdout diagnostics from failing captured commands", () => live(
+    checkedText(process.execPath, ["-e", "process.stdout.write('failure details\\n'); process.exit(8)"]).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /failure details/u))
     )
   ))
 
@@ -48,6 +60,12 @@ describe("checked process boundary", () => {
   it.effect("pipes sensitive input without placing it in argv", () => live(
     checkedText(process.execPath, ["-e", "process.stdin.pipe(process.stdout)"], { stdin: "secret-through-stdin" }).pipe(
       Effect.map((output) => assert.strictEqual(output, "secret-through-stdin"))
+    )
+  ))
+
+  it.effect("closes captured stdin when no input is supplied", () => live(
+    checkedText(process.execPath, ["-e", "const timer=setTimeout(()=>process.exit(9),200); process.stdin.resume(); process.stdin.on('end',()=>{clearTimeout(timer); process.stdout.write('eof')})"]).pipe(
+      Effect.map((output) => assert.strictEqual(output, "eof"))
     )
   ))
 

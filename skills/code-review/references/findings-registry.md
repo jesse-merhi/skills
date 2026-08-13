@@ -27,6 +27,62 @@ database stores records under:
 ~/.local/state/agent-review-findings/reviews.sqlite
 ```
 
+## Scope Budget Records
+
+Start each new review run by freezing its user-authorized scope and direct-diff
+baseline:
+
+```sh
+"$review_findings_bin" scope-start \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> --head <head> \
+  --scope-summary "<request, behavior, owner boundary, and files>"
+```
+
+After every accepted fix and before another review pass, run:
+
+```sh
+"$review_findings_bin" scope-check \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> \
+  --reason "<remaining work and why it may merit additional scope>"
+```
+
+A passing check prints the exact baseline, current production lines, allowed
+growth, excluded test/generated lines, and frozen scope. A blocked check exits
+non-zero and is an immediate stop: present its output to the user and do no more
+review or patch work.
+
+Only after the user explicitly approves a larger scope, record their words and
+the revised scope:
+
+```sh
+"$review_findings_bin" scope-authorize \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> --head <head> \
+  --scope-summary "<revised scope>" \
+  --authorization "<user's explicit approval>"
+```
+
+Use `scope-status` after compaction or handoff. `scope-start` refuses to replace
+an existing baseline or create a second active baseline under a renamed target,
+and `scope-authorize` refuses to run until a check has blocked. Keep the database
+outside the reviewed repository so its SQLite files cannot enter the measured
+diff.
+
+After both review phases are clean and one final `scope-check` passes, close the
+budget:
+
+```sh
+"$review_findings_bin" scope-complete \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> \
+  --reason "<final native and cold-review result>"
+```
+
+An active budget blocks any second `scope-start` for the same repository and
+branch. `scope-complete` releases that lock for a later user-authorized review.
+
 ## Finding Records
 
 For every finding, record:

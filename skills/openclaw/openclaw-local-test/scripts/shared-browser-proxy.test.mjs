@@ -54,7 +54,7 @@ function request(port, requestPath, options = {}) {
 
 async function waitForProxy(port, child) {
   let lastError;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
     assert.equal(child.exitCode, null, "shared proxy exited during startup");
     try {
       return await request(port, "/healthz");
@@ -169,6 +169,41 @@ test("shared browser proxy survives upstream and downstream connection failures"
 
     const followUp = await request(proxyPort, "/healthz");
     assert.deepEqual(followUp, { statusCode: 200, body: '{"ok":true}\n' });
+
+    const held = await new Promise((resolve, reject) => {
+      const req = http.get({ host: "127.0.0.1", port: proxyPort, path: "/slow" });
+      req.once("response", (res) => {
+        res.once("data", () => resolve({ req, res }));
+      });
+      req.once("error", reject);
+    });
+    const nextProxyPort = await reservePort();
+    await rm(path.join(routeDir, `${proxyPort}.json`));
+    await writeFile(
+      path.join(routeDir, `${nextProxyPort}.json`),
+      JSON.stringify({
+        proxyPort: nextProxyPort,
+        targetHost: "127.0.0.1",
+        targetPort: upstreamPort,
+        gatewayPid: process.pid,
+      }),
+    );
+    const nextRoute = await waitForProxy(nextProxyPort, proxy);
+    assert.deepEqual(nextRoute, { statusCode: 200, body: '{"ok":true}\n' });
+    held.req.destroy();
+    held.res.destroy();
+
+    const occupied = net.createServer();
+    const occupiedPort = await listen(occupied);
+    await writeFile(
+      path.join(routeDir, `${occupiedPort}.json`),
+      JSON.stringify({ proxyPort: occupiedPort, targetHost: "127.0.0.1", targetPort: upstreamPort, gatewayPid: process.pid }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    const survivingRoute = await request(nextProxyPort, "/healthz");
+    assert.deepEqual(survivingRoute, { statusCode: 200, body: '{"ok":true}\n' });
+    assert.equal(proxy.exitCode, null, stderr);
+    await new Promise((resolve) => occupied.close(resolve));
   } finally {
     proxy.kill("SIGTERM");
     await new Promise((resolve) => {

@@ -210,7 +210,18 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "--run-codex"
   assert_output_contains "$output" "--file"
   assert_output_contains "$output" "--focus"
-  assert_output_contains "$output" "--mode\\ new"
+  assert_output_contains "$output" "--mode"
+  assert_output_contains "$output" "new"
+
+  output="$(
+    TMUX=/tmp/fake \
+      "$helper" \
+        --file "$handoff" \
+        --focus $'one\ntwo' \
+        --cd "$ROOT_DIR" \
+        --dry-run
+  )"
+  assert_output_contains "$output" $'one\ntwo'
 
   output="$(
     TMUX=/tmp/fake \

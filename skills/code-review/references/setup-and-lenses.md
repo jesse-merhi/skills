@@ -10,8 +10,10 @@ overlay changes.
    surfaces, follow [large-diff-slices.md](large-diff-slices.md) once before
    Phase 1. Do not slice a diff merely because it has many files.
 
-2. Load `review-guardrails`; record `review_started`, `baseline_diff`, and
-   `scope_baseline` in the loop state.
+2. Load `review-guardrails`; resolve its `review_findings_bin` absolute launcher,
+   then persist `review_started`, `baseline_diff`, and `scope_baseline` with
+   `"$review_findings_bin" scope-start`. On resume, confirm the persisted state with
+   `"$review_findings_bin" scope-status` rather than reconstructing it from chat.
 
 3. Run the required review lenses before the first review phase:
 

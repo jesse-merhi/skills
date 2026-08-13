@@ -1,10 +1,11 @@
+import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 
-import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { checkedInherit, type CheckedProcessOptions, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 export type ReviewMode = "auto" | "whole" | "local" | "uncommitted" | "branch" | "commit"
 
@@ -24,7 +25,39 @@ export class ReviewTargetChangedError extends Schema.TaggedError<ReviewTargetCha
 }) {}
 export class ReviewSnapshotError extends Schema.TaggedError<ReviewSnapshotError>()("ReviewSnapshotError", { message: Schema.String }) {}
 
-const capture = checkedTrimmedText
+// Explicit tool overrides are trusted user configuration; defaults are resolved outside the checkout.
+// @effect-diagnostics-next-line processEnv:off
+const toolEnvironment = { CODEX_BIN: process.env.CODEX_BIN, GH_BIN: process.env.GH_BIN, GIT_BIN: process.env.GIT_BIN, PATH: process.env.PATH ?? "" }
+export const trustedExecutable = Effect.fn("NativeReview.trustedExecutable")(function*(name: string, reviewedRepoPath = process.cwd()) {
+  const explicit = name === "git" ? toolEnvironment.GIT_BIN : name === "gh" ? toolEnvironment.GH_BIN : name === "codex" ? toolEnvironment.CODEX_BIN : undefined
+  if (explicit !== undefined && explicit.length > 0) return explicit
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  let cursor = paths.resolve(reviewedRepoPath)
+  let repo: string | undefined
+  while (repo === undefined) {
+    if (yield* fs.exists(paths.join(cursor, ".git"))) repo = yield* fs.realPath(cursor).pipe(Effect.orElseSucceed(() => cursor))
+    else {
+      const parent = paths.dirname(cursor)
+      if (parent === cursor) break
+      cursor = parent
+    }
+  }
+  for (const entry of toolEnvironment.PATH.split(":")) {
+    if (entry.length === 0 || !paths.isAbsolute(entry)) continue
+    const candidate = paths.join(entry, name)
+    if (!(yield* fs.exists(candidate))) continue
+    const resolved = yield* fs.realPath(candidate).pipe(Effect.orElseSucceed(() => paths.resolve(candidate)))
+    const info = yield* fs.stat(resolved).pipe(Effect.option)
+    if (Option.isNone(info) || info.value.type !== "File" || (info.value.mode & 0o111) === 0) continue
+    const relative = repo === undefined ? undefined : paths.relative(repo, resolved)
+    const insideRepo = relative !== undefined && (relative === "" || (!paths.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${paths.sep}`)))
+    if (!insideRepo) return resolved
+  }
+  return yield* new ReviewSnapshotError({ message: `could not resolve trusted ${name} executable outside the reviewed checkout; use the explicit tool override` })
+})
+const capture = (executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) =>
+  (executable.includes("/") ? Effect.succeed(executable) : trustedExecutable(executable)).pipe(Effect.flatMap((resolved) => checkedTrimmedText(resolved, args, options)))
 
 const git = (args: ReadonlyArray<string>) => capture("git", args)
 const optionalCapture = (executable: string, args: ReadonlyArray<string>) => capture(executable, args).pipe(Effect.option)
@@ -58,52 +91,79 @@ export const discoverReviewBase = Effect.fn("NativeReview.discoverBase")(functio
   for (const candidate of reviewBaseCandidates(Option.getOrUndefined(prBase), Option.getOrUndefined(remoteHead))) {
     if (Option.isSome(yield* optionalCapture("git", ["rev-parse", "--verify", `${candidate}^{commit}`]))) return candidate
   }
-  return yield* git(["symbolic-ref", "--quiet", "--short", "HEAD"])
+  return yield* new ReviewSnapshotError({ message: "could not discover a review base; pass --base <ref> explicitly" })
 })
 
-export const selectReviewPlan = Effect.fn("NativeReview.selectReviewPlan")(function*(mode: ReviewMode, base: Option.Option<string>, commit: string) {
+export const refreshReviewBase = Effect.fn("NativeReview.refreshBase")(function*(base: string) {
+  const separator = base.indexOf("/")
+  if (separator <= 0 || separator === base.length - 1) return
+  const remote = base.slice(0, separator)
+  const branch = base.slice(separator + 1)
+  if (Option.isNone(yield* optionalCapture("git", ["remote", "get-url", remote]))) return
+  const gitTool = yield* trustedExecutable("git")
+  yield* checkedInherit(gitTool, ["fetch", "--quiet", remote, `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`]).pipe(
+    Effect.catch((error) => Console.error(`warning: could not refresh ${base}; reviewing the existing local ref (${error.message})`))
+  )
+})
+
+export const selectReviewPlan = Effect.fn("NativeReview.selectReviewPlan")(function*(mode: ReviewMode, base: Option.Option<string>, commit: string, refresh = true) {
   const needsBase = mode !== "commit" && mode !== "uncommitted" && mode !== "local"
   const selectedBase = Option.isSome(base) ? base.value : needsBase ? yield* discoverReviewBase() : "HEAD"
-  if (needsBase) yield* git(["rev-parse", "--verify", `${selectedBase}^{commit}`])
+  if (needsBase) {
+    if (refresh) yield* refreshReviewBase(selectedBase)
+    yield* git(["rev-parse", "--verify", `${selectedBase}^{commit}`])
+  }
   const dirty = (mode === "auto" || mode === "whole") && (yield* git(["status", "--porcelain"])).length > 0
   return planReview(mode, selectedBase, commit, dirty)
 })
 
-export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*() {
-  const [head, status, diff, untracked] = yield* Effect.all([
-    git(["rev-parse", "HEAD"]),
-    git(["status", "--porcelain=v1", "-z"]),
-    git(["diff", "--binary", "HEAD"]),
-    git(["ls-files", "--others", "--exclude-standard", "-z"])
+export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*(baseRefs: ReadonlyArray<string> = []) {
+  const repo = yield* git(["rev-parse", "--show-toplevel"])
+  const fromRoot = (args: ReadonlyArray<string>) => capture("git", args, { cwd: repo })
+  const [branch, head, status, diff, untracked] = yield* Effect.all([
+    fromRoot(["symbolic-ref", "--quiet", "--short", "HEAD"]).pipe(Effect.orElseSucceed(() => "HEAD")),
+    fromRoot(["rev-parse", "HEAD"]),
+    fromRoot(["status", "--porcelain=v1", "-z"]),
+    fromRoot(["diff", "--binary", "HEAD"]),
+    fromRoot(["ls-files", "--others", "--exclude-standard", "-z"])
   ])
   const paths = untracked.length === 0 ? [] : untracked.split("\0").filter((path) => path.length > 0)
-  const hashes = yield* Effect.forEach(paths, (path) => git(["hash-object", "--", path]))
-  return JSON.stringify({ head, status, diff, untracked: paths.map((path, index) => [path, hashes[index]]) })
+  const fs = yield* FileSystem.FileSystem
+  const pathService = yield* Path.Path
+  const hashes = yield* Effect.forEach(paths, (path) => fs.readLink(pathService.resolve(repo, path)).pipe(
+    Effect.map((target) => `symlink:${target}`),
+    Effect.catch(() => fromRoot(["hash-object", "--", path]))
+  ))
+  const bases = yield* Effect.forEach(baseRefs, (baseRef) => fromRoot(["rev-parse", "--verify", `${baseRef}^{commit}`]).pipe(Effect.map((oid) => [baseRef, oid] as const)))
+  return JSON.stringify({ bases, branch, head, status, diff, untracked: paths.map((path, index) => [path, hashes[index]]) })
 })
 
 const withReviewSnapshot = <A, E, R>(use: (cwd: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const repo = yield* git(["rev-parse", "--show-toplevel"])
+  const gitTool = yield* trustedExecutable("git")
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "review-snapshot." })
   const snapshot = paths.join(root, "worktree")
-  const cleanup = checkedInherit("git", ["worktree", "remove", "--force", snapshot], { cwd: repo }).pipe(Effect.ignore)
+  const cleanup = checkedInherit(gitTool, ["worktree", "remove", "--force", snapshot], { cwd: repo }).pipe(Effect.ignore)
   const lifecycle = Effect.gen(function*() {
-    yield* checkedInherit("git", ["worktree", "add", "--detach", snapshot, "HEAD"], { cwd: repo })
+    yield* checkedInherit(gitTool, ["worktree", "add", "--detach", snapshot, "HEAD"], { cwd: repo })
     for (const args of [["diff", "--binary", "--cached"], ["diff", "--binary"]]) {
-      const patch = yield* checkedText("git", args, { cwd: repo })
-      if (patch.length > 0) yield* checkedInherit("git", ["apply", "--whitespace=nowarn", "-"], { cwd: snapshot, stdin: patch })
+      const patch = yield* checkedText(gitTool, args, { cwd: repo })
+      if (patch.length > 0) yield* checkedInherit(gitTool, ["apply", "--whitespace=nowarn", "-"], { cwd: snapshot, stdin: patch })
     }
-    const untracked = yield* checkedText("git", ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo })
+    const untracked = yield* checkedText(gitTool, ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo })
     for (const file of untracked.split("\0").filter(Boolean)) {
       const source = paths.resolve(repo, file)
       const destination = paths.resolve(snapshot, file)
       if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${file}` })
       yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
-      yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
+      const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
+      if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
+      else yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
     }
-    yield* checkedInherit("git", ["add", "-A"], { cwd: snapshot })
-    yield* checkedInherit("git", ["-c", "user.name=Review Snapshot", "-c", "user.email=review-snapshot@example.invalid", "commit", "--quiet", "--no-verify", "-m", "review snapshot"], { cwd: snapshot })
+    yield* checkedInherit(gitTool, ["add", "-A"], { cwd: snapshot })
+    yield* checkedInherit(gitTool, ["-c", "user.name=Review Snapshot", "-c", "user.email=review-snapshot@example.invalid", "commit", "--quiet", "--no-verify", "-m", "review snapshot"], { cwd: snapshot })
     return yield* use(snapshot)
   })
   return yield* lifecycle.pipe(Effect.ensuring(cleanup))
@@ -131,12 +191,16 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   readonly plan: ReviewPlan
   readonly testCommand: Option.Option<string>
 }) {
+  const repo = yield* git(["rev-parse", "--show-toplevel"])
+  const paths = yield* Path.Path
+  const reviewer = options.codexBin.includes("/") ? paths.resolve(options.codexBin) : yield* trustedExecutable(options.codexBin)
+  const shell = yield* trustedExecutable("sh")
   const execute = (snapshotCwd?: string) => {
-    const reviews = Effect.forEach(options.plan.targets, (target) => checkedText(options.codexBin, ["review", ...target.args], snapshotCwd === undefined || !target.snapshot ? undefined : { cwd: snapshotCwd }).pipe(
+    const reviews = Effect.forEach(options.plan.targets, (target) => checkedText(reviewer, ["review", ...target.args], snapshotCwd === undefined || !target.snapshot ? undefined : { cwd: snapshotCwd }).pipe(
       Effect.map((output) => options.plan.targets.length === 1 ? output : `[${target.label}]\n${output}`)
     )).pipe(Effect.map((outputs) => outputs.join("\n\n")))
     if (Option.isNone(options.testCommand)) return reviews
-    const test = checkedText("sh", ["-lc", options.testCommand.value], snapshotCwd === undefined ? undefined : { cwd: snapshotCwd })
+    const test = checkedText(shell, ["-lc", options.testCommand.value], { cwd: snapshotCwd ?? repo })
     return Effect.all([reviews, test], { concurrency: "unbounded" }).pipe(Effect.map(([output]) => output))
   }
   return yield* (options.plan.targets.some((target) => target.snapshot) ? withReviewSnapshot(execute) : execute())

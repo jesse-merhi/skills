@@ -2,12 +2,13 @@ import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import { Argument, Command } from "effect/unstable/cli"
 
 const ConfigJson = Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown))
 const secretKey = /(api[-_]?key|token|secret|password|credential|cookie|authorization|baseurl|endpoint|proxy)/iu
-const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value)
+const isObject = Predicate.isObject
 const objectAt = (value: unknown, key: string) => isObject(value) && isObject(value[key]) ? value[key] : {}
 const redact = (value: unknown): unknown => Array.isArray(value)
   ? value.map(redact)

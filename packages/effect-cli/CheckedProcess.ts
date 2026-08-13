@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as PlatformError from "effect/PlatformError"
+import * as Runtime from "effect/Runtime"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
@@ -14,7 +15,9 @@ export class CheckedProcessError extends Schema.TaggedError<CheckedProcessError>
   message: Schema.String,
   stderr: Schema.String,
   cause: Schema.optional(Schema.Unknown)
-}) {}
+}) {
+  override get [Runtime.errorExitCode]() { return this.exitCode }
+}
 
 export interface CheckedProcessOptions {
   readonly cwd?: string
@@ -26,6 +29,9 @@ export interface CheckedProcessOptions {
 
 const commandInput = (stdin: string | undefined) => stdin === undefined
   ? "inherit" as const
+  : Stream.make(stdin).pipe(Stream.encodeText)
+const capturedInput = (stdin: string | undefined) => stdin === undefined
+  ? Stream.empty
   : Stream.make(stdin).pipe(Stream.encodeText)
 
 const processError = (executable: string, command: string, cause: PlatformError.PlatformError) => {
@@ -51,7 +57,7 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   const { displayCommand, stdin, ...childOptions } = options ?? {}
   const commandText = displayCommand ?? [executable, ...args].join(" ")
   return yield* Effect.scoped(Effect.gen(function*() {
-    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, ...(stdin === undefined ? {} : { stdin: commandInput(stdin) }) })).pipe(
+    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, stdin: capturedInput(stdin) })).pipe(
       Effect.mapError((cause) => processError(executable, commandText, cause))
     )
     const result = yield* Effect.all({
@@ -68,7 +74,8 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
       return yield* new CheckedProcessError({ command: commandText, exitCode, message: `${commandText} was interrupted`, stderr: result.stderr, cause })
     }
     if (result.exit.value !== 0) {
-      return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: result.stderr.trim() || `${commandText} exited ${result.exit.value}`, stderr: result.stderr })
+      const diagnostics = [result.stderr.trim(), result.stdout.trim()].filter((text) => text.length > 0).join("\n")
+      return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: diagnostics || `${commandText} exited ${result.exit.value}`, stderr: result.stderr })
     }
     return result.stdout
   }))

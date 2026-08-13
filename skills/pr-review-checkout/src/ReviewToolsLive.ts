@@ -6,23 +6,15 @@ import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
-import * as PlatformError from "effect/PlatformError"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
 import * as String from "effect/String"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { ChildProcessSpawner } from "effect/unstable/process"
 
 import type { PrepareManagedWorktreeInput, PullRequestNumber as PullRequestNumberType } from "./PrReview.ts"
 
-import { platformErrorExitCode } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { checkedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { ExternalToolError, PullRequest, PullRequestNumber, ReviewTools } from "./PrReview.ts"
-
-interface CommandResult {
-  readonly exitCode: number
-  readonly stderr: string
-  readonly stdout: string
-}
 
 export class ManagedWorktreeOwner extends Schema.Class<ManagedWorktreeOwner>(
   "skills/pr-review-checkout/ManagedWorktreeOwner"
@@ -46,69 +38,14 @@ const decodeProcessLockOwner = Schema.decodeUnknownEffect(processLockOwnerCodec)
 const encodeManagedOwner = Schema.encodeEffect(managedOwnerCodec)
 const encodeProcessLockOwner = Schema.encodeEffect(processLockOwnerCodec)
 
-const run = Effect.fn("ReviewTools.run")(function*(
-  spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
-  executable: string,
-  args: ReadonlyArray<string>,
-  cwd?: string
-) {
-  return yield* Effect.scoped(Effect.gen(function*() {
-    const command = ChildProcess.make(executable, args, cwd === undefined ? undefined : { cwd })
-    const handle = yield* spawner.spawn(command).pipe(
-      Effect.mapError((cause) => {
-        const notFound = cause instanceof PlatformError.PlatformError && cause.reason._tag === "NotFound"
-        return new ExternalToolError({
-          cause: notFound ? new Error(`${executable}: command not found`) : cause,
-          ...(notFound ? { exitCode: 127 } : {}),
-          operation: `${executable} ${args.join(" ")}`
-        })
-      })
-    )
-    const result = yield* Effect.all(
-      {
-        exitCode: Effect.exit(handle.exitCode),
-        stderr: Stream.mkString(Stream.decodeText(handle.stderr)),
-        stdout: Stream.mkString(Stream.decodeText(handle.stdout))
-      },
-      { concurrency: "unbounded" }
-    ).pipe(
-      Effect.mapError((cause) => new ExternalToolError({ cause, operation: `${executable} ${args.join(" ")}` }))
-    )
-    if (Exit.isFailure(result.exitCode)) {
-      const platformError = Cause.findErrorOption(result.exitCode.cause)
-      const cause = Option.isSome(platformError) ? platformError.value : Cause.squash(result.exitCode.cause)
-      const exitCode = Option.isSome(platformError) ? platformErrorExitCode(platformError.value) : undefined
-      return yield* new ExternalToolError({
-        cause,
-        ...(exitCode === undefined ? {} : { exitCode }),
-        stderr: result.stderr,
-        operation: `${executable} ${args.join(" ")}`
-      })
-    }
-    return {
-      exitCode: result.exitCode.value,
-      stderr: result.stderr,
-      stdout: result.stdout
-    } satisfies CommandResult
-  }))
-})
-
 const checked = Effect.fn("ReviewTools.checked")(function*(
-  spawner: ChildProcessSpawner.ChildProcessSpawner["Service"],
   executable: string,
   args: ReadonlyArray<string>,
   cwd?: string
 ) {
-  const result = yield* run(spawner, executable, args, cwd)
-  if (result.exitCode !== 0) {
-    return yield* new ExternalToolError({
-      cause: new Error(result.stderr.trim() || `${executable} exited with ${result.exitCode}`),
-      exitCode: result.exitCode,
-      stderr: result.stderr,
-      operation: `${executable} ${args.join(" ")}`
-    })
-  }
-  return result.stdout
+  return yield* checkedText(executable, args, cwd === undefined ? undefined : { cwd }).pipe(
+    Effect.mapError((error) => new ExternalToolError({ cause: error, exitCode: error.exitCode, stderr: error.stderr.length > 0 ? error.stderr : error.message.endsWith("was interrupted") ? "" : `${error.message}\n`, operation: error.command }))
+  )
 })
 
 export interface WorktreeRecord {
@@ -346,21 +283,22 @@ export const ReviewToolsLive = Layer.effect(
     const crypto = yield* Crypto.Crypto
     const pathService = yield* Path.Path
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const runChecked = (executable: string, args: ReadonlyArray<string>, cwd?: string) =>
-      checked(spawner, executable, args, cwd)
-    const processIdentity = (pid: number) => runChecked("ps", ["-o", "lstart=", "-p", globalThis.String(pid)]).pipe(
+    const runTool = (executable: string, args: ReadonlyArray<string>, cwd?: string) => checked(executable, args, cwd).pipe(
+      Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner)
+    )
+    const processIdentity = (pid: number) => runTool("ps", ["-o", "lstart=", "-p", globalThis.String(pid)]).pipe(
       Effect.map(String.trim),
       Effect.map((identity) => identity.length > 0 ? Option.some(identity) : Option.none()),
       Effect.catchTag("ExternalToolError", () => Effect.succeed(Option.none()))
     )
     const removeWorktree = (repository: string, worktree: string) =>
-      Effect.asVoid(runChecked("git", ["worktree", "remove", "--force", worktree], repository))
+      Effect.asVoid(runTool("git", ["worktree", "remove", "--force", worktree], repository))
     const deleteBranch = (repository: string, branch: string) =>
-      Effect.asVoid(runChecked("git", ["branch", "--delete", "--force", branch], repository))
+      Effect.asVoid(runTool("git", ["branch", "--delete", "--force", branch], repository))
     const removeRemote = (repository: string, remote: string) =>
-      Effect.asVoid(runChecked("git", ["remote", "remove", remote], repository))
+      Effect.asVoid(runTool("git", ["remote", "remove", remote], repository))
     const markerPath = Effect.fn("ReviewTools.markerPath")(function*(worktree: string) {
-      const gitDirectory = yield* runChecked("git", ["rev-parse", "--git-dir"], worktree).pipe(Effect.map(String.trim))
+      const gitDirectory = yield* runTool("git", ["rev-parse", "--git-dir"], worktree).pipe(Effect.map(String.trim))
       return pathService.join(
         pathService.isAbsolute(gitDirectory) ? gitDirectory : pathService.join(worktree, gitDirectory),
         "agent-pr-review-owner.json"
@@ -426,11 +364,11 @@ export const ReviewToolsLive = Layer.effect(
     ) {
       const baseIdentity = repositoryIdentity(input.baseRepositoryUrl)
       const baseHost = repositoryHost(input.baseRepositoryUrl)
-      const remotes = yield* runChecked("git", ["remote"], input.repository).pipe(
+      const remotes = yield* runTool("git", ["remote"], input.repository).pipe(
         Effect.map((output) => output.split("\n").filter((remote) => remote.length > 0))
       )
       const remoteUrls = yield* Effect.forEach(remotes, (remote) =>
-        runChecked("git", ["remote", "get-url", remote], input.repository).pipe(
+        runTool("git", ["remote", "get-url", remote], input.repository).pipe(
           Effect.map((url) => ({ remote, url: url.trim() }))
         ))
       for (const candidate of remoteUrls) {
@@ -447,7 +385,7 @@ export const ReviewToolsLive = Layer.effect(
           if (candidateHost === null) {
             continue
           }
-          const configuration = yield* runChecked("ssh", ["-G", candidateHost], input.repository).pipe(Effect.option)
+          const configuration = yield* runTool("ssh", ["-G", candidateHost], input.repository).pipe(Effect.option)
           const resolvedHost = Option.isSome(configuration) ? sshResolvedHost(configuration.value) : null
           if (
             resolvedHost !== null &&
@@ -469,12 +407,12 @@ export const ReviewToolsLive = Layer.effect(
       input: PrepareManagedWorktreeInput,
       managedBranch: string,
       force: boolean
-    ) => runChecked("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path).pipe(
+    ) => runTool("gh", pullRequestCheckoutArgs(input.prNumber, managedBranch, force), input.path).pipe(
       Effect.as("head" as const),
       Effect.catchTag("ExternalToolError", (error) => Effect.gen(function*() {
         const source = yield* resolveBaseSource(input).pipe(Effect.mapError(() => error))
         if (!input.isCrossRepository) {
-          const headProbe = yield* Effect.exit(runChecked(
+          const headProbe = yield* Effect.exit(runTool(
             "git",
             authenticatedGitArgs([
               "ls-remote",
@@ -492,16 +430,16 @@ export const ReviewToolsLive = Layer.effect(
             return yield* error
           }
         }
-        yield* runChecked(
+        yield* runTool(
           "git",
           authenticatedGitArgs(["fetch", "--quiet", source, `pull/${input.prNumber}/head`]),
           input.path
         ).pipe(Effect.mapError(() => error))
         if (force) {
-          yield* runChecked("git", ["checkout", "--quiet", managedBranch], input.path)
-          yield* runChecked("git", ["reset", "--quiet", "--hard", "FETCH_HEAD"], input.path)
+          yield* runTool("git", ["checkout", "--quiet", managedBranch], input.path)
+          yield* runTool("git", ["reset", "--quiet", "--hard", "FETCH_HEAD"], input.path)
         } else {
-          yield* runChecked("git", ["checkout", "--quiet", "-b", managedBranch, "FETCH_HEAD"], input.path)
+          yield* runTool("git", ["checkout", "--quiet", "-b", managedBranch, "FETCH_HEAD"], input.path)
         }
         return "pull-ref" as const
       }))
@@ -510,7 +448,7 @@ export const ReviewToolsLive = Layer.effect(
       repository: string,
       managedBranch: string,
       name: "merge" | "remote"
-    ) => runChecked(
+    ) => runTool(
       "git",
       ["config", "--get", `branch.${managedBranch}.${name}`],
       repository
@@ -521,12 +459,12 @@ export const ReviewToolsLive = Layer.effect(
       name: "merge" | "remote",
       value: Option.Option<string>
     ) => Option.match(value, {
-      onNone: () => runChecked(
+      onNone: () => runTool(
         "git",
         ["config", "--unset-all", `branch.${managedBranch}.${name}`],
         repository
       ).pipe(Effect.ignore),
-      onSome: (configured) => runChecked(
+      onSome: (configured) => runTool(
         "git",
         ["config", `branch.${managedBranch}.${name}`, configured],
         repository
@@ -542,15 +480,15 @@ export const ReviewToolsLive = Layer.effect(
         yield* removeRemote(repository, remote).pipe(Effect.ignore)
         return
       }
-      const exists = yield* runChecked("git", ["remote", "get-url", remote], repository).pipe(Effect.option)
+      const exists = yield* runTool("git", ["remote", "get-url", remote], repository).pipe(Effect.option)
       yield* Option.isSome(exists)
-        ? runChecked("git", ["remote", "set-url", remote, url.value], repository)
-        : runChecked("git", ["remote", "add", remote, url.value], repository)
+        ? runTool("git", ["remote", "set-url", remote, url.value], repository)
+        : runTool("git", ["remote", "add", remote, url.value], repository)
       yield* Option.match(fetch, {
-        onNone: () => runChecked("git", ["config", "--unset-all", `remote.${remote}.fetch`], repository).pipe(
+        onNone: () => runTool("git", ["config", "--unset-all", `remote.${remote}.fetch`], repository).pipe(
           Effect.ignore
         ),
-        onSome: (value) => runChecked(
+        onSome: (value) => runTool(
           "git",
           ["config", "--replace-all", `remote.${remote}.fetch`, value],
           repository
@@ -567,7 +505,7 @@ export const ReviewToolsLive = Layer.effect(
       const configuredRemote = yield* readManagedBranchConfig(input.repository, managedBranch, "remote")
       const configuredMerge = yield* readManagedBranchConfig(input.repository, managedBranch, "merge")
       const configuredRemoteUrl = Option.isSome(configuredRemote) && configuredRemote.value !== "."
-        ? yield* runChecked(
+        ? yield* runTool(
           "git",
           ["remote", "get-url", configuredRemote.value],
           input.repository
@@ -575,7 +513,7 @@ export const ReviewToolsLive = Layer.effect(
         : Option.none<string>()
       const baseRemote = yield* resolveBaseRemote(input)
       const baseRemoteUrl = Option.isSome(baseRemote)
-        ? yield* runChecked("git", ["remote", "get-url", baseRemote.value], input.repository).pipe(
+        ? yield* runTool("git", ["remote", "get-url", baseRemote.value], input.repository).pipe(
           Effect.map(String.trim)
         )
         : input.baseRepositoryUrl
@@ -598,28 +536,28 @@ export const ReviewToolsLive = Layer.effect(
           ? configuredMerge.value
           : `refs/pull/${input.prNumber}/head`
         : `refs/heads/${input.headRefName}`
-      const helperExists = yield* runChecked(
+      const helperExists = yield* runTool(
         "git",
         ["remote", "get-url", helperRemote],
         input.repository
       ).pipe(Effect.option)
       if (Option.isSome(helperExists)) {
-        yield* runChecked("git", ["remote", "set-url", helperRemote, remoteUrl], input.repository)
+        yield* runTool("git", ["remote", "set-url", helperRemote, remoteUrl], input.repository)
       } else {
-        yield* runChecked("git", ["remote", "add", helperRemote, remoteUrl], input.repository)
+        yield* runTool("git", ["remote", "add", helperRemote, remoteUrl], input.repository)
       }
-      yield* runChecked(
+      yield* runTool(
         "git",
         ["config", "--replace-all", `remote.${helperRemote}.fetch`, `+${sourceRef}:${trackingRef}`],
         input.repository
       )
-      yield* runChecked("git", ["update-ref", trackingRef, "HEAD"], input.path)
-      yield* runChecked(
+      yield* runTool("git", ["update-ref", trackingRef, "HEAD"], input.path)
+      yield* runTool(
         "git",
         ["config", `branch.${managedBranch}.remote`, helperRemote],
         input.repository
       )
-      yield* runChecked(
+      yield* runTool(
         "git",
         ["config", `branch.${managedBranch}.merge`, sourceRef],
         input.repository
@@ -629,7 +567,7 @@ export const ReviewToolsLive = Layer.effect(
       input: PrepareManagedWorktreeInput,
       managedBranch: string
     ) {
-      const activeBranch = yield* runChecked("git", ["branch", "--show-current"], input.path).pipe(
+      const activeBranch = yield* runTool("git", ["branch", "--show-current"], input.path).pipe(
         Effect.map(String.trim)
       )
       if (activeBranch.length > 0 && activeBranch !== managedBranch) {
@@ -640,7 +578,7 @@ export const ReviewToolsLive = Layer.effect(
           operation: `validate active branch at ${input.path}`
         })
       }
-      const status = yield* runChecked("git", ["status", "--porcelain", "--untracked-files=all"], input.path)
+      const status = yield* runTool("git", ["status", "--porcelain", "--untracked-files=all"], input.path)
       if (status.length > 0) {
         return yield* new ExternalToolError({
           cause: new Error("managed worktree has uncommitted changes; refusing to force-refresh it"),
@@ -651,7 +589,7 @@ export const ReviewToolsLive = Layer.effect(
         return { _tag: "ready" as const }
       }
       if (activeBranch.length === 0) {
-        const branch = yield* runChecked(
+        const branch = yield* runTool(
           "git",
           ["branch", "--list", "--format=%(refname:short)", managedBranch],
           input.repository
@@ -665,7 +603,7 @@ export const ReviewToolsLive = Layer.effect(
       worktree: string,
       managedBranch: string
     ) {
-      const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"], repository)
+      const output = yield* runTool("git", ["worktree", "list", "--porcelain", "-z"], repository)
       const registeredPath = yield* fileSystem.realPath(worktree).pipe(Effect.orElseSucceed(() => worktree))
       const owned = parseWorktrees(output).some((entry) =>
         entry.worktree === registeredPath && entry.branch === `refs/heads/${managedBranch}`
@@ -687,7 +625,7 @@ export const ReviewToolsLive = Layer.effect(
             Effect.provideService(Path.Path, pathService)
           ),
           () => Effect.gen(function*() {
-            const output = yield* runChecked(
+            const output = yield* runTool(
               "git",
               ["worktree", "list", "--porcelain", "-z"],
               input.repository
@@ -718,7 +656,7 @@ export const ReviewToolsLive = Layer.effect(
                       input.repository,
                       managedRemoteName(owner.managedBranch)
                     ).pipe(Effect.ignore)),
-                    Effect.andThen(runChecked(
+                    Effect.andThen(runTool(
                       "git",
                       ["update-ref", "-d", pullRefTrackingRef(input.prNumber)],
                       input.repository
@@ -727,24 +665,24 @@ export const ReviewToolsLive = Layer.effect(
                 )
               }
               const ownerPath = yield* markerPath(input.path)
-              const previousCommit = yield* runChecked("git", ["rev-parse", "HEAD"], input.path).pipe(
+              const previousCommit = yield* runTool("git", ["rev-parse", "HEAD"], input.path).pipe(
                 Effect.map(String.trim)
               )
               const previousMerge = yield* readManagedBranchConfig(input.repository, owner.managedBranch, "merge")
               const previousRemote = yield* readManagedBranchConfig(input.repository, owner.managedBranch, "remote")
               const helperRemote = managedRemoteName(owner.managedBranch)
-              const previousHelperRemoteUrl = yield* runChecked(
+              const previousHelperRemoteUrl = yield* runTool(
                 "git",
                 ["remote", "get-url", helperRemote],
                 input.repository
               ).pipe(Effect.map(String.trim), Effect.option)
-              const previousHelperRemoteFetch = yield* runChecked(
+              const previousHelperRemoteFetch = yield* runTool(
                 "git",
                 ["config", "--get", `remote.${helperRemote}.fetch`],
                 input.repository
               ).pipe(Effect.map(String.trim), Effect.option)
               const trackingRef = pullRefTrackingRef(input.prNumber)
-              const previousTrackingRef = yield* runChecked(
+              const previousTrackingRef = yield* runTool(
                 "git",
                 ["rev-parse", "--verify", trackingRef],
                 input.repository
@@ -760,7 +698,7 @@ export const ReviewToolsLive = Layer.effect(
                     remote: managedRemoteName(owner.managedBranch)
                   }
                 }),
-                runChecked("git", ["reset", "--hard", previousCommit], input.path).pipe(
+                runTool("git", ["reset", "--hard", previousCommit], input.path).pipe(
                   Effect.ignore,
                   Effect.andThen(restoreManagedBranchConfig(
                     input.repository,
@@ -775,10 +713,10 @@ export const ReviewToolsLive = Layer.effect(
                     previousRemote
                   )),
                   Effect.andThen(Option.match(previousTrackingRef, {
-                    onNone: () => runChecked("git", ["update-ref", "-d", trackingRef], input.repository).pipe(
+                    onNone: () => runTool("git", ["update-ref", "-d", trackingRef], input.repository).pipe(
                       Effect.ignore
                     ),
-                    onSome: (commit) => runChecked("git", ["update-ref", trackingRef, commit], input.repository).pipe(
+                    onSome: (commit) => runTool("git", ["update-ref", trackingRef, commit], input.repository).pipe(
                       Effect.ignore
                     )
                   })),
@@ -801,14 +739,14 @@ export const ReviewToolsLive = Layer.effect(
             return yield* createWorktreeWithRollback(
               Effect.gen(function*() {
                 yield* createAndArmBranchOwnership(
-                  runChecked(
+                  runTool(
                     "git",
                     ["update-ref", `refs/heads/${managedBranch}`, "HEAD", ""],
                     input.repository
                   ),
                   ownsBranch
                 )
-                yield* runChecked("git", ["worktree", "add", input.path, managedBranch], input.repository)
+                yield* runTool("git", ["worktree", "add", input.path, managedBranch], input.repository)
                 yield* writeOwner(input, managedBranch)
                 const source = yield* checkoutPullRequest(input, managedBranch, true)
                 yield* refreshManagedBranchMerge(input, managedBranch, source)
@@ -822,7 +760,7 @@ export const ReviewToolsLive = Layer.effect(
                     input.repository,
                     managedRemoteName(managedBranch)
                   ).pipe(Effect.ignore)),
-                  Effect.andThen(runChecked(
+                  Effect.andThen(runTool(
                     "git",
                     ["update-ref", "-d", pullRefTrackingRef(input.prNumber)],
                     input.repository
@@ -835,22 +773,22 @@ export const ReviewToolsLive = Layer.effect(
         )
       }),
       diffStat: Effect.fn("ReviewTools.diffStat")((worktree, mergeBase) =>
-        runChecked("git", ["diff", "--stat", `${mergeBase}...HEAD`], worktree)
+        runTool("git", ["diff", "--stat", `${mergeBase}...HEAD`], worktree)
       ),
       findBranchWorktree: Effect.fn("ReviewTools.findBranchWorktree")(function*(branch) {
-        const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
+        const output = yield* runTool("git", ["worktree", "list", "--porcelain", "-z"])
         return Option.fromNullishOr(
           parseWorktrees(output).find((entry) => entry.branch === `refs/heads/${branch}`)?.worktree
         )
       }),
       mergeBase: Effect.fn("ReviewTools.mergeBase")((worktree, base) =>
-        runChecked("git", ["merge-base", `origin/${base}`, "HEAD"], worktree).pipe(Effect.map(String.trim))
+        runTool("git", ["merge-base", `origin/${base}`, "HEAD"], worktree).pipe(Effect.map(String.trim))
       ),
       openEditor: Effect.fn("ReviewTools.openEditor")((worktree) =>
-        Effect.asVoid(runChecked("code", [worktree]))
+        Effect.asVoid(runTool("code", [worktree]))
       ),
       pullRequest: Effect.fn("ReviewTools.pullRequest")(function*(prNumber) {
-        const output = yield* runChecked("gh", [
+        const output = yield* runTool("gh", [
           "pr",
           "view",
           globalThis.String(prNumber),
@@ -862,7 +800,7 @@ export const ReviewToolsLive = Layer.effect(
         )
       }),
       repositoryRoot: Effect.gen(function*() {
-        const output = yield* runChecked("git", ["worktree", "list", "--porcelain", "-z"])
+        const output = yield* runTool("git", ["worktree", "list", "--porcelain", "-z"])
         const mainWorktree = parseWorktrees(output)[0]
         if (mainWorktree === undefined) {
           return yield* new ExternalToolError({

@@ -1,11 +1,15 @@
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
 import * as Path from "effect/Path"
+import * as Schema from "effect/Schema"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { createHash } from "node:crypto"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { trustedExecutable } from "./NativeReview.ts"
+import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
   readonly repo: string
@@ -40,6 +44,7 @@ export interface RecordedCommand {
 }
 
 interface RunRow { readonly id: string }
+interface IdRow { readonly id: string }
 interface SequenceRow { readonly sequence: number }
 interface TableInfoRow { readonly name: string }
 interface RepoKeyRow { readonly id: string; readonly repo_path: string; readonly repo_key: string }
@@ -50,11 +55,12 @@ export interface CloseoutFinding {
   readonly summary: string
   readonly impact: string
   readonly priority: string
-  readonly material: number
+  readonly material: boolean
   readonly user_impact: string
   readonly decision: string
   readonly fingerprint: string
 }
+interface CloseoutFindingRow extends Omit<CloseoutFinding, "material"> { readonly material: number }
 interface CommandRow {
   readonly command: string
   readonly result: string
@@ -85,6 +91,94 @@ interface QueryRow extends Omit<QueryResult, "score" | "semantic_score" | "lexic
   readonly updated_at: number
 }
 interface IssueIdRow { readonly id: string }
+interface ScopeBudgetRow {
+  readonly run_id: string
+  readonly base_ref: string
+  readonly base_oid: string
+  readonly limit_percent: number
+  readonly scope_summary: string
+  readonly authorization: string
+  readonly baseline_production_lines: number
+  readonly baseline_test_lines: number
+  readonly baseline_generated_lines: number
+  readonly baseline_paths_json: string
+  readonly status: string
+  readonly current_production_lines: number
+  readonly current_test_lines: number
+  readonly current_generated_lines: number
+  readonly growth_lines: number
+  readonly allowed_growth_lines: number
+  readonly new_production_paths_json: string
+  readonly last_reason: string
+}
+interface FixedFindingRow { readonly decision_id: string; readonly summary: string }
+interface UnresolvedFindingRow { readonly decision_id: string; readonly status: string; readonly summary: string }
+interface ActiveScopeRow { readonly run_id: string; readonly target: string }
+interface ScopeStatusRow { readonly status: string }
+
+export interface ScopeBudgetStatus {
+  readonly runId: string
+  readonly baseRef: string
+  readonly baseOid: string
+  readonly limitPercent: number
+  readonly scopeSummary: string
+  readonly authorization: string
+  readonly baselineProductionLines: number
+  readonly baselineTestLines: number
+  readonly baselineGeneratedLines: number
+  readonly baselinePaths: ReadonlyArray<string>
+  readonly status: string
+  readonly currentProductionLines: number
+  readonly currentTestLines: number
+  readonly currentGeneratedLines: number
+  readonly growthLines: number
+  readonly allowedGrowthLines: number
+  readonly newProductionPaths: ReadonlyArray<string>
+  readonly lastReason: string
+}
+
+export interface ScopeBudgetCheck extends ScopeBudgetStatus {
+  readonly maximumProductionLines: number
+  readonly completedFindings: ReadonlyArray<FixedFindingRow>
+  readonly blocked: boolean
+}
+
+export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
+
+export class MissingScopeBudget extends Error {
+  readonly _tag = "MissingScopeBudget"
+  constructor() {
+    super("scope budget is missing; stop reviewing and run scope-start before applying any review fix")
+  }
+}
+
+export class ScopeBudgetAlreadyStarted extends Error {
+  readonly _tag = "ScopeBudgetAlreadyStarted"
+  constructor() {
+    super("scope budget already exists; use scope-check or scope-status, and use scope-authorize only after explicit user approval")
+  }
+}
+
+export class ActiveScopeBudgetExists extends Error {
+  readonly _tag = "ActiveScopeBudgetExists"
+  constructor(target: string) {
+    super(`active scope budget already exists for this repository and branch (target: ${target}); use its persisted identity or complete it before starting another review`)
+  }
+}
+
+export class InvalidScopeBudget extends Error {
+  readonly _tag = "InvalidScopeBudget"
+  constructor(message: string) { super(message) }
+}
+
+export class ScopeBudgetBlocked extends Error {
+  readonly _tag = "ScopeBudgetBlocked"
+  readonly check: ScopeBudgetCheck
+  constructor(check: ScopeBudgetCheck) {
+    super(formatBlockedScopeBudget(check))
+    this.check = check
+  }
+}
 
 export interface Closeout {
   readonly material_findings: ReadonlyArray<CloseoutFinding>
@@ -95,6 +189,7 @@ export interface Closeout {
   readonly changes_made_while_reviewing: ReadonlyArray<CloseoutFinding>
   readonly verification_run: ReadonlyArray<CommandRow>
   readonly still_open: ReadonlyArray<CloseoutFinding>
+  readonly scope_budget?: ScopeBudgetStatus
 }
 
 const nowSeconds = () => Math.floor(Date.now() / 1_000)
@@ -143,7 +238,7 @@ const sensitiveImpacts = new Set(["permission", "permissions", "auth", "authoriz
 const materialPriorities = new Set(["p0", "p1", "critical", "high"])
 const isUserVisible = (impact: string) => userVisibleImpacts.has(normalizeToken(impact))
 const isSensitive = (impact: string) => sensitiveImpacts.has(normalizeToken(impact))
-const isMaterial = (finding: Pick<CloseoutFinding, "material" | "impact" | "priority">) => finding.material !== 0 || isUserVisible(finding.impact) || isSensitive(finding.impact) || materialPriorities.has(normalizeToken(finding.priority))
+const isMaterial = (finding: Pick<CloseoutFinding, "material" | "impact" | "priority">) => finding.material || isUserVisible(finding.impact) || isSensitive(finding.impact) || materialPriorities.has(normalizeToken(finding.priority))
 
 export const canonicalRepoKey = Effect.fn("ReviewFindings.canonicalRepoKey")(function*(repoPath: string) {
   const fs = yield* FileSystem.FileSystem
@@ -151,7 +246,8 @@ export const canonicalRepoKey = Effect.fn("ReviewFindings.canonicalRepoKey")(fun
   const resolved = paths.resolve(repoPath)
   const info = yield* fs.stat(resolved).pipe(Effect.option)
   const cwd = info._tag === "Some" && info.value.type === "Directory" ? resolved : paths.dirname(resolved)
-  const commonDir = yield* checkedTrimmedText("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd }).pipe(Effect.option)
+  const git = yield* trustedExecutable("git", cwd)
+  const commonDir = yield* checkedTrimmedText(git, ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd }).pipe(Effect.option)
   const key = commonDir._tag === "Some" ? commonDir.value : cwd
   return yield* fs.realPath(key).pipe(Effect.catch(() => Effect.succeed(paths.resolve(key))))
 })
@@ -162,7 +258,10 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const tables = [
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
     `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
-    `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`
+    `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
+    `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, base_ref text not null, base_oid text not null, limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
+    `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
+    `create table if not exists review_scope_events (id integer primary key autoincrement, run_id text not null references review_runs(id) on delete cascade, event text not null, baseline_production_lines integer not null, current_production_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, reason text not null, scope_summary text not null, authorization text not null, created_at integer not null)`
   ]
   yield* Effect.forEach(tables, (statement) => sql.unsafe(statement), { discard: true })
   const columns = [
@@ -177,19 +276,26 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const timestamp = nowSeconds()
   yield* sql.unsafe(`update issues set first_seen_at = coalesce(first_seen_at, updated_at, ?), last_seen_at = coalesce(last_seen_at, updated_at, ?), seen_count = coalesce(seen_count, 1)`, [timestamp, timestamp])
   yield* sql.unsafe(`update review_runs set repo_key = case when coalesce(repo_path, '') != '' then repo_path else repo_name end where coalesce(repo_key, '') = ''`)
-  const repositories = yield* sql.unsafe<RepoKeyRow>(`select id, repo_path, repo_key from review_runs`)
+  const repositories = yield* sql.unsafe<RepoKeyRow>(`select id, repo_path, repo_key from review_runs where repo_key = repo_path`)
   yield* Effect.forEach(repositories, (repository) => Effect.gen(function*() {
     const repoKey = yield* canonicalRepoKey(repository.repo_path)
     if (repoKey !== repository.repo_key) yield* sql`update review_runs set repo_key = ${repoKey} where id = ${repository.id}`
   }), { discard: true })
   yield* sql.unsafe(`update review_runs set update_seq = rowid where coalesce(update_seq, 0) = 0`)
+  yield* sql.unsafe(`delete from review_scope_locks where run_id not in (select run_id from review_scope_budgets where status != 'complete')`)
+  yield* sql.unsafe(`insert or ignore into review_scope_locks (repo_key, branch, run_id)
+    select review_runs.repo_key, coalesce(review_runs.branch, ''), review_runs.id
+    from review_runs join review_scope_budgets on review_scope_budgets.run_id = review_runs.id
+    where review_scope_budgets.status != 'complete'
+    order by review_scope_budgets.updated_at desc`)
   const indexes = [
     `create index if not exists review_runs_repo_idx on review_runs(repo_name)`,
     `create index if not exists review_runs_repo_key_idx on review_runs(repo_key)`,
     `create index if not exists review_runs_branch_idx on review_runs(branch)`,
     `create index if not exists issues_run_idx on issues(run_id)`,
     `create index if not exists issues_status_idx on issues(status)`,
-    `create index if not exists commands_run_idx on commands(run_id)`
+    `create index if not exists commands_run_idx on commands(run_id)`,
+    `create index if not exists review_scope_events_run_idx on review_scope_events(run_id)`
   ]
   yield* Effect.forEach(indexes, (statement) => sql.unsafe(statement), { discard: true })
   }))
@@ -201,12 +307,10 @@ const nextSequence = Effect.fn("ReviewFindings.nextSequence")(function*() {
   return rows[0]?.sequence ?? 1
 })
 
-const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun) {
+const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewRun, runId: string, updateSequence: number) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
-  const runId = stableId([repoKey, run.branch, run.target, run.base])
   const timestamp = nowSeconds()
-  const updateSequence = yield* nextSequence()
   yield* sql`
     insert into review_runs (id, repo_name, repo_key, repo_path, branch, target, base, head, status, decision_log_path, started_at, update_seq, updated_at)
     values (${runId}, ${run.repo}, ${repoKey}, ${run.repoPath}, ${run.branch}, ${run.target}, ${run.base}, ${run.head}, ${run.status}, ${run.decisionLog}, ${timestamp}, ${updateSequence}, ${timestamp})
@@ -220,6 +324,24 @@ const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun
   return runId
 })
 
+const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun) {
+  const sql = yield* SqlClient.SqlClient
+  const repoKey = yield* canonicalRepoKey(run.repoPath)
+  const matching = yield* sql.unsafe<RunRow>(
+    "select review_runs.id from review_runs where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
+    [repoKey, run.branch, run.target, run.base]
+  )
+  const updateSequence = yield* nextSequence()
+  const runId = matching[0]?.id ?? stableId([repoKey, run.branch, run.target, run.base])
+  return yield* persistRun(run, runId, updateSequence)
+})
+
+const createScopeRun = Effect.fn("ReviewFindings.createScopeRun")(function*(run: ReviewRun) {
+  const repoKey = yield* canonicalRepoKey(run.repoPath)
+  const updateSequence = yield* nextSequence()
+  return yield* persistRun(run, stableId([repoKey, run.branch, run.target, run.base, String(updateSequence)]), updateSequence)
+})
+
 const latestRun = Effect.fn("ReviewFindings.latestRun")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target">) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
@@ -227,11 +349,263 @@ const latestRun = Effect.fn("ReviewFindings.latestRun")(function*(run: Pick<Revi
   return rows[0]?.id
 })
 
+const touchRun = Effect.fn("ReviewFindings.touchRun")(function*(runId: string, run: Pick<ReviewRun, "repoPath" | "head">) {
+  const sql = yield* SqlClient.SqlClient
+  const repoKey = yield* canonicalRepoKey(run.repoPath)
+  const updateSequence = yield* nextSequence()
+  yield* sql`update review_runs set repo_key = ${repoKey}, repo_path = ${run.repoPath}, head = case when ${run.head} != '' then ${run.head} else head end, update_seq = ${updateSequence}, updated_at = ${nowSeconds()} where id = ${runId}`
+})
+
+const ScopePathsJson = Schema.fromJsonString(Schema.Array(Schema.String))
+
+const verifyScopeRun = <Run extends { readonly repoPath: string; readonly branch: string }>(run: Run) => Effect.gen(function*() {
+  const git = yield* trustedExecutable("git", run.repoPath)
+  const checkedOutBranch = yield* checkedTrimmedText(git, ["symbolic-ref", "--quiet", "--short", "HEAD"], { cwd: run.repoPath }).pipe(
+    Effect.mapError(() => new InvalidScopeBudget("scope commands require a checked-out Git branch; detached HEAD cannot provide a stable review identity"))
+  )
+  if (run.branch !== checkedOutBranch) {
+    return yield* Effect.fail(new InvalidScopeBudget(`--branch '${run.branch}' does not match the checked-out Git branch '${checkedOutBranch}'; use the Git branch identity so scope state cannot be reset with a cosmetic label`))
+  }
+  return run
+})
+
+const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
+  const sql = yield* SqlClient.SqlClient
+  const repoKey = yield* canonicalRepoKey(run.repoPath)
+  const rows = yield* sql.unsafe<RunRow>(
+    "select id from review_runs where repo_key = ? and coalesce(branch, '') = ? and target = ? and coalesce(base, '') = ? order by update_seq desc, updated_at desc, rowid desc limit 1",
+    [repoKey, run.branch, run.target, run.base]
+  )
+  return rows[0]?.id
+})
+
+const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {
+  const sql = yield* SqlClient.SqlClient
+  const rows = yield* sql<ScopeBudgetRow>`select * from review_scope_budgets where run_id = ${runId}`
+  const row = rows[0]
+  if (row === undefined) return yield* Effect.fail(new MissingScopeBudget())
+  const baselinePaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.baseline_paths_json)
+  const newProductionPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_production_paths_json)
+  return {
+    runId: row.run_id,
+    baseRef: row.base_ref,
+    baseOid: row.base_oid,
+    limitPercent: row.limit_percent,
+    scopeSummary: row.scope_summary,
+    authorization: row.authorization,
+    baselineProductionLines: row.baseline_production_lines,
+    baselineTestLines: row.baseline_test_lines,
+    baselineGeneratedLines: row.baseline_generated_lines,
+    baselinePaths,
+    status: row.status,
+    currentProductionLines: row.current_production_lines,
+    currentTestLines: row.current_test_lines,
+    currentGeneratedLines: row.current_generated_lines,
+    growthLines: row.growth_lines,
+    allowedGrowthLines: row.allowed_growth_lines,
+    newProductionPaths,
+    lastReason: row.last_reason
+  } satisfies ScopeBudgetStatus
+})
+
+const writeScopeEvent = Effect.fn("ReviewFindings.writeScopeEvent")(function*(input: {
+  readonly runId: string
+  readonly event: string
+  readonly baselineProductionLines: number
+  readonly currentProductionLines: number
+  readonly allowedGrowthLines: number
+  readonly newProductionPaths: ReadonlyArray<string>
+  readonly reason: string
+  readonly scopeSummary: string
+  readonly authorization: string
+}) {
+  const sql = yield* SqlClient.SqlClient
+  yield* sql`insert into review_scope_events (run_id, event, baseline_production_lines, current_production_lines, allowed_growth_lines, new_production_paths_json, reason, scope_summary, authorization, created_at)
+    values (${input.runId}, ${input.event}, ${input.baselineProductionLines}, ${input.currentProductionLines}, ${input.allowedGrowthLines}, ${JSON.stringify(input.newProductionPaths)}, ${input.reason}, ${input.scopeSummary}, ${input.authorization}, ${nowSeconds()})`
+})
+
+const validateLimit = (limitPercent: number) => Number.isInteger(limitPercent) && limitPercent >= 0 && limitPercent <= 1_000
+  ? Effect.void
+  : Effect.fail(new InvalidScopeBudget("--limit-percent must be an integer from 0 through 1000"))
+
+const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function*(run: ReviewRun, input: {
+  readonly scopeSummary: string
+  readonly limitPercent: number
+  readonly authorization: string
+  readonly event: "started" | "authorized"
+  readonly baseOid?: string
+  readonly runId?: string
+  readonly freshRun?: boolean
+}) {
+  yield* validateLimit(input.limitPercent)
+  const sql = yield* SqlClient.SqlClient
+  const git = yield* trustedExecutable("git", run.repoPath)
+  const baseOid = input.baseOid ?? (yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${run.base}^{commit}`], { cwd: run.repoPath }))
+  const measurement = yield* measureScopeDiff(run.repoPath, baseOid)
+  const allowedGrowthLines = Math.floor(measurement.production.changedLines * input.limitPercent / 100)
+  const timestamp = nowSeconds()
+  return yield* sql.withTransaction(Effect.gen(function*() {
+  const runId = input.runId ?? (yield* (input.freshRun === true ? createScopeRun(run) : upsertRun(run)))
+  if (input.freshRun === true) {
+    const repoKey = yield* canonicalRepoKey(run.repoPath)
+    yield* sql`insert or ignore into review_scope_locks (repo_key, branch, run_id) values (${repoKey}, ${run.branch}, ${runId})`
+    const owners = yield* sql.unsafe<{ readonly run_id: string; readonly target: string }>(
+      "select review_scope_locks.run_id, review_runs.target from review_scope_locks join review_runs on review_runs.id = review_scope_locks.run_id where review_scope_locks.repo_key = ? and review_scope_locks.branch = ?",
+      [repoKey, run.branch]
+    )
+    const owner = owners[0]
+    if (owner?.run_id !== runId) {
+      if (owner?.target === run.target) return yield* Effect.fail(new ScopeBudgetAlreadyStarted())
+      return yield* Effect.fail(new ActiveScopeBudgetExists(owner?.target ?? "unknown"))
+    }
+  }
+  yield* sql`
+    insert into review_scope_budgets (run_id, base_ref, base_oid, limit_percent, scope_summary, authorization, baseline_production_lines, baseline_test_lines, baseline_generated_lines, baseline_paths_json, status, current_production_lines, current_test_lines, current_generated_lines, growth_lines, allowed_growth_lines, new_production_paths_json, last_reason, started_at, updated_at)
+    values (${runId}, ${run.base}, ${baseOid}, ${input.limitPercent}, ${input.scopeSummary}, ${input.authorization}, ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${JSON.stringify(measurement.productionPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, 0, ${allowedGrowthLines}, '[]', '', ${timestamp}, ${timestamp})
+    on conflict(run_id) do update set
+      base_ref=excluded.base_ref, base_oid=excluded.base_oid, limit_percent=excluded.limit_percent, scope_summary=excluded.scope_summary,
+      authorization=excluded.authorization, baseline_production_lines=excluded.baseline_production_lines,
+      baseline_test_lines=excluded.baseline_test_lines, baseline_generated_lines=excluded.baseline_generated_lines,
+      baseline_paths_json=excluded.baseline_paths_json, status='ready', current_production_lines=excluded.current_production_lines,
+      current_test_lines=excluded.current_test_lines, current_generated_lines=excluded.current_generated_lines,
+      growth_lines=0, allowed_growth_lines=excluded.allowed_growth_lines, new_production_paths_json='[]',
+      last_reason='', updated_at=excluded.updated_at`
+  yield* writeScopeEvent({
+    runId,
+    event: input.event,
+    baselineProductionLines: measurement.production.changedLines,
+    currentProductionLines: measurement.production.changedLines,
+    allowedGrowthLines,
+    newProductionPaths: [],
+    reason: "",
+    scopeSummary: input.scopeSummary,
+    authorization: input.authorization
+  })
+  return yield* readScopeBudget(runId)
+  }))
+})
+
+export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(function*(run: ReviewRun, input: {
+  readonly scopeSummary: string
+}) {
+  const sql = yield* SqlClient.SqlClient
+  const verifiedRun = yield* verifyScopeRun(run)
+  const repoKey = yield* canonicalRepoKey(verifiedRun.repoPath)
+  const active = yield* sql.unsafe<ActiveScopeRow>(
+    "select review_scope_budgets.run_id, review_runs.target from review_scope_budgets join review_runs on review_runs.id = review_scope_budgets.run_id where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_scope_budgets.status != 'complete' order by review_scope_budgets.updated_at desc limit 1",
+    [repoKey, verifiedRun.branch]
+  )
+  const existing = active[0]
+  if (existing !== undefined) {
+    if (existing.target === verifiedRun.target) return yield* Effect.fail(new ScopeBudgetAlreadyStarted())
+    return yield* Effect.fail(new ActiveScopeBudgetExists(existing.target))
+  }
+  return yield* saveScopeBaseline(verifiedRun, { ...input, limitPercent: DEFAULT_SCOPE_GROWTH_PERCENT, authorization: "", event: "started", freshRun: true })
+})
+
+export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudget")(function*(run: ReviewRun, input: {
+  readonly scopeSummary: string
+  readonly authorization: string
+}) {
+  if (input.authorization.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-authorize requires the user's explicit authorization text"))
+  const verifiedRun = yield* verifyScopeRun(run)
+  const runId = yield* exactRunId(verifiedRun)
+  if (runId === undefined) return yield* Effect.fail(new MissingScopeBudget())
+  const existing = yield* readScopeBudget(runId)
+  if (existing.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
+  if (existing.status !== "blocked") return yield* Effect.fail(new InvalidScopeBudget("scope-authorize is only valid after scope-check has blocked the review"))
+  return yield* saveScopeBaseline(verifiedRun, { ...input, limitPercent: existing.limitPercent, baseOid: existing.baseOid, event: "authorized", runId })
+})
+
+export const getScopeBudget = Effect.fn("ReviewFindings.getScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
+  const verifiedRun = yield* verifyScopeRun(run)
+  const runId = yield* exactRunId(verifiedRun)
+  if (runId === undefined) return yield* Effect.fail(new MissingScopeBudget())
+  return yield* readScopeBudget(runId)
+})
+
+export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string) {
+  if (reason.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-check requires a concise reason for any additional review work"))
+  const sql = yield* SqlClient.SqlClient
+  const budget = yield* getScopeBudget(run)
+  if (budget.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
+  const measurement: ScopeMeasurement = yield* measureScopeDiff(run.repoPath, budget.baseOid)
+  const baselinePaths = new Set(budget.baselinePaths)
+  const newProductionPaths = measurement.productionPaths.filter((path) => !baselinePaths.has(path))
+  const growthLines = Math.max(0, measurement.production.changedLines - budget.baselineProductionLines)
+  const maximumProductionLines = budget.baselineProductionLines + budget.allowedGrowthLines
+  const blocked = measurement.production.changedLines > maximumProductionLines || newProductionPaths.length > 0
+  const status = blocked ? "blocked" : "ok"
+  const timestamp = nowSeconds()
+  yield* sql`update review_scope_budgets set status = ${status}, current_production_lines = ${measurement.production.changedLines}, current_test_lines = ${measurement.tests.changedLines}, current_generated_lines = ${measurement.generated.changedLines}, growth_lines = ${growthLines}, new_production_paths_json = ${JSON.stringify(newProductionPaths)}, last_reason = ${reason}, updated_at = ${timestamp} where run_id = ${budget.runId}`
+  yield* writeScopeEvent({
+    runId: budget.runId,
+    event: blocked ? "blocked" : "checked",
+    baselineProductionLines: budget.baselineProductionLines,
+    currentProductionLines: measurement.production.changedLines,
+    allowedGrowthLines: budget.allowedGrowthLines,
+    newProductionPaths,
+    reason,
+    scopeSummary: budget.scopeSummary,
+    authorization: budget.authorization
+  })
+  const completedFindings = yield* sql<FixedFindingRow>`select decision_id, summary from issues where run_id = ${budget.runId} and status = 'fixed' order by decision_id`
+  return {
+    ...budget,
+    status,
+    currentProductionLines: measurement.production.changedLines,
+    currentTestLines: measurement.tests.changedLines,
+    currentGeneratedLines: measurement.generated.changedLines,
+    growthLines,
+    newProductionPaths,
+    lastReason: reason,
+    maximumProductionLines,
+    completedFindings,
+    blocked
+  } satisfies ScopeBudgetCheck
+})
+
+export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string) {
+  if (reason.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-complete requires the clean review result"))
+  const sql = yield* SqlClient.SqlClient
+  const budget = yield* getScopeBudget(run)
+  if (budget.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
+  if (budget.status !== "ok") return yield* Effect.fail(new InvalidScopeBudget("scope-complete requires a final passing scope-check"))
+  const check = yield* checkScopeBudget(run, reason)
+  if (check.blocked) return yield* Effect.fail(new ScopeBudgetBlocked(check))
+  return yield* sql.withTransaction(Effect.gen(function*() {
+    const unresolved = yield* sql<UnresolvedFindingRow>`select decision_id, status, summary from issues where run_id = ${check.runId} and status not in ('fixed', 'rejected', 'deferred') order by decision_id`
+    if (unresolved.length > 0) {
+      const findings = unresolved.map((finding) => `${finding.decision_id} [${finding.status}]: ${finding.summary}`).join("\n")
+      return yield* Effect.fail(new InvalidScopeBudget(`scope-complete requires every finding to be fixed, rejected, or explicitly deferred; resolve these findings first:\n${findings}`))
+    }
+    yield* sql`update review_scope_budgets set status = 'complete', last_reason = ${reason}, updated_at = ${nowSeconds()} where run_id = ${check.runId}`
+    yield* sql`delete from review_scope_locks where run_id = ${check.runId}`
+    yield* writeScopeEvent({
+    runId: check.runId,
+    event: "complete",
+    baselineProductionLines: check.baselineProductionLines,
+    currentProductionLines: check.currentProductionLines,
+    allowedGrowthLines: check.allowedGrowthLines,
+    newProductionPaths: [],
+    reason,
+    scopeSummary: check.scopeSummary,
+    authorization: check.authorization
+    })
+    return { ...check, status: "complete", lastReason: reason }
+  }))
+})
+
 export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(run: ReviewRun, input: Finding) {
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = yield* upsertRun(run)
-  const issueId = stableId([runId, input.decisionId])
+  const scope = yield* sql<ScopeStatusRow>`select status from review_scope_budgets where run_id = ${runId}`
+  if (scope[0]?.status === "complete") {
+    return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review before recording more findings"))
+  }
+  const existingIssues = yield* sql<IdRow>`select id from issues where run_id = ${runId} and decision_id = ${input.decisionId} limit 1`
+  const issueId = existingIssues[0]?.id ?? stableId([runId, input.decisionId])
   const timestamp = nowSeconds()
   const impact = normalizeToken(input.impact)
   const priority = normalizeToken(input.priority)
@@ -245,7 +619,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
       source=excluded.source, fingerprint=excluded.fingerprint, summary=excluded.summary,
       impact=excluded.impact, priority=excluded.priority, material=excluded.material,
       user_impact=excluded.user_impact, decision=excluded.decision, text=excluded.text,
-      decision_log_path=excluded.decision_log_path,
+      decision_log_path=coalesce(nullif(excluded.decision_log_path, ''), issues.decision_log_path, ''),
       first_seen_at=coalesce(issues.first_seen_at, excluded.first_seen_at),
       last_seen_at=excluded.last_seen_at, seen_count=issues.seen_count + 1,
       updated_at=excluded.updated_at`
@@ -265,7 +639,9 @@ export const recordCommand = Effect.fn("ReviewFindings.recordCommand")(function*
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = run.base.length > 0 ? yield* upsertRun(run) : yield* latestRun(run)
   if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
-  const commandId = stableId([runId, command.command, command.reason, command.decisionId])
+  if (run.base.length === 0) yield* touchRun(runId, run)
+  const existingCommands = yield* sql<IdRow>`select id from commands where run_id = ${runId} and command = ${command.command} and reason = ${command.reason} and coalesce(decision_id, '') = ${command.decisionId} limit 1`
+  const commandId = existingCommands[0]?.id ?? stableId([runId, command.command, command.reason, command.decisionId])
   yield* sql`insert into commands (id, run_id, command, result, reason, decision_id, updated_at)
     values (${commandId}, ${runId}, ${command.command}, ${command.result}, ${command.reason}, ${command.decisionId}, ${nowSeconds()})
     on conflict(id) do update set result=excluded.result, reason=excluded.reason, decision_id=excluded.decision_id, updated_at=excluded.updated_at`
@@ -289,8 +665,10 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   if (filters.base !== undefined) { where.push("coalesce(base, '') = ?"); params.push(filters.base) }
   const runs = yield* sql.unsafe<RunRow>(`select id from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 1`, params)
   const runId = runs[0]?.id
-  const findings = runId === undefined ? [] : yield* sql<CloseoutFinding>`select decision_id, status, source, summary, coalesce(impact, '') as impact, coalesce(priority, '') as priority, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint from issues where run_id = ${runId} order by decision_id`
+  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as impact, coalesce(priority, '') as priority, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint from issues where run_id = ${runId} order by decision_id`
+  const findings: ReadonlyArray<CloseoutFinding> = findingRows.map((finding) => ({ ...finding, material: finding.material !== 0 }))
   const commands = runId === undefined ? [] : yield* sql<CommandRow>`select command, result, reason, coalesce(decision_id, '') as decision_id from commands where run_id = ${runId} order by updated_at, command`
+  const scopeBudget = runId === undefined ? Option.none() : yield* readScopeBudget(runId).pipe(Effect.option)
   return {
     material_findings: findings.filter(isMaterial),
     user_visible_or_workflow_changes: findings.filter((finding) => isUserVisible(finding.impact)),
@@ -299,7 +677,8 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
     findings_found: findings,
     changes_made_while_reviewing: findings.filter((finding) => finding.status === "fixed"),
     verification_run: commands,
-    still_open: findings.filter((finding) => ["open", "deferred", "provisional", "reopened"].includes(finding.status))
+    still_open: findings.filter((finding) => ["open", "deferred", "provisional", "reopened"].includes(finding.status)),
+    ...(Option.isSome(scopeBudget) ? { scope_budget: scopeBudget.value } : {})
   } satisfies Closeout
 })
 
@@ -388,10 +767,59 @@ export const pruneFindings = Effect.fn("ReviewFindings.pruneFindings")(function*
   const issues = yield* sql.unsafe<IssueIdRow>(`select issues.id from issues join review_runs on review_runs.id = issues.run_id where ${where.join(" and ")}`, params)
   if (!filters.dryRun) {
     yield* Effect.forEach(issues, ({ id }) => sql`delete from issues where id = ${id}`, { discard: true })
-    yield* sql`delete from review_runs where id not in (select distinct run_id from issues) and id not in (select distinct run_id from commands)`
+    yield* sql`delete from review_runs where id not in (select distinct run_id from issues) and id not in (select distinct run_id from commands) and id not in (select run_id from review_scope_budgets)`
   }
   return issues.length
 })
+
+const scopeCountsLine = (scope: ScopeBudgetStatus): string => {
+  const maximum = scope.baselineProductionLines + scope.allowedGrowthLines
+  return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${scope.baselineProductionLines} current=${scope.currentProductionLines} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} limit=${scope.limitPercent}% excluded-tests=${scope.currentTestLines} excluded-generated=${scope.currentGeneratedLines}`
+}
+
+export const formatReadyScopeBudget = (scope: ScopeBudgetStatus): string => [
+  "SCOPE BUDGET READY",
+  scopeCountsLine(scope),
+  `scope=${scope.scopeSummary}`,
+  `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`
+].join("\n")
+
+export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
+  `SCOPE BUDGET ${scope.status.toUpperCase()}`,
+  scopeCountsLine(scope),
+  `scope=${scope.scopeSummary}`,
+  `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`,
+  ...(scope.lastReason.length === 0 ? [] : [`last-reason=${scope.lastReason}`]),
+  ...(scope.newProductionPaths.length === 0 ? [] : ["new-production-paths:", ...scope.newProductionPaths.map((path) => `- ${path}`)])
+].join("\n")
+
+export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
+  "SCOPE BUDGET OK",
+  scopeCountsLine(check),
+  `scope=${check.scopeSummary}`,
+  `next-work=${check.lastReason}`
+].join("\n")
+
+function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
+  const completed = check.completedFindings.length === 0
+    ? ["- none recorded"]
+    : check.completedFindings.map((finding) => `- ${finding.decision_id}: ${finding.summary}`)
+  const outside = check.newProductionPaths.length === 0
+    ? []
+    : ["New production paths outside the frozen scope:", ...check.newProductionPaths.map((path) => `- ${path}`)]
+  return [
+    "SCOPE BUDGET BLOCKED",
+    scopeCountsLine(check),
+    ...outside,
+    "Completed review work:",
+    ...completed,
+    `Why more scope is requested: ${check.lastReason}`,
+    "Stop reviewing now.",
+    "Tell the user what has been completed, show the measured overage or new production paths, and explain why the remaining work justifies more scope.",
+    "Ask the user for explicit authorization. Do not review or patch anything else until they answer.",
+    "After approval, run scope-authorize with the user's authorization text and the new scope summary, then restart the current review phase."
+  ].join("\n")
+}
 
 const findingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, showContext: boolean) => {
   const lines = [title]
@@ -408,6 +836,8 @@ const findingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, s
 export const printCloseout = (closeout: Closeout, json: boolean, materialOnly: boolean) => Effect.gen(function*() {
   if (json) return yield* Console.log(JSON.stringify(closeout, null, 2))
   const lines = [
+    "Scope budget",
+    ...(closeout.scope_budget === undefined ? ["- not recorded"] : formatScopeBudgetStatus(closeout.scope_budget).split("\n").map((line) => `- ${line}`)), "",
     ...findingLines("Material findings", closeout.material_findings, true), "",
     ...findingLines("User-visible or workflow changes", closeout.user_visible_or_workflow_changes, true), "",
     ...findingLines("Security, data, and permission changes", closeout.security_data_permission_changes, true), ""

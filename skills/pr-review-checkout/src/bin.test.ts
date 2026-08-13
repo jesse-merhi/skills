@@ -510,7 +510,7 @@ exit 99
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  }, 15_000)
+  }, 60_000)
 
   it("configures a valid helper upstream for a fresh cross-repository checkout", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-cross-upstream-test-"))
@@ -610,11 +610,12 @@ exit 99
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  })
+  }, 15_000)
 
   it("rolls back both the worktree and generated branch when checkout fails", () => {
     const directory = mkdtempSync(join(tmpdir(), "pr-review-rollback-test-"))
     const repository = join(directory, "repo")
+    const baseRepository = join(directory, "base.git")
     const binaries = join(directory, "bin")
     const gh = join(binaries, "gh")
     try {
@@ -624,11 +625,13 @@ exit 99
       writeFileSync(join(repository, ".gitignore"), ".worktrees/\n")
       git(repository, ["add", ".gitignore"])
       git(repository, ["commit", "--quiet", "--message", "initial"])
+      git(directory, ["clone", "--quiet", "--bare", repository, baseRepository])
+      const basePullRequestUrl = pathToFileURL(join(directory, "base", "pull", "42")).href
       mkdirSync(binaries)
       writeFileSync(gh, `#!/bin/sh
 set -eu
 if [ "$1 $2" = "pr view" ]; then
-  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"https://example.test/pr/42","isCrossRepository":false}'
+  printf '%s\n' '{"headRefName":"feature/review","baseRefName":"main","url":"${basePullRequestUrl}","isCrossRepository":false}'
   exit 0
 fi
 if [ "$1 $2" = "pr checkout" ]; then

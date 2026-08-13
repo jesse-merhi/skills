@@ -7,6 +7,7 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import { randomBytes } from "node:crypto"
 import { createConnection, type Socket } from "node:net"
+import { fileURLToPath } from "node:url"
 
 import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
 
@@ -140,7 +141,7 @@ export const clawhubLocalTest = Effect.fn("Clawhub.localTest")(function*(raw: Cl
   const appPid = yield* startDetached("bun", ["scripts/dev-worktree.ts", "--port", String(port), ...(raw.workers ? [] : ["--no-workers"])], { cwd: repo, env: processEnv, stdout: `${logs}/app.log`, stderr: `${logs}/app.err.log` })
   yield* fs.writeFileString(files.app, `${appPid}\n`)
   const started = Math.floor(Date.now() / 1_000), expires = ttl === 0 ? 0 : started + ttl
-  if (ttl > 0) { const self = new URL("../scripts/clawhub-local-test", import.meta.url).pathname; const pid = yield* startDetached("sh", ["-c", `sleep ${ttl}; exec \"$1\" --state-dir \"$2\" --stop`, "watchdog", self, stateDir], { stdout: `${logs}/watchdog.log`, stderr: `${logs}/watchdog.err.log` }); yield* fs.writeFileString(files.watchdog, `${pid}\n`) }
+  if (ttl > 0) { const self = fileURLToPath(new URL("../scripts/clawhub-local-test", import.meta.url)); const pid = yield* startDetached("sh", ["-c", `sleep ${ttl}; exec \"$1\" --state-dir \"$2\" --stop`, "watchdog", self, stateDir], { stdout: `${logs}/watchdog.log`, stderr: `${logs}/watchdog.err.log` }); yield* fs.writeFileString(files.watchdog, `${pid}\n`) }
   const url = `http://127.0.0.1:${port}/`
   yield* fs.writeFileString(files.instance, encodeEnv({ REPO: repo, URL: url, VITE_CONVEX_URL: convexUrl, CONVEX_DEPLOYMENT: deployment, CONVEX_TARGET_KIND: target.kind, CONVEX_IMPORT_DEPLOYMENT: target.importDeployment, SNAPSHOT: snapshot, SNAPSHOT_SOURCE: snapshotSource, DEV_FIXTURES: raw.seedFixtures ? "applied" : "skipped", PUBLISHER_ABUSE_FIXTURES: abuseFixtureState, CLOUD_DEV_AUTH: target.kind === "dev" ? "configured" : "not_required", STARTED_AT: started, EXPIRES_AT: expires }), { mode: 0o600 })
   if (raw.open) yield* run("open", ["-a", raw.browser, url])
