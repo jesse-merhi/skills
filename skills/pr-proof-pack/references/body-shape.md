@@ -55,9 +55,9 @@ Depends on #41; followed by #43.">
 
 ## How it works
 
-<Include a small diagram for multi-step, multi-actor, stateful, or decision-based
-behavior. Introduce it with one sentence that says what the reviewer should
-learn.>
+<Optional. Explain the mechanism only when it helps review. Add the smallest
+useful visual only when the subject has a relationship, sequence, state, spatial
+layout, or comparison that prose makes harder to understand.>
 
 ## Visual proof
 
@@ -84,18 +84,19 @@ rollout detail, or risk that materially helps review.>
 ````
 
 Keep `New behavior` first. After that, order proof by usefulness: short stack
-context when needed, the explanatory diagram, visual evidence, manual
+context when needed, any useful explanatory visual, practical visual evidence, manual
 verification, then optional implementation notes.
 
 For a tiny non-interactive change, a paragraph, one practical evidence
-screenshot may be enough. Do not add empty sections or decorative diagrams.
+screenshot may be enough. Do not add empty sections, decorative diagrams, or a
+synthetic HTML explainer to make the PR look polished.
 
 ## Visual Proof
 
 Every PR needs at least one uploaded screenshot of practical behavior in the
 main body. UI interactions also require a deliberately paced manual walkthrough
-video. Put the most useful evidence soon after the behavior description and
-diagram.
+video. Put the most useful evidence soon after the behavior description and any
+genuinely useful explanatory visual.
 
 For UI changes, record the complete changed interaction and show every distinct
 changed state. For backend, infrastructure, docs, and test-only changes, show
@@ -190,8 +191,8 @@ Use a table only when rows need comparison across stable axes, such as scenario
 / previous behavior / new behavior or input / status / persisted state.
 
 Never put images in a table. If content is a sequence, list of facts, file
-inventory, prose split into columns, or cells with several clauses, use prose,
-bullets, or a diagram instead.
+inventory, prose split into columns, or cells with several clauses, use prose
+or bullets. Use a diagram only when it makes the relationship easier to learn.
 
 ## What to Leave Out
 

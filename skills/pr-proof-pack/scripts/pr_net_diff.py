@@ -131,14 +131,16 @@ def proof_kind(path: str) -> str:
     if any(marker in lower for marker in job_markers):
         return (
             "Practical operator proof required: show the real input, run or dry run, and "
-            "resulting resource, record, delivery, cleanup, or rollback. Add an "
-            "understandable flow diagram; do not use test or CI output as evidence."
+            "resulting resource, record, delivery, cleanup, or rollback. Add a flow "
+            "diagram only when it would materially clarify the behavior; "
+            "do not use test or CI output as evidence."
         )
     if any(marker in lower for marker in api_markers):
         return (
             "Practical backend proof required: show a representative real request, "
-            "response, and persisted state or side effect. Add a copyable API example and "
-            "a boundary diagram; do not use contract-test output as evidence."
+            "response, and persisted state or side effect. Add a copyable API example; "
+            "use a boundary diagram only when it materially clarifies the behavior. Do "
+            "not use contract-test output as evidence."
         )
     if any(marker in lower for marker in doc_markers):
         return (
@@ -149,7 +151,7 @@ def proof_kind(path: str) -> str:
     return (
         "Practical behavior proof required: show the real product or operator outcome with "
         "uploaded visual evidence. Tests, builds, CI, validators, and green checks do not "
-        "satisfy Visual proof. Add a diagram for multi-step behavior."
+        "satisfy Visual proof. Add an explanation visual only when it materially helps."
     )
 
 

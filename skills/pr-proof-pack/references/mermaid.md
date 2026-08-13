@@ -1,8 +1,10 @@
 # Understandable Diagrams
 
-Use a diagram when the PR contains a multi-step flow, state transition, decision,
-integration boundary, lifecycle, or interaction among several actors. The
-reviewer should not have to reconstruct that behavior from code.
+Use a diagram only when it is genuinely useful teaching material for a
+relationship, sequence, state transition, decision, spatial layout, comparison,
+integration boundary, lifecycle, or interaction among several actors.
+Having several steps or components is not enough: if a short paragraph or list
+is clearer, omit the diagram.
 
 ## Make the Idea Land
 
@@ -53,5 +55,7 @@ flowchart TD
   D --> E[Show the updated total]
 ```
 
-Avoid diagrams that only restate the summary, list files, or require the reader
-to decode implementation vocabulary.
+Avoid diagrams that only restate the summary, list files, prove that the proof
+workflow ran, make the PR look polished, or require the reader to decode
+implementation vocabulary. Do not turn a simple explanation into standalone
+HTML just to obtain a screenshot.

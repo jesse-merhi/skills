@@ -36,20 +36,33 @@ Choose practical evidence by change type:
 Every PR still needs at least one uploaded screenshot. Interactive UI changes
 also require the video; static states cannot prove an interaction.
 
-## Required Diagram for Complex Behavior
+## Decide Whether Explanation Needs a Visual
 
-Use an understandable diagram when a reviewer would otherwise reconstruct any
-of these from code:
+Explain the change as a good teacher would, then ask what supporting material
+would actually help this reviewer. Default to prose. Add one focused visual only
+when the subject itself has a shape the reviewer would otherwise need to
+reconstruct, such as:
 
-- a workflow with several steps;
+- a workflow whose ordering or branching is easy to lose in prose;
 - a state transition or decision path;
 - an API, service, queue, job, or integration boundary;
 - permission or access decisions;
 - dedupe, cleanup, migration, retry, or lifecycle behavior;
 - interaction among three or more actors or components.
 
-The diagram explains the behavior. The screenshot or recording demonstrates
-observed behavior. Most non-trivial PRs need both.
+Several steps alone do not justify a diagram. A short list is better when the
+reader can already hold the sequence in mind. Do not manufacture a visual to
+decorate the PR or demonstrate that the proof workflow ran.
+
+An explanation visual explains the behavior. The screenshot or recording
+demonstrates the implementation running. These are different jobs, and many PRs
+need only the practical evidence. Never use a screenshot of an explanation
+visual as proof that the implementation ran.
+
+Do not create a standalone HTML explainer, synthetic comparison card, mockup, or
+generated diagram merely to fill `Visual proof`. It is valid evidence only when
+the implementation being reviewed is that rendered artifact and the capture
+shows the real current-branch result.
 
 Use an API example or a small before/after table in addition when exact values
 matter, such as response shapes, ranking, counters, flags, permissions, or
