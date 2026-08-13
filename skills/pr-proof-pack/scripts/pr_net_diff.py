@@ -124,29 +124,32 @@ def proof_kind(path: str) -> str:
     lower = path.lower()
     if any(marker in lower for marker in ui_markers):
         return (
-            "Uploaded screenshot required: capture every distinct changed UI state, "
-            "attach it with Computer Use, and explain the claim, route/state, viewport, "
-            "and crop directly below it."
+            "Practical UI proof required: upload a deliberately paced manual interaction "
+            "video plus screenshots of every distinct changed state with Computer Use. "
+            "Tests, builds, CI, and automated E2E output are supporting checks only."
         )
     if any(marker in lower for marker in job_markers):
         return (
-            "Uploaded terminal/result screenshot required. Add an understandable diagram "
-            "for the scheduled, queued, migration, or cleanup flow."
+            "Practical operator proof required: show the real input, run or dry run, and "
+            "resulting resource, record, delivery, cleanup, or rollback. Add an "
+            "understandable flow diagram; do not use test or CI output as evidence."
         )
     if any(marker in lower for marker in api_markers):
         return (
-            "Uploaded request/result screenshot required. Add a copyable API example and "
-            "an understandable diagram when the integration crosses boundaries."
+            "Practical backend proof required: show a representative real request, "
+            "response, and persisted state or side effect. Add a copyable API example and "
+            "a boundary diagram; do not use contract-test output as evidence."
         )
     if any(marker in lower for marker in doc_markers):
         return (
-            "Uploaded screenshot required: show the rendered document or focused terminal "
-            "validation, attached with Computer Use."
+            "Practical documentation proof required: show the rendered document being "
+            "used to complete the changed task or the exact comprehension improvement. "
+            "Leave validators and link checks in the check run; they are not Visual proof."
         )
     return (
-        "Uploaded screenshot required: show focused terminal or rendered-output evidence, "
-        "attached with Computer Use. Add a diagram when the behavior has several steps, "
-        "states, decisions, or actors."
+        "Practical behavior proof required: show the real product or operator outcome with "
+        "uploaded visual evidence. Tests, builds, CI, validators, and green checks do not "
+        "satisfy Visual proof. Add a diagram for multi-step behavior."
     )
 
 

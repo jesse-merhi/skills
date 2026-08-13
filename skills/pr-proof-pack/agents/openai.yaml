@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
-  short_description: "Publish plain-language PR proof with visuals."
-  default_prompt: "Use $pr-proof-pack before creating or updating this PR, then upload visual evidence with Computer Use and inspect the rendered result."
+  short_description: "Publish practical PR proof of working behavior."
+  default_prompt: "Use $pr-proof-pack before creating or updating this PR, then upload practical visual evidence of the behavior with Computer Use and inspect the rendered result."

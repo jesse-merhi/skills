@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable pull-request proof. Use whenever creating, publishing, reopening, or updating a PR; editing its title or body; pushing commits or changing a branch that already has a PR; or changing any layer of a stacked PR. Requires Computer Use, plain-language metadata, and uploaded visual evidence for every PR.
+description: Create or refresh reviewer-checkable pull-request proof. Use whenever creating, publishing, reopening, or updating a PR; editing its title or body; pushing commits or changing a branch that already has a PR; or changing any layer of a stacked PR. Requires Computer Use, plain-language metadata, and uploaded visual evidence of the implemented behavior working in practice.
 ---
 
 # PR Proof Pack
@@ -21,12 +21,17 @@ without knowing the agent thread.
   unavailable, or cannot operate the browser, stop. Tell the human exactly what
   failed and ask them to restore Computer Use before continuing. Do not publish
   or update the PR through another path.
-- **Uploaded visual evidence:** Every PR needs at least one useful screenshot in
-  its main body. UI changes need screenshots of every distinct changed state.
-  Terminal, backend, infrastructure, documentation, and test-only changes still
-  need an uploaded screenshot of focused evidence, such as the command and its
-  readable result. If capture or upload is blocked, stop before PR readiness and
-  ask the human to fix the blocker.
+- **Practical visual evidence:** Every PR needs uploaded visual proof of the
+  implemented behavior working in practice. Builds, tests, CI, linters,
+  type-checkers, coverage, validators, and green checkmarks remain in the check
+  run; do not repeat routine pass lists in the PR body.
+  They never satisfy `Visual proof`, even as screenshots. UI changes
+  require a deliberately paced interaction video plus screenshots of every
+  distinct changed state. Backend and infrastructure changes must show the real
+  request, state transition, side effect, or operator outcome. Performance
+  changes must show a before/after visual and a comparison table under matched
+  conditions. If practical capture or upload is blocked, stop before PR
+  readiness and ask the human to fix the blocker.
 - **Readable history:** PR titles and commit subjects must say the outcome in
   everyday language. Reword unclear local commits before the first push. Never
   rewrite published history without explicit human approval; stop and ask when
@@ -115,24 +120,27 @@ Every claim must be understandable from at least one of these sources:
    premise restored, or the workflow has stopped to request approval before a
    necessary published-history rewrite.
 
-7. Choose visual proof and an explanatory diagram.
+7. Choose practical visual proof and an explanatory diagram.
 
    Read [references/proof-selection.md](references/proof-selection.md) and
    [references/screenshots.md](references/screenshots.md). Every PR gets uploaded
-   screenshot evidence. For a multi-step flow, state transition, decision,
-   integration boundary, or interaction among several actors, also read
-   [references/mermaid.md](references/mermaid.md) and include a small,
-   understandable diagram.
+   evidence of the behavior running in practice. UI work needs a deliberately
+   paced interaction recording and state screenshots. For a multi-step flow,
+   state transition, decision, integration boundary, or interaction among
+   several actors, also read [references/mermaid.md](references/mermaid.md) and
+   include a small, understandable diagram.
 
-   Done when every important behavior has reviewer-checkable evidence, the
-   required screenshot files exist locally, and any complex flow is explained
-   visually without making the reviewer decode implementation details.
+   Done when every important behavior has reviewer-checkable practical
+   evidence, the required recordings and screenshots exist locally, and any
+   complex flow is explained visually without making the reviewer decode
+   implementation details. Automated checks never replace practical evidence.
 
 8. Write a behavior-first PR body.
 
    Read [references/body-shape.md](references/body-shape.md). Put the new behavior
-   first, followed by the smallest useful diagram and visual proof. Keep commands
-   and expected results as copyable text as well as screenshot evidence.
+   first, followed by the smallest useful diagram and practical visual proof.
+   Keep reproduction steps and observed results as copyable text. Do not add
+   routine test, build, or CI pass lists that GitHub's checks already report.
 
    Done when the body tells one self-contained story in plain language and every
    visual has a specific claim and reproduction context.
@@ -140,26 +148,28 @@ Every claim must be understandable from at least one of these sources:
 9. Upload the evidence with Computer Use.
 
    Follow the GitHub attachment flow in
-   [references/screenshots.md](references/screenshots.md). Put each image directly
-   in the main PR body, never in a table or a detached comment. Follow the active
-   Computer Use confirmation policy for uploads.
+   [references/screenshots.md](references/screenshots.md). Put each image and
+   recording directly in the main PR body, never in a table or a detached
+   comment. Follow the active Computer Use confirmation policy for uploads.
 
-   Done when every image uses a reviewer-visible URL in the main body. A local
-   path, an unsubmitted attachment, or a textual rationale is not done.
+   Done when every image and recording uses a reviewer-visible attachment in the
+   main body. A local path, an unsubmitted attachment, a textual rationale, or
+   a screenshot of green checks is not done.
 
 10. Inspect the finished PR with Computer Use.
 
     Open the rendered PR and check its title, section order, image loading,
-    captions, diagram rendering, and copyable verification. Fix stale or unclear
-    proof before leaving the page.
+    video playback, captions, diagram rendering, and copyable reproduction
+    steps. Fix stale or unclear proof before leaving the page.
 
     Done when the rendered PR is readable without local context and every visual
     directly supports a current net-diff claim.
 
 11. Refresh after every branch change.
 
-    Rerun the net diff, verification, screenshot capture and upload, diagram
-    validation, language pass, and rendered-page inspection. Remove stale proof.
+    Rerun the net diff, practical behavior walkthrough, visual capture and
+    upload, diagram validation, language pass, and rendered-page inspection.
+    Remove stale proof.
     For a stack, sync first and repeat for every affected upstack PR.
 
     Done when every open PR reflects its current direct-base diff.
@@ -174,8 +184,15 @@ Every claim must be understandable from at least one of these sources:
 ## Done Means
 
 - Computer Use uploaded the evidence and inspected the final rendered PR.
-- Every PR has useful, reviewer-visible screenshot evidence in its main body;
-  non-UI PRs show focused terminal or rendered-output evidence.
+- Every PR has reviewer-visible evidence of the implemented behavior working in
+  practice; test output, builds, CI, and validators remain supporting checks and
+  are not repeated as routine pass lists in the PR body.
+- UI changes include a deliberately paced interaction video and screenshots of
+  every distinct changed state.
+- Backend, infrastructure, and test-only changes show the real product or
+  operator behavior the change affects, not merely the automated test for it.
+- Performance claims include a before/after visual and a comparison table with
+  matched conditions, measurements, and sample sizes.
 - The PR title, commit subjects, body, captions, and diagram labels use everyday
   language and restore the context a new reviewer needs.
 - The body describes only current net behavior owned by the PR's direct-base
@@ -196,6 +213,10 @@ Every claim must be understandable from at least one of these sources:
   substitute for required Computer Use;
 - omitting screenshots because a change is backend-only, terminal-based,
   documentation-only, test-only, or "not visual";
+- using test counts, builds, CI, coverage, linters, type-checkers, validators,
+  green checkmarks, or screenshots of any of them as behavioral evidence;
+- claiming UI proof from static screenshots alone when the change includes an
+  interaction, transition, error recovery path, or multi-step flow;
 - local-only image paths, images in tables, or attachments left in comments;
 - raw terminal dumps, tiny terminal text, secrets, tokens, or irrelevant output;
 - titles such as "updates", "changes", or ticket IDs that hide the outcome;
