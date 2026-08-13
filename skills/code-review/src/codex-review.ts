@@ -20,6 +20,7 @@ const review = Command.make("codex-review", {
 }, Effect.fn("codexReview.handler")(function*(args) {
   const plan = yield* selectReviewPlan(args.mode as ReviewMode, args.base, args.commit)
   yield* Console.log(`codex-review target: ${plan.label}`)
+  if (plan.targets.some((target) => target.snapshot)) yield* Console.log("snapshot: temporary worktree with local overlay")
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
   if (args.dryRun) return
   const result = yield* untilReviewStable({

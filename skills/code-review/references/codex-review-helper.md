@@ -16,8 +16,10 @@ scripts/codex-review --dry-run
 
 The helper resolves a concrete Git target, delegates review to the native
 command, prints its output unchanged, and propagates process or parallel-test
-failures. In auto mode a dirty branch runs both the branch review and an
-uncommitted-overlay review, so committed and local changes are both covered.
+failures. In auto or whole mode, a dirty branch is copied into a temporary
+detached worktree with staged, unstaged, and untracked changes committed as one
+ephemeral snapshot. One base review therefore covers committed and local
+changes together, and the snapshot is removed afterward.
 A clean checkout uses `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
 in that order.

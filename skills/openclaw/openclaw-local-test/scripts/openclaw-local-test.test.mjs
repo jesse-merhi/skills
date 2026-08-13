@@ -6,6 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import test from "node:test";
+import { Effect, Option } from "effect";
+import { choosePorts } from "../src/OpenclawLocalTest.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const helperPath = path.join(scriptDir, "openclaw-local-test");
@@ -75,6 +77,19 @@ async function findPortRange(start = 24_000) {
   }
   throw new Error("no free local three-port range");
 }
+
+test("a fixed free proxy still allows searching for an automatic gateway", async () => {
+  const start = await findPortRange();
+  const fixedProxy = start + 21;
+  const busyGateway = net.createServer();
+  await new Promise((resolve, reject) => busyGateway.once("error", reject).listen(start, "127.0.0.1", resolve));
+  try {
+    const selected = await Effect.runPromise(choosePorts(start, Option.none(), Option.some(fixedProxy)));
+    assert.deepEqual(selected, { gateway: start + 10, proxy: fixedProxy });
+  } finally {
+    await new Promise((resolve) => busyGateway.close(resolve));
+  }
+});
 
 async function createFakeOpenClaw(repoDir) {
   await mkdir(repoDir, { recursive: true });
@@ -340,12 +355,19 @@ exit 1
       OPENCLAW_LOCAL_TEST_STATE_DIR: completedState,
       OPENCLAW_LOCAL_TEST_LOCK_DIR: path.join(tempDir, "completed.lock"),
       OPENCLAW_LOCAL_TEST_PORT: String(fourthPort),
+      OPENCLAW_LOCAL_TEST_PROXY_PORT: String(fourthPort + 5),
+      OPENCLAW_LOCAL_TEST_BASE_CONFIG: configPath,
+      OPENCLAW_LOCAL_TEST_RUNTIME: "codex",
+      OPENCLAW_LOCAL_TEST_MODEL: "gpt-env-model",
     };
-    const completed = await run(helperPath, args, completedEnv);
+    const completed = await run(helperPath, [...args.filter((_value, index) => index !== 2 && index !== 3), "--runtime", "codex"], completedEnv);
     assert.equal(completed.code, 0, completed.stdout + completed.stderr);
     await assert.rejects(access(completedEnv.OPENCLAW_LOCAL_TEST_LOCK_DIR));
     assert.equal(await readFile(path.join(completedState, "fake-rpc.log"), "utf8"), "wizard.start\n");
     await assert.rejects(readFile(path.join(completedState, "fake-active-wizard")));
+    const completedConfig = JSON.parse(await readFile(path.join(completedState, "openclaw.json"), "utf8"));
+    assert.equal(completedConfig.agents.defaults.model.primary, "openai/gpt-env-model");
+    assert.match(await readFile(path.join(completedState, "run", "ports.env"), "utf8"), new RegExp(`OPENCLAW_LOCAL_TEST_PROXY_PORT=.?${fourthPort + 5}`));
 
     for (const [stateDir, markerPort] of [[invalidStartState, fifthPort], [invalidCancelState, sixthPort]]) {
       const invalid = await run(helperPath, args, { ...baseEnv, OPENCLAW_LOCAL_TEST_STATE_DIR: stateDir, OPENCLAW_LOCAL_TEST_LOCK_DIR: `${stateDir}.lock`, OPENCLAW_LOCAL_TEST_PORT: String(markerPort) });

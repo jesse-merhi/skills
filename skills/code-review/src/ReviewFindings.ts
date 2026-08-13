@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { Console, Effect, FileSystem, Path } from "effect"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 export interface ReviewRun {
   readonly repo: string
@@ -38,6 +39,7 @@ interface RunRow { readonly id: string }
 interface SequenceRow { readonly sequence: number }
 interface TableInfoRow { readonly name: string }
 interface LegacyIssueRow { readonly id: string; readonly text: string; readonly updated_at: number }
+interface RepoKeyRow { readonly id: string; readonly repo_path: string; readonly repo_key: string }
 export interface CloseoutFinding {
   readonly decision_id: string
   readonly status: string
@@ -144,7 +146,11 @@ export const canonicalRepoKey = Effect.fn("ReviewFindings.canonicalRepoKey")(fun
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const resolved = paths.resolve(repoPath)
-  return yield* fs.realPath(resolved).pipe(Effect.catch(() => Effect.succeed(resolved)))
+  const info = yield* fs.stat(resolved).pipe(Effect.option)
+  const cwd = info._tag === "Some" && info.value.type === "Directory" ? resolved : paths.dirname(resolved)
+  const commonDir = yield* checkedTrimmedText("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd }).pipe(Effect.option)
+  const key = commonDir._tag === "Some" ? commonDir.value : cwd
+  return yield* fs.realPath(key).pipe(Effect.catch(() => Effect.succeed(paths.resolve(key))))
 })
 
 export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
@@ -170,6 +176,11 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const timestamp = nowSeconds()
   yield* sql.unsafe(`update issues set first_seen_at = coalesce(first_seen_at, updated_at, ?), last_seen_at = coalesce(last_seen_at, updated_at, ?), seen_count = coalesce(seen_count, 1)`, [timestamp, timestamp])
   yield* sql.unsafe(`update review_runs set repo_key = case when coalesce(repo_path, '') != '' then repo_path else repo_name end where coalesce(repo_key, '') = ''`)
+  const repositories = yield* sql.unsafe<RepoKeyRow>(`select id, repo_path, repo_key from review_runs`)
+  yield* Effect.forEach(repositories, (repository) => Effect.gen(function*() {
+    const repoKey = yield* canonicalRepoKey(repository.repo_path)
+    if (repoKey !== repository.repo_key) yield* sql`update review_runs set repo_key = ${repoKey} where id = ${repository.id}`
+  }), { discard: true })
   yield* sql.unsafe(`update review_runs set update_seq = rowid where coalesce(update_seq, 0) = 0`)
   yield* sql.unsafe(`insert into issue_fts (issue_id, text) select issues.id, issues.text from issues where not exists (select 1 from issue_fts where issue_fts.issue_id = issues.id)`)
   const unindexed = yield* sql.unsafe<LegacyIssueRow>(`select issues.id, issues.text, issues.updated_at from issues where not exists (select 1 from issue_vectors where issue_vectors.issue_id = issues.id)`)

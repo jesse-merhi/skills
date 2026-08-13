@@ -1,11 +1,12 @@
-import { Effect, Option, Schema } from "effect"
-import { checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { Effect, FileSystem, Option, Path, Schema } from "effect"
+import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 export type ReviewMode = "auto" | "whole" | "local" | "uncommitted" | "branch" | "commit"
 
 export interface ReviewTarget {
   readonly label: string
   readonly args: ReadonlyArray<string>
+  readonly snapshot?: boolean
 }
 
 export interface ReviewPlan {
@@ -16,6 +17,7 @@ export interface ReviewPlan {
 export class ReviewTargetChangedError extends Schema.TaggedError<ReviewTargetChangedError>()("ReviewTargetChangedError", {
   runs: Schema.Number
 }) {}
+export class ReviewSnapshotError extends Schema.TaggedError<ReviewSnapshotError>()("ReviewSnapshotError", { message: Schema.String }) {}
 
 const capture = checkedTrimmedText
 
@@ -30,10 +32,10 @@ export const planReview = (mode: ReviewMode, base: string, commit: string, dirty
   if (mode === "commit") return { label: `commit ${commit}`, targets: [{ label: `commit ${commit}`, args: ["--commit", commit] }] }
   if (mode === "uncommitted" || mode === "local") return { label: mode, targets: [{ label: mode, args: ["--uncommitted"] }] }
   const branch = branchTarget(base, mode === "whole" ? "whole" : "branch")
-  if (mode === "auto" && dirty) {
+  if ((mode === "auto" || mode === "whole") && dirty) {
     return {
       label: `current branch against ${base}, including uncommitted changes`,
-      targets: [branch, { label: "uncommitted overlay", args: ["--uncommitted"] }]
+      targets: [{ ...branch, snapshot: true }]
     }
   }
   return { label: branch.label, targets: [branch] }
@@ -74,6 +76,34 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
   return JSON.stringify({ head, status, diff, untracked: paths.map((path, index) => [path, hashes[index]]) })
 })
 
+const withReviewSnapshot = <A, E, R>(use: (cwd: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const repo = yield* git(["rev-parse", "--show-toplevel"])
+  const root = yield* fs.makeTempDirectoryScoped({ prefix: "review-snapshot." })
+  const snapshot = paths.join(root, "worktree")
+  const cleanup = checkedInherit("git", ["worktree", "remove", "--force", snapshot], { cwd: repo }).pipe(Effect.ignore)
+  const lifecycle = Effect.gen(function*() {
+    yield* checkedInherit("git", ["worktree", "add", "--detach", snapshot, "HEAD"], { cwd: repo })
+    for (const args of [["diff", "--binary", "--cached"], ["diff", "--binary"]]) {
+      const patch = yield* checkedText("git", args, { cwd: repo })
+      if (patch.length > 0) yield* checkedInherit("git", ["apply", "--whitespace=nowarn", "-"], { cwd: snapshot, stdin: patch })
+    }
+    const untracked = yield* checkedText("git", ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo })
+    for (const file of untracked.split("\0").filter(Boolean)) {
+      const source = paths.resolve(repo, file)
+      const destination = paths.resolve(snapshot, file)
+      if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${file}` })
+      yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
+      yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
+    }
+    yield* checkedInherit("git", ["add", "-A"], { cwd: snapshot })
+    yield* checkedInherit("git", ["-c", "user.name=Review Snapshot", "-c", "user.email=review-snapshot@example.invalid", "commit", "--quiet", "--no-verify", "-m", "review snapshot"], { cwd: snapshot })
+    return yield* use(snapshot)
+  })
+  return yield* lifecycle.pipe(Effect.ensuring(cleanup))
+}))
+
 export const untilReviewStable = <A, E, R, E2, R2>(options: {
   readonly identity: Effect.Effect<string, E, R>
   readonly operation: Effect.Effect<A, E2, R2>
@@ -96,11 +126,13 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   readonly plan: ReviewPlan
   readonly testCommand: Option.Option<string>
 }) {
-  const reviews = Effect.forEach(options.plan.targets, (target) => checkedText(options.codexBin, ["review", ...target.args]).pipe(
-    Effect.map((output) => options.plan.targets.length === 1 ? output : `[${target.label}]\n${output}`)
-  )).pipe(Effect.map((outputs) => outputs.join("\n\n")))
-  if (Option.isNone(options.testCommand)) return yield* reviews
-  const test = checkedText("sh", ["-lc", options.testCommand.value])
-  const [output] = yield* Effect.all([reviews, test], { concurrency: "unbounded" })
-  return output
+  const execute = (snapshotCwd?: string) => {
+    const reviews = Effect.forEach(options.plan.targets, (target) => checkedText(options.codexBin, ["review", ...target.args], snapshotCwd === undefined || !target.snapshot ? undefined : { cwd: snapshotCwd }).pipe(
+      Effect.map((output) => options.plan.targets.length === 1 ? output : `[${target.label}]\n${output}`)
+    )).pipe(Effect.map((outputs) => outputs.join("\n\n")))
+    if (Option.isNone(options.testCommand)) return reviews
+    const test = checkedText("sh", ["-lc", options.testCommand.value], snapshotCwd === undefined ? undefined : { cwd: snapshotCwd })
+    return Effect.all([reviews, test], { concurrency: "unbounded" }).pipe(Effect.map(([output]) => output))
+  }
+  return yield* (options.plan.targets.some((target) => target.snapshot) ? withReviewSnapshot(execute) : execute())
 })

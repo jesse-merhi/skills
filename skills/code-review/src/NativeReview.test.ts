@@ -7,18 +7,23 @@ import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
 import { promisify } from "node:util"
+import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
-import { planReview, reviewBaseCandidates, untilReviewStable } from "./NativeReview.ts"
+import { Effect, Option } from "effect"
+import { planReview, reviewBaseCandidates, runNativeReview, untilReviewStable } from "./NativeReview.ts"
 
 const execFile = promisify(execFileCallback)
 const root = new URL("../../..", import.meta.url).pathname
+const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
+  // @effect-diagnostics-next-line strictEffectProvide:off
+  Effect.provide(NodeServices.layer)
+)
 
 describe("native review target", () => {
   it("reviews a dirty branch and its local overlay", () => {
     const plan = planReview("auto", "origin/main", "HEAD", true)
     assert.strictEqual(plan.label, "current branch against origin/main, including uncommitted changes")
-    assert.deepStrictEqual(plan.targets.map((target) => target.args), [["--base", "origin/main"], ["--uncommitted"]])
+    assert.deepStrictEqual(plan.targets.map((target) => ({ args: target.args, snapshot: target.snapshot })), [{ args: ["--base", "origin/main"], snapshot: true }])
   })
 
   it("uses the native commit protocol without preparing a synthetic tree", () => {
@@ -81,6 +86,41 @@ describe("native review target", () => {
       // @effect-diagnostics-next-line processEnv:off
       const { stdout } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--json"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
       assert.strictEqual(JSON.parse(stdout).base.ref, "origin/main")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("reviews whole-mode committed and local changes in one clean snapshot", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "whole-review-snapshot-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "base.txt"), "base\n")
+      await execFile("git", ["add", "base.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await writeFile(join(directory, "committed.txt"), "committed\n")
+      await execFile("git", ["add", "committed.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
+      await writeFile(join(directory, "staged.txt"), "staged\n")
+      await execFile("git", ["add", "staged.txt"], { cwd: directory })
+      await writeFile(join(directory, "base.txt"), "unstaged\n")
+      await writeFile(join(directory, "untracked.txt"), "untracked\n")
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest -z \"$(git status --porcelain)\"\nprintf '%s\\n' base.txt committed.txt staged.txt untracked.txt > expected\ngit diff --name-only main...HEAD | sort > actual\ndiff -u expected actual\nrm expected actual\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        assert.strictEqual(output, "reviewed combined snapshot\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+      const { stdout } = await execFile("git", ["worktree", "list", "--porcelain"], { cwd: directory })
+      assert.strictEqual(stdout.split("\n").filter((line) => line.startsWith("worktree ")).length, 1)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

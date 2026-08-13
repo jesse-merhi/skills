@@ -384,6 +384,22 @@ test_review_findings_query_uses_latest_run_and_semantic_terms() {
   assert_output_not_contains "$out" "old-base invoice regression"
 }
 
+test_review_findings_shares_history_across_git_worktrees() {
+  local tmp db repo linked out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  linked="$tmp/linked"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message initial
+  git -C "$repo" worktree add --quiet -b linked "$linked"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record --db "$db" --repo sample-app --repo-path "$repo" --branch shared --target "PR #10" --base main --decision-id D1 --status open --source review --fingerprint "shared history" --summary "Worktree history remains visible." --text "shared finding" >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$linked" --branch shared --target "PR #10" shared)"
+  assert_output_contains "$out" "Worktree history remains visible."
+}
+
 test_review_findings_workflow_is_documented
 test_review_findings_runs_from_repo_launcher
 test_review_findings_record_command_without_base_requires_existing_run
@@ -392,5 +408,6 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout
 test_review_findings_upgrades_legacy_schema
 test_review_findings_reports_database_failures
 test_review_findings_query_uses_latest_run_and_semantic_terms
+test_review_findings_shares_history_across_git_worktrees
 
 printf 'ok - review-findings tests\n'

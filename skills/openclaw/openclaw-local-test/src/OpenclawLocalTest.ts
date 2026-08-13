@@ -11,13 +11,14 @@ const WizardStart = Schema.Union([
 const WizardStatus = Schema.Struct({ status: Schema.Literal("running") })
 const WizardCancel = Schema.Struct({ status: Schema.Literal("cancelled") })
 const portIsFree = (port: number) => Effect.callback<boolean>((resume) => { let socket: Socket | undefined; const done = (free: boolean) => { socket?.destroy(); resume(Effect.succeed(free)) }; socket = createConnection({ host: "127.0.0.1", port }).once("connect", () => done(false)).once("error", () => done(true)); return Effect.sync(() => socket?.destroy()) })
-const choosePorts = Effect.fn("Openclaw.choosePorts")(function*(start: number, gateway: Option.Option<number>, proxy: Option.Option<number>) {
+export const choosePorts = Effect.fn("Openclaw.choosePorts")(function*(start: number, gateway: Option.Option<number>, proxy: Option.Option<number>) {
   let candidate = Option.getOrElse(gateway, () => start)
   while (candidate < 65_533) {
     const proxyPort = Option.getOrElse(proxy, () => candidate + 1)
-    const states = yield* Effect.all([portIsFree(candidate), portIsFree(proxyPort), portIsFree(candidate + 2)])
-    if (states.every(Boolean)) return { gateway: candidate, proxy: proxyPort }
-    if (Option.isSome(gateway) || Option.isSome(proxy)) return yield* new LocalTestError({ message: `requested port range is busy: gateway=${candidate} proxy=${proxyPort}` })
+    const [gatewayFree, proxyFree, companionFree] = yield* Effect.all([portIsFree(candidate), portIsFree(proxyPort), portIsFree(candidate + 2)])
+    if (gatewayFree && proxyFree && companionFree) return { gateway: candidate, proxy: proxyPort }
+    if (Option.isSome(proxy) && !proxyFree) return yield* new LocalTestError({ message: `requested proxy port is busy: ${proxyPort}` })
+    if (Option.isSome(gateway)) return yield* new LocalTestError({ message: `requested port range is busy: gateway=${candidate} proxy=${proxyPort}` })
     candidate += 10
   }
   return yield* new LocalTestError({ message: "no free three-port range" })
