@@ -267,6 +267,19 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
     fail "an existing non-git path must not be reused as a handoff worktree"
   fi
   assert_contains "$tmp/not-worktree.out" "Worktree path exists but is not a git worktree"
+
+  mkdir "$tmp/fake-bin"
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "fake-codex: %s\\n" "$*"' > "$tmp/fake-bin/codex"
+  chmod +x "$tmp/fake-bin/codex"
+  output="$(
+    PATH="$tmp/fake-bin:$PATH" \
+      "$helper" \
+        --run-codex \
+        --file "$handoff" \
+        --cd "$ROOT_DIR"
+  )"
+  assert_output_contains "$output" "fake-codex: --cd $ROOT_DIR"
+  assert_output_contains "$output" "Read the handoff document before acting"
 }
 
 test_retired_impeccable_cleanup_is_documented() {

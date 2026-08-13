@@ -1,7 +1,7 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { checkedText } from "./CheckedProcess.ts"
+import { checkedInherit, checkedText } from "./CheckedProcess.ts"
 
 const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off
@@ -10,11 +10,13 @@ const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => e
 
 describe("checked process boundary", () => {
   it.effect("rejects non-zero commands with their stderr and exit code", () => live(
-    checkedText(process.execPath, ["-e", "process.stderr.write('broken\\n'); process.exit(7)"]).pipe(
+    checkedText(process.execPath, ["-e", "process.stderr.write('broken\\n'); process.exit(7)", "secret-value"], { displayCommand: "node [redacted]" }).pipe(
       Effect.flip,
       Effect.map((error) => {
         assert.strictEqual(error.exitCode, 7)
         assert.match(error.stderr, /broken/u)
+        assert.strictEqual(error.command, "node [redacted]")
+        assert.notMatch(error.message, /secret-value/u)
       })
     )
   ))
@@ -29,6 +31,13 @@ describe("checked process boundary", () => {
   it.effect("drains stdout and stderr concurrently without deadlocking", () => live(
     checkedText(process.execPath, ["-e", "process.stdout.write('o'.repeat(200000)); process.stderr.write('e'.repeat(200000))"]).pipe(
       Effect.map((output) => assert.strictEqual(output.length, 200_000))
+    )
+  ))
+
+  it.effect("checks exit status while preserving inherited terminal I/O", () => live(
+    checkedInherit(process.execPath, ["-e", "process.exit(9)"]).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.strictEqual(error.exitCode, 9))
     )
   ))
 })

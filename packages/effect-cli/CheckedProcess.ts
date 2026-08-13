@@ -10,6 +10,18 @@ export class CheckedProcessError extends Schema.TaggedError<CheckedProcessError>
   cause: Schema.optional(Schema.Unknown)
 }) {}
 
+export interface CheckedProcessOptions {
+  readonly cwd?: string
+  readonly env?: Record<string, string>
+  readonly extendEnv?: boolean
+  readonly displayCommand?: string
+}
+
+const processError = (executable: string, command: string, cause: PlatformError.PlatformError) => {
+  const notFound = cause.reason._tag === "NotFound"
+  return new CheckedProcessError({ command, exitCode: notFound ? 127 : signalExitCode(cause), message: notFound ? `${executable}: command not found` : `failed to run ${command}`, stderr: "", cause })
+}
+
 const signalExitCode = (cause: unknown) => {
   const messages: Array<string> = []
   let current: unknown = cause
@@ -27,16 +39,14 @@ const signalExitCode = (cause: unknown) => {
 export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   executable: string,
   args: ReadonlyArray<string>,
-  options?: { readonly cwd?: string; readonly env?: Record<string, string>; readonly extendEnv?: boolean }
+  options?: CheckedProcessOptions
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const commandText = [executable, ...args].join(" ")
+  const { displayCommand, ...childOptions } = options ?? {}
+  const commandText = displayCommand ?? [executable, ...args].join(" ")
   return yield* Effect.scoped(Effect.gen(function*() {
-    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, options)).pipe(
-      Effect.mapError((cause) => {
-        const notFound = cause instanceof PlatformError.PlatformError && cause.reason._tag === "NotFound"
-        return new CheckedProcessError({ command: commandText, exitCode: notFound ? 127 : 1, message: notFound ? `${executable}: command not found` : `failed to start ${commandText}`, stderr: "", cause })
-      })
+    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, childOptions)).pipe(
+      Effect.mapError((cause) => processError(executable, commandText, cause))
     )
     const result = yield* Effect.all({
       exit: Effect.exit(handle.exitCode),
@@ -56,5 +66,15 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   }))
 })
 
-export const checkedTrimmedText = (executable: string, args: ReadonlyArray<string>, options?: { readonly cwd?: string; readonly env?: Record<string, string>; readonly extendEnv?: boolean }) =>
+export const checkedTrimmedText = (executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) =>
   checkedText(executable, args, options).pipe(Effect.map((output) => output.trim()))
+
+export const checkedInherit = Effect.fn("CheckedProcess.inherit")(function*(executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) {
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+  const { displayCommand, ...childOptions } = options ?? {}
+  const command = displayCommand ?? [executable, ...args].join(" ")
+  const exitCode = yield* spawner.exitCode(ChildProcess.make(executable, args, { ...childOptions, stdin: "inherit", stdout: "inherit", stderr: "inherit" })).pipe(
+    Effect.mapError((cause) => processError(executable, command, cause))
+  )
+  if (exitCode !== 0) return yield* new CheckedProcessError({ command, exitCode: Number(exitCode), message: `${command} exited ${exitCode}`, stderr: "" })
+})

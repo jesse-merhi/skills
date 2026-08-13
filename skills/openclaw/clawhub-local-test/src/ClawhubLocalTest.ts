@@ -67,12 +67,13 @@ export const clawhubLocalTest = Effect.fn("Clawhub.localTest")(function*(raw: Cl
   const port = Option.isSome(raw.port) ? raw.port.value : yield* choosePort(raw.startPort)
   if (raw.dryRun) return yield* Console.log([`repo: ${repo}`, `state_dir: ${stateDir}`, `VITE_CONVEX_URL: ${convexUrl}`, `CONVEX_DEPLOYMENT: ${deployment}`, `convex_target_kind: ${target.kind}`, `convex_import_deployment: ${target.importDeployment}`, `refresh_mode: ${raw.refresh}`, `include_file_storage: ${Number(raw.includeFileStorage)}`, `skip_import: ${Number(raw.skipImport)}`, `seed_fixtures: ${Number(raw.seedFixtures)}`, `seed_abuse_fixtures: ${Number(raw.seedAbuseFixtures)}`, `port: ${port}`, `ttl: ${raw.ttl}`].join("\n"))
   yield* stop
+  const start = Effect.gen(function*() {
   const processEnv: Record<string, string> = { DEV_AUTH_ENABLED: "1", VITE_ENABLE_DEV_AUTH: "1", DEV_AUTH_CONVEX_DEPLOYMENT: deployment }
   if (target.kind === "dev") {
     const configuredSecret = yield* Config.option(Config.string("DEV_AUTH_SECRET"))
     const secret = Option.isSome(configuredSecret) && configuredSecret.value.length >= 32 ? configuredSecret.value : randomBytes(32).toString("hex")
     processEnv.DEV_AUTH_SECRET = secret; processEnv.DEV_AUTH_SITE_URL = `http://127.0.0.1:${port}`
-    yield* run("bunx", ["convex", "env", "set", "DEV_AUTH_SECRET", secret, "--deployment", target.importDeployment], repo)
+    yield* run("bunx", ["convex", "env", "set", "DEV_AUTH_SECRET", secret, "--deployment", target.importDeployment], repo, undefined, "bunx convex env set DEV_AUTH_SECRET [redacted]")
     yield* run("bunx", ["convex", "env", "set", "DEV_AUTH_SITE_URL", processEnv.DEV_AUTH_SITE_URL, "--deployment", target.importDeployment], repo)
   }
   if (target.kind === "local") {
@@ -115,4 +116,6 @@ export const clawhubLocalTest = Effect.fn("Clawhub.localTest")(function*(raw: Cl
   yield* fs.writeFileString(files.instance, encodeEnv({ REPO: repo, URL: url, VITE_CONVEX_URL: convexUrl, CONVEX_DEPLOYMENT: deployment, CONVEX_TARGET_KIND: target.kind, CONVEX_IMPORT_DEPLOYMENT: target.importDeployment, SNAPSHOT: snapshot, SNAPSHOT_SOURCE: snapshotSource, DEV_FIXTURES: raw.seedFixtures ? "applied" : "skipped", PUBLISHER_ABUSE_FIXTURES: abuseFixtureState, CLOUD_DEV_AUTH: target.kind === "dev" ? "configured" : "not_required", STARTED_AT: started, EXPIRES_AT: expires }), { mode: 0o600 })
   if (raw.open) yield* run("open", ["-a", raw.browser, url])
   yield* Console.log(`ClawHub local test is starting.\n\nURL: ${url}\nRepo: ${repo}\nConvex: ${convexUrl} (${deployment}, import target: ${target.importDeployment})\nSnapshot: ${snapshot || "not imported"} (${snapshotSource})\nLogs:\n  app: ${logs}/app.log\n  convex: ${logs}/convex.log\nLease expires: ${expires || "none"}`)
+  })
+  return yield* start.pipe(Effect.tapError(() => stop), Effect.onInterrupt(() => stop))
 })

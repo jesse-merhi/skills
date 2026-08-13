@@ -5,8 +5,7 @@ import { spawn } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { openSync, closeSync } from "node:fs"
 import { Console, Effect, FileSystem, Schedule, Schema } from "effect"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
-import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { checkedInherit, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 // Home expansion is a pure CLI-boundary default.
 // @effect-diagnostics-next-line processEnv:off
@@ -54,11 +53,8 @@ export const stopPid = Effect.fn("LocalTest.stopPid")(function*(label: string, p
 })
 export const capture = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>) =>
   checkedTrimmedText(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }) })
-export const run = Effect.fn("LocalTest.run")(function*(command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const code = yield* spawner.exitCode(ChildProcess.make(command, args, { cwd, env, extendEnv: env !== undefined, stdout: "inherit", stderr: "inherit" }))
-  if (code !== 0) return yield* new LocalTestError({ message: `${command} exited ${code}` })
-})
+export const run = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>, displayCommand?: string) =>
+  checkedInherit(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }), ...(displayCommand === undefined ? {} : { displayCommand }) })
 export const startDetached = Effect.fn("LocalTest.startDetached")(function*(command: string, args: ReadonlyArray<string>, options: { readonly cwd?: string; readonly env?: Record<string, string>; readonly stdout: string; readonly stderr: string }) {
   return yield* Effect.sync(() => {
     const stdout = openSync(options.stdout, "a", 0o600)

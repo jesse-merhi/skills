@@ -1,7 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Config, Console, Effect, FileSystem, Option, Path, Schema } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { checkedInherit, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 const quote = (value: string) => value.replace(/([^A-Za-z0-9_./:%-])/gu, "\\$1")
 class HandoffError extends Schema.TaggedError<HandoffError>()("HandoffError", { message: Schema.String }) {}
@@ -48,8 +48,7 @@ const cli = Command.make("codex-handoff-tmux", {
   const prompt = [`Read the handoff document before acting:\n\n${args.file}\n`, ...(args.focus.length === 0 ? [] : [`Next session focus:\n\n${args.focus}\n`]), `Working directory:\n\n${workdir}\n`, ...(wantsWorktree ? ["This directory was prepared as this worker's dedicated git worktree. Do not use the coordinator worktree for implementation.\n"] : []), "Start by reading the handoff, then continue from it. Keep the final reply short and report what you did."].join("\n")
   if (args.runCodex) {
     const codexArgs = args.mode === "fork-last" ? ["fork", "--last", "--cd", workdir, prompt] : ["--cd", workdir, prompt]
-    const output = yield* run("codex", codexArgs, workdir)
-    if (output.length > 0) yield* Console.log(output)
+    yield* checkedInherit("codex", codexArgs, { cwd: workdir, displayCommand: "codex [handoff prompt]" })
     return
   }
   const tmux = yield* Config.option(Config.string("TMUX"))
