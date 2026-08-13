@@ -30,11 +30,10 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.20.0
-          run_install: false
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack install
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
