@@ -91,6 +91,19 @@ test("a fixed free proxy still allows searching for an automatic gateway", async
   }
 });
 
+test("an automatic gateway never collides with a fixed proxy", async () => {
+  const start = await findPortRange();
+  const fixedProxy = start + 10;
+  const busyGateway = net.createServer();
+  await new Promise((resolve, reject) => busyGateway.once("error", reject).listen(start, "127.0.0.1", resolve));
+  try {
+    const selected = await Effect.runPromise(choosePorts(start, Option.none(), Option.some(fixedProxy)));
+    assert.deepEqual(selected, { gateway: start + 20, proxy: fixedProxy });
+  } finally {
+    await new Promise((resolve) => busyGateway.close(resolve));
+  }
+});
+
 async function createFakeOpenClaw(repoDir) {
   await mkdir(repoDir, { recursive: true });
   await writeFile(

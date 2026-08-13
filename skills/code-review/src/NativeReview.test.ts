@@ -111,6 +111,8 @@ describe("native review target", () => {
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest -z \"$(git status --porcelain)\"\nprintf '%s\\n' base.txt committed.txt staged.txt untracked.txt > expected\ngit diff --name-only main...HEAD | sort > actual\ndiff -u expected actual\nrm expected actual\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
+      assert.match(dryRun, /snapshot: temporary worktree with local overlay/u)
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {

@@ -60,7 +60,7 @@ export const selectReviewPlan = Effect.fn("NativeReview.selectReviewPlan")(funct
   const needsBase = mode !== "commit" && mode !== "uncommitted" && mode !== "local"
   const selectedBase = Option.isSome(base) ? base.value : needsBase ? yield* discoverReviewBase() : "HEAD"
   if (needsBase) yield* git(["rev-parse", "--verify", `${selectedBase}^{commit}`])
-  const dirty = mode === "auto" && (yield* git(["status", "--porcelain"])) .length > 0
+  const dirty = (mode === "auto" || mode === "whole") && (yield* git(["status", "--porcelain"])).length > 0
   return planReview(mode, selectedBase, commit, dirty)
 })
 

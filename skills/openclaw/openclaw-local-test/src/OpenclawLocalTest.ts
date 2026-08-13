@@ -15,8 +15,9 @@ export const choosePorts = Effect.fn("Openclaw.choosePorts")(function*(start: nu
   let candidate = Option.getOrElse(gateway, () => start)
   while (candidate < 65_533) {
     const proxyPort = Option.getOrElse(proxy, () => candidate + 1)
+    const portsDistinct = candidate !== proxyPort && candidate + 2 !== proxyPort
     const [gatewayFree, proxyFree, companionFree] = yield* Effect.all([portIsFree(candidate), portIsFree(proxyPort), portIsFree(candidate + 2)])
-    if (gatewayFree && proxyFree && companionFree) return { gateway: candidate, proxy: proxyPort }
+    if (portsDistinct && gatewayFree && proxyFree && companionFree) return { gateway: candidate, proxy: proxyPort }
     if (Option.isSome(proxy) && !proxyFree) return yield* new LocalTestError({ message: `requested proxy port is busy: ${proxyPort}` })
     if (Option.isSome(gateway)) return yield* new LocalTestError({ message: `requested port range is busy: gateway=${candidate} proxy=${proxyPort}` })
     candidate += 10
