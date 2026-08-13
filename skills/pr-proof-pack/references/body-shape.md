@@ -62,23 +62,21 @@ Introduce it with one sentence that says what the reviewer should learn.>
 
 ## Visual proof
 
-![Descriptive evidence](https://github.com/user-attachments/assets/...)
+<For UI interactions: uploaded deliberately paced manual walkthrough video.>
 
-**What this shows:** <The exact current behavior or verification result.>
+![Changed behavior at its observable outcome](https://github.com/user-attachments/assets/...)
 
-**State:** <Route, fixture, account, command, environment, viewport, and crop
-details needed to reproduce and interpret the image.>
+**What this shows:** <The exact implemented behavior visibly working in
+practice. Do not describe test, build, CI, or validator output here.>
+
+**State:** <Starting state, input, action, route, fixture, account, environment,
+viewport, dataset, and capture details needed to reproduce the behavior.>
 
 ## How to verify
 
 1. <Starting state or fixture.>
 2. <Action or command a reviewer can perform.>
 3. <Expected new outcome.>
-
-## Checks
-
-- `<focused command>` — passed: <behavior it exercised>.
-- <Relevant CI coverage, or an honest not-run reason.>
 
 ## Implementation notes
 
@@ -88,20 +86,26 @@ rollout detail, or risk that materially helps review.>
 
 Keep `New behavior` first. After that, order proof by usefulness: short stack
 context when needed, the explanatory diagram, visual evidence, manual
-verification, automated checks, then optional implementation notes.
+verification, then optional implementation notes.
 
-For a tiny change, a paragraph, one evidence screenshot, and one focused check
-may be enough. Do not add empty sections or decorative diagrams.
+For a tiny non-interactive change, a paragraph, one practical evidence
+screenshot may be enough. Do not add empty sections or decorative diagrams.
 
 ## Visual Proof
 
-Every PR needs at least one uploaded screenshot in the main body. Put the most
-useful evidence soon after the behavior description and diagram.
+Every PR needs at least one uploaded screenshot of practical behavior in the
+main body. UI interactions also require a deliberately paced manual walkthrough
+video. Put the most useful evidence soon after the behavior description and
+diagram.
 
-For UI changes, show every distinct changed state. For terminal, backend,
-infrastructure, docs, and test-only changes, show a focused terminal command and
-result or the meaningful rendered output. Keep the same command and result as
-copyable text under `How to verify` or `Checks`.
+For UI changes, record the complete changed interaction and show every distinct
+changed state. For backend, infrastructure, docs, and test-only changes, show
+the real product, API, persisted-state, operator, or rendered-use outcome. Keep
+reproduction steps as copyable text under `How to verify`.
+
+Tests, builds, CI, coverage, lint, type-check, validator output, and green
+checkmarks stay in the check run. Do not repeat routine pass lists in the PR
+body, screenshot them, or use them to satisfy `Visual proof`.
 
 Put useful context immediately below each image:
 
@@ -166,6 +170,21 @@ and the follow-up query confirms no supplier was saved.
 Keep examples copy-pasteable when possible. Label representative examples and
 state required roles or fixtures. Never include secrets or verbose output.
 
+Show both the boundary result and the important side effect: saved or rejected
+state, emitted event, queued job, changed record, idempotent retry, or absence of
+partial data. A contract test or test runner is supporting validation only.
+
+## Performance Proof
+
+Pair the visual before/after with a Markdown comparison table. Use matched
+hardware, environment, dataset, cache state, scenario, measurement method, and
+sample size. Report representative values and variability rather than one best
+run.
+
+| Scenario | Base | PR | Change | Samples |
+| --- | ---: | ---: | ---: | ---: |
+| <Observable operation> | <median/p95> | <median/p95> | <percent> | <count> |
+
 ## Tables
 
 Use a table only when rows need comparison across stable axes, such as scenario
@@ -184,8 +203,11 @@ or verify the behavior:
 - net-diff tables, file inventories, and implementation buckets as behavior;
 - unexplained ticket IDs, sprint names, bug-bash labels, or thread shorthand;
 - test-file lists or long command inventories in place of behavioral proof;
+- routine test, build, and CI pass lists already visible in GitHub's checks;
 - review-loop history, agent names, run labels, and planning notes;
 - local-only paths, image tables, and attachments left only in comments;
 - raw terminal dumps, tiny terminal text, secrets, tokens, or verbose CI output;
+- screenshots or videos of tests, builds, CI, coverage, lint, type-checking,
+  validators, green checkmarks, or automated E2E runners as behavioral proof;
 - claims such as "works as expected" without saying what was exercised;
 - changes owned by another stack layer or a repeated whole-stack summary.

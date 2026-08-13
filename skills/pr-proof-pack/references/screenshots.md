@@ -1,24 +1,30 @@
-# Visual Evidence
+# Practical Visual Evidence
 
 ## Contents
 
 - [Hard Requirement](#hard-requirement)
 - [Computer Use Upload Path](#computer-use-upload-path)
 - [Evidence Contract](#evidence-contract)
-- [Terminal and Non-UI Evidence](#terminal-and-non-ui-evidence)
+- [UI Interaction Proof](#ui-interaction-proof)
+- [Backend and Operator Proof](#backend-and-operator-proof)
+- [Performance Proof](#performance-proof)
 - [Placement](#placement)
-- [Before and After](#before-and-after)
 
 ## Hard Requirement
 
-Every PR must include at least one useful, uploaded screenshot in its main body.
-This includes terminal, backend, infrastructure, documentation, dependency,
-configuration, and test-only changes. UI changes need screenshots of every
-distinct changed state or surface.
+Every PR must include uploaded visual evidence of the implemented behavior
+working in practice. Every PR needs at least one screenshot. UI interactions
+also need a deliberately paced manual walkthrough video.
 
-Local paths, text saying a check passed, and a reason for omitting screenshots
-do not satisfy this requirement. If Computer Use, capture, GitHub login, the
-attachment control, or final image rendering fails, stop before creating or
+Tests, builds, CI, coverage, lint, type-check, validator output, green
+checkmarks, and screenshots of those results are supporting checks, not
+behavioral evidence. Leave routine pass lists in GitHub's checks instead of
+repeating them in the PR body. They cannot satisfy `Visual proof`. Code, diffs,
+diagrams, mockups, and generated stand-ins also cannot prove that the
+implementation ran.
+
+If Computer Use, practical capture, screen recording, GitHub login, attachment
+upload, image rendering, or video playback fails, stop before creating or
 updating the PR. Tell the human the concrete failure and ask them to restore the
 blocked capability. Continue only after it works.
 
@@ -36,81 +42,88 @@ Before any PR mutation:
 4. If any part fails, stop and ask the human to repair Computer Use or login.
 
 For a new PR, the publishing workflow may create a draft shell after this
-preflight. Then upload each evidence file through GitHub's normal attachment UI:
+preflight. Upload each screenshot and recording through GitHub's attachment UI.
+Wait for a reviewer-visible `user-attachments` reference, place it in the main
+PR body without submitting a detached comment, save, and inspect the rendered
+image or playable recording.
 
-1. Open the PR in the agent-owned browser.
-2. Attach the screenshot through the PR comment box or drag-and-drop area.
-3. Wait for GitHub to insert a
-   `https://github.com/user-attachments/assets/...` Markdown image reference.
-4. Copy that Markdown into the main PR body without submitting a comment.
-5. Save the PR body, open the rendered view, and confirm the image loads at a
-   readable size with its caption directly below it.
-
-Follow the active Computer Use confirmation policy at the actual upload step.
-Do not commit proof screenshots to the repository unless the project or user
-explicitly requests that storage model.
+Follow the active Computer Use confirmation policy at the upload step. Do not
+commit proof media to the repository unless the project or user explicitly
+requests that storage model.
 
 ## Evidence Contract
 
-Every screenshot answers these questions in the body:
+Every visual answers these questions in nearby text:
 
-1. What current net-diff behavior or result does this prove?
-2. What exact route, state, fixture, command, environment, viewport, and crop
-   produced it?
-3. Why is this the clearest visual evidence for the claim?
+1. What current net-diff behavior does this visibly demonstrate?
+2. What starting state, input, action, transition, and outcome appear?
+3. What route, fixture, account, environment, viewport, dataset, and capture
+   method make it reproducible?
+4. What important error, recovery, persistence, or side effect was checked?
 
-Prefer the smallest readable capture:
+Use real output from the current branch. Before means the direct PR base, not a
+previous feature-branch commit. Recapture after every related branch change.
 
-1. **Element crop** for a card, row, panel, modal, form, or error.
-2. **Terminal region crop** for a command and its focused result.
-3. **Viewport crop** when surrounding controls or context explain the state.
-4. **Full-page capture** only when page-wide layout, ordering, pagination, or
-   below-the-fold content is part of the proof.
+## UI Interaction Proof
 
-Use real output from the current branch. Do not use mockups, generated stand-ins,
-or evidence captured before a related branch change.
+Record the changed flow manually at a deliberate pace. A reviewer should be able
+to follow without scrubbing frame by frame.
 
-## Terminal and Non-UI Evidence
+- begin before the first relevant action so the starting state is visible;
+- move the pointer deliberately and pause after important transitions;
+- show the input, loading or transition state, outcome, and relevant recovery;
+- exercise changed error, empty, permission, responsive, keyboard, or reduced-
+  motion behavior when it is in scope;
+- upload screenshots of every distinct changed state at readable size;
+- use realistic data and avoid secrets or personal information.
 
-A terminal screenshot is valid and required evidence for non-UI work. Make it
-easy to read:
+A test runner video, a replay of automated E2E output, or static screenshots
+alone do not replace the manual interaction walkthrough.
 
-- show the focused command and the line or small result block that proves the
-  claim;
-- use a readable font size and crop away unrelated shell history and chrome;
-- include enough context to distinguish success from a command that merely ran;
-- redact or avoid secrets, tokens, private URLs, personal data, and noisy logs;
-- keep the command and expected result as copyable text in the PR body;
-- capture current output after the final branch change.
+## Backend and Operator Proof
 
-Examples include a targeted test with the behavior named in its output, a
-request and response, a migration dry-run summary, a rendered-document check, or
-a focused diff/validator result. A wall of green test output is weaker than one
-small result tied to the PR's main claim.
+Show the changed system behavior, not the command that checked it:
+
+- API: representative request, response, and persisted or rejected state;
+- worker or queue: input event, processing outcome, and resulting side effect;
+- migration: realistic dry run or execution plus changed records and rollback;
+- infrastructure: operator action plus resulting resource or runtime state;
+- test-only: the running product scenario the test now protects.
+
+Terminal screenshots remain useful when they show the real request and outcome.
+A terminal showing only a test, build, validator, or success exit code is not
+evidence.
+
+## Performance Proof
+
+Show the experience or system becoming faster, smaller, or more stable:
+
+- capture comparable before/after traces, recordings, charts, or visible timing;
+- use the same hardware, environment, dataset, cache state, scenario, and tool;
+- report the measurement method and sample size;
+- include representative values and variability, not only the best run;
+- add a Markdown comparison table beside the visual.
+
+Example:
+
+| Scenario | Base median | PR median | Change | Samples |
+| --- | ---: | ---: | ---: | ---: |
+| Dashboard ready | 2.4 s | 1.5 s | 37.5% faster | 20 |
 
 ## Placement
 
-Put each image directly in the main PR body, never in a table or detached
-comment. Place its explanation immediately below it:
+Put each image and recording directly in the main PR body, never in a table or
+detached comment. Place its explanation immediately below it:
 
 ```md
-![Install sorting check passes](https://github.com/user-attachments/assets/...)
+<uploaded interaction recording>
 
-**What this shows:** The focused browser test confirms install sorting renders
-production rows in descending order.
+**What this shows:** Saving an invalid supplier stops at the form, explains the
+phone-number error, and keeps the entered values available for correction.
 
-**State:** `npm test -- install-sort`, current PR branch, terminal region crop.
+**State:** Local seeded supplier account; desktop viewport; manual interaction
+recorded at deliberate pace on the current PR branch.
 ```
 
-Use human labels and descriptive alt text. The uploaded file name is not a
-caption.
-
-## Before and After
-
-Before means direct-base behavior, not the previous feature-branch commit.
-
-- Before = direct base or production when it matches that base.
-- Now = current PR branch.
-- If base and branch now match, remove the before/after claim.
-- If a true before capture is impractical, say what was captured and why.
-- After any related branch change, recapture and replace stale evidence.
+Use descriptive alt text and labels. Keep reproduction steps copyable. Let
+GitHub's checks report routine automated validation.

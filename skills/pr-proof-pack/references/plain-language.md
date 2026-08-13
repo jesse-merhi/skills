@@ -46,7 +46,8 @@ reviewer-facing outcome rather than the touched files.
 Good:
 
 - `Require Computer Use before publishing PR proof`
-- `Show terminal checks as uploaded evidence`
+- `Show real API outcomes as uploaded evidence`
+- `Record changed UI interactions at a deliberate pace`
 
 Weak:
 
@@ -62,9 +63,9 @@ better PR title.
 ## Body, Captions, and Diagrams
 
 Use the same nouns for the same actor and behavior throughout. The opening
-paragraph supplies the premise; screenshots show the evidence; captions say the
-exact claim; diagrams explain the flow; verification tells the reviewer how to
-reproduce it.
+paragraph supplies the premise; recordings and screenshots show the practical
+evidence; captions say the exact claim; diagrams explain the flow; verification
+tells the reviewer how to reproduce it.
 
 Read the finished PR from top to bottom and ask:
 
