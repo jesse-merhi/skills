@@ -1,5 +1,5 @@
 import { NodeRuntime } from "@effect/platform-node";
-import { Console, Effect } from "effect";
+import { Console, Effect, Option, Schema } from "effect";
 // The analyzer snapshots large directory trees synchronously inside one Effect;
 // Node's Dirent API avoids thousands of Effect allocations without changing lifecycle ownership.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
@@ -104,21 +104,23 @@ function numberArg(value: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function findModelRecord(value: unknown, target: string): Record<string, unknown> | null {
-  if (Array.isArray(value)) {
+const ModelCache = Schema.fromJsonString(Schema.Json);
+const isJsonArray = (value: Schema.Json): value is Schema.JsonArray => Array.isArray(value);
+
+function findModelRecord(value: Schema.Json, target: string): Schema.JsonObject | null {
+  if (isJsonArray(value)) {
     for (const item of value) {
       const found = findModelRecord(item, target);
       if (found) return found;
     }
     return null;
   }
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const names = [record.slug, record.id, record.model, record.name]
+  if (value === null || typeof value !== "object") return null;
+  const names = [value.slug, value.id, value.model, value.name]
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.toLowerCase());
-  if (names.includes(target.toLowerCase())) return record;
-  for (const item of Object.values(record)) {
+  if (names.includes(target.toLowerCase())) return value;
+  for (const item of Object.values(value)) {
     const found = findModelRecord(item, target);
     if (found) return found;
   }
@@ -136,7 +138,8 @@ function codexModelContext(modelName: string): {
   const cache = path.join(home, ".codex/models_cache.json");
   if (exists(cache)) {
     try {
-      const record = findModelRecord(JSON.parse(fs.readFileSync(cache, "utf8")), modelName);
+      const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
+      const record = Option.isSome(decoded) ? findModelRecord(decoded.value, modelName) : null;
       const tokens = Number(record?.context_window);
       const effectivePercent = Number(record?.effective_context_window_percent);
       if (Number.isFinite(tokens) && tokens > 0) {

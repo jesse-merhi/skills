@@ -1,6 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Clock, Console, Effect } from "effect"
 import { Argument, Command } from "effect/unstable/cli"
+
 import { parseWaitDuration, WaitDurationError } from "./Wait.ts"
 
 const quietWait = Command.make(

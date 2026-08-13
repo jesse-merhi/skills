@@ -1,6 +1,7 @@
-import { createHash } from "node:crypto"
 import { Console, Effect, FileSystem, Path } from "effect"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
+import { createHash } from "node:crypto"
+
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 export interface ReviewRun {

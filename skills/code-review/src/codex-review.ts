@@ -1,7 +1,8 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Console, Effect, FileSystem, Option, Path } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable, type ReviewMode } from "./NativeReview.ts"
+
+import { reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } from "./NativeReview.ts"
 
 // Environment defaults are captured once at the CLI boundary.
 // @effect-diagnostics-next-line processEnv:off
@@ -18,14 +19,14 @@ const review = Command.make("codex-review", {
   parallelTests: Flag.optional(Flag.string("parallel-tests")),
   dryRun: Flag.boolean("dry-run")
 }, Effect.fn("codexReview.handler")(function*(args) {
-  const plan = yield* selectReviewPlan(args.mode as ReviewMode, args.base, args.commit)
+  const plan = yield* selectReviewPlan(args.mode, args.base, args.commit)
   yield* Console.log(`codex-review target: ${plan.label}`)
   if (plan.targets.some((target) => target.snapshot)) yield* Console.log("snapshot: temporary worktree with local overlay")
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
   if (args.dryRun) return
   const result = yield* untilReviewStable({
     identity: reviewIdentity(),
-    operation: selectReviewPlan(args.mode as ReviewMode, args.base, args.commit).pipe(
+    operation: selectReviewPlan(args.mode, args.base, args.commit).pipe(
       Effect.flatMap((currentPlan) => runNativeReview({ codexBin: args.codexBin, plan: currentPlan, testCommand: args.parallelTests }).pipe(
         Effect.map((output) => ({ output, plan: currentPlan }))
       ))

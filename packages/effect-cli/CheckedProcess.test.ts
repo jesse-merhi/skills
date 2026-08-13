@@ -1,7 +1,8 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
-import { checkedInherit, checkedText } from "./CheckedProcess.ts"
+import { Effect, PlatformError } from "effect"
+
+import { checkedInherit, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
 
 const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off
@@ -9,6 +10,15 @@ const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => e
 )
 
 describe("checked process boundary", () => {
+  it("maps typed platform signal failures to shell-compatible statuses", () => {
+    const interrupted = PlatformError.systemError({ _tag: "Unknown", module: "ChildProcess", method: "exitCode", cause: new Error("Process interrupted due to receipt of signal: 'SIGTERM'") })
+    const other = PlatformError.systemError({ _tag: "Unknown", module: "ChildProcess", method: "exitCode", cause: new Error("not a signal failure") })
+    const unrelated = PlatformError.systemError({ _tag: "Unknown", module: "FileSystem", method: "readFile", cause: new Error("Process interrupted due to receipt of signal: 'SIGTERM'") })
+    assert.strictEqual(platformErrorExitCode(interrupted), 143)
+    assert.isUndefined(platformErrorExitCode(other))
+    assert.isUndefined(platformErrorExitCode(unrelated))
+  })
+
   it.effect("rejects non-zero commands with their stderr and exit code", () => live(
     checkedText(process.execPath, ["-e", "process.stderr.write('broken\\n'); process.exit(7)", "secret-value"], { displayCommand: "node [redacted]" }).pipe(
       Effect.flip,

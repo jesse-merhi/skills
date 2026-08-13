@@ -1,15 +1,16 @@
+import { NodeServices } from "@effect/platform-node"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect, Option } from "effect"
 // Executable-level compatibility tests intentionally exercise Node process boundaries.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { execFile as execFileCallback } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
 import { promisify } from "node:util"
-import { NodeServices } from "@effect/platform-node"
-import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+
 import { planReview, reviewBaseCandidates, runNativeReview, untilReviewStable } from "./NativeReview.ts"
 
 const execFile = promisify(execFileCallback)

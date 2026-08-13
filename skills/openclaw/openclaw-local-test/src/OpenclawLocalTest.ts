@@ -1,5 +1,6 @@
-import { createConnection, type Socket } from "node:net"
 import { Console, Effect, Exit, FileSystem, Option, Path, Schedule, Schema } from "effect"
+import { createConnection, type Socket } from "node:net"
+
 import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
 
 const RuntimeProfile = Schema.Struct({ id: Schema.String, auth: Schema.String, route: Schema.String, model: Schema.String, modelRef: Schema.String, runtimeId: Schema.String, pluginId: Schema.String })
@@ -10,6 +11,7 @@ const WizardStart = Schema.Union([
 ])
 const WizardStatus = Schema.Struct({ status: Schema.Literal("running") })
 const WizardCancel = Schema.Struct({ status: Schema.Literal("cancelled") })
+const UnknownJson = Schema.fromJsonString(Schema.Unknown)
 const portIsFree = (port: number) => Effect.callback<boolean>((resume) => { let socket: Socket | undefined; const done = (free: boolean) => { socket?.destroy(); resume(Effect.succeed(free)) }; socket = createConnection({ host: "127.0.0.1", port }).once("connect", () => done(false)).once("error", () => done(true)); return Effect.sync(() => socket?.destroy()) })
 export const choosePorts = Effect.fn("Openclaw.choosePorts")(function*(start: number, gateway: Option.Option<number>, proxy: Option.Option<number>) {
   let candidate = Option.getOrElse(gateway, () => start)
@@ -122,7 +124,11 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
     const proxyPid = yield* readPid(files.sharedProxy)
     if (proxyPid === undefined || !(yield* portOwnedByPid(ports.proxy, proxyPid))) return yield* new LocalTestError({ message: `browser proxy port ${ports.proxy} is not owned by the shared proxy process` })
     const cliArgs = [entrypoint, "gateway", "call"]
-    const rpc = (method: string, params: object) => capture(process.execPath, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(Effect.flatMap((output) => Effect.try({ try: () => JSON.parse(output) as unknown, catch: (cause) => new LocalTestError({ message: `${method} returned invalid JSON`, cause }) })))
+    const rpc = (method: string, params: object) => capture(process.execPath, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(
+      Effect.flatMap((output) => Schema.decodeUnknownEffect(UnknownJson)(output).pipe(
+        Effect.mapError((cause) => new LocalTestError({ message: `${method} returned invalid JSON`, cause }))
+      ))
+    )
     const started = yield* rpc("wizard.start", { mode: "local" }).pipe(Effect.flatMap(Schema.decodeUnknownEffect(WizardStart)))
     if (!started.done) {
       const sessionId = started.sessionId

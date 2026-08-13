@@ -1,6 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Console, Effect, Option, Schema } from "effect"
-import { Flag, Command } from "effect/unstable/cli"
+import { Command, Flag } from "effect/unstable/cli"
+
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { estimateWaitNow, WorkflowRunFromJson, WorkflowRunsFromJson } from "./Wait.ts"
 

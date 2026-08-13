@@ -1,3 +1,4 @@
+import { assert, describe, it } from "@effect/vitest"
 // This executable-level test verifies filesystem installation behavior.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { execFile as execFileCallback } from "node:child_process"
@@ -7,7 +8,7 @@ import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
 import { promisify } from "node:util"
-import { assert, describe, it } from "@effect/vitest"
+
 import { publisherAbuseFixturesExist, validateConvexTarget } from "./ClawhubLocalTest.ts"
 
 const execFile = promisify(execFileCallback)

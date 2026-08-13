@@ -1,6 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Config, Console, Effect, FileSystem, Option, Path, Schema } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
+
 import { checkedInherit, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 const quote = (value: string) => value.replace(/([^A-Za-z0-9_./:%-])/gu, "\\$1")

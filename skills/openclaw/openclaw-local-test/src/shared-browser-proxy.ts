@@ -1,13 +1,21 @@
+import type { Duplex } from "node:stream"
+
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Console, Effect, FileSystem, Option, Path, Schedule, Schema } from "effect"
 // This file implements an HTTP/WebSocket server; Effect HttpClient is not a server replacement.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import http, { type IncomingMessage, type ServerResponse } from "node:http"
 import net from "node:net"
-import type { Duplex } from "node:stream"
 
 interface Route { readonly proxyPort: number; readonly targetHost: string; readonly targetPort: number; readonly gatewayPid: number; readonly filePath: string }
 interface Running { readonly route: Route; readonly server: http.Server }
+const PersistedRoute = Schema.Struct({
+  gatewayPid: Schema.Int,
+  proxyPort: Schema.Int,
+  targetHost: Schema.optional(Schema.String),
+  targetPort: Schema.Int
+})
+const PersistedRouteJson = Schema.fromJsonString(PersistedRoute)
 const routes = new Map<number, Running>()
 const environment = process.env
 const host = environment.OPENCLAW_SHARED_PROXY_HOST ?? "127.0.0.1"
@@ -47,11 +55,11 @@ const readRoutes = Effect.gen(function*() {
   const entries = yield* fs.readDirectory(routeDir), found = new Map<number, Route>()
   for (const entry of entries.filter((name) => name.endsWith(".json"))) {
     const filePath = paths.join(routeDir, entry)
-    const parsed = yield* fs.readFileString(filePath).pipe(Effect.flatMap((source) => Effect.try(() => JSON.parse(source) as unknown)), Effect.option)
-    if (Option.isNone(parsed) || typeof parsed.value !== "object" || parsed.value === null) continue
-    const value = parsed.value as Record<string, unknown>, proxyPort = Number(value.proxyPort), targetPort = Number(value.targetPort), gatewayPid = Number(value.gatewayPid)
-    if (!Number.isInteger(proxyPort) || !Number.isInteger(targetPort) || !pidAlive(gatewayPid)) { yield* fs.remove(filePath, { force: true }); continue }
-    found.set(proxyPort, { proxyPort, targetPort, gatewayPid, targetHost: typeof value.targetHost === "string" ? value.targetHost : "127.0.0.1", filePath })
+    const parsed = yield* fs.readFileString(filePath).pipe(Effect.flatMap(Schema.decodeUnknownEffect(PersistedRouteJson)), Effect.option)
+    if (Option.isNone(parsed)) continue
+    const { gatewayPid, proxyPort, targetHost = "127.0.0.1", targetPort } = parsed.value
+    if (!pidAlive(gatewayPid)) { yield* fs.remove(filePath, { force: true }); continue }
+    found.set(proxyPort, { proxyPort, targetPort, gatewayPid, targetHost, filePath })
   }
   return found
 })

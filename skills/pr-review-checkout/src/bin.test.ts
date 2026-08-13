@@ -1,3 +1,4 @@
+import { assert, describe, it } from "@effect/vitest"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
@@ -6,7 +7,7 @@ import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { assert, describe, it } from "@effect/vitest"
+
 import { shellQuote } from "./PrReview.ts"
 
 const executable = fileURLToPath(new URL("../scripts/pr-review", import.meta.url))

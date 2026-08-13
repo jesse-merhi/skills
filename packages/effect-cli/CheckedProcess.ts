@@ -1,6 +1,6 @@
-import { constants as osConstants } from "node:os"
-import { Cause, Effect, Exit, PlatformError, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Option, PlatformError, Schema, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { constants as osConstants } from "node:os"
 
 export class CheckedProcessError extends Schema.TaggedError<CheckedProcessError>()("CheckedProcessError", {
   command: Schema.String,
@@ -24,21 +24,16 @@ const commandInput = (stdin: string | undefined) => stdin === undefined
 
 const processError = (executable: string, command: string, cause: PlatformError.PlatformError) => {
   const notFound = cause.reason._tag === "NotFound"
-  return new CheckedProcessError({ command, exitCode: notFound ? 127 : signalExitCode(cause), message: notFound ? `${executable}: command not found` : `failed to run ${command}`, stderr: "", cause })
+  return new CheckedProcessError({ command, exitCode: notFound ? 127 : platformErrorExitCode(cause) ?? 1, message: notFound ? `${executable}: command not found` : `failed to run ${command}`, stderr: "", cause })
 }
 
-const signalExitCode = (cause: unknown) => {
-  const messages: Array<string> = []
-  let current: unknown = cause
-  for (let depth = 0; depth < 4 && current !== undefined; depth += 1) {
-    messages.push(current instanceof Error ? current.message : String(current))
-    if (current instanceof PlatformError.PlatformError && "cause" in current.reason) current = current.reason.cause
-    else if (typeof current === "object" && current !== null && "cause" in current) current = current.cause
-    else current = undefined
-  }
-  const signal = messages.flatMap((message) => /signal: '([^']+)'/u.exec(message)?.[1] ?? []).at(0)
-  const number = signal === undefined ? undefined : osConstants.signals[signal as keyof typeof osConstants.signals]
-  return number === undefined ? 1 : 128 + number
+export const platformErrorExitCode = (error: PlatformError.PlatformError): number | undefined => {
+  if (error.reason.module !== "ChildProcess" || error.reason.method !== "exitCode") return undefined
+  const original = error.reason.cause
+  if (!(original instanceof Error)) return undefined
+  const signal = /signal: '([^']+)'/u.exec(original.message)?.[1]
+  const number = Object.entries(osConstants.signals).find(([name]) => name === signal)?.[1]
+  return signal === undefined || number === undefined ? undefined : 128 + number
 }
 
 export const checkedText = Effect.fn("CheckedProcess.text")(function*(
@@ -62,7 +57,9 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
     )
     if (Exit.isFailure(result.exit)) {
       const cause = Cause.squash(result.exit.cause)
-      return yield* new CheckedProcessError({ command: commandText, exitCode: signalExitCode(cause), message: `${commandText} was interrupted`, stderr: result.stderr, cause })
+      const platformError = Cause.findErrorOption(result.exit.cause)
+      const exitCode = Option.isSome(platformError) ? platformErrorExitCode(platformError.value) ?? 1 : 1
+      return yield* new CheckedProcessError({ command: commandText, exitCode, message: `${commandText} was interrupted`, stderr: result.stderr, cause })
     }
     if (result.exit.value !== 0) {
       return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: result.stderr.trim() || `${commandText} exited ${result.exit.value}`, stderr: result.stderr })

@@ -1,6 +1,7 @@
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, FileSystem, Layer, Option, Ref, Schema } from "effect"
+
 import {
   checkoutForReview,
   ExternalToolError,
@@ -13,15 +14,14 @@ import {
   authenticatedGitArgs,
   createAndArmBranchOwnership,
   createWorktreeWithRollback,
-  parseWorktrees,
-  pullRequestCheckoutArgs,
-  pullRefTrackingRef,
-  repositoryIdentity,
-  repositoryHost,
-  repositoryPathIdentity,
   isVerifiedRepositoryAlias,
-  sshResolvedHost,
-  signalExitCode
+  parseWorktrees,
+  pullRefTrackingRef,
+  pullRequestCheckoutArgs,
+  repositoryHost,
+  repositoryIdentity,
+  repositoryPathIdentity,
+  sshResolvedHost
 } from "./ReviewToolsLive.ts"
 
 interface TestToolsOptions {
@@ -243,13 +243,6 @@ describe("authenticatedGitArgs", () => {
       "origin",
       "pull/42/head"
     ])
-  })
-})
-
-describe("signalExitCode", () => {
-  it("maps platform signal failures to shell-compatible statuses", () => {
-    assert.strictEqual(signalExitCode(new Error("Process interrupted due to receipt of signal: 'SIGTERM'")), 143)
-    assert.isUndefined(signalExitCode(new Error("not a signal failure")))
   })
 })
 

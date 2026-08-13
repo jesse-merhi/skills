@@ -1,6 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Effect, Option, Runtime } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
+
 import { openclawLocalTest } from "./OpenclawLocalTest.ts"
 
 // Environment defaults are captured once at the CLI boundary.

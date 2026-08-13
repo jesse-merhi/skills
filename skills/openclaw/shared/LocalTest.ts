@@ -1,10 +1,11 @@
+import { Console, Effect, FileSystem, Schedule, Schema } from "effect"
 // Persistent detached daemons outlive an Effect scope, so this boundary uses Node's unref API.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawn } from "node:child_process"
 // File descriptors must be opened before spawning so detached stdout/stderr remain valid.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { openSync, closeSync } from "node:fs"
-import { Console, Effect, FileSystem, Schedule, Schema } from "effect"
+import { closeSync, openSync } from "node:fs"
+
 import { checkedInherit, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 // Home expansion is a pure CLI-boundary default.

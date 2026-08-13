@@ -4,6 +4,7 @@ const DurationInput = Schema.String.pipe(
   Schema.check(Schema.isPattern(/^[0-9]+(?:\.[0-9]+)?(?:ms|s|m|h)?$/)),
   Schema.brand("WaitDurationInput")
 )
+const DurationUnit = Schema.Literals(["", "h", "m", "ms", "s"])
 
 export class WaitDurationError extends Schema.TaggedError<WaitDurationError>()("WaitDurationError", {
   input: Schema.String,
@@ -33,7 +34,9 @@ export const parseWaitDuration = Effect.fn("parseWaitDuration")(function*(input:
       message: "duration must be a non-negative number with ms, s, m, or h"
     })
   }
-  const unit = (match[2] ?? "") as keyof typeof unitMilliseconds
+  const unit = yield* Schema.decodeUnknownEffect(DurationUnit)(match[2] ?? "").pipe(
+    Effect.mapError(() => new WaitDurationError({ input, message: "duration must use ms, s, m, or h" }))
+  )
   const milliseconds = Number(match[1]) * unitMilliseconds[unit]
   if (milliseconds > 86_400_000) {
     return yield* new WaitDurationError({ input, message: "duration must not exceed 24 hours" })

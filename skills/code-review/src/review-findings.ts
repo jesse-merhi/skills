@@ -2,8 +2,9 @@ import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
 import { Cause, Console, Effect, FileSystem, Layer, Option, Path } from "effect"
 import { Argument, Command, Flag } from "effect/unstable/cli"
-import { buildCloseout, initialize, MissingReviewRun, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun } from "./ReviewFindings.ts"
+
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { buildCloseout, initialize, MissingReviewRun, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun } from "./ReviewFindings.ts"
 
 // Environment defaults are resolved once at the CLI boundary before effects run.
 // @effect-diagnostics-next-line processEnv:off

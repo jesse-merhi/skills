@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Schema } from "effect"
-import { estimateWait, parseWaitDuration, WorkflowRunFromJson, type WorkflowRun } from "./Wait.ts"
+
+import { estimateWait, parseWaitDuration, type WorkflowRun, WorkflowRunFromJson } from "./Wait.ts"
 
 const run = (databaseId: number, durationMinutes: number, headBranch = "main"): WorkflowRun => ({
   databaseId,

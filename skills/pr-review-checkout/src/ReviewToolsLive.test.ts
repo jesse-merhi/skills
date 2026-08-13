@@ -1,3 +1,6 @@
+import { NodeServices } from "@effect/platform-node"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect, Layer, Schema } from "effect"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
@@ -5,9 +8,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
-import { NodeServices } from "@effect/platform-node"
-import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Schema } from "effect"
+
 import { PullRequestNumber, ReviewTools } from "./PrReview.ts"
 import { ReviewToolsLive } from "./ReviewToolsLive.ts"
 
