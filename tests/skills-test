@@ -301,12 +301,47 @@ test_wait_what_owns_repitch_guidance() {
   local skill="$ROOT_DIR/skills/wait-what"
 
   assert_not_contains "$ROOT_DIR/AGENTS.md" "Teach like a great professor"
-  assert_contains "$skill/SKILL.md" "Back up far enough"
+  assert_contains "$skill/SKILL.md" "Find the missing premise"
   assert_contains "$skill/SKILL.md" "everyday language"
-  assert_contains "$skill/SKILL.md" "technical density to the expertise"
+  assert_contains "$skill/SKILL.md" "technical density to the reader's demonstrated"
   assert_contains "$skill/SKILL.md" 'established terms from `CONTEXT.md`'
-  assert_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$skill/SKILL.md" "Done when"
+  assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
+}
+
+test_show_me_owns_the_visual_decision() {
+  local skill="$ROOT_DIR/skills/show-me"
+
+  assert_contains "$skill/SKILL.md" "Treat this as a visual filter"
+  assert_contains "$skill/SKILL.md" "State the teaching question"
+  assert_contains "$skill/SKILL.md" "the decision is explicitly"
+  assert_contains "$skill/SKILL.md" "pseudocode"
+  assert_contains "$skill/SKILL.md" "call tree"
+  assert_contains "$skill/SKILL.md" "component tree"
+  assert_contains "$skill/SKILL.md" "file-responsibility tree"
+  assert_contains "$skill/SKILL.md" "focused diff"
+  assert_contains "$skill/SKILL.md" '`html-explanations`'
+  assert_contains "$skill/SKILL.md" "Several steps, files, or components do not"
+  assert_contains "$skill/SKILL.md" "whose only job is polish"
+  assert_contains "$skill/SKILL.md" "Done when"
+  assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 HumanLayer"
+}
+
+test_speak_fking_english_owns_the_final_response_checkpoint() {
+  local skill="$ROOT_DIR/skills/speak-fking-english"
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before every final response"
+  assert_contains "$ROOT_DIR/AGENTS.md" 'load `speak-fking-english`'
+  assert_not_contains "$ROOT_DIR/AGENTS.md" "Use its reader reset and visual decision"
+  assert_contains "$skill/SKILL.md" 'Load `wait-what`'
+  assert_contains "$skill/SKILL.md" 'Load `show-me`'
+  assert_contains "$skill/SKILL.md" "Done when"
+  assert_contains "$skill/SKILL.md" "For a calling"
+  assert_not_contains "$skill/SKILL.md" "everyday language"
+  assert_not_contains "$skill/SKILL.md" "pseudocode"
+  assert_not_contains "$skill/SKILL.md" "standalone HTML"
+  assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
 }
 
 test_pr_proof_pack_is_a_visual_publishing_gate() {
@@ -321,16 +356,21 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/SKILL.md" "## Reviewer Boundary"
   assert_contains "$skill/SKILL.md" 'Every workflow step meets its `Done when` criterion'
   assert_not_contains "$skill/SKILL.md" "## Avoid"
+  assert_not_contains "$skill/SKILL.md" 'Load `show-me`'
+  assert_contains "$skill/SKILL.md" 'Load `speak-fking-english`'
+  assert_contains "$skill/SKILL.md" "immediately before saving"
 
   step_count="$(grep -Ec '^[0-9]+\. ' "$skill/SKILL.md")"
   done_count="$(grep -Ec '^[[:space:]]+Done when ' "$skill/SKILL.md")"
   if [[ "$step_count" != "$done_count" ]]; then
     fail "expected every pr-proof-pack step to have one Done when criterion"
   fi
-
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
   assert_contains "$skill/references/plain-language.md" "## PR Title"
   assert_contains "$skill/references/plain-language.md" "## Commit Subjects"
+  assert_contains "$skill/references/proof-selection.md" '`show-me` owns whether support is needed'
+  assert_not_contains "$skill/references/proof-selection.md" "component tree"
+  assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
   assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
@@ -343,8 +383,8 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "Automated validation only supports this proof"
   assert_contains "$skill/references/proof-selection.md" "deliberately paced video"
   assert_contains "$skill/references/proof-selection.md" "Markdown table"
-  assert_contains "$skill/references/proof-selection.md" "Default to prose"
-  assert_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
+  assert_not_contains "$skill/references/proof-selection.md" "Default to prose"
+  assert_not_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
   assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
@@ -601,6 +641,8 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
+test_show_me_owns_the_visual_decision
+test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command

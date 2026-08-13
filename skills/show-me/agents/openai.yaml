@@ -1,0 +1,4 @@
+interface:
+  display_name: "Show Me"
+  short_description: "Use a visual only when it makes the idea easier"
+  default_prompt: "Use $show-me to decide whether this explanation needs support and choose the smallest useful form when it does."

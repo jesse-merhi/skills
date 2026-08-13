@@ -1,0 +1,4 @@
+interface:
+  display_name: "Speak Fking English"
+  short_description: "Make final responses clear without performative visuals"
+  default_prompt: "Use $speak-fking-english to make this response clear and teachable before sending it."

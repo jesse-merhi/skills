@@ -55,9 +55,8 @@ Depends on #41; followed by #43.">
 
 ## How it works
 
-<Optional. Explain the mechanism only when it helps review. Add the smallest
-useful visual only when the subject has a relationship, sequence, state, spatial
-layout, or comparison that prose makes harder to understand.>
+<Optional. Include only the support returned by the final
+`speak-fking-english` pass. Omit this section when that pass chooses prose.>
 
 ## Visual proof
 
@@ -182,7 +181,7 @@ Use a table only when rows need comparison across stable axes, such as scenario
 
 Never put images in a table. If content is a sequence, list of facts, file
 inventory, prose split into columns, or cells with several clauses, use prose
-or bullets. Use a diagram only when it makes the relationship easier to learn.
+or bullets.
 
 ## What to Leave Out
 

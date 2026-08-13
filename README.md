@@ -89,14 +89,16 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 - **PR delivery:** `pr-proof-pack` and `monitoring-gh-actions` keep review
   evidence current. GitHub's external `gh-stack` skill, pinned in
   `external.md`, turns one dependency-ordered story into small logical PRs.
-- **Explanation:** `html-explanations` turns decisions, code flows, incidents,
-  models, lessons, and plans into standalone pages built around the reader's
-  question.
+- **Explanation:** `speak-fking-english` runs the reader reset and visual
+  decision before a final response. `show-me` adds the smallest useful support
+  only when the content has a shape prose makes hard to hold;
+  `html-explanations` is reserved for genuinely dense, interactive, or spatial
+  material where a standalone page helps the reader.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.
 - **Communication:** `wait-what` re-pitches an explanation when it stops making
-  sense, using the reader's level and the project's own language.
+  sense and supplies the reader reset used by `speak-fking-english`.
 - **Meta tools:** `writing-for-agents` shapes skills and instruction files;
   `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
   prompt-budget pressure.
@@ -112,6 +114,8 @@ Some of this started somewhere else.
 Matt Pocock's agent workflow ideas shaped the `grill`, spec, slicing, teaching,
 and handoff parts of the loop. Emil Kowalski's design-engineering work shaped
 the interaction, motion-discovery, review, and UI-prototyping skills; the
+adapted material retains its MIT notice.
+HumanLayer's `show-me` skill shaped the inline visual-selection workflow; the
 adapted material retains its MIT notice.
 `frontend-ui-validation` owns rendered proof separately from design direction.
 

@@ -123,17 +123,14 @@ Every claim must be understandable from at least one of these sources:
 
 8. Write a behavior-first PR body.
 
-   Read [references/body-shape.md](references/body-shape.md), then use the
-   explanation-support section of
-   [references/proof-selection.md](references/proof-selection.md). When that
-   decision chooses Mermaid, also read
-   [references/mermaid.md](references/mermaid.md). Draft the title, body, and
-   captions around the practical evidence, with reproduction steps and observed
-   results as copyable text.
+   Read [references/body-shape.md](references/body-shape.md). Draft the title,
+   body, and evidence captions around the practical evidence, with reproduction
+   steps and observed results as copyable text.
 
-   Done when the body tells one self-contained story, every evidence item has a
-   specific claim and reproduction context, and explanation support is either
-   deliberately omitted or has one stated teaching job.
+   Load `speak-fking-english` immediately before saving the complete draft.
+
+   Done when `speak-fking-english` returns a self-contained reviewer-facing draft
+   and every evidence item still has a specific claim and reproduction context.
 
 9. Upload the evidence with Computer Use.
 
