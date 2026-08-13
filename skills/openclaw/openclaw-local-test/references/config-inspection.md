@@ -6,10 +6,13 @@ runtime and safety overlay without printing raw auth material or private
 endpoint values.
 
 ```bash
-node - "$HOME/.openclaw-local-test/openclaw.json" <<'NODE'
-const fs = require("node:fs");
+node --input-type=module - "$HOME/.openclaw-local-test/openclaw.json" <<'NODE'
+import * as Schema from "effect/Schema";
+import fs from "node:fs";
+
 const configPath = process.argv[2];
-const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+const Config = Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown));
+const config = Schema.decodeUnknownSync(Config)(fs.readFileSync(configPath, "utf8"));
 const secretKey = /(api[-_]?key|token|secret|password|credential|cookie|authorization|baseurl|endpoint|proxy)/i;
 
 function redact(value) {

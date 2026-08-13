@@ -1,4 +1,7 @@
-import { Clock, DateTime, Effect, Schema } from "effect"
+import * as Clock from "effect/Clock"
+import * as DateTime from "effect/DateTime"
+import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 
 const DurationInput = Schema.String.pipe(
   Schema.check(Schema.isPattern(/^[0-9]+(?:\.[0-9]+)?(?:ms|s|m|h)?$/)),

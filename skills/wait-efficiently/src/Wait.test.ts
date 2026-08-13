@@ -1,5 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Schema } from "effect"
+import * as DateTime from "effect/DateTime"
+import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 
 import { estimateWait, parseWaitDuration, type WorkflowRun, WorkflowRunFromJson } from "./Wait.ts"
 

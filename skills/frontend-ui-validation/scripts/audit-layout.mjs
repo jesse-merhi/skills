@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { NodeRuntime } from "@effect/platform-node";
-import { Effect } from "effect";
+import * as Effect from "effect/Effect";
 import path from "node:path";
 import { createRequire } from "node:module";
 

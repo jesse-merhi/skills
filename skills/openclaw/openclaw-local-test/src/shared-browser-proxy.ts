@@ -1,7 +1,13 @@
 import type { Duplex } from "node:stream"
 
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Console, Effect, FileSystem, Option, Path, Schedule, Schema } from "effect"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
+import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 // This file implements an HTTP/WebSocket server; Effect HttpClient is not a server replacement.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import http, { type IncomingMessage, type ServerResponse } from "node:http"

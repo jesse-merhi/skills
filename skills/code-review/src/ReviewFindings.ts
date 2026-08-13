@@ -1,4 +1,7 @@
-import { Console, Effect, FileSystem, Path } from "effect"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Path from "effect/Path"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { createHash } from "node:crypto"
 

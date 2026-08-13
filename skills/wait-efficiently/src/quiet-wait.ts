@@ -1,5 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Clock, Console, Effect } from "effect"
+import * as Clock from "effect/Clock"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
 import { Argument, Command } from "effect/unstable/cli"
 
 import { parseWaitDuration, WaitDurationError } from "./Wait.ts"

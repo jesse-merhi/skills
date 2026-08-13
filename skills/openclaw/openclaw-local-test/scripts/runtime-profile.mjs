@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 import { NodeRuntime } from "@effect/platform-node";
-import { Console, Effect } from "effect";
+import * as Console from "effect/Console";
+import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -10,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_CODEX_MODEL = "gpt-5.6-sol";
 const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5";
+const JsonObject = Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown));
+const JsonString = Schema.fromJsonString(Schema.String);
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -17,9 +21,7 @@ function isObject(value) {
 
 function readJsonObject(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return {};
-  const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  if (!isObject(parsed)) throw new Error(`${filePath} must contain a JSON object`);
-  return parsed;
+  return Schema.decodeUnknownSync(JsonObject)(fs.readFileSync(filePath, "utf8"));
 }
 
 export function parseTopLevelTomlStrings(source) {
@@ -38,7 +40,7 @@ export function parseTopLevelTomlStrings(source) {
     const [, key, doubleQuoted, singleQuoted, bare] = match;
     if (doubleQuoted !== undefined) {
       try {
-        values[key] = JSON.parse(`"${doubleQuoted}"`);
+        values[key] = Schema.decodeUnknownSync(JsonString)(`"${doubleQuoted}"`);
       } catch {
         values[key] = doubleQuoted;
       }
@@ -129,7 +131,7 @@ export function inspectRuntimeProfiles(options = {}) {
   let claudeStatus = {};
   if (claudeStatusResult.ok) {
     try {
-      claudeStatus = JSON.parse(claudeStatusResult.output);
+      claudeStatus = Schema.decodeUnknownSync(JsonObject)(claudeStatusResult.output);
     } catch {
       claudeStatus = {};
     }

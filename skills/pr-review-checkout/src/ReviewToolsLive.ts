@@ -1,18 +1,16 @@
-import {
-  Cause,
-  Crypto,
-  Effect,
-  Exit,
-  FileSystem,
-  Layer,
-  Option,
-  Path,
-  PlatformError,
-  Ref,
-  Schema,
-  Stream,
-  String
-} from "effect"
+import * as Cause from "effect/Cause"
+import * as Crypto from "effect/Crypto"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
+import * as PlatformError from "effect/PlatformError"
+import * as Ref from "effect/Ref"
+import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
+import * as String from "effect/String"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 
 import type { PrepareManagedWorktreeInput, PullRequestNumber as PullRequestNumberType } from "./PrReview.ts"

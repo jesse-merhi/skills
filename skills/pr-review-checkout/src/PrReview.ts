@@ -1,4 +1,10 @@
-import { Context, Effect, Option, Path, Runtime, Schema, String } from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
+import * as Runtime from "effect/Runtime"
+import * as Schema from "effect/Schema"
+import * as String from "effect/String"
 
 export const PullRequestNumber = Schema.Int.pipe(
   Schema.check(Schema.isGreaterThan(0)),

@@ -1,5 +1,5 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import { Command, Flag } from "effect/unstable/cli"
 
 import { clawhubLocalTest } from "./ClawhubLocalTest.ts"

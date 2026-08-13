@@ -1,5 +1,6 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Effect, Schema } from "effect"
+import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 
 import { checkedInherit } from "../../../packages/effect-cli/CheckedProcess.ts"

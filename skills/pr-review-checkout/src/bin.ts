@@ -1,5 +1,8 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Cause, Console, Effect, Layer } from "effect"
+import * as Cause from "effect/Cause"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { Argument, CliError, Command } from "effect/unstable/cli"
 
 import { checkoutForReview, ExternalToolError, PullRequestNumber, ReviewTools } from "./PrReview.ts"

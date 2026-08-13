@@ -6,7 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import test from "node:test";
-import { Effect, Option } from "effect";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { choosePorts } from "../src/OpenclawLocalTest.ts";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));

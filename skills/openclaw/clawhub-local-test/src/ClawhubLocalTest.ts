@@ -1,4 +1,10 @@
-import { Config, Console, Effect, Exit, FileSystem, Option, Path } from "effect"
+import * as Config from "effect/Config"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
 import { randomBytes } from "node:crypto"
 import { createConnection, type Socket } from "node:net"
 

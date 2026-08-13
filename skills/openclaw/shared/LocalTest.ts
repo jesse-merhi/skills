@@ -1,4 +1,8 @@
-import { Console, Effect, FileSystem, Schedule, Schema } from "effect"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 // Persistent detached daemons outlive an Effect scope, so this boundary uses Node's unref API.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawn } from "node:child_process"

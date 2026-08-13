@@ -1,4 +1,11 @@
-import { Console, Effect, Exit, FileSystem, Option, Path, Schedule, Schema } from "effect"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
+import * as Path from "effect/Path"
+import * as Schedule from "effect/Schedule"
+import * as Schema from "effect/Schema"
 import { createConnection, type Socket } from "node:net"
 
 import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"

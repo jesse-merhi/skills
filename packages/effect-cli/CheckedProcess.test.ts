@@ -1,6 +1,7 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, PlatformError } from "effect"
+import * as Effect from "effect/Effect"
+import * as PlatformError from "effect/PlatformError"
 
 import { checkedInherit, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
 

@@ -1,3 +1,4 @@
+import * as effect from "@effect/eslint-plugin/plugin"
 import tsPlugin from "@typescript-eslint/eslint-plugin"
 import tsParser from "@typescript-eslint/parser"
 import vitest from "@vitest/eslint-plugin"
@@ -13,6 +14,8 @@ import preferEffectSchemaForUnknown from "./eslint-rules/prefer-effect-schema-fo
 
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
 const testFiles = ["**/*.test.ts"]
+const jsonParseAllowedFiles = ["**/*.test.ts", "**/*.test.mjs"]
+const runtimeJavaScriptFiles = ["skills/**/*.mjs"]
 const lintInfrastructureFiles = ["eslint.config.js", "eslint-rules/**/*.js", "eslint-rules/**/*.mjs"]
 const local = {
   rules: {
@@ -49,6 +52,7 @@ export default [
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
+      effect,
       "import-x": importX,
       local,
       perfectionist,
@@ -64,12 +68,17 @@ export default [
       "@typescript-eslint/consistent-type-assertions": ["error", { assertionStyle: "never" }],
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": "off",
+      "effect/no-import-from-barrel-package": ["error", { packageNames: ["effect"] }],
       "import-x/no-duplicates": "error",
       "import-x/no-import-module-exports": "error",
       "import-x/no-self-import": "error",
       "local/no-banner-comments": "error",
       "local/no-trivial-forwarding-wrapper": "error",
       "local/prefer-effect-schema-for-unknown": "error",
+      "no-restricted-syntax": ["error", {
+        selector: "CallExpression[callee.object.name='JSON'][callee.property.name='parse']",
+        message: "Decode JSON with Effect Schema.fromJsonString so parsing and validation stay at one typed boundary."
+      }],
       "perfectionist/sort-exports": ["error", { type: "alphabetical", order: "asc", fallbackSort: { type: "unsorted" }, ignoreCase: true, specialCharacters: "keep", newlinesBetween: "ignore", newlinesInside: "ignore" }],
       "perfectionist/sort-imports": ["error", { type: "alphabetical", order: "asc", fallbackSort: { type: "unsorted" }, ignoreCase: true, specialCharacters: "keep", sortBy: "path", internalPattern: ["^@/.+", "^~/.+", "^#.+"], partitionByComment: false, partitionByNewLine: false, newlinesBetween: 1, newlinesInside: 0, groups: ["type-import", ["value-builtin", "value-external"], "type-internal", "value-internal", ["type-parent", "type-sibling", "type-index"], ["value-parent", "value-sibling", "value-index"], "ts-equals-import", "unknown"] }],
       "perfectionist/sort-named-exports": ["error", { type: "alphabetical", order: "asc", fallbackSort: { type: "unsorted" }, ignoreAlias: false, ignoreCase: true, specialCharacters: "keep", newlinesBetween: "ignore", newlinesInside: "ignore" }],
@@ -82,6 +91,17 @@ export default [
       "sonarjs/no-all-duplicated-branches": "error",
       "sonarjs/no-useless-catch": "error",
       "sonarjs/updated-loop-counter": "error"
+    }
+  },
+  {
+    files: runtimeJavaScriptFiles,
+    plugins: { effect },
+    rules: {
+      "effect/no-import-from-barrel-package": ["error", { packageNames: ["effect"] }],
+      "no-restricted-syntax": ["error", {
+        selector: "CallExpression[callee.object.name='JSON'][callee.property.name='parse']",
+        message: "Decode JSON with Effect Schema.fromJsonString so parsing and validation stay at one typed boundary."
+      }]
     }
   },
   {
@@ -115,5 +135,9 @@ export default [
       "@vitest/valid-title": "error",
       "local/no-large-test-snapshots": "error"
     }
+  },
+  {
+    files: jsonParseAllowedFiles,
+    rules: { "no-restricted-syntax": "off" }
   }
 ]

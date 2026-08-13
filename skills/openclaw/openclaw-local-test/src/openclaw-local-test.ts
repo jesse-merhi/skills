@@ -1,5 +1,7 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Effect, Option, Runtime } from "effect"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as Runtime from "effect/Runtime"
 import { Command, Flag } from "effect/unstable/cli"
 
 import { openclawLocalTest } from "./OpenclawLocalTest.ts"
