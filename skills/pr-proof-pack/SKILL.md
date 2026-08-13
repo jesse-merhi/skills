@@ -150,8 +150,15 @@ Every claim must be understandable from at least one of these sources:
    Keep reproduction steps and observed results as copyable text. Do not add
    routine test, build, or CI pass lists that GitHub's checks already report.
 
+   Draft the title, body, and evidence captions. Load `speak-fking-english`
+   immediately before saving them. Apply its reader reset and
+   purposeful-support decision to the complete draft. This is a readability pass
+   over real practical evidence, not permission to replace that evidence with an
+   explainer.
+
    Done when the body tells one self-contained story in plain language and every
-   visual has a specific claim and reproduction context.
+   visual has a specific claim and reproduction context, and the reader-first
+   pass has removed context gaps, jargon, repetition, and performative support.
 
 9. Upload the evidence with Computer Use.
 
@@ -207,6 +214,8 @@ Every claim must be understandable from at least one of these sources:
   matched conditions, measurements, and sample sizes.
 - The PR title, commit subjects, body, captions, and any diagram labels use everyday
   language and restore the context a new reviewer needs.
+- `speak-fking-english` has run on the complete reviewer-facing draft immediately
+  before it is saved.
 - The body describes only current net behavior owned by the PR's direct-base
   layer, not branch-local churn or another stack layer.
 - The new behavior appears first in terms of what a person, API consumer,

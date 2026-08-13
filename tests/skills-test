@@ -353,6 +353,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/SKILL.md" "GitHub, Bitbucket, and other providers"
   assert_contains "$skill/SKILL.md" "PR titles and commit subjects must say the outcome"
   assert_contains "$skill/SKILL.md" 'Load `show-me`'
+  assert_contains "$skill/SKILL.md" 'Load `speak-fking-english`'
+  assert_contains "$skill/SKILL.md" "immediately before saving"
+  assert_contains "$skill/SKILL.md" "readability pass"
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
   assert_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
