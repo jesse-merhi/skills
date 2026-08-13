@@ -53,15 +53,10 @@ without knowing the agent thread.
 - Changing a lower stack layer: sync the stack, then refresh every affected
   upstack PR.
 
-## Reader Contract
+## Reviewer Boundary
 
-Write for a reviewer who has not seen the agent thread, planning notes,
-decision log, bug-bash shorthand, local branch history, or private chat.
-
-Back up far enough to supply the missing premise. Lead with the idea in everyday
-language, then introduce a technical term only if the reviewer needs it. Use
-short sentences, simple words, and one concrete example when it helps. Define
-unfamiliar project terms and match the technical detail to the likely reviewer.
+Assume the reviewer has not seen the agent thread, planning notes, decision log,
+local branch history, or private chat.
 
 Every claim must be understandable from at least one of these sources:
 
@@ -72,6 +67,9 @@ Every claim must be understandable from at least one of these sources:
 ## Workflow
 
 1. Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
+
+   Done when every relative script and reference path resolves from that
+   directory.
 
 2. Pass the Computer Use preflight.
 
@@ -125,40 +123,27 @@ Every claim must be understandable from at least one of these sources:
    premise restored, or the workflow has stopped to request approval before a
    necessary published-history rewrite.
 
-7. Choose practical visual proof, then decide whether explanation needs a visual.
+7. Choose practical visual proof.
 
-   Load `show-me`, then read
-   [references/proof-selection.md](references/proof-selection.md) and
+   Read [references/proof-selection.md](references/proof-selection.md) and
    [references/screenshots.md](references/screenshots.md). Every PR gets uploaded
    evidence of the behavior running in practice. UI work needs a deliberately
-   paced interaction recording and state screenshots. First explain the change
-   as a good teacher would. Add an explanation visual only when the subject has a
-   relationship, sequence, state, spatial layout, or comparison that is harder
-   to understand in prose. When Mermaid is useful, also read
-   [references/mermaid.md](references/mermaid.md).
+   paced interaction recording and state screenshots. Keep explanation support
+   out of the evidence decision; the final reader-first pass owns it.
 
    Done when every important behavior has reviewer-checkable practical
-   evidence, the required recordings and screenshots exist locally, and any
-   supporting visual makes a specific hard-to-hold idea easier to understand.
-   Explanation visuals and automated checks never replace practical evidence.
+   evidence and the required recordings and screenshots exist locally.
 
 8. Write a behavior-first PR body.
 
-   Read [references/body-shape.md](references/body-shape.md). Put the new behavior
-   first, followed by practical visual proof. Include an explanation visual only
-   when it genuinely teaches the change more clearly than prose.
-   Keep reproduction steps and observed results as copyable text. Do not add
-   routine test, build, or CI pass lists that GitHub's checks already report.
+   Read [references/body-shape.md](references/body-shape.md). Draft the title,
+   body, and evidence captions around the practical evidence, with reproduction
+   steps and observed results as copyable text.
 
-   Draft the title, body, and evidence captions. Load `speak-fking-english`
-   immediately before saving them. Apply its reader reset and
-   purposeful-support decision to the complete draft. This is a readability pass
-   over real practical evidence, not permission to replace that evidence with an
-   explainer.
+   Load `speak-fking-english` immediately before saving the complete draft.
 
-   Done when the body tells one self-contained story in plain language and every
-   visual has a specific claim and reproduction context, and the reader-first
-   pass has removed context gaps, jargon, repetition, and performative support.
+   Done when `speak-fking-english` returns a self-contained reviewer-facing draft
+   and every evidence item still has a specific claim and reproduction context.
 
 9. Upload the evidence with Computer Use.
 
@@ -200,54 +185,12 @@ Every claim must be understandable from at least one of these sources:
     reaction belongs to `jesse-merhi`. Never add or remove that reaction on the
     user's behalf.
 
+    Done when the caller has the exact open PRs requiring human sign-off and
+    this skill has not changed any reaction.
+
 ## Done Means
 
-- Computer Use uploaded the evidence and inspected the final rendered PR.
-- Every PR has reviewer-visible evidence of the implemented behavior working in
-  practice; test output, builds, CI, and validators remain supporting checks and
-  are not repeated as routine pass lists in the PR body.
-- UI changes include a deliberately paced interaction video and screenshots of
-  every distinct changed state.
-- Backend, infrastructure, and test-only changes show the real product or
-  operator behavior the change affects, not merely the automated test for it.
-- Performance claims include a before/after visual and a comparison table with
-  matched conditions, measurements, and sample sizes.
-- The PR title, commit subjects, body, captions, and any diagram labels use everyday
-  language and restore the context a new reviewer needs.
-- `speak-fking-english` has run on the complete reviewer-facing draft immediately
-  before it is saved.
-- The body describes only current net behavior owned by the PR's direct-base
-  layer, not branch-local churn or another stack layer.
-- The new behavior appears first in terms of what a person, API consumer,
-  operator, or downstream system can observe.
-- Every distinct changed UI state is visible, annotated, and reproducible.
-- A diagram appears only when it genuinely helps teach a relationship, sequence,
-  state, spatial layout, or comparison that prose would make harder to follow.
-- Verification includes copyable text and matching visual evidence.
-- The closeout workflow has enough evidence to request human sign-off on every
-  ready stack layer.
-
-## Avoid
-
-- creating or updating a PR before the Computer Use preflight passes;
-- treating CDP, browser automation, CLI output, or a textual blocker note as a
-  substitute for required Computer Use;
-- opening an attachment control or native file picker before trying clipboard
-  paste in a PR editor that supports it;
-- omitting screenshots because a change is backend-only, terminal-based,
-  documentation-only, test-only, or "not visual";
-- using test counts, builds, CI, coverage, linters, type-checkers, validators,
-  green checkmarks, or screenshots of any of them as behavioral evidence;
-- claiming UI proof from static screenshots alone when the change includes an
-  interaction, transition, error recovery path, or multi-step flow;
-- local-only image paths, images in tables, or attachments left in comments;
-- raw terminal dumps, tiny terminal text, secrets, tokens, or irrelevant output;
-- standalone HTML explainers, synthetic cards, mockups, or generated diagrams
-  presented as proof of an implementation that is not itself that artifact;
-- titles such as "updates", "changes", or ticket IDs that hide the outcome;
-- commit subjects that only name files, modules, refactors, or implementation
-  mechanics;
-- diagrams that use unexplained class names, paths, acronyms, or code identifiers;
-- diagrams or visualizations added merely because a change has several steps or
-  to make the PR look polished;
-- proof that relies on agent-thread context, branch churn, or another stack layer.
+- Every workflow step meets its `Done when` criterion.
+- Every affected PR reflects its current direct-base behavior and contains
+  provider-hosted practical evidence inspected through Computer Use.
+- The caller has the open PR list needed to request human sign-off.

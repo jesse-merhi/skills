@@ -38,40 +38,14 @@ also require the video; static states cannot prove an interaction.
 
 ## Decide Whether Explanation Needs a Visual
 
-Load `show-me`. Explain the change as a good teacher would, then ask what
-supporting material would actually help this reviewer. Default to prose. Add one
-focused visual only when the subject itself has a shape the reviewer would
-otherwise need to reconstruct, such as:
-
-- a workflow whose ordering or branching is easy to lose in prose;
-- a state transition or decision path;
-- an API, service, queue, job, or integration boundary;
-- permission or access decisions;
-- dedupe, cleanup, migration, retry, or lifecycle behavior;
-- interaction among three or more actors or components.
-
-Several steps alone do not justify a diagram. A short list is better when the
-reader can already hold the sequence in mind. Do not manufacture a visual to
-decorate the PR or demonstrate that the proof workflow ran.
-
-When a visual genuinely helps, choose the form that matches the question:
-
-- pseudocode for a rule or algorithm;
-- a shallow call tree for runtime behavior;
-- a component tree for UI composition;
-- a file-responsibility tree for ownership or a refactor;
-- a focused diff for before-and-after shape;
-- Mermaid for actors, decisions, data, or state.
+Keep explanation support out of the practical-evidence decision. In workflow
+step 8, `speak-fking-english` loads `show-me` against the complete reviewer-facing
+draft. `show-me` owns whether support is needed and which form to use.
 
 An explanation visual explains the behavior. The screenshot or recording
 demonstrates the implementation running. These are different jobs, and many PRs
 need only the practical evidence. Never use a screenshot of an explanation
 visual as proof that the implementation ran.
-
-Do not create a standalone HTML explainer, synthetic comparison card, mockup, or
-generated diagram merely to fill `Visual proof`. It is valid evidence only when
-the implementation being reviewed is that rendered artifact and the capture
-shows the real current-branch result.
 
 Use an API example or a small before/after table in addition when exact values
 matter, such as response shapes, ranking, counters, flags, permissions, or
