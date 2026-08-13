@@ -47,6 +47,19 @@ describe("ClawHub Convex target guard", () => {
     }
   })
 
+  it("preserves a port owned by the managed instance", async () => {
+    const server = createServer()
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+    const address = server.address()
+    if (address === null || typeof address === "string") throw new Error("expected a TCP address")
+    try {
+      assert.strictEqual(await Effect.runPromise(selectPort(Option.some(address.port), 3_000, Option.some(address.port))), address.port)
+      assert.strictEqual(await Effect.runPromise(selectPort(Option.none(), 3_000, Option.some(address.port))), address.port)
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error === undefined ? resolve() : reject(error)))
+    }
+  })
+
   it("runs when installed as a symlink", async () => {
     const directory = await mkdtemp(join(tmpdir(), "clawhub-launcher-"))
     const installed = join(directory, "clawhub-local-test")

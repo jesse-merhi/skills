@@ -8,7 +8,7 @@ import * as Path from "effect/Path"
 import { randomBytes } from "node:crypto"
 import { createConnection, type Socket } from "node:net"
 
-import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
+import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
 
 export interface ConvexTarget { readonly kind: "local" | "dev"; readonly importDeployment: string }
 export const publisherAbuseFixturesExist = (output: string) => {
@@ -40,8 +40,9 @@ const choosePort = Effect.fn("Clawhub.choosePort")(function*(start: number) {
   for (let port = start; port <= 65_535; port += 1) if (yield* portIsFree(port)) return port
   return yield* new LocalTestError({ message: `no free port at or above ${start}` })
 })
-export const selectPort = Effect.fn("Clawhub.selectPort")(function*(port: Option.Option<number>, startPort: number) {
-  if (Option.isNone(port)) return yield* choosePort(startPort)
+export const selectPort = Effect.fn("Clawhub.selectPort")(function*(port: Option.Option<number>, startPort: number, ownedPort = Option.none<number>()) {
+  if (Option.isNone(port)) return Option.isSome(ownedPort) ? ownedPort.value : yield* choosePort(startPort)
+  if (Option.contains(ownedPort, port.value)) return port.value
   if (!(yield* portIsFree(port.value))) return yield* new LocalTestError({ message: `requested port ${port.value} is already in use` })
   return port.value
 })
@@ -63,7 +64,18 @@ export const clawhubLocalTest = Effect.fn("Clawhub.localTest")(function*(raw: Cl
     const epoch = Number(value ?? 0)
     return Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1_000).toISOString() : "none"
   }
-  const port = raw.action === "start" ? yield* selectPort(raw.port, raw.startPort) : undefined
+  const instance = yield* fs.readFileString(files.instance).pipe(Effect.option)
+  const existingAppPid = yield* readPid(files.app)
+  const ownedPort = yield* Effect.gen(function*() {
+    if (Option.isNone(instance) || existingAppPid === undefined || !(yield* pidRunning(existingAppPid))) return Option.none<number>()
+    const url = readEnv(instance.value).URL
+    if (url === undefined) return Option.none<number>()
+    const candidate = yield* Effect.try({ try: () => Number(new URL(url).port), catch: () => 0 })
+    if (!Number.isSafeInteger(candidate) || candidate <= 0) return Option.none<number>()
+    const owned = yield* portOwnedByPid(candidate, existingAppPid).pipe(Effect.orElseSucceed(() => false))
+    return owned ? Option.some(candidate) : Option.none<number>()
+  })
+  const port = raw.action === "start" ? yield* selectPort(raw.port, raw.startPort, ownedPort) : undefined
   yield* fs.makeDirectory(snapshots, { recursive: true }); yield* fs.makeDirectory(runDir, { recursive: true }); yield* fs.makeDirectory(logs, { recursive: true })
   const stop = Effect.gen(function*() { yield* stopPid("watchdog", files.watchdog); yield* stopPid("app", files.app); yield* stopPid("convex", files.convex); yield* fs.remove(files.instance, { force: true }) })
   if (raw.action === "stop") return yield* stop
