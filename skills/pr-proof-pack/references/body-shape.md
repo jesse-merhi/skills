@@ -55,9 +55,10 @@ Depends on #41; followed by #43.">
 
 ## How it works
 
-<Include a small diagram for multi-step, multi-actor, stateful, or decision-based
-behavior. Introduce it with one sentence that says what the reviewer should
-learn.>
+<Include the smallest useful explanation visual for multi-step, multi-actor,
+stateful, decision-based, structural, or before-and-after behavior. This may be
+pseudocode, a call tree, component tree, file tree, focused diff, or Mermaid.
+Introduce it with one sentence that says what the reviewer should learn.>
 
 ## Visual proof
 

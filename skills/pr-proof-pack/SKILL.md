@@ -115,18 +115,20 @@ Every claim must be understandable from at least one of these sources:
    premise restored, or the workflow has stopped to request approval before a
    necessary published-history rewrite.
 
-7. Choose visual proof and an explanatory diagram.
+7. Choose visual proof and the smallest explanatory visual.
 
-   Read [references/proof-selection.md](references/proof-selection.md) and
+   Load `show-me`, then read
+   [references/proof-selection.md](references/proof-selection.md) and
    [references/screenshots.md](references/screenshots.md). Every PR gets uploaded
-   screenshot evidence. For a multi-step flow, state transition, decision,
-   integration boundary, or interaction among several actors, also read
-   [references/mermaid.md](references/mermaid.md) and include a small,
-   understandable diagram.
+   screenshot evidence. Use pseudocode, a call tree, component tree, file tree,
+   focused diff, or Mermaid when it makes the changed behavior easier to
+   understand. For Mermaid, also read
+   [references/mermaid.md](references/mermaid.md).
 
    Done when every important behavior has reviewer-checkable evidence, the
-   required screenshot files exist locally, and any complex flow is explained
-   visually without making the reviewer decode implementation details.
+   required screenshot files exist locally, and any hard-to-hold relationship
+   is explained with the smallest useful visual. The explanation visual never
+   replaces uploaded screenshot evidence.
 
 8. Write a behavior-first PR body.
 

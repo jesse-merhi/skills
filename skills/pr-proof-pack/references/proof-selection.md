@@ -19,10 +19,10 @@ Choose at least one reviewer-visible screenshot for every PR:
 A screenshot is the required visual representation. It does not replace
 copyable commands, expected results, or reproduction steps.
 
-## Required Diagram for Complex Behavior
+## Smallest Explanation Visual
 
-Use an understandable diagram when a reviewer would otherwise reconstruct any
-of these from code:
+Load `show-me` and choose one focused visual when a reviewer would otherwise
+reconstruct any of these from code:
 
 - a workflow with several steps;
 - a state transition or decision path;
@@ -31,8 +31,18 @@ of these from code:
 - dedupe, cleanup, migration, retry, or lifecycle behavior;
 - interaction among three or more actors or components.
 
-The diagram explains the behavior. The screenshot proves observed evidence.
-Most non-trivial PRs need both.
+Choose the form that matches the question:
+
+- pseudocode for a rule or algorithm;
+- a shallow call tree for runtime behavior;
+- a component tree for UI composition;
+- a file-responsibility tree for ownership or a refactor;
+- a focused diff for before-and-after shape;
+- Mermaid for actors, decisions, data, or state.
+
+The visual explains the behavior. The screenshot proves observed evidence.
+Most non-trivial PRs need both. Do not use a screenshot of the explanation
+visual as the only proof that the behavior ran.
 
 Use an API example or a small before/after table in addition when exact values
 matter, such as response shapes, ranking, counters, flags, permissions, or

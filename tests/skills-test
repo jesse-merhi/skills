@@ -309,6 +309,22 @@ test_wait_what_owns_repitch_guidance() {
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
 }
 
+test_show_me_owns_the_final_visual_checkpoint() {
+  local skill="$ROOT_DIR/skills/show-me"
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before a substantial explanatory or completed-work response"
+  assert_contains "$skill/SKILL.md" "## Final Response Checkpoint"
+  assert_contains "$skill/SKILL.md" "smallest useful visual"
+  assert_contains "$skill/SKILL.md" "pseudocode"
+  assert_contains "$skill/SKILL.md" "call tree"
+  assert_contains "$skill/SKILL.md" "component tree"
+  assert_contains "$skill/SKILL.md" "file-responsibility tree"
+  assert_contains "$skill/SKILL.md" "focused diff"
+  assert_contains "$skill/SKILL.md" 'load `html-explanations`'
+  assert_contains "$skill/SKILL.md" 'Do not invoke `wait-what` automatically'
+  assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 HumanLayer"
+}
+
 test_pr_proof_pack_is_a_visual_publishing_gate() {
   local skill="$ROOT_DIR/skills/pr-proof-pack"
 
@@ -318,7 +334,10 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/SKILL.md" "Every PR needs at least one useful screenshot"
   assert_contains "$skill/SKILL.md" "Terminal, backend, infrastructure, documentation, and test-only changes"
   assert_contains "$skill/SKILL.md" "PR titles and commit subjects must say the outcome"
+  assert_contains "$skill/SKILL.md" 'Load `show-me`'
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
+  assert_contains "$skill/references/proof-selection.md" "component tree"
+  assert_contains "$skill/references/proof-selection.md" "The visual explains the behavior"
   assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
   assert_contains "$skill/references/screenshots.md" "A terminal screenshot is valid and required evidence"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
@@ -575,6 +594,7 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
+test_show_me_owns_the_final_visual_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
