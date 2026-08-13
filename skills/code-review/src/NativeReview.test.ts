@@ -86,8 +86,16 @@ describe("native review target", () => {
       await writeFile(join(directory, "file.txt"), "changed\n")
       await execFile("git", ["commit", "-am", "change"], { cwd: directory })
       // @effect-diagnostics-next-line processEnv:off
-      const { stdout } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--json"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
-      assert.strictEqual(JSON.parse(stdout).base.ref, "origin/main")
+      const { stdout } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--json", "file.txt", "missing.txt"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
+      const report = JSON.parse(stdout)
+      assert.strictEqual(report.base.ref, "origin/main")
+      assert.deepStrictEqual(report.fileDetails.map(({ path, status, branch_commits }: { path: string; status: string; branch_commits: ReadonlyArray<string> }) => ({ path, status, commitCount: branch_commits.length })), [
+        { path: "file.txt", status: "modified", commitCount: 1 },
+        { path: "missing.txt", status: "not touched in branch", commitCount: 0 }
+      ])
+      // @effect-diagnostics-next-line processEnv:off
+      const { stdout: markdown } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--markdown", "file.txt"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
+      assert.match(markdown, /## Requested File Details\n- file\.txt: modified/u)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

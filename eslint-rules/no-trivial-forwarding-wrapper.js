@@ -33,7 +33,7 @@ const calleeContainsCall = (node) => {
 const isTrivialForwarder = (node) => {
   const namedDeclaration = node.type === "FunctionDeclaration" || node.parent?.type === "VariableDeclarator"
   const isTypePredicate = node.returnType?.typeAnnotation?.type === "TSTypePredicate"
-  if (!namedDeclaration || isTypePredicate) return false
+  if (!namedDeclaration || isTypePredicate || node.async || node.generator) return false
   const returned = singleReturnArgument(node)
   return returned?.type === "CallExpression" && !calleeContainsCall(returned.callee) && forwardsSameIdentifiers(node.params, returned.arguments)
 }

@@ -13,7 +13,7 @@ import noTrivialForwardingWrapper from "./eslint-rules/no-trivial-forwarding-wra
 import preferEffectSchemaForUnknown from "./eslint-rules/prefer-effect-schema-for-unknown.js"
 
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
-const testFiles = ["**/*.test.ts"]
+const testFiles = ["**/*.test.ts", "eslint-rules/rules.test.mjs"]
 const jsonParseAllowedFiles = ["**/*.test.ts", "**/*.test.mjs"]
 const runtimeJavaScriptFiles = ["skills/**/*.mjs"]
 const lintInfrastructureFiles = ["eslint.config.js", "eslint-rules/**/*.js", "eslint-rules/**/*.mjs"]

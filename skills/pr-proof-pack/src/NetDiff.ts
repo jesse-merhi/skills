@@ -15,6 +15,12 @@ export interface NetDiffReport {
   readonly diffStat: string
   readonly commits: ReadonlyArray<string>
   readonly branchOnlyChurnNoNetDiff: ReadonlyArray<string>
+  readonly fileDetails: ReadonlyArray<{
+    readonly path: string
+    readonly status: "modified" | "no net diff" | "not touched in branch"
+    readonly branch_commits: ReadonlyArray<string>
+    readonly proof_hint: string
+  }>
   readonly proofPlan: ReadonlyArray<{ readonly path: string; readonly hint: string }>
 }
 
@@ -55,11 +61,26 @@ export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: Readonly
   const changedFiles = names.split("\n").filter(Boolean).map((line) => { const parts = line.split("\t"); return { status: parts[0] ?? "M", path: parts.at(-1) ?? line } })
   const net = new Set(changedFiles.map(({ path }) => path))
   const touched = [...new Set(touchedOutput.split("\n").map((line) => line.trim()).filter(Boolean))].sort()
-  return { base, head, changedFiles, diffStat: stat, commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofKind(path) })) } satisfies NetDiffReport
+  const touchedPaths = new Set(touched)
+  const fileDetails = yield* Effect.forEach(paths, (path) => git(["log", "--oneline", `${base.comparisonBase}..HEAD`, "--", path]).pipe(Effect.map((output) => {
+    const status = net.has(path) ? "modified" : touchedPaths.has(path) ? "no net diff" : "not touched in branch"
+    return {
+      path,
+      status,
+      branch_commits: output.split("\n").filter(Boolean),
+      proof_hint: status === "modified" ? proofKind(path) : "Omit from PR proof unless needed for context."
+    } as const
+  })), { concurrency: "unbounded" })
+  return { base, head, changedFiles, diffStat: stat, commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), fileDetails, proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofKind(path) })) } satisfies NetDiffReport
 })
 
 export const renderMarkdown = (report: NetDiffReport, proofPlan: boolean) => {
   const lines = [`Base: ${report.base.ref} ${report.base.comparisonBase.slice(0, 12)}`, `Base source: ${report.base.source}`, `Head: ${report.head.slice(0, 12)}`, "", "## Net Changed Files", ...(report.changedFiles.length === 0 ? ["- None"] : report.changedFiles.map((row) => `- ${row.status} ${row.path}`)), "", "## Diff Stat", "```text", report.diffStat || "No net diff.", "```", "", "## Branch Commits", ...(report.commits.length === 0 ? ["- None"] : report.commits.map((line) => `- ${line}`)), "", "## Branch-Only Churn With No Net Diff", ...(report.branchOnlyChurnNoNetDiff.length === 0 ? ["- None"] : report.branchOnlyChurnNoNetDiff.map((path) => `- ${path}`))]
+  if (report.fileDetails.length > 0) lines.push("", "## Requested File Details", ...report.fileDetails.flatMap((detail) => [
+    `- ${detail.path}: ${detail.status}`,
+    ...detail.branch_commits.map((commit) => `  - ${commit}`),
+    `  - ${detail.proof_hint}`
+  ]))
   if (proofPlan) lines.push("", "## Proof Plan", ...(report.proofPlan.length === 0 ? ["- No net changed files; remove stale PR proof for reverted behavior."] : report.proofPlan.map((item) => `- ${item.path}: ${item.hint}`)))
   return lines.join("\n")
 }

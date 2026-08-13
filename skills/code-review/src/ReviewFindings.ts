@@ -42,7 +42,6 @@ export interface RecordedCommand {
 interface RunRow { readonly id: string }
 interface SequenceRow { readonly sequence: number }
 interface TableInfoRow { readonly name: string }
-interface LegacyIssueRow { readonly id: string; readonly text: string; readonly updated_at: number }
 interface RepoKeyRow { readonly id: string; readonly repo_path: string; readonly repo_key: string }
 export interface CloseoutFinding {
   readonly decision_id: string
@@ -163,8 +162,6 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const tables = [
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
     `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
-    `create virtual table if not exists issue_fts using fts5(issue_id unindexed, text, tokenize='porter unicode61')`,
-    `create table if not exists issue_vectors (issue_id text primary key references issues(id) on delete cascade, vector_json text not null, content_hash text not null, updated_at integer not null)`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`
   ]
   yield* Effect.forEach(tables, (statement) => sql.unsafe(statement), { discard: true })
@@ -186,9 +183,6 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     if (repoKey !== repository.repo_key) yield* sql`update review_runs set repo_key = ${repoKey} where id = ${repository.id}`
   }), { discard: true })
   yield* sql.unsafe(`update review_runs set update_seq = rowid where coalesce(update_seq, 0) = 0`)
-  yield* sql.unsafe(`insert into issue_fts (issue_id, text) select issues.id, issues.text from issues where not exists (select 1 from issue_fts where issue_fts.issue_id = issues.id)`)
-  const unindexed = yield* sql.unsafe<LegacyIssueRow>(`select issues.id, issues.text, issues.updated_at from issues where not exists (select 1 from issue_vectors where issue_vectors.issue_id = issues.id)`)
-  yield* Effect.forEach(unindexed, (issue) => sql`insert into issue_vectors (issue_id, vector_json, content_hash, updated_at) values (${issue.id}, ${JSON.stringify(vectorize(issue.text))}, ${createHash("sha256").update(issue.text).digest("hex")}, ${issue.updated_at})`, { discard: true })
   const indexes = [
     `create index if not exists review_runs_repo_idx on review_runs(repo_name)`,
     `create index if not exists review_runs_repo_key_idx on review_runs(repo_key)`,
@@ -255,11 +249,6 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
       first_seen_at=coalesce(issues.first_seen_at, excluded.first_seen_at),
       last_seen_at=excluded.last_seen_at, seen_count=issues.seen_count + 1,
       updated_at=excluded.updated_at`
-  yield* sql`delete from issue_fts where issue_id = ${issueId}`
-  yield* sql`insert into issue_fts (issue_id, text) values (${issueId}, ${text})`
-  yield* sql`insert into issue_vectors (issue_id, vector_json, content_hash, updated_at)
-    values (${issueId}, ${JSON.stringify(vectorize(text))}, ${createHash("sha256").update(text).digest("hex")}, ${timestamp})
-    on conflict(issue_id) do update set vector_json=excluded.vector_json, content_hash=excluded.content_hash, updated_at=excluded.updated_at`
   return { runId, issueId }
   }))
 })
@@ -398,11 +387,7 @@ export const pruneFindings = Effect.fn("ReviewFindings.pruneFindings")(function*
   if (filters.branch !== undefined) { where.push("review_runs.branch = ?"); params.push(filters.branch) }
   const issues = yield* sql.unsafe<IssueIdRow>(`select issues.id from issues join review_runs on review_runs.id = issues.run_id where ${where.join(" and ")}`, params)
   if (!filters.dryRun) {
-    yield* Effect.forEach(issues, ({ id }) => Effect.gen(function*() {
-      yield* sql`delete from issue_fts where issue_id = ${id}`
-      yield* sql`delete from issue_vectors where issue_id = ${id}`
-      yield* sql`delete from issues where id = ${id}`
-    }), { discard: true })
+    yield* Effect.forEach(issues, ({ id }) => sql`delete from issues where id = ${id}`, { discard: true })
     yield* sql`delete from review_runs where id not in (select distinct run_id from issues) and id not in (select distinct run_id from commands)`
   }
   return issues.length

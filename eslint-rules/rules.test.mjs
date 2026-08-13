@@ -25,11 +25,17 @@ describe("local lint rules", () => {
   it("requires Effect Schema at unknown boundaries", () => {
     assert.lengthOf(verify("const parse = (value: unknown) => typeof value === 'string'", "schema"), 1)
     assert.lengthOf(verify("const parse = (value: unknown) => Schema.decodeUnknownOption(Input)(value)", "schema"), 0)
+    assert.lengthOf(verify("const parse = (value: unknown) => { const copy = value; return typeof copy === 'string' }", "schema"), 1)
+    assert.lengthOf(verify("const parse = (value: unknown) => { let copy = ''; copy = value; return typeof copy === 'string' }", "schema"), 1)
+    assert.lengthOf(verify("const parse = ({ value }: { value: unknown }) => typeof value === 'string'", "schema"), 1)
+    assert.lengthOf(verify("const parse = (value: unknown) => { { const value = 'known'; if (typeof value === 'string') return value } return value }", "schema"), 0)
   })
 
   it("rejects named forwarding wrappers but permits type predicates", () => {
     assert.lengthOf(verify("const capture = (value: string) => target(value)", "forwarding"), 1)
     assert.lengthOf(verify("const isString = (value: unknown): value is string => typeof value === 'string'", "forwarding"), 0)
+    assert.lengthOf(verify("const capture = async (value: string) => target(value)", "forwarding"), 0)
+    assert.lengthOf(verify("function* capture(value: string) { return target(value) }", "forwarding"), 0)
   })
 
   it("rejects decorative banners and broad ordinary snapshots", () => {
