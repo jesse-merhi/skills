@@ -309,6 +309,25 @@ test_wait_what_owns_repitch_guidance() {
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
 }
 
+test_pr_proof_pack_is_a_visual_publishing_gate() {
+  local skill="$ROOT_DIR/skills/pr-proof-pack"
+
+  assert_contains "$skill/SKILL.md" "Use whenever creating, publishing, reopening, or updating a PR"
+  assert_contains "$skill/SKILL.md" "changing a branch that already has a PR"
+  assert_contains "$skill/SKILL.md" "If Computer Use is missing"
+  assert_contains "$skill/SKILL.md" "Every PR needs at least one useful screenshot"
+  assert_contains "$skill/SKILL.md" "Terminal, backend, infrastructure, documentation, and test-only changes"
+  assert_contains "$skill/SKILL.md" "PR titles and commit subjects must say the outcome"
+  assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
+  assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
+  assert_contains "$skill/references/screenshots.md" "A terminal screenshot is valid and required evidence"
+  assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
+  assert_contains "$skill/scripts/pr_net_diff.py" "Uploaded screenshot required"
+  assert_contains "$skill/scripts/pr_net_diff.py" "attached with Computer Use"
+  assert_not_contains "$skill/scripts/pr_net_diff.py" "No screenshot by default"
+  assert_contains "$skill/agents/openai.yaml" "Publish plain-language PR proof with visuals."
+}
+
 test_openclaw_local_test_helpers() {
   node --test \
     "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/runtime-profile.test.mjs" \
@@ -556,6 +575,7 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
+test_pr_proof_pack_is_a_visual_publishing_gate
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier

@@ -1,145 +1,116 @@
-# Screenshot Proof
+# Visual Evidence
 
 ## Contents
 
-- [Upload Path](#upload-path)
-- [Screenshot Contract](#screenshot-contract)
-- [Screenshot Placement](#screenshot-placement)
-- [Before/After Rule](#beforeafter-rule)
+- [Hard Requirement](#hard-requirement)
+- [Computer Use Upload Path](#computer-use-upload-path)
+- [Evidence Contract](#evidence-contract)
+- [Terminal and Non-UI Evidence](#terminal-and-non-ui-evidence)
+- [Placement](#placement)
+- [Before and After](#before-and-after)
 
-When a PR changes or makes reachable UI that a human reviewer can see, include
-PR-visible screenshots for every distinct changed state or surface unless a
-screenshot is impossible or genuinely unhelpful. Distinct states include
-different changed pages, modals, forms, error/loading/empty states, responsive
-states, permissions states, and important before/after contrasts.
+## Hard Requirement
 
-Do not satisfy this requirement with local-only screenshot paths in `/tmp` or a
-claim that a browser check passed. The image must be visible to a GitHub
-reviewer from the PR body, or the PR body must say screenshots are missing and
-why. If the harness cannot upload or host screenshots, stop before final PR
-readiness and report that blocker instead of silently omitting them.
+Every PR must include at least one useful, uploaded screenshot in its main body.
+This includes terminal, backend, infrastructure, documentation, dependency,
+configuration, and test-only changes. UI changes need screenshots of every
+distinct changed state or surface.
 
-If a screenshot only proves that an unrelated route loads, omit it and explain
-why no screenshot is needed for that unchanged UI.
+Local paths, text saying a check passed, and a reason for omitting screenshots
+do not satisfy this requirement. If Computer Use, capture, GitHub login, the
+attachment control, or final image rendering fails, stop before creating or
+updating the PR. Tell the human the concrete failure and ask them to restore the
+blocked capability. Continue only after it works.
 
-## Upload Path
+## Computer Use Upload Path
 
-Preferred screenshot upload path: use Chrome DevTools Protocol (CDP) in an
-agent-owned browser window with GitHub's normal PR comment attachment UI. If CDP
-is unavailable or cannot operate the attachment control, fall back to Computer
-Use in an agent-owned browser window.
+Computer Use is mandatory. Do not replace it with CDP, another browser-control
+tool, a CLI upload helper, browser-cookie extraction, `gh-image`, session tokens,
+or Keychain/browser cookie stores.
 
-1. Open the PR in a fresh agent-owned browser window. Do not reuse existing
-   user browser windows unless the user explicitly asks.
-2. Confirm the browser is logged into GitHub and can comment on the PR.
-3. Attach the screenshot file through the PR comment box attachment control or
-   drag-and-drop area.
-4. Wait for GitHub to insert a
+Before any PR mutation:
+
+1. Load `computer-use`.
+2. Open an agent-owned browser window and reach the GitHub repository.
+3. Confirm the tool can read and operate the page and that GitHub access works.
+4. If any part fails, stop and ask the human to repair Computer Use or login.
+
+For a new PR, the publishing workflow may create a draft shell after this
+preflight. Then upload each evidence file through GitHub's normal attachment UI:
+
+1. Open the PR in the agent-owned browser.
+2. Attach the screenshot through the PR comment box or drag-and-drop area.
+3. Wait for GitHub to insert a
    `https://github.com/user-attachments/assets/...` Markdown image reference.
-5. Copy that Markdown directly into the main PR body without submitting a
-   comment unless a comment is explicitly desired.
+4. Copy that Markdown into the main PR body without submitting a comment.
+5. Save the PR body, open the rendered view, and confirm the image loads at a
+   readable size with its caption directly below it.
 
-Use the active browser tool's confirmation policy for the actual file upload
-step. A PR proof screenshot upload is a file upload to GitHub; if the user has
-not already approved that exact upload destination and file class, confirm
-right before uploading.
+Follow the active Computer Use confirmation policy at the actual upload step.
+Do not commit proof screenshots to the repository unless the project or user
+explicitly requests that storage model.
 
-Do not use CLI upload helpers, browser-cookie extraction, `gh-image`,
-`GH_SESSION_TOKEN`, Keychain-stored web sessions, or Dia/Chrome/Arc cookie
-stores for PR screenshots. Do not cite those unsupported paths as the reason
-screenshots are missing. If screenshots are required, try the GitHub attachment
-UI through CDP and then the Computer Use fallback before writing a "Screenshots
-missing" note.
+## Evidence Contract
 
-Mark screenshot upload blocked only when CDP and the Computer Use fallback are
-unavailable or fail, GitHub login/comment access is unavailable in the
-agent-owned browser, the GitHub attachment UI cannot attach the file, or the
-user declines the upload confirmation. Include that concrete blocker in the PR
-body.
+Every screenshot answers these questions in the body:
 
-## Screenshot Contract
+1. What current net-diff behavior or result does this prove?
+2. What exact route, state, fixture, command, environment, viewport, and crop
+   produced it?
+3. Why is this the clearest visual evidence for the claim?
 
-Every screenshot needs a proof claim. Before adding one, answer:
+Prefer the smallest readable capture:
 
-1. What changed or risky behavior does this image prove?
-2. Why is an image better than a command, API example, table, or Mermaid diagram?
-3. What URL, fixture/user/state, viewport, and crop choice produced it?
+1. **Element crop** for a card, row, panel, modal, form, or error.
+2. **Terminal region crop** for a command and its focused result.
+3. **Viewport crop** when surrounding controls or context explain the state.
+4. **Full-page capture** only when page-wide layout, ordering, pagination, or
+   below-the-fold content is part of the proof.
 
-If those answers are weak, remove the screenshot.
+Use real output from the current branch. Do not use mockups, generated stand-ins,
+or evidence captured before a related branch change.
 
-For human-visible UI changes, answer those questions immediately below the image
-in the PR body and include the screenshot unless it is blocked. A textual
-"browser proof passed" line is useful supporting evidence, but it is not a
-replacement for the required screenshot.
+## Terminal and Non-UI Evidence
 
-Default to the smallest readable image:
+A terminal screenshot is valid and required evidence for non-UI work. Make it
+easy to read:
 
-1. **Element crop** for a card, table row, panel, modal, form, or error.
-2. **Viewport crop** when surrounding controls or nav explain the state.
-3. **Full-page screenshot** only when below-the-fold content, page-wide layout,
-   long-list ordering, or pagination is part of the proof.
+- show the focused command and the line or small result block that proves the
+  claim;
+- use a readable font size and crop away unrelated shell history and chrome;
+- include enough context to distinguish success from a command that merely ran;
+- redact or avoid secrets, tokens, private URLs, personal data, and noisy logs;
+- keep the command and expected result as copyable text in the PR body;
+- capture current output after the final branch change.
 
-Full-page screenshots require a sentence in the PR body explaining why full
-height was needed. Otherwise crop them.
+Examples include a targeted test with the behavior named in its output, a
+request and response, a migration dry-run summary, a rendered-document check, or
+a focused diff/validator result. A wall of green test output is weaker than one
+small result tied to the PR's main claim.
 
-Use real app screenshots from a running instance. Do not use mockups, generated
-HTML stand-ins, or composed images.
+## Placement
 
-Screenshots must be accessible from the PR body, not only from the local
-machine. Use the repository or harness-approved upload path for GitHub-hosted
-images or another reviewer-accessible artifact URL. Do not commit screenshot
-files to the repo unless the project or user explicitly wants that.
-
-## Screenshot Placement
-
-When screenshots are included, place each image directly in the main PR body
-with its annotation and proof information immediately below it:
+Put each image directly in the main PR body, never in a table or detached
+comment. Place its explanation immediately below it:
 
 ```md
-![Skills browse sorted by installs](https://github.com/user-attachments/assets/...)
+![Install sorting check passes](https://github.com/user-attachments/assets/...)
 
-**What this shows:** Install sort renders production rows in the expected
-first-page order.
+**What this shows:** The focused browser test confirms install sorting renders
+production rows in descending order.
 
-**State:** `/skills?sort=installs&dir=desc`, production Convex, 1440x900
-viewport crop. The controls and first rows are both relevant.
+**State:** `npm test -- install-sort`, current PR branch, terminal region crop.
 ```
 
-Never put images in tables. Use human labels and descriptive alt text. Avoid
-file names like `screenshot-1.png` as the only explanation.
+Use human labels and descriptive alt text. The uploaded file name is not a
+caption.
 
-For UI PRs with no screenshots, add a short note explaining why the PR has no
-reviewer-visible screenshots. Acceptable reasons are narrow:
-backend-only diff, no human-visible behavior changed, screenshot capture was
-blocked by auth/fixture/tooling, CDP and Computer Use upload paths were
-unavailable or failed for a concrete GitHub UI/login/attachment reason, or the
-screenshot would only show unchanged UI. "Tests passed", "layout audit passed",
-or "no CLI upload token/session was available" is not an acceptable reason by
-itself.
+## Before and After
 
-## Before/After Rule
+Before means direct-base behavior, not the previous feature-branch commit.
 
-Before means PR base behavior, not the previous PR-branch commit.
-
-- Before = base branch, target branch, or production behavior when it matches
-  the base.
-- After = current PR branch.
-- If base and branch now match, remove that before/after proof.
-- If true before/after capture is impractical, say what was captured and why.
-
-Any screenshot or diagram made before a related code change is stale until
-rechecked.
-
-Avoid:
-
-- screenshots with no stated proof claim;
-- missing screenshots for human-visible UI changes without an explicit blocker
-  or narrow no-screenshot rationale;
-- screenshot blocker notes based on unsupported CLI helper/session-token paths
-  instead of trying CDP and the Computer Use fallback;
-- local-only `/tmp` screenshot paths presented as PR-visible proof;
-- full-page screenshots without a reason;
-- route-load screenshots for UI the PR did not change;
-- screenshots for backend-only behavior when diagrams, API examples, or tables
-  are clearer;
-- stale screenshots from an earlier branch state.
+- Before = direct base or production when it matches that base.
+- Now = current PR branch.
+- If base and branch now match, remove the before/after claim.
+- If a true before capture is impractical, say what was captured and why.
+- After any related branch change, recapture and replace stale evidence.

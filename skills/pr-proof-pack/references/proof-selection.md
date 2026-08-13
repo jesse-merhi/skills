@@ -1,35 +1,42 @@
 # Proof Selection
 
-Pick the smallest proof that explains the net diff.
+Every PR needs visual evidence. Start by choosing the screenshot that makes the
+main behavioral claim easiest to see. Then add the smallest supporting proof a
+reviewer needs to reproduce or reason about it.
 
-Use Mermaid for:
+## Required Screenshot
 
-- workflows, state transitions, dedupe, cleanup, queues, crons, migrations;
-- API or integration boundaries;
-- permission/access decisions;
-- multi-step behavior reviewers would otherwise reconstruct from code.
+Choose at least one reviewer-visible screenshot for every PR:
 
-Use API examples or small before/after tables for:
+- **UI change:** capture each distinct changed UI state from the running app.
+- **Terminal, backend, infrastructure, or test change:** capture a focused
+  command and the readable result that proves the behavior or check.
+- **Documentation change:** capture the rendered document when presentation or
+  comprehension changed; otherwise capture focused validation output.
+- **API change:** capture a concise request and response or a focused contract
+  test result, while retaining the copyable request and response in the body.
 
-- response shape, ranking, scoring, sorting, counters, flags;
-- backend-only behavior;
-- data migration or cleanup effects.
+A screenshot is the required visual representation. It does not replace
+copyable commands, expected results, or reproduction steps.
 
-Use screenshots for reviewer-visible UI behavior:
+## Required Diagram for Complex Behavior
 
-- changed pages, panels, cards, lists, modals, forms, empty/loading/error states;
-- changed filtering, sorting, pagination, auth, permissions, responsive layout;
-- UI proof a command, table, or diagram cannot make clear.
+Use an understandable diagram when a reviewer would otherwise reconstruct any
+of these from code:
 
-If the PR changes or makes reachable human-visible UI, the default is a
-PR-visible screenshot. Load [screenshots.md](screenshots.md) for the upload
-path, inline annotation format, crop rules, before/after rules, and acceptable
-no-screenshot rationales.
+- a workflow with several steps;
+- a state transition or decision path;
+- an API, service, queue, job, or integration boundary;
+- permission or access decisions;
+- dedupe, cleanup, migration, retry, or lifecycle behavior;
+- interaction among three or more actors or components.
 
-Do not use screenshots for backend-only behavior when diagrams, API examples,
-or tables are clearer. If a screenshot only proves that an unrelated route
-loads, omit it and explain why no screenshot is needed for that unchanged UI.
+The diagram explains the behavior. The screenshot proves observed evidence.
+Most non-trivial PRs need both.
 
-Load [body-shape.md](body-shape.md) before using tables in the PR body. Do not
-use a generic net-diff table as proof when it only groups code areas without
-explaining behavior.
+Use an API example or a small before/after table in addition when exact values
+matter, such as response shapes, ranking, counters, flags, permissions, or
+persisted state.
+
+Do not use a generic net-diff table as proof. File groups and implementation
+buckets make the reviewer reconstruct the behavior instead of seeing it.

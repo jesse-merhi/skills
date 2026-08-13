@@ -124,17 +124,30 @@ def proof_kind(path: str) -> str:
     lower = path.lower()
     if any(marker in lower for marker in ui_markers):
         return (
-            "PR-visible screenshot required if human-visible UI changed; upload through "
-            "GitHub's PR UI, preferably with CDP, and place it directly in the PR body "
-            "with the claim, URL/state, viewport, and crop/full-page reason below it."
+            "Uploaded screenshot required: capture every distinct changed UI state, "
+            "attach it with Computer Use, and explain the claim, route/state, viewport, "
+            "and crop directly below it."
         )
     if any(marker in lower for marker in job_markers):
-        return "Mermaid/table: scheduled, queued, or cleanup behavior changed."
+        return (
+            "Uploaded terminal/result screenshot required. Add an understandable diagram "
+            "for the scheduled, queued, migration, or cleanup flow."
+        )
     if any(marker in lower for marker in api_markers):
-        return "Mermaid/API example: request, response, or integration behavior changed."
+        return (
+            "Uploaded request/result screenshot required. Add a copyable API example and "
+            "an understandable diagram when the integration crosses boundaries."
+        )
     if any(marker in lower for marker in doc_markers):
-        return "No screenshot by default: docs/spec text changed."
-    return "Mermaid/table/API example: explain the net behavior change; avoid screenshots by default."
+        return (
+            "Uploaded screenshot required: show the rendered document or focused terminal "
+            "validation, attached with Computer Use."
+        )
+    return (
+        "Uploaded screenshot required: show focused terminal or rendered-output evidence, "
+        "attached with Computer Use. Add a diagram when the behavior has several steps, "
+        "states, decisions, or actors."
+    )
 
 
 def file_details(base: str, paths: list[str], net_paths: set[str], touched_paths: set[str]) -> list[dict[str, Any]]:
