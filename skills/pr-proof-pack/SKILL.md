@@ -1,53 +1,80 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable pull-request proof from the direct-base net diff, including stacked-PR layer context, behavioral verification, and PR-visible evidence when relevant.
+description: Create or refresh reviewer-checkable pull-request proof. Use whenever creating, publishing, reopening, or updating a PR; editing its title or body; pushing commits or changing a branch that already has a PR; or changing any layer of a stacked PR. Requires Computer Use, plain-language metadata, and uploaded visual evidence of the implemented behavior working in practice.
 ---
 
 # PR Proof Pack
 
-Use this before creating or updating a PR body, and again after any meaningful
-branch change.
+Treat this workflow as a PR publishing gate. Run it before any action that
+creates or changes reviewer-visible PR state, and run it again after every
+meaningful branch change.
 
-The **proof pack** is the reviewer-checkable evidence in the PR body: what
-changed, why it matters, and how a reviewer can verify it without knowing the
-agent thread.
+The **proof pack** is the reviewer-checkable story in the PR: what changes for a
+person or system, why it matters, and visual evidence a reviewer can inspect
+without knowing the agent thread.
+
+## Hard Gates
+
+- **Computer Use:** Complete the preflight in step 2 before any PR mutation, then
+  use Computer Use for the upload and rendered-page inspection in steps 9 and
+  10.
+- **Practical evidence:** Complete the behavior capture in step 7. Automated
+  validation remains supporting information and never satisfies `Visual proof`.
+- **Readable history:** Complete the title and commit review in step 6 before
+  publishing.
+
+If any gate cannot be completed, stop. Tell the human which capability failed
+and what they must restore. Do not publish or update the PR through another
+path.
 
 ## Trigger Branches
 
-- Creating a PR or writing a PR body: run the full workflow below.
+- Creating, publishing, reopening, converting, or marking a PR ready: run the
+  full workflow.
+- Editing a PR title, body, base, or reviewer-visible proof: refresh the proof
+  before the edit is complete.
+- Committing to, rebasing, merging into, or pushing a branch that already has a
+  PR: treat it as a PR update and refresh the proof after the branch settles.
 - Creating or updating a stacked PR: scope proof to that layer's direct base,
   state its stack position and adjacent dependencies, and run the workflow
   separately for every affected layer.
-- Updating an existing PR body: rerun the net-diff pass, remove stale proof,
-  then refresh only the affected sections.
-- Modifying proof, screenshots, Mermaid, API examples, or verification notes:
-  recheck that proof against the current net diff before keeping it.
-- Changing the branch after proof was written: rerun the net-diff pass and
-  refresh any proof whose behavior, UI state, command output, or diagram flow
-  may have changed.
+- Changing a lower stack layer: sync the stack, then refresh every affected
+  upstack PR.
 
-## Reader Contract
+## Reviewer Boundary
 
-Write for a reviewer who has not seen the Codex thread, planning notes,
-decision log, bug-bash shorthand, local branch history, or private chat context.
-Every claim in the PR body must be understandable from at least one of these
-sources:
+Assume the reviewer has not seen the agent thread, planning notes, decision log,
+local branch history, or private chat.
 
-- the net diff from PR base to `HEAD`
-- linked public or repo-visible issues, specs, tickets, or docs
-- the PR body itself
+Every claim must be understandable from at least one of these sources:
 
-If a label, task ID, bug-bash code, sprint name, internal nickname, or thread
-shorthand matters, either link to a repo-visible source and explain the concrete
-behavior in plain language, or omit the shorthand.
+- the net diff from the PR's direct base to `HEAD`;
+- linked public or repo-visible issues, specs, tickets, or docs;
+- the PR body itself.
 
 ## Workflow
 
 1. Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
 
-2. Resolve the PR's direct base and stack context.
+   Done when every relative script and reference path resolves from that
+   directory.
 
-   Use `gh pr view --json number,url,baseRefName,headRefName` when a PR exists.
+2. Pass the Computer Use preflight.
+
+   Load `computer-use`. Open an agent-owned browser, reach the repository on its
+   PR provider, and confirm the tool can read and operate the page. Do this
+   before a publishing workflow creates or mutates a PR. When creating a new
+   PR, the publishing workflow may create a draft shell only after this
+   preflight.
+
+   Done when Computer Use is demonstrably usable, or the workflow has stopped
+   with a concrete repair request to the human.
+
+3. Resolve the PR's direct base and stack context.
+
+   On GitHub, use `gh pr view --json number,url,baseRefName,headRefName` when a
+   PR exists. On Bitbucket or another provider, use its equivalent read-only
+   metadata path.
    When the branch is part of a stack, load `gh-stack` and inspect the ordered
    branches with `gh stack view --json`. Record the current layer's position,
    direct parent PR, and direct child PR when present.
@@ -55,7 +82,7 @@ behavior in plain language, or omit the shorthand.
    Done when "base" means the branch directly below this PR, not necessarily
    the repository default branch.
 
-3. Run the bundled net-diff script:
+4. Run the bundled net-diff script:
 
    ```text
    python3 <skill-dir>/scripts/pr_net_diff.py --markdown
@@ -67,92 +94,93 @@ behavior in plain language, or omit the shorthand.
    python3 <skill-dir>/scripts/pr_net_diff.py --markdown src/routes/skills/index.tsx convex/telemetry.ts
    ```
 
-   Done when the current proof is based on the PR base-to-`HEAD` net diff, not
-   the latest commit, previous branch commit, or local session memory.
+   Done when the proof is based on the PR base-to-`HEAD` net diff, not the latest
+   commit, a previous branch commit, or local session memory.
 
-4. Remove proof for non-current behavior.
+5. Remove proof for non-current behavior.
 
-   Done when files listed under `Branch-Only Churn With No Net Diff` are not
-   described as current PR behavior changes.
+   Done when files under `Branch-Only Churn With No Net Diff` are absent from
+   claims about current PR behavior.
 
-5. Choose the smallest proof that explains the net diff.
+6. Make the title, commits, body, captions, and labels readable.
 
-   Read [references/proof-selection.md](references/proof-selection.md) when
-   deciding between screenshots, Mermaid, API examples, before/after tables, or
-   no visual proof. Done when each important changed behavior has a proof type
-   that a reviewer can check.
+   Read [references/plain-language.md](references/plain-language.md). Inspect the
+   title and every commit subject in the direct-base range as well as the body.
 
-6. Write a behavior-first PR body.
+   Done when each can be understood on its own by a reviewer with the missing
+   premise restored, or the workflow has stopped to request approval before a
+   necessary published-history rewrite.
 
-   Read [references/body-shape.md](references/body-shape.md) for the PR body
-   template, UI and API proof examples, table rules, and verification guidance.
-   Done when the body shows the new behavior first, followed by the smallest
-   useful proof and reviewer-checkable verification.
+7. Choose practical visual proof.
 
-7. Add PR-visible screenshots for human-visible UI changes.
+   Read the practical-evidence section of
+   [references/proof-selection.md](references/proof-selection.md), then read
+   [references/screenshots.md](references/screenshots.md). Capture the behavior
+   itself in the form required for that change type.
 
-   Read [references/screenshots.md](references/screenshots.md) for the required
-   screenshot contract, GitHub upload path, annotations, crop rules, and
-   before/after rules. When adding attachments, prefer using CDP when available.
-   Put each image directly in the main PR body, never inside a table, with its
-   annotations and proof information immediately below it. Done when every
-   distinct changed UI state has a reviewer-visible screenshot, or a narrow
-   no-screenshot rationale or concrete blocker is stated in the PR body.
+   Done when every important behavior has reviewer-checkable practical
+   evidence and every required recording and screenshot exists locally.
 
-8. Add Mermaid only when it clarifies behavior.
+8. Write a behavior-first PR body.
 
-   Read [references/mermaid.md](references/mermaid.md) before adding diagrams.
-   Done when every final `mermaid` fenced block is validated, or Mermaid is
-   omitted in favor of a simpler table or text proof.
+   Read [references/body-shape.md](references/body-shape.md), then use the
+   explanation-support section of
+   [references/proof-selection.md](references/proof-selection.md). When that
+   decision chooses Mermaid, also read
+   [references/mermaid.md](references/mermaid.md). Draft the title, body, and
+   captions around the practical evidence, with reproduction steps and observed
+   results as copyable text.
 
-9. Refresh after branch changes.
+   Done when the body tells one self-contained story, every evidence item has a
+   specific claim and reproduction context, and explanation support is either
+   deliberately omitted or has one stated teaching job.
 
-   After any new branch change, rerun `pr_net_diff.py --markdown`, remove stale
-   proof, update diagrams if the net flow changed, replace screenshots for
-   changed UI states, and update verification results.
+9. Upload the evidence with Computer Use.
 
-   For a stack, changing a lower branch can change every branch above it. Use
-   `gh-stack` to rebase or sync first, then refresh proof for every affected
-   upstack PR.
+   Follow the provider upload flow in
+   [references/screenshots.md](references/screenshots.md). Copy each finished
+   image or recording, select the exact placeholder or stale attachment in the
+   PR editor, and paste. Use the provider's attachment control or native file
+   picker only when clipboard paste is unsupported. Put media directly in the
+   main PR body, never in a table or detached comment. Follow the active
+   Computer Use confirmation policy for uploads.
 
-10. Hand completed proof back to the publishing or review-closeout workflow.
+   Done when every image and recording uses a reviewer-visible, provider-hosted
+   attachment in the main body. A local path, an unsubmitted attachment, a
+   textual rationale, or a screenshot of green checks is not done.
+
+10. Inspect the finished PR with Computer Use.
+
+    Open the rendered PR and check its title, section order, image loading,
+    video playback, captions, any diagram rendering, and copyable reproduction
+    steps. Fix stale or unclear proof before leaving the page.
+
+    Done when the rendered PR is readable without local context and every visual
+    directly supports a current net-diff claim.
+
+11. Refresh after every branch change.
+
+    Rerun the net diff, practical behavior walkthrough, visual capture and
+    upload, any needed diagram validation, language pass, and rendered-page
+    inspection.
+    Remove stale proof.
+    For a stack, sync first and repeat for every affected upstack PR.
+
+    Done when every open PR reflects its current direct-base diff.
+
+12. Hand completed proof back to the publishing or review-closeout workflow.
 
     Once proof, review, validation, and CI pass, that workflow must ask the user
     for a thumbs-up (`+1`) reaction on every open stack PR and verify each
     reaction belongs to `jesse-merhi`. Never add or remove that reaction on the
     user's behalf.
 
+    Done when the caller has the exact open PRs requiring human sign-off and
+    this skill has not changed any reaction.
+
 ## Done Means
 
-- The PR body is self-contained for a repository reviewer.
-- The body describes only current net PR behavior, not branch-local churn.
-- A stacked PR describes only its direct-base layer and names its position and
-  adjacent dependencies without repeating the whole stack's implementation.
-- The new behavior appears first and is written in terms of what a person, API
-  consumer, operator, or downstream system can observe.
-- Every human-visible UI change has reviewer-visible screenshots, or an explicit
-  blocker or narrow no-screenshot rationale from `references/screenshots.md`.
-- Screenshot attachments preferably use CDP when available, and images appear
-  directly in the main PR body rather than inside tables.
-- Every screenshot has a proof claim, URL/state, viewport, and crop choice.
-- Every Mermaid diagram in the final body was validated, or Mermaid was omitted.
-- Verification is reviewer-checkable: concrete command, request/response,
-  screenshot state, API example, state transition, or CI coverage summary.
-- The closeout workflow has enough evidence to ask for human sign-off on every
-  ready stack layer.
-
-## Avoid
-
-- relying on context from the Codex thread, bug-bash notes, planning labels, or
-  local decision logs;
-- describing branch churn as current PR behavior;
-- treating the previous branch commit as "before";
-- describing lower or higher stack layers as changes owned by the current PR;
-- unexplained task IDs, internal shorthand, sprint names, or local-only paths;
-- generic net-diff tables that group code areas without explaining behavior;
-- images embedded in tables instead of the main PR body with annotations and
-  proof information below them;
-- proof sections that are only a list of test files;
-- missing screenshots for human-visible UI changes without an explicit blocker
-  or narrow no-screenshot rationale;
-- raw terminal dumps or unwrapped command dumps in the PR body.
+- Every workflow step meets its `Done when` criterion.
+- Every affected PR reflects its current direct-base behavior and contains
+  provider-hosted practical evidence inspected through Computer Use.
+- The caller has the open PR list needed to request human sign-off.

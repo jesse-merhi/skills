@@ -124,17 +124,35 @@ def proof_kind(path: str) -> str:
     lower = path.lower()
     if any(marker in lower for marker in ui_markers):
         return (
-            "PR-visible screenshot required if human-visible UI changed; upload through "
-            "GitHub's PR UI, preferably with CDP, and place it directly in the PR body "
-            "with the claim, URL/state, viewport, and crop/full-page reason below it."
+            "Practical UI proof required: upload a deliberately paced manual interaction "
+            "video plus screenshots of every distinct changed state with Computer Use. "
+            "Tests, builds, CI, and automated E2E output are supporting checks only."
         )
     if any(marker in lower for marker in job_markers):
-        return "Mermaid/table: scheduled, queued, or cleanup behavior changed."
+        return (
+            "Practical operator proof required: show the real input, run or dry run, and "
+            "resulting resource, record, delivery, cleanup, or rollback. Add a flow "
+            "diagram only when it would materially clarify the behavior; "
+            "do not use test or CI output as evidence."
+        )
     if any(marker in lower for marker in api_markers):
-        return "Mermaid/API example: request, response, or integration behavior changed."
+        return (
+            "Practical backend proof required: show a representative real request, "
+            "response, and persisted state or side effect. Add a copyable API example; "
+            "use a boundary diagram only when it materially clarifies the behavior. Do "
+            "not use contract-test output as evidence."
+        )
     if any(marker in lower for marker in doc_markers):
-        return "No screenshot by default: docs/spec text changed."
-    return "Mermaid/table/API example: explain the net behavior change; avoid screenshots by default."
+        return (
+            "Practical documentation proof required: show the rendered document being "
+            "used to complete the changed task or the exact comprehension improvement. "
+            "Leave validators and link checks in the check run; they are not Visual proof."
+        )
+    return (
+        "Practical behavior proof required: show the real product or operator outcome with "
+        "uploaded visual evidence. Tests, builds, CI, validators, and green checks do not "
+        "satisfy Visual proof. Add an explanation visual only when it materially helps."
+    )
 
 
 def file_details(base: str, paths: list[str], net_paths: set[str], touched_paths: set[str]) -> list[dict[str, Any]]:

@@ -309,6 +309,51 @@ test_wait_what_owns_repitch_guidance() {
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
 }
 
+test_pr_proof_pack_is_a_visual_publishing_gate() {
+  local skill="$ROOT_DIR/skills/pr-proof-pack"
+  local step_count done_count
+
+  assert_contains "$skill/SKILL.md" "Use whenever creating, publishing, reopening, or updating a PR"
+  assert_contains "$skill/SKILL.md" "changing a branch that already has a PR"
+  assert_contains "$skill/SKILL.md" "If any gate cannot be completed, stop"
+  assert_contains "$skill/SKILL.md" "working in practice"
+  assert_contains "$skill/SKILL.md" 'never satisfies `Visual proof`'
+  assert_contains "$skill/SKILL.md" "## Reviewer Boundary"
+  assert_contains "$skill/SKILL.md" 'Every workflow step meets its `Done when` criterion'
+  assert_not_contains "$skill/SKILL.md" "## Avoid"
+
+  step_count="$(grep -Ec '^[0-9]+\. ' "$skill/SKILL.md")"
+  done_count="$(grep -Ec '^[[:space:]]+Done when ' "$skill/SKILL.md")"
+  if [[ "$step_count" != "$done_count" ]]; then
+    fail "expected every pr-proof-pack step to have one Done when criterion"
+  fi
+
+  assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
+  assert_contains "$skill/references/plain-language.md" "## PR Title"
+  assert_contains "$skill/references/plain-language.md" "## Commit Subjects"
+  assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
+  assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
+  assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
+  assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
+  assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow on GitHub, Bitbucket"
+  assert_contains "$skill/references/screenshots.md" "Do not click an attachment control"
+  assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
+  assert_contains "$skill/references/screenshots.md" "## Performance Proof"
+  assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"
+  assert_contains "$skill/references/proof-selection.md" "Automated validation only supports this proof"
+  assert_contains "$skill/references/proof-selection.md" "deliberately paced video"
+  assert_contains "$skill/references/proof-selection.md" "Markdown table"
+  assert_contains "$skill/references/proof-selection.md" "Default to prose"
+  assert_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
+  assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
+  assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
+  assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
+  assert_contains "$skill/scripts/pr_net_diff.py" "Practical UI proof required"
+  assert_contains "$skill/scripts/pr_net_diff.py" "do not use test or CI output as evidence"
+  assert_not_contains "$skill/scripts/pr_net_diff.py" "No screenshot by default"
+  assert_contains "$skill/agents/openai.yaml" "Publish practical PR proof of working behavior."
+}
+
 test_openclaw_local_test_helpers() {
   node --test \
     "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/runtime-profile.test.mjs" \
@@ -556,6 +601,7 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
+test_pr_proof_pack_is_a_visual_publishing_gate
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier

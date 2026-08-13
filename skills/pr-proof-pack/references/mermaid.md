@@ -1,54 +1,61 @@
-# Mermaid Proof
+# Understandable Diagrams
 
-Use Mermaid for:
+Use a diagram only when it is genuinely useful teaching material for a
+relationship, sequence, state transition, decision, spatial layout, comparison,
+integration boundary, lifecycle, or interaction among several actors.
+Having several steps or components is not enough: if a short paragraph or list
+is clearer, omit the diagram.
 
-- workflows, state transitions, dedupe, cleanup, queues, crons, migrations;
-- API or integration boundaries;
-- permission/access decisions;
-- multi-step behavior reviewers would otherwise reconstruct from code.
+## Make the Idea Land
 
-Keep diagrams small and useful. Prefer one clear diagram over several
-decorative ones.
+Introduce the diagram with one sentence explaining what the reviewer should
+learn. Then make the diagram readable without source-code context:
 
-Before posting or updating a PR body with Mermaid:
+- start at the actor or event the reviewer recognizes;
+- use short, everyday labels that describe actions and outcomes;
+- introduce technical names only after the plain-language idea is clear;
+- define any necessary acronym or project term in nearby text;
+- show one direction of travel and one level of detail;
+- keep file paths, class names, function names, and ticket IDs out unless the
+  reviewer must act on them;
+- prefer one small diagram over several decorative ones.
 
-1. Extract every `mermaid` fenced block from the final PR body.
-2. Validate each block with Mermaid CLI or an equivalent parser.
-3. If validation fails, fix the diagram or remove it.
-4. Do not post unvalidated Mermaid.
+If labels no longer fit comfortably, split the idea in prose or simplify it.
 
-Recommended validation command:
+## Validate Before Publishing
+
+Before creating or updating the PR body:
+
+1. Extract every `mermaid` fenced block from the final body.
+2. Validate each block with Mermaid CLI, an equivalent parser, or GitHub's draft
+   rendering inspected through Computer Use.
+3. Fix invalid syntax and unclear rendering.
+4. Inspect the final rendered diagram through Computer Use after saving.
+
+Recommended local validation:
 
 ```text
 mmdc -i /tmp/pr-proof.mmd -o /tmp/pr-proof.svg
 ```
 
-If Mermaid CLI is unavailable, avoid Mermaid and use a simple text table
-instead.
+If Mermaid cannot be validated, use a small plain-text flow diagram that GitHub
+can render predictably. Do not post unvalidated Mermaid.
 
-Prefer quoted labels when node text contains punctuation, slashes, code-like
-values, or symbols. For example, use `A["/codex bind"]` instead of
-`A[/codex bind]`.
+Quote labels containing punctuation, slashes, code-like values, or symbols. Use
+`A["Search request"]` instead of exposing a route or function name when the
+human action is what matters.
 
-Good examples:
+Good:
 
 ```mermaid
 flowchart TD
-  A[Install event] --> B{Already counted for user + skill + root + day?}
-  B -- yes --> C[Skip duplicate telemetry]
-  B -- no --> D[Record dedupe row]
-  D --> E[Update install stats]
+  A[Person installs a skill] --> B{Already counted today?}
+  B -- Yes --> C[Keep the existing total]
+  B -- No --> D[Record this install]
+  D --> E[Show the updated total]
 ```
 
-```mermaid
-sequenceDiagram
-  participant Client
-  participant API
-  participant Store
-  Client->>API: GET /api/v1/search?q=swarm
-  API->>Store: Search by relevance
-  Store-->>API: Candidate skills
-  API-->>Client: Results with popularity prior applied
-```
-
-Avoid diagrams that only restate the summary.
+Avoid diagrams that only restate the summary, list files, prove that the proof
+workflow ran, make the PR look polished, or require the reader to decode
+implementation vocabulary. Do not turn a simple explanation into standalone
+HTML just to obtain a screenshot.

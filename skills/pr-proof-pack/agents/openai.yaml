@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
-  short_description: "Write direct-base, behavior-first PR proof."
-  default_prompt: "Use $pr-proof-pack to write self-contained, behavior-first proof from this PR's direct-base diff. For stacked PRs, state the layer position and adjacent dependencies, cover only behavior owned by this layer, and refresh affected upstack proof after lower-layer changes."
+  short_description: "Publish practical PR proof of working behavior."
+  default_prompt: "Use $pr-proof-pack before creating or updating this PR, then upload practical visual evidence of the behavior with Computer Use and inspect the rendered result."
