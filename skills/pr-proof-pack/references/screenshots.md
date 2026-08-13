@@ -20,8 +20,9 @@ Tests, builds, CI, coverage, lint, type-check, validator output, green
 checkmarks, and screenshots of those results are supporting checks, not
 behavioral evidence. Leave routine pass lists in GitHub's checks instead of
 repeating them in the PR body. They cannot satisfy `Visual proof`. Code, diffs,
-diagrams, mockups, and generated stand-ins also cannot prove that the
-implementation ran.
+diagrams, mockups, standalone HTML explainers, synthetic cards, and generated
+stand-ins also cannot prove that the implementation ran unless the reviewed
+implementation is that artifact and the capture shows its real branch output.
 
 If Computer Use, practical capture, screen recording, GitHub login, attachment
 upload, image rendering, or video playback fails, stop before creating or

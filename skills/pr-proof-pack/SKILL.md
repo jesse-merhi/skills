@@ -125,26 +125,28 @@ Every claim must be understandable from at least one of these sources:
    premise restored, or the workflow has stopped to request approval before a
    necessary published-history rewrite.
 
-7. Choose practical visual proof and the smallest explanatory visual.
+7. Choose practical visual proof, then decide whether explanation needs a visual.
 
    Load `show-me`, then read
    [references/proof-selection.md](references/proof-selection.md) and
    [references/screenshots.md](references/screenshots.md). Every PR gets uploaded
    evidence of the behavior running in practice. UI work needs a deliberately
-   paced interaction recording and state screenshots. Use pseudocode, a call
-   tree, component tree, file tree, focused diff, or Mermaid when it makes the
-   changed behavior easier to understand. For Mermaid, also read
+   paced interaction recording and state screenshots. First explain the change
+   as a good teacher would. Add an explanation visual only when the subject has a
+   relationship, sequence, state, spatial layout, or comparison that is harder
+   to understand in prose. When Mermaid is useful, also read
    [references/mermaid.md](references/mermaid.md).
 
    Done when every important behavior has reviewer-checkable practical
    evidence, the required recordings and screenshots exist locally, and any
-   hard-to-hold relationship is explained with the smallest useful visual.
+   supporting visual makes a specific hard-to-hold idea easier to understand.
    Explanation visuals and automated checks never replace practical evidence.
 
 8. Write a behavior-first PR body.
 
    Read [references/body-shape.md](references/body-shape.md). Put the new behavior
-   first, followed by the smallest useful diagram and practical visual proof.
+   first, followed by practical visual proof. Include an explanation visual only
+   when it genuinely teaches the change more clearly than prose.
    Keep reproduction steps and observed results as copyable text. Do not add
    routine test, build, or CI pass lists that GitHub's checks already report.
 
@@ -168,7 +170,7 @@ Every claim must be understandable from at least one of these sources:
 10. Inspect the finished PR with Computer Use.
 
     Open the rendered PR and check its title, section order, image loading,
-    video playback, captions, diagram rendering, and copyable reproduction
+    video playback, captions, any diagram rendering, and copyable reproduction
     steps. Fix stale or unclear proof before leaving the page.
 
     Done when the rendered PR is readable without local context and every visual
@@ -177,7 +179,8 @@ Every claim must be understandable from at least one of these sources:
 11. Refresh after every branch change.
 
     Rerun the net diff, practical behavior walkthrough, visual capture and
-    upload, diagram validation, language pass, and rendered-page inspection.
+    upload, any needed diagram validation, language pass, and rendered-page
+    inspection.
     Remove stale proof.
     For a stack, sync first and repeat for every affected upstack PR.
 
@@ -202,15 +205,15 @@ Every claim must be understandable from at least one of these sources:
   operator behavior the change affects, not merely the automated test for it.
 - Performance claims include a before/after visual and a comparison table with
   matched conditions, measurements, and sample sizes.
-- The PR title, commit subjects, body, captions, and diagram labels use everyday
+- The PR title, commit subjects, body, captions, and any diagram labels use everyday
   language and restore the context a new reviewer needs.
 - The body describes only current net behavior owned by the PR's direct-base
   layer, not branch-local churn or another stack layer.
 - The new behavior appears first in terms of what a person, API consumer,
   operator, or downstream system can observe.
 - Every distinct changed UI state is visible, annotated, and reproducible.
-- Every multi-step or multi-actor behavior has a small, validated,
-  understandable diagram.
+- A diagram appears only when it genuinely helps teach a relationship, sequence,
+  state, spatial layout, or comparison that prose would make harder to follow.
 - Verification includes copyable text and matching visual evidence.
 - The closeout workflow has enough evidence to request human sign-off on every
   ready stack layer.
@@ -230,8 +233,12 @@ Every claim must be understandable from at least one of these sources:
   interaction, transition, error recovery path, or multi-step flow;
 - local-only image paths, images in tables, or attachments left in comments;
 - raw terminal dumps, tiny terminal text, secrets, tokens, or irrelevant output;
+- standalone HTML explainers, synthetic cards, mockups, or generated diagrams
+  presented as proof of an implementation that is not itself that artifact;
 - titles such as "updates", "changes", or ticket IDs that hide the outcome;
 - commit subjects that only name files, modules, refactors, or implementation
   mechanics;
 - diagrams that use unexplained class names, paths, acronyms, or code identifiers;
+- diagrams or visualizations added merely because a change has several steps or
+  to make the PR look polished;
 - proof that relies on agent-thread context, branch churn, or another stack layer.
