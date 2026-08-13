@@ -13,7 +13,7 @@ enabled/disabled skill roots, or deciding which skills/plugins to remove.
 1. Run the analyzer from this skill directory or repo root:
 
    ```bash
-   npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --months 3
+   skills/skill-cleaner/scripts/skill-cleaner --months 3
    ```
 
 2. Use [commands.md](references/commands.md) for useful variants.

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { NodeRuntime } from "@effect/platform-node";
+import { Console, Effect } from "effect";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -342,7 +344,7 @@ function safeSummary(profiles, selected) {
   return lines.join("\n");
 }
 
-function main() {
+function runMain() {
   const args = parseArgs(process.argv.slice(2));
   const profiles = inspectRuntimeProfiles({ model: args.model });
   const selected = selectRuntimeProfile(profiles, args.runtime);
@@ -383,10 +385,11 @@ export function pathsReferToSameFile(left, right) {
 }
 
 if (process.argv[1] && pathsReferToSameFile(process.argv[1], fileURLToPath(import.meta.url))) {
-  try {
-    main();
-  } catch (error) {
-    process.stderr.write(`runtime-profile: ${error instanceof Error ? error.message : String(error)}\n`);
-    process.exitCode = 1;
-  }
+  Effect.try({
+    try: runMain,
+    catch: (cause) => cause instanceof Error ? cause : new Error(String(cause)),
+  }).pipe(
+    Effect.tapError((error) => Console.error(`runtime-profile: ${error.message}`)),
+    NodeRuntime.runMain({ disableErrorReporting: true }),
+  );
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -183,6 +183,9 @@ exit 1
   await writeFile(path.join(interruptedState, "delay-status"), "1\n");
   await mkdir(completedState, { recursive: true });
   await writeFile(path.join(completedState, "complete-start"), "1\n");
+  const previousSessions = path.join(successfulState, "agents", "main", "sessions");
+  await mkdir(previousSessions, { recursive: true });
+  await writeFile(path.join(previousSessions, "previous.json"), "{}\n");
   const firstPort = await findPortRange();
   const secondPort = await findPortRange(firstPort + 10);
   const thirdPort = await findPortRange(secondPort + 10);
@@ -215,6 +218,9 @@ exit 1
     };
     const started = await run(helperPath, args, successEnv);
     if (started.code !== 0) throw new Error(JSON.stringify(started));
+    await assert.rejects(access(successEnv.OPENCLAW_LOCAL_TEST_LOCK_DIR));
+    await assert.rejects(access(previousSessions));
+    assert.equal((await readdir(path.dirname(previousSessions))).some((name) => name.startsWith("sessions.bak.")), true);
     assert.match(started.stdout, /Gateway health: healthy/);
     assert.match(started.stdout, /browser proxy health: healthy/);
     const generatedConfig = JSON.parse(
@@ -243,6 +249,7 @@ exit 1
     };
     const failed = await run(helperPath, args, failureEnv);
     assert.equal(failed.code, 1, failed.stdout + failed.stderr);
+    await assert.rejects(access(failureEnv.OPENCLAW_LOCAL_TEST_LOCK_DIR));
     assert.match(failed.stderr, /wizard readiness probe could not verify session/);
     assert.equal(await readFile(path.join(failingState, "fake-cancel.log"), "utf8"), "probe-session\n");
     await assert.rejects(readFile(path.join(failingState, "fake-active-wizard")));
@@ -301,6 +308,7 @@ exit 1
       });
     });
     assert.deepEqual(interruptedExit, { code: 143, signal: null });
+    await assert.rejects(access(interruptedEnv.OPENCLAW_LOCAL_TEST_LOCK_DIR));
     assert.match(interruptedStderr, /stopping gateway pid/);
     assert.equal(interruptedStdout, "");
     await assert.rejects(readFile(path.join(interruptedState, "run", "gateway.pid")));
@@ -319,6 +327,7 @@ exit 1
     };
     const completed = await run(helperPath, args, completedEnv);
     assert.equal(completed.code, 0, completed.stdout + completed.stderr);
+    await assert.rejects(access(completedEnv.OPENCLAW_LOCAL_TEST_LOCK_DIR));
     assert.equal(await readFile(path.join(completedState, "fake-rpc.log"), "utf8"), "wizard.start\n");
     await assert.rejects(readFile(path.join(completedState, "fake-active-wizard")));
   } finally {

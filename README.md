@@ -102,10 +102,10 @@ skill or script, keep the loop legible, and raise the bar at the review end.
 - **Meta tools:** `writing-for-agents` shapes skills and instruction files;
   `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
   prompt-budget pressure.
-- **Local helpers:** `code-review` includes the Rust `review-findings` CLI for
+- **Local helpers:** `code-review` includes an Effect SQL `review-findings` CLI for
   durable review findings, verification records, semantic-ish local search, and
-  CLI-backed closeouts. Install it with
-  `skills/code-review/scripts/install-review-findings`.
+  CLI-backed closeouts. It runs from the skill-local launcher after the repo's
+  Node dependencies are installed.
 
 ## Credits
 
@@ -151,8 +151,10 @@ pnpm validate:effect
 ```
 
 The tests check skill frontmatter, handoff tmux helper behavior, the
-review-findings CLI lifecycle, and Effect-based TypeScript helpers. CI also
-checks shell, Python, JavaScript, and Rust helper syntax/builds.
+review-findings CLI lifecycle, OpenClaw/ClawHub process behavior, and the
+Effect-based TypeScript helpers. Production helper entrypoints run through the
+typed Effect runtime; CI also syntax-checks the small test harnesses that drive
+their executable contracts.
 
 ## License
 

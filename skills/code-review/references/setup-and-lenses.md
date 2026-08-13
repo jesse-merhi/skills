@@ -3,21 +3,17 @@
 Do once before review loops, then redo only if the target, base, or dirty local
 overlay changes.
 
-1. Run `<skill-dir>/scripts/check-review-models --engine <selected-engine>`.
-   Stop before Phase 1 only when the selected engine's model or configured
-   effort is unavailable, or its catalogue check cannot be completed.
-
-2. Map changed flows, entrypoints, contracts, side effects, state transitions,
+1. Map changed flows, entrypoints, contracts, side effects, state transitions,
    risk surfaces, and validation targets with `review-surface-map`.
 
    If the map identifies at least three substantially independent runtime
    surfaces, follow [large-diff-slices.md](large-diff-slices.md) once before
    Phase 1. Do not slice a diff merely because it has many files.
 
-3. Load `review-guardrails`; record `review_started`, `baseline_diff`, and
+2. Load `review-guardrails`; record `review_started`, `baseline_diff`, and
    `scope_baseline` in the loop state.
 
-4. Run the required review lenses before the first review phase:
+3. Run the required review lenses before the first review phase:
 
    - `pr-rubbish-audit`: classify every changed file and flag unrelated churn,
      dangerous removals, generated drift, stale branch-history comments,
@@ -54,7 +50,7 @@ overlay changes.
    - Middle Man: a class or function mostly delegates onward.
    - Refused Bequest: an implementation ignores most of what it inherits.
 
-5. Add conditional review lenses only when their trigger is present:
+4. Add conditional review lenses only when their trigger is present:
 
    - `test-audit`: mandatory when the PR touches code with nearby or related
      tests, or when the PR changes, adds, or deletes tests. Check both whether
@@ -68,14 +64,14 @@ overlay changes.
    - `review-animations`: mandatory when the diff materially changes animation,
      transitions, gestures, springs, or interaction timing.
 
-6. Build a neutral risk checklist for `cold-pr-review-until-clean` from the
+5. Build a neutral risk checklist for `cold-pr-review-until-clean` from the
    changed-surface map and required/conditional lenses. Include checklist
    topics, not prior findings, desired conclusions, implementation rationale, or
    earlier review results.
 
-7. Note validation commands needed for affected surfaces: package scripts for
+6. Note validation commands needed for affected surfaces: package scripts for
    tests, typecheck, lint, build, UI/E2E, migrations, security, or generated
    artifacts.
 
-8. Propose durable context updates only when the diff changes long-lived project
+7. Propose durable context updates only when the diff changes long-lived project
    facts and the update is evidence-backed.

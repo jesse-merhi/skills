@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { assert, describe, it } from "@effect/vitest"
 import { shellQuote } from "./PrReview.ts"
 
-const executable = fileURLToPath(new URL("../scripts/pr-review.sh", import.meta.url))
+const executable = fileURLToPath(new URL("../scripts/pr-review", import.meta.url))
 
 const run = (...args: ReadonlyArray<string>) => spawnSync(executable, args, { encoding: "utf8" })
 
@@ -19,7 +19,7 @@ const git = (repository: string, args: ReadonlyArray<string>) => {
   return result.stdout.trim()
 }
 
-describe("pr-review.sh", () => {
+describe("pr-review", () => {
   it("prints POSIX-safe cleanup arguments for every shell-significant character", () => {
     const value = "repo $HOME `command` \\ 'quote'\nand newline"
     const result = spawnSync("/bin/sh", ["-c", `printf %s ${shellQuote(value)}`], { encoding: "utf8" })
@@ -31,21 +31,21 @@ describe("pr-review.sh", () => {
   it("preserves the missing-argument usage and exit code", () => {
     const result = run()
 
-    assert.strictEqual(result.status, 2)
-    assert.strictEqual(result.stdout, "")
-    assert.strictEqual(result.stderr, "usage: pr-review.sh <pr-number>\n")
+    assert.strictEqual(result.status, 1)
+    assert.match(result.stdout, /USAGE/u)
+    assert.match(result.stderr, /Missing required argument/u)
   })
 
   it("preserves the extra-argument usage and exit code", () => {
     const result = run("42", "43")
 
-    assert.strictEqual(result.status, 2)
-    assert.strictEqual(result.stdout, "")
-    assert.strictEqual(result.stderr, "usage: pr-review.sh <pr-number>\n")
+    assert.strictEqual(result.status, 1)
+    assert.match(result.stdout, /USAGE/u)
+    assert.match(result.stderr, /Unexpected positional argument/u)
   })
 
   it("rejects negative PR numbers before invoking gh", () => {
-    const result = run("-1")
+    const result = run("--", "-1")
 
     assert.strictEqual(result.status, 1)
     assert.match(result.stdout, /USAGE/)
@@ -65,7 +65,7 @@ describe("pr-review.sh", () => {
     const result = run("--completions", "bash")
 
     assert.strictEqual(result.status, 0, result.stderr)
-    assert.match(result.stdout, /begin-pr-review\.sh-completions/)
+    assert.match(result.stdout, /begin-pr-review-completions/)
     assert.strictEqual(result.stderr, "")
   })
 
@@ -73,7 +73,7 @@ describe("pr-review.sh", () => {
     const result = run("--completions=bash")
 
     assert.strictEqual(result.status, 0, result.stderr)
-    assert.match(result.stdout, /begin-pr-review\.sh-completions/)
+    assert.match(result.stdout, /begin-pr-review-completions/)
     assert.strictEqual(result.stderr, "")
   })
 

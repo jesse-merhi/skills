@@ -54,7 +54,7 @@ the active PR review surface.
 Run the helper from anywhere inside the repository:
 
 ```bash
-~/.claude/skills/pr-review-checkout/scripts/pr-review.sh <pr-number>
+~/.claude/skills/pr-review-checkout/scripts/pr-review <pr-number>
 ```
 
 It resolves the PR branch and base, reuses the branch's existing worktree when

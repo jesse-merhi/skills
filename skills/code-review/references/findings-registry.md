@@ -2,7 +2,7 @@
 
 The findings database is the working registry. The SQLite findings database is
 the durable registry for every finding raised by native review, cold review,
-required lenses, conditional lenses, structured reviewers, the review owner, or
+required lenses, conditional lenses, native reviewers, the review owner, or
 the user. Use it for finding IDs, branch/review keys, current status,
 fingerprint, source, owner or next action, verification commands, closeout
 sections, search, and the current open queue.
@@ -11,25 +11,17 @@ Do not rely on chat history as the source of review state.
 
 ## Helper
 
-Use the Rust `review-findings` binary as the local SQLite search index for
-review findings. Prefer the installed Rust binary. If it is missing, resolve
-`<skill-dir>` to the directory containing `SKILL.md`, then install it once:
+Use the Effect SQL `review-findings` CLI as the local SQLite search index for
+review findings. Resolve `<skill-dir>` to the directory containing `SKILL.md`
+and use the repo-owned launcher so the implementation cannot drift from the
+skill instructions:
 
 ```sh
-<skill-dir>/scripts/install-review-findings
+review_findings_bin="<skill-dir>/scripts/review-findings"
 ```
 
-It installs to `~/.local/bin/review-findings` by default. If
-`AGENT_REVIEW_FINDINGS_BIN` is configured, prefer that absolute helper path so
-an older `review-findings` earlier on `PATH` cannot be used by accident. If no
-configured path exists, use the skill-local launcher:
-
-```sh
-review_findings_bin="${AGENT_REVIEW_FINDINGS_BIN:-<skill-dir>/scripts/review-findings}"
-```
-
-The checked-in launcher prefers a stamped installed binary and otherwise
-builds/runs the bundled Rust source. The database stores records under:
+The launcher executes the checked-in Effect TypeScript implementation. The
+database stores records under:
 
 ```text
 ~/.local/state/agent-review-findings/reviews.sqlite
@@ -40,7 +32,7 @@ builds/runs the bundled Rust source. The database stores records under:
 For every finding, record:
 
 - decision ID
-- source: native review, cold review, named lens, structured reviewer, review
+- source: native review, cold review, named lens, review
   owner, or user
 - severity or priority when available
 - scope class when useful: direct, induced, adjacent, or unrelated

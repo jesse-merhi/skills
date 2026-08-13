@@ -32,9 +32,11 @@ CLI, process, SQL, and observability modules may break between beta releases.
 Do not start the production rewrite until that prerelease trade-off and the
 Node 24 runtime floor are explicitly accepted.
 
-The rollout should be deletion-first and stacked. Begin with one small vertical
-slice that proves the runtime, packaging, and process cleanup. Do not translate
-the five existing scripts line for line.
+The rollout began with one small vertical slice that proved the runtime,
+packaging, and process cleanup. The user then explicitly selected one
+deletion-first end-to-end PR, so the remaining executable families are replaced
+in that same PR rather than delivered as a stack. The rewrite does not
+translate the legacy scripts line for line.
 
 ## Research boundary
 
@@ -512,44 +514,27 @@ selecting patched `vitest@3.2.7`; an older `3.2.4` selection was affected by
 `GHSA-5xrq-8626-4rwp`, which is why exact dependency selection and routine
 auditing matter.
 
-## Proposed stacked delivery
+## Selected one-PR delivery
 
-Each PR must preserve the old executable contract until the user explicitly
-approves a breaking change.
+PR #66 now owns the complete migration:
 
-1. **Foundation plus PR checkout vertical slice**
-   - pnpm workspace, exact pins, TypeScript/language service, Vitest;
-   - small shared platform/test modules;
-   - PR checkout rewritten end to end;
-   - old shell implementation retained only as a comparison oracle during the
-     PR, then deleted before merge.
-2. **Skill cleaner**
-   - typed CLI and schemas;
-   - filesystem/log streaming;
-   - pure analysis preserved.
-3. **Local-test launcher strategy**
-   - generic skills-repo pieces only;
-   - separate owning-repo PRs if moving ClawHub/OpenClaw orchestration is
-     approved.
-4. **Findings store**
-   - specify the store contract;
-   - capture Rust CLI compatibility;
-   - migrate data and commands to Effect SQL;
-   - remove the Rust toolchain only after parity and migration tests pass.
-5. **Review orchestrator**
-   - reduce scope around native `codex exec review` and Git identity checks;
-   - add provider adapters, structured concurrency, interruption, and bounded
-     retry;
-   - remove legacy slicing/snapshot/process machinery;
-   - prove resume and compaction behavior through persisted checkpoints.
-6. **Repository cleanup**
-   - delete obsolete language runtimes, wrappers, tests, and install steps;
-   - update skills and agent instructions;
-   - measure final code, dependency, startup, and install deltas.
+1. keep the proven Node 24, exact-version Effect v4, TypeScript, diagnostics,
+   and Vitest foundation;
+2. replace every production helper entrypoint with an Effect CLI or
+   Effect-owned runtime;
+3. move SQLite persistence to Effect SQL and remove Rust/Cargo;
+4. replace Python and shell orchestration with typed process arguments,
+   schemas, scopes, schedules, and finalizers;
+5. retain ClawHub/OpenClaw policy in their skill modules while sharing only
+   genuinely common process/state primitives;
+6. delete the obsolete implementations, installers, syntax jobs, and runtime
+   dependencies before merge;
+7. run the complete compatibility, interruption, repository, and strict Effect
+   validation gates against the final net diff.
 
-The critical rule is one working product after every PR. The highest-risk
-review rewrite stays at the top of the stack, after the process and persistence
-patterns have been proven on smaller tools.
+The critical rule is one working product throughout the PR: each executable
+family is replaced vertically and its old implementation is deleted only after
+the relevant behavior contract passes.
 
 ## Proof required before calling the rewrite complete
 

@@ -53,7 +53,7 @@ Report iterations, the Phase 1 engine used, `review-until-clean` result,
 reviewing`, `Verification run`, `Still open`, PR evidence, required-lens
 results, PR URL or PR blocker, `pr-proof-pack` result, context updates, the
 configured `review-findings closeout` command used, findings database query
-command, structured JSON ledger path when one was written, budget use (elapsed
+command, budget use (elapsed
 wall clock and diff growth against the baseline), the consult queue awaiting the
 review owner, final verdict, and anything left for human judgment.
 

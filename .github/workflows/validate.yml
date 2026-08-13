@@ -39,39 +39,19 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Set up Rust
-        run: rustup default stable
-
       - name: Validate skill metadata and helper behavior
         run: |
           ./tests/skills-test
           ./tests/review-findings-test
           python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py'
-          python3 -m unittest discover -s skills/wait-efficiently/scripts -p 'test_*.py'
           pnpm validate:effect
 
-      - name: Check shell, Python, and JavaScript syntax
+      - name: Check remaining shell and JavaScript syntax
         run: |
           bash -n \
             tests/skills-test \
-            tests/review-findings-test \
-            skills/handoff/scripts/codex-handoff-tmux \
-            skills/code-review/scripts/review-findings \
-            skills/code-review/scripts/install-review-findings \
-            skills/code-review/scripts/check-review-models \
-            skills/code-review/scripts/calibrate-structured-review \
-            skills/code-review/scripts/test-codex-review-helper \
-            skills/pr-review-checkout/scripts/pr-review.sh
+            tests/review-findings-test
           python3 -m py_compile \
-            skills/code-review/scripts/*.py \
             skills/openclaw/openclaw-stg-test/scripts/openclaw-stg-test \
-            skills/openclaw/openclaw-stg-test/scripts/test_openclaw_stg_test.py \
-            skills/pr-proof-pack/scripts/*.py \
-            skills/wait-efficiently/scripts/*.py
+            skills/openclaw/openclaw-stg-test/scripts/test_openclaw_stg_test.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs
-
-      - name: Check review-findings Rust helper
-        run: |
-          cargo fmt --check --manifest-path skills/code-review/scripts/review-findings-rs/Cargo.toml
-          cargo check --locked --manifest-path skills/code-review/scripts/review-findings-rs/Cargo.toml
-          cargo test --locked --manifest-path skills/code-review/scripts/review-findings-rs/Cargo.toml

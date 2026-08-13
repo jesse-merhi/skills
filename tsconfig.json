@@ -28,7 +28,7 @@
   },
   "include": [
     "packages/**/*.ts",
-    "skills/pr-review-checkout/**/*.ts",
+    "skills/**/*.ts",
     "vitest.config.ts"
   ]
 }

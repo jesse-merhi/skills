@@ -9,9 +9,8 @@ Pick the review engine before the first iteration:
    - Claude Code -> the claude engine (built-in `code-review` workflow).
 3. Cross-harness requests need a fallback:
    - Claude engine requested from Codex: the built-in workflow only exists
-     inside Claude Code. Use the helper's structured Claude reviewer
-     (`scripts/codex-review --structured --engine claude`) and tell the user
-     the bare built-in reviewer was unreachable from this harness.
+     inside Claude Code. Stop and explain that the requested native reviewer is
+     unavailable in this harness; do not substitute a home-grown prompt runner.
    - Codex engine requested from Claude Code: run the codex engine normally; the
      helper shells out to the `codex` CLI either way.
 

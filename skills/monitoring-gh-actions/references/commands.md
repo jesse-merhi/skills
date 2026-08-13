@@ -20,7 +20,7 @@ Estimate the next useful observation, wait through `wait-efficiently`, then
 fetch the run once:
 
 ```sh
-<wait-efficiently-dir>/scripts/estimate-gh-wait.py --run-id <run-id>
+<wait-efficiently-dir>/scripts/estimate-gh-wait --run-id <run-id>
 gh run view <run-id> --json status,conclusion,jobs,updatedAt
 ```
 
@@ -31,7 +31,7 @@ the sleep and next status fetch inside one held tool call:
 
 ```sh
 gh pr checks --json name,state,workflow,link
-<wait-efficiently-dir>/scripts/quiet-wait.py 120s
+<wait-efficiently-dir>/scripts/quiet-wait 120s
 gh pr checks --json name,state,workflow,link
 ```
 

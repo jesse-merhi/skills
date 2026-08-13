@@ -48,11 +48,11 @@ test_review_findings_workflow_is_documented() {
   local findings_doc="$ROOT_DIR/skills/code-review/references/findings-registry.md"
   local output_doc="$ROOT_DIR/skills/code-review/references/final-output.md"
 
-  assert_contains "$ROOT_DIR/INSTALL.md" "Install Repo-Owned Helper Binaries"
-  assert_contains "$ROOT_DIR/README.md" "skills/code-review/scripts/install-review-findings"
+  assert_contains "$ROOT_DIR/INSTALL.md" "Verify Repo-Owned CLIs"
+  assert_contains "$ROOT_DIR/README.md" 'Effect SQL `review-findings` CLI'
   assert_contains "$skill_doc" "Read [references/findings-registry.md](references/findings-registry.md)."
   assert_contains "$findings_doc" "The findings database is the working registry."
-  assert_contains "$findings_doc" 'Use the Rust `review-findings` binary as the local SQLite search index'
+  assert_contains "$findings_doc" 'Use the Effect SQL `review-findings` CLI as the local SQLite search index'
   assert_contains "$findings_doc" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
   assert_contains "$findings_doc" "--user-impact"
   assert_contains "$findings_doc" '"$review_findings_bin" closeout --material'
@@ -63,22 +63,11 @@ test_review_findings_workflow_is_documented() {
   assert_contains "$output_doc" "Lower-risk findings"
 }
 
-test_review_findings_installs_rust_binary() {
-  local tmp bin_dir installed out
+test_review_findings_runs_from_repo_launcher() {
+  local tmp out
   tmp="$(mktemp -d)"
-  bin_dir="$tmp/bin"
-
-  installed="$(AGENT_REVIEW_FINDINGS_INSTALL_DIR="$bin_dir" \
-    AGENT_REVIEW_FINDINGS_TARGET_DIR="$tmp/cargo-target" \
-    "$ROOT_DIR/skills/code-review/scripts/install-review-findings")"
-
-  test -x "$installed" || fail "installed review-findings binary should be executable"
-  test "$installed" = "$bin_dir/review-findings" || fail "installer should print installed binary path"
-  test -x "$tmp/cargo-target/release/review-findings" || fail "installer should build in the configured target dir"
-  test -s "$bin_dir/review-findings.source-sha256" || fail "installer should write source provenance"
-
-  out="$("$installed" path --db "$tmp/reviews.sqlite")"
-  test "$out" = "$tmp/reviews.sqlite" || fail "installed binary should run without the wrapper"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" path --db "$tmp/reviews.sqlite")"
+  test "$out" = "$tmp/reviews.sqlite" || fail "repo launcher should run the Effect CLI"
 }
 
 test_review_findings_record_command_without_base_requires_existing_run() {
@@ -355,7 +344,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
 }
 
 test_review_findings_workflow_is_documented
-test_review_findings_installs_rust_binary
+test_review_findings_runs_from_repo_launcher
 test_review_findings_record_command_without_base_requires_existing_run
 test_review_findings_cli_generates_closeout_from_records
 test_review_findings_cli_covers_full_review_lifecycle_closeout

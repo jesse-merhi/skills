@@ -9,18 +9,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const helperPath = path.join(scriptDir, "openclaw-local-test");
-
-async function extractSharedProxy(tempDir) {
-  const helper = await readFile(helperPath, "utf8");
-  const match = helper.match(
-    /cat >"\$shared_proxy_script" <<'NODE'\n([\s\S]*?)\nNODE\n  chmod 700 "\$shared_proxy_script"/,
-  );
-  assert.ok(match, "shared proxy source is embedded in the helper");
-  const proxyPath = path.join(tempDir, "shared-browser-proxy.js");
-  await writeFile(proxyPath, match[1], { mode: 0o700 });
-  return proxyPath;
-}
+const proxyPath = path.join(scriptDir, "../src/shared-browser-proxy.ts");
 
 async function listen(server) {
   await new Promise((resolve, reject) => {
@@ -116,7 +105,6 @@ test("shared browser proxy survives upstream and downstream connection failures"
   await mkdir(routeDir);
   await rename(path.join(tempDir, "route.json"), path.join(routeDir, `${proxyPort}.json`));
 
-  const proxyPath = await extractSharedProxy(tempDir);
   let stderr = "";
   const proxy = spawn(process.execPath, [proxyPath], {
     env: {

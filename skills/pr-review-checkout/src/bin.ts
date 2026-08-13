@@ -5,7 +5,7 @@ import { checkoutForReview, ExternalToolError, PullRequestNumber, ReviewTools } 
 import { ReviewToolsLive } from "./ReviewToolsLive.ts"
 
 const prReview = Command.make(
-  "pr-review.sh",
+  "pr-review",
   { prNumber: Argument.integer("pr-number").pipe(Argument.withSchema(PullRequestNumber)) },
   Effect.fn("prReview.handler")(function*({ prNumber }) {
     const result = yield* checkoutForReview(prNumber)

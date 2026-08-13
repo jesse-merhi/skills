@@ -28,20 +28,16 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 1. Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
 
-2. Select the review engine, then run its model gate.
+2. Select the review engine.
 
    Use the harness-native engine unless the user explicitly names another:
    Codex in Codex, Claude in Claude Code. Treat an explicit request for Fable
    as selecting Claude. Do not ask about or validate the unselected engine.
 
-   Read [references/model-gate.md](references/model-gate.md), then run:
-
-   ```sh
-   <skill-dir>/scripts/check-review-models --engine <codex|claude>
-   ```
-
-   Done when the gate passes. If it cannot complete or reports stale model
-   assumptions, stop before Phase 1 and ask the user how to proceed.
+   Use the model configured by the selected harness. Do not hard-code or probe
+   private model catalogues before review; the native command owns model
+   availability and reports an actionable failure when its configuration is
+   invalid.
 
 3. Freeze the target and review scope.
 
@@ -85,8 +81,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    Load `review-until-clean` and run it until the native review is clean on the
    current target. Use `finding-discipline` to triage findings before fixing.
    Read [references/review-phase-rules.md](references/review-phase-rules.md)
-   for whole-target review, dirty-tree snapshots, validation, structured review
-   classification, and quiet-helper behavior. If Phase 1 uses the Codex engine,
+   for whole-target review, validation, finding classification, and
+   quiet-helper behavior. If Phase 1 uses the Codex engine,
    also read [references/codex-review-helper.md](references/codex-review-helper.md).
 
 7. Run Phase 2.
@@ -124,7 +120,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 ## Done Means
 
-- The required model gate passed for this run.
+- The selected harness-native review engine started successfully with its
+  configured model.
 - `review-surface-map`, required lenses, applicable conditional lenses,
   `review-guardrails`, and `finding-discipline` were used.
 - Native review met its clean stop condition before Phase 2, and cold review
@@ -141,10 +138,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 ## Stop Honestly
 
-Stop without claiming clean when tools are unavailable, the model gate fails,
-validation is blocked, budgets expire, the user stops the run, subagents are
-unavailable and the user has not accepted lower confidence, or the consult queue
-still has open entries.
+Stop without claiming clean when tools or the selected native engine are
+unavailable, validation is blocked, budgets expire, the user stops the run,
+subagents are unavailable and the user has not accepted lower confidence, or
+the consult queue still has open entries.
 
 There is no "clean except" final verdict. The result is clean only after the
 consult queue is resolved.

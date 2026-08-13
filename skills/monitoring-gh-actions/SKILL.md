@@ -16,7 +16,7 @@ inside one tool call so the model is not re-entered between checks.
 Estimate the next check from completed runs of the same workflow and event:
 
 ```bash
-<wait-efficiently-dir>/scripts/estimate-gh-wait.py --run-id <run-id>
+<wait-efficiently-dir>/scripts/estimate-gh-wait --run-id <run-id>
 ```
 
 Use its `suggested_wait_seconds`. It prefers same-branch history when enough

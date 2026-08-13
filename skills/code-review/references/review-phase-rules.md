@@ -44,7 +44,7 @@ validation cannot run, stop honestly with the blocker or residual risk.
   in the current review scope before fixing. Fix the scoped pattern at once when
   practical, but stop at touched surfaces, owner boundaries, or clear follow-up
   territory.
-- When structured review output is available, classify each finding as:
+- Classify each finding as:
   `direct`, `induced`, `adjacent`, or `unrelated`. Direct findings point at
   changed files. Induced findings point at unchanged code that the change now
   exposes or calls. Adjacent findings are real nearby issues outside this PR's

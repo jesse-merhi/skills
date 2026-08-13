@@ -11,6 +11,9 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0-beta.107
         version: 4.0.0-beta.107(effect@4.0.0-beta.107)(ioredis@5.11.1)
+      '@effect/sql-sqlite-node':
+        specifier: 4.0.0-beta.107
+        version: 4.0.0-beta.107(effect@4.0.0-beta.107)
       effect:
         specifier: 4.0.0-beta.107
         version: 4.0.0-beta.107
@@ -49,6 +52,11 @@ packages:
     peerDependencies:
       effect: ^4.0.0-beta.107
       ioredis: '>=5.7.0 <6.0.0'
+
+  '@effect/sql-sqlite-node@4.0.0-beta.107':
+    resolution: {integrity: sha512-hfYptkItEs/AdEIPEDkziC1TbnC7FyGISowKIvaZtscoWyxPaUtWsxM8EYgfOJ61aZwGgKQxZlXIgJ0fw25Lng==}
+    peerDependencies:
+      effect: ^4.0.0-beta.107
 
   '@effect/vitest@4.0.0-beta.107':
     resolution: {integrity: sha512-n4/qsx4DnT4dEI/wNgMivxyUeJoeiU1TCSz0WnoHWk/dny40Oxjip2P9IXGQDgPb9fsYVnerF0QRA6nPUuExQA==}
@@ -576,6 +584,10 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+
+  '@effect/sql-sqlite-node@4.0.0-beta.107(effect@4.0.0-beta.107)':
+    dependencies:
+      effect: 4.0.0-beta.107
 
   '@effect/vitest@4.0.0-beta.107(effect@4.0.0-beta.107)(vitest@4.1.10(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)))':
     dependencies:
