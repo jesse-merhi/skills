@@ -15,29 +15,17 @@ without knowing the agent thread.
 
 ## Hard Gates
 
-- **Computer Use:** Load `computer-use` and prove it can inspect and operate an
-  agent-owned browser before creating or updating the PR. Use it to upload the
-  evidence and inspect the final rendered PR.
-  Prefer clipboard paste in the PR editor across GitHub, Bitbucket, and other providers.
-  Use an attachment control or native file picker only when paste is unsupported.
-  If Computer Use is missing, unavailable, or cannot operate the browser, stop.
-  Tell the human exactly what failed and ask them to restore Computer Use before
-  continuing. Do not publish or update the PR through another path.
-- **Practical visual evidence:** Every PR needs uploaded visual proof of the
-  implemented behavior working in practice. Builds, tests, CI, linters,
-  type-checkers, coverage, validators, and green checkmarks remain in the check
-  run; do not repeat routine pass lists in the PR body.
-  They never satisfy `Visual proof`, even as screenshots. UI changes
-  require a deliberately paced interaction video plus screenshots of every
-  distinct changed state. Backend and infrastructure changes must show the real
-  request, state transition, side effect, or operator outcome. Performance
-  changes must show a before/after visual and a comparison table under matched
-  conditions. If practical capture or upload is blocked, stop before PR
-  readiness and ask the human to fix the blocker.
-- **Readable history:** PR titles and commit subjects must say the outcome in
-  everyday language. Reword unclear local commits before the first push. Never
-  rewrite published history without explicit human approval; stop and ask when
-  that approval is needed.
+- **Computer Use:** Complete the preflight in step 2 before any PR mutation, then
+  use Computer Use for the upload and rendered-page inspection in steps 9 and
+  10.
+- **Practical evidence:** Complete the behavior capture in step 7. Automated
+  validation remains supporting information and never satisfies `Visual proof`.
+- **Readable history:** Complete the title and commit review in step 6 before
+  publishing.
+
+If any gate cannot be completed, stop. Tell the human which capability failed
+and what they must restore. Do not publish or update the PR through another
+path.
 
 ## Trigger Branches
 
@@ -125,14 +113,13 @@ Every claim must be understandable from at least one of these sources:
 
 7. Choose practical visual proof.
 
-   Read [references/proof-selection.md](references/proof-selection.md) and
-   [references/screenshots.md](references/screenshots.md). Every PR gets uploaded
-   evidence of the behavior running in practice. UI work needs a deliberately
-   paced interaction recording and state screenshots. Keep explanation support
-   out of the evidence decision; the final reader-first pass owns it.
+   Read the practical-evidence section of
+   [references/proof-selection.md](references/proof-selection.md), then read
+   [references/screenshots.md](references/screenshots.md). Capture the behavior
+   itself in the form required for that change type.
 
    Done when every important behavior has reviewer-checkable practical
-   evidence and the required recordings and screenshots exist locally.
+   evidence and every required recording and screenshot exists locally.
 
 8. Write a behavior-first PR body.
 

@@ -60,7 +60,8 @@ Depends on #41; followed by #43.">
 
 ## Visual proof
 
-<For UI interactions: uploaded deliberately paced manual walkthrough video.>
+<Provider-hosted evidence selected in `proof-selection.md` and captured by
+`screenshots.md`.>
 
 ![Changed behavior at its observable outcome](https://github.com/user-attachments/assets/...)
 
@@ -83,28 +84,17 @@ rollout detail, or risk that materially helps review.>
 ````
 
 Keep `New behavior` first. After that, order proof by usefulness: short stack
-context when needed, any useful explanatory visual, practical visual evidence, manual
+context when needed, any useful explanation support, practical evidence, manual
 verification, then optional implementation notes.
 
-For a tiny non-interactive change, a paragraph, one practical evidence
-screenshot may be enough. Do not add empty sections, decorative diagrams, or a
-synthetic HTML explainer to make the PR look polished.
+For a tiny non-interactive change, a paragraph and one practical evidence item
+may be enough. Omit empty sections.
 
 ## Visual Proof
 
-Every PR needs at least one uploaded screenshot of practical behavior in the
-main body. UI interactions also require a deliberately paced manual walkthrough
-video. Put the most useful evidence soon after the behavior description and any
-genuinely useful explanatory visual.
-
-For UI changes, record the complete changed interaction and show every distinct
-changed state. For backend, infrastructure, docs, and test-only changes, show
-the real product, API, persisted-state, operator, or rendered-use outcome. Keep
-reproduction steps as copyable text under `How to verify`.
-
-Tests, builds, CI, coverage, lint, type-check, validator output, and green
-checkmarks stay in the check run. Do not repeat routine pass lists in the PR
-body, screenshot them, or use them to satisfy `Visual proof`.
+Use the practical evidence chosen in `proof-selection.md` and captured through
+`screenshots.md`. Put the most useful item soon after the behavior description
+and keep reproduction steps as copyable text under `How to verify`.
 
 Put useful context immediately below each image:
 
@@ -201,12 +191,6 @@ or verify the behavior:
 - generic `Summary`, `What Changed`, and `Proof` sections that repeat each other;
 - net-diff tables, file inventories, and implementation buckets as behavior;
 - unexplained ticket IDs, sprint names, bug-bash labels, or thread shorthand;
-- test-file lists or long command inventories in place of behavioral proof;
-- routine test, build, and CI pass lists already visible in GitHub's checks;
 - review-loop history, agent names, run labels, and planning notes;
-- local-only paths, image tables, and attachments left only in comments;
-- raw terminal dumps, tiny terminal text, secrets, tokens, or verbose CI output;
-- screenshots or videos of tests, builds, CI, coverage, lint, type-checking,
-  validators, green checkmarks, or automated E2E runners as behavioral proof;
 - claims such as "works as expected" without saying what was exercised;
 - changes owned by another stack layer or a repeated whole-stack summary.
