@@ -3,7 +3,7 @@ import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
 import { Cause, Console, Effect, FileSystem, Layer, Option, Path } from "effect"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import { buildCloseout, initialize, MissingReviewRun, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun } from "./ReviewFindings.ts"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 // Environment defaults are resolved once at the CLI boundary before effects run.
 // @effect-diagnostics-next-line processEnv:off
@@ -53,8 +53,7 @@ const closeout = Command.make("closeout", {
   yield* printCloseout(closeout, args.json, args.material)
 })))
 const inferGit = Effect.fn("ReviewFindings.inferGit")(function*(args: ReadonlyArray<string>) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  return yield* spawner.string(ChildProcess.make("git", args)).pipe(Effect.map((output) => output.trim()), Effect.option)
+  return yield* checkedTrimmedText("git", args).pipe(Effect.option)
 })
 const query = Command.make("query", {
   db, query: Argument.string("query"), limit: Flag.integer("limit").pipe(Flag.withDefault(8)), repo: optionalString("repo"), repoPath: optionalString("repo-path"), branch: optionalString("branch"), target: optionalString("target"),

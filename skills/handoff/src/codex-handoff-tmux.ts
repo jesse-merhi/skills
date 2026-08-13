@@ -1,14 +1,11 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Config, Console, Effect, FileSystem, Option, Path, Schema } from "effect"
 import { Command, Flag } from "effect/unstable/cli"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 const quote = (value: string) => value.replace(/([^A-Za-z0-9_./:%-])/gu, "\\$1")
 class HandoffError extends Schema.TaggedError<HandoffError>()("HandoffError", { message: Schema.String }) {}
-const run = Effect.fn("Handoff.run")(function*(command: string, args: ReadonlyArray<string>, cwd?: string) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  return yield* spawner.string(ChildProcess.make(command, args, cwd === undefined ? {} : { cwd })).pipe(Effect.map((output) => output.trim()))
-})
+const run = (command: string, args: ReadonlyArray<string>, cwd?: string) => checkedTrimmedText(command, args, cwd === undefined ? undefined : { cwd })
 
 const cli = Command.make("codex-handoff-tmux", {
   file: Flag.string("file"), focus: Flag.string("focus").pipe(Flag.withDefault("")), cwd: Flag.string("cd").pipe(Flag.withDefault(process.cwd())),
@@ -31,13 +28,21 @@ const cli = Command.make("codex-handoff-tmux", {
     const worktreePath = Option.isSome(args.worktree) ? args.worktree.value : paths.join(paths.dirname(repoTop), Option.getOrThrow(args.worktreeName))
     const name = paths.basename(worktreePath)
     const branch = Option.getOrElse(args.branch, () => `work/${name.toLowerCase().replace(/[^a-z0-9._-]+/gu, "-").replace(/^-+|-+$/gu, "")}`)
-    if (args.dryRun) yield* Console.log(`Dry run: would prepare dedicated worktree before launching Codex: ${worktreePath}`)
-    else if (!(yield* fs.exists(worktreePath))) {
+    if (args.dryRun) {
+      yield* Console.log(`Dry run: would prepare dedicated worktree before launching Codex: ${worktreePath}`)
+      workdir = worktreePath
+    } else if (!(yield* fs.exists(worktreePath))) {
       const branchExists = yield* run("git", ["-C", repoTop, "show-ref", "--verify", "--quiet", `refs/heads/${branch}`]).pipe(Effect.as(true), Effect.catch(() => Effect.succeed(false)))
       yield* run("git", ["-C", repoTop, "worktree", "add", ...(branchExists ? [] : ["-b", branch]), worktreePath, ...(branchExists ? [branch] : [args.base])])
       yield* Console.log(`Created git worktree ${worktreePath} on branch ${branch} from ${args.base}`)
+      workdir = worktreePath
+    } else {
+      const existingTop = yield* run("git", ["-C", worktreePath, "rev-parse", "--show-toplevel"]).pipe(
+        Effect.mapError(() => new HandoffError({ message: `Worktree path exists but is not a git worktree: ${worktreePath}` }))
+      )
+      workdir = existingTop
+      yield* Console.log(`Using existing git worktree: ${existingTop}`)
     }
-    workdir = worktreePath
   }
 
   const prompt = [`Read the handoff document before acting:\n\n${args.file}\n`, ...(args.focus.length === 0 ? [] : [`Next session focus:\n\n${args.focus}\n`]), `Working directory:\n\n${workdir}\n`, ...(wantsWorktree ? ["This directory was prepared as this worker's dedicated git worktree. Do not use the coordinator worktree for implementation.\n"] : []), "Start by reading the handoff, then continue from it. Keep the final reply short and report what you did."].join("\n")

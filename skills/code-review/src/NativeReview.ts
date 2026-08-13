@@ -1,5 +1,5 @@
 import { Effect, Option, Schema } from "effect"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 export type ReviewMode = "auto" | "whole" | "local" | "uncommitted" | "branch" | "commit"
 
@@ -17,10 +17,7 @@ export class ReviewTargetChangedError extends Schema.TaggedError<ReviewTargetCha
   runs: Schema.Number
 }) {}
 
-const capture = Effect.fn("NativeReview.capture")(function*(command: string, args: ReadonlyArray<string>) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  return yield* spawner.string(ChildProcess.make(command, args)).pipe(Effect.map((output) => output.trim()))
-})
+const capture = checkedTrimmedText
 
 const git = (args: ReadonlyArray<string>) => capture("git", args)
 const branchTarget = (base: string, mode: "whole" | "branch" = "branch") => ({
@@ -82,12 +79,11 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   readonly plan: ReviewPlan
   readonly testCommand: Option.Option<string>
 }) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const reviews = Effect.forEach(options.plan.targets, (target) => spawner.string(ChildProcess.make(options.codexBin, ["review", ...target.args])).pipe(
+  const reviews = Effect.forEach(options.plan.targets, (target) => checkedText(options.codexBin, ["review", ...target.args]).pipe(
     Effect.map((output) => options.plan.targets.length === 1 ? output : `[${target.label}]\n${output}`)
   )).pipe(Effect.map((outputs) => outputs.join("\n\n")))
   if (Option.isNone(options.testCommand)) return yield* reviews
-  const test = spawner.string(ChildProcess.make("sh", ["-lc", options.testCommand.value]))
+  const test = checkedText("sh", ["-lc", options.testCommand.value])
   const [output] = yield* Effect.all([reviews, test], { concurrency: "unbounded" })
   return output
 })

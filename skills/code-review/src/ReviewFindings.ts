@@ -36,10 +36,6 @@ export interface RecordedCommand {
 
 interface RunRow { readonly id: string }
 interface SequenceRow { readonly sequence: number }
-interface ExistingIssueRow {
-  readonly first_seen_at: number | null
-  readonly seen_count: number | null
-}
 export interface CloseoutFinding {
   readonly decision_id: string
   readonly status: string
@@ -165,17 +161,22 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const runId = yield* upsertRun(run)
   const issueId = stableId([runId, input.decisionId])
   const timestamp = nowSeconds()
-  const existing = yield* sql<ExistingIssueRow>`select first_seen_at, seen_count from issues where id = ${issueId}`
-  const firstSeen = existing[0]?.first_seen_at ?? timestamp
-  const seenCount = (existing[0]?.seen_count ?? 0) + 1
   const impact = normalizeToken(input.impact)
   const priority = normalizeToken(input.priority)
   const material = input.material || isUserVisible(impact) || isSensitive(impact) || materialPriorities.has(priority)
   const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, impact, priority, input.userImpact, input.decision, input.text].filter(Boolean).join(" ")
-  yield* sql`delete from issues where id = ${issueId}`
   yield* sql`
     insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, impact, priority, material, user_impact, decision, text, decision_log_path, first_seen_at, last_seen_at, seen_count, updated_at)
-    values (${issueId}, ${runId}, ${input.decisionId}, ${normalizeStatus(input.status)}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${impact}, ${priority}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${run.decisionLog}, ${firstSeen}, ${timestamp}, ${seenCount}, ${timestamp})`
+    values (${issueId}, ${runId}, ${input.decisionId}, ${normalizeStatus(input.status)}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${impact}, ${priority}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
+    on conflict(id) do update set
+      run_id=excluded.run_id, decision_id=excluded.decision_id, status=excluded.status,
+      source=excluded.source, fingerprint=excluded.fingerprint, summary=excluded.summary,
+      impact=excluded.impact, priority=excluded.priority, material=excluded.material,
+      user_impact=excluded.user_impact, decision=excluded.decision, text=excluded.text,
+      decision_log_path=excluded.decision_log_path,
+      first_seen_at=coalesce(issues.first_seen_at, excluded.first_seen_at),
+      last_seen_at=excluded.last_seen_at, seen_count=issues.seen_count + 1,
+      updated_at=excluded.updated_at`
   return { runId, issueId }
 })
 

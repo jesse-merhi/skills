@@ -1,11 +1,8 @@
 import { Effect, Schema } from "effect"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 const PullRequestBase = Schema.Struct({ baseRefName: Schema.String, baseRefOid: Schema.String })
-const capture = Effect.fn("NetDiff.capture")(function*(command: string, args: ReadonlyArray<string>) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  return yield* spawner.string(ChildProcess.make(command, args)).pipe(Effect.map((output) => output.trim()))
-})
+const capture = checkedTrimmedText
 const git = (args: ReadonlyArray<string>) => capture("git", args)
 const optionalGit = (args: ReadonlyArray<string>) => git(args).pipe(Effect.option)
 

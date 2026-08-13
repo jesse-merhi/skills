@@ -6,6 +6,7 @@ import { spawn } from "node:child_process"
 import { openSync, closeSync } from "node:fs"
 import { Console, Effect, FileSystem, Schedule, Schema } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 // Home expansion is a pure CLI-boundary default.
 // @effect-diagnostics-next-line processEnv:off
@@ -39,16 +40,20 @@ export const readPid = Effect.fn("LocalTest.readPid")(function*(path: string) {
 export const stopPid = Effect.fn("LocalTest.stopPid")(function*(label: string, path: string) {
   const fs = yield* FileSystem.FileSystem
   const pid = yield* readPid(path)
+  if (pid === process.pid) return yield* fs.remove(path, { force: true })
   if (yield* pidRunning(pid)) {
     yield* Console.error(`stopping ${label} pid ${pid}`)
     yield* Effect.sync(() => { try { process.kill(-(pid ?? 0), "SIGTERM") } catch { try { process.kill(pid ?? 0, "SIGTERM") } catch { /* already stopped */ } } })
+    for (let attempt = 0; attempt < 40 && (yield* pidRunning(pid)); attempt += 1) yield* Effect.sleep("100 millis")
+    if (yield* pidRunning(pid)) {
+      yield* Console.error(`forcing ${label} pid ${pid} to stop`)
+      yield* Effect.sync(() => { try { process.kill(-(pid ?? 0), "SIGKILL") } catch { try { process.kill(pid ?? 0, "SIGKILL") } catch { /* already stopped */ } } })
+    }
   }
   yield* fs.remove(path, { force: true })
 })
-export const capture = Effect.fn("LocalTest.capture")(function*(command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  return yield* spawner.string(ChildProcess.make(command, args, { cwd, env, extendEnv: env !== undefined })).pipe(Effect.map((output) => output.trim()))
-})
+export const capture = (command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>) =>
+  checkedTrimmedText(command, args, { ...(cwd === undefined ? {} : { cwd }), ...(env === undefined ? {} : { env, extendEnv: true }) })
 export const run = Effect.fn("LocalTest.run")(function*(command: string, args: ReadonlyArray<string>, cwd?: string, env?: Record<string, string>) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
   const code = yield* spawner.exitCode(ChildProcess.make(command, args, { cwd, env, extendEnv: env !== undefined, stdout: "inherit", stderr: "inherit" }))
@@ -70,3 +75,14 @@ export const waitForUrl = (url: string, attempts = 120) => Effect.tryPromise({ t
   const response = await fetch(url)
   if (!response.ok) throw new LocalTestError({ message: `${url} returned ${response.status}` })
 }, catch: (cause) => new LocalTestError({ message: `waiting for ${url}`, cause }) }).pipe(Effect.retry({ times: attempts, schedule: Schedule.spaced("1 second") }))
+
+export const portOwnedByPid = Effect.fn("LocalTest.portOwnedByPid")(function*(port: number, ownerPid: number) {
+  const listeners = yield* capture("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"])
+  const ownerGroup = (yield* capture("ps", ["-o", "pgid=", "-p", String(ownerPid)])).trim()
+  if (ownerGroup.length === 0) return false
+  for (const listener of listeners.split(/\s+/u).filter(Boolean)) {
+    const listenerGroup = yield* capture("ps", ["-o", "pgid=", "-p", listener]).pipe(Effect.orElseSucceed(() => ""))
+    if (listenerGroup.trim() === ownerGroup) return true
+  }
+  return false
+})

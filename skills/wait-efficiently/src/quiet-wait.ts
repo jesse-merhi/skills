@@ -8,12 +8,12 @@ const quietWait = Command.make(
   { duration: Argument.string("duration").pipe(Argument.withDescription("Duration such as 300, 30s, 5m, or 1h")) },
   Effect.fn("quietWait.handler")(function*({ duration }) {
     const requestedMilliseconds = yield* parseWaitDuration(duration)
-    const started = yield* Clock.currentTimeMillis
+    const started = yield* Clock.monotonicTimeNanos
     yield* Effect.sleep(requestedMilliseconds)
-    const elapsed = yield* Clock.currentTimeMillis
+    const elapsed = yield* Clock.monotonicTimeNanos
     yield* Console.log(JSON.stringify({
       requested_seconds: requestedMilliseconds / 1_000,
-      elapsed_seconds: Math.round(elapsed - started) / 1_000,
+      elapsed_seconds: Math.round(Number(elapsed - started) / 1_000_000) / 1_000,
       status: "elapsed"
     }))
   })

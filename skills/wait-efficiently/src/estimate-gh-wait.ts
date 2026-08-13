@@ -1,15 +1,12 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Console, Effect, Option, Schema } from "effect"
 import { Flag, Command } from "effect/unstable/cli"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { estimateWaitNow, WorkflowRunFromJson, WorkflowRunsFromJson } from "./Wait.ts"
 
 const PositiveInteger = Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0)))
 
-const captureJson = Effect.fn("captureJson")(function*(args: ReadonlyArray<string>) {
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  return yield* spawner.string(ChildProcess.make("gh", args)).pipe(Effect.map((output) => output.trim()))
-})
+const captureJson = (args: ReadonlyArray<string>) => checkedTrimmedText("gh", args)
 
 const estimateGhWait = Command.make(
   "estimate-gh-wait",

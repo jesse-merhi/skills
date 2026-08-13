@@ -257,6 +257,16 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
 
   assert_output_contains "$output" "No tmux session detected"
   assert_output_contains "$output" "$handoff"
+
+  mkdir "$tmp/not-a-worktree"
+  if env -u TMUX \
+      "$helper" \
+        --file "$handoff" \
+        --cd "$ROOT_DIR" \
+        --worktree "$tmp/not-a-worktree" >"$tmp/not-worktree.out" 2>&1; then
+    fail "an existing non-git path must not be reused as a handoff worktree"
+  fi
+  assert_contains "$tmp/not-worktree.out" "Worktree path exists but is not a git worktree"
 }
 
 test_retired_impeccable_cleanup_is_documented() {

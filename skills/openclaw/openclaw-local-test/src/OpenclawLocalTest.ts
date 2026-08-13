@@ -1,6 +1,6 @@
 import { createConnection, type Socket } from "node:net"
 import { Console, Effect, Exit, FileSystem, Option, Path, Schedule, Schema } from "effect"
-import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
+import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
 
 const RuntimeProfile = Schema.Struct({ id: Schema.String, auth: Schema.String, route: Schema.String, model: Schema.String, modelRef: Schema.String, runtimeId: Schema.String, pluginId: Schema.String })
 type RuntimeProfile = typeof RuntimeProfile.Type
@@ -109,6 +109,9 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
     const pid = yield* startDetached(process.execPath, gatewayArgs, { cwd: repo, env: gatewayEnv, stdout: `${logs}/gateway.log`, stderr: `${logs}/gateway.err.log` }); yield* fs.writeFileString(files.gateway, `${pid}\n`)
     const routeFile = paths.join(routes, `${ports.proxy}.json`); yield* fs.writeFileString(routeFile, JSON.stringify({ proxyPort: ports.proxy, targetHost: "127.0.0.1", targetPort: ports.gateway, gatewayPid: pid, stateDir: state, updatedAt: new Date().toISOString() }, null, 2) + "\n", { mode: 0o600 })
     yield* waitForUrl(`http://127.0.0.1:${ports.gateway}/healthz`, 200); yield* waitForUrl(`http://127.0.0.1:${ports.proxy}/healthz`, 200)
+    if (!(yield* portOwnedByPid(ports.gateway, pid))) return yield* new LocalTestError({ message: `gateway port ${ports.gateway} is not owned by process ${pid}` })
+    const proxyPid = yield* readPid(files.sharedProxy)
+    if (proxyPid === undefined || !(yield* portOwnedByPid(ports.proxy, proxyPid))) return yield* new LocalTestError({ message: `browser proxy port ${ports.proxy} is not owned by the shared proxy process` })
     const cliArgs = [entrypoint, "gateway", "call"]
     const rpc = (method: string, params: object) => capture(process.execPath, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(Effect.flatMap((output) => Effect.try(() => JSON.parse(output) as unknown)))
     const started = yield* rpc("wizard.start", { mode: "local" })
