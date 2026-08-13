@@ -258,6 +258,22 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "No tmux session detected"
   assert_output_contains "$output" "$handoff"
 
+  if env -u TMUX \
+      "$helper" \
+        --file "$tmp" \
+        --cd "$ROOT_DIR" >"$tmp/directory-handoff.out" 2>&1; then
+    fail "a directory must not be accepted as a handoff file"
+  fi
+  assert_contains "$tmp/directory-handoff.out" "Handoff path is not a file"
+
+  if env -u TMUX \
+      "$helper" \
+        --file "$handoff" \
+        --cd "$handoff" >"$tmp/file-workdir.out" 2>&1; then
+    fail "a file must not be accepted as a working directory"
+  fi
+  assert_contains "$tmp/file-workdir.out" "Working path is not a directory"
+
   mkdir "$tmp/not-a-worktree"
   if env -u TMUX \
       "$helper" \

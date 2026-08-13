@@ -15,10 +15,12 @@ const cli = Command.make("codex-handoff-tmux", {
 }, Effect.fn("Handoff.handler")(function*(args) {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
-  const handoffExists = yield* fs.exists(args.file)
-  if (!handoffExists) return yield* new HandoffError({ message: `Handoff file does not exist: ${args.file}` })
-  const cwdExists = yield* fs.exists(args.cwd)
-  if (!cwdExists) return yield* new HandoffError({ message: `Working directory does not exist: ${args.cwd}` })
+  const handoffInfo = yield* fs.stat(args.file).pipe(Effect.option)
+  if (Option.isNone(handoffInfo)) return yield* new HandoffError({ message: `Handoff file does not exist: ${args.file}` })
+  if (handoffInfo.value.type !== "File") return yield* new HandoffError({ message: `Handoff path is not a file: ${args.file}` })
+  const cwdInfo = yield* fs.stat(args.cwd).pipe(Effect.option)
+  if (Option.isNone(cwdInfo)) return yield* new HandoffError({ message: `Working directory does not exist: ${args.cwd}` })
+  if (cwdInfo.value.type !== "Directory") return yield* new HandoffError({ message: `Working path is not a directory: ${args.cwd}` })
   if (Option.isSome(args.worktree) && Option.isSome(args.worktreeName)) return yield* new HandoffError({ message: "Use only one of --worktree or --worktree-name." })
 
   let workdir = args.cwd
