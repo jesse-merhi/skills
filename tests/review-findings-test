@@ -384,6 +384,23 @@ test_review_findings_query_uses_latest_run_and_semantic_terms() {
   assert_output_not_contains "$out" "old-base invoice regression"
 }
 
+test_review_findings_query_requires_explicit_broad_scope_outside_git() {
+  local tmp db
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  if (cd "$tmp" && "$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --json probe >"$tmp/stdout" 2>"$tmp/stderr"); then
+    fail "query outside Git must not silently search every repository"
+  fi
+  assert_contains "$tmp/stderr" "query needs --repo, --repo-path, a Git repository, or --all-repos"
+
+  if (cd "$tmp" && "$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --json probe >"$tmp/stdout" 2>"$tmp/stderr"); then
+    fail "query outside Git must not silently search every branch"
+  fi
+  assert_contains "$tmp/stderr" "query needs --branch, a Git branch, or --all-branches"
+
+  (cd "$tmp" && "$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --all-repos --all-branches --json probe >/dev/null)
+}
+
 test_review_findings_shares_history_across_git_worktrees() {
   local tmp db repo linked out
   tmp="$(mktemp -d)"
@@ -408,6 +425,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout
 test_review_findings_upgrades_legacy_schema
 test_review_findings_reports_database_failures
 test_review_findings_query_uses_latest_run_and_semantic_terms
+test_review_findings_query_requires_explicit_broad_scope_outside_git
 test_review_findings_shares_history_across_git_worktrees
 
 printf 'ok - review-findings tests\n'

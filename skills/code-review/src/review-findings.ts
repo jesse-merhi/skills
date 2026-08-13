@@ -7,10 +7,13 @@ import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
+import * as Schema from "effect/Schema"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { buildCloseout, initialize, MissingReviewRun, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun } from "./ReviewFindings.ts"
+
+class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
 
 // Environment defaults are resolved once at the CLI boundary before effects run.
 // @effect-diagnostics-next-line processEnv:off
@@ -60,7 +63,7 @@ const closeout = Command.make("closeout", {
   yield* printCloseout(closeout, args.json, args.material)
 })))
 const inferGit = Effect.fn("ReviewFindings.inferGit")(function*(args: ReadonlyArray<string>) {
-  return yield* checkedTrimmedText("git", args).pipe(Effect.option)
+  return yield* checkedTrimmedText("git", args).pipe(Effect.option, Effect.map(Option.filter((value) => value.length > 0)))
 })
 const query = Command.make("query", {
   db, query: Argument.string("query"), limit: Flag.integer("limit").pipe(Flag.withDefault(8)), repo: optionalString("repo"), repoPath: optionalString("repo-path"), branch: optionalString("branch"), target: optionalString("target"),
@@ -70,6 +73,8 @@ const query = Command.make("query", {
   const root = yield* inferGit(["rev-parse", "--show-toplevel"])
   const inferredRepo = Option.map(root, (value) => value.split("/").at(-1) ?? value)
   const inferredBranch = yield* inferGit(["branch", "--show-current"])
+  if (!args.allRepos && Option.isNone(args.repo) && Option.isNone(args.repoPath) && Option.isNone(inferredRepo)) return yield* new QueryScopeError({ message: "query needs --repo, --repo-path, a Git repository, or --all-repos" })
+  if (!args.allBranches && Option.isNone(args.branch) && Option.isNone(inferredBranch)) return yield* new QueryScopeError({ message: "query needs --branch, a Git branch, or --all-branches" })
   const repo = args.allRepos ? Option.getOrUndefined(args.repo) : Option.getOrUndefined(Option.orElse(args.repo, () => inferredRepo))
   const branch = args.allBranches ? Option.getOrUndefined(args.branch) : Option.getOrUndefined(Option.orElse(args.branch, () => inferredBranch))
   const inferredRepoPath = !args.allRepos && Option.isNone(args.repoPath) && Option.isSome(root) && Option.isSome(inferredRepo) && repo === inferredRepo.value ? root.value : undefined
@@ -91,5 +96,5 @@ command.pipe(Command.run({ version: "2.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof MissingReviewRun ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof MissingReviewRun || error instanceof QueryScopeError ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))

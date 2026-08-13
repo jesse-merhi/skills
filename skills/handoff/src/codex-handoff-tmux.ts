@@ -69,7 +69,7 @@ const cli = Command.make("codex-handoff-tmux", {
   const target = Option.getOrElse(args.tmuxTarget, () => Option.getOrElse(tmuxPane, () => ""))
   if (args.pane && target.length === 0) return yield* new HandoffError({ message: "Pane placement requires TMUX_PANE or --tmux-target." })
   const helper = new URL("../scripts/codex-handoff-tmux", import.meta.url).pathname
-  const nested = [helper, "--run-codex", "--file", args.file, "--focus", args.focus, "--cd", workdir, "--mode", args.mode, ...(wantsWorktree ? ["--worktree", workdir] : [])].map(quote).join(" ")
+  const nested = [helper, "--run-codex", "--file", args.file, ...(args.focus.length === 0 ? [] : ["--focus", args.focus]), "--cd", workdir, "--mode", args.mode, ...(wantsWorktree ? ["--worktree", workdir] : [])].map(quote).join(" ")
   const tmuxArgs = args.pane ? ["split-window", "-h", "-c", workdir, "-t", target, nested] : ["new-window", "-c", workdir, "-n", args.windowName, nested]
   if (args.dryRun) yield* Console.log(`tmux ${tmuxArgs.map(quote).join(" ")}`)
   else {
