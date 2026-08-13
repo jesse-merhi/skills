@@ -1,6 +1,6 @@
 ---
 name: wait-what
-description: 'Re-pitch the preceding explanation after it did not land. Use only when the user explicitly invokes this skill.'
+description: Re-pitch an explanation after it did not land, or supply the reader-reset pass when speak-fking-english composes it before a final response. Use for an explicit wait-what request or when the final-response skill loads it.
 ---
 
 # Wait, What?
@@ -17,8 +17,10 @@ Re-pitch the explanation that did not land:
    Briefly define any term that may still be unfamiliar.
 6. Keep the re-pitch concise while preserving the important nuance.
 
-Return the re-pitch as the whole response. Let the user decide whether it now
-lands before continuing the original explanation or task.
+When the user invokes this skill directly, return the re-pitch as the whole
+response and let the user decide whether it now lands. When
+`speak-fking-english` loads it, apply the same reset to the draft and continue to
+that skill's visual decision before returning the final response.
 
 This skill is adapted from Matt Pocock's `wait-what` skill. Its MIT license is
 in [upstream-license.md](references/upstream-license.md).

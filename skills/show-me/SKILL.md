@@ -1,13 +1,13 @@
 ---
 name: show-me
-description: Make complex explanations and completed-work handoffs easier to understand with the smallest useful visual. Use when explaining control or data flow, architecture, code shape, before-and-after behavior, multi-step results, state changes, or any final response whose relationships are hard to hold in prose alone.
+description: Decide whether an explanation needs supporting visual material, then choose the smallest useful form. Use when explaining control or data flow, architecture, code shape, before-and-after behavior, state changes, comparisons, spatial UI, or when speak-fking-english requests the final visual decision; omit visuals when prose is clearer.
 ---
 
 # Show Me
 
-Make the reader understand the shape of the idea without making them decode the
-implementation. Use one focused visual when it materially shortens or clarifies
-the explanation. Omit it when a sentence or short list is clearer.
+Treat this as a visual filter, not a request to draw something. Start from how a
+good teacher would explain the content. Add supporting material only when it
+materially reduces the work needed to understand the idea.
 
 This skill is adapted from HumanLayer's `show-me` skill. Read
 [references/upstream-license.md](references/upstream-license.md) for attribution.
@@ -16,62 +16,53 @@ This skill is adapted from HumanLayer's `show-me` skill. Read
 
 Lead with the outcome. Back up far enough to restore the premise the reader is
 missing, then use everyday language before technical vocabulary. Match the
-detail to the reader and keep the explanation next to the visual it supports.
+detail to the reader. Use a concrete example only when it makes the idea easier
+to grasp.
 
-The visual must answer one concrete question. Include only the calls, files,
-props, states, actors, or boundaries needed to answer it.
+Ask what you would put on a whiteboard while teaching this person. If the answer
+is "nothing," use prose. One fact, a short status, a simple outcome, and an easy
+list do not need a visual.
 
-## Choose the Smallest Useful View
+## Make the Visual Decision
 
-- **Algorithm or rule:** use short pseudocode.
-- **Runtime behavior:** use a shallow call tree.
-- **UI composition:** use a TSX-shaped component tree with only meaningful
-  props and states.
-- **Ownership or refactor:** use a shallow file-responsibility tree.
-- **Before and after:** use a focused diff of the component, file, call, or state
-  flow.
-- **Actors, decisions, data, or state:** use a small Mermaid diagram.
-- **Mostly new, copyable code:** show the focused code block rather than a
-  diagram of it.
-- **Dense, interactive, or spatial explanation:** load `html-explanations` and
-  create the smallest standalone page that answers the reader's question.
+Use a visual when the content's shape matters and prose would make the reader
+reconstruct it:
 
-These are options, not a checklist. Most explanations need one. A comparison
-table is useful only when several items share stable comparison axes.
+- **Algorithm or rule:** short pseudocode.
+- **Runtime behavior:** a shallow call tree.
+- **UI composition:** a TSX-shaped component tree with meaningful props or states.
+- **Ownership or refactor:** a shallow file-responsibility tree.
+- **Before and after:** a focused diff or comparison table when stable axes matter.
+- **Actors, decisions, data, or state:** a small Mermaid diagram.
+- **Mostly new, copyable code:** the focused code block itself.
+- **A real visual result:** the actual screenshot or recording from the owning
+  proof workflow.
+- **Genuinely dense, interactive, or spatial material:** load `html-explanations`
+  only when an interactive page is itself useful to the reader.
 
-## Build the Visual
+These are options, not a checklist. Several steps, files, or components do not
+automatically justify a diagram. Never create standalone HTML, a synthetic card,
+or a visualization merely to make an explanation or PR look polished.
 
-1. State in one sentence what the reader should learn.
-2. Pick the smallest view from the list above.
-3. Start with the actor, event, or concept the reader already recognizes.
+## Build Only What Helps
+
+1. State the one question the support should answer.
+2. Choose the smallest form that answers it better than prose.
+3. Start with the actor, event, or concept the reader recognizes.
 4. Use short labels and one direction of travel.
 5. Remove implementation names unless the reader must inspect or change them.
-6. Put the explanation immediately before or after the visual.
+6. Put the explanation next to the supporting material.
 
-Use GitHub-renderable fenced text, `diff`, or Mermaid for chat and PR bodies.
+Use GitHub-renderable fenced text, `diff`, or Mermaid in chat and PR bodies.
 Validate Mermaid before relying on it. A visual explains a relationship; it is
-not proof that behavior ran. When evidence matters, pair it with the required
-rendered or screenshot proof from the owning workflow.
-
-## Final Response Checkpoint
-
-Run this checkpoint immediately before sending a substantial explanatory or
-completed-work response:
-
-1. Name the one relationship, sequence, state change, or before-and-after shape
-   that is hardest to hold in prose.
-2. Add the smallest useful visual if it makes that idea easier to understand.
-3. Remove decorative visuals and repeated prose.
-4. Re-read the result as someone who did not see the working session.
-
-Do not invoke `wait-what` automatically here. `wait-what` is a user-invoked
-re-pitch after an explanation misses; this checkpoint makes the first
-explanation legible without replacing it wholesale.
+not proof that behavior ran. When evidence matters, use the actual rendered
+surface, interaction, request, response, state, or operator outcome required by
+the owning workflow.
 
 ## Done Means
 
 - The reader sees the outcome before the mechanism.
-- Any hard-to-hold relationship has one small, understandable visual.
-- The visual and nearby text use the same plain-language nouns.
-- Simple answers remain simple.
-- Evidence is still supplied by the workflow that owns verification.
+- Plain language carries the explanation whenever it can.
+- Any supporting material answers one concrete teaching question.
+- Performative visuals and repeated prose are absent.
+- Evidence still comes from the real behavior, not an invented explainer.

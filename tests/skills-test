@@ -305,24 +305,37 @@ test_wait_what_owns_repitch_guidance() {
   assert_contains "$skill/SKILL.md" "everyday language"
   assert_contains "$skill/SKILL.md" "technical density to the expertise"
   assert_contains "$skill/SKILL.md" 'established terms from `CONTEXT.md`'
-  assert_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
 }
 
-test_show_me_owns_the_final_visual_checkpoint() {
+test_show_me_owns_the_visual_decision() {
   local skill="$ROOT_DIR/skills/show-me"
 
-  assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before a substantial explanatory or completed-work response"
-  assert_contains "$skill/SKILL.md" "## Final Response Checkpoint"
-  assert_contains "$skill/SKILL.md" "smallest useful visual"
+  assert_contains "$skill/SKILL.md" "Treat this as a visual filter"
+  assert_contains "$skill/SKILL.md" 'is "nothing," use prose'
   assert_contains "$skill/SKILL.md" "pseudocode"
   assert_contains "$skill/SKILL.md" "call tree"
   assert_contains "$skill/SKILL.md" "component tree"
   assert_contains "$skill/SKILL.md" "file-responsibility tree"
   assert_contains "$skill/SKILL.md" "focused diff"
   assert_contains "$skill/SKILL.md" 'load `html-explanations`'
-  assert_contains "$skill/SKILL.md" 'Do not invoke `wait-what` automatically'
+  assert_contains "$skill/SKILL.md" "Several steps, files, or components do not"
+  assert_contains "$skill/SKILL.md" "Never create standalone HTML"
   assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 HumanLayer"
+}
+
+test_speak_fking_english_owns_the_final_response_checkpoint() {
+  local skill="$ROOT_DIR/skills/speak-fking-english"
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before every final response"
+  assert_contains "$ROOT_DIR/AGENTS.md" 'load `speak-fking-english`'
+  assert_contains "$skill/SKILL.md" 'Load `wait-what`'
+  assert_contains "$skill/SKILL.md" 'Load `show-me`'
+  assert_contains "$skill/SKILL.md" "Imagine teaching the same content"
+  assert_contains "$skill/SKILL.md" "prose is often enough"
+  assert_contains "$skill/SKILL.md" "Do not create HTML"
+  assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
 }
 
 test_pr_proof_pack_is_a_visual_publishing_gate() {
@@ -342,7 +355,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/SKILL.md" 'Load `show-me`'
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
   assert_contains "$skill/references/proof-selection.md" "component tree"
-  assert_contains "$skill/references/proof-selection.md" "The visual explains the behavior"
+  assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
   assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
   assert_contains "$skill/references/screenshots.md" "supporting checks, not"
   assert_contains "$skill/references/screenshots.md" "manual walkthrough video"
@@ -609,7 +622,8 @@ test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_wait_what_owns_repitch_guidance
-test_show_me_owns_the_final_visual_checkpoint
+test_show_me_owns_the_visual_decision
+test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
