@@ -72,15 +72,18 @@ Send one useful terminal update without turning Telegram into a progress log.
 When a Telegram message names the bound stable label from one of these handoffs
 and supplies the requested answer:
 
-1. Resolve the reference to exactly one active task inside the gateway. Never
-   echo its raw route-bearing session key back to Telegram, and do not infer a
-   target from a vague reply.
-2. Use `sessions_send` to send the user's answer to that source session. Supply
-   only the internally resolved session selector, the message, and a bounded
-   `timeoutSeconds` value when waiting for a response. Do not invent watch or
-   subscription fields.
-3. Tell the user whether the relay was accepted. Do not answer the blocked
-   question on the source agent's behalf.
+1. Resolve the reference to exactly one active task inside the gateway and
+   determine whether its source is the current calling session. Never echo its
+   raw route-bearing session key back to Telegram, and do not infer a target
+   from a vague reply.
+2. If the named source is the current calling session, process the answer as
+   the user's direct reply and continue the blocked task in this session. For a
+   distinct source session, use `sessions_send` with only the internally
+   resolved session selector, the message, and a bounded `timeoutSeconds` value
+   when waiting for a response. Do not invent watch or subscription fields.
+3. Tell the user whether the answer was processed here or the relay was
+   accepted. Do not answer a distinct source agent's blocked question on its
+   behalf.
 
 ## Done Means
 
@@ -88,5 +91,6 @@ and supplies the requested answer:
   originating session clearly reports why no approved route exists.
 - A needs-user message contains one concrete question and either a bound stable
   task label or an explicit warning that automatic reply relay is unavailable.
-- A relayed answer reaches the named source session without exposing another
+- A labeled answer is processed directly in its source session or reaches a
+  distinct named source through `sessions_send`, without exposing another
   session's transcript.

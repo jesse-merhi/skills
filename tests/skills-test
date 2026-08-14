@@ -536,6 +536,8 @@ test_openclaw_agent_discovery_paths() {
   assert_not_contains "$handoff_skill/SKILL.md" '--message "<terminal handoff>"'
   assert_contains "$handoff_skill/SKILL.md" 'openclaw message send'
   assert_contains "$handoff_skill/SKILL.md" '`sessions_send`'
+  assert_contains "$handoff_skill/SKILL.md" 'If the named source is the current calling session'
+  assert_contains "$handoff_skill/SKILL.md" "process the answer as"
   assert_contains "$handoff_skill/SKILL.md" 'Do not invent watch or'
   assert_contains "$handoff_skill/SKILL.md" 'raw route-bearing session key'
   assert_contains "$handoff_skill/SKILL.md" 'Never invent an unbound opaque reference'
