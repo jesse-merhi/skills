@@ -11,7 +11,7 @@ fail() {
 assert_contains() {
   local file="$1"
   local text="$2"
-  grep -Fq "$text" "$file" || {
+  grep -Fq -- "$text" "$file" || {
     printf '%s\n' "--- $file ---" >&2
     sed -n '1,200p' "$file" >&2
     fail "expected $file to contain: $text"
@@ -21,7 +21,7 @@ assert_contains() {
 assert_not_contains() {
   local file="$1"
   local text="$2"
-  if grep -Fq "$text" "$file"; then
+  if grep -Fq -- "$text" "$file"; then
     printf '%s\n' "--- $file ---" >&2
     sed -n '1,200p' "$file" >&2
     fail "expected $file not to contain: $text"
@@ -477,6 +477,13 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
   assert_contains "$skill/references/screenshots.md" "Use the browser path selected during the preflight"
   assert_contains "$skill/references/screenshots.md" "Explicit Upload Confirmation"
+  assert_contains "$skill/SKILL.md" 'In OpenClaw, use its'
+  assert_contains "$skill/SKILL.md" '`openclaw browser --json status`'
+  assert_contains "$skill/references/screenshots.md" "CDP is acceptable only when"
+  assert_contains "$skill/references/screenshots.md" 'OpenClaw'
+  assert_contains "$skill/references/screenshots.md" 'openclaw browser --browser-profile <profile> upload /tmp/openclaw/uploads/<file> --ref <upload-trigger-ref>'
+  assert_contains "$skill/references/screenshots.md" '`--input-ref <file-input-ref>`'
+  assert_contains "$skill/references/screenshots.md" 'media://inbound/<id>'
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
@@ -497,6 +504,45 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
   assert_contains "$skill/agents/openai.yaml" "Publish practical PR proof of working behavior."
+}
+
+test_openclaw_agent_discovery_paths() {
+  local review_skill="$ROOT_DIR/skills/code-review"
+  local staging_skill="$ROOT_DIR/skills/openclaw/openclaw-stg-test"
+  local handoff_skill="$ROOT_DIR/skills/openclaw/openclaw-telegram-handoff"
+
+  assert_contains "$review_skill/references/codex-review-helper.md" 'helper resolves `codex` outside'
+  assert_contains "$review_skill/references/codex-review-helper.md" 'creating an unrelated embedded-provider login'
+  assert_contains "$review_skill/references/codex-review-helper.md" 'switching accounts through `cxa`'
+  assert_contains "$review_skill/src/NativeReview.ts" '["doctor", "--json"]'
+  assert_contains "$review_skill/src/NativeReview.ts" '"auth.credentials"'
+  assert_contains "$review_skill/src/NativeReview.ts" '"--ephemeral"'
+  assert_contains "$staging_skill/SKILL.md" 'use its browser tool or `openclaw browser`'
+  assert_contains "$staging_skill/SKILL.md" 'Never reuse an existing'
+  assert_contains "$staging_skill/SKILL.md" 'openclaw browser create-profile --name <unique-fresh-profile>'
+  assert_contains "$staging_skill/SKILL.md" 'openclaw browser delete-profile --name <unique-fresh-profile>'
+  assert_contains "$staging_skill/SKILL.md" 'remote node'
+  assert_contains "$staging_skill/SKILL.md" 'rejects persistent profile creation and deletion'
+  assert_contains "$staging_skill/SKILL.md" 'nodeHost.browserProxy.allowProfiles'
+  assert_contains "$staging_skill/agents/openai.yaml" 'fresh OpenClaw browser profile'
+  assert_contains "$staging_skill/SKILL.md" '`openclaw-telegram-handoff`'
+  assert_contains "$staging_skill/SKILL.md" 'cleanup obligations on every exit path'
+  assert_contains "$staging_skill/agents/openai.yaml" '$openclaw-telegram-handoff'
+  assert_contains "$handoff_skill/SKILL.md" 'OPENCLAW_TELEGRAM_NOTIFY_TARGET'
+  assert_contains "$handoff_skill/SKILL.md" 'OPENCLAW_TELEGRAM_NOTIFY_ACCOUNT'
+  assert_contains "$handoff_skill/SKILL.md" '--account "$OPENCLAW_TELEGRAM_NOTIFY_ACCOUNT"'
+  assert_contains "$handoff_skill/SKILL.md" 'run-owned mode-`0600` file'
+  assert_contains "$handoff_skill/SKILL.md" '--message "$(command cat -- "$handoff_file")"'
+  assert_not_contains "$handoff_skill/SKILL.md" '--message "<terminal handoff>"'
+  assert_contains "$handoff_skill/SKILL.md" 'openclaw message send'
+  assert_contains "$handoff_skill/SKILL.md" '`sessions_send`'
+  assert_contains "$handoff_skill/SKILL.md" 'Do not invent watch or'
+  assert_contains "$handoff_skill/SKILL.md" 'raw route-bearing session key'
+  assert_contains "$handoff_skill/SKILL.md" 'Never invent an unbound opaque reference'
+  assert_contains "$handoff_skill/SKILL.md" 'If the current final reply already goes to the same Telegram route'
+  assert_contains "$handoff_skill/SKILL.md" 'do not scrape session history, pairing records'
+  assert_contains "$handoff_skill/agents/openai.yaml" 'terminal OpenClaw task updates'
+  assert_contains "$staging_skill/SKILL.md" 'Never invent a reference or put a raw route-bearing session key'
 }
 
 test_openclaw_local_test_helpers() {
@@ -750,6 +796,7 @@ test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
+test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier

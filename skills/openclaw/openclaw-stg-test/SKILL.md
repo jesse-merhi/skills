@@ -1,6 +1,6 @@
 ---
 name: openclaw-stg-test
-description: 'Publish and inspect temporary OpenClaw Control UI previews through guarded Cloudflare Quick Tunnels.'
+description: 'Publish and inspect temporary OpenClaw Control UI previews through guarded Cloudflare Quick Tunnels, verify with a fresh OpenClaw browser profile, and send a terminal Telegram handoff.'
 ---
 
 # OpenClaw Staging Test
@@ -45,7 +45,41 @@ OpenClaw Gateway, browser proxy, or operator credentials.
 5. Verify the public URL as a fresh browser user.
 
    Repeat the changed interaction through the `trycloudflare.com` URL. Treat
-   this as behavioral proof, not merely a reachability check.
+   this as behavioral proof, not merely a reachability check. When running
+   inside OpenClaw, use its browser tool or `openclaw browser`. Discover the
+   current browser state and available profiles with:
+
+   ```bash
+   openclaw browser --json status
+   openclaw browser profiles
+   ```
+
+   Choose a unique, lowercase profile name for this run. Never reuse an existing
+   disposable or authenticated profile. On the host that owns the browser,
+   create the profile, run the public walkthrough through it, then delete only
+   that run-owned profile:
+
+   ```bash
+   openclaw browser create-profile --name <unique-fresh-profile>
+   openclaw browser --browser-profile <unique-fresh-profile> open <public-url>
+   # Run the complete public walkthrough before cleanup.
+   openclaw browser delete-profile --name <unique-fresh-profile>
+   ```
+
+   As soon as the profile is created, treat profile deletion and any temporary
+   allowlist entry as cleanup obligations on every exit path. On success,
+   walkthrough failure, interruption, a blocked state, or a needs-user stop,
+   remove the run-owned allowlist entry and delete the run-owned profile before
+   the terminal handoff. If cleanup fails, do not delete unrelated profiles or
+   allowlist entries; include the exact leftover profile or entry in the
+   terminal handoff.
+
+   A remote node browser proxy rejects persistent profile creation and deletion.
+   For a proxied browser, run those lifecycle commands on the browser node and
+   temporarily expose the new profile through `nodeHost.browserProxy.allowProfiles`
+   when that allowlist is configured. Remove that run-owned entry as part of
+   the required cleanup. Keep the browser proxy loopback-only and outside the
+   tunnel.
 
 6. Report the public URL, tested route, scenario, lease expiry, local checkout,
    and commands for lifecycle control:
@@ -55,6 +89,14 @@ OpenClaw Gateway, browser proxy, or operator credentials.
    openclaw-stg-test --stop
    ```
 
+   Before the terminal reply, load `openclaw-telegram-handoff`. Send the
+   staging result to the approved Telegram route. If this workflow stops early,
+   becomes blocked, or needs a user decision, send that terminal state instead
+   with an existing, uniquely bound stable task label and one concrete next
+   action or question. If no such label exists, say automatic reply relay is
+   unavailable. Never invent a reference or put a raw route-bearing session key
+   in Telegram.
+
 ## Done Means
 
 - The preview runs from the intended checkout and demonstrates the changed
@@ -63,6 +105,8 @@ OpenClaw Gateway, browser proxy, or operator credentials.
   attestation.
 - A fresh remote browser can complete the intended interaction.
 - The handoff names the scenario, route, expiry, and stop command.
+- The operator receives one terminal Telegram handoff, or the originating
+  session reports that no approved Telegram route is configured.
 - No live Gateway, browser proxy, credentials, private data, or private
   endpoint values crossed the tunnel.
 

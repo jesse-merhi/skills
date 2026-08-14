@@ -33,6 +33,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    Use the harness-native engine unless the user explicitly names another:
    Codex in Codex, Claude in Claude Code. Treat an explicit request for Fable
    as selecting Claude. Do not ask about or validate the unselected engine.
+   When Codex is selected, confirm the current runtime identity can resolve and
+   authenticate the standalone Codex CLI before review.
 
    Use the model configured by the selected harness. Do not hard-code or probe
    private model catalogues before review; the native command owns model

@@ -26,6 +26,9 @@ export interface CheckedProcessOptions {
   readonly displayCommand?: string
   readonly stdin?: string
 }
+export interface CheckedTextOptions extends CheckedProcessOptions {
+  readonly allowedExitCodes?: ReadonlyArray<number>
+}
 
 const commandInput = (stdin: string | undefined) => stdin === undefined
   ? "inherit" as const
@@ -51,10 +54,10 @@ export const platformErrorExitCode = (error: PlatformError.PlatformError): numbe
 export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   executable: string,
   args: ReadonlyArray<string>,
-  options?: CheckedProcessOptions
+  options?: CheckedTextOptions
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const { displayCommand, stdin, ...childOptions } = options ?? {}
+  const { allowedExitCodes = [], displayCommand, stdin, ...childOptions } = options ?? {}
   const commandText = displayCommand ?? [executable, ...args].join(" ")
   return yield* Effect.scoped(Effect.gen(function*() {
     const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, stdin: capturedInput(stdin) })).pipe(
@@ -73,7 +76,7 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
       const exitCode = Option.isSome(platformError) ? platformErrorExitCode(platformError.value) ?? 1 : 1
       return yield* new CheckedProcessError({ command: commandText, exitCode, message: `${commandText} was interrupted`, stderr: result.stderr, cause })
     }
-    if (result.exit.value !== 0) {
+    if (result.exit.value !== 0 && !allowedExitCodes.includes(Number(result.exit.value))) {
       const diagnostics = [result.stderr.trim(), result.stdout.trim()].filter((text) => text.length > 0).join("\n")
       return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: diagnostics || `${commandText} exited ${result.exit.value}`, stderr: result.stderr })
     }
@@ -81,7 +84,7 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   }))
 })
 
-export const checkedTrimmedText = (executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) =>
+export const checkedTrimmedText = (executable: string, args: ReadonlyArray<string>, options?: CheckedTextOptions) =>
   checkedText(executable, args, options).pipe(Effect.map((output) => output.trim()))
 
 export const checkedInherit = Effect.fn("CheckedProcess.inherit")(function*(executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) {

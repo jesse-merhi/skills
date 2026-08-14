@@ -1,4 +1,4 @@
 interface:
   display_name: "OpenClaw Staging Test"
   short_description: "Expose disposable OpenClaw UI previews safely"
-  default_prompt: "Use $openclaw-stg-test to publish a leased OpenClaw UI preview through a guarded Cloudflare Quick Tunnel."
+  default_prompt: "Use $openclaw-stg-test to publish a leased OpenClaw UI preview through a guarded Cloudflare Quick Tunnel, verify the public interaction with a fresh OpenClaw browser profile, then send the terminal result through $openclaw-telegram-handoff."
