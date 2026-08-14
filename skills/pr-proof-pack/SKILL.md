@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or check reviewer-visible proof when an authorized workflow publishes a PR update or prepares it for merge. Refresh only when pushed behavior or proof changed; upload GitHub evidence with token auth and use a browser only for capture, fallback upload, or client-rendered inspection.
+description: Create or check reviewer-visible proof when an authorized workflow publishes a PR update or prepares it for merge. Refresh only when pushed behavior or proof changed; upload github.com evidence with token auth and use a browser only for capture, fallback upload, or client-rendered inspection.
 ---
 
 # PR Proof Pack
@@ -46,19 +46,19 @@ untouched.
 ## Hard Gates For A Refresh
 
 - **Practical evidence:** Capture the changed behavior working in practice.
-  Automated validation remains supporting information and never satisfies
-  `Visual proof`.
-- **Provider-hosted attachments:** On GitHub, use the scoped `gh` credential
-  first and keep interactive browser upload as the fallback.
+  Automated validation never satisfies `Visual proof`; it remains supporting
+  information.
+- **Provider-hosted attachments:** On `github.com`, use the scoped `gh`
+  credential first and keep interactive browser upload as the fallback.
 - **Rendered proof:** Check the rendered result headlessly by default. Use an
   interactive browser only when client-side rendering, literal page appearance,
   or playback must be inspected.
 - **Readable history:** Review the title and commit subjects before publishing.
 
 If any gate cannot be completed, stop. Tell the human which capability failed
-and what they must restore. A failed GitHub token upload is not blocked until
-the documented interactive-browser fallback has also failed or cannot meet the
-requirement.
+and what they must restore. A failed `github.com` token upload is not blocked
+until the documented interactive-browser fallback has also failed or cannot
+meet the requirement.
 
 ## Reviewer Boundary
 
@@ -82,8 +82,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    load `gh-stack`, inspect `gh stack view --json`, and record the current
    layer's position and adjacent dependencies.
 
-   Done when the exact PR, final head, direct base, and existing proof are
-   known.
+   Done when the exact PR, provider hostname, final head, direct base, and
+   existing proof are known.
 
 3. Build the current proof surface.
 
@@ -107,13 +107,14 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
 5. Pass the refresh preflight for stale proof.
 
-   On GitHub, confirm `gh auth status`, resolve the repository ID with `gh api`,
-   and record the repository name and ID for step 8. Identify whether practical
-   capture needs a browser or device and whether the finished body requires
-   client-side inspection, such as a Mermaid diagram. Do not make an interactive
-   browser a prerequisite for GitHub token upload or ordinary rendered-body
-   checks. On another provider, identify its supported attachment path and any
-   browser capability that path requires.
+   For a `github.com` PR, confirm `gh auth status`, resolve the repository ID
+   with `gh api`, and record the repository name and ID for step 8. For GitHub
+   Enterprise Server or another provider, identify its supported attachment
+   path and any browser capability that path requires; never map it to a
+   same-named `github.com` repository. Identify whether practical capture needs
+   a browser or device and whether the finished body requires client-side
+   inspection, such as a Mermaid diagram. Do not make an interactive browser a
+   prerequisite for `github.com` token upload or ordinary rendered-body checks.
 
    Done when provider authentication and repository access work and every
    browser or device capability genuinely needed later in the refresh is
@@ -144,13 +145,13 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 8. Confirm authority and upload provider-hosted evidence.
 
    Reconfirm that the calling workflow authorizes the PR mutation. Follow
-   [references/screenshots.md](references/screenshots.md). On GitHub, try the
-   token-authenticated attachment endpoint first with the existing `gh`
+   [references/screenshots.md](references/screenshots.md). On `github.com`, try
+   the token-authenticated attachment endpoint first with the existing `gh`
    credential, require a `201` response, and verify the returned asset before
    inserting it. If that undocumented endpoint is unavailable or verification
-   fails, use the interactive-browser fallback. Use the provider's supported
-   attachment flow elsewhere. Put media in the main PR body, never in a detached
-   comment or table.
+   fails, use the interactive-browser fallback. For GitHub Enterprise Server
+   and other providers, use that provider's supported attachment flow instead.
+   Put media in the main PR body, never in a detached comment or table.
 
    Done when every changed evidence item is provider-hosted in the main body,
    or the workflow has stopped before mutation because authority is absent.
@@ -160,11 +161,13 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Follow the rendered-verification path in
    [references/screenshots.md](references/screenshots.md). On GitHub, inspect
    `body_html`, confirm the title and section order, require image and video
-   elements where expected, and fetch every resolved asset with authentication
-   to verify its status, content type, and bytes. Use an interactive browser
-   when the body includes client-rendered content such as Mermaid or when the
-   proof depends on literal page layout, pixel appearance, or playback. Remove
-   stale proof rather than accumulating it.
+   elements where expected, and fetch every resolved signed asset without
+   forwarding the `gh` token. Verify status, content type, and non-empty bytes
+   for all assets, plus exact byte size for evidence uploaded during this
+   refresh. Use an interactive browser when the body includes client-rendered
+   content such as Mermaid or when the proof depends on literal page layout,
+   pixel appearance, or playback. Remove stale proof rather than accumulating
+   it.
 
    Done when the rendered PR accurately describes the final pushed net diff,
    with browser inspection completed for every case headless checks cannot
