@@ -484,6 +484,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" 'openclaw browser --browser-profile <profile> upload /tmp/openclaw/uploads/<file> --ref <upload-trigger-ref>'
   assert_contains "$skill/references/screenshots.md" '`--input-ref <file-input-ref>`'
   assert_contains "$skill/references/screenshots.md" 'media://inbound/<id>'
+  assert_contains "$skill/references/screenshots.md" 'treat that exact copy as run-owned'
+  assert_contains "$skill/references/screenshots.md" 'Remove each exact run-owned upload-root copy'
+  assert_contains "$skill/references/screenshots.md" 'Delete neither the original evidence file nor managed'
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
@@ -521,6 +524,8 @@ test_openclaw_agent_discovery_paths() {
   assert_contains "$staging_skill/SKILL.md" 'Never reuse an existing'
   assert_contains "$staging_skill/SKILL.md" 'openclaw browser create-profile --name <unique-fresh-profile>'
   assert_contains "$staging_skill/SKILL.md" 'openclaw browser delete-profile --name <unique-fresh-profile>'
+  assert_contains "$staging_skill/SKILL.md" 'Choose a unique, run-owned profile name of 1–64 characters'
+  assert_contains "$staging_skill/SKILL.md" 'with a lowercase letter or digit and contain only lowercase letters, digits,'
   assert_contains "$staging_skill/SKILL.md" 'remote node'
   assert_contains "$staging_skill/SKILL.md" 'rejects persistent profile creation and deletion'
   assert_contains "$staging_skill/SKILL.md" 'nodeHost.browserProxy.allowProfiles'

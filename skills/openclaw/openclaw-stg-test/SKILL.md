@@ -54,10 +54,11 @@ OpenClaw Gateway, browser proxy, or operator credentials.
    openclaw browser profiles
    ```
 
-   Choose a unique, lowercase profile name for this run. Never reuse an existing
-   disposable or authenticated profile. On the host that owns the browser,
-   create the profile, run the public walkthrough through it, then delete only
-   that run-owned profile:
+   Choose a unique, run-owned profile name of 1–64 characters. It must begin
+   with a lowercase letter or digit and contain only lowercase letters, digits,
+   and hyphens. Never reuse an existing disposable or authenticated profile. On
+   the host that owns the browser, create the profile, run the public walkthrough
+   through it, then delete only that run-owned profile:
 
    ```bash
    openclaw browser create-profile --name <unique-fresh-profile>

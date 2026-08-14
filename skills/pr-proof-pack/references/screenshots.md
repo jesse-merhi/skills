@@ -61,9 +61,10 @@ preflight.
 
 In OpenClaw, use the native browser file-input path:
 
-1. Put each finished evidence file under the configured OpenClaw temporary
-   uploads root, such as `/tmp/openclaw/uploads/<file>`, or use managed inbound
-   media such as `media://inbound/<id>`. Do not expose an arbitrary local path.
+1. Copy each finished evidence file to a unique path under the configured
+   OpenClaw temporary uploads root, such as `/tmp/openclaw/uploads/<file>`, and
+   treat that exact copy as run-owned. Alternatively, use managed inbound media
+   such as `media://inbound/<id>`. Do not expose an arbitrary local path.
 2. Open the main PR body editor, place the insertion point at the exact
    placeholder or stale attachment, then run
    `openclaw browser --browser-profile <profile> snapshot` to resolve the
@@ -76,6 +77,10 @@ In OpenClaw, use the native browser file-input path:
    attachment or playable-media reference.
 5. Add descriptive alt text or a label, save, and inspect the rendered media
    through the same `--browser-profile <profile>`.
+6. Remove each exact run-owned upload-root copy after upload and inspection.
+   Cleanup remains required after a failed upload, interruption, blocked state,
+   or needs-user stop. Delete neither the original evidence file nor managed
+   `media://inbound` assets.
 
 Use the same clipboard-first flow on GitHub, Bitbucket, and other PR editors in
 Computer Use or another browser surface with clipboard support:
