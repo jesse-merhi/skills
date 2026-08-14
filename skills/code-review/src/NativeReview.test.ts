@@ -242,6 +242,40 @@ describe("native review target", () => {
     }
   }, 15_000)
 
+  it("prefers the current remote base over GitHub's stale PR base object", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "net-diff-current-base-"))
+    const bin = join(directory, "bin")
+    try {
+      await mkdir(bin)
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "base.txt"), "base\n")
+      await execFile("git", ["add", "base.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      const { stdout: staleBaseOutput } = await execFile("git", ["rev-parse", "HEAD"], { cwd: directory })
+      const staleBase = staleBaseOutput.trim()
+      await writeFile(join(bin, "gh"), `#!/bin/sh\nprintf '%s\\n' '{"baseRefName":"main","baseRefOid":"${staleBase}"}'\n`, { mode: 0o700 })
+      await writeFile(join(directory, "upstream.txt"), "upstream\n")
+      await execFile("git", ["add", "upstream.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "upstream"], { cwd: directory })
+      const { stdout: currentBaseOutput } = await execFile("git", ["rev-parse", "HEAD"], { cwd: directory })
+      const currentBase = currentBaseOutput.trim()
+      await execFile("git", ["update-ref", "refs/remotes/origin/main", currentBase], { cwd: directory })
+      await writeFile(join(directory, "feature.txt"), "feature\n")
+      await execFile("git", ["add", "feature.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
+      // @effect-diagnostics-next-line processEnv:off
+      const { stdout } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--json"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
+      const report = JSON.parse(stdout)
+      assert.strictEqual(report.base.ref, "origin/main")
+      assert.strictEqual(report.base.sha, currentBase)
+      assert.strictEqual(report.base.source, "git remote base")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  }, 15_000)
+
   it("refreshes an explicit remote-tracking base before planning review", async () => {
     const directory = await mkdtemp(join(tmpdir(), "review-base-refresh-"))
     const repository = join(directory, "repo")

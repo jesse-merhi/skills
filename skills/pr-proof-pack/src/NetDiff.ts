@@ -35,9 +35,17 @@ const proofKind = (path: string) => {
 
 const resolveBase = Effect.gen(function*() {
   const gh = yield* capture("gh", ["pr", "view", "--json", "baseRefName,baseRefOid"]).pipe(Effect.flatMap(Schema.decodeUnknownEffect(Schema.fromJsonString(PullRequestBase))), Effect.option)
-  if (gh._tag === "Some" && gh.value.baseRefOid.length > 0) {
-    const mergeBase = yield* optionalGit(["merge-base", gh.value.baseRefOid, "HEAD"])
-    if (mergeBase._tag === "Some") return { source: "gh pr view", ref: gh.value.baseRefName, sha: gh.value.baseRefOid, comparisonBase: mergeBase.value }
+  if (gh._tag === "Some") {
+    const remoteBase = `origin/${gh.value.baseRefName}`
+    const remoteSha = yield* optionalGit(["rev-parse", "--verify", remoteBase])
+    if (remoteSha._tag === "Some") {
+      const mergeBase = yield* optionalGit(["merge-base", remoteSha.value, "HEAD"])
+      if (mergeBase._tag === "Some") return { source: "git remote base", ref: remoteBase, sha: remoteSha.value, comparisonBase: mergeBase.value }
+    }
+    if (gh.value.baseRefOid.length > 0) {
+      const mergeBase = yield* optionalGit(["merge-base", gh.value.baseRefOid, "HEAD"])
+      if (mergeBase._tag === "Some") return { source: "gh pr view", ref: gh.value.baseRefName, sha: gh.value.baseRefOid, comparisonBase: mergeBase.value }
+    }
   }
   for (const ref of ["origin/main", "origin/master", "main", "master"]) {
     const sha = yield* optionalGit(["rev-parse", "--verify", ref])
