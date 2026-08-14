@@ -2,7 +2,7 @@
 
 The findings database is the working registry. The SQLite findings database is
 the durable registry for every finding raised by native review, cold review,
-required lenses, conditional lenses, structured reviewers, the review owner, or
+required lenses, conditional lenses, native reviewers, the review owner, or
 the user. Use it for finding IDs, branch/review keys, current status,
 fingerprint, source, owner or next action, verification commands, closeout
 sections, search, and the current open queue.
@@ -11,36 +11,84 @@ Do not rely on chat history as the source of review state.
 
 ## Helper
 
-Use the Rust `review-findings` binary as the local SQLite search index for
-review findings. Prefer the installed Rust binary. If it is missing, resolve
-`<skill-dir>` to the directory containing `SKILL.md`, then install it once:
+Use the Effect SQL `review-findings` CLI as the local SQLite search index for
+review findings. Resolve `<skill-dir>` to the directory containing `SKILL.md`
+and use the repo-owned launcher so the implementation cannot drift from the
+skill instructions:
 
 ```sh
-<skill-dir>/scripts/install-review-findings
+review_findings_bin="<skill-dir>/scripts/review-findings"
 ```
 
-It installs to `~/.local/bin/review-findings` by default. If
-`AGENT_REVIEW_FINDINGS_BIN` is configured, prefer that absolute helper path so
-an older `review-findings` earlier on `PATH` cannot be used by accident. If no
-configured path exists, use the skill-local launcher:
-
-```sh
-review_findings_bin="${AGENT_REVIEW_FINDINGS_BIN:-<skill-dir>/scripts/review-findings}"
-```
-
-The checked-in launcher prefers a stamped installed binary and otherwise
-builds/runs the bundled Rust source. The database stores records under:
+The launcher executes the checked-in Effect TypeScript implementation. The
+database stores records under:
 
 ```text
 ~/.local/state/agent-review-findings/reviews.sqlite
 ```
+
+## Scope Budget Records
+
+Start each new review run by freezing its user-authorized scope and direct-diff
+baseline:
+
+```sh
+"$review_findings_bin" scope-start \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> --head <head> \
+  --scope-summary "<request, behavior, owner boundary, and files>"
+```
+
+After every accepted fix and before another review pass, run:
+
+```sh
+"$review_findings_bin" scope-check \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> \
+  --reason "<remaining work and why it may merit additional scope>"
+```
+
+A passing check prints the exact baseline, current production lines, allowed
+growth, excluded test/generated lines, and frozen scope. A blocked check exits
+non-zero and is an immediate stop: present its output to the user and do no more
+review or patch work.
+
+Only after the user explicitly approves a larger scope, record their words and
+the revised scope:
+
+```sh
+"$review_findings_bin" scope-authorize \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> --head <head> \
+  --scope-summary "<revised scope>" \
+  --authorization "<user's explicit approval>"
+```
+
+Use `scope-status` after compaction or handoff. `scope-start` refuses to replace
+an existing baseline or create a second active baseline under a renamed target,
+and `scope-authorize` refuses to run until a check has blocked. Keep the database
+outside the reviewed repository so its SQLite files cannot enter the measured
+diff.
+
+After both review phases are clean and one final `scope-check` passes, close the
+budget:
+
+```sh
+"$review_findings_bin" scope-complete \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> \
+  --reason "<final native and cold-review result>"
+```
+
+An active budget blocks any second `scope-start` for the same repository and
+branch. `scope-complete` releases that lock for a later user-authorized review.
 
 ## Finding Records
 
 For every finding, record:
 
 - decision ID
-- source: native review, cold review, named lens, structured reviewer, review
+- source: native review, cold review, named lens, review
   owner, or user
 - severity or priority when available
 - scope class when useful: direct, induced, adjacent, or unrelated

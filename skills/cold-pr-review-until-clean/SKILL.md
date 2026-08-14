@@ -25,6 +25,7 @@ review_tool: must invoke cold-pr-review through an independent subagent whenever
 review_context: subagent gets only the target, the neutral review checklist, and tracked-finding notices generated per review-guardrails; no other prior rationale or findings
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
+scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
 stop_condition: one cold review run with zero actionable findings
 counter_reset: any actionable finding resets consecutive_clean to 0
 no_early_exit: do not stop before a fresh cold review returns clean
@@ -42,7 +43,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
    Confirm the PR number, URL, branch, git range, or local diff. Check the
    working tree, load `review-guardrails`, and identify required verification
    commands. If running inside `code-review`, inherit the orchestrator's
-   budgets, consult queue, and queue-matching rules.
+   persisted scope budget, consult queue, and queue-matching rules. Confirm it
+   with `scope-status` before fixing anything.
 
 2. Build neutral reviewer context.
 
@@ -84,6 +86,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
   `budget-expired`.
 - Findings, fixes, validation commands, consult-queue changes, and stop
   conditions are recorded in the findings CLI.
+- Every accepted fix is followed by a passing `scope-check`, and the final scope
+  status is not missing or blocked.
 - No code was edited between clean passes.
 - No final clean verdict is reported while the consult queue has open entries.
 

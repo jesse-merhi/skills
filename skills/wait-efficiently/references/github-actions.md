@@ -4,7 +4,7 @@ Use historical durations to choose the next useful observation.
 
 1. Confirm `gh` is installed and authenticated.
 2. Identify each pending workflow run ID.
-3. Run `scripts/estimate-gh-wait.py --run-id <id>`.
+3. Run `scripts/estimate-gh-wait --run-id <id>`.
 4. Wait for `suggested_wait_seconds` inside one held tool call.
 5. Inspect the run once and report only a state change.
 6. Recalculate after queued becomes in-progress or a job completes.

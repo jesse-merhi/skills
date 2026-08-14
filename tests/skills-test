@@ -38,6 +38,16 @@ assert_output_contains() {
   }
 }
 
+assert_output_not_contains() {
+  local output="$1"
+  local text="$2"
+  if printf '%s' "$output" | grep -Fq -- "$text"; then
+    printf '%s\n' "--- command output ---" >&2
+    printf '%s\n' "$output" >&2
+    fail "expected command output not to contain: $text"
+  fi
+}
+
 test_skill_frontmatter_is_valid() {
   ROOT_DIR="$ROOT_DIR" python3 <<'PY'
 from pathlib import Path
@@ -196,10 +206,34 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "tmux new-window -c"
   assert_output_contains "$output" "-n handoff"
   assert_output_contains "$output" "codex-handoff-tmux"
+  assert_output_not_contains "$output" "--focus  --cd"
   assert_output_contains "$output" "--run-codex"
   assert_output_contains "$output" "--file"
   assert_output_contains "$output" "--focus"
-  assert_output_contains "$output" "--mode\\ new"
+  assert_output_contains "$output" "--mode"
+  assert_output_contains "$output" "new"
+
+  output="$(
+    TMUX=/tmp/fake \
+      "$helper" \
+        --file "$handoff" \
+        --focus $'one\ntwo' \
+        --cd "$ROOT_DIR" \
+        --dry-run
+  )"
+  assert_output_contains "$output" $'one\ntwo'
+
+  output="$(
+    TMUX=/tmp/fake \
+      "$helper" \
+        --file "$handoff" \
+        --cd "$ROOT_DIR" \
+        --dry-run
+  )"
+
+  assert_output_contains "$output" "--file"
+  assert_output_contains "$output" "--cd"
+  assert_output_not_contains "$output" "--focus"
 
   output="$(
     TMUX=/tmp/fake \
@@ -257,6 +291,45 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
 
   assert_output_contains "$output" "No tmux session detected"
   assert_output_contains "$output" "$handoff"
+
+  if env -u TMUX \
+      "$helper" \
+        --file "$tmp" \
+        --cd "$ROOT_DIR" >"$tmp/directory-handoff.out" 2>&1; then
+    fail "a directory must not be accepted as a handoff file"
+  fi
+  assert_contains "$tmp/directory-handoff.out" "Handoff path is not a file"
+
+  if env -u TMUX \
+      "$helper" \
+        --file "$handoff" \
+        --cd "$handoff" >"$tmp/file-workdir.out" 2>&1; then
+    fail "a file must not be accepted as a working directory"
+  fi
+  assert_contains "$tmp/file-workdir.out" "Working path is not a directory"
+
+  mkdir "$tmp/not-a-worktree"
+  if env -u TMUX \
+      "$helper" \
+        --file "$handoff" \
+        --cd "$ROOT_DIR" \
+        --worktree "$tmp/not-a-worktree" >"$tmp/not-worktree.out" 2>&1; then
+    fail "an existing non-git path must not be reused as a handoff worktree"
+  fi
+  assert_contains "$tmp/not-worktree.out" "Worktree path exists but is not a git worktree"
+
+  mkdir "$tmp/fake-bin"
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "fake-codex: %s\\n" "$*"' > "$tmp/fake-bin/codex"
+  chmod +x "$tmp/fake-bin/codex"
+  output="$(
+    PATH="$tmp/fake-bin:$PATH" \
+      "$helper" \
+        --run-codex \
+        --file "$handoff" \
+        --cd "$ROOT_DIR"
+  )"
+  assert_output_contains "$output" "fake-codex: --cd $ROOT_DIR"
+  assert_output_contains "$output" "Read the handoff document before acting"
 }
 
 test_retired_impeccable_cleanup_is_documented() {
@@ -388,9 +461,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
-  assert_contains "$skill/scripts/pr_net_diff.py" "Practical UI proof required"
-  assert_contains "$skill/scripts/pr_net_diff.py" "do not use test or CI output as evidence"
-  assert_not_contains "$skill/scripts/pr_net_diff.py" "No screenshot by default"
+  assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
+  assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
+  assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
   assert_contains "$skill/agents/openai.yaml" "Publish practical PR proof of working behavior."
 }
 

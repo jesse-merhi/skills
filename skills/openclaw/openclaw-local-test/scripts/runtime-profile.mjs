@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { NodeRuntime } from "@effect/platform-node";
+import * as Console from "effect/Console";
+import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -8,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_CODEX_MODEL = "gpt-5.6-sol";
 const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5";
+const JsonObject = Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown));
+const JsonString = Schema.fromJsonString(Schema.String);
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -15,9 +21,7 @@ function isObject(value) {
 
 function readJsonObject(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return {};
-  const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  if (!isObject(parsed)) throw new Error(`${filePath} must contain a JSON object`);
-  return parsed;
+  return Schema.decodeUnknownSync(JsonObject)(fs.readFileSync(filePath, "utf8"));
 }
 
 export function parseTopLevelTomlStrings(source) {
@@ -36,7 +40,7 @@ export function parseTopLevelTomlStrings(source) {
     const [, key, doubleQuoted, singleQuoted, bare] = match;
     if (doubleQuoted !== undefined) {
       try {
-        values[key] = JSON.parse(`"${doubleQuoted}"`);
+        values[key] = Schema.decodeUnknownSync(JsonString)(`"${doubleQuoted}"`);
       } catch {
         values[key] = doubleQuoted;
       }
@@ -127,7 +131,7 @@ export function inspectRuntimeProfiles(options = {}) {
   let claudeStatus = {};
   if (claudeStatusResult.ok) {
     try {
-      claudeStatus = JSON.parse(claudeStatusResult.output);
+      claudeStatus = Schema.decodeUnknownSync(JsonObject)(claudeStatusResult.output);
     } catch {
       claudeStatus = {};
     }
@@ -342,7 +346,7 @@ function safeSummary(profiles, selected) {
   return lines.join("\n");
 }
 
-function main() {
+function runMain() {
   const args = parseArgs(process.argv.slice(2));
   const profiles = inspectRuntimeProfiles({ model: args.model });
   const selected = selectRuntimeProfile(profiles, args.runtime);
@@ -383,10 +387,11 @@ export function pathsReferToSameFile(left, right) {
 }
 
 if (process.argv[1] && pathsReferToSameFile(process.argv[1], fileURLToPath(import.meta.url))) {
-  try {
-    main();
-  } catch (error) {
-    process.stderr.write(`runtime-profile: ${error instanceof Error ? error.message : String(error)}\n`);
-    process.exitCode = 1;
-  }
+  Effect.try({
+    try: runMain,
+    catch: (cause) => cause instanceof Error ? cause : new Error(String(cause)),
+  }).pipe(
+    Effect.tapError((error) => Console.error(`runtime-profile: ${error.message}`)),
+    NodeRuntime.runMain({ disableErrorReporting: true }),
+  );
 }

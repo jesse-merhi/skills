@@ -61,7 +61,20 @@ session exposes the question UI.
 
 Skip this step for other harnesses.
 
-## 4. Survey Existing Skills
+## 4. Install Repo Runtime Dependencies
+
+Repo-owned TypeScript helpers require Node 24 or newer and the exact pnpm
+version declared in `package.json`. From `REPO`, run:
+
+```sh
+node -e 'if (Number(process.versions.node.split(".")[0]) < 24) process.exit(1)'
+pnpm install --frozen-lockfile
+```
+
+Stop and report the missing prerequisite if either command is unavailable or
+fails. Do not substitute a global TypeScript, Effect, or package installation.
+
+## 5. Survey Existing Skills
 
 Before touching anything, inventory the target skills directory for the current
 harness:
@@ -82,7 +95,7 @@ Classify existing entries:
 4. A dead symlink: safe to remove.
 5. Obvious junk: ask before deleting.
 
-## 5. Link Skills
+## 6. Link Skills
 
 Always use per-skill symlinks. The target skills directory should remain a real
 directory; each repo skill gets its own symlink inside it.
@@ -111,7 +124,7 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 6. Reconcile Third-Party Skills
+## 7. Reconcile Third-Party Skills
 
 Read `external.md`. For each active or retired entry, run only the install or
 removal command for the current harness. Skip entries that do not list your
@@ -122,39 +135,29 @@ not survive after this repository stops using them.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 7. Install Repo-Owned Helper Binaries
+## 8. Verify Repo-Owned CLIs
 
-Some skills include local helper binaries. Install the Rust `review-findings`
-binary so `code-review` can record findings, verification commands, and
-closeouts in a fast local SQLite database:
-
-```sh
-REPO/skills/code-review/scripts/install-review-findings
-```
-
-By default this writes:
-
-```text
-~/.local/bin/review-findings
-```
-
-If the harness supports local environment variables, record the absolute helper
-path as `AGENT_REVIEW_FINDINGS_BIN`. Otherwise agents can use the skill-local
-launcher at `REPO/skills/code-review/scripts/review-findings`.
-
-Verify:
+The `review-findings` CLI runs directly from the linked skill and uses the
+repo-owned Effect runtime installed in step 4. Verify it can resolve that
+runtime and report its SQLite database path:
 
 ```sh
-${AGENT_REVIEW_FINDINGS_BIN:-$HOME/.local/bin/review-findings} path
+REPO/skills/code-review/scripts/review-findings path
 ```
 
-## 8. Verify
+Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration. That
+override belonged to the removed Rust installation and can silently select a
+CLI that lacks the required scope commands. The skill-owned launcher above is
+the only supported entrypoint.
+
+## 9. Verify
 
 Run:
 
 ```sh
 ./tests/skills-test
 ./tests/review-findings-test
+pnpm validate:effect
 ```
 
 Report:
@@ -164,5 +167,6 @@ Report:
 - skills linked
 - existing local skills preserved
 - third-party installs run or skipped
-- helper binaries installed or skipped
+- repo runtime dependencies installed
+- repo-owned CLIs verified
 - test result

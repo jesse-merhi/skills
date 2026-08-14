@@ -1,0 +1,38 @@
+{
+  "name": "@jesse-merhi/skills",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "diagnostics": "effect-language-service diagnostics --project tsconfig.json --strict",
+    "lint": "eslint --max-warnings 0 packages skills vitest.config.ts eslint.config.js eslint-rules",
+    "test": "vitest run",
+    "validate:effect": "pnpm lint && pnpm check && pnpm diagnostics && pnpm test"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.107",
+    "@effect/sql-sqlite-node": "4.0.0-beta.107",
+    "effect": "4.0.0-beta.107"
+  },
+  "devDependencies": {
+    "@effect/eslint-plugin": "0.3.2",
+    "@effect/language-service": "0.87.2",
+    "@effect/vitest": "4.0.0-beta.107",
+    "@types/node": "24.13.3",
+    "@typescript-eslint/eslint-plugin": "8.60.1",
+    "@typescript-eslint/parser": "8.60.1",
+    "@vitest/eslint-plugin": "1.6.20",
+    "eslint": "9.39.2",
+    "eslint-import-resolver-typescript": "3.10.1",
+    "eslint-plugin-import-x": "4.17.0",
+    "eslint-plugin-perfectionist": "5.9.1",
+    "eslint-plugin-promise": "7.3.0",
+    "eslint-plugin-sonarjs": "4.1.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,31 @@
+import { NodeRuntime, NodeServices } from "@effect/platform-node"
+import * as Clock from "effect/Clock"
+import * as Console from "effect/Console"
+import * as Effect from "effect/Effect"
+import { Argument, Command } from "effect/unstable/cli"
+
+import { parseWaitDuration, WaitDurationError } from "./Wait.ts"
+
+const quietWait = Command.make(
+  "quiet-wait",
+  { duration: Argument.string("duration").pipe(Argument.withDescription("Duration such as 300, 30s, 5m, or 1h")) },
+  Effect.fn("quietWait.handler")(function*({ duration }) {
+    const requestedMilliseconds = yield* parseWaitDuration(duration)
+    const started = yield* Clock.monotonicTimeNanos
+    yield* Effect.sleep(requestedMilliseconds)
+    const elapsed = yield* Clock.monotonicTimeNanos
+    yield* Console.log(JSON.stringify({
+      requested_seconds: requestedMilliseconds / 1_000,
+      elapsed_seconds: Math.round(Number(elapsed - started) / 1_000_000) / 1_000,
+      status: "elapsed"
+    }))
+  })
+).pipe(Command.withDescription("Sleep silently for a validated duration and print one completion record"))
+
+quietWait.pipe(
+  Command.run({ version: "1.0.0" }),
+  // @effect-diagnostics-next-line strictEffectProvide:off
+  Effect.provide(NodeServices.layer),
+  Effect.tapError((error) => error instanceof WaitDurationError ? Console.error(error.message) : Effect.void),
+  NodeRuntime.runMain({ disableErrorReporting: true })
+)

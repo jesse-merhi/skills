@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { NodeRuntime } from "@effect/platform-node";
+import * as Effect from "effect/Effect";
 import path from "node:path";
 import { createRequire } from "node:module";
 
@@ -24,7 +26,9 @@ if (!url) {
   process.exit(2);
 }
 
-const browser = await chromium.launch();
+const program = Effect.acquireUseRelease(
+  Effect.tryPromise(() => chromium.launch()),
+  (browser) => Effect.tryPromise(async () => {
 const page = await browser.newPage();
 const results = [];
 
@@ -240,8 +244,6 @@ for (const viewport of DEFAULT_VIEWPORTS) {
   results.push(...audit.findings.map((finding) => ({ ...finding, viewport: audit.size })));
 }
 
-await browser.close();
-
 const errors = results.filter((result) => result.level === "error");
 const warnings = results.filter((result) => result.level === "warning");
 
@@ -261,5 +263,10 @@ console.log(
 );
 
 if (errors.length > 0) {
-  process.exit(1);
+  throw new Error(`layout audit found ${errors.length} error(s)`);
 }
+  }),
+  (browser) => Effect.promise(() => browser.close()),
+);
+
+NodeRuntime.runMain(program);

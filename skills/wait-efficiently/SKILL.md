@@ -15,7 +15,7 @@ For requests such as "wait five minutes", resolve `<skill-dir>` to this skill
 and run:
 
 ```sh
-<skill-dir>/scripts/quiet-wait.py 5m
+<skill-dir>/scripts/quiet-wait 5m
 ```
 
 In Codex code mode, hold the outer `functions.exec` call longer than the
@@ -47,7 +47,7 @@ Read [github-actions.md](references/github-actions.md), then estimate the next
 useful observation from completed runs of the same workflow:
 
 ```sh
-<skill-dir>/scripts/estimate-gh-wait.py --run-id <run-id>
+<skill-dir>/scripts/estimate-gh-wait --run-id <run-id>
 ```
 
 Wait for the returned `suggested_wait_seconds` inside the same held tool call,

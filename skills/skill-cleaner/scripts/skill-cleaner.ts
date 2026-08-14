@@ -1,5 +1,14 @@
+import { NodeRuntime } from "@effect/platform-node";
+import * as Console from "effect/Console";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
+// The analyzer snapshots large directory trees synchronously inside one Effect;
+// Node's Dirent API avoids thousands of Effect allocations without changing lifecycle ownership.
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import fs from "node:fs";
 import os from "node:os";
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import path from "node:path";
 
 type Skill = {
@@ -61,7 +70,8 @@ const args = new Set(process.argv.slice(2));
 function argValue(name: string, fallback: string): string {
   const raw = process.argv.slice(2);
   const index = raw.indexOf(name);
-  return index >= 0 && raw[index + 1] ? raw[index + 1] : fallback;
+  const value = raw[index + 1];
+  return index >= 0 && value !== undefined ? value : fallback;
 }
 
 const months = Number(argValue("--months", "3"));
@@ -97,21 +107,23 @@ function numberArg(value: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function findModelRecord(value: unknown, target: string): Record<string, unknown> | null {
-  if (Array.isArray(value)) {
+const ModelCache = Schema.fromJsonString(Schema.Json);
+const isJsonArray = (value: Schema.Json): value is Schema.JsonArray => Array.isArray(value);
+
+function findModelRecord(value: Schema.Json, target: string): Schema.JsonObject | null {
+  if (isJsonArray(value)) {
     for (const item of value) {
       const found = findModelRecord(item, target);
       if (found) return found;
     }
     return null;
   }
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const names = [record.slug, record.id, record.model, record.name]
+  if (value === null || typeof value !== "object") return null;
+  const names = [value.slug, value.id, value.model, value.name]
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.toLowerCase());
-  if (names.includes(target.toLowerCase())) return record;
-  for (const item of Object.values(record)) {
+  if (names.includes(target.toLowerCase())) return value;
+  for (const item of Object.values(value)) {
     const found = findModelRecord(item, target);
     if (found) return found;
   }
@@ -129,7 +141,8 @@ function codexModelContext(modelName: string): {
   const cache = path.join(home, ".codex/models_cache.json");
   if (exists(cache)) {
     try {
-      const record = findModelRecord(JSON.parse(fs.readFileSync(cache, "utf8")), modelName);
+      const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
+      const record = Option.isSome(decoded) ? findModelRecord(decoded.value, modelName) : null;
       const tokens = Number(record?.context_window);
       const effectivePercent = Number(record?.effective_context_window_percent);
       if (Number.isFinite(tokens) && tokens > 0) {
@@ -235,7 +248,7 @@ function parseFrontmatter(file: string): { name?: string; description?: string; 
       }
     }
   }
-  return { name, description, body: lines.slice(end + 1).join("\n") };
+  return { ...(name === undefined ? {} : { name }), ...(description === undefined ? {} : { description }), body: lines.slice(end + 1).join("\n") };
 }
 
 function fnv1a(input: string): string {
@@ -362,7 +375,7 @@ function discoverRoots(): string[] {
   [
     path.join(home, ".codex/skills"),
     path.join(home, ".codex/plugins/cache"),
-    ...extraRoots.map(expandHome),
+    ...extraRoots.filter((root): root is string => root !== undefined).map(expandHome),
   ].forEach((root) => {
     if (!exists(root)) return;
     const real = fs.realpathSync(root);
@@ -678,10 +691,13 @@ function codexBudgetedSkillCost(skills: Skill[], budgetTokens: number): {
     while (true) {
       let changed = false;
       for (let index = 0; index < ordered.length; index++) {
-        if (allocatedByIndex[index] >= remainingByIndex[index]) continue;
-        const nextChars = allocatedByIndex[index] + 1;
-        const nextCost = extraCostsByIndex[index]?.[nextChars] ?? currentExtraCosts[index];
-        const delta = nextCost - currentExtraCosts[index];
+        const allocated = allocatedByIndex[index] ?? 0;
+        const remainingChars = remainingByIndex[index] ?? 0;
+        const currentCost = currentExtraCosts[index] ?? 0;
+        if (allocated >= remainingChars) continue;
+        const nextChars = allocated + 1;
+        const nextCost = extraCostsByIndex[index]?.[nextChars] ?? currentCost;
+        const delta = nextCost - currentCost;
         if (delta <= remaining) {
           allocatedByIndex[index] = nextChars;
           currentExtraCosts[index] = nextCost;
@@ -915,12 +931,13 @@ function render(skills: Skill[], usage: Map<string, Usage>, logFiles: string[]):
   return lines.join("\n");
 }
 
-const skills = discoverSkills();
-const logFiles = recentLogFiles();
-const usage = scanUsage(skills, logFiles);
-const consideredSkills = skills.filter((skill) => skill.enabled || includeAll);
-const budget = skillBudget(consideredSkills);
-const output = json
-  ? JSON.stringify({ skills, usage: Object.fromEntries(usage), logFiles, budget }, null, 2)
-  : render(skills, usage, logFiles);
-console.log(output);
+Effect.sync(() => {
+  const skills = discoverSkills();
+  const logFiles = recentLogFiles();
+  const usage = scanUsage(skills, logFiles);
+  const consideredSkills = skills.filter((skill) => skill.enabled || includeAll);
+  const budget = skillBudget(consideredSkills);
+  return json
+    ? JSON.stringify({ skills, usage: Object.fromEntries(usage), logFiles, budget }, null, 2)
+    : render(skills, usage, logFiles);
+}).pipe(Effect.flatMap(Console.log), NodeRuntime.runMain);

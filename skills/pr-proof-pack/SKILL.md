@@ -85,13 +85,13 @@ Every claim must be understandable from at least one of these sources:
 4. Run the bundled net-diff script:
 
    ```text
-   python3 <skill-dir>/scripts/pr_net_diff.py --markdown
+   <skill-dir>/scripts/pr-net-diff --markdown
    ```
 
    For a narrow area:
 
    ```text
-   python3 <skill-dir>/scripts/pr_net_diff.py --markdown src/routes/skills/index.tsx convex/telemetry.ts
+   <skill-dir>/scripts/pr-net-diff --markdown src/routes/skills/index.tsx convex/telemetry.ts
    ```
 
    Done when the proof is based on the PR base-to-`HEAD` net diff, not the latest

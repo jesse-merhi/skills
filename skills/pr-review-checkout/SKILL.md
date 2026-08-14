@@ -54,12 +54,18 @@ the active PR review surface.
 Run the helper from anywhere inside the repository:
 
 ```bash
-~/.claude/skills/pr-review-checkout/scripts/pr-review.sh <pr-number>
+~/.claude/skills/pr-review-checkout/scripts/pr-review <pr-number>
 ```
 
 It resolves the PR branch and base, reuses the branch's existing worktree when
-one exists, creates a dedicated `.worktrees/pr-<n>` worktree otherwise, opens
-that folder in VS Code, and prints the PR's net diff summary.
+one exists, or creates a dedicated `.worktrees/pr-<n>` worktree otherwise. The
+helper lets `gh pr checkout` attach its managed worktree to a unique
+`agent-pr-review/pr-<n>-<uuid>` branch that tracks the PR, so it cannot reset an
+unattached local branch with the PR's head name. It then opens that folder and
+prints the PR's net diff summary. Running the helper again refreshes a managed
+worktree before opening it, including after the PR branch is force-pushed. This
+reset applies only after the helper validates its ownership marker; an existing
+developer worktree is reused without resetting it.
 
 A branch can be checked out in only one worktree. Never check an in-flight PR
 branch out in the main repository or a second worktree.
@@ -93,6 +99,6 @@ worktree as the workspace folder is sufficient.
 
 - Reuse existing worktrees for PR branches under active development.
 - Remove only throwaway review worktrees created by the helper; it prints the
-  exact cleanup command.
+  exact commands that remove both the worktree and its generated branch.
 - Never merge or post PR comments on the user's behalf. Report findings in
   chat unless the user explicitly authorizes a separate action.
