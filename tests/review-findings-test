@@ -62,11 +62,13 @@ test_review_findings_workflow_is_documented() {
   assert_contains "$findings_doc" "--user-impact"
   assert_contains "$findings_doc" '"$review_findings_bin" closeout --material'
   assert_contains "$output_doc" "--branch <branch> --base <base> --target <current-target>"
-  assert_contains "$output_doc" "Material findings"
-  assert_contains "$output_doc" "User-visible or workflow changes"
-  assert_contains "$output_doc" "Security, data, and permission changes"
-  assert_contains "$output_doc" "Lower-risk findings"
-  assert_contains "$output_doc" "Scope budget"
+  assert_contains "$output_doc" "closeout --summary"
+  assert_contains "$output_doc" "closeout --json"
+  assert_contains "$output_doc" "What review found"
+  assert_contains "$output_doc" "group every finding"
+  assert_contains "$output_doc" "Still open"
+  assert_contains "$output_doc" "Delivery"
+  assert_contains "$output_doc" "speak-fking-english"
 }
 
 test_review_findings_runs_from_repo_launcher() {
@@ -186,6 +188,25 @@ test_review_findings_cli_generates_closeout_from_records() {
     --decision "Renamed the helper in the focused test only." \
     --text "Low-risk internal review cleanup." >/dev/null
 
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$tmp/sample-app" \
+    --branch fix-review-closeout \
+    --target "PR #88" \
+    --base main \
+    --decision-id D4 \
+    --status fixed \
+    --source cold-review \
+    --fingerprint "src/refunds.ts retry state owner feedback" \
+    --summary "Refund retry state did not explain when another attempt was safe." \
+    --impact workflow \
+    --priority P2 \
+    --material \
+    --user-impact "Support staff could retry a refund before the provider state was settled." \
+    --decision "Made the retry state and safe next action explicit." \
+    --text "Cold review found an unclear operator retry state." >/dev/null
+
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
     --db "$db" \
     --repo sample-app \
@@ -235,6 +256,35 @@ test_review_findings_cli_generates_closeout_from_records() {
   assert_output_contains "$out" "Verification run"
   assert_output_not_contains "$out" "D3"
   assert_output_not_contains "$out" "Findings found"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --summary \
+    --summary-limit 1 \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$tmp/sample-app" \
+    --branch fix-review-closeout \
+    --base main \
+    --target "PR #88")"
+
+  assert_output_contains "$out" "Review summary"
+  assert_output_contains "$out" "Findings: 4 total; 3 material; 1 lower risk"
+  assert_output_contains "$out" "Status: 3 fixed, 1 open"
+  assert_output_contains "$out" "Sources: 2 cold review, 2 native review"
+  assert_output_contains "$out" "Important resolved findings (1 of 2 shown)"
+  assert_output_contains "$out" "Still open (1 of 1 shown)"
+  assert_output_contains "$out" "D1 [fixed]"
+  assert_output_contains "$out" "D2 [open]"
+  assert_output_not_contains "$out" "D3"
+  assert_output_not_contains "$out" "D4"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --summary --json \
+    --db "$db" --repo sample-app --repo-path "$tmp/sample-app" \
+    --branch fix-review-closeout --base main --target "PR #88")"
+  assert_output_contains "$out" '"total_findings": 4'
+  assert_output_contains "$out" '"important_findings_total": 2'
+  assert_output_contains "$out" '"still_open_total": 1'
 }
 
 test_review_findings_cli_covers_full_review_lifecycle_closeout() {
