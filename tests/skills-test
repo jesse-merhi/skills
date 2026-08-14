@@ -180,7 +180,9 @@ behavior_checks = {
         "load `speak-fking-english`",
     ],
     root / "skills/review-guardrails/references/scope-governor.md": [
-        "Should I include this fix?",
+        "Assume the user has not",
+        "what the reviewer found, in plain language",
+        "Should I include it in",
         "Keep CLI terms, budget calculations, finding classes",
     ],
     root / "skills/wait-efficiently/SKILL.md": [

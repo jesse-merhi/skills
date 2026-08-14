@@ -24,11 +24,14 @@ Stop patching and consult when:
 ## User-facing scope requests
 
 Before showing a scope-expansion or consult request, load
-`speak-fking-english` and give it the complete draft. Lead with the decision the
-user must make, not the review machinery.
+`speak-fking-english` and give it the complete draft. Assume the user has not
+seen the internal review messages, findings, or fix attempts. Re-establish the
+missing context before asking for a decision.
 
-Include only:
+In this order, explain:
 
+- what the original change is trying to do
+- what the reviewer found, in plain language
 - the extra files or boundary involved
 - the concrete behavior that will remain wrong without the extra work
 - one direct question, normally `Should I include this fix?`
@@ -36,16 +39,23 @@ Include only:
 Keep CLI terms, budget calculations, finding classes, and prescribed approval
 phrases out of the request unless the user asks for that detail. If work is
 already implemented or tested, say so in one short sentence after explaining
-the behavior.
+the behavior. Done when the request makes sense without any earlier review
+messages.
 
 For example:
 
 ```text
-I found one related fix that touches two files outside this review:
+Quick context: this PR changes how assignments are recorded. During review, a
+reviewer found that assigning the same item twice can still be recorded as a new
+assignment.
+
+Fixing that properly also requires changes in two audit-system files outside the
+original scope:
 
 - packages/backend/src/audit/api-audit.ts
 - packages/common/src/contract/base.ts
 
-Without it, assigning the same item twice can be reported as a new assignment.
-Should I include this fix?
+If I include the fix, repeat assignments will stop being counted as new. If I
+leave it out, that bug will remain for a separate change. Should I include it in
+this PR?
 ```
