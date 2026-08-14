@@ -86,6 +86,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 5. Prepare the findings registry.
 
    Read [references/findings-registry.md](references/findings-registry.md).
+   Load `speak-fking-english` and use its reader reset for each batch of finding
+   cards and for the final owner summary.
    Done when the review-findings helper path is resolved and every accepted,
    rejected, deferred, provisional, reopened, user, lens, native-review, and
    cold-review finding can be recorded instead of reconstructed from chat.
@@ -131,12 +133,14 @@ remediation workflows, OpenGrep, merge, and advisory writing.
      native gate.
 
 10. Close out only after the Phase 1 native gate has passed and Phase 2 is
-    clean on the final target.
+    clean on the final local target.
 
-   Run one final `scope-check`. After it passes, run `scope-complete` with the
-   clean phase result so a later user-authorized review on the branch can start.
-   Read [references/pr-closeout.md](references/pr-closeout.md) for PR creation
-   or update, evidence, `pr-proof-pack`, pending GitHub Actions, and PR blockers.
+   Run the full local validation selected during setup. If it changes code,
+   rerun the affected review phase and validation. Once the final tree is clean
+   and validated, run one final `scope-check`, then `scope-complete` with the
+   clean phase result so a later user-authorized review can start. Read
+   [references/pr-closeout.md](references/pr-closeout.md) for the final PR-owner
+   gate, one final push, proof freshness, GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
    final response.
 
@@ -157,6 +161,9 @@ remediation workflows, OpenGrep, merge, and advisory writing.
   authorized reset records the user's words through `scope-authorize`.
 - Final validation for the affected surfaces passed, or blockers and residual
   risk are explicit.
+- No remote branch or PR mutation occurred while either review phase still had
+  findings. After both phases were clean, the final full local validation
+  passed before the reviewed result was pushed.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or
   the PR/proof blocker is reported separately from the review result.
 - The final answer is backed by `review-findings closeout`, not chat memory.
@@ -183,4 +190,5 @@ consult queue is resolved.
   requested;
 - leaving accepted fixes in a temporary snapshot instead of the real checkout;
 - pushing just to review;
+- pushing between findings, review phases, or targeted validation runs;
 - writing final closeout sections from chat history.

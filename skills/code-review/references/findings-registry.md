@@ -85,6 +85,20 @@ branch. `scope-complete` releases that lock for a later user-authorized review.
 
 ## Finding Records
 
+Write finding cards for the review owner, not for the reviewer that discovered
+them. Before recording each batch, apply the `speak-fking-english` reader reset
+without changing the technical claim:
+
+- `summary`: say what can go wrong and where; restore the premise needed to
+  understand it
+- `user-impact`: say who experiences the consequence and what happens
+- `decision`: say what changed, why the finding was rejected, or what decision
+  remains
+
+Use everyday language and concrete behavior. Keep engine names, severity,
+fingerprints, and implementation detail in their structured fields instead of
+making the owner decode reviewer shorthand.
+
 For every finding, record:
 
 - decision ID
@@ -160,11 +174,11 @@ Example:
 
 ## Closeout
 
-Generate the final closeout sections from SQLite, then use that output in the
-user-facing final answer:
+After compaction, handoff, or a long review, rebuild the owner summary from
+SQLite instead of chat history:
 
 ```sh
-"$review_findings_bin" closeout \
+"$review_findings_bin" closeout --summary \
   --repo <repo> \
   --repo-path <repo-root> \
   --branch <branch> \
@@ -172,7 +186,21 @@ user-facing final answer:
   --target <current-target>
 ```
 
-For a concise owner-facing overview, use the material view:
+The summary reports totals, status, sources, impact areas, priorities, important
+findings, unresolved work, and verification counts. Retrieve the complete audit
+when writing or checking the summary:
+
+```sh
+"$review_findings_bin" closeout --json \
+  --repo <repo> \
+  --repo-path <repo-root> \
+  --branch <branch> \
+  --base <base> \
+  --target <current-target>
+```
+
+Use the material view when investigating the important finding cards in more
+detail:
 
 ```sh
 "$review_findings_bin" closeout --material \

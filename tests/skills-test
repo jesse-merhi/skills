@@ -453,7 +453,10 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   local step_count done_count
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
-  assert_contains "$skill/SKILL.md" "Committing to, rebasing"
+  assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
+  assert_contains "$skill/SKILL.md" "A push triggers a freshness check"
+  assert_contains "$skill/SKILL.md" "This skill never grants publication authority"
+  assert_contains "$skill/SKILL.md" "report the no-op decision and leave the PR"
   assert_contains "$skill/SKILL.md" "If any gate cannot be completed, stop"
   assert_contains "$skill/references/proof-selection.md" "working in practice"
   assert_contains "$skill/SKILL.md" 'never satisfies `Visual proof`'
@@ -506,7 +509,26 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Publish practical PR proof of working behavior."
+  assert_contains "$skill/agents/openai.yaml" "Check and refresh practical PR proof."
+}
+
+test_code_review_has_a_local_review_and_owner_checked_closeout() {
+  local skill="$ROOT_DIR/skills/code-review"
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "Never push agent-authored"
+  assert_contains "$ROOT_DIR/AGENTS.md" "request to fix or review authorizes local edits"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Jesse explicitly asks to push after the fix"
+  assert_contains "$ROOT_DIR/AGENTS.md" "The reaction gates merge"
+  assert_contains "$skill/references/review-phase-rules.md" "review and finding-fix loop local"
+  assert_contains "$skill/references/review-phase-rules.md" "full local validation"
+  assert_contains "$skill/references/pr-closeout.md" 'author.login` is `jesse-merhi'
+  assert_contains "$skill/references/pr-closeout.md" "one normal final push"
+  assert_contains "$skill/references/pr-closeout.md" "Do not force-push"
+  assert_contains "$skill/references/pr-closeout.md" "Run CI last"
+  assert_contains "$skill/references/findings-registry.md" 'closeout --summary'
+  assert_contains "$skill/references/findings-registry.md" "Write finding cards for the review owner"
+  assert_contains "$skill/references/final-output.md" "group every finding"
+  assert_contains "$skill/references/final-output.md" 'through `speak-fking-english`'
 }
 
 test_openclaw_agent_discovery_paths() {
@@ -577,7 +599,7 @@ test_gh_stack_workflow_is_pinned_and_wired() {
   assert_contains "$ROOT_DIR/AGENTS.md" '`gh-stack` and plan a bottom-to-top stack'
   assert_contains "$ROOT_DIR/skills/parallel-slice-orchestration/SKILL.md" 'GitHub stacks are linear'
   assert_contains "$ROOT_DIR/skills/handoff/references/repair-pr-handoffs.md" 'tell it to load `gh-stack`'
-  assert_contains "$ROOT_DIR/skills/code-review/references/pr-closeout.md" 'inspect it with `gh stack view --json`'
+  assert_contains "$ROOT_DIR/skills/code-review/references/pr-closeout.md" "Preserve a planned stack with"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "scope proof to that layer's direct base"
   assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" "## PR Delivery"
   assert_contains "$ROOT_DIR/skills/to-spec/SKILL.md" 'record the logical'
@@ -803,6 +825,7 @@ test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
+test_code_review_has_a_local_review_and_owner_checked_closeout
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
