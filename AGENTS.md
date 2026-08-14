@@ -71,8 +71,14 @@ resource lifecycle, and graceful shutdown.
 
 ## Working rules
 
-- Always work on a branch in a dedicated git worktree and deliver through a
-  PR. Never commit directly to main.
+- Work on a branch in a dedicated git worktree. Never push agent-authored
+  feature or fix commits directly to the default branch. When publication is
+  authorized, push the work to its feature branch and deliver it through a PR.
+- Treat publication as a separate authority from local implementation. A
+  request to fix or review authorizes local edits and validation. Push when
+  Jesse explicitly asks to push after the fix, publish, ship, or update the PR,
+  or when a named workflow explicitly grants final-push authority. Otherwise,
+  stop at a local checkpoint and show the result.
 - Choose the PR delivery shape before implementation. Keep one cohesive change
   in one PR. When one story contains two or more dependent review units, load
   `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
@@ -84,7 +90,8 @@ resource lifecycle, and graceful shutdown.
   the top PR. Never add, remove, or modify that reaction on the user's behalf;
   only read GitHub reactions and proceed after the expected reaction exists.
   Treat this as an agent workflow gate, not a GitHub approval or branch-
-  protection rule.
+  protection rule. The reaction gates merge; it does not block authorized PR
+  updates or local repair work.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.

@@ -1,195 +1,173 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable PR proof after every PR or stack change, using Browser Use, Computer Use, or OpenClaw's browser surface to upload real visual evidence.
+description: Create or check reviewer-visible proof when an authorized workflow is publishing a PR update or preparing a PR for merge. Refresh only when the pushed behavior or existing proof changed; local edits and commits do not trigger publication.
 ---
 
 # PR Proof Pack
 
-Treat this workflow as a PR publishing gate. Run it before any action that
-creates or changes reviewer-visible PR state, and run it again after every
-meaningful branch change.
+Treat this workflow as a delivery and merge-readiness gate. A proof check asks
+whether the existing PR still tells the truth. A proof refresh changes the PR
+only when that check finds stale or missing evidence.
 
-The **proof pack** is the reviewer-checkable story in the PR: what changes for a
-person or system, why it matters, and visual evidence a reviewer can inspect
-without knowing the agent thread.
+This skill never grants publication authority. The calling workflow must obtain
+that authority before pushing a branch, editing a PR, or uploading evidence.
+Local edits, local commits, review findings, and targeted tests stay local and
+do not trigger this workflow.
 
-## Hard Gates
+## Trigger Branches
 
-- **Interactive browser:** Complete the preflight in step 2 before any PR
-  mutation, then keep using that browser path for the upload and rendered-page
-  inspection in steps 9 and 10.
-- **Practical evidence:** Complete the behavior capture in step 7. Automated
-  validation remains supporting information and never satisfies `Visual proof`.
-- **Readable history:** Complete the title and commit review in step 6 before
-  publishing.
+- Creating, publishing, reopening, converting, or marking a PR ready: check the
+  final proof and refresh it when stale.
+- Publishing an authorized branch update: check proof against the final net
+  diff; refresh only claims or evidence affected by that update.
+- Preparing a PR or stack for merge: require a current proof result even when
+  no refresh is needed.
+- Creating or updating a stacked PR: scope proof to that layer's direct base,
+  state its stack position and adjacent dependencies, and check every affected
+  layer separately.
+
+A commit, rebase, or local branch change is not reviewer-visible and does not
+trigger proof work. A push triggers a freshness check, not an automatic rewrite.
+
+## Freshness Rule
+
+Classify proof as:
+
+- `current`: the existing title, body, behavior claims, reproduction steps, and
+  practical evidence still match the final pushed net diff;
+- `stale`: an important behavior, state, viewport, workflow, reproduction step,
+  or evidence claim changed, or required proof is missing;
+- `blocked`: freshness or required practical evidence cannot be verified.
+
+Commit count, commit SHA, code churn, and a push by themselves do not make proof
+stale. When proof is current, report the no-op decision and leave the PR
+untouched.
+
+## Hard Gates For A Refresh
+
+- **Interactive browser:** Pass the preflight before any reviewer-visible PR
+  mutation, then use the same path for upload and rendered-page inspection.
+- **Practical evidence:** Capture the changed behavior working in practice.
+  Automated validation remains supporting information and never satisfies `Visual proof`.
+- **Readable history:** Review the title and commit subjects before publishing.
 
 If any gate cannot be completed, stop. Tell the human which capability failed
 and what they must restore. Do not publish or update the PR through another
 path.
 
-## Trigger Branches
-
-- Creating, publishing, reopening, converting, or marking a PR ready: run the
-  full workflow.
-- Editing a PR title, body, base, or reviewer-visible proof: refresh the proof
-  before the edit is complete.
-- Committing to, rebasing, merging into, or pushing a branch that already has a
-  PR: treat it as a PR update and refresh the proof after the branch settles.
-- Creating or updating a stacked PR: scope proof to that layer's direct base,
-  state its stack position and adjacent dependencies, and run the workflow
-  separately for every affected layer.
-- Changing a lower stack layer: sync the stack, then refresh every affected
-  upstack PR.
-
 ## Reviewer Boundary
 
 Assume the reviewer has not seen the agent thread, planning notes, decision log,
-local branch history, or private chat.
-
-Every claim must be understandable from at least one of these sources:
-
-- the net diff from the PR's direct base to `HEAD`;
-- linked public or repo-visible issues, specs, tickets, or docs;
-- the PR body itself.
+local branch history, or private chat. Every claim must be understandable from
+the direct-base net diff, linked repo-visible context, or the PR body itself.
 
 ## Workflow
 
-1. Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
+1. Resolve the skill directory.
+
+   Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
 
    Done when every relative script and reference path resolves from that
    directory.
 
-2. Pass the interactive-browser preflight.
+2. Resolve the PR and direct base.
+
+   Use read-only provider metadata. On GitHub, inspect
+   `gh pr view --json number,url,body,title,baseRefName,headRefName`. For a stack,
+   load `gh-stack`, inspect `gh stack view --json`, and record the current
+   layer's position and adjacent dependencies.
+
+   Done when the exact PR, final head, direct base, and existing proof are
+   known.
+
+3. Build the current proof surface.
+
+   Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally with narrow file
+   paths. Base every claim on the direct-base-to-final-`HEAD` net diff, not the
+   latest commit or chat memory. Remove branch-only churn with no net diff from
+   consideration.
+
+   Done when the final behavior and existing reviewer-visible claims can be
+   compared.
+
+4. Make the freshness decision.
+
+   Compare the final behavior, reproduction steps, important viewports and
+   states, verification evidence, title, and existing attachments. Apply the
+   freshness rule above. If proof is `current`, report why and stop without any
+   PR mutation.
+
+   Done when the result is `current`, `stale`, or `blocked`, with the affected
+   claim or evidence named.
+
+5. Pass the interactive-browser preflight for stale proof.
 
    Select the browser path native to the current harness. In OpenClaw, use its
    browser tool or `openclaw browser`; inspect
    `openclaw browser --json status` and `openclaw browser profiles` when the
-   active authenticated profile is unclear. In Claude environments, choose as
-   follows. Prefer Browser Use when its external skill and CLI are available:
-   load it, open a fresh repository tab in the human-permitted Chrome-family
-   browser, including Chrome or Dia, and leave unrelated existing tabs alone.
-   Otherwise load
-   `computer-use` and open an agent-owned browser. Reach the repository on its
-   PR provider and confirm the selected path can read and operate the page.
-   Record which path is active and keep it for steps 9 and 10. Do this before a
-   publishing workflow creates or mutates a PR. When creating a new PR, the
-   publishing workflow may create a draft shell only after this preflight.
+   active authenticated profile is unclear. In Claude environments, use this
+   order: Prefer Browser Use when available in the human-permitted
+   Chrome-family browser, including Chrome or Dia; otherwise load
+   `computer-use`. Open the PR and confirm the selected path can read and
+   operate the page.
 
    Done when the selected interactive browser is demonstrably usable, or the
-   workflow has stopped with a concrete repair request to the human.
+   workflow has stopped with a concrete repair request.
 
-3. Resolve the PR's direct base and stack context.
-
-   On GitHub, use `gh pr view --json number,url,baseRefName,headRefName` when a
-   PR exists. On Bitbucket or another provider, use its equivalent read-only
-   metadata path.
-   When the branch is part of a stack, load `gh-stack` and inspect the ordered
-   branches with `gh stack view --json`. Record the current layer's position,
-   direct parent PR, and direct child PR when present.
-
-   Done when "base" means the branch directly below this PR, not necessarily
-   the repository default branch.
-
-4. Run the bundled net-diff script:
-
-   ```text
-   <skill-dir>/scripts/pr-net-diff --markdown
-   ```
-
-   For a narrow area:
-
-   ```text
-   <skill-dir>/scripts/pr-net-diff --markdown src/routes/skills/index.tsx convex/telemetry.ts
-   ```
-
-   Done when the proof is based on the PR base-to-`HEAD` net diff, not the latest
-   commit, a previous branch commit, or local session memory.
-
-5. Remove proof for non-current behavior.
-
-   Done when files under `Branch-Only Churn With No Net Diff` are absent from
-   claims about current PR behavior.
-
-6. Make the title, commits, body, captions, and labels readable.
-
-   Read [references/plain-language.md](references/plain-language.md). Inspect the
-   title and every commit subject in the direct-base range as well as the body.
-
-   Done when each can be understood on its own by a reviewer with the missing
-   premise restored, or the workflow has stopped to request approval before a
-   necessary published-history rewrite.
-
-7. Choose practical visual proof.
+6. Capture only the changed practical evidence.
 
    Read the practical-evidence section of
-   [references/proof-selection.md](references/proof-selection.md), then read
-   [references/screenshots.md](references/screenshots.md). Capture the behavior
-   itself in the form required for that change type.
+   [references/proof-selection.md](references/proof-selection.md), then
+   [references/screenshots.md](references/screenshots.md). Reproduce the changed
+   behavior and replace only evidence made stale by the final net diff. Preserve
+   current evidence.
 
-   Done when every important behavior has reviewer-checkable practical
-   evidence and every required recording and screenshot exists locally.
+   Done when every changed important behavior has reviewer-checkable evidence
+   and unchanged evidence is left alone.
 
-8. Write a behavior-first PR body.
+7. Draft the smallest accurate PR update.
 
-   Read [references/body-shape.md](references/body-shape.md). Draft the title,
-   body, and evidence captions around the practical evidence, with reproduction
-   steps and observed results as copyable text.
+   Read [references/plain-language.md](references/plain-language.md) and
+   [references/body-shape.md](references/body-shape.md). Keep current sections
+   that remain true. Draft only the title, body, caption, reproduction, or
+   evidence changes needed to restore accuracy. Load `speak-fking-english`
+   immediately before saving the complete draft.
 
-   Load `speak-fking-english` immediately before saving the complete draft.
+   Done when the draft is self-contained, accurate, and free of performative
+   rewrites.
 
-   Done when `speak-fking-english` returns a self-contained reviewer-facing draft
-   and every evidence item still has a specific claim and reproduction context.
+8. Confirm authority and upload evidence.
 
-9. Upload the evidence with the selected interactive browser.
+   Reconfirm that the calling workflow authorizes the PR mutation. Follow the
+   provider upload flow in [references/screenshots.md](references/screenshots.md)
+   with the selected browser. Put media in the main PR body, never in a detached
+   comment or table.
 
-   Follow the provider upload flow in
-   [references/screenshots.md](references/screenshots.md). In OpenClaw, use its
-   native browser upload action on the provider's attachment control or file
-   input. In a harness with clipboard support, copy each finished image or
-   recording, select the exact
-   placeholder or stale attachment in the PR editor, and paste. Use the
-   provider's attachment control or native file picker only when clipboard
-   paste is unsupported. Put media directly in the main PR body, never in a
-   table or detached comment. Follow the active confirmation policy in
-   [references/screenshots.md](references/screenshots.md).
+   Done when every changed evidence item is provider-hosted in the main body,
+   or the workflow has stopped before mutation because authority is absent.
 
-   Done when every image and recording uses a reviewer-visible, provider-hosted
-   attachment in the main body. A local path, an unsubmitted attachment, a
-   textual rationale, or a screenshot of green checks is not done.
+9. Inspect the finished PR.
 
-10. Inspect the finished PR with the selected interactive browser.
+   Open the rendered PR and check its title, section order, attachments,
+   captions, diagrams, and reproduction steps. Remove stale proof rather than
+   accumulating it.
 
-    Open the rendered PR and check its title, section order, image loading,
-    video playback, captions, any diagram rendering, and copyable reproduction
-    steps. Fix stale or unclear proof before leaving the page.
+   Done when the rendered PR accurately describes the final pushed net diff.
 
-    Done when the rendered PR is readable without local context and every visual
-    directly supports a current net-diff claim.
+10. Hand the result back to the caller.
 
-11. Refresh after every branch change.
+    Return `current`, `refreshed`, or `blocked`, with the affected PRs. Once
+    proof, review, validation, and CI pass, the caller applies the thumbs-up
+    (`+1`) human sign-off gate without changing reactions on Jesse's behalf.
 
-    Rerun the net diff, practical behavior walkthrough, visual capture and
-    upload, any needed diagram validation, language pass, and rendered-page
-    inspection.
-    Remove stale proof.
-    For a stack, sync first and repeat for every affected upstack PR.
-
-    Done when every open PR reflects its current direct-base diff.
-
-12. Hand completed proof back to the publishing or review-closeout workflow.
-
-    Once proof, review, validation, and CI pass, that workflow must ask the user
-    for a thumbs-up (`+1`) reaction on every open stack PR and verify each
-    reaction belongs to `jesse-merhi`. Never add or remove that reaction on the
-    user's behalf.
-
-    Done when the caller has the exact open PRs requiring human sign-off and
-    this skill has not changed any reaction.
+    Done when the caller knows whether proof changed and which PRs still need
+    human sign-off.
 
 ## Done Means
 
 - Every workflow step meets its `Done when` criterion.
-- Every affected PR reflects its current direct-base behavior and contains
-  provider-hosted practical evidence inspected through the selected interactive
-  browser.
-- The caller has the open PR list needed to request human sign-off.
+- A `current` result made no reviewer-visible mutation.
+- A `refreshed` result changed only stale claims and evidence.
+- Every affected PR describes its final direct-base behavior with practical,
+  provider-hosted proof.
+- The workflow did not infer publication authority from branch or PR state.
