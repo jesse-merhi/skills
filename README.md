@@ -99,7 +99,9 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   material where a standalone page helps the reader.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
-  still install by skill name.
+  still install by skill name. `openclaw-telegram-handoff` sends terminal task
+  outcomes to an approved Telegram route and can relay the operator's answer
+  back to a named source session.
 - **Meta tools:** `writing-for-agents` shapes skills and instruction files;
   `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
   prompt-budget pressure.

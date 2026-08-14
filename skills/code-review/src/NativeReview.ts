@@ -24,6 +24,14 @@ export class ReviewTargetChangedError extends Schema.TaggedError<ReviewTargetCha
   runs: Schema.Number
 }) {}
 export class ReviewSnapshotError extends Schema.TaggedError<ReviewSnapshotError>()("ReviewSnapshotError", { message: Schema.String }) {}
+export class CodexAuthenticationError extends Schema.TaggedError<CodexAuthenticationError>()("CodexAuthenticationError", { message: Schema.String }) {}
+export class CodexLivePreflightError extends Schema.TaggedError<CodexLivePreflightError>()("CodexLivePreflightError", { message: Schema.String }) {}
+
+const CodexDoctorReport = Schema.fromJsonString(Schema.Struct({
+  checks: Schema.Struct({
+    "auth.credentials": Schema.Struct({ status: Schema.String })
+  })
+}))
 
 // Explicit tool overrides are trusted user configuration; defaults are resolved outside the checkout.
 // @effect-diagnostics-next-line processEnv:off
@@ -104,6 +112,51 @@ export const refreshReviewBase = Effect.fn("NativeReview.refreshBase")(function*
   yield* checkedInherit(gitTool, ["fetch", "--quiet", remote, `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`]).pipe(
     Effect.catch((error) => Console.error(`warning: could not refresh ${base}; reviewing the existing local ref (${error.message})`))
   )
+})
+
+const authenticationFailure = () => new CodexAuthenticationError({
+  message: "Codex authentication preflight failed for the current runtime identity. Restore that identity's expected Codex binary and auth file, then retry. In OpenClaw, reuse the shared host Codex auth path; do not create a separate OpenClaw login."
+})
+const livePreflightFailure = () => new CodexLivePreflightError({
+  message: "Codex reached the live preflight but the request failed. Retry once, then use `codex exec --ephemeral` under the same runtime identity to diagnose rejected or expired credentials, network, rate-limit, model, or configuration errors. In OpenClaw, repair rejected credentials through the shared host auth path; do not create a separate OpenClaw login."
+})
+
+export const preflightCodexAuthentication = Effect.fn("NativeReview.preflightCodexAuthentication")(function*(codexBin: string) {
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const reviewer = codexBin.includes("/") ? paths.resolve(codexBin) : yield* trustedExecutable(codexBin)
+
+  // This command reads a cache in some installations. Keep it informational so
+  // stale state cannot override the redacted diagnostic and live provider checks.
+  yield* checkedTrimmedText(reviewer, ["login", "status"]).pipe(
+    Effect.timeout("10 seconds"),
+    Effect.ignore
+  )
+
+  // Doctor returns JSON with exit 1 when a diagnostic check reports `fail`.
+  // Keep that stdout available for typed decoding while older unsupported
+  // commands and other exit codes continue to the live capability check.
+  const report = yield* checkedTrimmedText(reviewer, ["doctor", "--json"], { allowedExitCodes: [1] }).pipe(
+    Effect.timeout("20 seconds"),
+    Effect.flatMap(Schema.decodeUnknownEffect(CodexDoctorReport)),
+    Effect.option
+  )
+  if (Option.isSome(report) && ["error", "fail"].includes(report.value.checks["auth.credentials"].status)) return yield* authenticationFailure()
+
+  yield* Effect.scoped(Effect.gen(function*() {
+    const probeDirectory = yield* fs.makeTempDirectoryScoped({ prefix: "codex-auth-preflight." })
+    yield* checkedTrimmedText(reviewer, [
+      "exec",
+      "--ephemeral",
+      "--skip-git-repo-check",
+      "--sandbox",
+      "read-only",
+      "Authentication preflight only. Reply with exactly: ok. Do not use tools."
+    ], { cwd: probeDirectory }).pipe(
+      Effect.timeout("60 seconds"),
+      Effect.mapError(livePreflightFailure)
+    )
+  }))
 })
 
 export const selectReviewPlan = Effect.fn("NativeReview.selectReviewPlan")(function*(mode: ReviewMode, base: Option.Option<string>, commit: string, refresh = true) {

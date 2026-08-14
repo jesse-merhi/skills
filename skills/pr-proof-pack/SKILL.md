@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable PR proof after every PR or stack change, using Browser Use or Computer Use to upload real visual evidence.
+description: Create or refresh reviewer-checkable PR proof after every PR or stack change, using Browser Use, Computer Use, or OpenClaw's browser surface to upload real visual evidence.
 ---
 
 # PR Proof Pack
@@ -61,17 +61,22 @@ Every claim must be understandable from at least one of these sources:
 
 2. Pass the interactive-browser preflight.
 
-   Prefer Browser Use when its external skill and CLI are available. Load it,
-   open a fresh repository tab in the human-permitted Chrome-family browser
-   (including Chrome or Dia), and leave unrelated existing tabs alone. Otherwise
-   load `computer-use` and open an agent-owned browser. Reach the repository on
-   its PR provider and confirm the selected path can read and operate the page.
+   Select the browser path native to the current harness. In OpenClaw, use its
+   browser tool or `openclaw browser`; inspect
+   `openclaw browser --json status` and `openclaw browser profiles` when the
+   active authenticated profile is unclear. In Claude environments, choose as
+   follows. Prefer Browser Use when its external skill and CLI are available:
+   load it, open a fresh repository tab in the human-permitted Chrome-family
+   browser, including Chrome or Dia, and leave unrelated existing tabs alone.
+   Otherwise load
+   `computer-use` and open an agent-owned browser. Reach the repository on its
+   PR provider and confirm the selected path can read and operate the page.
    Record which path is active and keep it for steps 9 and 10. Do this before a
    publishing workflow creates or mutates a PR. When creating a new PR, the
    publishing workflow may create a draft shell only after this preflight.
 
-   Done when Browser Use or Computer Use is demonstrably usable, or the workflow
-   has stopped with a concrete repair request to the human.
+   Done when the selected interactive browser is demonstrably usable, or the
+   workflow has stopped with a concrete repair request to the human.
 
 3. Resolve the PR's direct base and stack context.
 
@@ -138,12 +143,15 @@ Every claim must be understandable from at least one of these sources:
 9. Upload the evidence with the selected interactive browser.
 
    Follow the provider upload flow in
-   [references/screenshots.md](references/screenshots.md). Copy each finished
-   image or recording, select the exact placeholder or stale attachment in the
-   PR editor, and paste. Use the provider's attachment control or native file
-   picker only when clipboard paste is unsupported. Put media directly in the
-   main PR body, never in a table or detached comment. Follow the active
-   confirmation policy in [references/screenshots.md](references/screenshots.md).
+   [references/screenshots.md](references/screenshots.md). In OpenClaw, use its
+   native browser upload action on the provider's attachment control or file
+   input. In a harness with clipboard support, copy each finished image or
+   recording, select the exact
+   placeholder or stale attachment in the PR editor, and paste. Use the
+   provider's attachment control or native file picker only when clipboard
+   paste is unsupported. Put media directly in the main PR body, never in a
+   table or detached comment. Follow the active confirmation policy in
+   [references/screenshots.md](references/screenshots.md).
 
    Done when every image and recording uses a reviewer-visible, provider-hosted
    attachment in the main body. A local path, an unsubmitted attachment, a
