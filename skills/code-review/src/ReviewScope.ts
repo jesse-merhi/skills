@@ -87,13 +87,18 @@ const addEntry = (counts: ReturnType<typeof emptyCounts>, entry: NumstatEntry): 
   counts.changedLines += entry.additions + entry.deletions + (entry.binary ? 1 : 0)
 }
 
-export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(function*(repoPath: string, baseRef: string) {
+export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(function*(repoPath: string, baseRef: string, targetRef = "HEAD") {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const git = yield* trustedExecutable("git", repoPath)
-  const mergeBase = yield* checkedTrimmedText(git, ["merge-base", baseRef, "HEAD"], { cwd: repoPath })
-  const tracked = yield* checkedText(git, ["diff", "--numstat", "--no-renames", "-z", mergeBase, "--"], { cwd: repoPath })
-  const untracked = yield* checkedText(git, ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repoPath })
+  const targetOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${targetRef}^{commit}`], { cwd: repoPath })
+  const checkoutOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: repoPath })
+  const includeWorkingTree = targetOid === checkoutOid
+  const mergeBase = yield* checkedTrimmedText(git, ["merge-base", baseRef, targetOid], { cwd: repoPath })
+  const tracked = yield* checkedText(git, ["diff", "--numstat", "--no-renames", "-z", mergeBase, ...(includeWorkingTree ? [] : [targetOid]), "--"], { cwd: repoPath })
+  const untracked = includeWorkingTree
+    ? yield* checkedText(git, ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repoPath })
+    : ""
   const untrackedEntries = yield* Effect.forEach(untracked.split("\0").filter((path) => path.length > 0), (path) =>
     fs.readLink(paths.join(repoPath, path)).pipe(
       Effect.map(() => ({ additions: 0, deletions: 0, binary: true, path } satisfies NumstatEntry)),

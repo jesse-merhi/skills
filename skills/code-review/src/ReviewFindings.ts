@@ -446,7 +446,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const sql = yield* SqlClient.SqlClient
   const git = yield* trustedExecutable("git", run.repoPath)
   const baseOid = input.baseOid ?? (yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${run.base}^{commit}`], { cwd: run.repoPath }))
-  const measurement = yield* measureScopeDiff(run.repoPath, baseOid)
+  const measurement = yield* measureScopeDiff(run.repoPath, baseOid, run.head.trim().length > 0 ? run.head : "HEAD")
   const allowedGrowthLines = Math.floor(measurement.production.changedLines * input.limitPercent / 100)
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
