@@ -117,16 +117,23 @@ export const selectReviewPlan = Effect.fn("NativeReview.selectReviewPlan")(funct
   return planReview(mode, selectedBase, commit, dirty)
 })
 
-export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*(baseRefs: ReadonlyArray<string> = []) {
+export interface ReviewIdentityOptions {
+  readonly baseRefs?: ReadonlyArray<string>
+  readonly commitRefs?: ReadonlyArray<string>
+  readonly includeHead?: boolean
+  readonly includeWorkingTree?: boolean
+}
+
+export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*(options: ReviewIdentityOptions = {}) {
   const repo = yield* git(["rev-parse", "--show-toplevel"])
   const fromRoot = (args: ReadonlyArray<string>) => capture("git", args, { cwd: repo })
-  const [branch, head, status, diff, untracked] = yield* Effect.all([
-    fromRoot(["symbolic-ref", "--quiet", "--short", "HEAD"]).pipe(Effect.orElseSucceed(() => "HEAD")),
-    fromRoot(["rev-parse", "HEAD"]),
-    fromRoot(["status", "--porcelain=v1", "-z"]),
-    fromRoot(["diff", "--binary", "HEAD"]),
-    fromRoot(["ls-files", "--others", "--exclude-standard", "-z"])
-  ])
+  const includeHead = options.includeHead ?? true
+  const includeWorkingTree = options.includeWorkingTree ?? true
+  const branch = includeHead ? yield* fromRoot(["symbolic-ref", "--quiet", "--short", "HEAD"]).pipe(Effect.orElseSucceed(() => "HEAD")) : undefined
+  const head = includeHead ? yield* fromRoot(["rev-parse", "HEAD"]) : undefined
+  const status = includeWorkingTree ? yield* fromRoot(["status", "--porcelain=v1", "-z"]) : ""
+  const diff = includeWorkingTree ? yield* fromRoot(["diff", "--binary", "HEAD"]) : ""
+  const untracked = includeWorkingTree ? yield* fromRoot(["ls-files", "--others", "--exclude-standard", "-z"]) : ""
   const paths = untracked.length === 0 ? [] : untracked.split("\0").filter((path) => path.length > 0)
   const fs = yield* FileSystem.FileSystem
   const pathService = yield* Path.Path
@@ -134,8 +141,10 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
     Effect.map((target) => `symlink:${target}`),
     Effect.catch(() => fromRoot(["hash-object", "--", path]))
   ))
-  const bases = yield* Effect.forEach(baseRefs, (baseRef) => fromRoot(["rev-parse", "--verify", `${baseRef}^{commit}`]).pipe(Effect.map((oid) => [baseRef, oid] as const)))
-  return JSON.stringify({ bases, branch, head, status, diff, untracked: paths.map((path, index) => [path, hashes[index]]) })
+  const resolveRefs = (refs: ReadonlyArray<string>) => Effect.forEach(refs, (ref) => fromRoot(["rev-parse", "--verify", `${ref}^{commit}`]).pipe(Effect.map((oid) => [ref, oid] as const)))
+  const bases = yield* resolveRefs(options.baseRefs ?? [])
+  const commits = yield* resolveRefs(options.commitRefs ?? [])
+  return JSON.stringify({ bases, commits, branch, head, status, diff, untracked: paths.map((path, index) => [path, hashes[index]]) })
 })
 
 const withReviewSnapshot = <A, E, R>(use: (cwd: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {

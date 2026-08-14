@@ -31,10 +31,20 @@ const review = Command.make("codex-review", {
   if (plan.targets.some((target) => target.snapshot)) yield* Console.log("snapshot: temporary worktree with local overlay")
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
   if (args.dryRun) return
-  const currentIdentity = selectReviewPlan(args.mode, args.base, args.commit).pipe(Effect.flatMap((currentPlan) => reviewIdentity(currentPlan.targets.flatMap((target) => {
-    const baseIndex = target.args.indexOf("--base")
-    return baseIndex < 0 ? [] : [target.args[baseIndex + 1] ?? ""]
-  }).filter((base) => base.length > 0))))
+  const currentIdentity = selectReviewPlan(args.mode, args.base, args.commit).pipe(Effect.flatMap((currentPlan) => {
+    const refsFor = (flag: "--base" | "--commit") => currentPlan.targets.flatMap((target) => {
+      const index = target.args.indexOf(flag)
+      return index < 0 ? [] : [target.args[index + 1] ?? ""]
+    }).filter((ref) => ref.length > 0)
+    const commitRefs = refsFor("--commit")
+    const includeWorkingTree = currentPlan.targets.some((target) => target.snapshot || target.args.includes("--uncommitted"))
+    return reviewIdentity({
+      baseRefs: refsFor("--base"),
+      commitRefs,
+      includeHead: commitRefs.length === 0,
+      includeWorkingTree
+    })
+  }))
   const result = yield* untilReviewStable({
     identity: currentIdentity,
     operation: selectReviewPlan(args.mode, args.base, args.commit).pipe(

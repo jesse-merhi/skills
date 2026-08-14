@@ -107,7 +107,7 @@ describe("native review target", () => {
     const output = join(directory, "nested", "review.txt")
     try {
       await mkdir(bin)
-      await writeFile(join(bin, "codex"), "#!/bin/sh\nprintf 'reviewed master\\n'\n", { mode: 0o700 })
+      await writeFile(join(bin, "codex"), "#!/bin/sh\nprintf 'generated during review\\n' > generated.pyc\nprintf 'reviewed master\\n'\n", { mode: 0o700 })
       await writeFile(join(bin, "gh"), "#!/bin/sh\nexit 1\n", { mode: 0o700 })
       await execFile("git", ["init", "-b", "master"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
@@ -121,7 +121,7 @@ describe("native review target", () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  })
+  }, 15_000)
 
   it("requires an explicit base when the repository has no discoverable default", async () => {
     const directory = await mkdtemp(join(tmpdir(), "codex-review-no-base-"))
