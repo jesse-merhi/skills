@@ -79,10 +79,10 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   `tdd` is still here as a supporting implementation discipline
   for handoff/orchestration workflows, not because I usually call it directly.
 - **Frontend work:** `frontend-design`, `design-engineering`,
-  `find-animation-opportunities`, `review-animations`, `prototype`,
-  `frontend-ui-validation`, and `acpx-frontend-delegation` split visual
-  direction, interaction craft, motion discovery, motion review, divergent UI
-  exploration, rendered proof, and optional delegation.
+  `review-animations`, `prototype`, `frontend-ui-validation`, and
+  `acpx-frontend-delegation` split visual direction, interaction craft and
+  motion discovery, motion review, divergent UI exploration, rendered proof,
+  and optional delegation.
 - **Browser work:** the external `browser-use` skill, pinned in `external.md`,
   lets Claude work directly through a permitted Chrome or Dia session.
 - **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
@@ -93,15 +93,13 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   Use. GitHub's external `gh-stack` skill, pinned in `external.md`, turns one
   dependency-ordered story into small logical PRs.
 - **Explanation:** `speak-fking-english` runs the reader reset and visual
-  decision before a final response. `show-me` adds the smallest useful support
-  only when the content has a shape prose makes hard to hold;
+  decision before a final response, including explicit re-pitch and “show me”
+  requests. It adds the smallest useful support only when prose is harder;
   `html-explanations` is reserved for genuinely dense, interactive, or spatial
   material where a standalone page helps the reader.
 - **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
   workflows. They are grouped there so the public repo stays legible, but they
   still install by skill name.
-- **Communication:** `wait-what` re-pitches an explanation when it stops making
-  sense and supplies the reader reset used by `speak-fking-english`.
 - **Meta tools:** `writing-for-agents` shapes skills and instruction files;
   `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
   prompt-budget pressure.
@@ -118,8 +116,9 @@ Matt Pocock's agent workflow ideas shaped the `grill`, spec, slicing, teaching,
 and handoff parts of the loop. Emil Kowalski's design-engineering work shaped
 the interaction, motion-discovery, review, and UI-prototyping skills; the
 adapted material retains its MIT notice.
-HumanLayer's `show-me` skill shaped the inline visual-selection workflow; the
-adapted material retains its MIT notice.
+Matt Pocock's `wait-what` and HumanLayer's `show-me` shaped the reader-reset and
+visual-selection workflow now incorporated into `speak-fking-english`; the
+adapted material retains both MIT notices.
 `frontend-ui-validation` owns rendered proof separately from design direction.
 
 As usual, I took the shape, bent it around my own setup, and kept the parts

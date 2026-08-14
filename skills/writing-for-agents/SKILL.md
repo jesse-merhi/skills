@@ -1,6 +1,6 @@
 ---
 name: writing-for-agents
-description: 'Write or edit documents consumed by agents, including skills, AGENTS.md, CLAUDE.md, and docs reached through context pointers. Use when changing agent instructions or skill behavior.'
+description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs with precise behavioral instructions.'
 ---
 
 # Writing For Agents

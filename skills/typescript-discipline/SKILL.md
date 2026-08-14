@@ -1,6 +1,6 @@
 ---
 name: typescript-discipline
-description: 'Write or review production TypeScript with shared domain types, explicit boundary validation, safe narrowing, and targeted package verification.'
+description: 'Write or review TypeScript with shared types, boundary validation, safe narrowing, and verification.'
 ---
 
 # TypeScript Discipline

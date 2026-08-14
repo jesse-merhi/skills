@@ -1,6 +1,6 @@
 ---
 name: to-spec
-description: 'Turn the current conversation into a spec with testing seams and PR delivery shape, then publish it to Obsidian Specs. Use after grilling has already resolved the important decisions.'
+description: 'Turn a resolved conversation into an Obsidian spec with testing seams and PR delivery shape.'
 ---
 
 # To Spec

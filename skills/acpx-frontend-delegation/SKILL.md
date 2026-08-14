@@ -1,6 +1,6 @@
 ---
 name: acpx-frontend-delegation
-description: Delegate substantial frontend design or implementation work from Codex to Claude Code through acpx, with scoped ownership and local validation.
+description: Delegate frontend work from Codex to Claude Code through acpx, with scoped ownership and validation.
 ---
 
 # ACP Frontend Delegation

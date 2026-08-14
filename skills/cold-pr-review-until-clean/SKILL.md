@@ -1,6 +1,6 @@
 ---
 name: cold-pr-review-until-clean
-description: 'Run fresh isolated cold reviews, fix actionable findings, and repeat to the configured clean stop condition.'
+description: 'Repeat fresh cold reviews and fixes until the configured clean stop condition.'
 ---
 
 # Cold PR Review Until Clean

@@ -1,6 +1,6 @@
 ---
 name: wait-efficiently
-description: 'Wait without token-heavy polling. Use when the user asks to wait, pause, check back later, babysit a command, monitor a long-running process, wait for CI or GitHub Actions, or avoid repeated status polling while external work completes.'
+description: 'Wait for commands, CI, or external work without token-heavy polling; report meaningful state changes.'
 ---
 
 # Wait Efficiently

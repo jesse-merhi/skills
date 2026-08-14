@@ -1,6 +1,6 @@
 ---
 name: openclaw-local-test
-description: 'Start, inspect, and stop an isolated local OpenClaw manual-test Gateway backed by the current Codex or Claude login and settings.'
+description: 'Run an isolated local OpenClaw test Gateway using current Codex or Claude login and settings.'
 ---
 
 # OpenClaw Local Test

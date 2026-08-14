@@ -1,6 +1,6 @@
 ---
 name: design-engineering
-description: 'Implement or refine UI motion and interaction: animations, transitions, micro-interactions, component feel, popovers, drawers, sheets, toasts, drag or swipe gestures, springs, easing, timing, and performance. Use for responsive, physically coherent behavior.'
+description: 'Audit, design, or implement UI motion: transitions, gestures, springs, easing, timing, and interaction feel.'
 ---
 
 # Design Engineering
@@ -11,6 +11,9 @@ exceptions with the interaction's purpose and measured behavior.
 
 ## Route The Task
 
+- For a read-only sweep of where motion would genuinely help, read
+  [references/opportunity-audit.md](references/opportunity-audit.md). Report
+  precise opportunities and deliberate rejections; do not edit code.
 - For drag, swipe, momentum, springs, rubber-banding, sheets, or interruptible
   gesture work, read [references/apple-design.md](references/apple-design.md).
 - When the user describes an effect but does not know its name, read
@@ -95,5 +98,6 @@ Inspect the interaction at normal speed, slowed down, and under rapid repeated
 input. Check interruption, reversal, enter/exit symmetry, reduced motion,
 console errors, dropped frames, and real-device gesture behavior when relevant.
 
-This skill adapts Emil Kowalski's design-engineering guidance. See
+This skill adapts Emil Kowalski's design-engineering and animation-opportunity
+guidance. See
 [references/upstream-license.md](references/upstream-license.md).

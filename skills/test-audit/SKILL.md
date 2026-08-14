@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: "Audit or design tests: related coverage, changed tests, missing tests, no-test-needed decisions, useless tests, stale API assertions, brittle mocks, impossible states, and tests to remove."
+description: "Audit test coverage, gaps, useless tests, stale assertions, brittle mocks, impossible states, and removals."
 ---
 
 # Test Audit

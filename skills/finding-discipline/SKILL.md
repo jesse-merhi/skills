@@ -1,6 +1,6 @@
 ---
 name: finding-discipline
-description: 'Filter review observations into confirmed, actionable, root-cause-deduplicated findings; exclude style nits and vague risks.'
+description: 'Confirm actionable review findings, deduplicate root causes, and exclude nits, vague risks, and style notes.'
 ---
 
 # Finding Discipline

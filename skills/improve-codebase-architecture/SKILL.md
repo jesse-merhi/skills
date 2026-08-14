@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: 'Review or plan architecture changes around module depth, interfaces, locality, dependency direction, and testability. Implement only when explicitly authorized.'
+description: 'Review architecture for module depth, interfaces, locality, dependencies, and testability.'
 ---
 
 # Improve Codebase Architecture

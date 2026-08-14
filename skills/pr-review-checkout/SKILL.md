@@ -1,6 +1,6 @@
 ---
 name: pr-review-checkout
-description: Use when the user wants to review a GitHub PR in VS Code with local-backed diffs, inline comments, command-click, go-to-definition, and find-references, while preserving any existing worktree for the PR branch
+description: Review a GitHub PR in VS Code with local diffs, inline comments, navigation, and its worktree preserved.
 ---
 
 # PR Review Checkout

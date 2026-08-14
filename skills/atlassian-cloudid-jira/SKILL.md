@@ -1,6 +1,6 @@
 ---
 name: atlassian-cloudid-jira
-description: Query Jira, Jira Product Discovery, and Confluence through the authenticated local Rovo Dev Atlassian MCP gateway. Use for Atlassian site or cloud-ID discovery, Jira issues and JQL, JPD ideas and board views, Confluence pages and CQL, cross-site lookups, or when a normal Atlassian connector cannot access product-fabric, asecurityteam, adevsecurityteam, hello, or another user-visible site.
+description: Query Jira, JPD, and Confluence through local Rovo Dev MCP, including site IDs, JQL, CQL, and boards.
 ---
 
 # Atlassian via Rovo Dev

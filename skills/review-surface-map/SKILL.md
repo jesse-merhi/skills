@@ -1,6 +1,6 @@
 ---
 name: review-surface-map
-description: 'Map each changed runtime flow from entrypoint through contracts and side effects to risks and proving validation.'
+description: 'Map changed runtime flows through contracts and side effects to risks and proving validation.'
 ---
 
 # Review Surface Map

@@ -1,6 +1,6 @@
 ---
 name: review-guardrails
-description: 'Own the shared budgets, scope, tracked findings, consult queue, provisional fixes, and fixed-point rules for autonomous review loops.'
+description: 'Manage budgets, scope, findings, consults, provisional fixes, and fixed-point rules for autonomous reviews.'
 ---
 
 # Review Guardrails

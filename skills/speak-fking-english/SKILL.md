@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: Run the final reader-first editing pass by composing wait-what and show-me. Use immediately before every final response, including answers, explanations, status reports, reviews, and completed-work handoffs, or when pr-proof-pack requests its final reviewer-facing pass.
+description: 'Run before every final response: clarify prose, re-pitch confusion, and use visuals only when they help.'
 ---
 
 # Speak Fking English
@@ -8,23 +8,31 @@ description: Run the final reader-first editing pass by composing wait-what and 
 Run this over the complete draft as the last editing pass before returning or
 saving it.
 
-## Final Response Pass
+## Route The Pass
 
-1. Apply the reader reset.
+- Before every final response, run the complete pass below.
+- For an explicit “wait, what?” or re-pitch request, run only the reader reset.
+- For an explicit “show me” or visual-support request, run only the visual
+  filter.
+- When another skill calls this one, return the revised reviewer-facing text to
+  that skill instead of addressing the user directly.
 
-   Load `wait-what` and apply it to the complete draft without changing the
-   underlying facts, scope, or requested action.
+## Complete Pass
 
-   Done when the draft meets `wait-what`'s completion criterion.
+1. Apply the [reader reset](references/reader-reset.md) to the complete draft
+   without changing its facts, scope, or requested action.
 
-2. Apply the visual filter.
+   Done when the reader can understand or act without reconstructing missing
+   context.
 
-   Load `show-me` after the reader reset. Give it the complete draft and any real
-   evidence supplied by the owning workflow. Apply its support decision without
-   replacing or weakening that evidence.
+2. Apply the [visual filter](references/visual-filter.md) after the reader reset.
+   Give it the complete draft and any real evidence supplied by the owning
+   workflow. Add support only when it materially reduces comprehension effort,
+   and never replace or weaken real evidence.
 
-   Done when the draft meets `show-me`'s completion criterion and every evidence
-   claim still points to the real behavior that produced it.
+   Done when prose is the explicit choice or the smallest useful support answers
+   one clear teaching question, with every evidence claim still pointing to the
+   behavior that produced it.
 
 3. Return the final draft.
 
@@ -34,3 +42,7 @@ saving it.
 
    Done when the output stands alone, contains no duplicated explanation, and
    uses the return path expected by the caller.
+
+This skill incorporates MIT-licensed guidance adapted from Matt Pocock's
+`wait-what` and HumanLayer's `show-me`. See
+[references/upstream-licenses.md](references/upstream-licenses.md).

@@ -2,7 +2,8 @@
 
 This skill adapts material from
 [`emilkowalski/skills`](https://github.com/emilkowalski/skills), inspected at
-commit `f76beceb7d3fc8c43309cefad5a095a206103a4e`.
+commits `f76beceb7d3fc8c43309cefad5a095a206103a4e` and
+`70744e3816f1d93eafb697161a8b880a7384c5ff`.
 
 MIT License
 

@@ -1,6 +1,6 @@
 ---
 name: openclaw-stg-test
-description: 'Publish, inspect, and stop a temporary remote OpenClaw Control UI preview through a guarded Cloudflare Quick Tunnel. Use for PR staging links, remote manual testing, reviewer handoff, or browser proof when the preview is backed only by browser-side mocks or static fixtures.'
+description: 'Publish and inspect temporary OpenClaw Control UI previews through guarded Cloudflare Quick Tunnels.'
 ---
 
 # OpenClaw Staging Test

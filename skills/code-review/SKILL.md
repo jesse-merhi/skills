@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: 'Orchestrate the native and independent until-clean review phases for a PR, branch, commit, or diff. Use only when the user authorizes a fix-and-rerun review workflow.'
+description: 'Run authorized native and independent fix-and-rerun reviews for a PR, branch, commit, or diff.'
 ---
 
 # Code Review

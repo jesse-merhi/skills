@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable pull-request proof. Use whenever creating, publishing, reopening, or updating a PR; editing its title or body; pushing commits or changing a branch that already has a PR; or changing any layer of a stacked PR. Requires an interactive browser through Browser Use or Computer Use, plain-language metadata, and uploaded visual evidence of the implemented behavior working in practice.
+description: Create or refresh reviewer-checkable PR proof after every PR or stack change, using Browser Use or Computer Use to upload real visual evidence.
 ---
 
 # PR Proof Pack

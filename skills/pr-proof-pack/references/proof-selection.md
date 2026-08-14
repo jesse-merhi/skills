@@ -39,8 +39,9 @@ also require the video; static states cannot prove an interaction.
 ## Decide Whether Explanation Needs a Visual
 
 Keep explanation support out of the practical-evidence decision. In workflow
-step 8, `speak-fking-english` loads `show-me` against the complete reviewer-facing
-draft. `show-me` owns whether support is needed and which form to use.
+step 8, `speak-fking-english` applies its visual filter to the complete
+reviewer-facing draft. That filter owns whether support is needed and which
+form to use.
 
 An explanation visual explains the behavior. The screenshot or recording
 demonstrates the implementation running. These are different jobs, and many PRs

@@ -1,6 +1,6 @@
 ---
 name: monitoring-gh-actions
-description: 'Monitor ongoing GitHub Actions runs with history-aware waiting and report meaningful state changes. Switch workflows before diagnosing or fixing failures.'
+description: 'Monitor GitHub Actions with history-aware waits; report state changes before diagnosing or fixing failures.'
 ---
 
 # Monitoring GitHub Actions

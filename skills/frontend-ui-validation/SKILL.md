@@ -1,6 +1,6 @@
 ---
 name: frontend-ui-validation
-description: 'Validate rendered frontend UI with Playwright screenshots, bounding boxes, console checks, layout audits, responsive states, interaction states, and Figma or reference comparisons. Use after visible web UI changes; use repo-owned native proof for Expo and React Native screens.'
+description: 'Validate web UI with Playwright screenshots, layout checks, responsive states, and reference comparisons.'
 ---
 
 # Frontend UI Validation

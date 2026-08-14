@@ -1,6 +1,6 @@
 ---
 name: clawsweeper-until-clean
-description: 'Drive Clawsweeper PR re-reviews in a fix-and-rerun loop: comment `/clawsweeper re-review`, monitor, fix findings, and stop only when clean.'
+description: 'Re-review Clawsweeper PRs in a fix-and-rerun loop until clean.'
 ---
 
 # Clawsweeper Until Clean
