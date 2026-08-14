@@ -9,7 +9,7 @@ import * as Schema from "effect/Schema"
 import { createConnection, type Socket } from "node:net"
 import { fileURLToPath } from "node:url"
 
-import { capture, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, startDetachedObserved, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
+import { capture, type DetachedProcess, encodeEnv, expandHome, LocalTestError, parseTtl, pidRunning, portOwnedByPid, readEnv, readPid, run, startDetached, startDetachedObserved, stopPid, waitForUrl } from "../../shared/LocalTest.ts"
 
 const RuntimeProfile = Schema.Struct({ id: Schema.String, auth: Schema.String, route: Schema.String, model: Schema.String, modelRef: Schema.String, runtimeId: Schema.String, pluginId: Schema.String })
 type RuntimeProfile = typeof RuntimeProfile.Type
@@ -49,7 +49,7 @@ export interface OpenclawOptions {
   readonly repo: string; readonly stateDir: string; readonly baseConfig: Option.Option<string>; readonly runtime: string; readonly model: Option.Option<string>
   readonly startPort: number; readonly gatewayPort: Option.Option<number>; readonly proxyPort: Option.Option<number>; readonly browser: string; readonly ttl: string
   readonly open: boolean; readonly foreground: boolean; readonly skipChannels: boolean; readonly action: "start" | "status" | "stop" | "inspect"
-  readonly proxyDir: string; readonly startLockDir: string; readonly keepSessions: boolean
+  readonly proxyDir: string; readonly startLockDir: string; readonly keepSessions: boolean; readonly nodeExecutable: string
 }
 
 export const shouldOpenBrowser = (open: boolean, noOpen: boolean, browser: string) => open && !noOpen && browser.toLowerCase() !== "none"
@@ -129,7 +129,7 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
   })
   if (raw.action === "status") return yield* status
   const profileArgs = [raw.action === "inspect" ? "inspect" : "configure", "--runtime", raw.runtime, ...(Option.isSome(raw.model) ? ["--model", raw.model.value] : [])]
-  if (raw.action === "inspect") { const output = yield* capture(process.execPath, [profileScript, ...profileArgs]); return yield* Console.log(output) }
+  if (raw.action === "inspect") { const output = yield* capture(raw.nodeExecutable, [profileScript, ...profileArgs]); return yield* Console.log(output) }
   if (Option.isSome(baseConfig)) {
     const info = yield* fs.stat(baseConfig.value).pipe(Effect.option)
     if (Option.isNone(info) || info.value.type !== "File") return yield* new LocalTestError({ message: `base config is not a file: ${baseConfig.value}` })
@@ -153,36 +153,40 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
   }
   const ports = yield* choosePorts(raw.startPort, raw.gatewayPort, raw.proxyPort, reservedProxyPorts)
   profileArgs.push("--config-out", config, "--state-dir", state, "--workspace-dir", workspace, "--gateway-port", String(ports.gateway), "--proxy-port", String(ports.proxy), ...(Option.isSome(baseConfig) ? ["--base-config", baseConfig.value] : []))
-  const profile = yield* capture(process.execPath, [profileScript, ...profileArgs]).pipe(Effect.flatMap(Schema.decodeUnknownEffect(Schema.fromJsonString(RuntimeProfile))))
+  const profile = yield* capture(raw.nodeExecutable, [profileScript, ...profileArgs]).pipe(Effect.flatMap(Schema.decodeUnknownEffect(Schema.fromJsonString(RuntimeProfile))))
   yield* fs.writeFileString(files.ports, encodeEnv({ OPENCLAW_LOCAL_TEST_GATEWAY_PORT: ports.gateway, OPENCLAW_LOCAL_TEST_PROXY_PORT: ports.proxy, OPENCLAW_LOCAL_TEST_RUNTIME: profile.id, OPENCLAW_LOCAL_TEST_PROVIDER_ID: profile.modelRef.split("/")[0] ?? "", OPENCLAW_LOCAL_TEST_MODEL_ID: profile.model, OPENCLAW_LOCAL_TEST_MODEL_REF: profile.modelRef, OPENCLAW_LOCAL_TEST_BROWSER: raw.browser }), { mode: 0o600 })
   const sharedProxyVersion = "2026-08-13.1"
   const sharedPid = yield* readPid(files.sharedProxy)
   const installedVersion = yield* fs.readFileString(files.sharedProxyVersion).pipe(Effect.map((value) => value.trim()), Effect.option)
   const proxyCurrent = (yield* pidRunning(sharedPid)) && Option.isSome(installedVersion) && installedVersion.value === sharedProxyVersion
+  let startedProxy: DetachedProcess | undefined
   if (!proxyCurrent) {
     yield* stopPid("shared browser proxy", files.sharedProxy)
-    const pid = yield* startDetached(process.execPath, [proxyScript], { env: { OPENCLAW_SHARED_PROXY_HOST: "127.0.0.1", OPENCLAW_SHARED_PROXY_ROUTE_DIR: routes }, stdout: `${proxyLogs}/shared-browser-proxy.log`, stderr: `${proxyLogs}/shared-browser-proxy.err.log` })
-    yield* fs.writeFileString(files.sharedProxy, `${pid}\n`)
+    startedProxy = yield* startDetachedObserved(raw.nodeExecutable, [proxyScript], { env: { OPENCLAW_SHARED_PROXY_HOST: "127.0.0.1", OPENCLAW_SHARED_PROXY_ROUTE_DIR: routes }, stdout: `${proxyLogs}/shared-browser-proxy.log`, stderr: `${proxyLogs}/shared-browser-proxy.err.log` })
+    yield* fs.writeFileString(files.sharedProxy, `${startedProxy.pid}\n`)
     yield* fs.writeFileString(files.sharedProxyVersion, `${sharedProxyVersion}\n`, { mode: 0o600 })
   }
   const entrypoint = (yield* fs.exists(paths.join(repo, "scripts/run-node.mjs"))) ? paths.join(repo, "scripts/run-node.mjs") : (yield* fs.exists(paths.join(repo, "openclaw.mjs"))) ? paths.join(repo, "openclaw.mjs") : paths.join(repo, "dist/index.js")
   const gatewayEnv = { OPENCLAW_STATE_DIR: state, OPENCLAW_CONFIG_PATH: config, OPENCLAW_GATEWAY_PORT: String(ports.gateway), ...(raw.skipChannels ? { OPENCLAW_SKIP_CHANNELS: "1" } : {}) }
   const gatewayArgs = [entrypoint, "gateway", "run", "--port", String(ports.gateway), "--bind", "loopback"]
-  if (raw.foreground) return yield* run(process.execPath, gatewayArgs, repo, gatewayEnv)
+  const proxyExited = startedProxy === undefined
+    ? Effect.never
+    : startedProxy.exited.pipe(Effect.flatMap((exitCode) => new LocalTestError({ message: `shared browser proxy process ${startedProxy?.pid ?? "unknown"} exited with ${exitCode} before becoming healthy` })))
+  if (raw.foreground) return yield* Effect.raceFirst(run(raw.nodeExecutable, gatewayArgs, repo, gatewayEnv), proxyExited)
   const start = Effect.gen(function*() {
-    const gateway = yield* startDetachedObserved(process.execPath, gatewayArgs, { cwd: repo, env: gatewayEnv, stdout: `${logs}/gateway.log`, stderr: `${logs}/gateway.err.log` }); const pid = gateway.pid; yield* fs.writeFileString(files.gateway, `${pid}\n`)
+    const gateway = yield* startDetachedObserved(raw.nodeExecutable, gatewayArgs, { cwd: repo, env: gatewayEnv, stdout: `${logs}/gateway.log`, stderr: `${logs}/gateway.err.log` }); const pid = gateway.pid; yield* fs.writeFileString(files.gateway, `${pid}\n`)
     const routeFile = paths.join(routes, `${ports.proxy}.json`); yield* fs.writeFileString(routeFile, JSON.stringify({ proxyPort: ports.proxy, targetHost: "127.0.0.1", targetPort: ports.gateway, gatewayPid: pid, stateDir: state, updatedAt: new Date().toISOString() }, null, 2) + "\n", { mode: 0o600 })
     const gatewayExited = gateway.exited.pipe(Effect.flatMap((exitCode) => new LocalTestError({ message: `gateway process ${pid} exited with ${exitCode} before becoming healthy` })))
     const readiness = Effect.gen(function*() {
       yield* waitForUrl(`http://127.0.0.1:${ports.gateway}/healthz`, 200)
       yield* waitForUrl(`http://127.0.0.1:${ports.proxy}/healthz`, 200)
     })
-    yield* Effect.raceFirst(readiness, gatewayExited)
+    yield* Effect.raceFirst(readiness, Effect.raceFirst(gatewayExited, proxyExited))
     if (!(yield* portOwnedByPid(ports.gateway, pid))) return yield* new LocalTestError({ message: `gateway port ${ports.gateway} is not owned by process ${pid}` })
     const proxyPid = yield* readPid(files.sharedProxy)
     if (proxyPid === undefined || !(yield* portOwnedByPid(ports.proxy, proxyPid))) return yield* new LocalTestError({ message: `browser proxy port ${ports.proxy} is not owned by the shared proxy process` })
     const cliArgs = [entrypoint, "gateway", "call"]
-    const rpc = (method: string, params: object) => capture(process.execPath, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(
+    const rpc = (method: string, params: object) => capture(raw.nodeExecutable, [...cliArgs, method, "--params", JSON.stringify(params), "--timeout", "5000", "--json"], repo, gatewayEnv).pipe(
       Effect.flatMap((output) => Schema.decodeUnknownEffect(UnknownJson)(output).pipe(
         Effect.mapError((cause) => new LocalTestError({ message: `${method} returned invalid JSON`, cause }))
       ))

@@ -236,6 +236,7 @@ test("helper reports endpoint health, cancels its probe, and tears down interrup
   const invalidTtlState = path.join(tempDir, "invalid-ttl-state");
   const missingConfigState = path.join(tempDir, "missing-config-state");
   const exitedGatewayState = path.join(tempDir, "exited-gateway-state");
+  const exitedProxyState = path.join(tempDir, "exited-proxy-state");
   await createFakeOpenClaw(repoDir);
   await mkdir(fakeBinDir, { recursive: true });
   await writeFile(
@@ -246,6 +247,17 @@ if [[ "$1 $2" == "login status" ]]; then
   exit 0
 fi
 exit 1
+`,
+    { mode: 0o700 },
+  );
+  const crashingProxyNode = path.join(fakeBinDir, "node-with-crashing-proxy");
+  await writeFile(
+    crashingProxyNode,
+    `#!/usr/bin/env bash
+if [[ "$1" == *"/shared-browser-proxy.ts" ]]; then
+  exit 17
+fi
+exec ${JSON.stringify(process.execPath)} "$@"
 `,
     { mode: 0o700 },
   );
@@ -274,6 +286,7 @@ exit 1
   const seventhPort = await findPortRange(sixthPort + 10);
   const eighthPort = await findPortRange(seventhPort + 10);
   const ninthPort = await findPortRange(eighthPort + 10);
+  const tenthPort = await findPortRange(ninthPort + 10);
 
   const baseEnv = {
     ...process.env,
@@ -447,8 +460,24 @@ exit 1
     assert.equal(exitedGateway.code, 1, exitedGateway.stdout + exitedGateway.stderr);
     assert.match(exitedGateway.stdout + exitedGateway.stderr, /exited with \d+ before becoming healthy/);
     assert.ok(Date.now() - exitStartedAt < 10_000, "gateway exit should stop readiness polling promptly");
+
+    const runningProxyPid = Number((await readFile(path.join(proxyDir, "shared-browser-proxy.pid"), "utf8")).trim());
+    process.kill(runningProxyPid, "SIGTERM");
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try {
+        process.kill(runningProxyPid, 0);
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } catch {
+        break;
+      }
+    }
+    const proxyExitStartedAt = Date.now();
+    const exitedProxy = await run(helperPath, args, { ...baseEnv, OPENCLAW_LOCAL_TEST_NODE: crashingProxyNode, OPENCLAW_LOCAL_TEST_STATE_DIR: exitedProxyState, OPENCLAW_LOCAL_TEST_LOCK_DIR: `${exitedProxyState}.lock`, OPENCLAW_LOCAL_TEST_PORT: String(tenthPort) }, 15_000);
+    assert.equal(exitedProxy.code, 1, exitedProxy.stdout + exitedProxy.stderr);
+    assert.match(exitedProxy.stdout + exitedProxy.stderr, /shared browser proxy process \d+ exited with 17 before becoming healthy/);
+    assert.ok(Date.now() - proxyExitStartedAt < 10_000, "shared proxy exit should stop readiness polling promptly");
   } finally {
-    for (const stateDir of [successfulState, failingState, interruptedState, completedState, invalidStartState, invalidCancelState, invalidTtlState, missingConfigState, exitedGatewayState]) {
+    for (const stateDir of [successfulState, failingState, interruptedState, completedState, invalidStartState, invalidCancelState, invalidTtlState, missingConfigState, exitedGatewayState, exitedProxyState]) {
       await run(
         helperPath,
         ["--state-dir", stateDir, "--stop"],
