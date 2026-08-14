@@ -1,6 +1,6 @@
 ---
 name: research
-description: 'Investigate a question against high-trust primary sources and capture cited findings in a Markdown note. Use when the user wants docs, API facts, standards, source-code behavior, or implementation context researched before planning or building.'
+description: 'Research primary sources for docs, APIs, standards, source behavior, or implementation context.'
 ---
 
 # Research

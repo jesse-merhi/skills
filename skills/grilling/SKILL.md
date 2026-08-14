@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: 'Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking or uses a grill trigger phrase.'
+description: 'Stress-test a plan, decision, or idea through relentless questions and explicit grill requests.'
 ---
 
 # Grilling

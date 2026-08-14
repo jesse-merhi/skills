@@ -1,6 +1,6 @@
 ---
 name: parallel-slice-orchestration
-description: 'Implement an existing spec, slice plan, or feature plan with parallel subagents, disjoint slice ownership, integration, and verification.'
+description: 'Implement specs with parallel agents, disjoint ownership, integration, and verification.'
 ---
 
 # Parallel Slice Orchestration

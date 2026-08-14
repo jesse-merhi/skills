@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: 'Build three to five genuinely different versions of one UI piece behind a visual picker, then wait for the user to choose. Use only when the user explicitly asks to prototype, explore variants, or compare UI directions.'
+description: 'Build 3–5 UI variants behind a visual picker when explicitly asked to prototype or compare directions.'
 ---
 
 # Prototype UI Variants

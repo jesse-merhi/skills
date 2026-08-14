@@ -1,6 +1,6 @@
 ---
 name: review-until-clean
-description: 'Run the harness-native review in a fix-and-rerun loop until two fresh passes are clean. Use for an explicitly authorized until-clean workflow, not a one-shot review.'
+description: 'Run authorized native reviews and fixes until two fresh passes are clean.'
 ---
 
 # Review Until Clean

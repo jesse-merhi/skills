@@ -1,6 +1,6 @@
 ---
 name: html-explanations
-description: 'Create standalone HTML for complex explanations, code/diff walkthroughs, plans, reports, handoffs, diagrams, research notes, and concepts.'
+description: 'Create standalone HTML for complex explanations, code walkthroughs, plans, reports, diagrams, or research.'
 ---
 
 # HTML Explanations

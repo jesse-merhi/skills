@@ -392,35 +392,44 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
 }
 
-test_wait_what_owns_repitch_guidance() {
-  local skill="$ROOT_DIR/skills/wait-what"
+test_design_engineering_owns_motion_opportunity_audits() {
+  local skill="$ROOT_DIR/skills/design-engineering"
 
-  assert_not_contains "$ROOT_DIR/AGENTS.md" "Teach like a great professor"
-  assert_contains "$skill/SKILL.md" "Find the missing premise"
-  assert_contains "$skill/SKILL.md" "everyday language"
-  assert_contains "$skill/SKILL.md" "technical density to the reader's demonstrated"
-  assert_contains "$skill/SKILL.md" 'established terms from `CONTEXT.md`'
-  assert_contains "$skill/SKILL.md" "Done when"
-  assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
-  assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 Matt Pocock"
+  assert_contains "$skill/SKILL.md" "read-only sweep"
+  assert_contains "$skill/SKILL.md" "opportunity-audit.md"
+  assert_contains "$skill/references/opportunity-audit.md" "Gate Every Candidate"
+  assert_contains "$skill/references/opportunity-audit.md" "deliberate rejections"
+  assert_contains "$skill/references/opportunity-audit.md" "Do not modify source"
+  test ! -e "$ROOT_DIR/skills/find-animation-opportunities/SKILL.md" || fail "expected motion discovery to be consolidated"
 }
 
-test_show_me_owns_the_visual_decision() {
-  local skill="$ROOT_DIR/skills/show-me"
+test_speak_fking_english_owns_repitch_guidance() {
+  local skill="$ROOT_DIR/skills/speak-fking-english"
 
-  assert_contains "$skill/SKILL.md" "Treat this as a visual filter"
-  assert_contains "$skill/SKILL.md" "State the teaching question"
-  assert_contains "$skill/SKILL.md" "the decision is explicitly"
-  assert_contains "$skill/SKILL.md" "pseudocode"
-  assert_contains "$skill/SKILL.md" "call tree"
-  assert_contains "$skill/SKILL.md" "component tree"
-  assert_contains "$skill/SKILL.md" "file-responsibility tree"
-  assert_contains "$skill/SKILL.md" "focused diff"
-  assert_contains "$skill/SKILL.md" '`html-explanations`'
-  assert_contains "$skill/SKILL.md" "Several steps, files, or components do not"
-  assert_contains "$skill/SKILL.md" "whose only job is polish"
-  assert_contains "$skill/SKILL.md" "Done when"
-  assert_contains "$skill/references/upstream-license.md" "Copyright (c) 2026 HumanLayer"
+  assert_not_contains "$ROOT_DIR/AGENTS.md" "Teach like a great professor"
+  assert_contains "$skill/references/reader-reset.md" "Find the missing premise"
+  assert_contains "$skill/references/reader-reset.md" "everyday language"
+  assert_contains "$skill/references/reader-reset.md" "technical density to the reader's"
+  assert_contains "$skill/references/reader-reset.md" 'established terms from `CONTEXT.md`'
+  assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$skill/references/upstream-licenses.md" "Copyright (c) 2026 Matt Pocock"
+}
+
+test_speak_fking_english_owns_the_visual_decision() {
+  local skill="$ROOT_DIR/skills/speak-fking-english/references/visual-filter.md"
+
+  assert_contains "$skill" "Treat this as a visual filter"
+  assert_contains "$skill" "State the teaching question"
+  assert_contains "$skill" "choose prose"
+  assert_contains "$skill" "pseudocode"
+  assert_contains "$skill" "call tree"
+  assert_contains "$skill" "component tree"
+  assert_contains "$skill" "file-responsibility tree"
+  assert_contains "$skill" "focused diff"
+  assert_contains "$skill" '`html-explanations`'
+  assert_contains "$skill" "Several steps, files, or components do not"
+  assert_contains "$skill" "whose only job is"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/references/upstream-licenses.md" "Copyright (c) 2026 HumanLayer"
 }
 
 test_speak_fking_english_owns_the_final_response_checkpoint() {
@@ -429,10 +438,10 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
   assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before every final response"
   assert_contains "$ROOT_DIR/AGENTS.md" 'load `speak-fking-english`'
   assert_not_contains "$ROOT_DIR/AGENTS.md" "Use its reader reset and visual decision"
-  assert_contains "$skill/SKILL.md" 'Load `wait-what`'
-  assert_contains "$skill/SKILL.md" 'Load `show-me`'
+  assert_contains "$skill/SKILL.md" "reader reset"
+  assert_contains "$skill/SKILL.md" "visual filter"
   assert_contains "$skill/SKILL.md" "Done when"
-  assert_contains "$skill/SKILL.md" "For a calling"
+  assert_contains "$skill/SKILL.md" "another skill calls"
   assert_not_contains "$skill/SKILL.md" "everyday language"
   assert_not_contains "$skill/SKILL.md" "pseudocode"
   assert_not_contains "$skill/SKILL.md" "standalone HTML"
@@ -443,10 +452,10 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   local skill="$ROOT_DIR/skills/pr-proof-pack"
   local step_count done_count
 
-  assert_contains "$skill/SKILL.md" "Use whenever creating, publishing, reopening, or updating a PR"
-  assert_contains "$skill/SKILL.md" "changing a branch that already has a PR"
+  assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
+  assert_contains "$skill/SKILL.md" "Committing to, rebasing"
   assert_contains "$skill/SKILL.md" "If any gate cannot be completed, stop"
-  assert_contains "$skill/SKILL.md" "working in practice"
+  assert_contains "$skill/references/proof-selection.md" "working in practice"
   assert_contains "$skill/SKILL.md" 'never satisfies `Visual proof`'
   assert_contains "$skill/SKILL.md" "## Reviewer Boundary"
   assert_contains "$skill/SKILL.md" 'Every workflow step meets its `Done when` criterion'
@@ -463,7 +472,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
   assert_contains "$skill/references/plain-language.md" "## PR Title"
   assert_contains "$skill/references/plain-language.md" "## Commit Subjects"
-  assert_contains "$skill/references/proof-selection.md" '`show-me` owns whether support is needed'
+  assert_contains "$skill/references/proof-selection.md" "visual filter"
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
   assert_contains "$skill/references/screenshots.md" "Use the browser path selected during the preflight"
@@ -736,8 +745,9 @@ test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
-test_wait_what_owns_repitch_guidance
-test_show_me_owns_the_visual_decision
+test_design_engineering_owns_motion_opportunity_audits
+test_speak_fking_english_owns_repitch_guidance
+test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
 test_openclaw_local_test_helpers

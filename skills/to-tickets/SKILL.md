@@ -1,6 +1,6 @@
 ---
 name: to-tickets
-description: 'Break a plan, spec, or conversation into tracer-bullet tickets with blocking edges and logical PR delivery groups, then publish them as Obsidian Issues.'
+description: 'Turn a plan or spec into tracer-bullet Obsidian tickets with blockers and logical PR groups.'
 ---
 
 # To Tickets

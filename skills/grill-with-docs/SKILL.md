@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: 'Ground a plan or design in repo docs, code, Obsidian notes, glossary, ADRs, specs, and tickets, then grill its decision tree in frontier rounds.'
+description: 'Ground a plan in repo docs, code, Obsidian notes, ADRs, specs, and tickets, then grill its decisions.'
 ---
 
 # Grill With Docs

@@ -1,6 +1,6 @@
 ---
 name: clawhub-local-test
-description: Start and manage a guarded local ClawHub manual-test instance backed by a development Convex database refreshed from production-like data.
+description: Run a guarded local ClawHub test instance with development Convex data refreshed from production.
 ---
 
 # ClawHub Local Test
