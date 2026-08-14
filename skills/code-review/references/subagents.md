@@ -29,9 +29,13 @@ Add other focused subagents with the relevant named skills when useful:
 - `review-animations`
 
 Give subagents neutral prompts: target, base, changed-surface summary, and the
-checklist they own. Tracked-finding notices for open Class B findings, generated
-fresh per `review-guardrails`, are the one allowed reference to prior findings.
-Do not leak desired conclusions or ask for a rubber stamp.
+checklist they own. State the frozen review boundary: inspect the changed diff
+and the runtime flows it directly changes; read unchanged files only to
+understand those flows. Every finding must identify the changed line or contract
+that causes, exposes, or worsens the problem. Tracked-finding notices for open
+Class B findings, generated fresh per `review-guardrails`, are the one allowed
+reference to prior findings. Do not leak desired conclusions or ask for a
+rubber stamp.
 
 Give cold-review subagents the target, neutral checklist, and tracked-finding
 notices generated from currently open consult entries. If an optional decision
@@ -41,6 +45,12 @@ write.
 
 If the harness cannot run subagents, say so, continue only as best effort, and
 do not call the review clean unless the user accepts that limitation.
+
+After dispatch in Codex, load `wait-efficiently` and use an event-driven
+15-minute wait. It wakes as soon as the reviewer sends an update or returns.
+After a non-terminal update or first timeout, wait again without listing agent
+status. Inspect only after two consecutive timeouts or an explicit error. Keep
+the coordinator active: ending its turn is not a documented completion handoff.
 
 Run `monitoring-gh-actions` at the end, after both review phases and local
 validation are clean, when PR checks are pending and monitoring is in scope.

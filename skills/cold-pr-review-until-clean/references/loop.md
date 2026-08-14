@@ -52,8 +52,9 @@ Repeat:
      Record each command, result, and reason with the findings CLI.
      Run `"$review_findings_bin" scope-check --reason <remaining work and why it may
      merit more scope>`.
-     If it exits non-zero -> record stop reason `blocked-on-consult`, present
-       the CLI report to the user, and STOP before another review or fix.
+     If it exits non-zero -> record stop reason `blocked-on-consult`, follow
+       `review-guardrails`' plain-language scope-request rule, and STOP before
+       another review or fix.
      Keep fixed-finding details in the findings CLI.
      Go to step 1.
 ```

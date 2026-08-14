@@ -113,8 +113,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    - run affected validation and record each command;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 1 and present its completed-work, growth,
-     and scope-request report to the user;
+   - if it exits non-zero, stop Phase 1 and use `review-guardrails`' plain-language
+     scope-request rule;
    - return to Phase 1.
 
 9. After an accepted Phase 2 finding:
@@ -124,8 +124,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    - run affected validation and record each command;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 2 and present its completed-work, growth,
-     and scope-request report to the user;
+   - if it exits non-zero, stop Phase 2 and use `review-guardrails`' plain-language
+     scope-request rule;
    - stay in Phase 2 and dispatch the next fresh cold reviewer;
    - do not return to Phase 1 unless the user explicitly asks for a fresh
      native gate.

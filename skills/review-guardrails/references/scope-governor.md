@@ -20,3 +20,32 @@ Stop patching and consult when:
 - the fix would exceed the diff-growth budget
 - two review-triggered patch cycles have not converged
 - the best next step is defining a shared contract before more code changes
+
+## User-facing scope requests
+
+Before showing a scope-expansion or consult request, load
+`speak-fking-english` and give it the complete draft. Lead with the decision the
+user must make, not the review machinery.
+
+Include only:
+
+- the extra files or boundary involved
+- the concrete behavior that will remain wrong without the extra work
+- one direct question, normally `Should I include this fix?`
+
+Keep CLI terms, budget calculations, finding classes, and prescribed approval
+phrases out of the request unless the user asks for that detail. If work is
+already implemented or tested, say so in one short sentence after explaining
+the behavior.
+
+For example:
+
+```text
+I found one related fix that touches two files outside this review:
+
+- packages/backend/src/audit/api-audit.ts
+- packages/common/src/contract/base.ts
+
+Without it, assigning the same item twice can be reported as a new assignment.
+Should I include this fix?
+```

@@ -41,6 +41,19 @@ other quiet processes:
 If the available tool cannot keep one outer call pending, use the longest safe
 blocking wait it supports. Never replace a wait with a tight polling loop.
 
+## Subagents
+
+Use the harness's event-driven agent wait. In Codex, call `wait_agent` with a
+15-minute timeout. It returns immediately when the reviewer sends an update or
+finishes, so the timeout is a ceiling rather than a delay.
+
+After a non-terminal update, start another 15-minute wait without a status-list
+call. If a wait times out, wait another 15 minutes. Inspect agent status only
+after two consecutive timeouts or an explicit error; do not follow ordinary
+waits with `list_agents`. Keep the coordinator active until it receives the
+result. Agent completion is delivered to its mailbox, but ending the
+coordinator's turn is not a documented automatic handoff.
+
 ## GitHub Actions
 
 Read [github-actions.md](references/github-actions.md), then estimate the next
