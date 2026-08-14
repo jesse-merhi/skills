@@ -1,2 +1,4 @@
 #!/usr/bin/env node
-import "./skill-cleaner.ts"
+import { run } from "./skill-cleaner.ts"
+
+run()
