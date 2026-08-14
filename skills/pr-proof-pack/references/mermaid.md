@@ -28,9 +28,10 @@ Before creating or updating the PR body:
 
 1. Extract every `mermaid` fenced block from the final body.
 2. Validate each block with Mermaid CLI, an equivalent parser, or GitHub's draft
-   rendering inspected through Computer Use.
+   rendering inspected through the selected interactive browser.
 3. Fix invalid syntax and unclear rendering.
-4. Inspect the final rendered diagram through Computer Use after saving.
+4. Inspect the final rendered diagram through the selected interactive browser
+   after saving.
 
 Recommended local validation:
 

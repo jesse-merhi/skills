@@ -154,6 +154,28 @@ behavior_checks = {
     root / "skills/writing-for-agents/SKILL-MECHANICS.md": [
         "policy.allow_implicit_invocation: false",
     ],
+    root / "CLAUDE.md": [
+        "Use the external `browser-use` skill directly",
+        "including Chrome and Dia",
+        "`DevToolsActivePort` and `BU_CDP_URL`",
+    ],
+    root / "external.md": [
+        "browser-use==0.13.7",
+        "f0aa3a8bb03779c71a5aa262d389e3bfe6b77cdc",
+        "browser-use skill install --target claude --no-install --force",
+    ],
+    root / "skills/pr-proof-pack/SKILL.md": [
+        "Prefer Browser Use",
+        "including Chrome or Dia",
+        "selected interactive browser",
+    ],
+    root / "skills/pr-proof-pack/references/screenshots.md": [
+        "Explicit Upload Confirmation",
+        "`upload_file` helper",
+    ],
+    root / "skills/pr-proof-pack/src/NetDiff.ts": [
+        "with the selected interactive browser",
+    ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
     ],
@@ -444,7 +466,8 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" '`show-me` owns whether support is needed'
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
-  assert_contains "$skill/references/screenshots.md" "Computer Use is mandatory"
+  assert_contains "$skill/references/screenshots.md" "Use the browser path selected during the preflight"
+  assert_contains "$skill/references/screenshots.md" "Explicit Upload Confirmation"
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"

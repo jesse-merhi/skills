@@ -3,7 +3,7 @@
 ## Contents
 
 - [Hard Requirement](#hard-requirement)
-- [Computer Use Upload Path](#computer-use-upload-path)
+- [Interactive Browser Upload Path](#interactive-browser-upload-path)
 - [Evidence Contract](#evidence-contract)
 - [UI Interaction Proof](#ui-interaction-proof)
 - [Backend and Operator Proof](#backend-and-operator-proof)
@@ -16,23 +16,36 @@ Capture and upload every evidence item selected in `proof-selection.md`. This
 file owns how to capture and publish that evidence; `proof-selection.md` owns
 what qualifies.
 
-If Computer Use, practical capture, screen recording, GitHub login, attachment
-upload, image rendering, or video playback fails, stop before creating or
-updating the PR. Tell the human the concrete failure and ask them to restore the
-blocked capability. Continue only after it works.
+If the selected interactive browser, practical capture, screen recording,
+provider login, attachment upload, image rendering, or video playback fails,
+stop before creating or updating the PR. Tell the human the concrete failure
+and ask them to restore the blocked capability. Continue only after it works.
 
-## Computer Use Upload Path
+## Interactive Browser Upload Path
 
-Computer Use is mandatory. Do not replace it with CDP, another browser-control
-tool, a CLI upload helper, browser-cookie extraction, `gh-image`, session tokens,
-or Keychain/browser cookie stores.
+Use the browser path selected during the preflight. Do not switch to an
+unapproved browser-control tool, a standalone upload helper, browser-cookie
+extraction, `gh-image`, session tokens, or Keychain/browser cookie stores.
 
 Before any PR mutation:
 
-1. Load `computer-use`.
-2. Open an agent-owned browser window and reach the repository's PR provider.
-3. Confirm the tool can read and operate the page and that provider access works.
-4. If any part fails, stop and ask the human to repair Computer Use or login.
+1. Prefer the external `browser-use` skill and its pinned CLI when available;
+   otherwise load `computer-use`.
+2. With Browser Use, open a fresh repository tab in the permitted Chrome-family
+   browser and do not inspect unrelated tabs. With Computer Use, open an
+   agent-owned browser window.
+3. Reach the repository's PR provider and confirm the selected path can read and
+   operate the page with the expected account.
+4. If any part fails, stop and ask the human to repair that browser path or
+   provider login.
+
+### Explicit Upload Confirmation
+
+Immediately before the first attachment upload or PR save, follow the selected
+tool's native confirmation policy. If the active harness bypasses or lacks that
+confirmation, use its structured question UI to ask the human for permission
+for the named upload and save. Treat that answer as permission only for the
+current proof refresh.
 
 For a new PR, the publishing workflow may create a draft shell after this
 preflight. Use the same clipboard-first flow on GitHub, Bitbucket, and other PR
@@ -47,14 +60,14 @@ editors:
 6. Add descriptive alt text or a label, save, and inspect the rendered media.
 
 Do not click an attachment control or open a native file picker before trying
-clipboard paste. Use those controls only when the editor does not support paste
-for that media type. On GitHub, the finished reference normally uses
-`user-attachments`; on Bitbucket or another provider, require its equivalent
-reviewer-visible hosted media rather than a local path.
+clipboard paste. When Browser Use cannot paste that media type, use its
+`upload_file` helper on the provider's file input after explicit confirmation.
+On GitHub, the finished reference normally uses `user-attachments`; on
+Bitbucket or another provider, require its equivalent reviewer-visible hosted
+media rather than a local path.
 
-Follow the active Computer Use confirmation policy at the upload step. Do not
-commit proof media to the repository unless the project or user explicitly
-requests that storage model.
+Do not commit proof media to the repository unless the project or user
+explicitly requests that storage model.
 
 ## Evidence Contract
 
