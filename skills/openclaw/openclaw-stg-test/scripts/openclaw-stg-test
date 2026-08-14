@@ -194,8 +194,37 @@ def process_start_ticks(pid: int) -> str | None:
     try:
         fields = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()
     except OSError:
-        return None
+        try:
+            result = subprocess.run(
+                ["ps", "-o", "lstart=", "-p", str(pid)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        identity = result.stdout.strip()
+        return identity if result.returncode == 0 and identity else None
     return fields[21] if len(fields) > 21 else None
+
+
+def process_command(pid: int) -> str | None:
+    try:
+        return Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode()
+    except OSError:
+        try:
+            result = subprocess.run(
+                ["ps", "-o", "command=", "-p", str(pid)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        command = result.stdout.strip()
+        return command if result.returncode == 0 and command else None
 
 
 def process_matches(pid: int, start_ticks: str | None, required: str) -> bool:
@@ -204,11 +233,8 @@ def process_matches(pid: int, start_ticks: str | None, required: str) -> bool:
     current_ticks = process_start_ticks(pid)
     if current_ticks is None or (start_ticks is not None and current_ticks != start_ticks):
         return False
-    try:
-        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode()
-    except OSError:
-        return False
-    return required in command
+    command = process_command(pid)
+    return command is not None and required in command
 
 
 def terminate_process_group(pid: int, start_ticks: str | None, required: str) -> bool:
