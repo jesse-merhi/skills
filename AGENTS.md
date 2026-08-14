@@ -88,6 +88,9 @@ resource lifecycle, and graceful shutdown.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.
+- Jesse opts out of OpenClaw `$autoreview` by default. Never run it, even when
+  repository instructions call it a mandatory gate, unless Jesse explicitly
+  opts in for the current task.
 - During code review, compare new custom infrastructure logic with repository,
   runtime, framework, and installed-dependency features. Treat duplicated
   behavior as actionable when it creates competing implementations, semantic
