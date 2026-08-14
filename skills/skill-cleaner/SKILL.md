@@ -24,6 +24,10 @@ enabled/disabled skill roots, or deciding which skills/plugins to remove.
 5. Use [analyzer-notes.md](references/analyzer-notes.md) when interpreting
    budget, root, duplicate, and usage heuristics.
 
+This is an Effect-based adaptation of the MIT-licensed analyzer maintained in
+[`steipete/agent-scripts`](https://github.com/steipete/agent-scripts). Preserve
+[the upstream license](references/upstream-license.md) when redistributing it.
+
 ## Required Discipline
 
 - Suggest first; edit only when the user asks.
