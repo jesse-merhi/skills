@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable PR proof after every PR or stack change, using Browser Use, Computer Use, or OpenClaw's browser surface to upload real visual evidence.
+description: Create or refresh reviewer-checkable PR proof after every PR or stack change, upload GitHub evidence with token auth, and use a browser only for capture, fallback upload, or client-rendered inspection.
 ---
 
 # PR Proof Pack
@@ -15,17 +15,21 @@ without knowing the agent thread.
 
 ## Hard Gates
 
-- **Interactive browser:** Complete the preflight in step 2 before any PR
-  mutation, then keep using that browser path for the upload and rendered-page
-  inspection in steps 9 and 10.
 - **Practical evidence:** Complete the behavior capture in step 7. Automated
   validation remains supporting information and never satisfies `Visual proof`.
+- **Provider-hosted attachments:** Complete the upload in step 9. On GitHub, use
+  the scoped `gh` credential first and keep interactive browser upload as the
+  fallback.
+- **Rendered proof:** Complete the headless checks in step 10. Use an interactive
+  browser only when client-side rendering, literal page appearance, or playback
+  must be inspected.
 - **Readable history:** Complete the title and commit review in step 6 before
   publishing.
 
 If any gate cannot be completed, stop. Tell the human which capability failed
-and what they must restore. Do not publish or update the PR through another
-path.
+and what they must restore. A failed GitHub token upload is not blocked until
+the documented interactive-browser fallback has also failed or cannot meet the
+requirement.
 
 ## Trigger Branches
 
@@ -59,24 +63,20 @@ Every claim must be understandable from at least one of these sources:
    Done when every relative script and reference path resolves from that
    directory.
 
-2. Pass the interactive-browser preflight.
+2. Pass the publishing preflight.
 
-   Select the browser path native to the current harness. In OpenClaw, use its
-   browser tool or `openclaw browser`; inspect
-   `openclaw browser --json status` and `openclaw browser profiles` when the
-   active authenticated profile is unclear. In Claude environments, choose as
-   follows. Prefer Browser Use when its external skill and CLI are available:
-   load it, open a fresh repository tab in the human-permitted Chrome-family
-   browser, including Chrome or Dia, and leave unrelated existing tabs alone.
-   Otherwise load
-   `computer-use` and open an agent-owned browser. Reach the repository on its
-   PR provider and confirm the selected path can read and operate the page.
-   Record which path is active and keep it for steps 9 and 10. Do this before a
-   publishing workflow creates or mutates a PR. When creating a new PR, the
-   publishing workflow may create a draft shell only after this preflight.
+   On GitHub, confirm `gh auth status`, resolve the repository ID with `gh api`,
+   and record the repository name and ID for step 9. Identify whether practical
+   capture needs a browser or device and whether the finished body will require
+   client-side inspection, such as a Mermaid diagram. Do not make an interactive
+   browser a prerequisite for GitHub token upload or ordinary rendered-body
+   checks. On another provider, identify its supported attachment path and any
+   browser capability that path requires. A publishing workflow may create a
+   draft shell after this preflight.
 
-   Done when the selected interactive browser is demonstrably usable, or the
-   workflow has stopped with a concrete repair request to the human.
+   Done when provider authentication and repository access work and every
+   browser or device capability genuinely needed later in the workflow is
+   available, or the workflow has stopped with a concrete repair request.
 
 3. Resolve the PR's direct base and stack context.
 
@@ -140,31 +140,34 @@ Every claim must be understandable from at least one of these sources:
    Done when `speak-fking-english` returns a self-contained reviewer-facing draft
    and every evidence item still has a specific claim and reproduction context.
 
-9. Upload the evidence with the selected interactive browser.
+9. Upload provider-hosted evidence.
 
-   Follow the provider upload flow in
-   [references/screenshots.md](references/screenshots.md). In OpenClaw, use its
-   native browser upload action on the provider's attachment control or file
-   input. In a harness with clipboard support, copy each finished image or
-   recording, select the exact
-   placeholder or stale attachment in the PR editor, and paste. Use the
-   provider's attachment control or native file picker only when clipboard
-   paste is unsupported. Put media directly in the main PR body, never in a
-   table or detached comment. Follow the active confirmation policy in
-   [references/screenshots.md](references/screenshots.md).
+   Follow [references/screenshots.md](references/screenshots.md). On GitHub, try
+   its token-authenticated attachment endpoint first with the existing `gh`
+   credential, require a `201` response, and verify the returned asset before
+   inserting it. If that undocumented endpoint is unavailable or verification
+   fails, use the documented interactive-browser fallback. Use the provider's
+   supported attachment flow elsewhere. Put media directly in the main PR body,
+   never in a table or detached comment.
 
    Done when every image and recording uses a reviewer-visible, provider-hosted
    attachment in the main body. A local path, an unsubmitted attachment, a
    textual rationale, or a screenshot of green checks is not done.
 
-10. Inspect the finished PR with the selected interactive browser.
+10. Inspect the finished PR headlessly by default.
 
-    Open the rendered PR and check its title, section order, image loading,
-    video playback, captions, any diagram rendering, and copyable reproduction
-    steps. Fix stale or unclear proof before leaving the page.
+    Follow the rendered-verification path in
+    [references/screenshots.md](references/screenshots.md). On GitHub, inspect
+    `body_html`, confirm the title and section order, require image and video
+    elements where expected, and fetch every resolved asset with authentication
+    to verify its status, content type, and bytes. Use an interactive browser
+    when the body includes client-rendered content such as Mermaid or when the
+    proof depends on literal page layout, pixel appearance, or playback. Fix
+    stale or unclear proof before finishing.
 
     Done when the rendered PR is readable without local context and every visual
-    directly supports a current net-diff claim.
+    directly supports a current net-diff claim, with browser inspection completed
+    for every case headless checks cannot prove.
 
 11. Refresh after every branch change.
 
@@ -190,6 +193,6 @@ Every claim must be understandable from at least one of these sources:
 
 - Every workflow step meets its `Done when` criterion.
 - Every affected PR reflects its current direct-base behavior and contains
-  provider-hosted practical evidence inspected through the selected interactive
-  browser.
+  provider-hosted practical evidence verified headlessly or, where required,
+  through an interactive browser.
 - The caller has the open PR list needed to request human sign-off.
