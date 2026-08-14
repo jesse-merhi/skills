@@ -325,6 +325,9 @@ exit 1
     assert.match(status.stdout, /Gateway health: healthy/);
     assert.match(status.stdout, /browser proxy health: healthy/);
     await run(helperPath, ["--stop"], successEnv);
+    const stoppedStatus = await run(helperPath, ["--status"], successEnv);
+    assert.equal(stoppedStatus.code, 0, stoppedStatus.stderr);
+    assert.match(stoppedStatus.stdout, /browser proxy: stopped/);
 
     const failureEnv = {
       ...baseEnv,

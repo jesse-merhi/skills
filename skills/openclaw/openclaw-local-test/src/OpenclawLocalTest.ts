@@ -114,8 +114,18 @@ export const openclawLocalTest = Effect.fn("Openclaw.localTest")(function*(raw: 
     const ports = yield* fs.readFileString(files.ports).pipe(Effect.map(readEnv), Effect.option), instance = yield* fs.readFileString(files.instance).pipe(Effect.map(readEnv), Effect.option), gatewayPid = yield* readPid(files.gateway), proxyPid = yield* readPid(files.sharedProxy)
     const gatewayPort = Option.isSome(ports) ? ports.value.OPENCLAW_LOCAL_TEST_GATEWAY_PORT : undefined, proxyPort = Option.isSome(ports) ? ports.value.OPENCLAW_LOCAL_TEST_PROXY_PORT : undefined
     const gatewayOk = gatewayPort === undefined ? false : yield* health(`http://127.0.0.1:${gatewayPort}/healthz`), proxyOk = proxyPort === undefined ? false : yield* health(`http://127.0.0.1:${proxyPort}/healthz`)
+    const gatewayRunning = yield* pidRunning(gatewayPid)
+    const proxyDaemonRunning = yield* pidRunning(proxyPid)
+    const route = proxyPort === undefined
+      ? Option.none<typeof RouteReservation.Type>()
+      : yield* fs.readFileString(paths.join(routes, `${proxyPort}.json`)).pipe(
+        Effect.flatMap(Schema.decodeUnknownEffect(RouteReservationJson)),
+        Effect.option
+      )
+    const routeRunning = proxyDaemonRunning && gatewayRunning && Option.isSome(route) &&
+      route.value.proxyPort === Number(proxyPort) && route.value.gatewayPid === gatewayPid
     const lease = Option.isSome(instance) ? [`Lease: ttl=${instance.value.OPENCLAW_LOCAL_TEST_TTL ?? "unknown"} expires=${formatLeaseExpiry(instance.value.OPENCLAW_LOCAL_TEST_EXPIRES_AT)}`] : []
-    yield* Console.log([`State: ${state}`, ...(Option.isSome(ports) ? Object.entries(ports.value).map(([key, value]) => `Port: ${key}=${value}`) : []), ...lease, `Gateway: ${(yield* pidRunning(gatewayPid)) ? `running pid ${gatewayPid}` : "stopped"}`, `Gateway health: ${gatewayOk ? `healthy http://127.0.0.1:${gatewayPort}/healthz` : "unhealthy"}`, `browser proxy: ${(yield* pidRunning(proxyPid)) ? `running shared daemon pid ${proxyPid} route port ${proxyPort}` : "stopped"}`, `browser proxy health: ${proxyOk ? `healthy http://127.0.0.1:${proxyPort}/healthz` : "unhealthy"}`].join("\n"))
+    yield* Console.log([`State: ${state}`, ...(Option.isSome(ports) ? Object.entries(ports.value).map(([key, value]) => `Port: ${key}=${value}`) : []), ...lease, `Gateway: ${gatewayRunning ? `running pid ${gatewayPid}` : "stopped"}`, `Gateway health: ${gatewayOk ? `healthy http://127.0.0.1:${gatewayPort}/healthz` : "unhealthy"}`, `browser proxy: ${routeRunning ? `running shared daemon pid ${proxyPid} route port ${proxyPort}` : "stopped"}`, `browser proxy health: ${proxyOk ? `healthy http://127.0.0.1:${proxyPort}/healthz` : "unhealthy"}`].join("\n"))
   })
   if (raw.action === "status") return yield* status
   const profileArgs = [raw.action === "inspect" ? "inspect" : "configure", "--runtime", raw.runtime, ...(Option.isSome(raw.model) ? ["--model", raw.model.value] : [])]
