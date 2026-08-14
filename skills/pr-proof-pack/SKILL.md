@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or refresh reviewer-checkable pull-request proof. Use whenever creating, publishing, reopening, or updating a PR; editing its title or body; pushing commits or changing a branch that already has a PR; or changing any layer of a stacked PR. Requires Computer Use, plain-language metadata, and uploaded visual evidence of the implemented behavior working in practice.
+description: Create or refresh reviewer-checkable pull-request proof. Use whenever creating, publishing, reopening, or updating a PR; editing its title or body; pushing commits or changing a branch that already has a PR; or changing any layer of a stacked PR. Requires an interactive browser through Browser Use or Computer Use, plain-language metadata, and uploaded visual evidence of the implemented behavior working in practice.
 ---
 
 # PR Proof Pack
@@ -15,9 +15,9 @@ without knowing the agent thread.
 
 ## Hard Gates
 
-- **Computer Use:** Complete the preflight in step 2 before any PR mutation, then
-  use Computer Use for the upload and rendered-page inspection in steps 9 and
-  10.
+- **Interactive browser:** Complete the preflight in step 2 before any PR
+  mutation, then keep using that browser path for the upload and rendered-page
+  inspection in steps 9 and 10.
 - **Practical evidence:** Complete the behavior capture in step 7. Automated
   validation remains supporting information and never satisfies `Visual proof`.
 - **Readable history:** Complete the title and commit review in step 6 before
@@ -59,16 +59,19 @@ Every claim must be understandable from at least one of these sources:
    Done when every relative script and reference path resolves from that
    directory.
 
-2. Pass the Computer Use preflight.
+2. Pass the interactive-browser preflight.
 
-   Load `computer-use`. Open an agent-owned browser, reach the repository on its
-   PR provider, and confirm the tool can read and operate the page. Do this
-   before a publishing workflow creates or mutates a PR. When creating a new
-   PR, the publishing workflow may create a draft shell only after this
-   preflight.
+   Prefer Browser Use when its external skill and CLI are available. Load it,
+   open a fresh repository tab in the human-permitted Chrome-family browser
+   (including Chrome or Dia), and leave unrelated existing tabs alone. Otherwise
+   load `computer-use` and open an agent-owned browser. Reach the repository on
+   its PR provider and confirm the selected path can read and operate the page.
+   Record which path is active and keep it for steps 9 and 10. Do this before a
+   publishing workflow creates or mutates a PR. When creating a new PR, the
+   publishing workflow may create a draft shell only after this preflight.
 
-   Done when Computer Use is demonstrably usable, or the workflow has stopped
-   with a concrete repair request to the human.
+   Done when Browser Use or Computer Use is demonstrably usable, or the workflow
+   has stopped with a concrete repair request to the human.
 
 3. Resolve the PR's direct base and stack context.
 
@@ -132,7 +135,7 @@ Every claim must be understandable from at least one of these sources:
    Done when `speak-fking-english` returns a self-contained reviewer-facing draft
    and every evidence item still has a specific claim and reproduction context.
 
-9. Upload the evidence with Computer Use.
+9. Upload the evidence with the selected interactive browser.
 
    Follow the provider upload flow in
    [references/screenshots.md](references/screenshots.md). Copy each finished
@@ -140,13 +143,13 @@ Every claim must be understandable from at least one of these sources:
    PR editor, and paste. Use the provider's attachment control or native file
    picker only when clipboard paste is unsupported. Put media directly in the
    main PR body, never in a table or detached comment. Follow the active
-   Computer Use confirmation policy for uploads.
+   confirmation policy in [references/screenshots.md](references/screenshots.md).
 
    Done when every image and recording uses a reviewer-visible, provider-hosted
    attachment in the main body. A local path, an unsubmitted attachment, a
    textual rationale, or a screenshot of green checks is not done.
 
-10. Inspect the finished PR with Computer Use.
+10. Inspect the finished PR with the selected interactive browser.
 
     Open the rendered PR and check its title, section order, image loading,
     video playback, captions, any diagram rendering, and copyable reproduction
@@ -179,5 +182,6 @@ Every claim must be understandable from at least one of these sources:
 
 - Every workflow step meets its `Done when` criterion.
 - Every affected PR reflects its current direct-base behavior and contains
-  provider-hosted practical evidence inspected through Computer Use.
+  provider-hosted practical evidence inspected through the selected interactive
+  browser.
 - The caller has the open PR list needed to request human sign-off.

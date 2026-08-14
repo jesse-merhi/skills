@@ -23,7 +23,7 @@ intelligence vs your 10/10), and reachable two ways. Pick in this order:
    parallel fan-out, background runs, SendMessage continuation.
 2. **`codex` subagent** (Agent tool, `subagent_type: "codex"`) — a thin
    relay around `codex exec`, for when the Codex harness itself is needed
-   (computer use, browser use, resuming a codex session by id) or in a
+   (Computer Use, resuming a codex session by id) or in a
    proxy-bypassed session (`ANTHROPIC_BASE_URL='' claude`, where the sol
    model is unavailable).
 3. Bare `codex exec` in Bash only if the Agent tool itself is unavailable.
@@ -34,10 +34,18 @@ it to `sol` (or `codex`), then critique and judge the resulting diff. Send
 it back with corrections rather than rewriting yourself; the only exception
 is a trivial fix (a few lines) found during your own review.
 
+Use the external `browser-use` skill directly for website interaction,
+authenticated browser state, screenshots, and browser-driven validation. It
+supports the user's permitted Chrome-family browser, including Chrome and Dia.
+When more than one permitted browser is live, select the requested browser
+through its `DevToolsActivePort` and `BU_CDP_URL`; never rely on profile scan
+order to choose the intended session.
+Delegate browser work to `codex` only when a workflow explicitly requires
+Computer Use or Browser Use fails its preflight.
+
 Also default to delegating:
 
-- **Expensive grunt work.** Manual visual verification, browser-driving
-  checks, screenshot loops, large mechanical edits, long test/verify cycles.
+- **Expensive grunt work.** Large mechanical edits and long test/verify cycles.
 - **Token-intensive reading.** Don't waste your brain (or context) churning
   through logs, CI output, error dumps, stack traces, large diffs, or broad
   codebase sweeps. Hand Sol the question, have it read the volume and
@@ -68,5 +76,5 @@ Fable: specs, design direction, hard debugging calls, code review, judging
 Sol's output, anything requiring top-end reasoning. Never implementing in
 the main loop.
 GPT-5.6 (via `sol`, or `codex` when its harness is needed): implementing to
-spec, verification legwork, browser/computer use, log/error/output
+spec, verification legwork outside Browser Use, Computer Use, log/error/output
 digestion, everything token-expensive or mechanical.

@@ -83,12 +83,15 @@ skill or script, keep the loop legible, and raise the bar at the review end.
   `frontend-ui-validation`, and `acpx-frontend-delegation` split visual
   direction, interaction craft, motion discovery, motion review, divergent UI
   exploration, rendered proof, and optional delegation.
+- **Browser work:** the external `browser-use` skill, pinned in `external.md`,
+  lets Claude work directly through a permitted Chrome or Dia session.
 - **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
   `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
   `handoff`, and `session-recall`.
 - **PR delivery:** `pr-proof-pack` and `monitoring-gh-actions` keep review
-  evidence current. GitHub's external `gh-stack` skill, pinned in
-  `external.md`, turns one dependency-ordered story into small logical PRs.
+  evidence current. `pr-proof-pack` can publish through Browser Use or Computer
+  Use. GitHub's external `gh-stack` skill, pinned in `external.md`, turns one
+  dependency-ordered story into small logical PRs.
 - **Explanation:** `speak-fking-english` runs the reader reset and visual
   decision before a final response. `show-me` adds the smallest useful support
   only when the content has a shape prose makes hard to hold;

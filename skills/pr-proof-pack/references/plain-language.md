@@ -45,7 +45,7 @@ reviewer-facing outcome rather than the touched files.
 
 Good:
 
-- `Require Computer Use before publishing PR proof`
+- `Allow Browser Use to publish PR proof safely`
 - `Show real API outcomes as uploaded evidence`
 - `Record changed UI interactions at a deliberate pace`
 
