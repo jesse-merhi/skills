@@ -29,23 +29,32 @@ not become model turns. For reviews and other work expected to finish within 15
 minutes, use this shape:
 
 ```js
-// @exec: {"yield_time_ms": 900000, "max_output_tokens": 2000}
+// @exec: {"yield_time_ms": 900000, "max_output_tokens": 10000}
+const maxOutputTokens = 10000;
 let result = await tools.exec_command({
   cmd: "<command>",
   yield_time_ms: 30000,
-  max_output_tokens: 2000
+  max_output_tokens: maxOutputTokens
 });
 const output = [result.output];
+let originalTokens = result.original_token_count ?? 0;
 while (result.session_id) {
   result = await tools.write_stdin({
     session_id: result.session_id,
     chars: "",
     yield_time_ms: 300000,
-    max_output_tokens: 2000
+    max_output_tokens: maxOutputTokens
   });
   output.push(result.output);
+  originalTokens += result.original_token_count ?? 0;
 }
 text(output.filter(Boolean).join(""));
+if (originalTokens > maxOutputTokens) {
+  throw new Error("command output exceeded the safe result budget; inspect its persisted artifact");
+}
+if (result.exit_code !== 0) {
+  throw new Error(`command exited with code ${result.exit_code ?? "unknown"}`);
+}
 ```
 
 An empty `write_stdin` wait returns when the process exits; five minutes is its
@@ -53,7 +62,10 @@ deadline, not a delay imposed after completion. If the outer cell yields before
 the process finishes, resume that cell with one long `functions.wait` call. Do
 not restart the command, call `notify`, or use `yield_control` for unchanged
 progress. Accumulate each terminal result inside the cell so output received
-before the final wait is not lost.
+before the final wait is not lost. For a review or validation gate, make the
+command persist its full artifact to a run-owned file. If any terminal result
+reports more original tokens than its output budget, fail the gate and inspect
+that artifact instead of classifying truncated output.
 
 ## Direct waits
 
