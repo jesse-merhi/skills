@@ -566,6 +566,107 @@ test_concurrent_scope_start_allows_only_one_active_budget() {
   test "$successes" -eq 1 || fail "exactly one concurrent scope-start must succeed"
 }
 
+test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
+  local tmp db repo git_wrapper real_git stale_pid stale_code out attempt
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git_wrapper="$tmp/blocked-git"
+  real_git="$(command -v git)"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'case " $* " in' \
+    '  *" diff --numstat "*)' \
+    '    : > "$SCOPE_BLOCK_STARTED"' \
+    '    while [ ! -e "$SCOPE_BLOCK_RELEASE" ]; do sleep 0.01; done' \
+    '    ;;' \
+    'esac' \
+    'exec "$SCOPE_REAL_GIT" "$@"' > "$git_wrapper"
+  chmod +x "$git_wrapper"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main --scope-summary "Test terminal transition serialization." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main --reason "Initial passing check." >/dev/null
+
+  (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    SCOPE_BLOCK_STARTED="$tmp/complete.started" SCOPE_BLOCK_RELEASE="$tmp/complete.release" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "completion race" --base main --reason "Delayed stale completion check." \
+      >"$tmp/complete.out" 2>"$tmp/complete.err" || stale_code=$?; \
+    printf '%s\n' "$stale_code" > "$tmp/complete.code") &
+  stale_pid=$!
+  for attempt in {1..500}; do
+    test -e "$tmp/complete.started" && break
+    sleep 0.01
+  done
+  test -e "$tmp/complete.started" || fail "delayed scope-check did not reach the completion race"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main --reason "The current review is complete." >/dev/null
+  : > "$tmp/complete.release"
+  wait "$stale_pid"
+  stale_code="$(cat "$tmp/complete.code")"
+  test "$stale_code" -ne 0 || fail "a stale scope-check must not reopen a completed budget"
+  assert_contains "$tmp/complete.err" "scope budget changed while scope-check was measuring"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main --scope-summary "Test authorization transition serialization." >/dev/null
+  printf 'new path\n' > "$repo/helper.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main --reason "The new path needs authorization." \
+    >"$tmp/block.out" 2>"$tmp/block.err"; then
+    fail "the new production path should block before authorization"
+  fi
+
+  (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    SCOPE_BLOCK_STARTED="$tmp/authorize.started" SCOPE_BLOCK_RELEASE="$tmp/authorize.release" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "authorization race" --base main --reason "Delayed stale authorization check." \
+      >"$tmp/authorize.out" 2>"$tmp/authorize.err" || stale_code=$?; \
+    printf '%s\n' "$stale_code" > "$tmp/authorize.code") &
+  stale_pid=$!
+  for attempt in {1..500}; do
+    test -e "$tmp/authorize.started" && break
+    sleep 0.01
+  done
+  test -e "$tmp/authorize.started" || fail "delayed scope-check did not reach the authorization race"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main \
+    --scope-summary "Include the explicitly approved helper path." \
+    --authorization "User explicitly approved the helper path." >/dev/null
+  : > "$tmp/authorize.release"
+  wait "$stale_pid"
+  stale_code="$(cat "$tmp/authorize.code")"
+  test "$stale_code" -ne 0 || fail "a stale scope-check must not overwrite an authorized baseline"
+  assert_contains "$tmp/authorize.err" "scope budget changed while scope-check was measuring"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+  assert_output_contains "$out" "authorization=User explicitly approved the helper path."
+}
+
 test_review_scope_budget_blocks_deterministically() {
   local tmp db repo out
   tmp="$(mktemp -d)"
@@ -956,6 +1057,7 @@ test_review_findings_shares_history_across_git_worktrees
 test_review_findings_preserves_decision_log_on_update
 test_failed_scope_start_does_not_hide_existing_findings
 test_concurrent_scope_start_allows_only_one_active_budget
+test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state
 test_review_scope_budget_blocks_deterministically
 test_review_scope_budget_can_close_before_a_later_review
 test_review_scope_budget_uses_the_merge_base
