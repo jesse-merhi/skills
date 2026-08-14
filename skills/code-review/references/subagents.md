@@ -42,6 +42,10 @@ write.
 If the harness cannot run subagents, say so, continue only as best effort, and
 do not call the review clean unless the user accepts that limitation.
 
+After dispatching a review batch, finish useful independent coordinator work.
+Once blocked, follow the `wait-efficiently` subagent pattern. Keep the parent
+turn active until every required reviewer reaches a terminal state.
+
 Run `monitoring-gh-actions` at the end, after both review phases and local
 validation are clean, when PR checks are pending and monitoring is in scope.
 That is coordinator work, not a review subagent.

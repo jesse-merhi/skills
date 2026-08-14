@@ -56,9 +56,11 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 3. Dispatch a fresh independent reviewer.
 
-   Read [references/subagent-dispatch.md](references/subagent-dispatch.md).
-   Done when a fresh isolated reviewer receives only the target, neutral review
-   checklist, and tracked-finding notices generated per `review-guardrails`.
+   Load `wait-efficiently`, then read
+   [references/subagent-dispatch.md](references/subagent-dispatch.md). Done when
+   a fresh isolated reviewer receives only the target, neutral review checklist,
+   and tracked-finding notices generated per `review-guardrails`, and the
+   coordinator uses the native event-driven wait for its result.
 
 4. Run the until-clean loop.
 

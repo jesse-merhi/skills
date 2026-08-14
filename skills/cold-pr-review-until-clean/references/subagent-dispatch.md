@@ -23,6 +23,10 @@ may inspect the target diff and any repository files it decides are relevant.
 Give it facts as plain text: target, base, scope, and a neutral checklist. Do
 not fork parent turns and expect the reviewer to ignore them.
 
+After dispatch, finish useful independent coordinator work. Once the result is
+required, follow the `wait-efficiently` subagent pattern. Keep the parent turn
+active until the reviewer reaches a terminal state.
+
 For PRs:
 
 ```text

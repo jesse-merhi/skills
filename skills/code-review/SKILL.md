@@ -94,11 +94,12 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 6. Run Phase 1.
 
-   Load `review-until-clean` and run it until the native review is clean on the
-   current target. Use `finding-discipline` to triage findings before fixing.
-   Read [references/review-phase-rules.md](references/review-phase-rules.md)
-   for whole-target review, validation, finding classification, and
-   quiet-helper behavior. If Phase 1 uses the Codex engine,
+   Load `review-until-clean` and `wait-efficiently`, then run the native review
+   until it is clean on the current target. Use `finding-discipline` to triage
+   findings before fixing. Read
+   [references/review-phase-rules.md](references/review-phase-rules.md) for
+   whole-target review, validation, finding classification, and held-wait
+   behavior. If Phase 1 uses the Codex engine,
    also read [references/codex-review-helper.md](references/codex-review-helper.md).
 
 7. Run Phase 2.
@@ -107,6 +108,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    `cold-pr-review-until-clean` in a subagent until cold review is clean on the
    same target. Give it the one-time setup summary, neutral risk checklist, and
    any tracked-finding notices generated from currently open consult entries.
+   Wait through `wait-efficiently` so completion wakes the active wait instead
+   of being discovered by status polling.
 
 8. After an accepted Phase 1 finding:
 
