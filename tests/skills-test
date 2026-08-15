@@ -506,6 +506,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" 'Remove each exact run-owned upload-root copy'
   assert_contains "$skill/references/screenshots.md" 'Delete neither the original evidence file nor managed'
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
+  assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow on GitHub, Bitbucket"
@@ -514,7 +515,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
   assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"
   assert_contains "$skill/references/proof-selection.md" "Automated validation only supports this proof"
-  assert_contains "$skill/references/proof-selection.md" "deliberately paced video"
+  assert_contains "$skill/references/proof-selection.md" "make a concise edited"
+  assert_contains "$skill/references/proof-selection.md" "before/after proof is"
+  assert_not_contains "$skill/references/proof-selection.md" "Every PR still needs at least one uploaded screenshot"
   assert_contains "$skill/references/proof-selection.md" "Markdown table"
   assert_not_contains "$skill/references/proof-selection.md" "Default to prose"
   assert_not_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
@@ -522,9 +525,14 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
+  assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
   assert_contains "$skill/agents/openai.yaml" "Check and refresh practical PR proof."
+  assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
+  assert_contains "$skill/references/video-editing.md" "Before — direct base"
+  assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
+  assert_contains "$skill/references/video-editing.md" "play the full edited file at 1× speed"
 }
 
 test_code_review_has_a_local_review_and_owner_checked_closeout() {

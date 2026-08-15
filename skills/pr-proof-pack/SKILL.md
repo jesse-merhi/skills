@@ -43,12 +43,19 @@ Commit count, commit SHA, code churn, and a push by themselves do not make proof
 stale. When proof is current, report the no-op decision and leave the PR
 untouched.
 
+For a recordable process, proof is stale when static images are the only primary
+evidence or the recording contains avoidable dead time. For a UI change with
+comparable direct-base behavior, proof is stale when the before/after comparison
+is missing or mismatched.
+
 ## Hard Gates For A Refresh
 
 - **Interactive browser:** Pass the preflight before any reviewer-visible PR
   mutation, then use the same path for upload and rendered-page inspection.
 - **Practical evidence:** Capture the changed behavior working in practice.
-  Automated validation remains supporting information and never satisfies `Visual proof`.
+  Use a trimmed recording as primary proof whenever the behavior unfolds over
+  time and can be recorded. Automated validation remains supporting information
+  and never satisfies `Visual proof`.
 - **Readable history:** Review the title and commit subjects before publishing.
 
 If any gate cannot be completed, stop. Tell the human which capability failed
@@ -118,12 +125,14 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
    Read the practical-evidence section of
    [references/proof-selection.md](references/proof-selection.md), then
-   [references/screenshots.md](references/screenshots.md). Reproduce the changed
-   behavior and replace only evidence made stale by the final net diff. Preserve
-   current evidence.
+   [references/screenshots.md](references/screenshots.md). For any recording,
+   also read [references/video-editing.md](references/video-editing.md).
+   Reproduce the changed behavior and replace only evidence made stale by the
+   final net diff. Preserve current evidence.
 
-   Done when every changed important behavior has reviewer-checkable evidence
-   and unchanged evidence is left alone.
+   Done when every changed important behavior has concise reviewer-checkable
+   evidence, comparable UI behavior has matched base/PR proof, recordings have
+   no irrelevant waiting, and unchanged evidence is left alone.
 
 7. Draft the smallest accurate PR update.
 
@@ -170,4 +179,6 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 - A `refreshed` result changed only stale claims and evidence.
 - Every affected PR describes its final direct-base behavior with practical,
   provider-hosted proof.
+- Recordable processes use an edited, natural-speed recording as primary proof;
+  matched before/after evidence makes visible UI changes directly comparable.
 - The workflow did not infer publication authority from branch or PR state.

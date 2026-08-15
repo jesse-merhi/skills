@@ -60,10 +60,11 @@ Depends on #41; followed by #43.">
 
 ## Visual proof
 
-<Provider-hosted evidence selected in `proof-selection.md` and captured by
-`screenshots.md`.>
+<Provider-hosted primary video or static/comparison image selected in
+`proof-selection.md` and captured by `screenshots.md`.>
 
-![Changed behavior at its observable outcome](https://github.com/user-attachments/assets/...)
+<uploaded primary process recording, or labeled before/after image when the
+behavior is static>
 
 **What this shows:** <The exact implemented behavior visibly working in
 practice. Do not describe test, build, CI, or validator output here.>
@@ -96,7 +97,7 @@ Use the practical evidence chosen in `proof-selection.md` and captured through
 `screenshots.md`. Put the most useful item soon after the behavior description
 and keep reproduction steps as copyable text under `How to verify`.
 
-Put useful context immediately below each image:
+Put useful context immediately below each evidence item:
 
 - **What this shows:** the exact current behavior or result the image proves;
 - **State:** the route, fixture, role, permission, environment, or command;
@@ -107,9 +108,11 @@ Put useful context immediately below each image:
 Use descriptive alt text. A filename such as `screenshot-1.png` is not an
 explanation.
 
-For before/after proof, place images one after another under `Before` and `Now`.
-Each needs its own explanation. `Before` means the direct PR base, not an earlier
-commit from the feature branch.
+For before/after proof, label the direct-base and PR recordings `Before` and
+`After`. For images, prefer one labeled side-by-side composite with matched
+crop, scale, data, and viewport. Use separate full-size images only when the
+composite would hide detail. Never put media in a Markdown table. `Before` means
+the direct PR base, not an earlier feature-branch commit.
 
 ## API and Backend Proof
 
