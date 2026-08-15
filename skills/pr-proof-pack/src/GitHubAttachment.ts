@@ -60,6 +60,12 @@ export const uploadRequestArgs = (options: {
   "--include", "--jq", ".url"
 ] as const
 
+export const fetchRequestArgs = (assetFile: string, assetUrl: string) => [
+  "--disable", "--silent", "--show-error", "--location", "--output", assetFile,
+  "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
+  "--header", "@-", assetUrl
+] as const
+
 export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(function*(options: {
   readonly pullRequest: string
   readonly evidencePath: string
@@ -83,11 +89,7 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   const assetUrl = yield* parseUploadResponse(uploadOutput)
   const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-attachment-" })
   const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], { displayCommand: "gh auth token --hostname github.com" })
-  const fetchOutput = yield* checkedTrimmedText("curl", [
-    "--silent", "--show-error", "--location", "--output", assetFile,
-    "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
-    "--header", "@-", assetUrl
-  ], {
+  const fetchOutput = yield* checkedTrimmedText("curl", fetchRequestArgs(assetFile, assetUrl), {
     displayCommand: `curl [verified GitHub attachment ${assetUrl}]`,
     stdin: `Authorization: Bearer ${token}\n`
   })

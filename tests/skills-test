@@ -513,6 +513,8 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
+  assert_contains "$skill/src/GitHubAttachment.ts" '"--disable", "--silent", "--show-error", "--location"'
+  assert_not_contains "$skill/src/GitHubAttachment.ts" '"--location-trusted"'
   assert_contains "$skill/src/GitHubAttachment.ts" 'if (fetchedInfo.size !== sourceInfo.size)'
   assert_contains "$skill/scripts/github-upload-attachment" 'github-upload-attachment.ts'
   if [[ ! -x "$skill/scripts/github-upload-attachment" ]]; then

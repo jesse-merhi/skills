@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 
-import { parseFetchResult, parseUploadResponse, repositoryFromPullRequest, uploadRequestArgs } from "./GitHubAttachment.ts"
+import { fetchRequestArgs, parseFetchResult, parseUploadResponse, repositoryFromPullRequest, uploadRequestArgs } from "./GitHubAttachment.ts"
 
 describe("GitHub attachment upload contract", () => {
   it.effect("resolves the repository from the exact github.com PR", () => repositoryFromPullRequest(
@@ -28,5 +28,12 @@ describe("GitHub attachment upload contract", () => {
     const args = uploadRequestArgs({ evidencePath: "/tmp/proof image.png", evidenceName: "proof image.png", mediaType: "image/png", repositoryId: 42 })
     assert.includeMembers([...args], ["--input", "/tmp/proof image.png", "--raw-field", "name=proof image.png", "--raw-field", "content_type=image/png", "--field", "repository_id=42", "--jq", ".url"])
     assert.notInclude(args.join(" "), "auth token")
+  })
+
+  it("disables curl configuration before following the attachment redirect", () => {
+    const args = fetchRequestArgs("/tmp/attachment", "https://github.com/user-attachments/assets/abc-123")
+    assert.strictEqual(args[0], "--disable")
+    assert.include(args, "--location")
+    assert.notInclude(args, "--location-trusted")
   })
 })

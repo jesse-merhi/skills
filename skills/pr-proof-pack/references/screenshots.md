@@ -38,8 +38,9 @@ type, sends the binary through GitHub's token-authenticated attachment endpoint,
 and requires a `201` response with a canonical
 `https://github.com/user-attachments/assets/*` URL. It then authenticates only
 the initial canonical URL, follows redirects without forwarding credentials to
-another host, and verifies HTTP status, HTTP and detected content types, and
-exact byte size. It prints only the verified asset URL on success.
+another host, ignores user curl configuration that could weaken that boundary,
+and verifies HTTP status, HTTP and detected content types, and exact byte size.
+It prints only the verified asset URL on success.
 
 The command supports `github.com` PRs only and accepts only image or video
 content. If it fails, stop and report its diagnostics. Do not extract or reuse
