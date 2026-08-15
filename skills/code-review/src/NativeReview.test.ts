@@ -8,7 +8,7 @@ import * as Option from "effect/Option"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { execFile as execFileCallback } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { mkdir, mkdtemp, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
@@ -46,7 +46,7 @@ esac
       assert.match(recorded, /^exec --ephemeral --skip-git-repo-check --sandbox read-only /mu)
       const executedFrom = (await readFile(probeCwd, "utf8")).trim()
       assert.notStrictEqual(executedFrom, process.cwd())
-      assert.isTrue(executedFrom.startsWith(join(tmpdir(), "codex-auth-preflight.")))
+      assert.isTrue(executedFrom.startsWith(join(await realpath(tmpdir()), "codex-auth-preflight.")))
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
