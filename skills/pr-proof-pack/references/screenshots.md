@@ -6,6 +6,7 @@
 - [Interactive Browser Upload Path](#interactive-browser-upload-path)
 - [Evidence Contract](#evidence-contract)
 - [UI Interaction Proof](#ui-interaction-proof)
+- [Recording Edit](#recording-edit)
 - [Backend and Operator Proof](#backend-and-operator-proof)
 - [Performance Proof](#performance-proof)
 - [Placement](#placement)
@@ -112,6 +113,7 @@ Every visual answers these questions in nearby text:
 3. What route, fixture, account, environment, viewport, dataset, and capture
    method make it reproducible?
 4. What important error, recovery, persistence, or side effect was checked?
+5. What direct-base behavior is the reviewer comparing with the PR result?
 
 Use real output from the current branch. Before means the direct PR base, not a
 previous feature-branch commit. Recapture after every related branch change.
@@ -124,13 +126,26 @@ to follow without scrubbing frame by frame.
 - begin before the first relevant action so the starting state is visible;
 - move the pointer deliberately and pause after important transitions;
 - show the input, loading or transition state, outcome, and relevant recovery;
+- record the same scenario on the direct base and PR branch when both have
+  comparable visible behavior;
 - exercise changed error, empty, permission, responsive, keyboard, or reduced-
   motion behavior when it is in scope;
-- upload screenshots of every distinct changed state at readable size;
+- add a labeled before/after image only when it makes a static visual difference
+  easier to compare or preserves a state that is not legible in the video;
 - use realistic data and avoid secrets or personal information.
 
 A test runner video, a replay of automated E2E output, or static screenshots
 alone do not replace the manual interaction walkthrough.
+
+## Recording Edit
+
+Follow [video-editing.md](video-editing.md) before upload. Remove inactive
+lead-in, setup, and dead stretches; retain a short readable hold on the starting
+state, important transitions, and outcome. Keep the actual actions at normal
+speed. Preserve real waiting when duration or performance is itself the claim.
+
+Play the finished video once at 1× speed. Done when the flow is easy to follow,
+no informative state is rushed, and no long idle interval remains.
 
 ## Backend and Operator Proof
 
@@ -165,7 +180,8 @@ Example:
 ## Placement
 
 Put each image and recording directly in the main PR body, never in a table or
-detached comment. Place its explanation immediately below it:
+detached comment. Put the primary video first. Place its explanation immediately
+below it:
 
 ```md
 <uploaded interaction recording>
