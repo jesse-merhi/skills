@@ -27,9 +27,12 @@ with the blocker or residual risk.
 
 ## Run Handling
 
-- If the review helper is quiet, wait. Long reviews may print heartbeat lines
-  such as `review still running: ... elapsed=... pid=...`; treat those as
-  progress.
+- Run the review helper through the `wait-efficiently` Codex shell-wait pattern.
+  If a wait deadline expires while the helper is still running, resume the same
+  cell rather than restarting the review.
+- Long reviews may print heartbeat lines such as
+  `review still running: ... elapsed=... pid=...`; treat those as progress, not
+  as a reason to return to the model.
 - Do not kill a quiet review just because it has been silent for a few minutes.
   Inspect only after missed heartbeats, an obviously failed subprocess, or a
   review that has run past the expected long-review window.

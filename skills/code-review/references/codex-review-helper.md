@@ -48,6 +48,9 @@ running, it discards that stale answer, resolves the latest target, and reruns.
 It stops with an error after three continuously changing runs instead of
 claiming that an unstable target was reviewed.
 
+Run the helper through the `wait-efficiently` Codex shell-wait pattern. Resume a
+yielded cell instead of rerunning the helper.
+
 `--parallel-tests` runs the review and test command in one structured Effect
 scope. If either fails, the sibling is interrupted instead of being orphaned.
 `--output` or `CODEX_REVIEW_OUTPUT` persists the current invocation only after

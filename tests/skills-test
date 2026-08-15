@@ -531,6 +531,32 @@ test_code_review_has_a_local_review_and_owner_checked_closeout() {
   assert_contains "$skill/references/final-output.md" 'through `speak-fking-english`'
 }
 
+test_review_waits_are_event_driven() {
+  local wait_skill="$ROOT_DIR/skills/wait-efficiently/SKILL.md"
+  local review_skill="$ROOT_DIR/skills/code-review"
+
+  assert_contains "$wait_skill" '`wait_agent` with `timeout_ms: 600000`'
+  assert_contains "$wait_skill" '"yield_time_ms": 900000'
+  assert_contains "$wait_skill" 'yield_time_ms: 300000'
+  assert_contains "$wait_skill" 'const maxOutputTokens = 10000'
+  assert_contains "$wait_skill" 'originalTokens += result.original_token_count'
+  assert_contains "$wait_skill" 'returns when the process exits'
+  assert_contains "$wait_skill" 'output.push(result.output)'
+  assert_contains "$wait_skill" 'if (result.exit_code !== 0)'
+  assert_contains "$wait_skill" 'command output exceeded the safe result budget'
+  assert_contains "$wait_skill" 'persist its full artifact to a run-owned file'
+  assert_contains "$wait_skill" '`notify` is not a replacement'
+  assert_contains "$wait_skill" 'wait again only when the required agent'
+  assert_contains "$wait_skill" 'Keep the parent turn active until the required agents'
+  assert_contains "$wait_skill" 'resume that cell with one long `functions.wait` call'
+  assert_contains "$wait_skill" 'not restart the command'
+  assert_not_contains "$wait_skill" '60-second `write_stdin` waits'
+  assert_contains "$review_skill/references/subagents.md" '`wait-efficiently` subagent pattern'
+  assert_contains "$review_skill/references/review-phase-rules.md" '`wait-efficiently` Codex shell-wait pattern'
+  assert_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" 'Load `wait-efficiently`'
+  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/SKILL.md" 'Load `wait-efficiently`'
+}
+
 test_openclaw_agent_discovery_paths() {
   local review_skill="$ROOT_DIR/skills/code-review"
   local staging_skill="$ROOT_DIR/skills/openclaw/openclaw-stg-test"
@@ -826,6 +852,7 @@ test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
 test_code_review_has_a_local_review_and_owner_checked_closeout
+test_review_waits_are_event_driven
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
