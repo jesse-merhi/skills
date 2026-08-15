@@ -2,151 +2,252 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-These are my agent skills.
+This repo is my working set of agent skills: 43 Markdown workflows that coding
+agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
+[`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
-That sounds more formal than it is. Really, this is the pile of prompts,
-checklists, helper scripts, and tiny workflows I kept reaching for while trying
-to build useful things with agents and still keep the work sharp.
+It exists because of a rule I keep rediscovering. Asking an agent to do
+something once is fine. Twice is laziness. The third time, one of three things
+is true: it should be a skill, it should be a script, or the workflow itself is
+wrong. This repo is mostly the first two.
 
-If I ask an agent to do something once, fine. If I ask it twice, maybe I am
-being lazy. If I ask it three times, something is up. Usually the answer is one
-of:
+Treat it like a dotfiles repo, not a framework. The details reflect how I like
+to build, review, and ship, and a lot of them name my tools by name. The shape
+underneath is what generalises: give the agent real context, make the work
+legible, hand off the parts that can run alone, and stand at the end of the loop
+as the bar nothing ships past until it is actually good.
 
-1. write a skill;
-2. write a script;
-3. admit the workflow is wrong.
+AI did not delete software engineering. It moved most of the typing somewhere
+else and made the review problem much sharper. These are the rails I use to stay
+on the right side of that.
 
-This repo is mostly the first two.
+## Quick start
 
-It is personal in the same way a dotfiles repo is personal. The details reflect
-how I like to build, review, and ship. But the shape is useful beyond my setup:
-give the agent real context, make the work legible, hand off the parts that can
-run on their own, and stand at the end of the loop as the bar nothing ships
-past until it is actually good.
+**Prerequisites:** Node 24+, `pnpm` (the exact version is pinned in
+[`package.json`](package.json)), and `git`.
 
-AI has not deleted software engineering. It has moved a lot of the typing
-somewhere else and made the review problem much, much sharper. These skills are
-the rails I use to stay on the right side of that.
+```sh
+git clone git@github.com:jesse-merhi/skills.git ~/repos/skills
+cd ~/repos/skills
+pnpm install --frozen-lockfile
+```
 
-## The Loop
+Then start your agent inside that directory and hand it the installer:
 
-The skills snap together into the loop I actually run:
+```text
+Read INSTALL.md and install these skills for your harness.
+```
 
-1. **Find the thing.** Use `session-recall`, `review-surface-map`, or
-   `diagnose` to recover context, map a messy change, or chase a bug until it
-   becomes concrete.
-2. **Brief the agent.** Use `grill-with-docs` to pull repo docs, code, Obsidian
-   specs, and tickets into the conversation before the agent starts guessing.
-   Use `research` when the missing context lives in primary sources outside the
-   current repo.
-3. **Make it grill me.** Use `grilling`, or `grill-with-docs` when project
-   context matters, until the missing decisions are obvious.
-4. **Turn the conversation into a spec.** Use `to-spec` to freeze the plan in
-   Obsidian `Specs/`, including the intended PR delivery shape. Use
-   `to-tickets` when the work needs to become blocker-aware Obsidian `Issues/`
-   with logical review groups derived from those blocking edges.
-5. **Map it if it is too big.** Use `wayfinder` for foggy work that will not fit
-   in one session.
-6. **Hand off and let it run.** Use `handoff` for a clean session and
-   `parallel-slice-orchestration` when several isolated worktrees should move
-   at once. Use the external `gh-stack` skill when one story needs two or more
-   dependency-ordered review groups.
-7. **Talk to it. Test it.** Use `test-audit`, `frontend-ui-validation`, and
-   `diagnose` to prove the thing works instead of trusting the transcript.
-8. **Review it like I hate it.** Use `code-review`, `review-until-clean`,
-   `cold-pr-review`, `cold-pr-review-until-clean`, `finding-discipline`,
-   and `pr-rubbish-audit`.
-9. **Ship it.** Use `gh-stack` for dependent PR groups, then
-   `pr-proof-pack`, `monitoring-gh-actions`, and `review-guardrails` to make
-   each layer's evidence, CI state, and review loop readable.
-10. **Bonus: point it at the changelog and tell it to break things.** Findings
-   from that usually go straight back through `diagnose`, `handoff`,
-   `test-audit`, and `code-review`.
-11. **Rinse, repeat, profit.** Use `skill-cleaner` when the loop itself starts
-    getting noisy.
+[`INSTALL.md`](INSTALL.md) is the authoritative installer and is written *to the
+agent*, not to you. It detects the harness, links the global instruction files,
+surveys what is already in your skills directory, symlinks each repo skill in by
+its frontmatter `name`, reconciles third-party skills from
+[`external.md`](external.md), and runs the tests. It asks before touching
+anything it did not put there.
 
-None of this is sacred. Half the specific commands will probably be obsolete
-soon enough. The point is the shape: notice what keeps helping, turn it into a
-skill or script, keep the loop legible, and raise the bar at the review end.
+Where the skills land, per harness:
 
-## What Is In Here?
+| Harness | Skills directory | Global instructions |
+| --- | --- | --- |
+| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` |
+| Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` |
+| opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` |
+| Pi | `~/.pi/agent/skills` | not linked |
 
-- **Review and quality loops:** `code-review`, `review-until-clean`,
-  `cold-pr-review`, `cold-pr-review-until-clean`, `finding-discipline`,
-  `review-surface-map`, `review-guardrails`, and `pr-rubbish-audit`.
-- **Testing and implementation discipline:** `test-audit`, `tdd`,
-  `typescript-discipline`, `reducing-cognitive-load`, and `diagnose`.
-  `tdd` is still here as a supporting implementation discipline
-  for handoff/orchestration workflows, not because I usually call it directly.
-- **Frontend work:** `frontend-design`, `design-engineering`,
-  `review-animations`, `prototype`, `frontend-ui-validation`, and
-  `acpx-frontend-delegation` split visual direction, interaction craft and
-  motion discovery, motion review, divergent UI exploration, rendered proof,
-  and optional delegation.
-- **Browser work:** the external `browser-use` skill, pinned in `external.md`,
-  lets Claude work directly through a permitted Chrome or Dia session.
-- **Planning and handoff:** `grilling`, `grill-with-docs`, `research`,
-  `to-spec`, `to-tickets`, `wayfinder`, `parallel-slice-orchestration`,
-  `handoff`, and `session-recall`.
-- **PR delivery:** `pr-proof-pack` and `monitoring-gh-actions` keep review
-  evidence current. `pr-proof-pack` can publish through Browser Use or Computer
-  Use. GitHub's external `gh-stack` skill, pinned in `external.md`, turns one
-  dependency-ordered story into small logical PRs.
-- **Explanation:** `speak-fking-english` runs the reader reset and visual
-  decision before a final response, including explicit re-pitch and “show me”
-  requests. It adds the smallest useful support only when prose is harder;
-  `html-explanations` is reserved for genuinely dense, interactive, or spatial
-  material where a standalone page helps the reader.
-- **Project-specific skills:** `skills/openclaw/` contains OpenClaw-specific
-  workflows. They are grouped there so the public repo stays legible, but they
-  still install by skill name. `openclaw-telegram-handoff` sends terminal task
-  outcomes to an approved Telegram route and can relay the operator's answer
-  back to a named source session.
-- **Meta tools:** `writing-for-agents` shapes skills and instruction files;
-  `skill-cleaner` audits loaded skills, duplicates, unused candidates, and
-  prompt-budget pressure.
-- **Local helpers:** `code-review` includes an Effect SQL `review-findings` CLI for
-  durable review findings, verification records, semantic-ish local search, and
-  CLI-backed closeouts. It runs from the skill-local launcher after the repo's
-  Node dependencies are installed.
+The install model is deliberately boring: your skills directory stays a real
+directory, and every repo skill is a single symlink inside it. So you can pull,
+diff, and update this repo like any other, and nothing turns into a mystery
+tree. Hand-written local skills are never replaced without asking.
 
-## Credits
+**Honesty about harness coverage:** the installer handles all four harnesses.
+The skills themselves were written and exercised almost entirely on Codex and
+Claude Code, and several name those harnesses directly — `code-review` picks
+between `codex review` and Claude Code's built-in review, `session-recall`
+indexes Codex and Claude session logs, `acpx-frontend-delegation` drives Claude
+Code from Codex. On opencode and Pi they will install; whether every one of them
+*works* is not something this repo proves.
 
-Some of this started somewhere else.
+## What a skill actually is
 
-Matt Pocock's agent workflow ideas shaped the `grill`, spec, slicing, teaching,
-and handoff parts of the loop. Emil Kowalski's design-engineering work shaped
-the interaction, motion-discovery, review, and UI-prototyping skills; the
-adapted material retains its MIT notice.
-Matt Pocock's `wait-what` and HumanLayer's `show-me` shaped the reader-reset and
-visual-selection workflow now incorporated into `speak-fking-english`; the
-adapted material retains both MIT notices.
-`frontend-ui-validation` owns rendered proof separately from design direction.
+A skill is a directory with a `SKILL.md` inside it. The frontmatter carries a
+`name` and a one-line `description`; the body is the workflow — steps, rules,
+stop conditions, and pointers to reference files that only get read when they
+are needed.
 
-As usual, I took the shape, bent it around my own setup, and kept the parts
-that paid rent.
+Two ways one gets used:
 
-## Install
+- **The agent picks it.** Harnesses keep every skill's `name` and `description`
+  in context and load the body when the description matches the task. That is
+  why the descriptions in this repo are written as trigger conditions rather
+  than summaries.
+- **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
+  "use `grilling` on this" in either harness. Codex marks eight skills as
+  explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,
+  `prototype`, `to-spec`, `to-tickets`, `wayfinder`, and
+  `clawsweeper-until-clean`. They can review and fix code, operate desktop UI,
+  write durable planning files, or run a long external loop, so Codex waits for
+  you to name them.
 
-Clone the repo, then ask your agent to read `INSTALL.md` and install the
-skills for its current harness.
+Some skills are not entry points at all. `review-guardrails`,
+`finding-discipline`, and `review-surface-map` are plumbing that the review
+loops load; you can invoke them directly, but usually something else does.
 
-The install model is deliberately boring:
+## The loop
 
-- the harness skills directory stays a real directory;
-- each repo skill is linked into it as its own symlink;
-- skill names come from `SKILL.md` frontmatter, not folder paths;
-- local hand-written skills are preserved unless the user explicitly approves
-  replacing them;
-- third-party skills are installed only through pinned commands in
-  `external.md` when that file names one.
+The skills are not a menu. They snap into the loop I actually run:
 
-That gives you a normal repo you can pull, review, and update without turning
-your whole skills directory into a mystery symlink.
+1. **Find the thing.** `session-recall` for context I already had,
+   `review-surface-map` for a change I need to understand, `diagnose` for a bug
+   that is still vague.
+2. **Brief it.** `grill-with-docs` pulls repo docs, code, and Obsidian notes in
+   before the agent starts guessing. `research` when the answer lives in
+   primary sources outside the repo.
+3. **Make it grill me.** `grilling` until the undecided decisions are on the
+   table with recommendations attached.
+4. **Freeze the plan.** `to-spec` writes the spec and the intended PR shape.
+   `to-tickets` when it needs to become blocker-aware slices. `wayfinder` when
+   the work is too foggy to fit in one session at all.
+5. **Hand off and let it run.** `handoff` for a clean fresh thread,
+   `parallel-slice-orchestration` when several isolated worktrees should move at
+   once, external `gh-stack` when one story is really a dependency-ordered
+   stack.
+6. **Prove it.** `test-audit`, `frontend-ui-validation`, `diagnose` — because
+   the transcript is not evidence.
+7. **Review it like I hate it.** `code-review` runs the native engine until
+   clean, then an independent cold reviewer until clean. `pr-rubbish-audit`
+   catches what the diff smuggled in.
+8. **Ship it.** `pr-proof-pack` for reviewer-visible evidence,
+   `monitoring-gh-actions` for CI.
+9. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
+   than they return.
+
+A worked example, three skills deep: `code-review` is a thin orchestrator. It
+runs `review-until-clean`, which loops the harness's *own* review command until
+two consecutive passes come back clean. Then it runs
+`cold-pr-review-until-clean`, which spawns a fresh subagent per pass with zero
+implementation context — no rationale, no prior findings, no CI status — because
+knowing why a decision was made stops you asking whether it was right. Under
+both, `finding-discipline` throws out nits and vague risks, and
+`review-guardrails` caps how far review-driven fixes may grow the PR before it
+has to come back and ask me.
+
+None of this is sacred. Half the specific commands here will be obsolete soon
+enough. The shape is the point.
+
+## Catalogue
+
+Every skill in the repo, once each.
+
+### Review and PR delivery
+
+The distinction that matters: **native** reviews run the harness's own review
+engine, **cold** reviews run an independent subagent that was never told why the
+code looks the way it does.
+
+| Skill | What it does |
+| --- | --- |
+| [`code-review`](skills/code-review/SKILL.md) | Entry point: runs the native until-clean phase, then the cold until-clean phase, on one frozen target. |
+| [`review-until-clean`](skills/review-until-clean/SKILL.md) | Loops the harness-native review (`codex review`, Claude Code's built-in) and fixes findings until two consecutive passes are clean. |
+| [`cold-pr-review`](skills/cold-pr-review/SKILL.md) | One independent review pass by a subagent given only the target and a neutral checklist, so it cannot inherit the author's anchoring. |
+| [`cold-pr-review-until-clean`](skills/cold-pr-review-until-clean/SKILL.md) | Repeats fresh cold reviews and fixes until one full pass returns zero actionable findings. |
+| [`pr-rubbish-audit`](skills/pr-rubbish-audit/SKILL.md) | Hunts the diff for things the feature never asked for: stray refactors, dead comments, generated drift, unrelated deletions. |
+| [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge — never on local commits. |
+| [`pr-review-checkout`](skills/pr-review-checkout/SKILL.md) | Opens a PR in its real worktree and reviews it through VS Code, with an answer-first orientation for a cold reader. |
+| [`monitoring-gh-actions`](skills/monitoring-gh-actions/SKILL.md) | Waits on GitHub Actions with history-derived intervals and reports state changes, instead of polling or triaging. |
+
+Internal review plumbing — loaded by the loops above, rarely called directly:
+
+| Skill | What it does |
+| --- | --- |
+| [`review-guardrails`](skills/review-guardrails/SKILL.md) | Bounds an autonomous review: scope baseline, budgets, consult queue, provisional fixes, and the fixed point where it must stop and ask. |
+| [`finding-discipline`](skills/finding-discipline/SKILL.md) | Sets the bar a finding must clear — concrete failure or present cost — and merges duplicates into one root cause. |
+| [`review-surface-map`](skills/review-surface-map/SKILL.md) | Traces the changed runtime flows, contracts, and side effects before anyone is allowed to write a finding. |
+
+### Code quality and correctness
+
+| Skill | What it does |
+| --- | --- |
+| [`diagnose`](skills/diagnose/SKILL.md) | Makes a bug reproducible before touching production code, then fixes the smallest proven cause. |
+| [`test-audit`](skills/test-audit/SKILL.md) | Audits a test suite for real gaps, stale assertions, brittle mocks, impossible states, and tests worth deleting. |
+| [`tdd`](skills/tdd/SKILL.md) | The red-green-refactor loop and the rules that make the tests worth keeping; loaded by orchestration workflows more than called directly. |
+| [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
+| [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
+| [`improve-codebase-architecture`](skills/improve-codebase-architecture/SKILL.md) | An architectural lens — module depth, interfaces, locality, testability — that proposes the smallest structural change, not a refactor. |
+
+### Planning, context, and handoff
+
+| Skill | What it does |
+| --- | --- |
+| [`grilling`](skills/grilling/SKILL.md) | Interviews you as a design tree, one full round of questions at a time, each with a recommended answer. |
+| [`grill-with-docs`](skills/grill-with-docs/SKILL.md) | Same, but grounded first in repo docs, code, ADRs, specs, and tickets. |
+| [`research`](skills/research/SKILL.md) | Answers a question from primary sources — official docs, source, specs — with citations, not blog posts. |
+| [`to-spec`](skills/to-spec/SKILL.md) | Turns a settled conversation into an Obsidian spec including testing seams and the intended PR delivery shape. |
+| [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
+| [`wayfinder`](skills/wayfinder/SKILL.md) | For work too foggy for one session: charts it as decision tickets in Obsidian and resolves them until the route is visible. |
+| [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
+| [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
+| [`parallel-slice-orchestration`](skills/parallel-slice-orchestration/SKILL.md) | Implements a spec across parallel agents with disjoint file ownership, then integrates and verifies. |
+
+### Frontend and design
+
+| Skill | What it does |
+| --- | --- |
+| [`frontend-design`](skills/frontend-design/SKILL.md) | Layout, hierarchy, typography, colour, and every state of the surface — implemented, not sketched. |
+| [`design-engineering`](skills/design-engineering/SKILL.md) | Owns the interaction layer: transitions, gestures, springs, easing, and how it feels under the finger. |
+| [`review-animations`](skills/review-animations/SKILL.md) | Reviews existing motion code for purpose, timing, interruption, performance, and reduced-motion support. |
+| [`prototype`](skills/prototype/SKILL.md) | Builds 3–5 genuinely divergent UI variants behind a picker, isolated from production. Explicit request only. |
+| [`frontend-ui-validation`](skills/frontend-ui-validation/SKILL.md) | The visual gate: Playwright screenshots, overflow and clipping checks, responsive states, console errors. |
+| [`acpx-frontend-delegation`](skills/acpx-frontend-delegation/SKILL.md) | Lets Codex borrow Claude Code as a frontend specialist through `acpx` while keeping scope and validation. |
+
+### Communication
+
+| Skill | What it does |
+| --- | --- |
+| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | The last pass before every final response: reader reset, re-pitch on "wait, what?", visuals only when they earn their place. |
+| [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text — code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
+
+### Meta and operations
+
+| Skill | What it does |
+| --- | --- |
+| [`writing-for-agents`](skills/writing-for-agents/SKILL.md) | How to write skills, `AGENTS.md`, and `CLAUDE.md` so the instruction actually changes behaviour. Read this before adding a skill. |
+| [`skill-cleaner`](skills/skill-cleaner/SKILL.md) | Audits installed skill roots for duplicates, unused skills, and prompt-budget pressure, with safety checks before deleting. |
+| [`wait-efficiently`](skills/wait-efficiently/SKILL.md) | Waits on commands, CI, and subagents through native event-driven mechanisms instead of burning tokens on heartbeats. |
+| [`atlassian-cloudid-jira`](skills/atlassian-cloudid-jira/SKILL.md) | Queries Jira, JPD, and Confluence through the local Rovo Dev gateway, always naming the site explicitly. |
+
+### OpenClaw and ClawHub
+
+Project-specific skills, grouped under [`skills/openclaw/`](skills/openclaw) so
+the rest of the repo stays legible. They still install by name like everything
+else. They will only be useful to you if you work on those projects.
+
+| Skill | What it does |
+| --- | --- |
+| [`openclaw-local-test`](skills/openclaw/openclaw-local-test/SKILL.md) | Brings up an isolated local OpenClaw Gateway for manual browser testing using the current Codex or Claude login. |
+| [`openclaw-stg-test`](skills/openclaw/openclaw-stg-test/SKILL.md) | Publishes a temporary Control UI preview through a guarded Cloudflare Quick Tunnel without exposing an authenticated Gateway. |
+| [`openclaw-telegram-handoff`](skills/openclaw/openclaw-telegram-handoff/SKILL.md) | Sends one terminal update to an approved Telegram route when work is done or blocked, and relays the reply back to the source session. |
+| [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot — never production itself. |
+| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Loops the Clawsweeper PR bot — trigger, wait, fix, push — until three consecutive re-reviews come back clean. |
+
+## External skills
+
+Some workflows are better owned by whoever maintains them.
+[`external.md`](external.md) pins those to a reviewed version and records the
+install command per harness; the installer runs them, and this repo never
+copies or symlinks their files.
+
+| Skill | Owner | Harnesses with a tested command |
+| --- | --- | --- |
+| `browser-use` | Browser Use | Claude Code |
+| `gh-stack` | GitHub | Claude Code, Codex, opencode, Pi |
+| `teach` | Matt Pocock | Codex |
+
+`external.md` also keeps tombstones for retired third-party skills, with removal
+commands that run on every reinstall. `impeccable` is there now — removing its
+directory was never enough, since its hook wrote state outside it that survived
+two reinstalls.
 
 ## Verify
-
-Run:
 
 ```sh
 ./tests/skills-test
@@ -154,27 +255,62 @@ Run:
 pnpm validate:effect
 ```
 
-The tests check skill frontmatter, handoff tmux helper behavior, the
-review-findings CLI lifecycle, OpenClaw/ClawHub process behavior, and the
-Effect-based TypeScript helpers. Production helper entrypoints run through the
-typed Effect runtime; CI also syntax-checks the small test harnesses that drive
-their executable contracts.
+These check skill frontmatter, the handoff tmux helper, the `review-findings`
+CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
+TypeScript helpers. `pnpm validate:effect` is lint, typecheck, Effect
+diagnostics, and Vitest. CI runs the same set.
 
-## License
+The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
+[`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
+backs the review loops with a local SQLite store of findings, verification
+records, and scope baselines. It runs from that launcher against the repo's own
+Effect runtime — there is no separate global install.
 
-MIT, with adapted third-party material retaining its own notices.
+## Contributing
 
-## Public Snapshot
+This is a personal repo, so I am picky about what lands in it, but issues and
+PRs are welcome.
 
-This repository was published as a clean snapshot rather than a mirror of the
-private workspace it came from. The goal is to keep the useful workflows public
-without carrying private history, local machine paths, credentials, or old
-vendor/submodule baggage along for the ride.
+- Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
+  descriptions are trigger conditions; if yours reads like a summary, the agent
+  will not load it at the right moment.
+- One skill per directory, `SKILL.md` at its root, `name` unique across the
+  repo. Keep the body short and push detail into `references/`.
+- Run the three commands above before opening a PR.
+- Third-party workflows go in [`external.md`](external.md) as a pinned install
+  command, not as copied files.
+
+## Credits
+
+Some of this started somewhere else.
+
+Matt Pocock's agent workflow ideas shaped the grilling, spec, slicing, and
+handoff parts of the loop, and `tdd` adapts his skill directly. Emil Kowalski's
+design-engineering work shaped the interaction, motion, and prototyping skills.
+Matt Pocock's `wait-what` and HumanLayer's `show-me` shaped the reader-reset and
+visual-selection passes now living inside `speak-fking-english`. Adapted
+material keeps its own MIT notices.
+
+I took the shape, bent it around my own setup, and kept the parts that paid
+rent.
+
+## Public snapshot
+
+This repository was published as a clean snapshot, not a mirror of the private
+workspace it grew in. That keeps the workflows public without dragging along
+private history, local machine paths, credentials, or old vendor baggage. It
+also means the git history here starts later than the work does.
 
 Personal and opinionated does not mean secret. Workflow stays. Leaks do not.
 
+## License
+
+MIT — see [`LICENSE`](LICENSE). Adapted third-party material retains its own
+notices.
+
 ## Security
 
-If you find a secret, unsafe install behavior, a private path that should not
-be public, or a helper script that can mutate a user's machine without clear
-consent, please use GitHub private vulnerability reporting. See `SECURITY.md`.
+If you find a secret, unsafe install behaviour, a private path that should not
+be public, or a helper script that can mutate a machine without clear consent,
+please use GitHub private vulnerability reporting rather than a public issue.
+See [`SECURITY.md`](SECURITY.md).
