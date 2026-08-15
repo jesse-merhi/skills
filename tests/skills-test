@@ -185,7 +185,7 @@ behavior_checks = {
     ],
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
         "with a browser or device",
-        "upload them as provider-hosted evidence",
+        "upload it as provider-hosted evidence",
     ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
@@ -538,7 +538,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
   assert_contains "$skill/src/NetDiff.ts" "with a browser or device"
-  assert_contains "$skill/src/NetDiff.ts" "upload them as provider-hosted evidence"
+  assert_contains "$skill/src/NetDiff.ts" "upload it as provider-hosted evidence"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
   assert_contains "$skill/agents/openai.yaml" "Check and refresh practical PR proof."
