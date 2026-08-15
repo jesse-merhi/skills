@@ -385,9 +385,8 @@ test_bun_runtime_and_openclaw_install_are_documented() {
   assert_contains "$ROOT_DIR/INSTALL.md" "openclaw config validate"
   assert_contains "$ROOT_DIR/INSTALL.md" "skills.load.extraDirs"
   assert_contains "$ROOT_DIR/INSTALL.md" "openclaw skills list --json"
-  assert_contains "$ROOT_DIR/.github/workflows/validate.yml" "npm install --global"
-  assert_contains "$ROOT_DIR/.github/workflows/validate.yml" 'require("./package.json").packageManager'
-  assert_not_contains "$ROOT_DIR/.github/workflows/validate.yml" "oven-sh/setup-bun"
+  assert_contains "$ROOT_DIR/.github/workflows/validate.yml" "oven-sh/setup-bun@v2"
+  assert_not_contains "$ROOT_DIR/.github/workflows/validate.yml" "npm install --global"
   assert_contains "$ROOT_DIR/.github/workflows/validate.yml" "bun ci"
 }
 
