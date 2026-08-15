@@ -1,5 +1,7 @@
 # Command Setup
 
+Source and install instructions: https://github.com/jesse-merhi/agent-session-finder
+
 Prefer the installed binary:
 
 ```sh
