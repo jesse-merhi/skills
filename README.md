@@ -23,13 +23,13 @@ on the right side of that.
 
 ## Quick start
 
-**Prerequisites:** Node 24+, `pnpm` (the exact version is pinned in
+**Prerequisites:** Node 24+, Bun (the exact version is pinned in
 [`package.json`](package.json)), and `git`.
 
 ```sh
 git clone git@github.com:jesse-merhi/skills.git ~/repos/skills
 cd ~/repos/skills
-pnpm install --frozen-lockfile
+bun ci
 ```
 
 Then start your agent inside that directory and hand it the installer:
@@ -53,19 +53,22 @@ Where the skills land, per harness:
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` |
 | Pi | `~/.pi/agent/skills` | not linked |
+| OpenClaw | `REPO/skills` via `skills.load.extraDirs` | not linked |
 
-The install model is deliberately boring: your skills directory stays a real
-directory, and every repo skill is a single symlink inside it. So you can pull,
-diff, and update this repo like any other, and nothing turns into a mystery
-tree. Hand-written local skills are never replaced without asking.
+The install model is deliberately boring. In the four link-based harnesses,
+your skills directory stays a real directory and every repo skill is one
+symlink inside it. OpenClaw watches `REPO/skills` directly instead. So you can
+pull, diff, and update this repo like any other, and nothing turns into a
+mystery tree. Hand-written local skills are never replaced without asking.
 
-**Honesty about harness coverage:** the installer handles all four harnesses.
-The skills themselves were written and exercised almost entirely on Codex and
-Claude Code, and several name those harnesses directly — `code-review` picks
-between `codex review` and Claude Code's built-in review, `session-recall`
-indexes Codex and Claude session logs, `acpx-frontend-delegation` drives Claude
-Code from Codex. On opencode and Pi they will install; whether every one of them
-*works* is not something this repo proves.
+**Honesty about harness coverage:** the installer handles four link-based
+harnesses plus a locally running OpenClaw Gateway. The skills themselves were
+written and exercised almost entirely on Codex and Claude Code, and several
+name those harnesses directly — `code-review` picks between `codex review` and
+Claude Code's built-in review, `session-recall` indexes Codex and Claude session
+logs, `acpx-frontend-delegation` drives Claude Code from Codex. On opencode, Pi,
+and OpenClaw they will install; whether every one of them *works* is not
+something this repo proves.
 
 ## What a skill actually is
 
@@ -252,12 +255,12 @@ two reinstalls.
 ```sh
 ./tests/skills-test
 ./tests/review-findings-test
-pnpm validate:effect
+bun run validate:effect
 ```
 
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
-TypeScript helpers. `pnpm validate:effect` is lint, typecheck, Effect
+TypeScript helpers. `bun run validate:effect` is lint, typecheck, Effect
 diagnostics, and Vitest. CI runs the same set.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:

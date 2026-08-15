@@ -9,7 +9,7 @@ scripts/codex-review
 scripts/codex-review --mode branch --base origin/main
 scripts/codex-review --mode uncommitted
 scripts/codex-review --mode commit --commit HEAD
-scripts/codex-review --parallel-tests "pnpm test"
+scripts/codex-review --parallel-tests "bun run test"
 scripts/codex-review --output /tmp/codex-review.out
 scripts/codex-review --dry-run
 ```

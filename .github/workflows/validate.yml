@@ -30,20 +30,18 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Enable pinned pnpm
-        run: |
-          corepack enable
-          corepack install
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install Node dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun ci
 
       - name: Validate skill metadata and helper behavior
         run: |
           ./tests/skills-test
           ./tests/review-findings-test
           python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py'
-          pnpm validate:effect
+          bun run validate:effect
 
       - name: Check remaining shell and JavaScript syntax
         run: |
