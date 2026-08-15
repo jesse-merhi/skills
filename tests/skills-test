@@ -165,17 +165,23 @@ behavior_checks = {
         "browser-use skill install --target claude --no-install --force",
     ],
     root / "skills/pr-proof-pack/SKILL.md": [
-        "token-authenticated attachment endpoint first",
-        "require a `201` response",
-        "interactive-browser fallback",
+        "scripts/github-upload-attachment",
+        "repository command",
         "`body_html`",
     ],
     root / "skills/pr-proof-pack/references/screenshots.md": [
-        "GitHub Token Upload Path",
-        "gh auth token",
-        "require `200`",
-        "Interactive Browser Fallback",
+        "GitHub Attachment Upload",
+        "scripts/github-upload-attachment",
+        "requires a `201` response",
         "server-rendered body without opening a browser",
+    ],
+    root / "skills/pr-proof-pack/src/GitHubAttachment.ts": [
+        "https://uploads.github.com/user-attachments/assets",
+        "Attachment verification returned HTTP",
+        "Downloaded attachment size",
+    ],
+    root / "skills/pr-proof-pack/scripts/github-upload-attachment": [
+        "github-upload-attachment.ts",
     ],
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
         "with a browser or device",
@@ -483,42 +489,16 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "visual filter"
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
-  assert_contains "$skill/SKILL.md" "token-authenticated attachment endpoint first"
+  assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
-  assert_contains "$skill/references/screenshots.md" "## GitHub Token Upload Path"
-  assert_contains "$skill/references/screenshots.md" "GitHub's attachment endpoint accepts the same scoped credential"
-  assert_contains "$skill/references/screenshots.md" 'only when the PR URL'\''s host is exactly `github.com`'
-  assert_contains "$skill/references/screenshots.md" 'https://github.com/*) ;;'
-  assert_contains "$skill/references/screenshots.md" "For GitHub Enterprise Server, skip this"
-  assert_contains "$skill/references/screenshots.md" 'never map its'
-  assert_contains "$skill/references/screenshots.md" "PR='<number-or-URL-resolved-in-step-2>'"
-  assert_contains "$skill/references/screenshots.md" 'gh pr view "$PR"'
-  assert_contains "$skill/references/screenshots.md" 'capture("^https://github[.]com/(?<repository>'
-  assert_contains "$skill/references/screenshots.md" "gh auth status --active --hostname github.com"
-  assert_contains "$skill/references/screenshots.md" "gh api --method POST --hostname github.com"
-  assert_contains "$skill/references/screenshots.md" 'if RESPONSE=$(gh api'
-  assert_contains "$skill/references/screenshots.md" "--jq '.url' 2>&1); then"
-  assert_contains "$skill/references/screenshots.md" '"${STATUS:-unknown}"'
-  assert_contains "$skill/references/screenshots.md" 'printf '\''%s\n'\'' "$RESPONSE" >&2'
-  assert_contains "$skill/references/screenshots.md" '--raw-field "name=$EVIDENCE_NAME"'
-  assert_contains "$skill/references/screenshots.md" "--raw-field \"content_type=\$MIME_TYPE\""
-  assert_contains "$skill/references/screenshots.md" "supplies the scoped token internally"
-  assert_not_contains "$skill/references/screenshots.md" "jq -rn"
-  assert_contains "$skill/references/screenshots.md" 'trap '\''unlink "$ASSET_FILE"'\'' EXIT'
-  assert_not_contains "$skill/references/screenshots.md" "rm -f"
-  assert_not_contains "$skill/references/screenshots.md" 'Authorization: Bearer $(gh auth token)'
-  assert_contains "$skill/references/screenshots.md" 'if [ "$STATUS" != 201 ]; then'
-  assert_contains "$skill/references/screenshots.md" "GitHub attachment upload failed with HTTP"
-  assert_contains "$skill/references/screenshots.md" 'https://github.com/user-attachments/assets/*) ;;'
-  assert_contains "$skill/references/screenshots.md" 'Authenticate that initial'
-  assert_contains "$skill/references/screenshots.md" 'Curl strips the'
-  assert_contains "$skill/references/screenshots.md" '`Authorization` header on a cross-host redirect by default'
-  assert_contains "$skill/references/screenshots.md" 'Never use'
-  assert_contains "$skill/references/screenshots.md" '`--location-trusted`'
-  assert_not_contains "$skill/references/screenshots.md" '--location-trusted --'
-  assert_contains "$skill/references/screenshots.md" "--write-out '%{http_code} %{content_type}'"
-  assert_contains "$skill/references/screenshots.md" 'test "$FETCH_CONTENT_TYPE" = "$MIME_TYPE"'
-  assert_contains "$skill/references/screenshots.md" "## Interactive Browser Fallback"
+  assert_contains "$skill/references/screenshots.md" "## GitHub Attachment Upload"
+  assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-upload-attachment'
+  assert_contains "$skill/references/screenshots.md" 'The command supports `github.com` PRs only'
+  assert_contains "$skill/references/screenshots.md" 'https://github.com/user-attachments/assets/*'
+  assert_contains "$skill/references/screenshots.md" 'It prints only the verified asset URL on success'
+  assert_not_contains "$skill/references/screenshots.md" "## Interactive Browser Fallback"
+  assert_not_contains "$skill/references/screenshots.md" 'upload_file'
+  assert_not_contains "$skill/references/screenshots.md" 'browser upload'
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
   assert_contains "$skill/references/screenshots.md" "PR_HOST='<hostname-resolved-in-step-2>'"
   assert_contains "$skill/references/screenshots.md" 'gh api --hostname "$PR_HOST"'
@@ -528,20 +508,16 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" 'with unauthenticated `curl --location`'
   assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or'
   assert_contains "$skill/references/screenshots.md" "Use an interactive browser for facts the server-rendered HTML cannot prove"
-  assert_contains "$skill/references/screenshots.md" '`openclaw browser --json status`'
-  assert_contains "$skill/references/screenshots.md" "acceptable only when it is transport"
-  assert_contains "$skill/references/screenshots.md" 'OpenClaw'
-  assert_contains "$skill/references/screenshots.md" 'openclaw browser --browser-profile <profile> upload /tmp/openclaw/uploads/<file> --ref <upload-trigger-ref>'
-  assert_contains "$skill/references/screenshots.md" '`--input-ref <file-input-ref>`'
-  assert_contains "$skill/references/screenshots.md" 'media://inbound/<id>'
-  assert_contains "$skill/references/screenshots.md" 'treat that exact copy as run-owned'
-  assert_contains "$skill/references/screenshots.md" 'Remove each exact run-owned upload-root copy'
-  assert_contains "$skill/references/screenshots.md" 'Delete neither the original evidence file nor managed'
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
-  assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
-  assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow on GitHub, Bitbucket"
-  assert_contains "$skill/references/screenshots.md" "Do not click an attachment control"
+  assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
+  assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
+  assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
+  assert_contains "$skill/src/GitHubAttachment.ts" 'if (fetchedInfo.size !== sourceInfo.size)'
+  assert_contains "$skill/scripts/github-upload-attachment" 'github-upload-attachment.ts'
+  if [[ ! -x "$skill/scripts/github-upload-attachment" ]]; then
+    fail "expected github-upload-attachment wrapper to be executable"
+  fi
   assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
   assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"

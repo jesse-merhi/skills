@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
   short_description: "Check and refresh practical PR proof."
-  default_prompt: "Use $pr-proof-pack to check whether this PR's proof is current, upload stale github.com evidence with the existing gh token and browser fallback, then verify the rendered result headlessly or in a browser where required."
+  default_prompt: "Use $pr-proof-pack to check whether this PR's proof is current, upload stale github.com evidence with the repository command, then verify the rendered result headlessly or in a browser where required."
