@@ -30,8 +30,8 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Install pinned Bun
+        run: npm install --global "$(node -p 'require("./package.json").packageManager')"
 
       - name: Install Node dependencies
         run: bun ci
