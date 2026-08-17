@@ -38,7 +38,11 @@ const decodeHtmlAttribute = (value: string) => value
   .replaceAll("&#x26;", "&")
 
 const mediaStartTags = (bodyHtml: string) => {
-  const tags: Array<{ readonly kind: RenderedMedia["kind"]; readonly value: string }> = []
+  const tags: Array<{
+    readonly attribute: "src" | "srcset"
+    readonly kind: RenderedMedia["kind"]
+    readonly value: string
+  }> = []
   let index = 0
   while (index < bodyHtml.length) {
     if (bodyHtml[index] !== "<") {
@@ -52,7 +56,7 @@ const mediaStartTags = (bodyHtml: string) => {
     }
     const name = /^[A-Za-z]+/u.exec(bodyHtml.slice(index + 1))?.[0]
     const normalized = name?.toLowerCase()
-    if (normalized !== "img" && normalized !== "video") {
+    if (normalized !== "img" && normalized !== "source" && normalized !== "video") {
       index += 1
       continue
     }
@@ -65,7 +69,11 @@ const mediaStartTags = (bodyHtml: string) => {
       else if (quote === undefined && character === ">") break
     }
     if (end < bodyHtml.length) {
-      tags.push({ kind: normalized === "video" ? "video" : "image", value: bodyHtml.slice(index, end + 1) })
+      tags.push({
+        attribute: normalized === "source" ? "srcset" : "src",
+        kind: normalized === "video" ? "video" : "image",
+        value: bodyHtml.slice(index, end + 1)
+      })
       index = end + 1
     } else {
       index += 1
@@ -73,6 +81,10 @@ const mediaStartTags = (bodyHtml: string) => {
   }
   return tags
 }
+
+const srcsetCandidates = (value: string) => value.split(",")
+  .map((candidate) => candidate.trim().split(/\s+/u)[0] ?? "")
+  .filter((candidate) => candidate.length > 0)
 
 const startTagAttribute = (tag: string, attribute: string) => {
   let index = 1
@@ -106,13 +118,19 @@ export const renderedProofRequestArgs = (repository: string, pullRequestNumber: 
 
 export const extractRenderedMedia = Effect.fn("GitHubRenderedProof.extractRenderedMedia")(function*(bodyHtml: string) {
   const tags = mediaStartTags(bodyHtml)
-  return yield* Effect.forEach(tags, Effect.fnUntraced(function*(tag): Effect.fn.Return<RenderedMedia, GitHubAttachmentError> {
-    const encodedUrl = startTagAttribute(tag.value, "src") ?? ""
-    const url = yield* parseTrustedMediaUrl(decodeHtmlAttribute(encodedUrl)).pipe(
-      Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid rendered-media URL" }))
-    )
-    return { kind: tag.kind, url }
-  }))
+  const media: Array<RenderedMedia> = []
+  for (const tag of tags) {
+    const encodedValue = startTagAttribute(tag.value, tag.attribute)
+    if (encodedValue === undefined && tag.attribute === "srcset") continue
+    const candidates = tag.attribute === "srcset" ? srcsetCandidates(encodedValue ?? "") : [encodedValue ?? ""]
+    for (const candidate of candidates) {
+      const url = yield* parseTrustedMediaUrl(decodeHtmlAttribute(candidate)).pipe(
+        Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid rendered-media URL" }))
+      )
+      media.push({ kind: tag.kind, url })
+    }
+  }
+  return media
 })
 
 export const parseRenderedProofResponse = Effect.fn("GitHubRenderedProof.parseResponse")(function*(input: string) {

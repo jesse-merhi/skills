@@ -18,6 +18,18 @@ assert_contains() {
   }
 }
 
+assert_contains_normalized() {
+  local file="$1"
+  local text="$2"
+  local normalized
+  normalized="$(tr '\n\t' '  ' < "$file" | tr -s ' ')"
+  [[ "$normalized" == *"$text"* ]] || {
+    printf '%s\n' "--- $file ---" >&2
+    sed -n '1,200p' "$file" >&2
+    fail "expected normalized $file to contain: $text"
+  }
+}
+
 assert_not_contains() {
   local file="$1"
   local text="$2"
@@ -493,8 +505,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_not_contains "$skill/references/screenshots.md" "## Interactive Browser Fallback"
   assert_not_contains "$skill/references/screenshots.md" 'upload_file'
   assert_contains "$skill/references/screenshots.md" "If it fails, stop and report its diagnostics"
-  assert_contains "$skill/references/screenshots.md" "Do not extract or reuse"
-  assert_contains "$skill/references/screenshots.md" "browser credentials."
+  assert_contains_normalized "$skill/references/screenshots.md" "Do not extract or reuse browser credentials."
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-verify-rendered-proof'
   assert_contains "$skill/references/screenshots.md" "--jq '{title, body}'"

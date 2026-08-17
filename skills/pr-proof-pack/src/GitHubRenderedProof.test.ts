@@ -43,6 +43,17 @@ describe("rendered GitHub proof verification", () => {
     assert.strictEqual(media[0]?.url.href, "https://private-user-images.githubusercontent.com/actual")
   })))
 
+  it.effect("verifies every themed picture source candidate and its fallback", () => extractRenderedMedia(
+    '<picture><source media="(prefers-color-scheme: dark)" srcset="https://camo.githubusercontent.com/dark 1x, https://camo.githubusercontent.com/dark-2x 2x"><source media="(prefers-color-scheme: light)" srcset="https://camo.githubusercontent.com/light"><img src="https://camo.githubusercontent.com/fallback"></picture>'
+  ).pipe(Effect.map((media) => {
+    assert.deepStrictEqual(media.map((item) => [item.kind, item.url.href]), [
+      ["image", "https://camo.githubusercontent.com/dark"],
+      ["image", "https://camo.githubusercontent.com/dark-2x"],
+      ["image", "https://camo.githubusercontent.com/light"],
+      ["image", "https://camo.githubusercontent.com/fallback"]
+    ])
+  })))
+
   it.effect("redacts an invalid signed rendered-media URL", () => parseRenderedProofResponse(JSON.stringify({
     body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>'
   })).pipe(Effect.flip, Effect.map((error) => {

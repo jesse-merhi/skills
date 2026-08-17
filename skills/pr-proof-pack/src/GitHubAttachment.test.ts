@@ -280,7 +280,7 @@ case " $* " in
     printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret' '' > "$headers"
     if [ "\${UPLOAD_TEST_REDIRECT_FAILURE:-}" = 1 ]; then
       printf '%s' 'https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret'
-      printf '%s\\n' 'redirect write failed' >&2
+      printf '%s\\n' 'redirect write failed for test-token' >&2
       exit 7
     fi
     printf '%s' '{"status":302,"contentType":"text/html"}'
@@ -378,6 +378,7 @@ esac
       const redirectFailure = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_FAILURE: "1" })
       assertCommandFailure(redirectFailure)
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "sentinel-secret")
+      assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "test-token")
       assertTemporaryPathsRemoved()
 
       const interrupted = runLauncher(evidence, { UPLOAD_TEST_FETCH_SIGNAL: "1" })
