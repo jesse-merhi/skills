@@ -165,12 +165,13 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
 10. Hand the result back to the caller.
 
-    Return `current`, `refreshed`, or `blocked`, with the affected PRs. Once
-    proof, review, validation, and CI pass, the caller applies the thumbs-up
-    (`+1`) human sign-off gate without changing reactions on Jesse's behalf.
+    Return `current`, `refreshed`, or `blocked`, with the affected PRs. Before
+    readiness, human sign-off, or merge, remind the caller to apply the Review
+    gate and Sign-off gate from `AGENTS.md` to every PR and exact head.
+    Proof-pack does not count as review.
 
     Done when the caller knows whether proof changed and which PRs still need
-    human sign-off.
+    an exact-head review decision or human sign-off.
 
 ## Done Means
 
@@ -182,3 +183,4 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 - Recordable processes use an edited, natural-speed recording as primary proof;
   matched before/after evidence makes visible UI changes directly comparable.
 - The workflow did not infer publication authority from branch or PR state.
+- The caller knows proof does not satisfy the exact-head review gate.
