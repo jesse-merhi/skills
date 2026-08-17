@@ -60,6 +60,20 @@ describe("checked process boundary", () => {
     )
   ))
 
+  it.effect("redacts stderr and maps the exit code when a real child receives SIGTERM", () => live(
+    checkedText(process.execPath, ["-e", "process.stderr.write('secret-value'); process.kill(process.pid, 'SIGTERM')"], {
+      displayCommand: "node [redacted]",
+      redactions: ["secret-value"]
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error.exitCode, 143)
+        assert.strictEqual(error.stderr, "[redacted]")
+        assert.notInclude(error.message, "secret-value")
+      })
+    )
+  ))
+
   it.effect("returns stdout for an explicitly allowed diagnostic exit", () => live(
     checkedText(process.execPath, ["-e", "process.stdout.write('diagnostic json'); process.exit(1)"], { allowedExitCodes: [1] }).pipe(
       Effect.map((output) => assert.strictEqual(output, "diagnostic json"))

@@ -11,12 +11,14 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import {
+  allowTrustedRedirect,
   curlUrlConfig,
   fetchRequestArgs,
   mediaTypeRequestArgs,
   parseFetchResult,
   parseGitHubToken,
   parsePullRequestUrl,
+  parseRedirectHeaders,
   parseRedirectResult,
   parseTrustedMediaUrl,
   parseUploadResponse,
@@ -92,6 +94,32 @@ describe("GitHub attachment upload contract", () => {
   it.effect("rejects a non-redirect attachment response", () => parseRedirectResult(
     '{"status":200,"location":"https://private-user-images.githubusercontent.com/signed"}'
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid attachment redirect response/u))))
+
+  it.effect("resolves a trusted redirect header without exposing the location", () => parseRedirectHeaders({
+    baseUrl: "https://private-user-images.githubusercontent.com/start",
+    headers: "HTTP/1.1 302 Found\r\nLocation: https://camo.githubusercontent.com/next?jwt=sentinel-secret\r\n",
+    status: 302
+  }).pipe(Effect.map((url) => assert.strictEqual(url, "https://camo.githubusercontent.com/next?jwt=sentinel-secret"))))
+
+  it.effect("rejects missing and untrusted redirect locations", () => Effect.all([
+    parseRedirectHeaders({
+      baseUrl: "https://private-user-images.githubusercontent.com/start",
+      headers: "HTTP/1.1 302 Found\r\n",
+      status: 302
+    }).pipe(Effect.flip),
+    parseRedirectHeaders({
+      baseUrl: "https://private-user-images.githubusercontent.com/start",
+      headers: "HTTP/1.1 302 Found\r\nLocation: https://internal.example.com/admin\r\n",
+      status: 302
+    }).pipe(Effect.flip)
+  ]).pipe(Effect.map((errors) => {
+    for (const error of errors) assert.match(error.message, /invalid attachment redirect response/u)
+  })))
+
+  it.effect("allows five trusted redirects and rejects a sixth", () => Effect.all([
+    allowTrustedRedirect(4),
+    allowTrustedRedirect(5).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /exceeded 5/u)))
+  ]))
 
   it.effect("rejects rendered media outside GitHub-controlled hosts", () => parseTrustedMediaUrl(
     "https://internal.example.com/admin?token=sentinel-secret"
@@ -226,6 +254,11 @@ case "$1:$2" in
 esac
 `)
     writeExecutable(join(directory, "file"), `#!/bin/sh
+printf 'file-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
+if [ "$#" -ne 4 ] || [ "$1" != '--brief' ] || [ "$2" != '--mime-type' ] || [ "$3" != '--' ] || [ -z "$4" ]; then
+  printf 'unexpected file arguments: %s\\n' "$*" >&2
+  exit 2
+fi
 printf '%s\\n' "\${UPLOAD_TEST_MEDIA_TYPE:-image/png}"
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
@@ -260,6 +293,7 @@ case " $* " in
       exit 2
     fi
     printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
+    if [ "\${UPLOAD_TEST_FETCH_SIGNAL:-}" = 1 ]; then kill -TERM $$; fi
     if [ "\${UPLOAD_TEST_MISMATCH:-}" = 1 ]; then
       printf '%s' 'bad' > "$output"
     else
@@ -288,6 +322,16 @@ esac
       assert.isNumber(result.status)
       assert.notStrictEqual(result.status, 0)
     }
+    const assertTemporaryPathsRemoved = () => {
+      const args = readFileSync(log, "utf8").split("\n")
+        .filter((line) => line.startsWith("first-arg=") || line.startsWith("second-arg="))
+        .map((line) => line.slice(line.indexOf("=") + 1))
+      for (let index = 1; index < args.length; index += 1) {
+        if (args[index - 1] === "--output" || args[index - 1] === "--dump-header") {
+          assert.isFalse(existsSync(args[index] ?? ""), `expected scoped temp file to be removed: ${args[index]}`)
+        }
+      }
+    }
 
     try {
       const missing = runLauncher(join(directory, "missing.png"))
@@ -311,6 +355,9 @@ esac
       const secondArgv = requests.split("\n").filter((line) => line.startsWith("second-arg=")).map((line) => line.slice("second-arg=".length))
       assert.deepStrictEqual(firstArgv, [...redirectRequestArgs(firstArgv[5] ?? "", firstArgv[7] ?? "", "https://github.com/user-attachments/assets/abc-123")])
       assert.deepStrictEqual(secondArgv, [...fetchRequestArgs(secondArgv[5] ?? "", secondArgv[7] ?? "")])
+      const fileArgs = requests.split("\n").filter((line) => line.startsWith("file-args="))
+      assert.strictEqual(fileArgs[0], `file-args=--brief --mime-type -- ${evidence}`)
+      assert.strictEqual(fileArgs[1], `file-args=--brief --mime-type -- ${secondArgv[5]}`)
       assert.include(requests, "first-stdin=Authorization: Bearer test-token")
       assert.notInclude(firstArgs, "--location")
       assert.include(requests, 'second-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"')
@@ -318,16 +365,23 @@ esac
       assert.notInclude(secondArgs, "test-token")
       assert.notInclude(secondArgs, "@-")
       assert.notInclude(secondArgs, "sentinel-secret")
+      assertTemporaryPathsRemoved()
 
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })
       assertCommandFailure(mismatch)
       assert.notInclude(mismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
+      assertTemporaryPathsRemoved()
 
       const redirectFailure = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_FAILURE: "1" })
       assertCommandFailure(redirectFailure)
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "sentinel-secret")
+      assertTemporaryPathsRemoved()
+
+      const interrupted = runLauncher(evidence, { UPLOAD_TEST_FETCH_SIGNAL: "1" })
+      assertCommandFailure(interrupted)
+      assertTemporaryPathsRemoved()
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  }, 60_000)
+  }, 90_000)
 })

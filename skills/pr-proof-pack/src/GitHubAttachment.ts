@@ -140,6 +140,10 @@ export const fetchRequestArgs = (assetFile: string, headersFile: string) => [
 
 export const curlUrlConfig = (url: string) => `url = "${url.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"\n`
 
+export const allowTrustedRedirect = (redirects: number) => redirects < 5
+  ? Effect.void
+  : Effect.fail(new GitHubAttachmentError({ message: "GitHub attachment exceeded 5 trusted redirects" }))
+
 export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")(function*(options: {
   readonly assetFile: string
   readonly assetUrl: string
@@ -157,7 +161,7 @@ export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")
     })
     const fetched = yield* parseFetchResult(output)
     if (fetched.status < 300 || fetched.status > 399) return fetched
-    if (redirects === 5) return yield* new GitHubAttachmentError({ message: "GitHub attachment exceeded 5 trusted redirects" })
+    yield* allowTrustedRedirect(redirects)
     const headers = yield* fileSystem.readFileString(headersFile)
     currentUrl = yield* parseRedirectHeaders({ baseUrl: currentUrl, headers, status: fetched.status })
   }

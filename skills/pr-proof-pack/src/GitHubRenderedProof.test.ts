@@ -4,13 +4,13 @@ import * as FileSystem from "effect/FileSystem"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { curlUrlConfig, fetchRequestArgs } from "./GitHubAttachment.ts"
+import { curlUrlConfig, fetchRequestArgs, parseTrustedMediaUrl } from "./GitHubAttachment.ts"
 import {
   extractRenderedMedia,
   parseRenderedProofResponse,
@@ -36,12 +36,35 @@ describe("rendered GitHub proof verification", () => {
     assert.strictEqual(media[1]?.kind, "video")
   })))
 
+  it.effect("reads the actual src instead of src text inside another attribute", () => extractRenderedMedia(
+    '<img src="https://private-user-images.githubusercontent.com/actual" alt="proof src=\'https://private-user-images.githubusercontent.com/decoy\'">'
+  ).pipe(Effect.map((media) => {
+    assert.strictEqual(media.length, 1)
+    assert.strictEqual(media[0]?.url.href, "https://private-user-images.githubusercontent.com/actual")
+  })))
+
   it.effect("redacts an invalid signed rendered-media URL", () => parseRenderedProofResponse(JSON.stringify({
     body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>'
   })).pipe(Effect.flip, Effect.map((error) => {
     assert.match(error.message, /invalid rendered-media URL/u)
     assert.notInclude(error.message, "sentinel-secret")
   })))
+
+  it.effect("rejects a malformed rendered pull request", () => parseRenderedProofResponse(
+    '{"body_html":42}'
+  ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid rendered pull request/u))))
+
+  it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
+    parseTrustedMediaUrl("https://github.com/user-attachments/assets/abc-123"),
+    parseTrustedMediaUrl("https://private-user-images.githubusercontent.com/signed"),
+    parseTrustedMediaUrl("https://camo.githubusercontent.com/hash"),
+    parseTrustedMediaUrl("https://github-production-user-asset-6210df.s3.amazonaws.com/object")
+  ]).pipe(Effect.map((urls) => assert.deepStrictEqual(urls.map((url) => url.hostname), [
+    "github.com",
+    "private-user-images.githubusercontent.com",
+    "camo.githubusercontent.com",
+    "github-production-user-asset-6210df.s3.amazonaws.com"
+  ]))))
 
   it("pins rendered PR lookup to the resolved GitHub.com repository", () => {
     assert.deepStrictEqual([...renderedProofRequestArgs("jesse-merhi/skills", "81")], [
@@ -87,6 +110,14 @@ describe("rendered GitHub proof verification", () => {
     status: 200
   }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /video HTTP content type/u))))
 
+  it.effect("reports HTTP failure before checking content type", () => validateRenderedAsset({
+    bytes: FileSystem.Size(42),
+    detectedContentType: "text/html",
+    fetchedContentType: "text/html; charset=utf-8",
+    kind: "image",
+    status: 404
+  }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /returned HTTP 404/u))))
+
   it.effect("rejects rendered media whose detected type has the wrong family", () => validateRenderedAsset({
     bytes: FileSystem.Size(42),
     detectedContentType: "application/octet-stream",
@@ -114,9 +145,7 @@ if [ "$1" != 'api' ] || [ "$2" != '--hostname' ] || [ "$3" != 'github.com' ] || 
   printf 'unexpected gh arguments\\n' >&2
   exit 2
 fi
-if [ "\${RENDERED_TEST_MALFORMED:-}" = 1 ]; then
-  printf '%s\\n' '{"body_html":42}'
-elif [ "\${RENDERED_TEST_TWO_ASSETS:-}" = 1 ]; then
+if [ "\${RENDERED_TEST_TWO_ASSETS:-}" = 1 ]; then
   printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret\\"></p>"}'
 else
   printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
@@ -139,7 +168,7 @@ done
 config="$(cat)"
 printf 'curl-stdin=%s\\n' "$config" >> "$RENDERED_TEST_LOG"
 case "$config" in
-  'url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2"'|'url = "https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret"') ;;
+  *'private-user-images.githubusercontent.com/'*|*'camo.githubusercontent.com/'*) ;;
   *) printf 'unexpected curl stdin\\n' >&2; exit 4 ;;
 esac
 if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
@@ -157,9 +186,21 @@ fi
 if [ "\${RENDERED_TEST_REDIRECT:-}" = 'untrusted' ]; then
   printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://internal.example.com/admin' '' > "$headers"
   printf '%s' '{"status":302,"contentType":"text/html"}'
+elif [ -n "\${RENDERED_TEST_REDIRECT_COUNT:-}" ]; then
+  count=0
+  if [ -f "$RENDERED_TEST_REDIRECT_STATE" ]; then count="$(cat "$RENDERED_TEST_REDIRECT_STATE")"; fi
+  count=$((count + 1))
+  printf '%s' "$count" > "$RENDERED_TEST_REDIRECT_STATE"
+  if [ "$count" -le "$RENDERED_TEST_REDIRECT_COUNT" ]; then
+    printf '%s\\n' 'HTTP/1.1 302 Found' "Location: https://camo.githubusercontent.com/hop-$count?jwt=sentinel-secret" '' > "$headers"
+    printf '%s' '{"status":302,"contentType":"text/html"}'
+  else
+    printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
+    printf '%s' '{"status":200,"contentType":"image/png; qs=0.85"}'
+  fi
 else
   printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
-  printf '{"status":%s,"contentType":"image/png; qs=0.85"}' "\${RENDERED_TEST_STATUS:-200}"
+  printf '%s' '{"status":200,"contentType":"image/png; qs=0.85"}'
 fi
 `)
     writeExecutable(join(directory, "file"), `#!/bin/sh
@@ -189,24 +230,40 @@ printf '%s\\n' 'image/jpeg'
       assert.notStrictEqual(result.status, 0)
       assert.notInclude(`${result.stdout}\n${result.stderr}`, "sentinel-secret")
     }
+    const assertTemporaryPathsRemoved = () => {
+      const args = readFileSync(log, "utf8").split("\n")
+        .filter((line) => line.startsWith("curl-arg=")).map((line) => line.slice("curl-arg=".length))
+      for (let index = 1; index < args.length; index += 1) {
+        if (args[index - 1] === "--output" || args[index - 1] === "--dump-header") {
+          assert.isFalse(existsSync(args[index] ?? ""), `expected scoped temp file to be removed: ${args[index]}`)
+        }
+      }
+    }
+    const runFailure = (overrides: NodeJS.ProcessEnv) => {
+      const result = runLauncher(overrides)
+      assertCommandFailure(result)
+      assertTemporaryPathsRemoved()
+    }
 
     try {
-      const success = runLauncher()
-      assert.strictEqual(success.status, 0, `${success.stderr}\n${readFileSync(log, "utf8")}`)
-      assert.strictEqual(success.stdout.trim(), "rendered media: images=1 videos=0\nasset 1: image image/png bytes=14")
-      assert.notInclude(`${success.stdout}\n${success.stderr}`, "sentinel-secret")
-
-      const cleanup = runLauncher({
+      const success = runLauncher({
         RENDERED_TEST_CLEANUP_STATE: join(directory, "cleanup-state"),
         RENDERED_TEST_TWO_ASSETS: "1"
       })
-      assert.strictEqual(cleanup.status, 0, cleanup.stderr)
-      assert.include(cleanup.stdout, "rendered media: images=2 videos=0")
+      assert.strictEqual(success.status, 0, `${success.stderr}\n${readFileSync(log, "utf8")}`)
+      assert.include(success.stdout, "rendered media: images=2 videos=0")
+      assert.notInclude(`${success.stdout}\n${success.stderr}`, "sentinel-secret")
+      assertTemporaryPathsRemoved()
 
-      assertCommandFailure(runLauncher({ RENDERED_TEST_STATUS: "404" }))
-      assertCommandFailure(runLauncher({ RENDERED_TEST_MALFORMED: "1" }))
-      assertCommandFailure(runLauncher({ RENDERED_TEST_CURL_FAILURE: "1" }))
-      assertCommandFailure(runLauncher({ RENDERED_TEST_REDIRECT: "untrusted" }))
+      const trustedRedirect = runLauncher({
+        RENDERED_TEST_REDIRECT_COUNT: "1",
+        RENDERED_TEST_REDIRECT_STATE: join(directory, "trusted-redirect-state")
+      })
+      assert.strictEqual(trustedRedirect.status, 0, trustedRedirect.stderr)
+      assertTemporaryPathsRemoved()
+
+      runFailure({ RENDERED_TEST_CURL_FAILURE: "1" })
+      runFailure({ RENDERED_TEST_REDIRECT: "untrusted" })
 
       const requests = readFileSync(log, "utf8")
       const firstCurlArgv = requests.split("\n").filter((line) => line.startsWith("curl-arg="))
@@ -223,7 +280,7 @@ printf '%s\\n' 'image/jpeg'
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  }, 60_000)
+  }, 90_000)
 
   it("formats structural results without asset URLs", () => {
     const lines = renderedProofLines({

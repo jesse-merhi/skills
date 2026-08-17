@@ -37,20 +37,81 @@ const decodeHtmlAttribute = (value: string) => value
   .replaceAll("&#38;", "&")
   .replaceAll("&#x26;", "&")
 
+const mediaStartTags = (bodyHtml: string) => {
+  const tags: Array<{ readonly kind: RenderedMedia["kind"]; readonly value: string }> = []
+  let index = 0
+  while (index < bodyHtml.length) {
+    if (bodyHtml[index] !== "<") {
+      index += 1
+      continue
+    }
+    if (bodyHtml.startsWith("<!--", index)) {
+      const commentEnd = bodyHtml.indexOf("-->", index + 4)
+      index = commentEnd === -1 ? bodyHtml.length : commentEnd + 3
+      continue
+    }
+    const name = /^[A-Za-z]+/u.exec(bodyHtml.slice(index + 1))?.[0]
+    const normalized = name?.toLowerCase()
+    if (normalized !== "img" && normalized !== "video") {
+      index += 1
+      continue
+    }
+    let quote: "\"" | "'" | undefined
+    let end = index + 1 + normalized.length
+    for (; end < bodyHtml.length; end += 1) {
+      const character = bodyHtml[end]
+      if (quote === undefined && (character === "\"" || character === "'")) quote = character
+      else if (quote === character) quote = undefined
+      else if (quote === undefined && character === ">") break
+    }
+    if (end < bodyHtml.length) {
+      tags.push({ kind: normalized === "video" ? "video" : "image", value: bodyHtml.slice(index, end + 1) })
+      index = end + 1
+    } else {
+      index += 1
+    }
+  }
+  return tags
+}
+
+const startTagAttribute = (tag: string, attribute: string) => {
+  let index = 1
+  while (/[A-Za-z]/u.test(tag[index] ?? "")) index += 1
+  while (index < tag.length) {
+    while (/\s/u.test(tag[index] ?? "")) index += 1
+    if (tag[index] === ">" || (tag[index] === "/" && tag[index + 1] === ">")) return undefined
+    const nameStart = index
+    while (/[^\s=/>]/u.test(tag[index] ?? "")) index += 1
+    const name = tag.slice(nameStart, index).toLowerCase()
+    while (/\s/u.test(tag[index] ?? "")) index += 1
+    if (tag[index] !== "=") continue
+    index += 1
+    while (/\s/u.test(tag[index] ?? "")) index += 1
+    const quote = tag[index] === "\"" || tag[index] === "'" ? tag[index] : undefined
+    if (quote !== undefined) index += 1
+    const valueStart = index
+    if (quote === undefined) while (/[^\s>]/u.test(tag[index] ?? "")) index += 1
+    else while (index < tag.length && tag[index] !== quote) index += 1
+    const value = tag.slice(valueStart, index)
+    if (quote !== undefined && tag[index] === quote) index += 1
+    if (name === attribute) return value
+  }
+  return undefined
+}
+
 export const renderedProofRequestArgs = (repository: string, pullRequestNumber: string) => [
   "api", "--hostname", "github.com", `repos/${repository}/pulls/${pullRequestNumber}`,
   "--header", "Accept: application/vnd.github.full+json"
 ] as const
 
 export const extractRenderedMedia = Effect.fn("GitHubRenderedProof.extractRenderedMedia")(function*(bodyHtml: string) {
-  const matches = [...bodyHtml.matchAll(/<(img|video)\b[^>]*\ssrc\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*>/giu)]
-  return yield* Effect.forEach(matches, Effect.fnUntraced(function*(match): Effect.fn.Return<RenderedMedia, GitHubAttachmentError> {
-    const kind = match[1]?.toLowerCase() === "video" ? "video" : "image"
-    const encodedUrl = match[2] ?? match[3] ?? ""
+  const tags = mediaStartTags(bodyHtml)
+  return yield* Effect.forEach(tags, Effect.fnUntraced(function*(tag): Effect.fn.Return<RenderedMedia, GitHubAttachmentError> {
+    const encodedUrl = startTagAttribute(tag.value, "src") ?? ""
     const url = yield* parseTrustedMediaUrl(decodeHtmlAttribute(encodedUrl)).pipe(
       Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid rendered-media URL" }))
     )
-    return { kind, url }
+    return { kind: tag.kind, url }
   }))
 })
 
