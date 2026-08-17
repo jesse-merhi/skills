@@ -10,11 +10,10 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { curlUrlConfig } from "./GitHubAttachment.ts"
+import { curlUrlConfig, fetchRequestArgs } from "./GitHubAttachment.ts"
 import {
   extractRenderedMedia,
   parseRenderedProofResponse,
-  renderedAssetFetchArgs,
   renderedProofLines,
   renderedProofRequestArgs,
   validateRenderedAsset
@@ -38,7 +37,7 @@ describe("rendered GitHub proof verification", () => {
   })))
 
   it.effect("redacts an invalid signed rendered-media URL", () => parseRenderedProofResponse(JSON.stringify({
-    body_html: '<img src="http://cdn.example.com/file?token=sentinel-secret">'
+    body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>'
   })).pipe(Effect.flip, Effect.map((error) => {
     assert.match(error.message, /invalid rendered-media URL/u)
     assert.notInclude(error.message, "sentinel-secret")
@@ -53,10 +52,10 @@ describe("rendered GitHub proof verification", () => {
 
   it("fetches rendered assets without credentials or signed URLs in argv", () => {
     const signedUrl = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"
-    const args = renderedAssetFetchArgs("/tmp/asset")
+    const args = fetchRequestArgs("/tmp/asset", "/tmp/headers")
     assert.deepStrictEqual([...args], [
-      "--disable", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https",
-      "--output", "/tmp/asset",
+      "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/asset",
+      "--dump-header", "/tmp/headers", "--max-redirs", "0", "--proto", "=https",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--config", "-"
     ])
@@ -88,6 +87,14 @@ describe("rendered GitHub proof verification", () => {
     status: 200
   }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /video HTTP content type/u))))
 
+  it.effect("rejects rendered media whose detected type has the wrong family", () => validateRenderedAsset({
+    bytes: FileSystem.Size(42),
+    detectedContentType: "application/octet-stream",
+    fetchedContentType: "image/png; qs=0.85",
+    kind: "image",
+    status: 200
+  }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /image detected content type/u))))
+
   it.effect("rejects an empty rendered asset", () => validateRenderedAsset({
     bytes: FileSystem.Size(0),
     detectedContentType: "video/mp4",
@@ -109,29 +116,51 @@ if [ "$1" != 'api' ] || [ "$2" != '--hostname' ] || [ "$3" != 'github.com' ] || 
 fi
 if [ "\${RENDERED_TEST_MALFORMED:-}" = 1 ]; then
   printf '%s\\n' '{"body_html":42}'
+elif [ "\${RENDERED_TEST_TWO_ASSETS:-}" = 1 ]; then
+  printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret\\"></p>"}'
 else
   printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
 fi
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
 printf 'curl-args=%s\\n' "$*" >> "$RENDERED_TEST_LOG"
+for argument do printf 'curl-arg=%s\\n' "$argument" >> "$RENDERED_TEST_LOG"; done
 case "$*" in
   *sentinel-secret*) printf 'signed URL entered argv\\n' >&2; exit 3 ;;
 esac
 output=''
+headers=''
 previous=''
 for argument do
   if [ "$previous" = '--output' ]; then output="$argument"; fi
+  if [ "$previous" = '--dump-header' ]; then headers="$argument"; fi
   previous="$argument"
 done
 config="$(cat)"
 printf 'curl-stdin=%s\\n' "$config" >> "$RENDERED_TEST_LOG"
-if [ "$config" != 'url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2"' ]; then
-  printf 'unexpected curl stdin\\n' >&2
-  exit 4
+case "$config" in
+  'url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2"'|'url = "https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret"') ;;
+  *) printf 'unexpected curl stdin\\n' >&2; exit 4 ;;
+esac
+if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
+  printf '%s\\n' 'curl rejected https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2' >&2
+  exit 5
 fi
 cp "$RENDERED_TEST_SOURCE" "$output"
-printf '{"status":%s,"contentType":"image/png"}' "\${RENDERED_TEST_STATUS:-200}"
+if [ -n "\${RENDERED_TEST_CLEANUP_STATE:-}" ]; then
+  if [ -f "$RENDERED_TEST_CLEANUP_STATE" ]; then
+    previous_output="$(cat "$RENDERED_TEST_CLEANUP_STATE")"
+    if [ -e "$previous_output" ]; then printf 'previous asset was not removed\\n' >&2; exit 6; fi
+  fi
+  printf '%s' "$output" > "$RENDERED_TEST_CLEANUP_STATE"
+fi
+if [ "\${RENDERED_TEST_REDIRECT:-}" = 'untrusted' ]; then
+  printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://internal.example.com/admin' '' > "$headers"
+  printf '%s' '{"status":302,"contentType":"text/html"}'
+else
+  printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
+  printf '{"status":%s,"contentType":"image/png; qs=0.85"}' "\${RENDERED_TEST_STATUS:-200}"
+fi
 `)
     writeExecutable(join(directory, "file"), `#!/bin/sh
 printf 'file-args=%s\\n' "$*" >> "$RENDERED_TEST_LOG"
@@ -163,16 +192,29 @@ printf '%s\\n' 'image/jpeg'
 
     try {
       const success = runLauncher()
-      assert.strictEqual(success.status, 0, success.stderr)
+      assert.strictEqual(success.status, 0, `${success.stderr}\n${readFileSync(log, "utf8")}`)
       assert.strictEqual(success.stdout.trim(), "rendered media: images=1 videos=0\nasset 1: image image/png bytes=14")
       assert.notInclude(`${success.stdout}\n${success.stderr}`, "sentinel-secret")
 
+      const cleanup = runLauncher({
+        RENDERED_TEST_CLEANUP_STATE: join(directory, "cleanup-state"),
+        RENDERED_TEST_TWO_ASSETS: "1"
+      })
+      assert.strictEqual(cleanup.status, 0, cleanup.stderr)
+      assert.include(cleanup.stdout, "rendered media: images=2 videos=0")
+
       assertCommandFailure(runLauncher({ RENDERED_TEST_STATUS: "404" }))
       assertCommandFailure(runLauncher({ RENDERED_TEST_MALFORMED: "1" }))
+      assertCommandFailure(runLauncher({ RENDERED_TEST_CURL_FAILURE: "1" }))
+      assertCommandFailure(runLauncher({ RENDERED_TEST_REDIRECT: "untrusted" }))
 
       const requests = readFileSync(log, "utf8")
+      const firstCurlArgv = requests.split("\n").filter((line) => line.startsWith("curl-arg="))
+        .map((line) => line.slice("curl-arg=".length)).slice(0, 16)
+      assert.deepStrictEqual(firstCurlArgv, [...fetchRequestArgs(firstCurlArgv[5] ?? "", firstCurlArgv[7] ?? "")])
       assert.include(requests, "gh-args=api --hostname github.com repos/jesse-merhi/skills/pulls/81 --header Accept: application/vnd.github.full+json")
-      assert.include(requests, "curl-args=--disable --silent --show-error --location --proto =https --proto-redir =https --output ")
+      assert.include(requests, "curl-args=--disable --globoff --silent --show-error --output ")
+      assert.include(requests, " --max-redirs 0 --proto =https ")
       assert.include(requests, " --config -")
       assert.include(requests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2"')
       assert.include(requests, "file-args=--brief --mime-type -- ")

@@ -40,8 +40,9 @@ and requires a `201` response with a canonical
 `https://github.com/user-attachments/assets/*` URL. It then authenticates only
 the initial canonical URL, follows redirects without forwarding credentials to
 another host, ignores user curl configuration that could weaken that boundary,
-keeps the signed redirect URL out of process arguments, and verifies HTTP
-status, HTTP and detected content types, and exact byte size.
+keeps the signed redirect URL out of process arguments, rejects redirects
+outside GitHub-controlled media hosts, and verifies HTTP status, HTTP and
+detected content types, and exact byte size.
 It prints only the verified asset URL on success.
 
 The command supports `github.com` PRs only and accepts only image or video
@@ -69,10 +70,11 @@ Check the title, section order, captions, copyable reproduction steps, and every
 expected image and video in the Markdown. The repository verifier captures
 `body_html` without printing it, reports only media counts, types, and byte
 sizes. It keeps signed URLs out of process arguments and fetches every resolved
-asset without credentials, curl configuration, or non-HTTPS redirects. Never forward the `gh` token to a resolved asset, Camo, or
+asset without credentials, curl configuration, or untrusted redirects. Every
+initial URL and redirect must remain on a GitHub-controlled media host. Never forward the `gh` token to a resolved asset, Camo, or
 CDN host. Never print a resolved signed asset URL. The HTTP and detected content
-types must both match the rendered image or video family, which allows GitHub's
-safe image subtype normalization. For evidence uploaded during this refresh,
+types must both match the rendered image or video family after MIME parameters
+are removed, which allows GitHub's safe image subtype normalization. For evidence uploaded during this refresh,
 require the reported byte size to match its local source. Preserved evidence may
 not have a run-owned local source and does not need an exact size match. This
 proves that GitHub stored the new bytes, kept preserved assets available, and

@@ -44,6 +44,22 @@ describe("checked process boundary", () => {
     )
   ))
 
+  it.effect("can omit captured stdout and redact stderr from failures", () => live(
+    checkedText(process.execPath, ["-e", "process.stdout.write('signed-output'); process.stderr.write('failed secret-value'); process.exit(8)"], {
+      displayCommand: "node [redacted]",
+      includeStdoutInError: false,
+      redactions: ["secret-value"]
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error.message, "failed [redacted]")
+        assert.strictEqual(error.stderr, "failed [redacted]")
+        assert.notInclude(error.message, "signed-output")
+        assert.notInclude(error.message, "secret-value")
+      })
+    )
+  ))
+
   it.effect("returns stdout for an explicitly allowed diagnostic exit", () => live(
     checkedText(process.execPath, ["-e", "process.stdout.write('diagnostic json'); process.exit(1)"], { allowedExitCodes: [1] }).pipe(
       Effect.map((output) => assert.strictEqual(output, "diagnostic json"))

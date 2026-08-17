@@ -28,6 +28,8 @@ export interface CheckedProcessOptions {
 }
 export interface CheckedTextOptions extends CheckedProcessOptions {
   readonly allowedExitCodes?: ReadonlyArray<number>
+  readonly includeStdoutInError?: boolean
+  readonly redactions?: ReadonlyArray<string>
 }
 
 const commandInput = (stdin: string | undefined) => stdin === undefined
@@ -57,8 +59,12 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   options?: CheckedTextOptions
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const { allowedExitCodes = [], displayCommand, stdin, ...childOptions } = options ?? {}
+  const { allowedExitCodes = [], displayCommand, includeStdoutInError = true, redactions = [], stdin, ...childOptions } = options ?? {}
   const commandText = displayCommand ?? [executable, ...args].join(" ")
+  const redact = (text: string) => redactions.reduce(
+    (output, value) => value.length === 0 ? output : output.replaceAll(value, "[redacted]"),
+    text
+  )
   return yield* Effect.scoped(Effect.gen(function*() {
     const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, stdin: capturedInput(stdin) })).pipe(
       Effect.mapError((cause) => processError(executable, commandText, cause))
@@ -74,11 +80,13 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
       const cause = Cause.squash(result.exit.cause)
       const platformError = Cause.findErrorOption(result.exit.cause)
       const exitCode = Option.isSome(platformError) ? platformErrorExitCode(platformError.value) ?? 1 : 1
-      return yield* new CheckedProcessError({ command: commandText, exitCode, message: `${commandText} was interrupted`, stderr: result.stderr, cause })
+      return yield* new CheckedProcessError({ command: commandText, exitCode, message: `${commandText} was interrupted`, stderr: redact(result.stderr), cause })
     }
     if (result.exit.value !== 0 && !allowedExitCodes.includes(Number(result.exit.value))) {
-      const diagnostics = [result.stderr.trim(), result.stdout.trim()].filter((text) => text.length > 0).join("\n")
-      return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: diagnostics || `${commandText} exited ${result.exit.value}`, stderr: result.stderr })
+      const stderr = redact(result.stderr)
+      const diagnostics = [stderr.trim(), ...(includeStdoutInError ? [redact(result.stdout).trim()] : [])]
+        .filter((text) => text.length > 0).join("\n")
+      return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: diagnostics || `${commandText} exited ${result.exit.value}`, stderr })
     }
     return result.stdout
   }))

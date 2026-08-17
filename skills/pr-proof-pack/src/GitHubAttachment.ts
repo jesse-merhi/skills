@@ -30,11 +30,21 @@ const AssetUrl = Schema.String.pipe(Schema.check(Schema.isPattern(/^https:\/\/gi
 const RedirectStatus = Schema.Int.pipe(
   Schema.check(Schema.isGreaterThanOrEqualTo(300), Schema.isLessThanOrEqualTo(399))
 )
-const HttpsUrl = Schema.URLFromString.pipe(Schema.check(Schema.makeFilter((url) =>
-  url.protocol === "https:" ? undefined : "Expected an HTTPS attachment redirect"
+const TrustedMediaUrl = Schema.URLFromString.pipe(Schema.check(Schema.makeFilter((url) =>
+  url.protocol === "https:" &&
+    url.port === "" &&
+    url.username === "" &&
+    url.password === "" &&
+    (
+      (url.hostname === "github.com" && /^\/user-attachments\/assets\/[A-Za-z0-9-]+$/u.test(url.pathname)) ||
+      /^[a-z0-9-]+[.]githubusercontent[.]com$/u.test(url.hostname) ||
+      url.hostname === "github-production-user-asset-6210df.s3.amazonaws.com"
+    )
+    ? undefined
+    : "Expected a trusted GitHub media URL"
 )))
-const RedirectResult = Schema.Struct({ status: RedirectStatus, location: HttpsUrl })
-const FetchResult = Schema.Struct({ status: Schema.Number, contentType: MediaType })
+const RedirectResult = Schema.Struct({ status: RedirectStatus, location: TrustedMediaUrl })
+const FetchResult = Schema.Struct({ status: Schema.Number, contentType: Schema.String })
 
 const decodeJson = <S extends Schema.Top>(schema: S, input: string, label: string) =>
   Schema.decodeUnknownEffect(Schema.fromJsonString(schema))(input).pipe(
@@ -68,9 +78,30 @@ export const parseUploadResponse = Effect.fn("GitHubAttachment.parseUploadRespon
 
 export const parseFetchResult = (input: string) => decodeJson(FetchResult, input, "attachment verification response")
 
+export const mediaTypeEssence = (input: string) => input.split(";", 1)[0]?.trim().toLowerCase() ?? ""
+
+export const parseTrustedMediaUrl = (input: string) => Schema.decodeUnknownEffect(TrustedMediaUrl)(input).pipe(
+  Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an untrusted rendered-media URL" }))
+)
+
 export const parseRedirectResult = Effect.fn("GitHubAttachment.parseRedirectResult")(function*(input: string) {
   const result = yield* decodeJson(RedirectResult, input, "attachment redirect response")
   return result.location.href
+})
+
+export const parseRedirectHeaders = Effect.fn("GitHubAttachment.parseRedirectHeaders")(function*(options: {
+  readonly baseUrl: string
+  readonly headers: string
+  readonly status: number
+}) {
+  const location = options.headers.replaceAll("\r", "").split("\n")
+    .findLast((line) => line.toLowerCase().startsWith("location:"))?.slice("location:".length).trim() ?? ""
+  if (location.length === 0) return yield* new GitHubAttachmentError({ message: "GitHub returned an invalid attachment redirect response" })
+  const resolved = yield* Effect.try({
+    try: () => new URL(location, options.baseUrl).href,
+    catch: () => new GitHubAttachmentError({ message: "GitHub returned an invalid attachment redirect response" })
+  })
+  return yield* parseRedirectResult(JSON.stringify({ status: options.status, location: resolved }))
 })
 
 export const uploadRequestArgs = (options: {
@@ -93,19 +124,45 @@ export const uploadRequestArgs = (options: {
 
 export const mediaTypeRequestArgs = (evidencePath: string) => ["--brief", "--mime-type", "--", evidencePath] as const
 
-export const redirectRequestArgs = (responseFile: string, assetUrl: string) => [
-  "--disable", "--silent", "--show-error", "--output", responseFile,
-  "--write-out", '{"status":%{http_code},"location":"%{redirect_url}"}',
+export const redirectRequestArgs = (responseFile: string, headersFile: string, assetUrl: string) => [
+  "--disable", "--globoff", "--silent", "--show-error", "--output", responseFile,
+  "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
+  "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--header", "@-", assetUrl
 ] as const
 
-export const fetchRequestArgs = (assetFile: string) => [
-  "--disable", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https", "--output", assetFile,
+export const fetchRequestArgs = (assetFile: string, headersFile: string) => [
+  "--disable", "--globoff", "--silent", "--show-error", "--output", assetFile,
+  "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--config", "-"
 ] as const
 
 export const curlUrlConfig = (url: string) => `url = "${url.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"\n`
+
+export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")(function*(options: {
+  readonly assetFile: string
+  readonly assetUrl: string
+  readonly label: string
+}) {
+  const fileSystem = yield* FileSystem.FileSystem
+  let currentUrl = (yield* parseTrustedMediaUrl(options.assetUrl)).href
+  for (let redirects = 0; redirects <= 5; redirects += 1) {
+    const headersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-asset-headers-" })
+    const output = yield* checkedTrimmedText("curl", fetchRequestArgs(options.assetFile, headersFile), {
+      displayCommand: `curl [${options.label}]`,
+      includeStdoutInError: false,
+      redactions: [currentUrl],
+      stdin: curlUrlConfig(currentUrl)
+    })
+    const fetched = yield* parseFetchResult(output)
+    if (fetched.status < 300 || fetched.status > 399) return fetched
+    if (redirects === 5) return yield* new GitHubAttachmentError({ message: "GitHub attachment exceeded 5 trusted redirects" })
+    const headers = yield* fileSystem.readFileString(headersFile)
+    currentUrl = yield* parseRedirectHeaders({ baseUrl: currentUrl, headers, status: fetched.status })
+  }
+  return yield* new GitHubAttachmentError({ message: "GitHub attachment redirect verification failed" })
+})
 
 export const verifyAttachment = Effect.fn("GitHubAttachment.verifyAttachment")(function*(options: {
   readonly expectedMediaType: string
@@ -115,7 +172,8 @@ export const verifyAttachment = Effect.fn("GitHubAttachment.verifyAttachment")(f
   readonly fetchedSize: FileSystem.Size
 }) {
   if (options.fetched.status !== 200) return yield* new GitHubAttachmentError({ message: `Attachment verification returned HTTP ${options.fetched.status}` })
-  if (options.fetched.contentType !== options.expectedMediaType) return yield* new GitHubAttachmentError({ message: `Attachment HTTP content type ${options.fetched.contentType} did not match ${options.expectedMediaType}` })
+  const fetchedContentType = mediaTypeEssence(options.fetched.contentType)
+  if (fetchedContentType !== options.expectedMediaType) return yield* new GitHubAttachmentError({ message: `Attachment HTTP content type ${fetchedContentType} did not match ${options.expectedMediaType}` })
   if (options.fetchedMediaType !== options.expectedMediaType) return yield* new GitHubAttachmentError({ message: `Downloaded attachment content type ${options.fetchedMediaType} did not match ${options.expectedMediaType}` })
   if (options.fetchedSize !== options.expectedSize) return yield* new GitHubAttachmentError({ message: `Downloaded attachment size ${options.fetchedSize} did not match ${options.expectedSize}` })
 })
@@ -143,20 +201,24 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   }), { displayCommand: `gh api [attachment upload for ${repository}]` })
   const assetUrl = yield* parseUploadResponse(uploadOutput)
   const redirectFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-" })
+  const redirectHeadersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-headers-" })
   const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], { displayCommand: "gh auth token --hostname github.com" }).pipe(
     Effect.flatMap(parseGitHubToken)
   )
-  const redirectOutput = yield* checkedTrimmedText("curl", redirectRequestArgs(redirectFile, assetUrl), {
+  const redirectOutput = yield* checkedTrimmedText("curl", redirectRequestArgs(redirectFile, redirectHeadersFile, assetUrl), {
     displayCommand: `curl [GitHub attachment redirect ${assetUrl}]`,
+    includeStdoutInError: false,
+    redactions: [token],
     stdin: `Authorization: Bearer ${token}\n`
   })
-  const redirectUrl = yield* parseRedirectResult(redirectOutput)
+  const redirectResponse = yield* parseFetchResult(redirectOutput)
+  if (redirectResponse.status < 300 || redirectResponse.status > 399) {
+    return yield* new GitHubAttachmentError({ message: `Attachment redirect returned HTTP ${redirectResponse.status}` })
+  }
+  const redirectHeaders = yield* fileSystem.readFileString(redirectHeadersFile)
+  const redirectUrl = yield* parseRedirectHeaders({ baseUrl: assetUrl, headers: redirectHeaders, status: redirectResponse.status })
   const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-attachment-" })
-  const fetchOutput = yield* checkedTrimmedText("curl", fetchRequestArgs(assetFile), {
-    displayCommand: `curl [verified GitHub attachment ${assetUrl}]`,
-    stdin: curlUrlConfig(redirectUrl)
-  })
-  const fetched = yield* parseFetchResult(fetchOutput)
+  const fetched = yield* fetchTrustedAsset({ assetFile, assetUrl: redirectUrl, label: `verified GitHub attachment ${assetUrl}` })
   const detectedType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))
   const fetchedInfo = yield* fileSystem.stat(assetFile)
   yield* verifyAttachment({

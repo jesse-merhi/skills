@@ -18,6 +18,7 @@ import {
   parseGitHubToken,
   parsePullRequestUrl,
   parseRedirectResult,
+  parseTrustedMediaUrl,
   parseUploadResponse,
   redirectRequestArgs,
   repositoryFromPullRequest,
@@ -81,8 +82,8 @@ describe("GitHub attachment upload contract", () => {
   })))
 
   it.effect("decodes the fetched HTTP contract", () => parseFetchResult(
-    '{"status":200,"contentType":"video/mp4"}'
-  ).pipe(Effect.map((result) => assert.deepStrictEqual(result, { status: 200, contentType: "video/mp4" }))))
+    '{"status":404,"contentType":"text/html; charset=utf-8"}'
+  ).pipe(Effect.map((result) => assert.deepStrictEqual(result, { status: 404, contentType: "text/html; charset=utf-8" }))))
 
   it.effect("decodes an HTTPS redirect without exposing it to the shell", () => parseRedirectResult(
     '{"status":302,"location":"https://private-user-images.githubusercontent.com/signed"}'
@@ -91,6 +92,13 @@ describe("GitHub attachment upload contract", () => {
   it.effect("rejects a non-redirect attachment response", () => parseRedirectResult(
     '{"status":200,"location":"https://private-user-images.githubusercontent.com/signed"}'
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid attachment redirect response/u))))
+
+  it.effect("rejects rendered media outside GitHub-controlled hosts", () => parseTrustedMediaUrl(
+    "https://internal.example.com/admin?token=sentinel-secret"
+  ).pipe(Effect.flip, Effect.map((error) => {
+    assert.match(error.message, /untrusted rendered-media URL/u)
+    assert.notInclude(error.message, "sentinel-secret")
+  })))
 
   it("builds the complete stable gh api upload boundary", () => {
     const args = uploadRequestArgs({ evidencePath: "/tmp/proof image.png", evidenceName: "proof image.png", mediaType: "image/png", repositoryId: 42 })
@@ -113,29 +121,34 @@ describe("GitHub attachment upload contract", () => {
   })
 
   it("separates the authenticated redirect request from the unauthenticated fetch", () => {
-    const redirectArgs = redirectRequestArgs("/tmp/redirect", "https://github.com/user-attachments/assets/abc-123")
+    const redirectArgs = redirectRequestArgs("/tmp/redirect", "/tmp/redirect-headers", "https://github.com/user-attachments/assets/abc-123")
     assert.deepStrictEqual([...redirectArgs], [
-      "--disable", "--silent", "--show-error", "--output", "/tmp/redirect",
-      "--write-out", '{"status":%{http_code},"location":"%{redirect_url}"}',
+      "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/redirect",
+      "--dump-header", "/tmp/redirect-headers", "--max-redirs", "0", "--proto", "=https",
+      "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--header", "@-", "https://github.com/user-attachments/assets/abc-123"
     ])
 
     const signedUrl = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"
-    const fetchArgs = fetchRequestArgs("/tmp/attachment")
+    const fetchArgs = fetchRequestArgs("/tmp/attachment", "/tmp/attachment-headers")
     assert.deepStrictEqual([...fetchArgs], [
-      "--disable", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https",
-      "--output", "/tmp/attachment",
+      "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/attachment",
+      "--dump-header", "/tmp/attachment-headers", "--max-redirs", "0", "--proto", "=https",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--config", "-"
     ])
     assert.notInclude(fetchArgs.join(" "), "sentinel-secret")
     assert.strictEqual(curlUrlConfig(signedUrl), `url = "${signedUrl}"\n`)
+    assert.strictEqual(
+      curlUrlConfig("https://private-user-images.githubusercontent.com/signed?value=one\\two"),
+      'url = "https://private-user-images.githubusercontent.com/signed?value=one\\\\two"\n'
+    )
   })
 
   it.effect("accepts an attachment only after every verification matches", () => verifyAttachment({
     expectedMediaType: "image/png",
     expectedSize: FileSystem.Size(42),
-    fetched: { status: 200, contentType: "image/png" },
+    fetched: { status: 200, contentType: "image/png; qs=0.85" },
     fetchedMediaType: "image/png",
     fetchedSize: FileSystem.Size(42)
   }))
@@ -143,7 +156,7 @@ describe("GitHub attachment upload contract", () => {
   it.effect("rejects failed HTTP attachment verification", () => verifyAttachment({
     expectedMediaType: "image/png",
     expectedSize: FileSystem.Size(42),
-    fetched: { status: 404, contentType: "image/png" },
+    fetched: { status: 404, contentType: "text/html; charset=utf-8" },
     fetchedMediaType: "image/png",
     fetchedSize: FileSystem.Size(42)
   }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /returned HTTP 404/u))))
@@ -201,7 +214,14 @@ case "$1:$2" in
     fi
     printf '%s\\n' '{"id":42}'
     ;;
-  api:--method) printf '%s\\n' 'HTTP/2.0 201 Created' '' 'https://github.com/user-attachments/assets/abc-123' ;;
+  api:--method)
+    expected="api --method POST --hostname github.com https://uploads.github.com/user-attachments/assets --header Content-Type: application/octet-stream --header Accept: application/json --header X-GitHub-Api-Version: 2022-11-28 --input $UPLOAD_TEST_EVIDENCE --raw-field name=proof.png --raw-field content_type=image/png --field repository_id=42 --include --jq .url"
+    if [ "$*" != "$expected" ]; then
+      printf 'unexpected gh upload arguments: %s\\n' "$*" >&2
+      exit 2
+    fi
+    printf '%s\\n' 'HTTP/2.0 201 Created' '' 'https://github.com/user-attachments/assets/abc-123'
+    ;;
   *) printf 'unexpected gh arguments: %s\\n' "$*" >&2; exit 2 ;;
 esac
 `)
@@ -210,25 +230,36 @@ printf '%s\\n' "\${UPLOAD_TEST_MEDIA_TYPE:-image/png}"
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
 output=''
-next_output=0
+headers=''
+previous=''
 for argument do
-  if [ "$next_output" = 1 ]; then
-    output="$argument"
-    next_output=0
-  elif [ "$argument" = '--output' ]; then
-    next_output=1
-  fi
+  if [ "$previous" = '--output' ]; then output="$argument"; fi
+  if [ "$previous" = '--dump-header' ]; then headers="$argument"; fi
+  previous="$argument"
 done
 case " $* " in
   *' --header @- '*)
     auth_input="$(cat)"
     printf 'first-stdin=%s\\nfirst-args=%s\\n' "$auth_input" "$*" >> "$UPLOAD_TEST_LOG"
+    for argument do printf 'first-arg=%s\\n' "$argument" >> "$UPLOAD_TEST_LOG"; done
     : > "$output"
-    printf '%s' '{"status":302,"location":"https://private-user-images.githubusercontent.com/signed"}'
+    printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret' '' > "$headers"
+    if [ "\${UPLOAD_TEST_REDIRECT_FAILURE:-}" = 1 ]; then
+      printf '%s' 'https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret'
+      printf '%s\\n' 'redirect write failed' >&2
+      exit 7
+    fi
+    printf '%s' '{"status":302,"contentType":"text/html"}'
     ;;
   *)
     second_input="$(cat)"
     printf 'second-stdin=%s\\nsecond-args=%s\\n' "$second_input" "$*" >> "$UPLOAD_TEST_LOG"
+    for argument do printf 'second-arg=%s\\n' "$argument" >> "$UPLOAD_TEST_LOG"; done
+    if [ "$second_input" != 'url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"' ]; then
+      printf 'unexpected asset curl stdin\\n' >&2
+      exit 2
+    fi
+    printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
     if [ "\${UPLOAD_TEST_MISMATCH:-}" = 1 ]; then
       printf '%s' 'bad' > "$output"
     else
@@ -270,23 +301,31 @@ esac
       assert.notInclude(readFileSync(unsupportedLog, "utf8"), "api --method POST")
 
       const success = runLauncher(evidence)
-      assert.strictEqual(success.status, 0, success.stderr)
+      assert.strictEqual(success.status, 0, `${success.stderr}\n${existsSync(log) ? readFileSync(log, "utf8") : "no process log"}`)
       assert.strictEqual(success.stdout.trim(), "https://github.com/user-attachments/assets/abc-123")
 
       const requests = readFileSync(log, "utf8")
       const firstArgs = requests.split("\n").find((line) => line.startsWith("first-args=")) ?? ""
       const secondArgs = requests.split("\n").find((line) => line.startsWith("second-args=")) ?? ""
+      const firstArgv = requests.split("\n").filter((line) => line.startsWith("first-arg=")).map((line) => line.slice("first-arg=".length))
+      const secondArgv = requests.split("\n").filter((line) => line.startsWith("second-arg=")).map((line) => line.slice("second-arg=".length))
+      assert.deepStrictEqual(firstArgv, [...redirectRequestArgs(firstArgv[5] ?? "", firstArgv[7] ?? "", "https://github.com/user-attachments/assets/abc-123")])
+      assert.deepStrictEqual(secondArgv, [...fetchRequestArgs(secondArgv[5] ?? "", secondArgv[7] ?? "")])
       assert.include(requests, "first-stdin=Authorization: Bearer test-token")
       assert.notInclude(firstArgs, "--location")
-      assert.include(requests, 'second-stdin=url = "https://private-user-images.githubusercontent.com/signed"')
-      assert.include(secondArgs, "--location")
+      assert.include(requests, 'second-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"')
       assert.notInclude(secondArgs, "Authorization")
       assert.notInclude(secondArgs, "test-token")
       assert.notInclude(secondArgs, "@-")
+      assert.notInclude(secondArgs, "sentinel-secret")
 
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })
       assertCommandFailure(mismatch)
       assert.notInclude(mismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
+
+      const redirectFailure = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_FAILURE: "1" })
+      assertCommandFailure(redirectFailure)
+      assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "sentinel-secret")
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
