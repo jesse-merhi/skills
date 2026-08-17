@@ -184,8 +184,8 @@ behavior_checks = {
         "github-upload-attachment.ts",
     ],
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
-        "with a browser or device",
-        "upload it as provider-hosted evidence",
+        "simplest format that preserves the claim",
+        "copyable text for textual behavior",
     ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
@@ -459,7 +459,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
   assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
 }
 
-test_pr_proof_pack_is_a_visual_publishing_gate() {
+test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   local skill="$ROOT_DIR/skills/pr-proof-pack"
   local step_count done_count
 
@@ -469,8 +469,10 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/SKILL.md" "This skill never grants publication authority"
   assert_contains "$skill/SKILL.md" "report the no-op decision and leave the PR"
   assert_contains "$skill/SKILL.md" "If any gate cannot be completed, stop"
-  assert_contains "$skill/references/proof-selection.md" "working in practice"
-  assert_contains "$skill/SKILL.md" 'never satisfies `Visual proof`'
+  assert_contains "$skill/references/proof-selection.md" "Practical evidence shows the"
+  assert_contains "$skill/SKILL.md" "first two sentences explain what broke"
+  assert_contains "$skill/SKILL.md" "A screenshot of textual"
+  assert_contains "$skill/SKILL.md" "Use copyable text for textual"
   assert_contains "$skill/SKILL.md" "## Reviewer Boundary"
   assert_contains "$skill/SKILL.md" 'Every workflow step meets its `Done when` criterion'
   assert_not_contains "$skill/SKILL.md" "## Avoid"
@@ -486,9 +488,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/plain-language.md" "Restore the Missing Premise"
   assert_contains "$skill/references/plain-language.md" "## PR Title"
   assert_contains "$skill/references/plain-language.md" "## Commit Subjects"
-  assert_contains "$skill/references/proof-selection.md" "visual filter"
+  assert_contains "$skill/references/proof-selection.md" 'Let `speak-fking-english` decide'
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
-  assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
+  assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
   assert_contains "$skill/references/screenshots.md" "## GitHub Attachment Upload"
@@ -511,6 +513,11 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
+  assert_contains "$skill/references/screenshots.md" "## Presentation Gate"
+  assert_contains "$skill/references/screenshots.md" "Inspect the actual image at full readable detail"
+  assert_contains "$skill/references/screenshots.md" "Exclude browser tabs"
+  assert_contains "$skill/references/screenshots.md" "normal GitHub width"
+  assert_contains "$skill/references/screenshots.md" "The model must be able to state what the visual proves"
   assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
@@ -523,25 +530,26 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   fi
   assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
-  assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"
-  assert_contains "$skill/references/proof-selection.md" "Automated validation only supports this proof"
-  assert_contains "$skill/references/proof-selection.md" "make a concise edited"
-  assert_contains "$skill/references/proof-selection.md" "before/after proof is"
+  assert_contains "$skill/references/proof-selection.md" "The test output remains a supporting check"
+  assert_contains "$skill/references/proof-selection.md" "Tests, builds, CI, and validators support"
+  assert_contains "$skill/references/proof-selection.md" "Do not turn text into a screenshot"
+  assert_contains "$skill/references/proof-selection.md" "Before — direct base"
   assert_not_contains "$skill/references/proof-selection.md" "Every PR still needs at least one uploaded screenshot"
   assert_contains "$skill/references/proof-selection.md" "Markdown table"
-  assert_not_contains "$skill/references/proof-selection.md" "Default to prose"
+  assert_contains "$skill/references/body-shape.md" "Default to at most 300 words"
+  assert_contains "$skill/references/body-shape.md" "what broke, why it mattered"
   assert_not_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
   assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
-  assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
-  assert_contains "$skill/src/NetDiff.ts" "with a browser or device"
-  assert_contains "$skill/src/NetDiff.ts" "upload it as provider-hosted evidence"
+  assert_contains "$skill/src/NetDiff.ts" "copyable text for textual state"
+  assert_contains "$skill/src/NetDiff.ts" "matched broken and fixed outcomes"
+  assert_contains "$skill/src/NetDiff.ts" "provider-hosted media only for visual behavior"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Check and refresh practical PR proof."
+  assert_contains "$skill/agents/openai.yaml" "Make PR context and proof concise and checkable."
   assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
   assert_contains "$skill/references/video-editing.md" "Before — direct base"
   assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
@@ -886,7 +894,7 @@ test_design_engineering_owns_motion_opportunity_audits
 test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
-test_pr_proof_pack_is_a_visual_publishing_gate
+test_pr_proof_pack_is_a_concise_evidence_publishing_gate
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_review_waits_are_event_driven
 test_openclaw_agent_discovery_paths

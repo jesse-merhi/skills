@@ -1,22 +1,24 @@
-# Practical Visual Evidence
+# Visual Evidence And Attachments
 
 ## Contents
 
-- [Hard Requirement](#hard-requirement)
+- [When This File Applies](#when-this-file-applies)
 - [GitHub Attachment Upload](#github-attachment-upload)
 - [Rendered PR Verification](#rendered-pr-verification)
 - [Evidence Contract](#evidence-contract)
+- [Presentation Gate](#presentation-gate)
 - [UI Interaction Proof](#ui-interaction-proof)
 - [Recording Edit](#recording-edit)
 - [Backend and Operator Proof](#backend-and-operator-proof)
 - [Performance Proof](#performance-proof)
 - [Placement](#placement)
 
-## Hard Requirement
+## When This File Applies
 
-Capture and upload every evidence item selected in `proof-selection.md`. This
-file owns how to capture and publish that evidence; `proof-selection.md` owns
-what qualifies.
+Read this file only after `proof-selection.md` determines that an important
+claim would lose information in text. This file owns how to capture and publish
+that selected visual evidence; `proof-selection.md` owns whether a visual
+qualifies.
 
 If practical capture, screen recording, provider authentication, attachment
 upload, asset verification, or a required visual inspection fails,
@@ -83,15 +85,16 @@ Use an interactive browser for facts the server-rendered HTML cannot prove:
 - actual video playback or another visual interaction the proof claim depends
   on.
 
-Inspect the finished evidence locally before upload. A fetched image or video
-has real bytes, but its status and content type alone do not prove the pixels or
-frames show the intended behavior. On another provider, use an equivalent
-rendered-body API when available and fall back to the browser for unsupported
-checks.
+Inspect the finished evidence locally before upload with the model's image or
+video viewer. Inspect the fetched rendered asset again after upload. A file with
+real bytes, a successful status, or the expected content type does not prove
+that its pixels or frames show the intended behavior or look presentable. On
+another provider, use an equivalent rendered-body API when available and fall
+back to the browser for unsupported checks.
 
 ## Evidence Contract
 
-Every visual answers these questions in nearby text:
+Every selected visual answers these questions in nearby text:
 
 1. What current net-diff behavior does this visibly demonstrate?
 2. What starting state, input, action, transition, and outcome appear?
@@ -99,9 +102,34 @@ Every visual answers these questions in nearby text:
    method make it reproducible?
 4. What important error, recovery, persistence, or side effect was checked?
 5. What direct-base behavior is the reviewer comparing with the PR result?
+6. What information would be lost if this were represented as copyable text?
 
 Use real output from the current branch. Before means the direct PR base, not a
 previous feature-branch commit. Recapture after every related branch change.
+
+## Presentation Gate
+
+Inspect the actual image at full readable detail and watch every finished video
+at 1× speed. Reject and recapture evidence that does not look deliberate and
+review-ready.
+
+- Crop to the product surface or result being proved. Exclude browser tabs,
+  address bars, bookmarks, extensions, account avatars, operating-system chrome,
+  docks, notifications, unrelated windows, and empty space.
+- Keep only interface controls that are part of the behavior. A browser frame is
+  not context; provide route, fixture, environment, and viewport in nearby text.
+- Make the relevant state readable at normal GitHub width. Use a tighter crop or
+  fewer rows rather than asking the reviewer to zoom into a full desktop.
+- Match crop, scale, viewport, theme, and data for before/after evidence. Label
+  each side without covering the changed result.
+- Remove secrets, personal information, unrelated tabs, cursor clutter, debug
+  overlays, and temporary tool interfaces.
+- Use clean alignment, intentional spacing, and one visual focus. Do not add
+  decorative framing that competes with the evidence.
+
+The model must be able to state what the visual proves, where the result appears,
+and why the composition is sufficient. Recapture when any answer depends on the
+caption rather than visible content.
 
 ## UI Interaction Proof
 
@@ -109,6 +137,8 @@ Record the changed flow manually at a deliberate pace. A reviewer should be able
 to follow without scrubbing frame by frame.
 
 - begin before the first relevant action so the starting state is visible;
+- capture the page viewport or relevant product surface rather than the
+  surrounding browser or desktop interface;
 - move the pointer deliberately and pause after important transitions;
 - show the input, loading or transition state, outcome, and relevant recovery;
 - record the same scenario on the direct base and PR branch when both have
@@ -119,8 +149,8 @@ to follow without scrubbing frame by frame.
   easier to compare or preserves a state that is not legible in the video;
 - use realistic data and avoid secrets or personal information.
 
-A test runner video, a replay of automated E2E output, or static screenshots
-alone do not replace the manual interaction walkthrough.
+A test runner video, a replay of automated E2E output, or a screenshot of
+textual output does not prove a visual interaction.
 
 ## Recording Edit
 
@@ -142,7 +172,9 @@ Show the changed system behavior, not the command that checked it:
 - infrastructure: operator action plus resulting resource or runtime state;
 - test-only: the running product scenario the test now protects.
 
-Terminal screenshots remain useful when they show the real request and outcome.
+Represent terminal requests, responses, state, and traces as copyable text by
+default. Use a terminal screenshot or recording only when the visible operator
+interaction, rendering, or timing is itself part of the claim.
 A terminal showing only a test, build, validator, or success exit code is not
 evidence.
 
@@ -164,9 +196,8 @@ Example:
 
 ## Placement
 
-Put each image and recording directly in the main PR body, never in a table or
-detached comment. Put the primary video first. Place its explanation immediately
-below it:
+Put each selected image and recording directly in the main PR body, never in a
+table or detached comment. Place its explanation immediately below it:
 
 ```md
 <uploaded interaction recording>

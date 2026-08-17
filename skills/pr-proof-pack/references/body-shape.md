@@ -1,76 +1,63 @@
 # PR Body Shape
 
-## Contents
+A reviewer should know what broke, why it mattered, and how this PR fixes it
+before they reach the first heading. Use the net diff to discover the story;
+do not turn its files, commits, or implementation buckets into the story.
 
-- [Lead With the New Behavior](#lead-with-the-new-behavior)
-- [Default Shape](#default-shape)
-- [Visual Proof](#visual-proof)
-- [API and Backend Proof](#api-and-backend-proof)
-- [Tables](#tables)
-- [What to Leave Out](#what-to-leave-out)
+## Opening Contract
 
-Use the net diff to discover what changed, not as the structure of the PR body.
-A reviewer should understand the resulting behavior before implementation
-details, file lists, test commands, or agent-process notes.
+Use the first four sentences deliberately:
 
-## Lead With the New Behavior
+1. State what broke in terms a person can observe.
+2. State the impact or risk: why should the reviewer care?
+3. State how this PR fixes the cause, using plain language before mechanism.
+4. State the new observable outcome.
 
-Open with what a person, API consumer, operator, or downstream system can do or
-observe after the PR merges. Name the actor, action or condition, and outcome.
-Restore any premise a reviewer needs before introducing technical vocabulary.
+For a feature, replace "what broke" with the missing capability and its impact.
+Define or remove any term that a reviewer would need repository-specific
+context to understand.
 
 Good:
 
-> Invalid supplier contact details are now rejected before saving. Create and
-> update requests return the same field-level message, so the UI can explain the
-> problem without leaving partial data behind.
+> ClawSweeper could publish a review even when its runner had not proved it could
+> read the checkout. That made an apparently clean review untrustworthy because
+> the model may not have seen the code under review. This PR makes the runner
+> read a known file from the exact PR checkout before review begins. If that
+> check fails, ClawSweeper stops and records the reason instead of publishing.
 
-Bad:
+Weak:
 
-> This PR updates validation, routers, tests, and OpenAPI files for SUP-142.
+> This PR adds exact-head admission, runner preflight provenance, and cache
+> promotion across the review lifecycle.
 
-When a bug fix needs contrast, state it plainly:
+## Size Budget
 
-> Previously, changing the sort direction cleared the selected filters. Filters
-> now stay selected while the results reorder.
+Default to at most 300 words of prose, excluding copyable proof snippets and
+commands. Exceed that only when the PR has multiple independently important
+behaviors, migration steps, or risks that a reviewer must act on. Remove
+repeated claims, exhaustive test inventories, review history, file lists, and
+implementation detail already clear from the diff.
 
 ## Default Shape
 
-Use only the sections the change needs, except that `Visual proof` is required
-for every PR. Rename generic headings when a specific human label is clearer.
+Use only the sections the change needs:
 
 ````md
-## New behavior
+<Two sentences: what broke or was missing, then why it matters.>
 
-<One short paragraph: who experiences the change, what they do, and what happens
-now. Include the previous behavior only when the contrast matters.>
+<Two sentences: how this PR fixes it, then what happens now.>
 
-- <Important scenario and its observable outcome.>
-- <Second distinct scenario, if needed.>
+## Proof
 
-## Stack context
+**Before — direct base**
 
-<Only for stacked PRs. Example: "Part 2 of 3 — Reject invalid supplier data.
-Depends on #41; followed by #43.">
+<Small copyable result, image, or recording showing the broken outcome.>
 
-## How it works
+**After — PR**
 
-<Optional. Include only the support returned by the final
-`speak-fking-english` pass. Omit this section when that pass chooses prose.>
+<Matched result showing the corrected outcome and important side effect.>
 
-## Visual proof
-
-<Provider-hosted primary video or static/comparison image selected in
-`proof-selection.md` and captured by `screenshots.md`.>
-
-<uploaded primary process recording, or labeled before/after image when the
-behavior is static>
-
-**What this shows:** <The exact implemented behavior visibly working in
-practice. Do not describe test, build, CI, or validator output here.>
-
-**State:** <Starting state, input, action, route, fixture, account, environment,
-viewport, dataset, and capture details needed to reproduce the behavior.>
+<One sentence explaining the shared input, fixture, environment, and boundary.>
 
 ## How to verify
 
@@ -80,120 +67,70 @@ viewport, dataset, and capture details needed to reproduce the behavior.>
 
 ## Implementation notes
 
-<Optional: only a non-obvious constraint, migration, compatibility decision,
-rollout detail, or risk that materially helps review.>
+<Optional: one non-obvious constraint, migration, compatibility decision, or
+risk that materially changes how the PR should be reviewed or landed.>
 ````
 
-Keep `New behavior` first. After that, order proof by usefulness: short stack
-context when needed, any useful explanation support, practical evidence, manual
-verification, then optional implementation notes.
+For a new feature without a meaningful baseline, say so in one sentence and
+show the new entry point and outcome. For a tiny change, the opening and one
+proof block may be enough.
 
-For a tiny non-interactive change, a paragraph and one practical evidence item
-may be enough. Omit empty sections.
+## Proof Shape
 
-## Visual Proof
+Follow [proof-selection.md](proof-selection.md). Use text blocks for textual
+behavior and uploaded media only for visual behavior. Put enough context beside
+the evidence to reproduce it: the shared input, fixture, account or role,
+environment, and any viewport or capture detail that affects the claim.
 
-Use the practical evidence chosen in `proof-selection.md` and captured through
-`screenshots.md`. Put the most useful item soon after the behavior description
-and keep reproduction steps as copyable text under `How to verify`.
-
-Put useful context immediately below each evidence item:
-
-- **What this shows:** the exact current behavior or result the image proves;
-- **State:** the route, fixture, role, permission, environment, or command;
-- **Viewport:** include it when size affects UI behavior;
-- **Capture:** name an element, viewport, terminal region, or full-page crop when
-  the choice helps interpretation.
-
-Use descriptive alt text. A filename such as `screenshot-1.png` is not an
-explanation.
-
-For before/after proof, label the direct-base and PR recordings `Before` and
-`After`. For images, prefer one labeled side-by-side composite with matched
-crop, scale, data, and viewport. Use separate full-size images only when the
-composite would hide detail. Never put media in a Markdown table. `Before` means
-the direct PR base, not an earlier feature-branch commit.
-
-## API and Backend Proof
-
-Describe the changed contract as behavior. Show the smallest copyable request,
-response, state transition, query result, or data example that proves it. Then
-add uploaded visual evidence of the focused request/result or contract check.
+Textual bug fix:
 
 ````md
-## New behavior
+## Proof
 
-Supplier create and update requests now reject invalid Australian phone numbers
-before saving. Both endpoints return the same message.
+Same pull request and restricted checkout in both runs:
 
-## Request and response
+**Before — direct base**
 
-An invalid phone number now fails before supplier creation:
-
-```sh
-curl -i -X POST "$API_URL/suppliers" \
-  -H "Authorization: Bearer <admin-token>" \
-  -H "Content-Type: application/json" \
-  --data '{"name":"Acme","pointOfContactPhoneNumber":"+15555550123"}'
+```text
+review_status: complete
+checkout_read_verified: false
+published: true
 ```
 
-Expected response:
+**After — PR**
 
-```http
-HTTP/1.1 400 Bad Request
+```text
+review_status: failed
+failure: runner could not read the selected checkout
+published: false
 ```
-
-```json
-{
-  "message": "Please enter a valid phone number"
-}
-```
-
-## Visual proof
-
-![Invalid phone number is rejected before save](https://github.com/user-attachments/assets/...)
-
-**What this shows:** The focused request returns the expected field-level error,
-and the follow-up query confirms no supplier was saved.
-
-**State:** Local API fixture with an admin test account; terminal region crop.
 ````
 
-Keep examples copy-pasteable when possible. Label representative examples and
-state required roles or fixtures. Never include secrets or verbose output.
+For matched visual proof, label the direct-base and PR evidence explicitly.
+Use one side-by-side image for a readable static comparison or two short
+recordings for an interaction. Never put media in a Markdown table.
 
-Show both the boundary result and the important side effect: saved or rejected
-state, emitted event, queued job, changed record, idempotent retry, or absence of
-partial data. A contract test or test runner is supporting validation only.
+## API And Backend Proof
 
-## Performance Proof
-
-Pair the visual before/after with a Markdown comparison table. Use matched
-hardware, environment, dataset, cache state, scenario, measurement method, and
-sample size. Report representative values and variability rather than one best
-run.
-
-| Scenario | Base | PR | Change | Samples |
-| --- | ---: | ---: | ---: | ---: |
-| <Observable operation> | <median/p95> | <median/p95> | <percent> | <count> |
+Show the smallest copyable request, response, and resulting state that proves
+the contract. For rejected work, show both the boundary response and the absence
+of the invalid side effect. For successful work, show the response and the
+persisted or emitted result. Keep secrets and verbose output out.
 
 ## Tables
 
-Use a table only when rows need comparison across stable axes, such as scenario
-/ previous behavior / new behavior or input / status / persisted state.
+Use a table only when several cases need comparison across stable axes, such as
+input, previous outcome, new outcome, and side effect. Use adjacent code blocks
+for one before/after case. Do not use tables as a file inventory or a way to
+compress several paragraphs into cells.
 
-Never put images in a table. If content is a sequence, list of facts, file
-inventory, prose split into columns, or cells with several clauses, use prose
-or bullets.
+## What To Leave Out
 
-## What to Leave Out
-
-Remove content that reports agent activity without helping a person understand
-or verify the behavior:
-
-- generic `Summary`, `What Changed`, and `Proof` sections that repeat each other;
-- net-diff tables, file inventories, and implementation buckets as behavior;
-- unexplained ticket IDs, sprint names, bug-bash labels, or thread shorthand;
-- review-loop history, agent names, run labels, and planning notes;
-- claims such as "works as expected" without saying what was exercised;
-- changes owned by another stack layer or a repeated whole-stack summary.
+- generic summary sections that repeat the opening;
+- net-diff tables, file inventories, and implementation buckets;
+- routine test, build, CI, coverage, lint, or type-check results;
+- review-loop history, agent activity, run labels, and planning notes;
+- unexplained project terms, ticket shorthand, paths, or class names;
+- every edge case already covered by tests when one representative proof shows
+  the behavior;
+- claims such as "works as expected" without the observed result.
