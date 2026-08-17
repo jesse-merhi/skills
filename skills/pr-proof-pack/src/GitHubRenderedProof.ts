@@ -201,6 +201,7 @@ const loadRenderedProof = Effect.fn("GitHubRenderedProof.loadRenderedProof")(fun
 ) {
   const response = yield* checkedTrimmedText("gh", renderedProofRequestArgs(repository, pullRequestNumber), {
     displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
+    forceKillAfter: "1 second",
     includeStdoutInError: false
   })
   return yield* parseRenderedProofDocument(response)
@@ -278,9 +279,12 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pu
         const fetched = yield* fetchTrustedAsset({
           assetFile,
           assetUrl: item.url.href,
+          forceKillAfter: "1 second",
           label: `rendered PR asset ${position + 1}`
         })
-        const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))
+        const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile), {
+          forceKillAfter: "1 second"
+        })
         const info = yield* fileSystem.stat(assetFile)
         yield* validateRenderedAsset({
           bytes: info.size,

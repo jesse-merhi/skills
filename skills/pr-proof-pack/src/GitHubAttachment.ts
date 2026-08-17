@@ -1,3 +1,4 @@
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
@@ -152,6 +153,7 @@ export const allowTrustedRedirect = (redirects: number) => redirects < 5
 export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")(function*(options: {
   readonly assetFile: string
   readonly assetUrl: string
+  readonly forceKillAfter?: Duration.Input
   readonly label: string
 }) {
   const fileSystem = yield* FileSystem.FileSystem
@@ -161,6 +163,7 @@ export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")
     const output = yield* checkedTrimmedText("curl", fetchRequestArgs(options.assetFile, headersFile), {
       displayCommand: `curl [${options.label}]`,
       includeStdoutInError: false,
+      forceKillAfter: options.forceKillAfter,
       redactions: [currentUrl],
       stdin: curlUrlConfig(currentUrl)
     })

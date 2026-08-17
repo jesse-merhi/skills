@@ -60,7 +60,7 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
   options?: CheckedTextOptions
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const { allowedExitCodes = [], displayCommand, forceKillAfter = "1 second", includeStdoutInError = true, redactions = [], stdin, ...childOptions } = options ?? {}
+  const { allowedExitCodes = [], displayCommand, forceKillAfter, includeStdoutInError = true, redactions = [], stdin, ...childOptions } = options ?? {}
   const commandText = displayCommand ?? [executable, ...args].join(" ")
   const redact = (text: string) => redactions.reduce(
     (output, value) => value.length === 0 ? output : output.replaceAll(value, "[redacted]"),
@@ -98,7 +98,7 @@ export const checkedTrimmedText = (executable: string, args: ReadonlyArray<strin
 
 export const checkedInherit = Effect.fn("CheckedProcess.inherit")(function*(executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const { displayCommand, forceKillAfter = "1 second", stdin, ...childOptions } = options ?? {}
+  const { displayCommand, forceKillAfter, stdin, ...childOptions } = options ?? {}
   const command = displayCommand ?? [executable, ...args].join(" ")
   const exitCode = yield* spawner.exitCode(ChildProcess.make(executable, args, { ...childOptions, forceKillAfter, stdin: commandInput(stdin), stdout: "inherit", stderr: "inherit" })).pipe(
     Effect.mapError((cause) => processError(executable, command, cause))

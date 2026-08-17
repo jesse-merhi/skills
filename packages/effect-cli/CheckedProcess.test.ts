@@ -1,7 +1,9 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
+import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
 import * as Runtime from "effect/Runtime"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
@@ -78,22 +80,24 @@ describe("checked process boundary", () => {
   ))
 
   it.live("force-kills a child that ignores interruption and releases scoped files", () => {
-    let temporaryPath = ""
-    const startedAt = Date.now()
+    let temporaryDirectory = ""
     return live(Effect.scoped(Effect.gen(function*() {
       const fileSystem = yield* FileSystem.FileSystem
-      temporaryPath = yield* fileSystem.makeTempFileScoped({ prefix: "checked-process-timeout-" })
-      yield* checkedText(process.execPath, ["-e", "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], {
+      const paths = yield* Path.Path
+      temporaryDirectory = yield* fileSystem.makeTempDirectoryScoped({ prefix: "checked-process-timeout-" })
+      const readyPath = paths.join(temporaryDirectory, "ready")
+      const child = yield* checkedText(process.execPath, [
+        "-e",
+        "const fs=require('node:fs');process.on('SIGTERM',()=>{});fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)",
+        readyPath
+      ], {
         forceKillAfter: "50 millis"
-      }).pipe(Effect.timeout("20 millis"))
-    }))).pipe(
-      Effect.flip,
-      Effect.map((error) => {
-        assert.strictEqual(error._tag, "TimeoutError")
-        assert.isBelow(Date.now() - startedAt, 1_000)
-        assert.isFalse(existsSync(temporaryPath))
-      })
-    )
+      }).pipe(Effect.forkChild)
+      while (!existsSync(readyPath)) yield* Effect.sleep("5 millis")
+      const interruptedAt = Date.now()
+      yield* Fiber.interrupt(child)
+      assert.isBelow(Date.now() - interruptedAt, 1_000)
+    }))).pipe(Effect.map(() => assert.isFalse(existsSync(temporaryDirectory))))
   }, 2_000)
 
   it.effect("returns stdout for an explicitly allowed diagnostic exit", () => live(
