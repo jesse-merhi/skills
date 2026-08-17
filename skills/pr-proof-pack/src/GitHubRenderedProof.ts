@@ -1,3 +1,4 @@
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Schema from "effect/Schema"
@@ -322,8 +323,11 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pu
   }
 })
 
-export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verifyWithDeadline")((pullRequest: string) =>
-  verifyRenderedProof(pullRequest).pipe(Effect.timeoutOrElse({
-    duration: "10 minutes",
+export const withRenderedProofDeadline = <A, E, R>(effect: Effect.Effect<A, E, R>, duration: Duration.Input) =>
+  effect.pipe(Effect.timeoutOrElse({
+    duration,
     orElse: () => Effect.fail(new GitHubAttachmentError({ message: "GitHub rendered proof verification exceeded 10 minutes" }))
-  })))
+  }))
+
+export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verifyWithDeadline")((pullRequest: string) =>
+  withRenderedProofDeadline(verifyRenderedProof(pullRequest), "10 minutes"))

@@ -37,6 +37,7 @@ const TrustedMediaUrl = Schema.URLFromString.pipe(Schema.check(Schema.makeFilter
     url.password === "" &&
     (
       (url.hostname === "github.com" && /^\/user-attachments\/assets\/[A-Za-z0-9-]+$/u.test(url.pathname)) ||
+      url.hostname === "github.githubassets.com" ||
       /^[a-z0-9-]+[.]githubusercontent[.]com$/u.test(url.hostname) ||
       url.hostname === "github-production-user-asset-6210df.s3.amazonaws.com"
     )

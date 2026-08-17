@@ -18,7 +18,8 @@ import {
   renderedProofLines,
   renderedProofRequestArgs,
   requireRenderedByteBudget,
-  validateRenderedAsset
+  validateRenderedAsset,
+  withRenderedProofDeadline
 } from "./GitHubRenderedProof.ts"
 
 const launcher = fileURLToPath(new URL("../scripts/github-verify-rendered-proof", import.meta.url))
@@ -85,15 +86,22 @@ describe("rendered GitHub proof verification", () => {
     assert.match(results[1]?.message ?? "", /exceeded the 500 MiB/u)
   })))
 
+  it.live("reports the whole-verification deadline", () => withRenderedProofDeadline(
+    Effect.never,
+    "10 millis"
+  ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /verification exceeded 10 minutes/u))))
+
   it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
     parseTrustedMediaUrl("https://github.com/user-attachments/assets/abc-123"),
     parseTrustedMediaUrl("https://private-user-images.githubusercontent.com/signed"),
     parseTrustedMediaUrl("https://camo.githubusercontent.com/hash"),
+    parseTrustedMediaUrl("https://github.githubassets.com/images/icons/emoji/unicode/1f44d.png"),
     parseTrustedMediaUrl("https://github-production-user-asset-6210df.s3.amazonaws.com/object")
   ]).pipe(Effect.map((urls) => assert.deepStrictEqual(urls.map((url) => url.hostname), [
     "github.com",
     "private-user-images.githubusercontent.com",
     "camo.githubusercontent.com",
+    "github.githubassets.com",
     "github-production-user-asset-6210df.s3.amazonaws.com"
   ]))))
 

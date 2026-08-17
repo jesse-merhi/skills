@@ -1,8 +1,11 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as PlatformError from "effect/PlatformError"
 import * as Runtime from "effect/Runtime"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
+import { existsSync } from "node:fs"
 
 import { checkedInherit, CheckedProcessError, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
 
@@ -73,6 +76,25 @@ describe("checked process boundary", () => {
       })
     )
   ))
+
+  it.live("force-kills a child that ignores interruption and releases scoped files", () => {
+    let temporaryPath = ""
+    const startedAt = Date.now()
+    return live(Effect.scoped(Effect.gen(function*() {
+      const fileSystem = yield* FileSystem.FileSystem
+      temporaryPath = yield* fileSystem.makeTempFileScoped({ prefix: "checked-process-timeout-" })
+      yield* checkedText(process.execPath, ["-e", "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], {
+        forceKillAfter: "50 millis"
+      }).pipe(Effect.timeout("20 millis"))
+    }))).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error._tag, "TimeoutError")
+        assert.isBelow(Date.now() - startedAt, 1_000)
+        assert.isFalse(existsSync(temporaryPath))
+      })
+    )
+  }, 2_000)
 
   it.effect("returns stdout for an explicitly allowed diagnostic exit", () => live(
     checkedText(process.execPath, ["-e", "process.stdout.write('diagnostic json'); process.exit(1)"], { allowedExitCodes: [1] }).pipe(
