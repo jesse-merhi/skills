@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
-  short_description: "Publish practical PR proof of working behavior."
-  default_prompt: "Use $pr-proof-pack before creating or updating this PR, then upload practical visual evidence with Browser Use or Computer Use and inspect the rendered result."
+  short_description: "Check and refresh practical PR proof."
+  default_prompt: "Use $pr-proof-pack to check whether this PR's proof is current. Prefer a tightly edited process video, include matched before/after UI proof when comparable, and refresh only stale evidence before delivery or merge."

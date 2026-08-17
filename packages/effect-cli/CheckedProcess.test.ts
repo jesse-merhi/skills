@@ -44,6 +44,12 @@ describe("checked process boundary", () => {
     )
   ))
 
+  it.effect("returns stdout for an explicitly allowed diagnostic exit", () => live(
+    checkedText(process.execPath, ["-e", "process.stdout.write('diagnostic json'); process.exit(1)"], { allowedExitCodes: [1] }).pipe(
+      Effect.map((output) => assert.strictEqual(output, "diagnostic json"))
+    )
+  ))
+
   it.effect("maps a missing executable to command-not-found", () => live(
     checkedText("effect-test-command-that-does-not-exist", []).pipe(
       Effect.flip,

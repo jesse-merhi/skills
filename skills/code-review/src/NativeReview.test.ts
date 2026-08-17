@@ -1,18 +1,20 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 // Executable-level compatibility tests intentionally exercise Node process boundaries.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { execFile as execFileCallback } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
 import { promisify } from "node:util"
 
-import { planReview, reviewBaseCandidates, reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } from "./NativeReview.ts"
+import { archiveReviewSessions, planReview, preflightCodexAuthentication, reviewBaseCandidates, reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } from "./NativeReview.ts"
 
 const execFile = promisify(execFileCallback)
 const root = new URL("../../..", import.meta.url).pathname
@@ -22,6 +24,108 @@ const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => e
 )
 
 describe("native review target", () => {
+  it("uses redacted diagnostics and a live request even when cached login status fails", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-auth-preflight-"))
+    const reviewer = join(directory, "codex")
+    const calls = join(directory, "calls")
+    const probeCwd = join(directory, "probe-cwd")
+    try {
+      await writeFile(reviewer, `#!/bin/sh
+printf '%s\\n' "$*" >> "${calls}"
+case "$1" in
+  login) exit 9 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"warning"}}}' ;;
+  exec) pwd > "${probeCwd}"; printf 'ok\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      await Effect.runPromise(live(preflightCodexAuthentication(reviewer)))
+      const recorded = await readFile(calls, "utf8")
+      assert.match(recorded, /^login status$/mu)
+      assert.match(recorded, /^doctor --json$/mu)
+      assert.match(recorded, /^exec --ephemeral --skip-git-repo-check --sandbox read-only /mu)
+      const executedFrom = (await readFile(probeCwd, "utf8")).trim()
+      assert.notStrictEqual(executedFrom, process.cwd())
+      assert.isTrue(executedFrom.startsWith(join(await realpath(tmpdir()), "codex-auth-preflight.")))
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("falls through to the live request when doctor is unavailable", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-auth-legacy-"))
+    const reviewer = join(directory, "codex")
+    try {
+      await writeFile(reviewer, `#!/bin/sh
+case "$1" in
+  login) exit 0 ;;
+  doctor) exit 2 ;;
+  exec) printf 'ok\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      await Effect.runPromise(live(preflightCodexAuthentication(reviewer)))
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("does not expose doctor details when authentication fails", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-auth-redaction-"))
+    const reviewer = join(directory, "codex")
+    try {
+      await writeFile(reviewer, `#!/bin/sh
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"fail","details":"secret-token service.internal"}}}'; exit 1 ;;
+  exec) printf 'must-not-run\\n'; exit 7 ;;
+esac
+`, { mode: 0o700 })
+      const result = await Effect.runPromiseExit(live(preflightCodexAuthentication(reviewer)))
+      assert.isTrue(Exit.isFailure(result))
+      if (Exit.isFailure(result)) {
+        const error = Cause.squash(result.cause)
+        assert.instanceOf(error, Error)
+        if (error instanceof Error) {
+          assert.match(error.message, /Codex authentication preflight failed/u)
+          assert.notInclude(error.message, "secret-token")
+          assert.notInclude(error.message, "service.internal")
+        }
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("does not misclassify or expose live provider failures", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-provider-preflight-"))
+    const reviewer = join(directory, "codex")
+    try {
+      await writeFile(reviewer, `#!/bin/sh
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
+  exec) printf 'secret-token service.internal\\n' >&2; exit 8 ;;
+esac
+`, { mode: 0o700 })
+      const result = await Effect.runPromiseExit(live(preflightCodexAuthentication(reviewer)))
+      assert.isTrue(Exit.isFailure(result))
+      if (Exit.isFailure(result)) {
+        const error = Cause.squash(result.cause)
+        assert.instanceOf(error, Error)
+        if (error instanceof Error) {
+          assert.match(error.message, /rejected or expired credentials, network, rate-limit, model, or configuration errors/u)
+          assert.match(error.message, /shared host auth path/u)
+          assert.notInclude(error.message, "authentication preflight failed")
+          assert.notInclude(error.message, "secret-token")
+          assert.notInclude(error.message, "service.internal")
+        }
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it("reviews a dirty branch and its local overlay", () => {
     const plan = planReview("auto", "origin/main", "HEAD", true)
     assert.strictEqual(plan.label, "current branch against origin/main, including uncommitted changes")
@@ -107,7 +211,15 @@ describe("native review target", () => {
     const output = join(directory, "nested", "review.txt")
     try {
       await mkdir(bin)
-      await writeFile(join(bin, "codex"), "#!/bin/sh\nprintf 'generated during review\\n' > generated.pyc\nprintf 'reviewed master\\n'\n", { mode: 0o700 })
+      await writeFile(join(bin, "codex"), `#!/bin/sh
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
+  exec) printf 'ok\\n' ;;
+  review) printf 'generated during review\\n' > generated.pyc; printf 'reviewed master\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
       await writeFile(join(bin, "gh"), "#!/bin/sh\nexit 1\n", { mode: 0o700 })
       await execFile("git", ["init", "-b", "master"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
@@ -311,6 +423,82 @@ describe("native review target", () => {
       const refreshed = (await execFile("git", ["rev-parse", "origin/main"], { cwd: repository })).stdout.trim()
       const remoteHead = (await execFile("git", ["rev-parse", "refs/heads/main"], { cwd: remote })).stdout.trim()
       assert.strictEqual(refreshed, remoteHead)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("archives the review driver and its subagent thread, and nothing else", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-session-archive-"))
+    const reviewDir = join(directory, "repo")
+    const otherDir = join(directory, "elsewhere")
+    const sessionsRoot = join(directory, "sessions")
+    const reviewer = join(directory, "codex")
+    const calls = join(directory, "calls")
+    try {
+      await mkdir(reviewDir)
+      await mkdir(otherDir)
+      const now = new Date()
+      const day = join(...now.toISOString().slice(0, 10).split("-"))
+      await mkdir(join(sessionsRoot, day), { recursive: true })
+      await writeFile(reviewer, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\n`, { mode: 0o700 })
+      const driver = (id: string, cwd: string, marker: boolean) =>
+        `${JSON.stringify({ type: "session_meta", payload: { id, cwd } })}\n${marker ? "{\"type\":\"entered_review_mode\"}\n" : ""}`
+      const child = (id: string, cwd: string, parent: string) =>
+        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, parent_thread_id: parent } })}\n{"type":"message"}\n`
+      // Driver plus its subagent thread: both belong to this run.
+      await writeFile(join(sessionsRoot, day, "rollout-a.jsonl"), driver("uuid-a", reviewDir, true))
+      await writeFile(join(sessionsRoot, day, "rollout-a-sub.jsonl"), child("uuid-a-sub", reviewDir, "uuid-a"))
+      // A review in another directory, an unrelated interactive session, and a
+      // subagent whose parent was not a review here.
+      await writeFile(join(sessionsRoot, day, "rollout-b.jsonl"), driver("uuid-b", otherDir, true))
+      await writeFile(join(sessionsRoot, day, "rollout-c.jsonl"), driver("uuid-c", reviewDir, false))
+      await writeFile(join(sessionsRoot, day, "rollout-c-sub.jsonl"), child("uuid-c-sub", reviewDir, "uuid-c"))
+      // A review from an earlier run, outside this run's window.
+      await writeFile(join(sessionsRoot, day, "rollout-d.jsonl"), driver("uuid-d", reviewDir, true))
+      const old = new Date(now.getTime() - 3600_000)
+      await utimes(join(sessionsRoot, day, "rollout-d.jsonl"), old, old)
+      const archived = await Effect.runPromise(live(archiveReviewSessions({
+        reviewer,
+        reviewCwds: [reviewDir],
+        since: new Date(now.getTime() - 60_000),
+        sessionsRoot
+      })))
+      assert.deepStrictEqual(archived, ["uuid-a", "uuid-a-sub"])
+      assert.strictEqual(await readFile(calls, "utf8"), "archive uuid-a\narchive uuid-a-sub\n")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("does not re-archive a subagent thread that the driver archive already moved", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-session-cascade-"))
+    const reviewDir = join(directory, "repo")
+    const sessionsRoot = join(directory, "sessions")
+    const reviewer = join(directory, "codex")
+    const calls = join(directory, "calls")
+    try {
+      await mkdir(reviewDir)
+      const now = new Date()
+      const day = join(...now.toISOString().slice(0, 10).split("-"))
+      const dayDir = join(sessionsRoot, day)
+      await mkdir(dayDir, { recursive: true })
+      // Stands in for codex archive moving the driver and its subagent together.
+      await writeFile(
+        reviewer,
+        `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\nrm -f "${join(dayDir, "rollout-a.jsonl")}" "${join(dayDir, "rollout-a-sub.jsonl")}"\n`,
+        { mode: 0o700 }
+      )
+      await writeFile(join(dayDir, "rollout-a.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a", cwd: reviewDir } })}\n{"type":"entered_review_mode"}\n`)
+      await writeFile(join(dayDir, "rollout-a-sub.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a-sub", cwd: reviewDir, parent_thread_id: "uuid-a" } })}\n{"type":"message"}\n`)
+      const archived = await Effect.runPromise(live(archiveReviewSessions({
+        reviewer,
+        reviewCwds: [reviewDir],
+        since: new Date(now.getTime() - 60_000),
+        sessionsRoot
+      })))
+      assert.deepStrictEqual(archived, ["uuid-a"])
+      assert.strictEqual(await readFile(calls, "utf8"), "archive uuid-a\n")
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

@@ -6,6 +6,7 @@
 - [Interactive Browser Upload Path](#interactive-browser-upload-path)
 - [Evidence Contract](#evidence-contract)
 - [UI Interaction Proof](#ui-interaction-proof)
+- [Recording Edit](#recording-edit)
 - [Backend and Operator Proof](#backend-and-operator-proof)
 - [Performance Proof](#performance-proof)
 - [Placement](#placement)
@@ -29,9 +30,13 @@ extraction, `gh-image`, session tokens, or Keychain/browser cookie stores.
 
 Before any PR mutation:
 
-1. Prefer the external `browser-use` skill and its pinned CLI when available;
-   otherwise load `computer-use`.
-2. With Browser Use, open a fresh repository tab in the permitted Chrome-family
+1. In OpenClaw, use its browser tool or `openclaw browser`. Check
+   `openclaw browser --json status` and `openclaw browser profiles` when profile
+   selection or login is unclear, then use the configured authenticated profile.
+   In Claude environments, prefer the external `browser-use` skill and its
+   pinned CLI when available; otherwise load `computer-use`.
+2. With OpenClaw, open the repository through the selected browser profile. With
+   Browser Use, open a fresh repository tab in the permitted Chrome-family
    browser and do not inspect unrelated tabs. With Computer Use, open an
    agent-owned browser window.
 3. Reach the repository's PR provider and confirm the selected path can read and
@@ -47,9 +52,39 @@ confirmation, use its structured question UI to ask the human for permission
 for the named upload and save. Treat that answer as permission only for the
 current proof refresh.
 
+OpenClaw's native `browser upload` action is allowed because it operates the
+provider's file input through the selected interactive browser.
+CDP is acceptable only when it is transport behind that browser surface;
+never use it to bypass login or extract credentials.
+
 For a new PR, the publishing workflow may create a draft shell after this
-preflight. Use the same clipboard-first flow on GitHub, Bitbucket, and other PR
-editors:
+preflight.
+
+In OpenClaw, use the native browser file-input path:
+
+1. Copy each finished evidence file to a unique path under the configured
+   OpenClaw temporary uploads root, such as `/tmp/openclaw/uploads/<file>`, and
+   treat that exact copy as run-owned. Alternatively, use managed inbound media
+   such as `media://inbound/<id>`. Do not expose an arbitrary local path.
+2. Open the main PR body editor, place the insertion point at the exact
+   placeholder or stale attachment, then run
+   `openclaw browser --browser-profile <profile> snapshot` to resolve the
+   visible attachment-trigger ref.
+3. Run the atomic chooser path:
+   `openclaw browser --browser-profile <profile> upload /tmp/openclaw/uploads/<file> --ref <upload-trigger-ref>`.
+   If the snapshot exposes the actual `<input type=file>` instead, use
+   `--input-ref <file-input-ref>`. The same modes accept managed inbound media.
+4. Wait for the editor to replace the temporary marker with a provider-hosted
+   attachment or playable-media reference.
+5. Add descriptive alt text or a label, save, and inspect the rendered media
+   through the same `--browser-profile <profile>`.
+6. Remove each exact run-owned upload-root copy after upload and inspection.
+   Cleanup remains required after a failed upload, interruption, blocked state,
+   or needs-user stop. Delete neither the original evidence file nor managed
+   `media://inbound` assets.
+
+Use the same clipboard-first flow on GitHub, Bitbucket, and other PR editors in
+Computer Use or another browser surface with clipboard support:
 
 1. Copy the finished image or recording to the clipboard.
 2. Open the main PR body editor.
@@ -78,6 +113,7 @@ Every visual answers these questions in nearby text:
 3. What route, fixture, account, environment, viewport, dataset, and capture
    method make it reproducible?
 4. What important error, recovery, persistence, or side effect was checked?
+5. What direct-base behavior is the reviewer comparing with the PR result?
 
 Use real output from the current branch. Before means the direct PR base, not a
 previous feature-branch commit. Recapture after every related branch change.
@@ -90,13 +126,26 @@ to follow without scrubbing frame by frame.
 - begin before the first relevant action so the starting state is visible;
 - move the pointer deliberately and pause after important transitions;
 - show the input, loading or transition state, outcome, and relevant recovery;
+- record the same scenario on the direct base and PR branch when both have
+  comparable visible behavior;
 - exercise changed error, empty, permission, responsive, keyboard, or reduced-
   motion behavior when it is in scope;
-- upload screenshots of every distinct changed state at readable size;
+- add a labeled before/after image only when it makes a static visual difference
+  easier to compare or preserves a state that is not legible in the video;
 - use realistic data and avoid secrets or personal information.
 
 A test runner video, a replay of automated E2E output, or static screenshots
 alone do not replace the manual interaction walkthrough.
+
+## Recording Edit
+
+Follow [video-editing.md](video-editing.md) before upload. Remove inactive
+lead-in, setup, and dead stretches; retain a short readable hold on the starting
+state, important transitions, and outcome. Keep the actual actions at normal
+speed. Preserve real waiting when duration or performance is itself the claim.
+
+Play the finished video once at 1× speed. Done when the flow is easy to follow,
+no informative state is rushed, and no long idle interval remains.
 
 ## Backend and Operator Proof
 
@@ -131,7 +180,8 @@ Example:
 ## Placement
 
 Put each image and recording directly in the main PR body, never in a table or
-detached comment. Place its explanation immediately below it:
+detached comment. Put the primary video first. Place its explanation immediately
+below it:
 
 ```md
 <uploaded interaction recording>

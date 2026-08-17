@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
-  short_description: "Review until clean, then preserve PR delivery shape."
-  default_prompt: "Use $code-review; run the native and cold-review gates, record findings, validate, preserve any planned gh-stack during closeout, and refresh reviewer-checkable proof for each affected PR layer."
+  short_description: "Review locally, summarize, then deliver once."
+  default_prompt: "Use $code-review to review and fix locally until clean, summarize persisted findings, then make the authorized final PR push and run CI last."
 
 policy:
   allow_implicit_invocation: false

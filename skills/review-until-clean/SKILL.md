@@ -60,11 +60,11 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 3. Run the until-clean loop.
 
-   Read [references/loop.md](references/loop.md). Maintain
-   `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the selected
-   engine's bare review, triage with `finding-discipline`, fix actionable
-   findings, record state in the findings CLI, and rerun until the clean target
-   or an honest stop condition is reached.
+   Load `wait-efficiently`, then read [references/loop.md](references/loop.md).
+   Maintain `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the
+   selected engine's bare review, triage with `finding-discipline`, fix
+   actionable findings, record state in the findings CLI, and rerun until the
+   clean target or an honest stop condition is reached.
 
 4. Fix and verify findings.
 

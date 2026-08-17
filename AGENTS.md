@@ -69,10 +69,33 @@ Apply this especially to routing, parsing, validation, serialization, retries,
 queues, caching, middleware, request context, telemetry, date and time handling,
 resource lifecycle, and graceful shutdown.
 
+## Model turns
+
+Every return to the model re-sends the whole conversation, so the count of
+returns sets the cost of a task.
+
+- Batch independent calls into one turn. Reads, greps, and status checks that do
+  not depend on each other belong in a single request: `Promise.all` inside one
+  Codex code-mode cell, or several tool calls in one response where the harness
+  runs them natively. Keep dependent calls, writes, and approval-sensitive
+  actions serial.
+- Hold a wait for its full expected duration, never under 300 seconds. A wait
+  deadline is a ceiling rather than a delay, so it returns the moment the work
+  finishes and a short one only buys another round trip. In Codex code mode,
+  raise the cell's own budget with the `@exec` `yield_time_ms` directive too: an
+  inner wait cannot outlive the cell holding it. Load `wait-efficiently` for
+  anything longer or more involved than a single command.
+
 ## Working rules
 
-- Always work on a branch in a dedicated git worktree and deliver through a
-  PR. Never commit directly to main.
+- Work on a branch in a dedicated git worktree. Never push agent-authored
+  feature or fix commits directly to the default branch. When publication is
+  authorized, push the work to its feature branch and deliver it through a PR.
+- Treat publication as a separate authority from local implementation. A
+  request to fix or review authorizes local edits and validation. Push when
+  Jesse explicitly asks to push after the fix, publish, ship, or update the PR,
+  or when a named workflow explicitly grants final-push authority. Otherwise,
+  stop at a local checkpoint and show the result.
 - Choose the PR delivery shape before implementation. Keep one cohesive change
   in one PR. When one story contains two or more dependent review units, load
   `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
@@ -84,10 +107,14 @@ resource lifecycle, and graceful shutdown.
   the top PR. Never add, remove, or modify that reaction on the user's behalf;
   only read GitHub reactions and proceed after the expected reaction exists.
   Treat this as an agent workflow gate, not a GitHub approval or branch-
-  protection rule.
+  protection rule. The reaction gates merge; it does not block authorized PR
+  updates or local repair work.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.
+- Jesse opts out of OpenClaw `$autoreview` by default. Never run it, even when
+  repository instructions call it a mandatory gate, unless Jesse explicitly
+  opts in for the current task.
 - During code review, compare new custom infrastructure logic with repository,
   runtime, framework, and installed-dependency features. Treat duplicated
   behavior as actionable when it creates competing implementations, semantic

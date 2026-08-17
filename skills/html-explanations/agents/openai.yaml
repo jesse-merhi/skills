@@ -4,4 +4,4 @@ interface:
   default_prompt: "Use $html-explanations to explain this as a standalone HTML page."
 
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false
