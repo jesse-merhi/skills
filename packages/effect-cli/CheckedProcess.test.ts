@@ -94,15 +94,17 @@ describe("checked process boundary", () => {
   ))
 
   it.effect("omits sensitive stderr when a child is interrupted", () => live(
-    checkedText(process.execPath, ["-e", "process.stderr.write('signed-stderr'); process.kill(process.pid, 'SIGTERM')"], {
+    checkedText(process.execPath, ["-e", "process.stdout.write('signed-stdout'); process.stderr.write('signed-stderr'); process.kill(process.pid, 'SIGTERM')"], {
       displayCommand: "node [sensitive lookup]",
-      includeStderrInError: false
+      includeStderrInError: false,
+      includeStdoutInError: false
     }).pipe(
       Effect.flip,
       Effect.map((error) => {
         assert.strictEqual(error.exitCode, 143)
         assert.strictEqual(error.stderr, "")
         assert.notInclude(error.message, "signed-stderr")
+        assert.notInclude(error.message, "signed-stdout")
       })
     )
   ))
