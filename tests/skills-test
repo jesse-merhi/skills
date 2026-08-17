@@ -571,6 +571,7 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   fi
   rendered_help="$("$skill/scripts/github-verify-rendered-proof" --help)"
   assert_output_contains "$rendered_help" "--pr"
+  assert_output_contains "$rendered_help" "--head"
   assert_output_contains "$rendered_help" "without printing signed URLs"
   assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"

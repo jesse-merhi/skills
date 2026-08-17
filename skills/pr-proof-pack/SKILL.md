@@ -87,7 +87,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 2. Resolve the PR and direct base.
 
    Use read-only provider metadata. On GitHub, inspect
-   `gh pr view --json number,url,body,title,baseRefName,headRefName`. For a stack,
+   `gh pr view --json number,url,body,title,baseRefName,headRefName,headRefOid`. For a stack,
    load `gh-stack`, inspect `gh stack view --json`, and record the current
    layer's position and adjacent dependencies.
 
@@ -179,12 +179,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Follow the rendered-verification path in
    [references/screenshots.md](references/screenshots.md). On GitHub, inspect
    the title and Markdown body, then run
-   `<skill-dir>/scripts/github-verify-rendered-proof --pr <full-PR-URL-resolved-in-step-2>`.
+   `<skill-dir>/scripts/github-verify-rendered-proof --pr <full-PR-URL-resolved-in-step-2> --head <final-head-SHA-resolved-in-step-2>`.
    The verifier reads `body_html` without printing signed asset URLs, checks
-   every rendered image and video, and fetches each resolved asset without
-   forwarding the `gh` token. Require its status, content type, and non-empty
-   byte checks for all assets, plus exact byte size for evidence uploaded during
-   this refresh. Use an interactive browser when the body includes client-rendered
+   that the PR head stays on the expected final SHA, checks every rendered image
+   and video, and fetches each resolved asset without forwarding the `gh` token.
+   Require its status, content type, and non-empty byte checks for all assets,
+   plus exact byte size for evidence uploaded during this refresh. Use an interactive browser when the body includes client-rendered
    content such as Mermaid or when the proof depends on literal page layout,
    pixel appearance, or playback. Remove stale proof rather than accumulating
    it.

@@ -64,15 +64,17 @@ server-rendered body without opening a browser:
 
 ```sh
 PR_URL='<full-PR-URL-resolved-in-step-2>'
+PR_HEAD='<final-head-SHA-resolved-in-step-2>'
 gh pr view "$PR_URL" --json title,body --jq '{title, body}'
-<skill-dir>/scripts/github-verify-rendered-proof --pr "$PR_URL"
+<skill-dir>/scripts/github-verify-rendered-proof --pr "$PR_URL" --head "$PR_HEAD"
 ```
 
 Check the title, section order, captions, copyable reproduction steps, and every
 expected image and video in the Markdown. The repository verifier captures
-`body_html` without printing it and reports only media counts, types, and byte
-sizes. It keeps signed URLs out of process arguments and fetches every resolved
-asset without credentials, user curl configuration, or untrusted redirects.
+`body_html` without printing it, requires the PR to stay on the expected final
+head, and reports only media counts, types, and byte sizes. It
+keeps signed URLs out of process arguments and fetches every resolved asset
+without credentials, user curl configuration, or untrusted redirects.
 Never forward the `gh` token to a resolved asset, Camo, or CDN host, and never
 print a resolved signed asset URL. The HTTP and detected content types must both
 match the rendered image or video family after MIME parameters are removed,

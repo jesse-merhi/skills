@@ -269,7 +269,11 @@ if [ "$#" -ne 4 ] || [ "$1" != '--brief' ] || [ "$2" != '--mime-type' ] || [ "$3
   printf 'unexpected file arguments: %s\\n' "$*" >&2
   exit 2
 fi
-printf '%s\\n' "\${UPLOAD_TEST_MEDIA_TYPE:-image/png}"
+if [ "$4" = "$UPLOAD_TEST_EVIDENCE" ]; then
+  printf '%s\\n' "\${UPLOAD_TEST_SOURCE_MEDIA_TYPE:-image/png}"
+else
+  printf '%s\\n' "\${UPLOAD_TEST_DOWNLOADED_MEDIA_TYPE:-image/png}"
+fi
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
 output=''
@@ -302,7 +306,8 @@ case " $* " in
       printf 'unexpected asset curl stdin\\n' >&2
       exit 2
     fi
-    printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
+    content_type="\${UPLOAD_TEST_HTTP_MEDIA_TYPE:-image/png}"
+    printf '%s\\n' 'HTTP/1.1 200 OK' "Content-Type: $content_type" '' > "$headers"
     if [ "\${UPLOAD_TEST_FETCH_SIGNAL:-}" = 1 ]; then
       kill -TERM "$PPID"
       exec sleep 30
@@ -312,7 +317,7 @@ case " $* " in
     else
       cp "$UPLOAD_TEST_EVIDENCE" "$output"
     fi
-    printf '%s' '{"status":200,"contentType":"image/png"}'
+    printf '{"status":200,"contentType":"%s"}' "$content_type"
     ;;
 esac
 `)
@@ -352,7 +357,7 @@ esac
       assert.isFalse(existsSync(log))
 
       const unsupportedLog = join(directory, "unsupported.log")
-      const unsupported = runLauncher(evidence, { UPLOAD_TEST_LOG: unsupportedLog, UPLOAD_TEST_MEDIA_TYPE: "text/plain" })
+      const unsupported = runLauncher(evidence, { UPLOAD_TEST_LOG: unsupportedLog, UPLOAD_TEST_SOURCE_MEDIA_TYPE: "text/plain" })
       assertCommandFailure(unsupported)
       assert.notInclude(unsupported.stdout, "https://github.com/user-attachments/assets/abc-123")
       assert.notInclude(readFileSync(unsupportedLog, "utf8"), "api --method POST")
@@ -388,6 +393,18 @@ esac
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })
       assertCommandFailure(mismatch)
       assert.notInclude(mismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
+      assertTemporaryPathsRemoved()
+
+      const downloadedMimeMismatch = runLauncher(evidence, { UPLOAD_TEST_DOWNLOADED_MEDIA_TYPE: "video/mp4" })
+      assertCommandFailure(downloadedMimeMismatch)
+      assert.include(`${downloadedMimeMismatch.stdout}\n${downloadedMimeMismatch.stderr}`, "Downloaded attachment content type video/mp4")
+      assert.notInclude(downloadedMimeMismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
+      assertTemporaryPathsRemoved()
+
+      const httpMimeMismatch = runLauncher(evidence, { UPLOAD_TEST_HTTP_MEDIA_TYPE: "video/mp4" })
+      assertCommandFailure(httpMimeMismatch)
+      assert.include(`${httpMimeMismatch.stdout}\n${httpMimeMismatch.stderr}`, "HTTP content type video/mp4")
+      assert.notInclude(httpMimeMismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
       assertTemporaryPathsRemoved()
 
       const redirectFailure = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_FAILURE: "1" })

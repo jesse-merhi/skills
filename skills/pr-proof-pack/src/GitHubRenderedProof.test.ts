@@ -25,6 +25,7 @@ import {
 } from "./GitHubRenderedProof.ts"
 
 const launcher = fileURLToPath(new URL("../scripts/github-verify-rendered-proof", import.meta.url))
+const expectedHeadSha = "0123456789abcdef0123456789abcdef01234567"
 
 const node = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off
@@ -34,6 +35,16 @@ const node = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => e
 const writeExecutable = (path: string, content: string) => {
   writeFileSync(path, content)
   chmodSync(path, 0o755)
+}
+
+const processIsRunning = (pid: number) => {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ESRCH") return false
+    throw error
+  }
 }
 
 describe("rendered GitHub proof verification", () => {
@@ -76,14 +87,15 @@ describe("rendered GitHub proof verification", () => {
 
   it.effect("redacts an invalid signed rendered-media URL", () => parseRenderedProofResponse(JSON.stringify({
     body: "proof",
-    body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>'
+    body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>',
+    head: { sha: expectedHeadSha }
   })).pipe(Effect.flip, Effect.map((error) => {
     assert.match(error.message, /invalid rendered-media URL/u)
     assert.notInclude(error.message, "sentinel-secret")
   })))
 
   it.effect("rejects a malformed rendered pull request", () => parseRenderedProofResponse(
-    '{"body":"","body_html":42}'
+    `{"body":"","body_html":42,"head":{"sha":"${expectedHeadSha}"}}`
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid rendered pull request/u))))
 
   it.effect("bounds aggregate rendered bytes", () => Effect.all([
@@ -105,7 +117,7 @@ const fs = require("node:fs")
 const path = require("node:path")
 const name = path.basename(process.argv[1])
 const args = process.argv.slice(2)
-fs.appendFileSync(process.env.VERIFY_PROCESS_LOG, name + "\\t" + JSON.stringify(args) + "\\n")
+fs.appendFileSync(process.env.VERIFY_PROCESS_LOG, name + "\\t" + JSON.stringify(args) + "\\t" + process.pid + "\\n")
 const run = () => {
   if (process.env.VERIFY_HANG_AT === name) {
     process.on("SIGTERM", () => {})
@@ -116,7 +128,8 @@ const run = () => {
   if (name === "gh") {
     process.stdout.write(JSON.stringify({
       body: "proof",
-      body_html: '<p><img src="https://private-user-images.githubusercontent.com/proof"></p>'
+      body_html: '<p><img src="https://private-user-images.githubusercontent.com/proof"></p>',
+      head: { sha: "${expectedHeadSha}" }
     }))
     return
   }
@@ -153,6 +166,7 @@ if (name === "curl") {
         const startedAt = Date.now()
         const error = yield* verifyGitHubRenderedProof(
           "https://github.com/jesse-merhi/skills/pull/81",
+          expectedHeadSha,
           {
             deadline: "500 millis",
             processOptions: {
@@ -161,16 +175,17 @@ if (name === "curl") {
                 VERIFY_HANG_AT: name,
                 VERIFY_PROCESS_LOG: log,
                 VERIFY_READY_PATH: ready
-              },
-              forceKillAfter: "50 millis"
+              }
             }
           }
         ).pipe(Effect.scoped, Effect.flip)
         assert.match(error.message, /verification exceeded 10 minutes/u)
-        assert.isBelow(Date.now() - startedAt, 2_000)
+        assert.isBelow(Date.now() - startedAt, 3_000)
         assert.isTrue(existsSync(ready), `expected ${name} to install its SIGTERM handler`)
         for (const line of readFileSync(log, "utf8").trim().split("\n")) {
-          const [loggedName, encodedArgs] = line.split("\t", 2)
+          const [loggedName, encodedArgs, encodedPid] = line.split("\t", 3)
+          const pid = Number(encodedPid)
+          assert.isFalse(processIsRunning(pid), `expected ${loggedName ?? "child"} process ${pid} to exit`)
           if (loggedName !== "curl" || encodedArgs === undefined) continue
           const args: ReadonlyArray<string> = JSON.parse(encodedArgs)
           for (const flag of ["--output", "--dump-header"]) {
@@ -180,7 +195,7 @@ if (name === "curl") {
         }
       }
     })).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))))
-  }, 10_000)
+  }, 15_000)
 
   it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
     parseTrustedMediaUrl("https://github.com/user-attachments/assets/abc-123"),
@@ -263,7 +278,7 @@ if [ "$1" != 'api' ] || [ "$2" != '--hostname' ] || [ "$3" != 'github.com' ] || 
   exit 2
 fi
 if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
-  printf '%s\\n' '{"body":"proof","body_html":"<img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\">"}'
+  printf '%s\\n' '{"body":"proof","body_html":"<img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\">","head":{"sha":"${expectedHeadSha}"}}'
   printf 'failed while reading rendered pull request\\n' >&2
   exit 1
 fi
@@ -273,6 +288,7 @@ import json
 print(json.dumps({
     "body": "proof",
     "body_html": "<p>" + '<img src="https://private-user-images.githubusercontent.com/repeated?jwt=sentinel-secret">' * 101 + "</p>",
+    "head": {"sha": "${expectedHeadSha}"},
 }))
 PY
 elif [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
@@ -285,19 +301,21 @@ elif [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
   if [ "$call" -gt 1 ]; then query="sentinel-secret-refreshed-$call"; fi
   body='proof'
   if [ -n "\${RENDERED_TEST_BODY_CHANGED_AFTER:-}" ] && [ "$call" -gt "$RENDERED_TEST_BODY_CHANGED_AFTER" ]; then body='changed proof'; fi
+  head_sha="\${RENDERED_TEST_HEAD_SHA:-${expectedHeadSha}}"
+  if [ -n "\${RENDERED_TEST_HEAD_CHANGED_AFTER:-}" ] && [ "$call" -gt "$RENDERED_TEST_HEAD_CHANGED_AFTER" ]; then head_sha='abcdef0123456789abcdef0123456789abcdef01'; fi
   semantic='40'
   if [ -n "\${RENDERED_TEST_SEMANTIC_CHANGED_AFTER:-}" ] && [ "$call" -gt "$RENDERED_TEST_SEMANTIC_CHANGED_AFTER" ]; then semantic='400'; fi
   fifth='fifth'
   if [ "\${RENDERED_TEST_DUPLICATE:-}" = 1 ]; then fifth='fourth'; fi
   if [ "\${RENDERED_TEST_CHANGED:-}" = 1 ] && [ "$call" -gt 1 ]; then fifth='changed-fifth'; fi
   if [ "\${RENDERED_TEST_EIGHT_ASSETS:-}" = 1 ]; then
-    payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/sixth?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/seventh?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/eighth?jwt=__QUERY__\\"></p>"}'
+    payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/sixth?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/seventh?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/eighth?jwt=__QUERY__\\"></p>","head":{"sha":"__HEAD__"}}'
   else
-    payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"></p>"}'
+    payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"></p>","head":{"sha":"__HEAD__"}}'
   fi
-  printf '%s\\n' "$payload" | sed -e "s/__BODY__/$body/g" -e "s/__QUERY__/$query/g" -e "s/__SEMANTIC__/$semantic/g" -e "s/__FIFTH__/$fifth/g"
+  printf '%s\\n' "$payload" | sed -e "s/__BODY__/$body/g" -e "s/__QUERY__/$query/g" -e "s/__SEMANTIC__/$semantic/g" -e "s/__FIFTH__/$fifth/g" -e "s/__HEAD__/$head_sha/g"
 else
-  printf '%s\\n' '{"body":"proof","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
+  printf '%s\\n' '{"body":"proof","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>","head":{"sha":"${expectedHeadSha}"}}'
 fi
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
@@ -366,7 +384,7 @@ printf '%s\\n' 'image/jpeg'
     }
     const runLauncher = (overrides: NodeJS.ProcessEnv = {}) => spawnSync(
       launcher,
-      ["--pr", "https://github.com/jesse-merhi/skills/pull/81"],
+      ["--pr", "https://github.com/jesse-merhi/skills/pull/81", "--head", expectedHeadSha],
       { encoding: "utf8", env: { ...environment, ...overrides }, timeout: 12_000 }
     )
     const assertCommandFailure = (result: ReturnType<typeof runLauncher>) => {
@@ -458,6 +476,19 @@ printf '%s\\n' 'image/jpeg'
         RENDERED_TEST_GH_STATE: join(directory, "changed-state")
       })
       assert.include(`${changedProof.stdout}\n${changedProof.stderr}`, "rendered proof changed")
+
+      const wrongInitialHead = runFailure({
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_HEAD_SHA: "abcdef0123456789abcdef0123456789abcdef01"
+      })
+      assert.include(`${wrongInitialHead.stdout}\n${wrongInitialHead.stderr}`, "head did not match the expected final head")
+
+      const changedHead = runFailure({
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "head-change-state"),
+        RENDERED_TEST_HEAD_CHANGED_AFTER: "1"
+      })
+      assert.include(`${changedHead.stdout}\n${changedHead.stderr}`, "rendered proof changed")
 
       const finalBodyChanged = runFailure({
         RENDERED_TEST_BODY_CHANGED_AFTER: "2",

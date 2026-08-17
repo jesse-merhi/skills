@@ -6,9 +6,10 @@ import { Command, Flag } from "effect/unstable/cli"
 import { renderedProofLines, verifyGitHubRenderedProof } from "./GitHubRenderedProof.ts"
 
 const command = Command.make("github-verify-rendered-proof", {
+  head: Flag.string("head").pipe(Flag.withDescription("Expected final pull request head SHA")),
   pullRequest: Flag.string("pr").pipe(Flag.withDescription("Full https://github.com/<owner>/<repository>/pull/<number> URL"))
-}, Effect.fn("githubVerifyRenderedProof.handler")(function*({ pullRequest }) {
-  const result = yield* verifyGitHubRenderedProof(pullRequest).pipe(Effect.scoped)
+}, Effect.fn("githubVerifyRenderedProof.handler")(function*({ head, pullRequest }) {
+  const result = yield* verifyGitHubRenderedProof(pullRequest, head).pipe(Effect.scoped)
   yield* Console.log(renderedProofLines(result).join("\n"))
 })).pipe(Command.withDescription("Verify rendered GitHub PR media without printing signed URLs"))
 

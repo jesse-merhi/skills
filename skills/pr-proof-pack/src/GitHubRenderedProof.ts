@@ -16,7 +16,8 @@ import {
 
 const RenderedPullRequest = Schema.Struct({
   body: Schema.NullOr(Schema.String),
-  body_html: Schema.String
+  body_html: Schema.String,
+  head: Schema.Struct({ sha: Schema.String })
 })
 
 const maxRenderedTotalBytes = FileSystem.Size(500 * 1024 * 1024)
@@ -44,6 +45,7 @@ export interface RenderedProofResult {
 
 interface RenderedProofDocument {
   readonly body: string
+  readonly headSha: string
   readonly media: ReadonlyArray<RenderedMedia>
 }
 
@@ -154,6 +156,7 @@ const parseRenderedProofDocument = Effect.fn("GitHubRenderedProof.parseDocument"
   )
   return {
     body: pullRequest.body ?? "",
+    headSha: pullRequest.head.sha,
     media: yield* extractRenderedMedia(pullRequest.body_html)
   }
 })
@@ -228,6 +231,7 @@ const requireSameRenderedProof = Effect.fn("GitHubRenderedProof.requireSameRende
 ) {
   if (
     actual.body !== expected.body ||
+    actual.headSha !== expected.headSha ||
     actual.media.length !== expected.media.length ||
     actual.media.some((item, index) => {
       const expectedItem = expected.media[index]
@@ -235,6 +239,15 @@ const requireSameRenderedProof = Effect.fn("GitHubRenderedProof.requireSameRende
     })
   ) {
     return yield* new GitHubAttachmentError({ message: "GitHub rendered proof changed during verification" })
+  }
+})
+
+const requireExpectedHead = Effect.fn("GitHubRenderedProof.requireExpectedHead")(function*(
+  expectedHeadSha: string,
+  actualHeadSha: string
+) {
+  if (actualHeadSha !== expectedHeadSha) {
+    return yield* new GitHubAttachmentError({ message: "GitHub pull request head did not match the expected final head" })
   }
 })
 
@@ -258,6 +271,7 @@ const groupRenderedMedia = (media: ReadonlyArray<RenderedMedia>) => {
 
 const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
   pullRequest: string,
+  expectedHeadSha: string,
   processOptions: RenderedProofProcessOptions
 ) {
   const fileSystem = yield* FileSystem.FileSystem
@@ -266,6 +280,7 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
   const repository = `${segments[1]}/${segments[2]}`
   const pullRequestNumber = segments[4] ?? ""
   const proof = yield* loadRenderedProof(repository, pullRequestNumber, processOptions)
+  yield* requireExpectedHead(expectedHeadSha, proof.headSha)
   const { media } = proof
   const groups = groupRenderedMedia(media)
   const assets: Array<RenderedAssetResult> = []
@@ -342,11 +357,12 @@ export const withRenderedProofDeadline = <A, E, R>(effect: Effect.Effect<A, E, R
 
 export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verifyWithDeadline")((
   pullRequest: string,
+  expectedHeadSha: string,
   options?: {
     readonly deadline?: Duration.Input
     readonly processOptions?: RenderedProofProcessOptions
   }
 ) => withRenderedProofDeadline(
-  verifyRenderedProof(pullRequest, { ...renderedProofProcessOptions, ...options?.processOptions }),
+  verifyRenderedProof(pullRequest, expectedHeadSha, { ...renderedProofProcessOptions, ...options?.processOptions }),
   options?.deadline ?? "10 minutes"
 ))
