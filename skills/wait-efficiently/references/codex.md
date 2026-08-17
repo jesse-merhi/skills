@@ -42,9 +42,10 @@ An empty `write_stdin` returns when the process exits. Every `yield_time_ms`
 here is a ceiling on how long the call may block, so 300000 costs nothing when
 the command finishes in ten seconds.
 
-A 30-second yield is the most expensive setting available. It turns each cell
-into an alternating `write_stdin` and `functions.wait` treadmill: a
-twenty-minute build spends forty round trips reporting that it is still running.
+Each yield shorter than the work costs one `functions.wait` to resume the cell
+and one `write_stdin` to resume the process, so the round trips a command spends
+are its duration divided by the yield it was given.
+Size both yields to the whole command and it spends one.
 
 Accumulate each terminal result inside the cell so output received before the
 final wait is not lost. Make any command behind a review or validation gate

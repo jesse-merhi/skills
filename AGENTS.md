@@ -72,7 +72,7 @@ resource lifecycle, and graceful shutdown.
 ## Model turns
 
 Every return to the model re-sends the whole conversation, so the count of
-returns sets the cost of a task. Two habits carry almost all of it.
+returns sets the cost of a task.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one

@@ -1,6 +1,6 @@
 ---
 name: wait-efficiently
-description: 'Hold one long wait for a command, build, test, CI run, subagent, or timed delay instead of polling; report only meaningful state changes.'
+description: 'Wait for a command, CI run, subagent, or timed delay by holding one long call instead of polling; report only meaningful state changes.'
 ---
 
 # Wait Efficiently
@@ -17,8 +17,7 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
    Done when the expected duration is a number rather than "a while".
 
-2. Set the hold deadline to that full expected duration, and never below 300
-   seconds.
+2. Hold a wait for its full expected duration, never under 300 seconds.
 
    **The deadline is a ceiling, not a delay.** The hold returns the moment the
    work finishes, so a longer deadline never costs waiting time. A short
@@ -60,7 +59,7 @@ For "wait five minutes" and similar, resolve `<skill-dir>` to this skill and run
 <skill-dir>/scripts/quiet-wait 5m
 ```
 
-Hold the call for the full requested delay.
+Done when one call spanned the whole requested delay.
 
 ## GitHub Actions
 
@@ -74,3 +73,6 @@ hold from completed runs of the same workflow:
 Hold for the returned `suggested_wait_seconds`, then inspect the run once.
 Recalculate only after a meaningful state change. Fall back to 120 seconds when
 fewer than three comparable runs exist.
+
+Done when every required check reached a conclusion and each inspection followed
+a state change.
