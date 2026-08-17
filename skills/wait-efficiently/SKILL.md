@@ -1,115 +1,78 @@
 ---
 name: wait-efficiently
-description: 'Wait for commands, CI, or external work without token-heavy polling; report meaningful state changes.'
+description: 'Wait for a command, CI run, subagent, or timed delay by holding one long call instead of polling; report only meaningful state changes.'
 ---
 
 # Wait Efficiently
 
-Before waiting, state what is being awaited and when the next meaningful update
-will occur. Use the product-native wait mechanism, avoid unchanged heartbeat
-updates, and return only for action, a deadline, or a meaningful state change.
+A wait costs one model round trip every time it returns. One hold that spans the
+whole wait costs one round trip. Polling the same wait costs one per check, and
+each check carries the entire conversation.
 
-## Subagents
+Hold the wait. Return for completion, an actionable state, or the deadline.
 
-Finish useful independent work after dispatch. Once blocked on subagent results,
-make one native event-driven wait with a 10-minute deadline. In Codex, call
-`wait_agent` with `timeout_ms: 600000`; it returns early when mailbox activity
-arrives. Read the completed result, and wait again only when the required agent
-is still running after an unrelated event or the deadline.
+## Hold
 
-Keep the parent turn active until the required agents reach a terminal state.
-Do not poll with `list_agents`, short repeated waits, sleeps, or status
-heartbeats. `notify` is not a replacement: it cannot start a new parent turn
-after that turn has ended.
+1. Name what is being awaited and how long it is expected to take.
 
-## Codex shell waits
+   Done when the expected duration is a number rather than "a while".
 
-Keep long shell commands inside one code-mode cell so internal terminal waits do
-not become model turns. For reviews and other work expected to finish within 15
-minutes, use this shape:
+2. Hold a wait for its full expected duration, never under 300 seconds.
 
-```js
-// @exec: {"yield_time_ms": 900000, "max_output_tokens": 10000}
-const maxOutputTokens = 10000;
-let result = await tools.exec_command({
-  cmd: "<command>",
-  yield_time_ms: 30000,
-  max_output_tokens: maxOutputTokens
-});
-const output = [result.output];
-let originalTokens = result.original_token_count ?? 0;
-while (result.session_id) {
-  result = await tools.write_stdin({
-    session_id: result.session_id,
-    chars: "",
-    yield_time_ms: 300000,
-    max_output_tokens: maxOutputTokens
-  });
-  output.push(result.output);
-  originalTokens += result.original_token_count ?? 0;
-}
-text(output.filter(Boolean).join(""));
-if (originalTokens > maxOutputTokens) {
-  throw new Error("command output exceeded the safe result budget; inspect its persisted artifact");
-}
-if (result.exit_code !== 0) {
-  throw new Error(`command exited with code ${result.exit_code ?? "unknown"}`);
-}
-```
+   **The deadline is a ceiling, not a delay.** The hold returns the moment the
+   work finishes, so a longer deadline never costs waiting time. A short
+   deadline buys nothing and spends a round trip every time it expires.
 
-An empty `write_stdin` wait returns when the process exits; five minutes is its
-deadline, not a delay imposed after completion. If the outer cell yields before
-the process finishes, resume that cell with one long `functions.wait` call. Do
-not restart the command, call `notify`, or use `yield_control` for unchanged
-progress. Accumulate each terminal result inside the cell so output received
-before the final wait is not lost. For a review or validation gate, make the
-command persist its full artifact to a run-owned file. If any terminal result
-reports more original tokens than its output budget, fail the gate and inspect
-that artifact instead of classifying truncated output.
+   Done when one hold spans the whole expected duration.
 
-## Direct waits
+3. Make the hold with the mechanism for the current harness.
 
-For requests such as "wait five minutes", resolve `<skill-dir>` to this skill
-and run:
+   Codex: read [references/codex.md](references/codex.md).
+   Claude Code: read [references/claude-code.md](references/claude-code.md).
+   Another harness: use its longest single blocking wait, and prefer a
+   completion callback over any wait at all.
+
+   Done when the work is running under exactly one pending call.
+
+4. When a deadline expires with the work still running, resume the same wait.
+
+   Restarting the work discards the elapsed run and pays for it twice.
+
+   Done when the work reached a terminal state and was never restarted.
+
+## Report
+
+Report the terminal state, or the state change that requires action.
+
+Unchanged progress is not a state change. Heartbeat lines, percentage ticks, and
+"still running" are the hold working correctly; they are not results and do not
+justify a return. For a plain delay, say that the requested time elapsed.
+
+Done when the report names a terminal state or an action, and no line describes
+unchanged progress.
+
+## Timed delays
+
+For "wait five minutes" and similar, resolve `<skill-dir>` to this skill and run:
 
 ```sh
 <skill-dir>/scripts/quiet-wait 5m
 ```
 
-In Codex code mode, hold the outer `functions.exec` call longer than the
-requested delay. Use the Codex shell-wait pattern above and keep its internal
-loop inside the same `functions.exec` call. The outer tool call may span the
-complete requested delay.
-
-## Long-running commands
-
-Use the same held-call pattern for builds, tests, reviews, deployments, and
-other quiet processes:
-
-1. Start with a 30-second command yield.
-2. If it is still running, wait internally for up to five minutes at a time.
-3. Return to the model only when the process exits, produces a state that
-   requires action, or the user-requested deadline arrives.
-4. Do not narrate unchanged heartbeats.
-
-If the available tool cannot keep one outer call pending, use the longest safe
-blocking wait it supports. Never replace a wait with a tight polling loop.
+Done when one call spanned the whole requested delay.
 
 ## GitHub Actions
 
-Read [github-actions.md](references/github-actions.md), then estimate the next
-useful observation from completed runs of the same workflow:
+Read [references/github-actions.md](references/github-actions.md), then size the
+hold from completed runs of the same workflow:
 
 ```sh
 <skill-dir>/scripts/estimate-gh-wait --run-id <run-id>
 ```
 
-Wait for the returned `suggested_wait_seconds` inside the same held tool call,
-then inspect the run once. Recalculate only after a meaningful state change.
-Fall back to 120 seconds when fewer than three comparable runs exist.
+Hold for the returned `suggested_wait_seconds`, then inspect the run once.
+Recalculate only after a meaningful state change. Fall back to 120 seconds when
+fewer than three comparable runs exist.
 
-## Completion
-
-Report the result after the wait. For a plain delay, say that the requested
-time elapsed. For monitoring, report only meaningful state changes or the final
-state.
+Done when every required check reached a conclusion and each inspection followed
+a state change.
