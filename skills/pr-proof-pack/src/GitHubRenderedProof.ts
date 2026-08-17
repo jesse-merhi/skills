@@ -230,6 +230,8 @@ export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")
     }, { concurrency: "unbounded" })
     assets.push(...batchAssets)
   }
+  const finalMedia = yield* loadRenderedMedia(repository, pullRequestNumber)
+  yield* requireSameRenderedMedia(media, finalMedia)
   return {
     assets,
     images: media.filter((item) => item.kind === "image").length,

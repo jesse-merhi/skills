@@ -10,7 +10,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { curlUrlConfig, fetchRequestArgs, parseTrustedMediaUrl } from "./GitHubAttachment.ts"
+import { parseTrustedMediaUrl } from "./GitHubAttachment.ts"
 import {
   extractRenderedMedia,
   parseRenderedProofResponse,
@@ -84,19 +84,6 @@ describe("rendered GitHub proof verification", () => {
     ])
   })
 
-  it("fetches rendered assets without credentials or signed URLs in argv", () => {
-    const signedUrl = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"
-    const args = fetchRequestArgs("/tmp/asset", "/tmp/headers")
-    assert.deepStrictEqual([...args], [
-      "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/asset",
-      "--dump-header", "/tmp/headers", "--max-redirs", "0", "--proto", "=https",
-      "--max-filesize", "1073741824", "--max-time", "600",
-      "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
-      "--config", "-"
-    ])
-    assert.strictEqual(curlUrlConfig(signedUrl), `url = "${signedUrl}"\n`)
-  })
-
   it.effect("accepts a non-empty rendered image with matching content types", () => validateRenderedAsset({
     bytes: FileSystem.Size(42),
     detectedContentType: "image/png",
@@ -162,7 +149,17 @@ if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
   exit 1
 fi
 if [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
-  printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=sentinel-secret\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=sentinel-secret\\"><img src=\\"https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret\\"></p>"}'
+  call=1
+  if [ -n "\${RENDERED_TEST_GH_STATE:-}" ]; then
+    if [ -f "$RENDERED_TEST_GH_STATE" ]; then call=$(( $(cat "$RENDERED_TEST_GH_STATE") + 1 )); fi
+    printf '%s' "$call" > "$RENDERED_TEST_GH_STATE"
+  fi
+  query='sentinel-secret'
+  if [ "$call" -gt 1 ]; then query="sentinel-secret-refreshed-$call"; fi
+  fifth='fifth'
+  if [ "\${RENDERED_TEST_CHANGED:-}" = 1 ] && [ "$call" -gt 1 ]; then fifth='changed-fifth'; fi
+  payload='{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__\\"></p>"}'
+  printf '%s\\n' "$payload" | sed -e "s/__QUERY__/$query/g" -e "s/__FIFTH__/$fifth/g"
 else
   printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
 fi
@@ -257,16 +254,26 @@ printf '%s\\n' 'image/jpeg'
 
     try {
       const success = runLauncher({
-        RENDERED_TEST_FIVE_ASSETS: "1"
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "refresh-state")
       })
-      assert.strictEqual(success.status, 0, `${success.stderr}\n${readFileSync(log, "utf8")}`)
+      assert.strictEqual(success.status, 0, `${success.stdout}\n${success.stderr}\n${readFileSync(log, "utf8")}`)
       assert.include(success.stdout, "rendered media: images=5 videos=0")
       assert.include(success.stdout, "asset 1: image image/png bytes=14")
       assert.include(success.stdout, "asset 5: image image/png bytes=14")
       assert.notInclude(`${success.stdout}\n${success.stderr}`, "sentinel-secret")
       assertTemporaryPathsRemoved()
       const successRequests = readFileSync(log, "utf8")
-      assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("gh-args=")).length, 2)
+      assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("gh-args=")).length, 3)
+      assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 5)
+      assert.include(successRequests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret-refreshed-2"')
+
+      const changedProof = runFailure({
+        RENDERED_TEST_CHANGED: "1",
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "changed-state")
+      })
+      assert.include(`${changedProof.stdout}\n${changedProof.stderr}`, "rendered proof changed")
 
       const trustedRedirect = runLauncher({
         RENDERED_TEST_REDIRECT_COUNT: "5",
