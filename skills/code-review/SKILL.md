@@ -118,8 +118,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    - run affected validation and record each command;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 1 and present its completed-work, growth,
-     and scope-request report to the user;
+   - if it exits non-zero, stop Phase 1 and use `review-guardrails`' plain-language
+     scope-request rule;
    - return to Phase 1.
 
 9. After an accepted Phase 2 finding:
@@ -129,8 +129,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    - run affected validation and record each command;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 2 and present its completed-work, growth,
-     and scope-request report to the user;
+   - if it exits non-zero, stop Phase 2 and use `review-guardrails`' plain-language
+     scope-request rule;
    - stay in Phase 2 and dispatch the next fresh cold reviewer;
    - do not return to Phase 1 unless the user explicitly asks for a fresh
      native gate.
@@ -145,7 +145,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    [references/pr-closeout.md](references/pr-closeout.md) for the final PR-owner
    gate, one final push, proof freshness, GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
-   final response.
+   final response. Record the exact final head or dirty snapshot identity in
+   the closeout so a later PR workflow can detect whether the review is current.
 
 ## Done Means
 
@@ -170,6 +171,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or
   the PR/proof blocker is reported separately from the review result.
 - The final answer is backed by `review-findings closeout`, not chat memory.
+- The final answer identifies the exact reviewed head or dirty snapshot.
 
 ## Stop Honestly
 

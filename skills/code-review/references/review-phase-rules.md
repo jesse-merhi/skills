@@ -33,6 +33,12 @@ with the blocker or residual risk.
 - Long reviews may print heartbeat lines such as
   `review still running: ... elapsed=... pid=...`; treat those as progress, not
   as a reason to return to the model.
+- For review subagents, use the event-driven wait mechanism described by
+  `wait-efficiently`. Wait up to 15 minutes for the first mailbox update; the
+  wait returns as soon as the reviewer sends an update or finishes. Continue
+  waiting after non-terminal updates. Inspect only after two consecutive
+  timeouts or an explicit error. Do not pair normal waits with status-list
+  calls.
 - Do not kill a quiet review just because it has been silent for a few minutes.
   Inspect only after missed heartbeats, an obviously failed subprocess, or a
   review that has run past the expected long-review window.
@@ -65,9 +71,10 @@ with the blocker or residual risk.
 
 ## Hard Stops
 
-- Treat a non-zero `"$review_findings_bin" scope-check` as an immediate stop. Present
-  its report to the user and do not run another review, apply another fix, or
-  reset the baseline without explicit authorization.
+- Treat a non-zero `"$review_findings_bin" scope-check` as an immediate stop.
+  Present a plain-language scope request according to `review-guardrails`, and
+  do not run another review, apply another fix, or reset the baseline without
+  explicit authorization.
 - Never switch or override the review model. Retry transient capacity failures
   with the same command/model.
 - Do not rerun review only to get nicer wording. The second clean confirmation
