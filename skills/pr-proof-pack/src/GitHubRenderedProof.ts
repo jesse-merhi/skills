@@ -320,6 +320,7 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
         return {
           bytes: info.size,
           contentType: mediaTypeEssence(fetched.contentType),
+          downloadedBytes: fetched.downloadedBytes,
           kind: item.kind,
           positions: group.positions
         }
@@ -328,7 +329,7 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
       })))
     }, { concurrency: "unbounded" })
     for (const asset of batchAssets) {
-      downloadedBytes = FileSystem.Size(downloadedBytes + asset.bytes)
+      downloadedBytes = FileSystem.Size(downloadedBytes + asset.downloadedBytes)
       yield* requireRenderedByteBudget(downloadedBytes)
       for (const position of asset.positions) {
         assets.push({

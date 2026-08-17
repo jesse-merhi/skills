@@ -5,7 +5,7 @@ import * as FileSystem from "effect/FileSystem"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
@@ -340,6 +340,40 @@ case "$config" in
   *'private-user-images.githubusercontent.com/'*|*'camo.githubusercontent.com/'*) ;;
   *) printf 'unexpected curl stdin\\n' >&2; exit 4 ;;
 esac
+if [ "\${RENDERED_TEST_CONCURRENT_FAILURE:-}" = 1 ]; then
+  marker="\${output##*/}"
+  printf '%s\\n' "$$" >> "$RENDERED_TEST_CONCURRENT_PIDS"
+  case "$config" in
+    *'/signed?'*) failing=1 ;;
+    *)
+      failing=0
+      trap '' TERM
+      : > "$RENDERED_TEST_CONCURRENT_READY/$marker" ;;
+  esac
+  : > "$RENDERED_TEST_CONCURRENT_BARRIER/$marker"
+  attempts=0
+  while [ "$(/usr/bin/find "$RENDERED_TEST_CONCURRENT_BARRIER" -type f | /usr/bin/wc -l)" -lt 4 ]; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 500 ]; then printf 'concurrency barrier timed out\\n' >&2; exit 9; fi
+    sleep 0.01
+  done
+  if [ "$failing" = 1 ]; then printf 'concurrent worker failed\\n' >&2; exit 28; fi
+  while :; do :; done
+fi
+if [ "\${RENDERED_TEST_REDIRECT_BODY_BUDGET:-}" = 1 ]; then
+  marker="\${output##*/}"
+  if [ ! -f "$RENDERED_TEST_REDIRECT_BODY_STATE/$marker" ]; then
+    : > "$RENDERED_TEST_REDIRECT_BODY_STATE/$marker"
+    /bin/dd if=/dev/zero of="$output" bs=1 count=0 seek=10485760 2>/dev/null
+    printf '%s\\n' 'HTTP/1.1 302 Found' "Location: https://camo.githubusercontent.com/$marker" '' > "$headers"
+    printf '%s' '{"status":302,"contentType":"text/html"}'
+  else
+    /bin/dd if=/dev/zero of="$output" bs=1 count=0 seek=78643200 2>/dev/null
+    printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
+    printf '%s' '{"status":200,"contentType":"image/png; qs=0.85"}'
+  fi
+  exit 0
+fi
 if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
   printf '%s\\n' 'curl rejected https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2' >&2
   exit 28
@@ -461,6 +495,29 @@ printf '%s\\n' 'image/jpeg'
       assert.strictEqual(manyDuplicateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 1)
       assertTemporaryPathsRemoved(manyDuplicatesLog)
 
+      const concurrentBarrier = mkdtempSync(join(directory, "concurrent-barrier-"))
+      const concurrentReady = mkdtempSync(join(directory, "concurrent-ready-"))
+      const concurrentLog = join(directory, "concurrent.log")
+      const concurrentPids = join(directory, "concurrent.pids")
+      const concurrentStartedAt = Date.now()
+      const concurrentFailure = runLauncher({
+        RENDERED_TEST_CONCURRENT_BARRIER: concurrentBarrier,
+        RENDERED_TEST_CONCURRENT_FAILURE: "1",
+        RENDERED_TEST_CONCURRENT_PIDS: concurrentPids,
+        RENDERED_TEST_CONCURRENT_READY: concurrentReady,
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "concurrent-gh-state"),
+        RENDERED_TEST_LOG: concurrentLog
+      })
+      assertCommandFailure(concurrentFailure)
+      assert.isBelow(Date.now() - concurrentStartedAt, 5_000)
+      assert.strictEqual(readdirSync(concurrentBarrier).length, 4)
+      assert.strictEqual(readdirSync(concurrentReady).length, 3)
+      const pids = readFileSync(concurrentPids, "utf8").trim().split("\n").map(Number)
+      assert.strictEqual(pids.length, 4)
+      for (const pid of pids) assert.isFalse(processIsRunning(pid), `expected concurrent curl ${pid} to exit`)
+      assertTemporaryPathsRemoved(concurrentLog)
+
       const aggregateLog = join(directory, "aggregate.log")
       const aggregate = runLauncher({
         RENDERED_TEST_EIGHT_ASSETS: "1",
@@ -493,6 +550,22 @@ printf '%s\\n' 'image/jpeg'
       assert.strictEqual(mixedSizeRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 8)
       assert.include(mixedSizeRequests, "--max-filesize 103809024")
       assertTemporaryPathsRemoved(mixedSizesLog)
+
+      const redirectBodyLog = join(directory, "redirect-body-budget.log")
+      const redirectBodyBudget = runLauncher({
+        RENDERED_TEST_EIGHT_ASSETS: "1",
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "redirect-body-gh-state"),
+        RENDERED_TEST_LOG: redirectBodyLog,
+        RENDERED_TEST_REDIRECT_BODY_BUDGET: "1",
+        RENDERED_TEST_REDIRECT_BODY_STATE: mkdtempSync(join(directory, "redirect-body-state-"))
+      })
+      assertCommandFailure(redirectBodyBudget)
+      assert.include(`${redirectBodyBudget.stdout}\n${redirectBodyBudget.stderr}`, "download byte budget")
+      const redirectBodyRequests = readFileSync(redirectBodyLog, "utf8")
+      assert.strictEqual(redirectBodyRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 12)
+      assert.include(redirectBodyRequests, "--max-filesize 68157440")
+      assertTemporaryPathsRemoved(redirectBodyLog)
 
       const changedProof = runFailure({
         RENDERED_TEST_CHANGED: "1",
@@ -528,12 +601,17 @@ printf '%s\\n' 'image/jpeg'
       })
       assert.include(`${finalSemanticQueryChanged.stdout}\n${finalSemanticQueryChanged.stderr}`, "rendered proof changed")
 
+      const trustedRedirectLog = join(directory, "trusted-redirect.log")
       const trustedRedirect = runLauncher({
+        RENDERED_TEST_LOG: trustedRedirectLog,
         RENDERED_TEST_REDIRECT_COUNT: "5",
         RENDERED_TEST_REDIRECT_STATE: join(directory, "trusted-redirect-state")
       })
       assert.strictEqual(trustedRedirect.status, 0, trustedRedirect.stderr)
-      assertTemporaryPathsRemoved()
+      const trustedRedirectRequests = readFileSync(trustedRedirectLog, "utf8")
+      assert.include(trustedRedirectRequests, "--max-filesize 104857600")
+      assert.include(trustedRedirectRequests, "--max-filesize 104857530")
+      assertTemporaryPathsRemoved(trustedRedirectLog)
 
       runFailure({
         RENDERED_TEST_REDIRECT_COUNT: "6",

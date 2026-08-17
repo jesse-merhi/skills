@@ -161,13 +161,19 @@ export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")
   readonly processOptions?: Pick<CheckedTextOptions, "env" | "extendEnv" | "forceKillAfter">
 }) {
   const fileSystem = yield* FileSystem.FileSystem
+  const maxBytes = options.maxBytes ?? maxAttachmentBytes
+  let downloadedBytes = FileSystem.Size(0)
   let currentUrl = (yield* parseTrustedMediaUrl(options.assetUrl)).href
   for (let redirects = 0; redirects <= 5; redirects += 1) {
+    const remainingBytes = FileSystem.Size(maxBytes - downloadedBytes)
+    if (remainingBytes <= FileSystem.Size(0)) {
+      return yield* new GitHubAttachmentError({ message: "GitHub attachment exceeded its download byte budget" })
+    }
     const headersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-asset-headers-" })
     const output = yield* checkedTrimmedText("curl", fetchRequestArgs(
       options.assetFile,
       headersFile,
-      options.maxBytes ?? maxAttachmentBytes
+      remainingBytes
     ), {
       ...options.processOptions,
       displayCommand: `curl [${options.label}]`,
@@ -176,7 +182,12 @@ export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")
       stdin: curlUrlConfig(currentUrl)
     })
     const fetched = yield* parseFetchResult(output)
-    if (fetched.status < 300 || fetched.status > 399) return fetched
+    const responseInfo = yield* fileSystem.stat(options.assetFile)
+    downloadedBytes = FileSystem.Size(downloadedBytes + responseInfo.size)
+    if (downloadedBytes > maxBytes) {
+      return yield* new GitHubAttachmentError({ message: "GitHub attachment exceeded its download byte budget" })
+    }
+    if (fetched.status < 300 || fetched.status > 399) return { ...fetched, downloadedBytes }
     yield* allowTrustedRedirect(redirects)
     const headers = yield* fileSystem.readFileString(headersFile)
     currentUrl = yield* parseRedirectHeaders({ baseUrl: currentUrl, headers, status: fetched.status })
@@ -244,8 +255,18 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   }
   const redirectHeaders = yield* fileSystem.readFileString(redirectHeadersFile)
   const redirectUrl = yield* parseRedirectHeaders({ baseUrl: assetUrl, headers: redirectHeaders, status: redirectResponse.status })
+  const redirectInfo = yield* fileSystem.stat(redirectFile)
+  const remainingVerificationBytes = FileSystem.Size(maxAttachmentBytes - redirectInfo.size)
+  if (remainingVerificationBytes <= FileSystem.Size(0)) {
+    return yield* new GitHubAttachmentError({ message: "GitHub attachment exceeded its download byte budget" })
+  }
   const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-attachment-" })
-  const fetched = yield* fetchTrustedAsset({ assetFile, assetUrl: redirectUrl, label: `verified GitHub attachment ${assetUrl}` })
+  const fetched = yield* fetchTrustedAsset({
+    assetFile,
+    assetUrl: redirectUrl,
+    label: `verified GitHub attachment ${assetUrl}`,
+    maxBytes: remainingVerificationBytes
+  })
   const detectedType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))
   const fetchedInfo = yield* fileSystem.stat(assetFile)
   yield* verifyAttachment({

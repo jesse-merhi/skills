@@ -293,7 +293,11 @@ case " $* " in
     auth_input="$(cat)"
     printf 'first-stdin=%s\\nfirst-args=%s\\n' "$auth_input" "$*" >> "$UPLOAD_TEST_LOG"
     for argument do printf 'first-arg=%s\\n' "$argument" >> "$UPLOAD_TEST_LOG"; done
-    : > "$output"
+    if [ "\${UPLOAD_TEST_REDIRECT_BODY_LIMIT:-}" = 1 ]; then
+      /usr/bin/truncate -s 104857600 "$output"
+    else
+      : > "$output"
+    fi
     printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret' '' > "$headers"
     if [ "\${UPLOAD_TEST_REDIRECT_FAILURE:-}" = 1 ]; then
       printf '%s' 'https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret'
@@ -415,6 +419,12 @@ esac
       assertCommandFailure(redirectFailure)
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "sentinel-secret")
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "test-token")
+      assertTemporaryPathsRemoved()
+
+      const redirectBodyLimit = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_BODY_LIMIT: "1" })
+      assertCommandFailure(redirectBodyLimit)
+      assert.include(`${redirectBodyLimit.stdout}\n${redirectBodyLimit.stderr}`, "download byte budget")
+      assert.notInclude(redirectBodyLimit.stdout, "https://github.com/user-attachments/assets/abc-123")
       assertTemporaryPathsRemoved()
 
       const interrupted = runLauncher(evidence, { UPLOAD_TEST_FETCH_SIGNAL: "1" })
