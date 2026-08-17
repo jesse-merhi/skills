@@ -11,6 +11,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import {
+  curlUrlConfig,
   fetchRequestArgs,
   mediaTypeRequestArgs,
   parseFetchResult,
@@ -113,17 +114,22 @@ describe("GitHub attachment upload contract", () => {
 
   it("separates the authenticated redirect request from the unauthenticated fetch", () => {
     const redirectArgs = redirectRequestArgs("/tmp/redirect", "https://github.com/user-attachments/assets/abc-123")
-    assert.strictEqual(redirectArgs[0], "--disable")
-    assert.includeMembers([...redirectArgs], ["--header", "@-"])
-    assert.notInclude(redirectArgs, "--location")
+    assert.deepStrictEqual([...redirectArgs], [
+      "--disable", "--silent", "--show-error", "--output", "/tmp/redirect",
+      "--write-out", '{"status":%{http_code},"location":"%{redirect_url}"}',
+      "--header", "@-", "https://github.com/user-attachments/assets/abc-123"
+    ])
 
-    const fetchArgs = fetchRequestArgs("/tmp/attachment", "https://private-user-images.githubusercontent.com/signed")
-    assert.strictEqual(fetchArgs[0], "--disable")
-    assert.include(fetchArgs, "--location")
-    assert.includeMembers([...fetchArgs], ["--proto", "=https", "--proto-redir", "=https"])
-    assert.notInclude(fetchArgs.join(" "), "Authorization")
-    assert.notInclude(fetchArgs, "@-")
-    assert.notInclude(fetchArgs, "--location-trusted")
+    const signedUrl = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"
+    const fetchArgs = fetchRequestArgs("/tmp/attachment")
+    assert.deepStrictEqual([...fetchArgs], [
+      "--disable", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https",
+      "--output", "/tmp/attachment",
+      "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
+      "--config", "-"
+    ])
+    assert.notInclude(fetchArgs.join(" "), "sentinel-secret")
+    assert.strictEqual(curlUrlConfig(signedUrl), `url = "${signedUrl}"\n`)
   })
 
   it.effect("accepts an attachment only after every verification matches", () => verifyAttachment({
@@ -272,7 +278,7 @@ esac
       const secondArgs = requests.split("\n").find((line) => line.startsWith("second-args=")) ?? ""
       assert.include(requests, "first-stdin=Authorization: Bearer test-token")
       assert.notInclude(firstArgs, "--location")
-      assert.include(requests, "second-stdin=\n")
+      assert.include(requests, 'second-stdin=url = "https://private-user-images.githubusercontent.com/signed"')
       assert.include(secondArgs, "--location")
       assert.notInclude(secondArgs, "Authorization")
       assert.notInclude(secondArgs, "test-token")

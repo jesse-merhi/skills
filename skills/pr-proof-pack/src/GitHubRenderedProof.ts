@@ -4,6 +4,7 @@ import * as Schema from "effect/Schema"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import {
+  curlUrlConfig,
   GitHubAttachmentError,
   mediaTypeRequestArgs,
   parseFetchResult,
@@ -43,11 +44,11 @@ export const renderedProofRequestArgs = (repository: string, pullRequestNumber: 
   "--header", "Accept: application/vnd.github.full+json"
 ] as const
 
-export const renderedAssetFetchArgs = (assetFile: string, assetUrl: string) => [
+export const renderedAssetFetchArgs = (assetFile: string) => [
   "--disable", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https",
   "--output", assetFile,
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
-  assetUrl
+  "--config", "-"
 ] as const
 
 export const extractRenderedMedia = Effect.fn("GitHubRenderedProof.extractRenderedMedia")(function*(bodyHtml: string) {
@@ -79,7 +80,7 @@ export const validateRenderedAsset = Effect.fn("GitHubRenderedProof.validateAsse
   if (options.status !== 200) return yield* new GitHubAttachmentError({ message: `Rendered attachment verification returned HTTP ${options.status}` })
   const expectedPrefix = `${options.kind}/`
   if (!options.fetchedContentType.startsWith(expectedPrefix)) return yield* new GitHubAttachmentError({ message: `Rendered ${options.kind} HTTP content type did not match its element` })
-  if (options.detectedContentType !== options.fetchedContentType) return yield* new GitHubAttachmentError({ message: "Rendered attachment HTTP and detected content types did not match" })
+  if (!options.detectedContentType.startsWith(expectedPrefix)) return yield* new GitHubAttachmentError({ message: `Rendered ${options.kind} detected content type did not match its element` })
   if (options.bytes === FileSystem.Size(0)) return yield* new GitHubAttachmentError({ message: "Rendered attachment was empty" })
 })
 
@@ -100,8 +101,9 @@ export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")
   const media = yield* parseRenderedProofResponse(response)
   const assets = yield* Effect.forEach(media, Effect.fnUntraced(function*(item, position) {
     const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-rendered-asset-" })
-    const fetchedOutput = yield* checkedTrimmedText("curl", renderedAssetFetchArgs(assetFile, item.url.href), {
-      displayCommand: `curl [rendered PR asset ${position + 1}]`
+    const fetchedOutput = yield* checkedTrimmedText("curl", renderedAssetFetchArgs(assetFile), {
+      displayCommand: `curl [rendered PR asset ${position + 1}]`,
+      stdin: curlUrlConfig(item.url.href)
     })
     const fetched = yield* parseFetchResult(fetchedOutput)
     const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))

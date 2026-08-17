@@ -99,11 +99,13 @@ export const redirectRequestArgs = (responseFile: string, assetUrl: string) => [
   "--header", "@-", assetUrl
 ] as const
 
-export const fetchRequestArgs = (assetFile: string, redirectUrl: string) => [
+export const fetchRequestArgs = (assetFile: string) => [
   "--disable", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https", "--output", assetFile,
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
-  redirectUrl
+  "--config", "-"
 ] as const
+
+export const curlUrlConfig = (url: string) => `url = "${url.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"\n`
 
 export const verifyAttachment = Effect.fn("GitHubAttachment.verifyAttachment")(function*(options: {
   readonly expectedMediaType: string
@@ -150,8 +152,9 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   })
   const redirectUrl = yield* parseRedirectResult(redirectOutput)
   const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-attachment-" })
-  const fetchOutput = yield* checkedTrimmedText("curl", fetchRequestArgs(assetFile, redirectUrl), {
-    displayCommand: `curl [verified GitHub attachment ${assetUrl}]`
+  const fetchOutput = yield* checkedTrimmedText("curl", fetchRequestArgs(assetFile), {
+    displayCommand: `curl [verified GitHub attachment ${assetUrl}]`,
+    stdin: curlUrlConfig(redirectUrl)
   })
   const fetched = yield* parseFetchResult(fetchOutput)
   const detectedType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))
