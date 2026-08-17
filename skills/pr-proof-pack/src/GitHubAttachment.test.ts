@@ -1,11 +1,20 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
+import { spawnSync } from "node:child_process"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
+import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import {
   fetchRequestArgs,
   mediaTypeRequestArgs,
   parseFetchResult,
+  parseGitHubToken,
   parsePullRequestUrl,
   parseRedirectResult,
   parseUploadResponse,
@@ -14,6 +23,13 @@ import {
   uploadRequestArgs,
   verifyAttachment
 } from "./GitHubAttachment.ts"
+
+const launcher = fileURLToPath(new URL("../scripts/github-upload-attachment", import.meta.url))
+
+const writeExecutable = (path: string, content: string) => {
+  writeFileSync(path, content)
+  chmodSync(path, 0o755)
+}
 
 describe("GitHub attachment upload contract", () => {
   it.effect("resolves the repository from the exact github.com PR", () => repositoryFromPullRequest(
@@ -31,6 +47,14 @@ describe("GitHub attachment upload contract", () => {
   it.effect("requires a full PR URL instead of an ambient repository number", () => parsePullRequestUrl(
     "81"
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /pass the full github[.]com PR URL/u))))
+
+  it.effect("rejects multiline tokens without exposing credential text", () => parseGitHubToken(
+    "secret-token\nX-Injected: yes"
+  ).pipe(Effect.flip, Effect.map((error) => {
+    assert.match(error.message, /invalid single-line authentication token/u)
+    assert.notInclude(error.message, "secret-token")
+    assert.notInclude(error.message, "X-Injected")
+  })))
 
   it.effect("accepts a 201 response with a canonical attachment URL", () => parseUploadResponse(
     "HTTP/2.0 201 Created\r\nContent-Type: application/json\r\n\r\nhttps://github.com/user-attachments/assets/abc-123"
@@ -129,4 +153,101 @@ describe("GitHub attachment upload contract", () => {
     fetchedMediaType: "image/png",
     fetchedSize: FileSystem.Size(41)
   }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /size 41 did not match 42/u))))
+
+  it("keeps credentials on the first curl request and prints only a verified URL", () => {
+    const directory = mkdtempSync(join(tmpdir(), "github-attachment-test-"))
+    const log = join(directory, "curl.log")
+    const evidence = join(directory, "proof.png")
+    writeFileSync(evidence, "evidence")
+    writeExecutable(join(directory, "gh"), `#!/bin/sh
+printf 'gh-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
+case "$1:$2" in
+  pr:view) printf '%s\\n' '{"url":"https://github.com/jesse-merhi/skills/pull/81"}' ;;
+  auth:token) printf '%s\\n' 'test-token' ;;
+  api:--hostname) printf '%s\\n' '{"id":42}' ;;
+  api:--method) printf '%s\\n' 'HTTP/2.0 201 Created' '' 'https://github.com/user-attachments/assets/abc-123' ;;
+  *) printf 'unexpected gh arguments: %s\\n' "$*" >&2; exit 2 ;;
+esac
+`)
+    writeExecutable(join(directory, "file"), `#!/bin/sh
+printf '%s\\n' 'image/png'
+`)
+    writeExecutable(join(directory, "curl"), `#!/bin/sh
+output=''
+next_output=0
+for argument do
+  if [ "$next_output" = 1 ]; then
+    output="$argument"
+    next_output=0
+  elif [ "$argument" = '--output' ]; then
+    next_output=1
+  fi
+done
+case " $* " in
+  *' --header @- '*)
+    auth_input="$(cat)"
+    printf 'first-stdin=%s\\nfirst-args=%s\\n' "$auth_input" "$*" >> "$UPLOAD_TEST_LOG"
+    : > "$output"
+    printf '%s' '{"status":302,"location":"https://private-user-images.githubusercontent.com/signed"}'
+    ;;
+  *)
+    printf 'second-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
+    if [ "\${UPLOAD_TEST_MISMATCH:-}" = 1 ]; then
+      printf '%s' 'bad' > "$output"
+    else
+      cp "$UPLOAD_TEST_EVIDENCE" "$output"
+    fi
+    printf '%s' '{"status":200,"contentType":"image/png"}'
+    ;;
+esac
+`)
+
+    const environment = {
+      ...process.env,
+      // @effect-diagnostics-next-line processEnv:off
+      PATH: `${directory}:${process.env.PATH ?? ""}`,
+      UPLOAD_TEST_EVIDENCE: evidence,
+      UPLOAD_TEST_LOG: log
+    }
+
+    try {
+      const missing = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", join(directory, "missing.png")], {
+        encoding: "utf8",
+        env: environment
+      })
+      assert.notStrictEqual(missing.status, 0)
+      assert.isFalse(existsSync(log))
+
+      const directoryInput = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", directory], {
+        encoding: "utf8",
+        env: environment
+      })
+      assert.notStrictEqual(directoryInput.status, 0)
+      assert.isFalse(existsSync(log))
+
+      const success = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
+        encoding: "utf8",
+        env: environment
+      })
+      assert.strictEqual(success.status, 0, success.stderr)
+      assert.strictEqual(success.stdout.trim(), "https://github.com/user-attachments/assets/abc-123")
+
+      const requests = readFileSync(log, "utf8")
+      const firstArgs = requests.split("\n").find((line) => line.startsWith("first-args=")) ?? ""
+      const secondArgs = requests.split("\n").find((line) => line.startsWith("second-args=")) ?? ""
+      assert.include(requests, "first-stdin=Authorization: Bearer test-token")
+      assert.notInclude(firstArgs, "--location")
+      assert.include(secondArgs, "--location")
+      assert.notInclude(secondArgs, "--header")
+
+      const mismatch = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
+        encoding: "utf8",
+        env: { ...environment, UPLOAD_TEST_MISMATCH: "1" }
+      })
+      assert.notStrictEqual(mismatch.status, 0)
+      assert.notInclude(mismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
+    } finally {
+      rmSync(directory, { force: true, recursive: true })
+    }
+  })
 })

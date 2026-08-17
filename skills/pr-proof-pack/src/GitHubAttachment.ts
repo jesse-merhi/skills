@@ -24,6 +24,7 @@ const GitHubPullRequestUrl = Schema.URLFromString.pipe(Schema.check(Schema.makeF
 const GitHubPullRequest = Schema.Struct({ url: GitHubPullRequestUrl })
 const Repository = Schema.Struct({ id: Schema.Number })
 const MediaType = Schema.String.pipe(Schema.check(Schema.isPattern(/^(?:image|video)\/[A-Za-z0-9.+-]+$/u)))
+const GitHubToken = Schema.NonEmptyString.pipe(Schema.check(Schema.isPattern(/^[^\r\n]+$/u)))
 const CreatedStatus = Schema.String.pipe(Schema.check(Schema.isPattern(/^HTTP\/[0-9.]+ 201(?: |$)/u)))
 const AssetUrl = Schema.String.pipe(Schema.check(Schema.isPattern(/^https:\/\/github[.]com\/user-attachments\/assets\/[A-Za-z0-9-]+$/u)))
 const RedirectStatus = Schema.Int.pipe(
@@ -53,6 +54,10 @@ export const repositoryFromPullRequest = Effect.fn("GitHubAttachment.repositoryF
 
 export const parsePullRequestUrl = (input: string) =>
   decodeText(GitHubPullRequestUrl, input, "pull request URL; pass the full github.com PR URL")
+
+export const parseGitHubToken = (input: string) => Schema.decodeUnknownEffect(GitHubToken)(input).pipe(
+  Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid single-line authentication token" }))
+)
 
 export const parseUploadResponse = Effect.fn("GitHubAttachment.parseUploadResponse")(function*(input: string) {
   const lines = input.replaceAll("\r", "").trim().split("\n")
@@ -135,7 +140,9 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   }), { displayCommand: `gh api [attachment upload for ${repository}]` })
   const assetUrl = yield* parseUploadResponse(uploadOutput)
   const redirectFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-" })
-  const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], { displayCommand: "gh auth token --hostname github.com" })
+  const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], { displayCommand: "gh auth token --hostname github.com" }).pipe(
+    Effect.flatMap(parseGitHubToken)
+  )
   const redirectOutput = yield* checkedTrimmedText("curl", redirectRequestArgs(redirectFile, assetUrl), {
     displayCommand: `curl [GitHub attachment redirect ${assetUrl}]`,
     stdin: `Authorization: Bearer ${token}\n`

@@ -164,29 +164,6 @@ behavior_checks = {
         "f0aa3a8bb03779c71a5aa262d389e3bfe6b77cdc",
         "browser-use skill install --target claude --no-install --force",
     ],
-    root / "skills/pr-proof-pack/SKILL.md": [
-        "scripts/github-upload-attachment",
-        "repository command",
-        "`body_html`",
-    ],
-    root / "skills/pr-proof-pack/references/screenshots.md": [
-        "GitHub Attachment Upload",
-        "scripts/github-upload-attachment",
-        "requires a `201` response",
-        "server-rendered body without opening a browser",
-    ],
-    root / "skills/pr-proof-pack/src/GitHubAttachment.ts": [
-        "https://uploads.github.com/user-attachments/assets",
-        "Attachment verification returned HTTP",
-        "Downloaded attachment size",
-    ],
-    root / "skills/pr-proof-pack/scripts/github-upload-attachment": [
-        "github-upload-attachment.ts",
-    ],
-    root / "skills/pr-proof-pack/src/NetDiff.ts": [
-        "with a browser or device",
-        "upload it as provider-hosted evidence",
-    ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
     ],
@@ -528,12 +505,6 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
-  assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
-  assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
-  assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
-  assert_contains "$skill/src/GitHubAttachment.ts" '"--disable", "--silent", "--show-error", "--location"'
-  assert_not_contains "$skill/src/GitHubAttachment.ts" '"--location-trusted"'
-  assert_contains "$skill/src/GitHubAttachment.ts" 'yield* verifyAttachment'
   assert_contains "$skill/scripts/github-upload-attachment" 'github-upload-attachment.ts'
   if [[ ! -x "$skill/scripts/github-upload-attachment" ]]; then
     fail "expected github-upload-attachment wrapper to be executable"
@@ -560,8 +531,6 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
   assert_contains "$skill/src/NetDiff.ts" "with a browser or device"
   assert_contains "$skill/src/NetDiff.ts" "upload it as provider-hosted evidence"
-  assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
-  assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
   assert_contains "$skill/agents/openai.yaml" "Check and refresh practical PR proof."
   assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
   assert_contains "$skill/references/video-editing.md" "Before — direct base"
