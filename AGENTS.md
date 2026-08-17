@@ -69,6 +69,23 @@ Apply this especially to routing, parsing, validation, serialization, retries,
 queues, caching, middleware, request context, telemetry, date and time handling,
 resource lifecycle, and graceful shutdown.
 
+## Model turns
+
+Every return to the model re-sends the whole conversation, so the count of
+returns sets the cost of a task. Two habits carry almost all of it.
+
+- Batch independent calls into one turn. Reads, greps, and status checks that do
+  not depend on each other belong in a single request: `Promise.all` inside one
+  Codex code-mode cell, or several tool calls in one response where the harness
+  runs them natively. Keep dependent calls, writes, and approval-sensitive
+  actions serial.
+- Hold a wait for its full expected duration, never under 300 seconds. A wait
+  deadline is a ceiling rather than a delay, so it returns the moment the work
+  finishes and a short one only buys another round trip. In Codex code mode,
+  raise the cell's own budget with the `@exec` `yield_time_ms` directive too: an
+  inner wait cannot outlive the cell holding it. Load `wait-efficiently` for
+  anything longer or more involved than a single command.
+
 ## Working rules
 
 - Work on a branch in a dedicated git worktree. Never push agent-authored

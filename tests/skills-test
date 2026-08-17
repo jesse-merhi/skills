@@ -597,6 +597,19 @@ test_harness_references_carry_the_api_surface() {
   assert_contains "$refs/claude-code.md" 'wasted round trip'
 }
 
+test_agents_md_bounds_model_turns() {
+  local agents="$ROOT_DIR/AGENTS.md"
+
+  assert_contains "$agents" '## Model turns'
+  assert_contains "$agents" 'Batch independent calls into one turn'
+  assert_contains "$agents" 'Promise.all'
+  assert_contains "$agents" 'Keep dependent calls, writes, and approval-sensitive'
+  assert_contains "$agents" 'never under 300 seconds'
+  assert_contains "$agents" 'ceiling rather than a delay'
+  assert_contains "$agents" '`@exec` `yield_time_ms` directive'
+  assert_contains "$agents" 'Load `wait-efficiently`'
+}
+
 test_review_waits_load_the_wait_skill() {
   local review_skill="$ROOT_DIR/skills/code-review"
 
@@ -904,6 +917,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_waits_hold_instead_of_polling
 test_harness_references_carry_the_api_surface
+test_agents_md_bounds_model_turns
 test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
