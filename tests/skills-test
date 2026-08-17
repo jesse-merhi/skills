@@ -176,6 +176,23 @@ behavior_checks = {
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
         "with the selected interactive browser",
     ],
+    root / "skills/review-guardrails/SKILL.md": [
+        "load `speak-fking-english`",
+    ],
+    root / "skills/review-guardrails/references/scope-governor.md": [
+        "Assume the user has not",
+        "what the reviewer found, in plain language",
+        "Should I include it in",
+        "Keep CLI terms, budget calculations, finding classes",
+    ],
+    root / "skills/wait-efficiently/SKILL.md": [
+        "15-minute timeout",
+        "two consecutive timeouts",
+    ],
+    root / "skills/cold-pr-review/references/prompt-template.md": [
+        "do not audit them as independent targets",
+        "Every finding must identify the changed line or",
+    ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
     ],
