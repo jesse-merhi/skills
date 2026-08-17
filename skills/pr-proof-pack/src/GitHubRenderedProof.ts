@@ -18,7 +18,6 @@ const RenderedPullRequest = Schema.Struct({
   body_html: Schema.String
 })
 
-const maxRenderedMedia = 20
 const maxRenderedTotalBytes = FileSystem.Size(500 * 1024 * 1024)
 
 export interface RenderedMedia {
@@ -159,12 +158,6 @@ export const parseRenderedProofResponse = Effect.fn("GitHubRenderedProof.parseRe
   return (yield* parseRenderedProofDocument(input)).media
 })
 
-export const requireRenderedMediaCount = Effect.fn("GitHubRenderedProof.requireMediaCount")(function*(count: number) {
-  if (count > maxRenderedMedia) {
-    return yield* new GitHubAttachmentError({ message: `GitHub rendered proof exceeded ${maxRenderedMedia} media candidates` })
-  }
-})
-
 export const requireRenderedByteBudget = Effect.fn("GitHubRenderedProof.requireByteBudget")(function*(bytes: FileSystem.Size) {
   if (bytes > maxRenderedTotalBytes) {
     return yield* new GitHubAttachmentError({ message: "GitHub rendered proof exceeded the 500 MiB download budget" })
@@ -257,7 +250,7 @@ const groupRenderedMedia = (media: ReadonlyArray<RenderedMedia>) => {
   return groups
 }
 
-export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pullRequest: string) {
+const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pullRequest: string) {
   const fileSystem = yield* FileSystem.FileSystem
   const pullRequestUrl = yield* parsePullRequestUrl(pullRequest)
   const segments = pullRequestUrl.pathname.split("/")
@@ -265,7 +258,6 @@ export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")
   const pullRequestNumber = segments[4] ?? ""
   const proof = yield* loadRenderedProof(repository, pullRequestNumber)
   const { media } = proof
-  yield* requireRenderedMediaCount(media.length)
   const groups = groupRenderedMedia(media)
   const assets: Array<RenderedAssetResult> = []
   let downloadedBytes = FileSystem.Size(0)
@@ -329,3 +321,9 @@ export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")
     videos: media.filter((item) => item.kind === "video").length
   }
 })
+
+export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verifyWithDeadline")((pullRequest: string) =>
+  verifyRenderedProof(pullRequest).pipe(Effect.timeoutOrElse({
+    duration: "10 minutes",
+    orElse: () => Effect.fail(new GitHubAttachmentError({ message: "GitHub rendered proof verification exceeded 10 minutes" }))
+  })))

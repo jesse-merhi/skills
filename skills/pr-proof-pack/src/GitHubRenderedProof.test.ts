@@ -18,7 +18,6 @@ import {
   renderedProofLines,
   renderedProofRequestArgs,
   requireRenderedByteBudget,
-  requireRenderedMediaCount,
   validateRenderedAsset
 } from "./GitHubRenderedProof.ts"
 
@@ -79,14 +78,11 @@ describe("rendered GitHub proof verification", () => {
     '{"body":"","body_html":42}'
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid rendered pull request/u))))
 
-  it.effect("bounds rendered media candidates and aggregate bytes", () => Effect.all([
-    requireRenderedMediaCount(20),
+  it.effect("bounds aggregate rendered bytes", () => Effect.all([
     requireRenderedByteBudget(FileSystem.Size(500 * 1024 * 1024)),
-    requireRenderedMediaCount(21).pipe(Effect.flip),
     requireRenderedByteBudget(FileSystem.Size((500 * 1024 * 1024) + 1)).pipe(Effect.flip)
   ]).pipe(Effect.map((results) => {
-    assert.match(results[2]?.message ?? "", /exceeded 20 media candidates/u)
-    assert.match(results[3]?.message ?? "", /exceeded the 500 MiB/u)
+    assert.match(results[1]?.message ?? "", /exceeded the 500 MiB/u)
   })))
 
   it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
@@ -172,7 +168,15 @@ if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
   printf 'failed while reading rendered pull request\\n' >&2
   exit 1
 fi
-if [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
+if [ "\${RENDERED_TEST_MANY_DUPLICATES:-}" = 1 ]; then
+  /usr/bin/python3 - <<'PY'
+import json
+print(json.dumps({
+    "body": "proof",
+    "body_html": "<p>" + '<img src="https://private-user-images.githubusercontent.com/repeated?jwt=sentinel-secret">' * 101 + "</p>",
+}))
+PY
+elif [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
   call=1
   if [ -n "\${RENDERED_TEST_GH_STATE:-}" ]; then
     if [ -f "$RENDERED_TEST_GH_STATE" ]; then call=$(( $(cat "$RENDERED_TEST_GH_STATE") + 1 )); fi
@@ -318,6 +322,18 @@ printf '%s\\n' 'image/jpeg'
       const duplicateRequests = readFileSync(duplicateLog, "utf8")
       assert.strictEqual(duplicateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 4)
       assertTemporaryPathsRemoved(duplicateLog)
+
+      const manyDuplicatesLog = join(directory, "many-duplicates.log")
+      const manyDuplicates = runLauncher({
+        RENDERED_TEST_LOG: manyDuplicatesLog,
+        RENDERED_TEST_MANY_DUPLICATES: "1"
+      })
+      assert.strictEqual(manyDuplicates.status, 0, `${manyDuplicates.stdout}\n${manyDuplicates.stderr}`)
+      assert.include(manyDuplicates.stdout, "rendered media: images=101 videos=0")
+      assert.include(manyDuplicates.stdout, "asset 101: image image/png bytes=14")
+      const manyDuplicateRequests = readFileSync(manyDuplicatesLog, "utf8")
+      assert.strictEqual(manyDuplicateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 1)
+      assertTemporaryPathsRemoved(manyDuplicatesLog)
 
       const aggregateLog = join(directory, "aggregate.log")
       const aggregate = runLauncher({
