@@ -163,11 +163,11 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
    Follow the rendered-verification path in
    [references/screenshots.md](references/screenshots.md). On GitHub, inspect
-   `body_html`, confirm the title and section order, require image and video
-   elements where expected, and fetch every resolved signed asset without
-   forwarding the `gh` token. Verify status, content type, and non-empty bytes
-   for all assets, plus exact byte size for evidence uploaded during this
-   refresh. Use an interactive browser when the body includes client-rendered
+   the title and Markdown body, then run the repository rendered-proof verifier,
+   which captures `body_html` without printing signed asset URLs. Confirm the
+   section order, require image and video elements where expected, and verify
+   status, content type, and non-empty bytes for all assets, plus exact byte size
+   for evidence uploaded during this refresh. Use an interactive browser when the body includes client-rendered
    content such as Mermaid or when the proof depends on literal page layout,
    pixel appearance, or playback. Remove stale proof rather than accumulating
    it.

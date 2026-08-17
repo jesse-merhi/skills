@@ -55,26 +55,25 @@ explicitly requests that storage model.
 
 ## Rendered PR Verification
 
-On GitHub, inspect the final server-rendered body without opening a browser:
+On GitHub, inspect the final title and Markdown body, then verify the
+server-rendered body without opening a browser:
 
 ```sh
-PR_HOST='<hostname-resolved-in-step-2>'
-REPOSITORY='<owner/repo-resolved-in-step-2>'
-PR_NUMBER='<number-resolved-in-step-2>'
-gh api --hostname "$PR_HOST" "repos/$REPOSITORY/pulls/$PR_NUMBER" \
-  --header 'Accept: application/vnd.github.full+json' \
-  --jq '{title, body_html}'
+PR_URL='<full-PR-URL-resolved-in-step-2>'
+gh pr view "$PR_URL" --json title,body --jq '{title, body}'
+<skill-dir>/scripts/github-verify-rendered-proof --pr "$PR_URL"
 ```
 
 Check the title, section order, captions, copyable reproduction steps, and every
-expected `<img>` and `<video controls>` element. Fetch each resolved asset URL
-with unauthenticated `curl --location`; require `200`, the expected content type,
-and non-empty bytes. Never forward the `gh` token to a resolved asset, Camo, or
-CDN host. For evidence uploaded during this refresh, also require the fetched
-byte size to match its local source. Preserved evidence may not have a run-owned
-local source and does not need an exact size match. This proves that GitHub
-stored the new bytes, kept preserved assets available, and produced the
-expected media markup.
+expected image and video in the Markdown. The repository verifier captures
+`body_html` without printing it, reports only media counts, types, and byte
+sizes, and fetches every resolved asset without credentials, curl configuration,
+or non-HTTPS redirects. Never forward the `gh` token to a resolved asset, Camo, or
+CDN host. Never print a resolved signed asset URL. For evidence uploaded during this refresh,
+require the reported byte size to match its local source. Preserved evidence may
+not have a run-owned local source and does not need an exact size match. This
+proves that GitHub stored the new bytes, kept preserved assets
+available, and produced the expected media markup.
 
 Use an interactive browser for facts the server-rendered HTML cannot prove:
 

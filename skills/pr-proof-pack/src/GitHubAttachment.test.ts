@@ -73,8 +73,11 @@ describe("GitHub attachment upload contract", () => {
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid attachment upload status/u))))
 
   it.effect("rejects a successful response from another asset host", () => parseUploadResponse(
-    "HTTP/2.0 201 Created\n\nhttps://cdn.example.com/asset"
-  ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid attachment URL/u))))
+    "HTTP/2.0 201 Created\n\nhttps://cdn.example.com/asset?token=sentinel-secret"
+  ).pipe(Effect.flip, Effect.map((error) => {
+    assert.match(error.message, /invalid attachment URL/u)
+    assert.notInclude(error.message, "sentinel-secret")
+  })))
 
   it.effect("decodes the fetched HTTP contract", () => parseFetchResult(
     '{"status":200,"contentType":"video/mp4"}'
@@ -242,15 +245,21 @@ esac
       ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidencePath],
       { encoding: "utf8", env: { ...environment, ...overrides }, timeout: 12_000 }
     )
+    const assertCommandFailure = (result: ReturnType<typeof runLauncher>) => {
+      assert.isUndefined(result.error)
+      assert.isNull(result.signal)
+      assert.isNumber(result.status)
+      assert.notStrictEqual(result.status, 0)
+    }
 
     try {
       const missing = runLauncher(join(directory, "missing.png"))
-      assert.notStrictEqual(missing.status, 0)
+      assertCommandFailure(missing)
       assert.isFalse(existsSync(log))
 
       const unsupportedLog = join(directory, "unsupported.log")
       const unsupported = runLauncher(evidence, { UPLOAD_TEST_LOG: unsupportedLog, UPLOAD_TEST_MEDIA_TYPE: "text/plain" })
-      assert.notStrictEqual(unsupported.status, 0)
+      assertCommandFailure(unsupported)
       assert.notInclude(unsupported.stdout, "https://github.com/user-attachments/assets/abc-123")
       assert.notInclude(readFileSync(unsupportedLog, "utf8"), "api --method POST")
 
@@ -270,7 +279,7 @@ esac
       assert.notInclude(secondArgs, "@-")
 
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })
-      assert.notStrictEqual(mismatch.status, 0)
+      assertCommandFailure(mismatch)
       assert.notInclude(mismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
     } finally {
       rmSync(directory, { force: true, recursive: true })

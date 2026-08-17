@@ -43,7 +43,7 @@ const decodeJson = <S extends Schema.Top>(schema: S, input: string, label: strin
 
 const decodeText = <S extends Schema.Top>(schema: S, input: string, label: string) =>
   Schema.decodeUnknownEffect(schema)(input).pipe(
-    Effect.mapError(() => new GitHubAttachmentError({ message: `GitHub returned an invalid ${label}: ${input}` }))
+    Effect.mapError(() => new GitHubAttachmentError({ message: `GitHub returned an invalid ${label}` }))
   )
 
 export const repositoryFromPullRequest = Effect.fn("GitHubAttachment.repositoryFromPullRequest")(function*(input: string) {
