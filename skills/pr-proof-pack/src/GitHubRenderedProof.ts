@@ -148,7 +148,8 @@ export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")
   const repository = `${segments[1]}/${segments[2]}`
   const pullRequestNumber = segments[4] ?? ""
   const response = yield* checkedTrimmedText("gh", renderedProofRequestArgs(repository, pullRequestNumber), {
-    displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`
+    displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
+    includeStdoutInError: false
   })
   const media = yield* parseRenderedProofResponse(response)
   const assets = yield* Effect.forEach(media, (item, position) => Effect.scoped(Effect.gen(function*() {

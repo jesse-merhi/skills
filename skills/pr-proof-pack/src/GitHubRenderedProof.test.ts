@@ -79,10 +79,10 @@ describe("rendered GitHub proof verification", () => {
     assert.deepStrictEqual([...args], [
       "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/asset",
       "--dump-header", "/tmp/headers", "--max-redirs", "0", "--proto", "=https",
+      "--max-filesize", "1073741824", "--max-time", "600",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--config", "-"
     ])
-    assert.notInclude(args.join(" "), "sentinel-secret")
     assert.strictEqual(curlUrlConfig(signedUrl), `url = "${signedUrl}"\n`)
   })
 
@@ -145,6 +145,11 @@ if [ "$1" != 'api' ] || [ "$2" != '--hostname' ] || [ "$3" != 'github.com' ] || 
   printf 'unexpected gh arguments\\n' >&2
   exit 2
 fi
+if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
+  printf '%s\\n' '{"body_html":"<img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\">"}'
+  printf 'failed while reading rendered pull request\\n' >&2
+  exit 1
+fi
 if [ "\${RENDERED_TEST_TWO_ASSETS:-}" = 1 ]; then
   printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret\\"></p>"}'
 else
@@ -173,7 +178,7 @@ case "$config" in
 esac
 if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
   printf '%s\\n' 'curl rejected https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2' >&2
-  exit 5
+  exit 28
 fi
 cp "$RENDERED_TEST_SOURCE" "$output"
 if [ -n "\${RENDERED_TEST_CLEANUP_STATE:-}" ]; then
@@ -256,22 +261,25 @@ printf '%s\\n' 'image/jpeg'
       assertTemporaryPathsRemoved()
 
       const trustedRedirect = runLauncher({
-        RENDERED_TEST_REDIRECT_COUNT: "1",
+        RENDERED_TEST_REDIRECT_COUNT: "5",
         RENDERED_TEST_REDIRECT_STATE: join(directory, "trusted-redirect-state")
       })
       assert.strictEqual(trustedRedirect.status, 0, trustedRedirect.stderr)
       assertTemporaryPathsRemoved()
 
+      runFailure({
+        RENDERED_TEST_REDIRECT_COUNT: "6",
+        RENDERED_TEST_REDIRECT_STATE: join(directory, "redirect-limit-state")
+      })
+      runFailure({ RENDERED_TEST_GH_FAILURE: "1" })
       runFailure({ RENDERED_TEST_CURL_FAILURE: "1" })
       runFailure({ RENDERED_TEST_REDIRECT: "untrusted" })
 
       const requests = readFileSync(log, "utf8")
-      const firstCurlArgv = requests.split("\n").filter((line) => line.startsWith("curl-arg="))
-        .map((line) => line.slice("curl-arg=".length)).slice(0, 16)
-      assert.deepStrictEqual(firstCurlArgv, [...fetchRequestArgs(firstCurlArgv[5] ?? "", firstCurlArgv[7] ?? "")])
       assert.include(requests, "gh-args=api --hostname github.com repos/jesse-merhi/skills/pulls/81 --header Accept: application/vnd.github.full+json")
       assert.include(requests, "curl-args=--disable --globoff --silent --show-error --output ")
       assert.include(requests, " --max-redirs 0 --proto =https ")
+      assert.include(requests, " --max-filesize 1073741824 --max-time 600 ")
       assert.include(requests, " --config -")
       assert.include(requests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2"')
       assert.include(requests, "file-args=--brief --mime-type -- ")

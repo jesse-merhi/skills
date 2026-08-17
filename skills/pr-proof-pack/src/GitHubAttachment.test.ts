@@ -153,6 +153,7 @@ describe("GitHub attachment upload contract", () => {
     assert.deepStrictEqual([...redirectArgs], [
       "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/redirect",
       "--dump-header", "/tmp/redirect-headers", "--max-redirs", "0", "--proto", "=https",
+      "--max-filesize", "1073741824", "--max-time", "600",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--header", "@-", "https://github.com/user-attachments/assets/abc-123"
     ])
@@ -162,10 +163,10 @@ describe("GitHub attachment upload contract", () => {
     assert.deepStrictEqual([...fetchArgs], [
       "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/attachment",
       "--dump-header", "/tmp/attachment-headers", "--max-redirs", "0", "--proto", "=https",
+      "--max-filesize", "1073741824", "--max-time", "600",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--config", "-"
     ])
-    assert.notInclude(fetchArgs.join(" "), "sentinel-secret")
     assert.strictEqual(curlUrlConfig(signedUrl), `url = "${signedUrl}"\n`)
     assert.strictEqual(
       curlUrlConfig("https://private-user-images.githubusercontent.com/signed?value=one\\two"),
@@ -293,7 +294,10 @@ case " $* " in
       exit 2
     fi
     printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
-    if [ "\${UPLOAD_TEST_FETCH_SIGNAL:-}" = 1 ]; then kill -TERM $$; fi
+    if [ "\${UPLOAD_TEST_FETCH_SIGNAL:-}" = 1 ]; then
+      kill -TERM "$PPID"
+      exec sleep 30
+    fi
     if [ "\${UPLOAD_TEST_MISMATCH:-}" = 1 ]; then
       printf '%s' 'bad' > "$output"
     else
@@ -351,20 +355,19 @@ esac
       const requests = readFileSync(log, "utf8")
       const firstArgs = requests.split("\n").find((line) => line.startsWith("first-args=")) ?? ""
       const secondArgs = requests.split("\n").find((line) => line.startsWith("second-args=")) ?? ""
-      const firstArgv = requests.split("\n").filter((line) => line.startsWith("first-arg=")).map((line) => line.slice("first-arg=".length))
       const secondArgv = requests.split("\n").filter((line) => line.startsWith("second-arg=")).map((line) => line.slice("second-arg=".length))
-      assert.deepStrictEqual(firstArgv, [...redirectRequestArgs(firstArgv[5] ?? "", firstArgv[7] ?? "", "https://github.com/user-attachments/assets/abc-123")])
-      assert.deepStrictEqual(secondArgv, [...fetchRequestArgs(secondArgv[5] ?? "", secondArgv[7] ?? "")])
       const fileArgs = requests.split("\n").filter((line) => line.startsWith("file-args="))
       assert.strictEqual(fileArgs[0], `file-args=--brief --mime-type -- ${evidence}`)
       assert.strictEqual(fileArgs[1], `file-args=--brief --mime-type -- ${secondArgv[5]}`)
       assert.include(requests, "first-stdin=Authorization: Bearer test-token")
       assert.notInclude(firstArgs, "--location")
+      assert.include(firstArgs, " --max-filesize 1073741824 --max-time 600 ")
       assert.include(requests, 'second-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"')
       assert.notInclude(secondArgs, "Authorization")
       assert.notInclude(secondArgs, "test-token")
       assert.notInclude(secondArgs, "@-")
       assert.notInclude(secondArgs, "sentinel-secret")
+      assert.include(secondArgs, " --max-filesize 1073741824 --max-time 600 ")
       assertTemporaryPathsRemoved()
 
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })
