@@ -4,6 +4,38 @@ Keep externally owned skills out of this repository unless their license and
 update model are intentionally adopted. Prefer a small repo-owned adapter when
 only part of an external workflow earns a permanent place in the skill loop.
 
+## browser-use
+
+- **Source:** <https://github.com/browser-use/browser-use/tree/0.13.7>
+- **Runtime dependency:** <https://github.com/browser-use/browser-harness/tree/v0.1.8>
+- **License:** MIT
+- **What it is:** Browser Use's maintained Claude skill and CLI for controlling
+  a permitted local Chrome-family browser, including Chrome and Dia, through
+  the Chrome DevTools Protocol.
+- **Why it is external:** Browser Use owns the browser connection, interaction
+  helpers, consent flow, and current Claude instructions. The official skill
+  should stay aligned with the installed CLI instead of being copied here.
+- **Update model:** `browser-use` is pinned to `0.13.7` at commit
+  `f0aa3a8bb03779c71a5aa262d389e3bfe6b77cdc`; its packaged
+  `browser-harness` dependency is `0.1.8`, tagged at commit
+  `dbe6f8f22ba65170e2d4b8f17754c704d008fe49`. Review both projects before
+  updating either pin.
+
+### Install
+
+Install the pinned CLI first, then let that exact installation write its
+version-matched skill. The local browser requires the human to enable remote
+debugging and approve its connection prompt; the agent must not bypass either
+consent step.
+
+| Harness | Method |
+| --- | --- |
+| Claude Code | `uv tool install --python 3.12 --force 'browser-use==0.13.7' && browser-use skill install --target claude --no-install --force` |
+
+The Browser Use installer owns the external skill. Do not symlink or copy a
+`browser-use` skill from this repository. Other harnesses must skip this entry
+until a tested command and workflow are added.
+
 ## gh-stack
 
 - **Source:** <https://github.com/github/gh-stack/tree/v0.1.0/skills/gh-stack>

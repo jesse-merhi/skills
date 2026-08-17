@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Compact the current conversation into a handoff document for another agent to pick up. Prefer a fresh session/thread for standalone, parallel, background, or aside work; fork only when the next agent truly needs the raw current conversation history.
+description: Compact a conversation into an agent handoff; prefer a fresh thread unless raw history is required.
 ---
 
 # Handoff

@@ -1,6 +1,6 @@
 ---
 name: review-until-clean
-description: 'Run the harness-native review in a fix-and-rerun loop until two fresh passes are clean. Use for an explicitly authorized until-clean workflow, not a one-shot review.'
+description: 'Run authorized native reviews and fixes until two fresh passes are clean.'
 ---
 
 # Review Until Clean
@@ -28,6 +28,7 @@ review_tool: must invoke the selected engine's bare built-in review; do not subs
 prompt_policy: pass only the review target plus tracked-finding notices generated per review-guardrails; no other prompt, checklist, desired verdict, or rationale
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
+scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
 stop_condition: two consecutive runs with zero actionable findings
 counter_reset: any actionable finding resets consecutive_clean to 0
 no_early_exit: do not stop before a fresh engine run returns clean
@@ -52,17 +53,18 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
    Confirm the target: uncommitted local diff, base branch, or commit SHA.
    Check engine availability, inspect the working tree, load
-   `review-guardrails`, and identify verification commands. Done when fixes
-   will land in the intended checkout and no review checklist or implementation
+   `review-guardrails`, confirm the persisted scope budget with `scope-status`,
+   and identify verification commands. Done when fixes will land in the intended
+   checkout, the scope budget is ready, and no review checklist or implementation
    rationale will be fed to the engine.
 
 3. Run the until-clean loop.
 
-   Read [references/loop.md](references/loop.md). Maintain
-   `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the selected
-   engine's bare review, triage with `finding-discipline`, fix actionable
-   findings, record state in the findings CLI, and rerun until the clean target
-   or an honest stop condition is reached.
+   Load `wait-efficiently`, then read [references/loop.md](references/loop.md).
+   Maintain `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the
+   selected engine's bare review, triage with `finding-discipline`, fix
+   actionable findings, record state in the findings CLI, and rerun until the
+   clean target or an honest stop condition is reached.
 
 4. Fix and verify findings.
 
@@ -80,6 +82,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
   honestly with `blocked-on-consult`, `budget-expired`, or `ambiguous-review`.
 - Findings, fixes, validation commands, consult-queue changes, and stop
   conditions are recorded in the findings CLI.
+- Every accepted fix is followed by a passing `scope-check`, and the final scope
+  status is not missing or blocked.
 - No code was edited between clean passes.
 - No final clean verdict is reported while the consult queue has open entries.
 

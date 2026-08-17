@@ -48,37 +48,38 @@ test_review_findings_workflow_is_documented() {
   local findings_doc="$ROOT_DIR/skills/code-review/references/findings-registry.md"
   local output_doc="$ROOT_DIR/skills/code-review/references/final-output.md"
 
-  assert_contains "$ROOT_DIR/INSTALL.md" "Install Repo-Owned Helper Binaries"
-  assert_contains "$ROOT_DIR/README.md" "skills/code-review/scripts/install-review-findings"
+  assert_contains "$ROOT_DIR/INSTALL.md" "Verify Repo-Owned CLIs"
+  assert_contains "$ROOT_DIR/README.md" 'Effect SQL `review-findings` CLI'
+  assert_contains "$ROOT_DIR/INSTALL.md" 'Retire any `AGENT_REVIEW_FINDINGS_BIN` export'
   assert_contains "$skill_doc" "Read [references/findings-registry.md](references/findings-registry.md)."
   assert_contains "$findings_doc" "The findings database is the working registry."
-  assert_contains "$findings_doc" 'Use the Rust `review-findings` binary as the local SQLite search index'
+  assert_contains "$findings_doc" 'Use the Effect SQL `review-findings` CLI as the local SQLite search index'
+  assert_contains "$skill_doc" '"$review_findings_bin" scope-start'
+  assert_contains "$skill_doc" '"$review_findings_bin" scope-check'
+  assert_contains "$findings_doc" '"$review_findings_bin" scope-authorize'
+  assert_contains "$findings_doc" '"$review_findings_bin" scope-complete'
   assert_contains "$findings_doc" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
   assert_contains "$findings_doc" "--user-impact"
   assert_contains "$findings_doc" '"$review_findings_bin" closeout --material'
   assert_contains "$output_doc" "--branch <branch> --base <base> --target <current-target>"
-  assert_contains "$output_doc" "Material findings"
-  assert_contains "$output_doc" "User-visible or workflow changes"
-  assert_contains "$output_doc" "Security, data, and permission changes"
-  assert_contains "$output_doc" "Lower-risk findings"
+  assert_contains "$output_doc" "closeout --summary"
+  assert_contains "$output_doc" "closeout --json"
+  assert_contains "$output_doc" "What review found"
+  assert_contains "$output_doc" "group every finding"
+  assert_contains "$output_doc" "Still open"
+  assert_contains "$output_doc" "Delivery"
+  assert_contains "$output_doc" "speak-fking-english"
 }
 
-test_review_findings_installs_rust_binary() {
-  local tmp bin_dir installed out
+test_review_findings_runs_from_repo_launcher() {
+  local tmp out
   tmp="$(mktemp -d)"
-  bin_dir="$tmp/bin"
-
-  installed="$(AGENT_REVIEW_FINDINGS_INSTALL_DIR="$bin_dir" \
-    AGENT_REVIEW_FINDINGS_TARGET_DIR="$tmp/cargo-target" \
-    "$ROOT_DIR/skills/code-review/scripts/install-review-findings")"
-
-  test -x "$installed" || fail "installed review-findings binary should be executable"
-  test "$installed" = "$bin_dir/review-findings" || fail "installer should print installed binary path"
-  test -x "$tmp/cargo-target/release/review-findings" || fail "installer should build in the configured target dir"
-  test -s "$bin_dir/review-findings.source-sha256" || fail "installer should write source provenance"
-
-  out="$("$installed" path --db "$tmp/reviews.sqlite")"
-  test "$out" = "$tmp/reviews.sqlite" || fail "installed binary should run without the wrapper"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" path --db "$tmp/reviews.sqlite")"
+  test "$out" = "$tmp/reviews.sqlite" || fail "repo launcher should run the Effect CLI"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" --db "$tmp/root.sqlite" path)"
+  test "$out" = "$tmp/root.sqlite" || fail "root-level --db syntax must remain supported"
+  out="$(HOME="$tmp" AGENT_REVIEW_FINDINGS_DB='~/.state/reviews.sqlite' "$ROOT_DIR/skills/code-review/scripts/review-findings" path)"
+  test "$out" = "$tmp/.state/reviews.sqlite" || fail "home-relative database paths must be expanded"
 }
 
 test_review_findings_record_command_without_base_requires_existing_run() {
@@ -100,6 +101,31 @@ test_review_findings_record_command_without_base_requires_existing_run() {
   fi
 
   assert_contains "$tmp/stderr" "record-command needs --base when no matching review run exists"
+}
+
+test_base_less_command_makes_its_run_current() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
+    --target "target one" --base main --decision-id D1 --status fixed \
+    --source review --fingerprint "target one" --summary "Target one finding." --text "one" >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
+    --target "target two" --base main --decision-id D2 --status fixed \
+    --source review --fingerprint "target two" --summary "Target two finding." --text "two" >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
+    --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
+    --target "target one" --command "pnpm test target-one" --result passed \
+    --reason "Verification for target one." --decision-id D1 >/dev/null
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature)"
+  assert_output_contains "$out" "pnpm test target-one"
+  assert_output_contains "$out" "Target one finding."
+  assert_output_not_contains "$out" "Target two finding."
 }
 
 test_review_findings_cli_generates_closeout_from_records() {
@@ -162,6 +188,25 @@ test_review_findings_cli_generates_closeout_from_records() {
     --decision "Renamed the helper in the focused test only." \
     --text "Low-risk internal review cleanup." >/dev/null
 
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$tmp/sample-app" \
+    --branch fix-review-closeout \
+    --target "PR #88" \
+    --base main \
+    --decision-id D4 \
+    --status fixed \
+    --source cold-review \
+    --fingerprint "src/refunds.ts retry state owner feedback" \
+    --summary "Refund retry state did not explain when another attempt was safe." \
+    --impact workflow \
+    --priority P2 \
+    --material \
+    --user-impact "Support staff could retry a refund before the provider state was settled." \
+    --decision "Made the retry state and safe next action explicit." \
+    --text "Cold review found an unclear operator retry state." >/dev/null
+
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
     --db "$db" \
     --repo sample-app \
@@ -211,6 +256,35 @@ test_review_findings_cli_generates_closeout_from_records() {
   assert_output_contains "$out" "Verification run"
   assert_output_not_contains "$out" "D3"
   assert_output_not_contains "$out" "Findings found"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --summary \
+    --summary-limit 1 \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$tmp/sample-app" \
+    --branch fix-review-closeout \
+    --base main \
+    --target "PR #88")"
+
+  assert_output_contains "$out" "Review summary"
+  assert_output_contains "$out" "Findings: 4 total; 3 material; 1 lower risk"
+  assert_output_contains "$out" "Status: 3 fixed, 1 open"
+  assert_output_contains "$out" "Sources: 2 cold review, 2 native review"
+  assert_output_contains "$out" "Important resolved findings (1 of 2 shown)"
+  assert_output_contains "$out" "Still open (1 of 1 shown)"
+  assert_output_contains "$out" "D1 [fixed]"
+  assert_output_contains "$out" "D2 [open]"
+  assert_output_not_contains "$out" "D3"
+  assert_output_not_contains "$out" "D4"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --summary --json \
+    --db "$db" --repo sample-app --repo-path "$tmp/sample-app" \
+    --branch fix-review-closeout --base main --target "PR #88")"
+  assert_output_contains "$out" '"total_findings": 4'
+  assert_output_contains "$out" '"important_findings_total": 2'
+  assert_output_contains "$out" '"still_open_total": 1'
 }
 
 test_review_findings_cli_covers_full_review_lifecycle_closeout() {
@@ -352,12 +426,719 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
   assert_output_contains "$out" "D3 [deferred]"
   assert_output_not_contains "$out" "D1 [open]"
   assert_output_not_contains "$out" "pnpm test stale-base"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --json --db "$db" --repo sample-app --repo-path "$tmp/sample-app" \
+    --branch audit-history --base main --target "audit-history feature")"
+  assert_output_contains "$out" '"material": true'
+  assert_output_not_contains "$out" '"material": 1'
+}
+
+test_review_findings_upgrades_legacy_schema() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+db.exec(`
+  create table review_runs (id text primary key, repo_name text not null, repo_path text not null, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, updated_at integer not null);
+  create table issues (id text primary key, run_id text not null, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, decision text, text text not null, decision_log_path text, updated_at integer not null, unique(run_id, decision_id));
+`)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "active", "", 1, 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-issue", "legacy-run", "D0", "open", "legacy", "legacy", "Legacy finding", "", "legacy text", "", 1)
+NODE
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
+  assert_output_contains "$out" "$db"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id D0 --status fixed --source review --fingerprint legacy \
+    --summary "Legacy finding updated." --text "updated" >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main)"
+  assert_output_contains "$out" "D0 [fixed]"
+  assert_output_contains "$out" "Legacy finding updated."
+}
+
+test_review_findings_reports_database_failures() {
+  local tmp db
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  printf 'not a sqlite database\n' > "$db"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db" >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "corrupt database initialization should fail"
+  fi
+  test -s "$tmp/stderr" || fail "unexpected database failures must be reported on stderr"
+}
+
+test_review_findings_query_uses_latest_run_and_semantic_terms() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  for base in old-base current-base; do
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" record --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --base "$base" --decision-id D1 --status open --source review --fingerprint "invoice lookup" --summary "$base invoice regression" --text "$base invoice lookup failure" >/dev/null
+  done
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --json billing)"
+  assert_output_contains "$out" "current-base invoice regression"
+  assert_output_not_contains "$out" "old-base invoice regression"
+}
+
+test_review_findings_query_requires_explicit_broad_scope_outside_git() {
+  local tmp db
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  if (cd "$tmp" && "$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --json probe >"$tmp/stdout" 2>"$tmp/stderr"); then
+    fail "query outside Git must not silently search every repository"
+  fi
+  assert_contains "$tmp/stderr" "query needs --repo, --repo-path, a Git repository, or --all-repos"
+
+  if (cd "$tmp" && "$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --json probe >"$tmp/stdout" 2>"$tmp/stderr"); then
+    fail "query outside Git must not silently search every branch"
+  fi
+  assert_contains "$tmp/stderr" "query needs --branch, a Git branch, or --all-branches"
+
+  (cd "$tmp" && "$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --all-repos --all-branches --json probe >/dev/null)
+}
+
+test_review_findings_rejects_negative_query_limits() {
+  local tmp db
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" query \
+    --db "$db" --all-repos --all-branches --limit=-1 probe \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "negative query limits must be rejected"
+  fi
+  assert_contains "$tmp/stderr" "query --limit must be a non-negative integer"
+}
+
+test_review_findings_shares_history_across_git_worktrees() {
+  local tmp db repo linked out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  linked="$tmp/linked"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message initial
+  git -C "$repo" worktree add --quiet -b linked "$linked"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record --db "$db" --repo sample-app --repo-path "$repo" --branch shared --target "PR #10" --base main --decision-id D1 --status open --source review --fingerprint "shared history" --summary "Worktree history remains visible." --text "shared finding" >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$linked" --branch shared --target "PR #10" shared)"
+  assert_output_contains "$out" "Worktree history remains visible."
+}
+
+test_review_findings_preserves_decision_log_on_update() {
+  local tmp db repo decision_log out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  decision_log="$tmp/decision.md"
+  mkdir -p "$repo"
+  printf 'accepted decision\n' > "$decision_log"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #11" --base main --decision-log "$decision_log" \
+    --decision-id D1 --status open --source review --fingerprint "decision path" \
+    --summary "Keep the durable decision path." --text "Initial finding." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #11" --base main \
+    --decision-id D1 --status fixed --source review --fingerprint "decision path" \
+    --summary "Keep the durable decision path." --text "Updated finding." >/dev/null
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #11" --show-paths decision)"
+  assert_output_contains "$out" "decision log: $decision_log"
+}
+
+test_failed_scope_start_does_not_hide_existing_findings() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #13" --base main --decision-id D1 --status fixed \
+    --source review --fingerprint "existing finding" \
+    --summary "Existing finding remains visible." --text "Existing finding." >/dev/null
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #13" --base missing-base --scope-summary "Invalid baseline." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-start with a missing base should fail"
+  fi
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #13")"
+  assert_output_contains "$out" "Existing finding remains visible."
+}
+
+test_concurrent_scope_start_allows_only_one_active_budget() {
+  local tmp db repo first second successes
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+
+  (first=0; "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "concurrent one" --base main --scope-summary "First concurrent review." \
+    >"$tmp/first.out" 2>"$tmp/first.err" || first=$?; printf '%s\n' "$first" > "$tmp/first.code") &
+  local first_pid=$!
+  (second=0; "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "concurrent two" --base main --scope-summary "Second concurrent review." \
+    >"$tmp/second.out" 2>"$tmp/second.err" || second=$?; printf '%s\n' "$second" > "$tmp/second.code") &
+  local second_pid=$!
+  wait "$first_pid" "$second_pid"
+  first="$(cat "$tmp/first.code")"
+  second="$(cat "$tmp/second.code")"
+
+  successes=0
+  test "$first" -eq 0 && successes=$((successes + 1))
+  test "$second" -eq 0 && successes=$((successes + 1))
+  test "$successes" -eq 1 || fail "exactly one concurrent scope-start must succeed"
+}
+
+test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
+  local tmp db repo git_wrapper real_git stale_pid stale_code out attempt
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git_wrapper="$tmp/blocked-git"
+  real_git="$(command -v git)"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'case " $* " in' \
+    '  *" diff --numstat "*)' \
+    '    : > "$SCOPE_BLOCK_STARTED"' \
+    '    while [ ! -e "$SCOPE_BLOCK_RELEASE" ]; do sleep 0.01; done' \
+    '    ;;' \
+    'esac' \
+    'exec "$SCOPE_REAL_GIT" "$@"' > "$git_wrapper"
+  chmod +x "$git_wrapper"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main --scope-summary "Test terminal transition serialization." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main --reason "Initial passing check." >/dev/null
+
+  (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    SCOPE_BLOCK_STARTED="$tmp/complete.started" SCOPE_BLOCK_RELEASE="$tmp/complete.release" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "completion race" --base main --reason "Delayed stale completion check." \
+      >"$tmp/complete.out" 2>"$tmp/complete.err" || stale_code=$?; \
+    printf '%s\n' "$stale_code" > "$tmp/complete.code") &
+  stale_pid=$!
+  for attempt in {1..500}; do
+    test -e "$tmp/complete.started" && break
+    sleep 0.01
+  done
+  test -e "$tmp/complete.started" || fail "delayed scope-check did not reach the completion race"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main --reason "The current review is complete." >/dev/null
+  : > "$tmp/complete.release"
+  wait "$stale_pid"
+  stale_code="$(cat "$tmp/complete.code")"
+  test "$stale_code" -ne 0 || fail "a stale scope-check must not reopen a completed budget"
+  assert_contains "$tmp/complete.err" "scope budget changed while scope-check was measuring"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "completion race" --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main --scope-summary "Test authorization transition serialization." >/dev/null
+  printf 'new path\n' > "$repo/helper.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main --reason "The new path needs authorization." \
+    >"$tmp/block.out" 2>"$tmp/block.err"; then
+    fail "the new production path should block before authorization"
+  fi
+
+  (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    SCOPE_BLOCK_STARTED="$tmp/authorize.started" SCOPE_BLOCK_RELEASE="$tmp/authorize.release" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "authorization race" --base main --reason "Delayed stale authorization check." \
+      >"$tmp/authorize.out" 2>"$tmp/authorize.err" || stale_code=$?; \
+    printf '%s\n' "$stale_code" > "$tmp/authorize.code") &
+  stale_pid=$!
+  for attempt in {1..500}; do
+    test -e "$tmp/authorize.started" && break
+    sleep 0.01
+  done
+  test -e "$tmp/authorize.started" || fail "delayed scope-check did not reach the authorization race"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main \
+    --scope-summary "Include the explicitly approved helper path." \
+    --authorization "User explicitly approved the helper path." >/dev/null
+  : > "$tmp/authorize.release"
+  wait "$stale_pid"
+  stale_code="$(cat "$tmp/authorize.code")"
+  test "$stale_code" -ne 0 || fail "a stale scope-check must not overwrite an authorized baseline"
+  assert_contains "$tmp/authorize.err" "scope budget changed while scope-check was measuring"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "authorization race" --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+  assert_output_contains "$out" "authorization=User explicitly approved the helper path."
+}
+
+test_review_scope_budget_blocks_deterministically() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'line %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main \
+    --head "$(git -C "$repo" rev-parse HEAD)" \
+    --scope-summary "Add the app entrypoint." >/dev/null
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --scope-summary "Silently moved baseline." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-start must not silently replace an existing baseline"
+  fi
+  assert_contains "$tmp/stderr" "scope budget already exists"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "Same review with a renamed target" --base main \
+    --scope-summary "Cosmetically renamed target." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "changing the target label must not create a second active baseline"
+  fi
+  assert_contains "$tmp/stderr" "active scope budget already exists for this repository and branch"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch main-renamed \
+    --target "Same review with a renamed branch" --base main \
+    --scope-summary "Cosmetically renamed branch." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "changing the branch label must not create a second active baseline"
+  fi
+  assert_contains "$tmp/stderr" "does not match the checked-out Git branch 'feature'"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$repo/reviews.sqlite" --repo sample-app --repo-path "$repo" \
+    --branch feature --target "PR #12" --base main \
+    --scope-summary "Database-inside-repository probe." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope state inside the reviewed repository must be rejected"
+  fi
+  assert_contains "$tmp/stderr" "scope database must be outside the reviewed repository"
+  test ! -e "$repo/reviews.sqlite" || fail "rejected scope database must not contaminate the reviewed diff"
+
+  ln -s "$repo" "$tmp/repo-alias"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$tmp/repo-alias/aliased-reviews.sqlite" --repo sample-app --repo-path "$repo" \
+    --branch feature --target "PR #12" --base main \
+    --scope-summary "Symlinked database-inside-repository probe." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "a symlinked path must not bypass the scope database boundary"
+  fi
+  assert_contains "$tmp/stderr" "scope database must be outside the reviewed repository"
+  test ! -e "$repo/aliased-reviews.sqlite" || fail "rejected symlinked database must not contaminate the reviewed diff"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --scope-summary "Premature reset." \
+    --authorization "Not preceded by a blocked check." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-authorize must not reset a baseline before scope-check blocks"
+  fi
+  assert_contains "$tmp/stderr" "only valid after scope-check has blocked"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main \
+    --decision-id D1 \
+    --status fixed \
+    --source native-review \
+    --fingerprint "app.ts startup guard" \
+    --summary "Startup now rejects an invalid configuration." \
+    --impact internal \
+    --priority P2 \
+    --decision "Added the startup guard." \
+    --text "The accepted review fix is complete." >/dev/null
+
+  git -C "$repo" branch --force main feature
+  printf 'line 11\nline 12\nline 13\n' >> "$repo/app.ts"
+  for number in {1..100}; do printf 'test %s\n' "$number"; done > "$repo/app.test.ts"
+  for number in {1..100}; do printf 'lock %s\n' "$number"; done > "$repo/pnpm-lock.yaml"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main \
+    --reason "The remaining finding needs one more production line.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=3 maximum=13"
+  assert_output_contains "$out" "excluded-tests=100"
+  assert_output_contains "$out" "excluded-generated=100"
+
+  printf 'line 14\n' >> "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main \
+    --reason "The remaining finding needs one more production line." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check should block after deterministic growth exceeds 30 percent"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  assert_contains "$tmp/stderr" "baseline=10 current=14 growth=4 allowed-growth=3 maximum=13"
+  assert_contains "$tmp/stderr" "Completed review work:"
+  assert_contains "$tmp/stderr" "D1: Startup now rejects an invalid configuration."
+  assert_contains "$tmp/stderr" "Why more scope is requested: The remaining finding needs one more production line."
+  assert_contains "$tmp/stderr" "Stop reviewing now."
+  assert_contains "$tmp/stderr" "Ask the user for explicit authorization"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main \
+    --head "$(git -C "$repo" rev-parse HEAD)" \
+    --scope-summary "Add the app entrypoint and startup guard." \
+    --authorization "User approved the additional startup-guard scope." >/dev/null
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+  assert_output_contains "$out" "baseline=14"
+  assert_output_contains "$out" "authorization=User approved the additional startup-guard scope."
+
+  printf 'helper\n' > "$repo/helper.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" \
+    --repo sample-app \
+    --repo-path "$repo" \
+    --branch feature \
+    --target "PR #12" \
+    --base main \
+    --reason "A new helper would move production code outside the frozen file surface." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check should block a new production path even below the line-growth limit"
+  fi
+  assert_contains "$tmp/stderr" "New production paths outside the frozen scope:"
+  assert_contains "$tmp/stderr" "- helper.ts"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main)"
+  assert_output_contains "$out" "Scope budget"
+  assert_output_contains "$out" "SCOPE BUDGET BLOCKED"
+  assert_output_contains "$out" "new-production-paths:"
+  assert_output_contains "$out" "helper.ts"
+}
+
+test_review_scope_budget_can_close_before_a_later_review() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --scope-summary "First review." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Run the final clean review." >/dev/null
+
+  printf 'feature\npost-check change\n' > "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Stale clean result." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-complete must remeasure the tree instead of trusting a stale passing check"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  printf 'feature\n' > "$repo/app.ts"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --scope-summary "First review after restoring the approved tree." \
+    --authorization "The user already authorized the original one-line feature scope." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Run the final clean review again." >/dev/null
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --decision-id CONSULT-001 \
+    --status open --source review --fingerprint "shared parser contract" \
+    --summary "Choose the shared parser contract." --text "User decision is still required." >/dev/null
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Unresolved consult remains." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-complete must reject unresolved findings"
+  fi
+  assert_contains "$tmp/stderr" "scope-complete requires every finding to be fixed, rejected, or explicitly deferred"
+  assert_contains "$tmp/stderr" "CONSULT-001 [open]: Choose the shared parser contract."
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --decision-id CONSULT-001 \
+    --status deferred --source review --fingerprint "shared parser contract" \
+    --summary "Choose the shared parser contract." --decision "Track as an adjacent follow-up." \
+    --text "The follow-up is explicitly deferred outside this review." >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Both required review phases are clean.")"
+  assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --decision-id LATE-001 \
+    --status open --source review --fingerprint "late finding" \
+    --summary "Late finding must not reopen a completed review." \
+    --text "A delayed reviewer tried to write after completion." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "record must reject findings written after scope completion"
+  fi
+  assert_contains "$tmp/stderr" "scope budget is complete and terminal"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --command "pnpm test final" --result passed \
+    --reason "Final validation after scope completion." --decision-id CONSULT-001 >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+  assert_output_contains "$out" "CONSULT-001 [deferred]"
+  assert_output_contains "$out" "pnpm test final"
+  assert_output_not_contains "$out" "LATE-001"
+
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("insert into review_scope_locks (repo_key, branch, run_id) select review_runs.repo_key, coalesce(review_runs.branch, ?), review_runs.id from review_runs join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.target = ? and review_scope_budgets.status = ?").run("", "first review", "complete")' "$db"
+
+  for terminal_command in scope-check scope-complete; do
+    if "$ROOT_DIR/skills/code-review/scripts/review-findings" "$terminal_command" \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "first review" --base main --reason "Completed budgets are terminal." \
+      >"$tmp/stdout" 2>"$tmp/stderr"; then
+      fail "$terminal_command must reject a completed scope budget"
+    fi
+    assert_contains "$tmp/stderr" "scope budget is complete and terminal"
+  done
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --scope-summary "Reopen completed review." \
+    --authorization "Caller text must not reopen terminal state." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-authorize must reject a completed scope budget"
+  fi
+  assert_contains "$tmp/stderr" "scope budget is complete and terminal"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "later review" --base main --scope-summary "Later user-authorized review.")"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "later review" --base main --reason "Later review is clean." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "later review" --base main --reason "Later review is complete." >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --scope-summary "Repeat the same review identity later.")"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main)"
+  assert_output_not_contains "$out" "CONSULT-001"
+}
+
+test_review_scope_budget_uses_the_merge_base() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' >> "$repo/app.ts"
+  git -C "$repo" commit --quiet --all --message feature
+  git -C "$repo" switch --quiet main
+  for number in {1..100}; do printf 'upstream %s\n' "$number"; done > "$repo/upstream.ts"
+  git -C "$repo" add upstream.ts
+  git -C "$repo" commit --quiet --message upstream
+  git -C "$repo" switch --quiet feature
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "diverged review" --base main --scope-summary "One-line feature.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+  assert_output_not_contains "$out" "upstream.ts"
+}
+
+test_review_scope_budget_measures_the_requested_head() {
+  local tmp db repo target_head out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'target\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message target
+  target_head="$(git -C "$repo" rev-parse HEAD)"
+  for number in {1..100}; do printf 'later %s\n' "$number"; done > "$repo/later.ts"
+  git -C "$repo" add later.ts
+  git -C "$repo" commit --quiet --message later
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "requested commit review" --base main --head "$target_head" \
+    --scope-summary "Review only the requested one-line commit.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+  assert_output_not_contains "$out" "baseline=101"
+}
+
+test_review_scope_budget_counts_dangling_symlinks() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  ln -s missing-target "$repo/dangling-link"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "symlink review" --base main --scope-summary "Add one symlink.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+}
+
+test_review_scope_ignores_checkout_controlled_git() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  mkdir "$repo/bin"
+  printf '#!/bin/sh\nprintf compromised > %s\nexit 99\n' "$tmp/marker" > "$repo/bin/git"
+  chmod +x "$repo/bin/git"
+  printf 'feature\n' > "$repo/app.ts"
+
+  env PATH="$repo/bin:$PATH" "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "trusted git review" --base main --scope-summary "Use trusted Git." >/dev/null
+  test ! -e "$tmp/marker" || fail "scope commands must not execute checkout-controlled Git"
 }
 
 test_review_findings_workflow_is_documented
-test_review_findings_installs_rust_binary
+test_review_findings_runs_from_repo_launcher
 test_review_findings_record_command_without_base_requires_existing_run
+test_base_less_command_makes_its_run_current
 test_review_findings_cli_generates_closeout_from_records
 test_review_findings_cli_covers_full_review_lifecycle_closeout
+test_review_findings_upgrades_legacy_schema
+test_review_findings_reports_database_failures
+test_review_findings_query_uses_latest_run_and_semantic_terms
+test_review_findings_query_requires_explicit_broad_scope_outside_git
+test_review_findings_rejects_negative_query_limits
+test_review_findings_shares_history_across_git_worktrees
+test_review_findings_preserves_decision_log_on_update
+test_failed_scope_start_does_not_hide_existing_findings
+test_concurrent_scope_start_allows_only_one_active_budget
+test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state
+test_review_scope_budget_blocks_deterministically
+test_review_scope_budget_can_close_before_a_later_review
+test_review_scope_budget_uses_the_merge_base
+test_review_scope_budget_measures_the_requested_head
+test_review_scope_budget_counts_dangling_symlinks
+test_review_scope_ignores_checkout_controlled_git
 
 printf 'ok - review-findings tests\n'

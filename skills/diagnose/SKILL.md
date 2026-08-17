@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: 'Debug bugs, failing tests, regressions, flaky behavior, unexpected output, or broken behavior with a reproducible evidence loop.'
+description: 'Debug bugs, failing tests, regressions, flakiness, or unexpected behavior with reproducible evidence.'
 ---
 
 # Diagnose

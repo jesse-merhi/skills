@@ -1,6 +1,6 @@
 ---
 name: clawhub-local-test
-description: Start and manage a guarded local ClawHub manual-test instance backed by a development Convex database refreshed from production-like data.
+description: Run a guarded local ClawHub test instance with development Convex data refreshed from production.
 ---
 
 # ClawHub Local Test
@@ -15,8 +15,12 @@ must never be production.
 1. Ensure the helper exists on `PATH`:
 
    ```bash
-   install -m 755 skills/openclaw/clawhub-local-test/scripts/clawhub-local-test ~/.local/bin/clawhub-local-test
+   mkdir -p ~/.local/bin
+   ln -sfn "${CODEX_HOME:-$HOME/.codex}/skills/clawhub-local-test/scripts/clawhub-local-test" ~/.local/bin/clawhub-local-test
    ```
+
+   The symlink preserves the launcher's Effect module tree. Do not copy the
+   launcher by itself.
 
 2. Start ClawHub with a prod-like development Convex database:
 

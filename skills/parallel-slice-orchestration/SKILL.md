@@ -1,6 +1,6 @@
 ---
 name: parallel-slice-orchestration
-description: 'Implement an existing spec, slice plan, or feature plan with parallel subagents, disjoint slice ownership, integration, and verification.'
+description: 'Implement specs with parallel agents, disjoint ownership, integration, and verification.'
 ---
 
 # Parallel Slice Orchestration
@@ -39,9 +39,10 @@ same slice plan sequentially and say that parallel execution was not available.
    [integration.md](references/integration.md).
 11. Resolve integration issues locally, then run the feature's relevant package
     verification commands.
-12. Publish the chosen delivery shape. For a stack, keep foundation at the
-    bottom, dependent behavior above it, and run `pr-proof-pack` separately for
-    every PR layer.
+12. When publication is authorized under `AGENTS.md`, publish the chosen
+    delivery shape. Otherwise stop at a verified local checkpoint. For a stack,
+    keep foundation at the bottom, dependent behavior above it, and run the
+    `pr-proof-pack` freshness check separately for every PR layer.
 13. Before readiness or merge, apply the Review gate and Sign-off gate from
     `AGENTS.md` to every PR layer and exact head.
 

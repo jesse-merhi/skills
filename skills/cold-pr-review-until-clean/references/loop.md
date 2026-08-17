@@ -1,5 +1,9 @@
 # Cold Review Loop
 
+Before the loop, resolve `review_findings_bin` from the installed `code-review`
+skill directory as required by `review-guardrails`. Use its absolute launcher;
+never invoke a bare `review-findings` command.
+
 Maintain two integers across the whole session:
 
 ```text
@@ -46,8 +50,10 @@ Repeat:
      Fix the actionable findings with narrow edits.
      Run relevant verification for the fixes.
      Record each command, result, and reason with the findings CLI.
-     Inspect the diff so the fix maps to the findings, then check the
-     diff-growth budget.
+     Run `"$review_findings_bin" scope-check --reason <remaining work and why it may
+     merit more scope>`.
+     If it exits non-zero -> record stop reason `blocked-on-consult`, present
+       the CLI report to the user, and STOP before another review or fix.
      Keep fixed-finding details in the findings CLI.
      Go to step 1.
 ```

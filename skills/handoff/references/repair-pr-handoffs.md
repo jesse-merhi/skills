@@ -16,13 +16,14 @@ When the next session is expected to fix code:
 - for a dependent multi-PR story, tell it to load `gh-stack`, name the logical
   layers in dependency order, and keep all work for that stack inside its
   dedicated task worktree
-- tell it to create a branch and draft PR, or submit the planned draft stack,
-  when the repair is complete unless the user explicitly requested local-only
-  work
-- tell it to run `pr-proof-pack` for each draft PR after it exists, then apply
-  the Review gate and Sign-off gate from `AGENTS.md` bottom-to-top
+- tell it to create a branch, but create or update the draft PR or planned stack
+  only when the handoff includes publication authority under `AGENTS.md`
+- after authorized publication, tell it to run the `pr-proof-pack` freshness
+  check for each draft PR, then apply the Review gate and Sign-off gate from
+  `AGENTS.md` bottom-to-top
 - tell it to resolve in-scope review findings, rerun affected validation, and
-  refresh `pr-proof-pack` after any review fixes before calling the PR ready
+  check `pr-proof-pack` after final review fixes; refresh only stale proof before
+  calling the PR ready
 - tell it to keep the PR draft/not-ready when proof-pack, review, validation,
   model, tooling, budget, or consult blockers remain
 - tell it to summarize each review decision before human sign-off and require

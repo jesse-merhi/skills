@@ -1,6 +1,6 @@
 ---
 name: review-animations
-description: 'Review changed animation, transition, gesture, spring, or motion code for purpose, timing, easing, coherence, interruption, performance, reduced motion, and input behavior. Use as a focused code-review lens.'
+description: 'Review motion code for purpose, timing, easing, coherence, interruption, performance, and reduced motion.'
 ---
 
 # Review Animations

@@ -1,145 +1,197 @@
-# Screenshot Proof
+# Practical Visual Evidence
 
 ## Contents
 
-- [Upload Path](#upload-path)
-- [Screenshot Contract](#screenshot-contract)
-- [Screenshot Placement](#screenshot-placement)
-- [Before/After Rule](#beforeafter-rule)
+- [Hard Requirement](#hard-requirement)
+- [Interactive Browser Upload Path](#interactive-browser-upload-path)
+- [Evidence Contract](#evidence-contract)
+- [UI Interaction Proof](#ui-interaction-proof)
+- [Recording Edit](#recording-edit)
+- [Backend and Operator Proof](#backend-and-operator-proof)
+- [Performance Proof](#performance-proof)
+- [Placement](#placement)
 
-When a PR changes or makes reachable UI that a human reviewer can see, include
-PR-visible screenshots for every distinct changed state or surface unless a
-screenshot is impossible or genuinely unhelpful. Distinct states include
-different changed pages, modals, forms, error/loading/empty states, responsive
-states, permissions states, and important before/after contrasts.
+## Hard Requirement
 
-Do not satisfy this requirement with local-only screenshot paths in `/tmp` or a
-claim that a browser check passed. The image must be visible to a GitHub
-reviewer from the PR body, or the PR body must say screenshots are missing and
-why. If the harness cannot upload or host screenshots, stop before final PR
-readiness and report that blocker instead of silently omitting them.
+Capture and upload every evidence item selected in `proof-selection.md`. This
+file owns how to capture and publish that evidence; `proof-selection.md` owns
+what qualifies.
 
-If a screenshot only proves that an unrelated route loads, omit it and explain
-why no screenshot is needed for that unchanged UI.
+If the selected interactive browser, practical capture, screen recording,
+provider login, attachment upload, image rendering, or video playback fails,
+stop before creating or updating the PR. Tell the human the concrete failure
+and ask them to restore the blocked capability. Continue only after it works.
 
-## Upload Path
+## Interactive Browser Upload Path
 
-Preferred screenshot upload path: use Chrome DevTools Protocol (CDP) in an
-agent-owned browser window with GitHub's normal PR comment attachment UI. If CDP
-is unavailable or cannot operate the attachment control, fall back to Computer
-Use in an agent-owned browser window.
+Use the browser path selected during the preflight. Do not switch to an
+unapproved browser-control tool, a standalone upload helper, browser-cookie
+extraction, `gh-image`, session tokens, or Keychain/browser cookie stores.
 
-1. Open the PR in a fresh agent-owned browser window. Do not reuse existing
-   user browser windows unless the user explicitly asks.
-2. Confirm the browser is logged into GitHub and can comment on the PR.
-3. Attach the screenshot file through the PR comment box attachment control or
-   drag-and-drop area.
-4. Wait for GitHub to insert a
-   `https://github.com/user-attachments/assets/...` Markdown image reference.
-5. Copy that Markdown directly into the main PR body without submitting a
-   comment unless a comment is explicitly desired.
+Before any PR mutation:
 
-Use the active browser tool's confirmation policy for the actual file upload
-step. A PR proof screenshot upload is a file upload to GitHub; if the user has
-not already approved that exact upload destination and file class, confirm
-right before uploading.
+1. In OpenClaw, use its browser tool or `openclaw browser`. Check
+   `openclaw browser --json status` and `openclaw browser profiles` when profile
+   selection or login is unclear, then use the configured authenticated profile.
+   In Claude environments, prefer the external `browser-use` skill and its
+   pinned CLI when available; otherwise load `computer-use`.
+2. With OpenClaw, open the repository through the selected browser profile. With
+   Browser Use, open a fresh repository tab in the permitted Chrome-family
+   browser and do not inspect unrelated tabs. With Computer Use, open an
+   agent-owned browser window.
+3. Reach the repository's PR provider and confirm the selected path can read and
+   operate the page with the expected account.
+4. If any part fails, stop and ask the human to repair that browser path or
+   provider login.
 
-Do not use CLI upload helpers, browser-cookie extraction, `gh-image`,
-`GH_SESSION_TOKEN`, Keychain-stored web sessions, or Dia/Chrome/Arc cookie
-stores for PR screenshots. Do not cite those unsupported paths as the reason
-screenshots are missing. If screenshots are required, try the GitHub attachment
-UI through CDP and then the Computer Use fallback before writing a "Screenshots
-missing" note.
+### Explicit Upload Confirmation
 
-Mark screenshot upload blocked only when CDP and the Computer Use fallback are
-unavailable or fail, GitHub login/comment access is unavailable in the
-agent-owned browser, the GitHub attachment UI cannot attach the file, or the
-user declines the upload confirmation. Include that concrete blocker in the PR
-body.
+Immediately before the first attachment upload or PR save, follow the selected
+tool's native confirmation policy. If the active harness bypasses or lacks that
+confirmation, use its structured question UI to ask the human for permission
+for the named upload and save. Treat that answer as permission only for the
+current proof refresh.
 
-## Screenshot Contract
+OpenClaw's native `browser upload` action is allowed because it operates the
+provider's file input through the selected interactive browser.
+CDP is acceptable only when it is transport behind that browser surface;
+never use it to bypass login or extract credentials.
 
-Every screenshot needs a proof claim. Before adding one, answer:
+For a new PR, the publishing workflow may create a draft shell after this
+preflight.
 
-1. What changed or risky behavior does this image prove?
-2. Why is an image better than a command, API example, table, or Mermaid diagram?
-3. What URL, fixture/user/state, viewport, and crop choice produced it?
+In OpenClaw, use the native browser file-input path:
 
-If those answers are weak, remove the screenshot.
+1. Copy each finished evidence file to a unique path under the configured
+   OpenClaw temporary uploads root, such as `/tmp/openclaw/uploads/<file>`, and
+   treat that exact copy as run-owned. Alternatively, use managed inbound media
+   such as `media://inbound/<id>`. Do not expose an arbitrary local path.
+2. Open the main PR body editor, place the insertion point at the exact
+   placeholder or stale attachment, then run
+   `openclaw browser --browser-profile <profile> snapshot` to resolve the
+   visible attachment-trigger ref.
+3. Run the atomic chooser path:
+   `openclaw browser --browser-profile <profile> upload /tmp/openclaw/uploads/<file> --ref <upload-trigger-ref>`.
+   If the snapshot exposes the actual `<input type=file>` instead, use
+   `--input-ref <file-input-ref>`. The same modes accept managed inbound media.
+4. Wait for the editor to replace the temporary marker with a provider-hosted
+   attachment or playable-media reference.
+5. Add descriptive alt text or a label, save, and inspect the rendered media
+   through the same `--browser-profile <profile>`.
+6. Remove each exact run-owned upload-root copy after upload and inspection.
+   Cleanup remains required after a failed upload, interruption, blocked state,
+   or needs-user stop. Delete neither the original evidence file nor managed
+   `media://inbound` assets.
 
-For human-visible UI changes, answer those questions immediately below the image
-in the PR body and include the screenshot unless it is blocked. A textual
-"browser proof passed" line is useful supporting evidence, but it is not a
-replacement for the required screenshot.
+Use the same clipboard-first flow on GitHub, Bitbucket, and other PR editors in
+Computer Use or another browser surface with clipboard support:
 
-Default to the smallest readable image:
+1. Copy the finished image or recording to the clipboard.
+2. Open the main PR body editor.
+3. Select the exact placeholder or stale attachment being replaced.
+4. Paste once.
+5. Wait for the editor to replace the temporary upload marker with a
+   provider-hosted attachment or playable-media reference.
+6. Add descriptive alt text or a label, save, and inspect the rendered media.
 
-1. **Element crop** for a card, table row, panel, modal, form, or error.
-2. **Viewport crop** when surrounding controls or nav explain the state.
-3. **Full-page screenshot** only when below-the-fold content, page-wide layout,
-   long-list ordering, or pagination is part of the proof.
+Do not click an attachment control or open a native file picker before trying
+clipboard paste. When Browser Use cannot paste that media type, use its
+`upload_file` helper on the provider's file input after explicit confirmation.
+On GitHub, the finished reference normally uses `user-attachments`; on
+Bitbucket or another provider, require its equivalent reviewer-visible hosted
+media rather than a local path.
 
-Full-page screenshots require a sentence in the PR body explaining why full
-height was needed. Otherwise crop them.
+Do not commit proof media to the repository unless the project or user
+explicitly requests that storage model.
 
-Use real app screenshots from a running instance. Do not use mockups, generated
-HTML stand-ins, or composed images.
+## Evidence Contract
 
-Screenshots must be accessible from the PR body, not only from the local
-machine. Use the repository or harness-approved upload path for GitHub-hosted
-images or another reviewer-accessible artifact URL. Do not commit screenshot
-files to the repo unless the project or user explicitly wants that.
+Every visual answers these questions in nearby text:
 
-## Screenshot Placement
+1. What current net-diff behavior does this visibly demonstrate?
+2. What starting state, input, action, transition, and outcome appear?
+3. What route, fixture, account, environment, viewport, dataset, and capture
+   method make it reproducible?
+4. What important error, recovery, persistence, or side effect was checked?
+5. What direct-base behavior is the reviewer comparing with the PR result?
 
-When screenshots are included, place each image directly in the main PR body
-with its annotation and proof information immediately below it:
+Use real output from the current branch. Before means the direct PR base, not a
+previous feature-branch commit. Recapture after every related branch change.
+
+## UI Interaction Proof
+
+Record the changed flow manually at a deliberate pace. A reviewer should be able
+to follow without scrubbing frame by frame.
+
+- begin before the first relevant action so the starting state is visible;
+- move the pointer deliberately and pause after important transitions;
+- show the input, loading or transition state, outcome, and relevant recovery;
+- record the same scenario on the direct base and PR branch when both have
+  comparable visible behavior;
+- exercise changed error, empty, permission, responsive, keyboard, or reduced-
+  motion behavior when it is in scope;
+- add a labeled before/after image only when it makes a static visual difference
+  easier to compare or preserves a state that is not legible in the video;
+- use realistic data and avoid secrets or personal information.
+
+A test runner video, a replay of automated E2E output, or static screenshots
+alone do not replace the manual interaction walkthrough.
+
+## Recording Edit
+
+Follow [video-editing.md](video-editing.md) before upload. Remove inactive
+lead-in, setup, and dead stretches; retain a short readable hold on the starting
+state, important transitions, and outcome. Keep the actual actions at normal
+speed. Preserve real waiting when duration or performance is itself the claim.
+
+Play the finished video once at 1× speed. Done when the flow is easy to follow,
+no informative state is rushed, and no long idle interval remains.
+
+## Backend and Operator Proof
+
+Show the changed system behavior, not the command that checked it:
+
+- API: representative request, response, and persisted or rejected state;
+- worker or queue: input event, processing outcome, and resulting side effect;
+- migration: realistic dry run or execution plus changed records and rollback;
+- infrastructure: operator action plus resulting resource or runtime state;
+- test-only: the running product scenario the test now protects.
+
+Terminal screenshots remain useful when they show the real request and outcome.
+A terminal showing only a test, build, validator, or success exit code is not
+evidence.
+
+## Performance Proof
+
+Show the experience or system becoming faster, smaller, or more stable:
+
+- capture comparable before/after traces, recordings, charts, or visible timing;
+- use the same hardware, environment, dataset, cache state, scenario, and tool;
+- report the measurement method and sample size;
+- include representative values and variability, not only the best run;
+- add a Markdown comparison table beside the visual.
+
+Example:
+
+| Scenario | Base median | PR median | Change | Samples |
+| --- | ---: | ---: | ---: | ---: |
+| Dashboard ready | 2.4 s | 1.5 s | 37.5% faster | 20 |
+
+## Placement
+
+Put each image and recording directly in the main PR body, never in a table or
+detached comment. Put the primary video first. Place its explanation immediately
+below it:
 
 ```md
-![Skills browse sorted by installs](https://github.com/user-attachments/assets/...)
+<uploaded interaction recording>
 
-**What this shows:** Install sort renders production rows in the expected
-first-page order.
+**What this shows:** Saving an invalid supplier stops at the form, explains the
+phone-number error, and keeps the entered values available for correction.
 
-**State:** `/skills?sort=installs&dir=desc`, production Convex, 1440x900
-viewport crop. The controls and first rows are both relevant.
+**State:** Local seeded supplier account; desktop viewport; manual interaction
+recorded at deliberate pace on the current PR branch.
 ```
 
-Never put images in tables. Use human labels and descriptive alt text. Avoid
-file names like `screenshot-1.png` as the only explanation.
-
-For UI PRs with no screenshots, add a short note explaining why the PR has no
-reviewer-visible screenshots. Acceptable reasons are narrow:
-backend-only diff, no human-visible behavior changed, screenshot capture was
-blocked by auth/fixture/tooling, CDP and Computer Use upload paths were
-unavailable or failed for a concrete GitHub UI/login/attachment reason, or the
-screenshot would only show unchanged UI. "Tests passed", "layout audit passed",
-or "no CLI upload token/session was available" is not an acceptable reason by
-itself.
-
-## Before/After Rule
-
-Before means PR base behavior, not the previous PR-branch commit.
-
-- Before = base branch, target branch, or production behavior when it matches
-  the base.
-- After = current PR branch.
-- If base and branch now match, remove that before/after proof.
-- If true before/after capture is impractical, say what was captured and why.
-
-Any screenshot or diagram made before a related code change is stale until
-rechecked.
-
-Avoid:
-
-- screenshots with no stated proof claim;
-- missing screenshots for human-visible UI changes without an explicit blocker
-  or narrow no-screenshot rationale;
-- screenshot blocker notes based on unsupported CLI helper/session-token paths
-  instead of trying CDP and the Computer Use fallback;
-- local-only `/tmp` screenshot paths presented as PR-visible proof;
-- full-page screenshots without a reason;
-- route-load screenshots for UI the PR did not change;
-- screenshots for backend-only behavior when diagrams, API examples, or tables
-  are clearer;
-- stale screenshots from an earlier branch state.
+Use descriptive alt text and labels. Keep reproduction steps copyable. Let
+GitHub's checks report routine automated validation.

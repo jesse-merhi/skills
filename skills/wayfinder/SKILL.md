@@ -1,6 +1,6 @@
 ---
 name: wayfinder
-description: 'Plan a huge chunk of work, more than one agent session can hold, as a shared Obsidian map of decision tickets, and resolve them one at a time until the way to the destination is clear.'
+description: 'Map multi-session work as Obsidian decision tickets and resolve them until the route is clear.'
 ---
 
 # Wayfinder

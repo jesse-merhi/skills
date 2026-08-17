@@ -1,6 +1,6 @@
 ---
 name: session-recall
-description: Find prior local Codex or Claude sessions when earlier work may answer the current question. Keep contents local and inspect low-token result cards before opening logs.
+description: Find prior local Codex or Claude sessions; keep contents local and inspect cards before opening logs.
 ---
 
 # Session Recall

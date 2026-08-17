@@ -1,0 +1,19 @@
+import { NodeRuntime, NodeServices } from "@effect/platform-node"
+import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
+import { Argument, Command, Flag } from "effect/unstable/cli"
+
+import { checkedInherit } from "../../../packages/effect-cli/CheckedProcess.ts"
+
+const AtlassianSite = Schema.String.pipe(Schema.check(Schema.isPattern(/^https:\/\/[A-Za-z0-9.-]+\.atlassian\.net\/?$/u)))
+const command = Command.make("rovodev-atlassian", {
+  site: Flag.string("site").pipe(Flag.withSchema(AtlassianSite)),
+  request: Argument.string("request").pipe(Argument.atLeast(1))
+}, Effect.fn("rovodevAtlassian.handler")(function*({ site, request }) {
+  const prompt = `Use the authenticated Atlassian MCP tools read-only on site_url exactly ${site}. Do not use another Atlassian site. ${request.join(" ")} Do not create, edit, delete, or comment on anything. Return the live Jira or Confluence result and include the JQL or CQL used when applicable.`
+  yield* checkedInherit("acli", ["rovodev", "legacy", prompt], { env: { NO_COLOR: "1", TERM: "dumb" }, extendEnv: true, displayCommand: "acli rovodev legacy [request]" })
+})).pipe(Command.withDescription("Run one read-only request through the authenticated Atlassian gateway"))
+
+command.pipe(Command.run({ version: "2.0.0" }),
+  // @effect-diagnostics-next-line strictEffectProvide:off
+  Effect.provide(NodeServices.layer), NodeRuntime.runMain)

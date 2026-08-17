@@ -13,7 +13,7 @@ enabled/disabled skill roots, or deciding which skills/plugins to remove.
 1. Run the analyzer from this skill directory or repo root:
 
    ```bash
-   npx --yes tsx@4.22.4 skills/skill-cleaner/scripts/skill-cleaner.ts --months 3
+   skills/skill-cleaner/scripts/skill-cleaner --months 3
    ```
 
 2. Use [commands.md](references/commands.md) for useful variants.
@@ -23,6 +23,10 @@ enabled/disabled skill roots, or deciding which skills/plugins to remove.
    [cleanup-policy.md](references/cleanup-policy.md).
 5. Use [analyzer-notes.md](references/analyzer-notes.md) when interpreting
    budget, root, duplicate, and usage heuristics.
+
+This is an Effect-based adaptation of the MIT-licensed analyzer maintained in
+[`steipete/agent-scripts`](https://github.com/steipete/agent-scripts). Preserve
+[the upstream license](references/upstream-license.md) when redistributing it.
 
 ## Required Discipline
 

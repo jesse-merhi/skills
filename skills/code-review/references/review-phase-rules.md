@@ -2,10 +2,12 @@
 
 ## Validation
 
-Run the commands identified during setup after each fix and after both review
-phases are clean. Prefer package scripts for tests, typecheck, lint, build,
-UI/E2E, migrations, security, or generated-artifact checks. If required
-validation cannot run, stop honestly with the blocker or residual risk.
+Run focused commands after each fix to check the affected behavior. Keep the
+review and finding-fix loop local. After both review phases are clean, run the
+full local validation selected during setup once against the final tree. Prefer
+package scripts for tests, typecheck, lint, build, UI/E2E, migrations, security,
+or generated-artifact checks. If required validation cannot run, stop honestly
+with the blocker or residual risk.
 
 ## Target Handling
 
@@ -25,9 +27,12 @@ validation cannot run, stop honestly with the blocker or residual risk.
 
 ## Run Handling
 
-- If the review helper is quiet, wait. Long reviews may print heartbeat lines
-  such as `review still running: ... elapsed=... pid=...`; treat those as
-  progress.
+- Run the review helper through the `wait-efficiently` Codex shell-wait pattern.
+  If a wait deadline expires while the helper is still running, resume the same
+  cell rather than restarting the review.
+- Long reviews may print heartbeat lines such as
+  `review still running: ... elapsed=... pid=...`; treat those as progress, not
+  as a reason to return to the model.
 - Do not kill a quiet review just because it has been silent for a few minutes.
   Inspect only after missed heartbeats, an obviously failed subprocess, or a
   review that has run past the expected long-review window.
@@ -44,7 +49,7 @@ validation cannot run, stop honestly with the blocker or residual risk.
   in the current review scope before fixing. Fix the scoped pattern at once when
   practical, but stop at touched surfaces, owner boundaries, or clear follow-up
   territory.
-- When structured review output is available, classify each finding as:
+- Classify each finding as:
   `direct`, `induced`, `adjacent`, or `unrelated`. Direct findings point at
   changed files. Induced findings point at unchanged code that the change now
   exposes or calls. Adjacent findings are real nearby issues outside this PR's
@@ -60,6 +65,9 @@ validation cannot run, stop honestly with the blocker or residual risk.
 
 ## Hard Stops
 
+- Treat a non-zero `"$review_findings_bin" scope-check` as an immediate stop. Present
+  its report to the user and do not run another review, apply another fix, or
+  reset the baseline without explicit authorization.
 - Never switch or override the review model. Retry transient capacity failures
   with the same command/model.
 - Do not rerun review only to get nicer wording. The second clean confirmation
@@ -71,5 +79,7 @@ validation cannot run, stop honestly with the blocker or residual risk.
   `cold-pr-review-until-clean` causes edits during Phase 2, rerun affected
   validation and stay in Phase 2 with a fresh cold reviewer.
 - Do not push just to review. Push only when the user requested publish, ship,
-  PR update, another GitHub mutation, or the PR closeout step is running after
-  both review phases and final validation are clean.
+  PR update, another GitHub mutation, or the PR closeout step grants its one
+  final push after both review phases and full local validation are clean.
+- Do not start, dispatch, rerun, or monitor remote CI while findings remain.
+  The final reviewed push starts the CI stage.

@@ -1,0 +1,552 @@
+#!/usr/bin/env python3
+"""Manage a guarded Cloudflare Quick Tunnel for an attested OpenClaw UI preview."""
+
+from __future__ import annotations
+
+import argparse
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import time
+from typing import Any, Iterator
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
+
+
+ATTESTATION_PATH = "/.well-known/openclaw-stg-test.json"
+DEFAULT_TTL = "4h"
+MAX_TTL_SECONDS = 24 * 60 * 60
+MIN_TTL_SECONDS = 5 * 60
+PUBLIC_URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
+SAFE_DATA_SOURCES = {"browser-mock", "static-fixture"}
+STATE_FILE = "state.json"
+
+
+class StagingError(RuntimeError):
+    pass
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Publish an attested loopback OpenClaw UI preview through a leased Quick Tunnel."
+    )
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--status", action="store_true", help="show the managed tunnel")
+    action.add_argument("--stop", action="store_true", help="stop the managed tunnel")
+    action.add_argument("--expire", type=int, metavar="SECONDS", help=argparse.SUPPRESS)
+    parser.add_argument("--url", help="loopback preview origin, including an explicit port")
+    parser.add_argument("--ttl", default=DEFAULT_TTL, help="lease duration: 30m, 4h, or 1d")
+    parser.add_argument(
+        "--state-dir",
+        default=os.environ.get("OPENCLAW_STG_TEST_STATE_DIR", "~/.openclaw-stg-test"),
+        help="managed state directory (default: ~/.openclaw-stg-test)",
+    )
+    parser.add_argument("--tunnel-pid", type=int, help=argparse.SUPPRESS)
+    return parser.parse_args()
+
+
+def parse_ttl(value: str) -> int:
+    match = re.fullmatch(r"([1-9][0-9]*)([smhd])", value)
+    if not match:
+        raise StagingError("TTL must use a positive integer followed by s, m, h, or d")
+    amount = int(match.group(1))
+    multiplier = {"s": 1, "m": 60, "h": 3600, "d": 86400}[match.group(2)]
+    seconds = amount * multiplier
+    if seconds < MIN_TTL_SECONDS:
+        raise StagingError("TTL must be at least 5 minutes")
+    if seconds > MAX_TTL_SECONDS:
+        raise StagingError("TTL must not exceed 24 hours")
+    return seconds
+
+
+def parse_origin(value: str) -> tuple[str, int]:
+    parsed = urlsplit(value)
+    if parsed.scheme != "http":
+        raise StagingError("preview origin must use http")
+    if parsed.username or parsed.password:
+        raise StagingError("preview origin must not contain credentials")
+    if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise StagingError("preview origin must use an explicit loopback host")
+    try:
+        port = parsed.port
+    except ValueError as error:
+        raise StagingError(f"invalid preview port: {error}") from error
+    if port is None:
+        raise StagingError("preview origin must include an explicit port")
+    if parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
+        raise StagingError("preview URL must be an origin without a route, query, or fragment")
+    host = f"[{parsed.hostname}]" if parsed.hostname == "::1" else parsed.hostname
+    return f"http://{host}:{port}", port
+
+
+def known_private_ports() -> set[int]:
+    ports = {18789}
+    candidates = set(Path.home().glob(".openclaw-local-test*/run/ports.env"))
+    candidates.add(Path.home() / ".openclaw-local-test" / "run" / "ports.env")
+    for path in candidates:
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            key, separator, raw_value = line.partition("=")
+            if separator and key in {
+                "OPENCLAW_LOCAL_TEST_GATEWAY_PORT",
+                "OPENCLAW_LOCAL_TEST_PROXY_PORT",
+            }:
+                try:
+                    ports.add(int(raw_value.strip().strip("'\"")))
+                except ValueError:
+                    continue
+    return ports
+
+
+def fetch_json(
+    url: str, timeout: float = 3.0, resolved_ip: str | None = None
+) -> dict[str, Any]:
+    request = Request(url, headers={"User-Agent": "openclaw-stg-test/1"})
+    original_getaddrinfo = socket.getaddrinfo
+    target_host = urlsplit(url).hostname
+
+    def resolve_target(host: str, port: int, *args: Any) -> Any:
+        if resolved_ip is not None and host == target_host:
+            return original_getaddrinfo(resolved_ip, port, *args)
+        return original_getaddrinfo(host, port, *args)
+
+    try:
+        with patched_dns(resolve_target if resolved_ip is not None else None):
+            with urlopen(request, timeout=timeout) as response:
+                if response.status < 200 or response.status >= 300:
+                    raise StagingError(f"attestation returned HTTP {response.status}")
+                body = response.read(64 * 1024)
+    except (HTTPError, URLError, TimeoutError, OSError) as error:
+        raise StagingError(f"could not read attestation at {url}: {error}") from error
+    try:
+        value = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise StagingError(f"attestation at {url} is not valid JSON") from error
+    if not isinstance(value, dict):
+        raise StagingError("attestation must be a JSON object")
+    return value
+
+
+@contextmanager
+def patched_dns(replacement: Any | None) -> Iterator[None]:
+    original = socket.getaddrinfo
+    if replacement is not None:
+        socket.getaddrinfo = replacement
+    try:
+        yield
+    finally:
+        socket.getaddrinfo = original
+
+
+def resolve_with_public_dns(host: str) -> list[str]:
+    dig = shutil.which("dig")
+    if dig is None:
+        return []
+    try:
+        result = subprocess.run(
+            [dig, "+short", "@1.1.1.1", host, "A"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if re.fullmatch(r"[0-9.]+", line)]
+
+
+def validate_attestation(value: dict[str, Any], expected_origin: str | None) -> str:
+    if value.get("schemaVersion") != 1:
+        raise StagingError("attestation schemaVersion must be 1")
+    if value.get("publicPreview") is not True:
+        raise StagingError("attestation must set publicPreview to true")
+    if value.get("containsCredentials") is not False:
+        raise StagingError("attestation must set containsCredentials to false")
+    data_source = value.get("dataSource")
+    if data_source not in SAFE_DATA_SOURCES:
+        allowed = ", ".join(sorted(SAFE_DATA_SOURCES))
+        raise StagingError(f"attestation dataSource must be one of: {allowed}")
+    if expected_origin is not None and value.get("origin") != expected_origin:
+        raise StagingError(f"attestation origin must exactly match {expected_origin}")
+    return str(data_source)
+
+
+def fetch_local_attestation(origin: str) -> tuple[dict[str, Any], str]:
+    value = fetch_json(origin + ATTESTATION_PATH)
+    return value, validate_attestation(value, origin)
+
+
+def process_start_ticks(pid: int) -> str | None:
+    try:
+        fields = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()
+    except OSError:
+        try:
+            result = subprocess.run(
+                ["ps", "-o", "lstart=", "-p", str(pid)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        identity = result.stdout.strip()
+        return identity if result.returncode == 0 and identity else None
+    return fields[21] if len(fields) > 21 else None
+
+
+def process_command(pid: int) -> str | None:
+    try:
+        return Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode()
+    except OSError:
+        try:
+            result = subprocess.run(
+                ["ps", "-o", "command=", "-p", str(pid)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        command = result.stdout.strip()
+        return command if result.returncode == 0 and command else None
+
+
+def process_matches(pid: int, start_ticks: str | None, required: str) -> bool:
+    if pid <= 0:
+        return False
+    current_ticks = process_start_ticks(pid)
+    if current_ticks is None or (start_ticks is not None and current_ticks != start_ticks):
+        return False
+    command = process_command(pid)
+    return command is not None and required in command
+
+
+def terminate_process_group(pid: int, start_ticks: str | None, required: str) -> bool:
+    if not process_matches(pid, start_ticks, required):
+        return False
+    try:
+        os.killpg(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return False
+    for _ in range(30):
+        if not process_matches(pid, start_ticks, required):
+            return True
+        time.sleep(0.1)
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    return True
+
+
+def state_path(state_dir: Path) -> Path:
+    return state_dir / STATE_FILE
+
+
+@contextmanager
+def state_lock(state_dir: Path) -> Iterator[None]:
+    state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(state_dir, 0o700)
+    with (state_dir / "lock").open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def read_state(state_dir: Path) -> dict[str, Any] | None:
+    try:
+        value = json.loads(state_path(state_dir).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, json.JSONDecodeError) as error:
+        raise StagingError(f"could not read managed state: {error}") from error
+    if not isinstance(value, dict):
+        raise StagingError("managed state is invalid")
+    return value
+
+
+def write_state(state_dir: Path, value: dict[str, Any]) -> None:
+    temporary = state_dir / f".{STATE_FILE}.tmp"
+    temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    os.chmod(temporary, 0o600)
+    temporary.replace(state_path(state_dir))
+
+
+def tunnel_running(state: dict[str, Any]) -> bool:
+    return process_matches(
+        int(state.get("tunnelPid", 0)),
+        state.get("tunnelStartTicks"),
+        "cloudflared",
+    )
+
+
+def stop_managed(state_dir: Path, *, from_watchdog: bool = False) -> bool:
+    state = read_state(state_dir)
+    if state is None:
+        if not from_watchdog:
+            print(f"No managed staging tunnel in {state_dir}")
+        return False
+    stopped = terminate_process_group(
+        int(state.get("tunnelPid", 0)),
+        state.get("tunnelStartTicks"),
+        "cloudflared",
+    )
+    if not from_watchdog:
+        terminate_process_group(
+            int(state.get("watchdogPid", 0)),
+            state.get("watchdogStartTicks"),
+            "--expire",
+        )
+    try:
+        state_path(state_dir).unlink()
+    except FileNotFoundError:
+        pass
+    if not from_watchdog:
+        result = "Stopped" if stopped else "Removed stale state for"
+        print(f"{result} {state.get('publicUrl', 'staging tunnel')}")
+    return stopped
+
+
+def show_status(state_dir: Path) -> int:
+    state = read_state(state_dir)
+    if state is None:
+        print(f"Status: stopped\nState: {state_dir}")
+        return 1
+    running = tunnel_running(state)
+    expires_at = int(state.get("expiresAt", 0))
+    remaining = max(0, expires_at - int(time.time()))
+    print(f"Status: {'running' if running else 'stale'}")
+    print(f"Public URL: {state.get('publicUrl', 'unknown')}")
+    print(f"Origin: {state.get('origin', 'unknown')}")
+    print(f"Data source: {state.get('dataSource', 'unknown')}")
+    print(f"Expires at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(expires_at))}")
+    print(f"Remaining seconds: {remaining}")
+    print(f"State: {state_dir}")
+    return 0 if running else 1
+
+
+def wait_for_public_url(log_path: Path, process: subprocess.Popen[bytes]) -> str:
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            break
+        try:
+            log = log_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            log = ""
+        match = PUBLIC_URL_RE.search(log)
+        if match:
+            return match.group(0)
+        time.sleep(0.2)
+    try:
+        tail = "\n".join(log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-20:])
+    except OSError:
+        tail = "log unavailable"
+    raise StagingError(f"cloudflared did not report a Quick Tunnel URL\n{tail}")
+
+
+def wait_for_public_attestation(public_url: str, expected: dict[str, Any]) -> None:
+    deadline = time.monotonic() + 60
+    last_error: Exception | None = None
+    host = urlsplit(public_url).hostname
+    while time.monotonic() < deadline:
+        resolved_ips: list[str | None] = [None]
+        if host is not None:
+            resolved_ips.extend(resolve_with_public_dns(host))
+        for resolved_ip in resolved_ips:
+            try:
+                actual = fetch_json(
+                    public_url + ATTESTATION_PATH,
+                    timeout=5,
+                    resolved_ip=resolved_ip,
+                )
+                validate_attestation(actual, None)
+                if actual != expected:
+                    raise StagingError("public attestation does not match the local origin")
+                return
+            except StagingError as error:
+                last_error = error
+        time.sleep(0.5)
+    raise StagingError(f"public preview did not become ready: {last_error}")
+
+
+def start_watchdog(
+    state_dir: Path, tunnel_pid: int, ttl_seconds: int, log_path: Path
+) -> subprocess.Popen[bytes]:
+    with log_path.open("ab", buffering=0) as log:
+        return subprocess.Popen(
+            [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "--state-dir",
+                str(state_dir),
+                "--expire",
+                str(ttl_seconds),
+                "--tunnel-pid",
+                str(tunnel_pid),
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+
+def expire_after(state_dir: Path, tunnel_pid: int, seconds: int) -> int:
+    if seconds <= 0:
+        raise StagingError("internal watchdog duration must be positive")
+    time.sleep(seconds)
+    with state_lock(state_dir):
+        state = read_state(state_dir)
+        if state is None or int(state.get("tunnelPid", 0)) != tunnel_pid:
+            return 0
+        stop_managed(state_dir, from_watchdog=True)
+    print("Lease expired; staging tunnel stopped", flush=True)
+    return 0
+
+
+def start(state_dir: Path, raw_url: str | None, raw_ttl: str) -> int:
+    if raw_url is None:
+        raise StagingError("--url is required when starting a tunnel")
+    origin, port = parse_origin(raw_url)
+    if port in known_private_ports():
+        raise StagingError(f"refusing protected OpenClaw Gateway or browser-proxy port {port}")
+    ttl_seconds = parse_ttl(raw_ttl)
+    attestation, data_source = fetch_local_attestation(origin)
+
+    cloudflared = shutil.which("cloudflared")
+    if cloudflared is None:
+        raise StagingError("cloudflared is not installed or not on PATH")
+
+    existing = read_state(state_dir)
+    if existing and tunnel_running(existing):
+        raise StagingError(
+            f"a staging tunnel is already running at {existing.get('publicUrl', 'an unknown URL')}"
+        )
+    if existing:
+        state_path(state_dir).unlink(missing_ok=True)
+
+    log_dir = state_dir / "logs"
+    log_dir.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(log_dir, 0o700)
+    tunnel_log_path = log_dir / "cloudflared.log"
+    watchdog_log_path = log_dir / "watchdog.log"
+    tunnel_log = tunnel_log_path.open("wb", buffering=0)
+    process: subprocess.Popen[bytes] | None = None
+    watchdog: subprocess.Popen[bytes] | None = None
+    tunnel_ticks: str | None = None
+
+    def interrupt_startup(signum: int, _frame: Any) -> None:
+        raise StagingError(f"startup interrupted by signal {signum}")
+
+    previous_handlers = {
+        signum: signal.signal(signum, interrupt_startup)
+        for signum in (signal.SIGINT, signal.SIGTERM)
+    }
+    try:
+        process = subprocess.Popen(
+            [
+                cloudflared,
+                "tunnel",
+                "--config",
+                "/dev/null",
+                "--no-autoupdate",
+                "--ha-connections",
+                "1",
+                "--url",
+                origin,
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=tunnel_log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        tunnel_ticks = process_start_ticks(process.pid)
+        public_url = wait_for_public_url(tunnel_log_path, process)
+        wait_for_public_attestation(public_url, attestation)
+        started_at = int(time.time())
+        state: dict[str, Any] = {
+            "schemaVersion": 1,
+            "origin": origin,
+            "publicUrl": public_url,
+            "dataSource": data_source,
+            "startedAt": started_at,
+            "expiresAt": started_at + ttl_seconds,
+            "tunnelPid": process.pid,
+            "tunnelStartTicks": tunnel_ticks,
+            "cloudflared": cloudflared,
+        }
+        write_state(state_dir, state)
+        watchdog = start_watchdog(state_dir, process.pid, ttl_seconds, watchdog_log_path)
+        state["watchdogPid"] = watchdog.pid
+        state["watchdogStartTicks"] = process_start_ticks(watchdog.pid)
+        write_state(state_dir, state)
+    except BaseException:
+        if watchdog is not None:
+            terminate_process_group(
+                watchdog.pid,
+                process_start_ticks(watchdog.pid),
+                "--expire",
+            )
+        if process is not None:
+            terminate_process_group(process.pid, tunnel_ticks, "cloudflared")
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                pass
+        state_path(state_dir).unlink(missing_ok=True)
+        raise
+    finally:
+        for signum, previous_handler in previous_handlers.items():
+            signal.signal(signum, previous_handler)
+        tunnel_log.close()
+
+    print(f"Public URL: {public_url}")
+    print(f"Origin: {origin}")
+    print(f"Data source: {data_source}")
+    print(f"Expires at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(started_at + ttl_seconds))}")
+    print(f"Status: openclaw-stg-test --state-dir {state_dir} --status")
+    print(f"Stop: openclaw-stg-test --state-dir {state_dir} --stop")
+    return 0
+
+
+def main() -> int:
+    args = parse_args()
+    state_dir = Path(args.state_dir).expanduser().resolve()
+    try:
+        if args.expire is not None:
+            if args.tunnel_pid is None:
+                raise StagingError("internal watchdog is missing the tunnel PID")
+            return expire_after(state_dir, args.tunnel_pid, args.expire)
+        with state_lock(state_dir):
+            if args.status:
+                return show_status(state_dir)
+            if args.stop:
+                stop_managed(state_dir)
+                return 0
+            return start(state_dir, args.url, args.ttl)
+    except StagingError as error:
+        print(f"openclaw-stg-test: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

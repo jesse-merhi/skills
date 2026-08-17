@@ -1,6 +1,6 @@
 ---
 name: pr-rubbish-audit
-description: 'Audit messy PR or branch diffs for unrelated rubbish: branch-history artifacts, noisy comments, accidental deletions, generated drift, and unneeded refactors.'
+description: 'Audit PR diffs for unrelated artifacts, noisy comments, deletions, generated drift, and stray refactors.'
 ---
 
 # PR Rubbish Audit

@@ -15,7 +15,7 @@ secondary.
 | `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
 | `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
 | `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
-| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, annotated direct-base diff, highlighted implementation/test code, secondary proof |
+| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, complete annotated direct-base diff, file review progress, secondary proof only when needed |
 
 ## Reusing A Pattern
 
@@ -42,11 +42,9 @@ Use `assets/explanation-template.html` only when none of the seven patterns fit.
 - For a reader who wants to understand a PR or stack, use the change
   walkthrough. Lead with changed behavior. For a stack, navigate layers
   bottom-to-top and explain each direct-base diff separately. For a standalone
-  PR, omit the navigator. Put a small annotated direct-base diff first, with
-  implementation and real changed test code one compact tab away. Keep
-  fixtures, infrastructure, CI, generated
-  files, docs, and rollout notes in collapsed proof only when they add evidence
-  not already visible in the test code.
+  PR, omit the navigator. Put the complete annotated direct-base diff first.
+  Explain every file inline and reserve extra implementation, test, or proof
+  views for information the diff cannot communicate without repetition.
 - For status, adapt implementation plan and make completed, active, blocked,
   and next work explicit.
 
@@ -60,13 +58,20 @@ Use `assets/explanation-template.html` only when none of the seven patterns fit.
   that restate the sentence beside them.
 - Keep the first viewport useful. The user should see the answer, not only a title.
 - For PR reading, make the first viewport reach the selected layer's changed
-  flow or code. Do not spend it on review-order prose, diff metrics, repeated
-  summaries, or generic architecture teaching.
+  code. Do not spend it on review-order prose, diff metrics, repeated summaries,
+  generic architecture teaching, or raw patch metadata.
 - Use plain CSS and semantic HTML. Add JavaScript only when interaction helps.
 - Keep generated assets local. Inline SVG is fine for diagrams.
 - Couple a claim with its evidence or inspectable example.
 - Put code explanations inline between the highlighted code segments they
   describe. Keep editorial boxes visually distinct from real source comments.
+- For review-sized diffs, show every changed file in a compact collapsible list,
+  provide search and bulk expand/collapse, and key Viewed progress to the exact
+  diff revision. A checked file collapses so the next unread file becomes the
+  natural focus.
+- Preserve every diff source line, but turn raw hunk coordinates into a quiet
+  `... unchanged lines` divider. Compact line spacing and syntax highlighting
+  should make the code easier to scan without altering it.
 - Hide only optional detail. Recommendations, required evidence, and next
   actions stay visible.
 - Reflow at 320 CSS pixels. Code and tables may scroll inside their own

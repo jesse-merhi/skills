@@ -1,6 +1,6 @@
 ---
 name: reducing-cognitive-load
-description: 'Review dense, clever, stringly typed, weakly typed, over-abstracted, or hard-to-read code, especially data flows and type boundaries.'
+description: 'Review dense, clever, stringly typed, weakly typed, over-abstracted, or hard-to-read code.'
 ---
 
 # Reducing Cognitive Load

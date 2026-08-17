@@ -1,97 +1,62 @@
 # Codex Review Helper
 
-Use `scripts/codex-review` from this skill whenever the codex engine runs:
-always in Codex, and in Claude Code only when the user forces the codex engine.
-When Phase 1 uses the claude engine, the built-in `code-review` workflow reviews
-the branch diff and the dirty local overlay directly, so no snapshot helper is
-needed; the snapshot rules below apply to the codex engine.
-
-For normal PR/branch work, leave the helper in `--mode auto`. Auto means whole
-target: clean feature branches review the branch against the base; dirty feature
-branches review a temporary snapshot containing both committed branch changes
-and local staged, unstaged, and untracked files. Force `--mode local` only for
-dirty-only review. Force `--mode branch` only for committed-only review. The
-helper must keep the Codex phase as bare `codex review`: do not add custom
-prompts, datasets, checklists, or desired verdicts to Codex review.
+Use `scripts/codex-review` whenever Phase 1 uses Codex. It is a thin Effect CLI
+over native `codex review`; it does not duplicate the reviewer, invent a second
+verdict protocol, or parse prose to decide whether a review is clean.
 
 ```sh
 scripts/codex-review
-scripts/codex-review --mode whole
-scripts/codex-review --mode branch
-scripts/codex-review --parallel-tests "<focused test command>"
+scripts/codex-review --mode branch --base origin/main
 scripts/codex-review --mode uncommitted
-scripts/codex-review --dry-run
+scripts/codex-review --mode commit --commit HEAD
+scripts/codex-review --parallel-tests "bun run test"
 scripts/codex-review --output /tmp/codex-review.out
+scripts/codex-review --dry-run
 ```
 
-The helper:
+The helper resolves a concrete Git target, delegates review to the native
+command, prints its output unchanged, and propagates process or parallel-test
+failures. In auto or whole mode, a dirty branch is copied into a temporary
+detached worktree with staged, unstaged, and untracked changes committed as one
+ephemeral snapshot. One base review therefore covers committed and local
+changes together, and the snapshot is removed afterward.
 
-- selects whole PR/branch review in `--mode auto`: a clean feature branch uses
-  native `codex review --base <base>`, while a dirty feature branch uses a
-  temporary worktree snapshot with local staged, unstaged, and untracked files
-  committed only inside the snapshot;
-- treats that snapshot as disposable review input. Accepted fixes must be
-  applied back in the real checkout, then reviewed again through a newly built
-  target or snapshot;
-- falls back to local review for dirty default-branch checkouts;
-- supports `--mode whole` to force the whole-target behavior;
-- supports `--mode branch` for committed-only branch review and `--mode local`
-  for dirty-only review;
-- accepts `--mode uncommitted` as an alias for local review;
-- resolves bare `git`, `gh`, and `codex` commands from absolute `PATH` entries
-  outside the reviewed checkout, so a repo-local executable cannot shadow them;
-- runs `git fetch origin --quiet` before branch or whole-target review, warning
-  and continuing with existing refs if fetch fails;
-- uses `gpt-5.6-sol` as the standard Codex review model and pins
-  `model_reasoning_effort="high"` by default;
-- runs `<skill-dir>/scripts/check-review-models` before real review work. Dry
-  runs skip the gate because they do not start Phase 1;
-- supports `--parallel-tests`, `--parallel-tests-shell`, `--heartbeat-seconds`,
-  `--output`, and `--dry-run`;
-- supports optional structured JSON review with `--structured`, `--json-output`,
-  `--prompt`, `--prompt-file`, `--dataset`, `--stream-engine-output`,
-  `--panel`, `--reviewers`, `--model`, and `--thinking`;
-- keeps structured review separate from native Phase 1. Do not pass custom
-  prompts, datasets, or JSON-schema instructions to native `codex review`. Use
-  structured mode only as an explicit extra reviewer path, calibration path, or
-  machine-readable ledger path.
-- defaults structured Codex reviewers to `gpt-5.6-sol` with `high` thinking;
-- defaults structured Claude reviewers to `claude-fable-5` with `high`
-  effort;
-- writes a normalized JSON ledger when `--json-output` is set. Prefer placing
-  that file beside the local findings database state or the optional decision
-  log, not in the product repo unless the user asks.
-- classifies structured findings by scope instead of dropping out-of-diff
-  findings blindly. `direct` and `induced` findings are blocking; `adjacent` and
-  `unrelated` findings are retained as nonblocking context.
-- prints `review still running: codex elapsed=<seconds>s pid=<pid>` while a
-  review is active but quiet;
-- exits nonzero on `[P0]` through `[P3]` findings, empty review output, failed
-  review commands, or failed parallel tests.
+A clean checkout uses `--base`. Without it, the helper discovers the current
+PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
+in that order.
 
-Smoke-test the helper without spending a real review call:
+Before starting review, the helper resolves `codex` outside the reviewed
+checkout and verifies the standalone CLI for the current runtime identity. It
+treats `codex login status` as an informational cache hint, checks the redacted
+`auth.credentials` result from `codex doctor --json` when that command is
+available, and makes a tiny ephemeral live provider request from an empty
+temporary directory. Doctor warnings and older CLIs without that diagnostic
+continue to the isolated live check; a hard credential error stops early. The
+helper separates locally confirmed credential failures from ambiguous live
+failures, whose safe remediation covers rejected or expired credentials,
+network, rate-limit, model, and configuration problems. It does not echo
+diagnostic details that may contain local paths or service endpoints.
 
-```sh
-<skill-dir>/scripts/test-codex-review-helper
-```
+OpenClaw must reuse the host's authenticated Codex CLI and auth file instead of
+creating an unrelated embedded-provider login. With the shared auth file in
+place, switching accounts through `cxa` also switches the account used by
+OpenClaw's standalone `codex` command.
 
-Check model guidance directly:
+The helper records the branch, tracked diff, and hashes of untracked files
+before and after each review. If the target changes while the reviewer is
+running, it discards that stale answer, resolves the latest target, and reruns.
+It stops with an error after three continuously changing runs instead of
+claiming that an unstable target was reviewed.
 
-```sh
-<skill-dir>/scripts/check-review-models
-```
+Run the helper through the `wait-efficiently` Codex shell-wait pattern. Resume a
+yielded cell instead of rerunning the helper.
 
-Calibrate the optional structured reviewer when changing its prompt/schema or
-when reviewer quality is in doubt:
+`--parallel-tests` runs the review and test command in one structured Effect
+scope. If either fails, the sibling is interrupted instead of being orphaned.
+`--output` or `CODEX_REVIEW_OUTPUT` persists the current invocation only after
+the reviewer succeeds, creating parent directories as needed so stale output
+cannot masquerade as a new result.
 
-```sh
-<skill-dir>/scripts/calibrate-structured-review --fixture both
-<skill-dir>/scripts/calibrate-structured-review --fixture malicious --thinking high
-```
-
-This creates a temporary fake repo. The malicious fixture contains intentionally
-bad code with shell command injection and password exposure; the reviewer must
-report both kinds of findings. The benign fixture contains safe shell/filesystem
-and owner-check code; the reviewer should stay clean. This calibration is not
-part of normal `$code-review` and should not run unless the agent or the user
-explicitly wants to test reviewer quality.
+The review workflow—not this transport helper—triages findings and determines
+the clean stop condition. Accept ordinary clean summaries; never require one
+magic phrase such as `No findings.`.

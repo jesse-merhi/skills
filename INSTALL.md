@@ -15,6 +15,8 @@ Figure out which harness you're running in:
 - **Codex CLI**: `~/.codex/`, `config.toml`, a `skills/` directory
 - **opencode**: `~/.config/opencode/`, `AGENTS.md`, a `skills/` directory
 - **Pi**: `~/.pi/agent/`, a `skills/` directory, `settings.json`
+- **OpenClaw**: a running Gateway, the matching `openclaw` CLI, and
+  `~/.openclaw/openclaw.json`
 
 If you cannot determine the harness with confidence, ask the user before
 proceeding.
@@ -44,6 +46,9 @@ The extra `~/.claude/AGENTS.md` symlink exists only so the relative
 resolves imports against the symlink location or the real file. Claude Code
 does not load `~/.claude/AGENTS.md` by itself.
 
+OpenClaw does not receive a global-instructions link from this repo. Skip this
+step when installing only into OpenClaw.
+
 ## 3. Configure Codex Interaction
 
 For Codex, enable the native structured question UI in Default mode when the
@@ -61,10 +66,23 @@ session exposes the question UI.
 
 Skip this step for other harnesses.
 
-## 4. Survey Existing Skills
+## 4. Install Repo Runtime Dependencies
 
-Before touching anything, inventory the target skills directory for the current
-harness:
+Repo-owned TypeScript helpers require Node 24 or newer and the exact Bun
+version declared in `package.json`. From `REPO`, run:
+
+```sh
+node -e 'if (Number(process.versions.node.split(".")[0]) < 24) process.exit(1)'
+bun ci
+```
+
+Stop and report the missing prerequisite if either command is unavailable or
+fails. Do not substitute a global TypeScript, Effect, or package installation.
+
+## 5. Survey Existing Skills
+
+For Claude Code, Codex, opencode, or Pi, inventory the target skills directory
+before touching anything:
 
 | Harness | Skills Target |
 | --- | --- |
@@ -82,10 +100,14 @@ Classify existing entries:
 4. A dead symlink: safe to remove.
 5. Obvious junk: ask before deleting.
 
-## 5. Link Skills
+Skip this step for OpenClaw; its existing skills are inspected after connecting
+the repo in step 7.
 
-Always use per-skill symlinks. The target skills directory should remain a real
-directory; each repo skill gets its own symlink inside it.
+## 6. Link Skills
+
+For Claude Code, Codex, opencode, or Pi, always use per-skill symlinks. The
+target skills directory should remain a real directory; each repo skill gets
+its own symlink inside it. Skip this step for OpenClaw.
 
 Discover every `SKILL.md` under `REPO/skills/`, recursively and following
 directory symlinks. Install by the frontmatter `name`, not by folder path. This
@@ -111,7 +133,52 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 6. Reconcile Third-Party Skills
+## 7. Connect a Running OpenClaw Gateway
+
+Only run this step when the user asked to install these skills into OpenClaw.
+OpenClaw discovers nested `SKILL.md` files from an extra skills directory, so
+point it at `REPO/skills` directly. Do not create per-skill copies or symlinks
+for OpenClaw.
+
+Use the `openclaw` CLI that belongs to the running Gateway. Before changing its
+configuration, run:
+
+```sh
+openclaw --version
+openclaw config validate
+openclaw config get skills.load.extraDirs --json
+```
+
+If validation fails, stop. The CLI may be older than the Gateway or its config;
+do not let a mismatched CLI rewrite that file. A missing
+`skills.load.extraDirs` value means an empty array.
+
+Resolve `REPO/skills` to an absolute, physical path. Preserve every existing
+entry in `skills.load.extraDirs`, append that path once, remove exact
+duplicates, and write the complete JSON array back with `--strict-json`. For
+example, when the existing array is empty:
+
+```sh
+openclaw config set skills.load.extraDirs '["/absolute/path/to/repo/skills"]' --strict-json
+openclaw config validate
+```
+
+Do not use that example unchanged when entries already exist: include them in
+the array you write back. Extra directories have the lowest precedence, so a
+higher-priority skill with the same name wins. Check and report collisions and
+ineligible skills with:
+
+```sh
+openclaw skills list --json
+openclaw skills check --json
+```
+
+Current OpenClaw builds apply `skills.*` configuration without restarting the
+Gateway. Start a new OpenClaw session so it receives the updated skill set. If
+the CLI explicitly says a restart is required, follow that instruction; for a
+managed Gateway, use `openclaw gateway restart`.
+
+## 8. Reconcile Third-Party Skills
 
 Read `external.md`. For each active or retired entry, run only the install or
 removal command for the current harness. Skip entries that do not list your
@@ -122,47 +189,41 @@ not survive after this repository stops using them.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 7. Install Repo-Owned Helper Binaries
+## 9. Verify Repo-Owned CLIs
 
-Some skills include local helper binaries. Install the Rust `review-findings`
-binary so `code-review` can record findings, verification commands, and
-closeouts in a fast local SQLite database:
-
-```sh
-REPO/skills/code-review/scripts/install-review-findings
-```
-
-By default this writes:
-
-```text
-~/.local/bin/review-findings
-```
-
-If the harness supports local environment variables, record the absolute helper
-path as `AGENT_REVIEW_FINDINGS_BIN`. Otherwise agents can use the skill-local
-launcher at `REPO/skills/code-review/scripts/review-findings`.
-
-Verify:
+The `review-findings` CLI runs directly from the linked skill and uses the
+repo-owned Effect runtime installed in step 4. Verify it can resolve that
+runtime and report its SQLite database path:
 
 ```sh
-${AGENT_REVIEW_FINDINGS_BIN:-$HOME/.local/bin/review-findings} path
+REPO/skills/code-review/scripts/review-findings path
 ```
 
-## 8. Verify
+Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration. That
+override belonged to the removed Rust installation and can silently select a
+CLI that lacks the required scope commands. The skill-owned launcher above is
+the only supported entrypoint.
+
+## 10. Verify
 
 Run:
 
 ```sh
 ./tests/skills-test
 ./tests/review-findings-test
+bun run validate:effect
 ```
 
 Report:
 
 - harness detected
+- OpenClaw connected or skipped; when connected, report the extra skills root,
+  collisions or ineligible skills, and whether a new session or restart is
+  required
 - Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
 - existing local skills preserved
 - third-party installs run or skipped
-- helper binaries installed or skipped
+- repo runtime dependencies installed
+- repo-owned CLIs verified
 - test result

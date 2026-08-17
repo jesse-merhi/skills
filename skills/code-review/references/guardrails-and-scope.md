@@ -26,15 +26,28 @@ with the scope reason.
 ## Budgets And Consult Gates
 
 `review-guardrails` owns the bounds for this skill: the wall-clock budget
-(default 8 hours per run), the diff-growth budget (about 30% of baseline
-lines), the consult queue for findings that need user input, and the
+(default 8 hours per run), the deterministic diff-growth budget (exactly 30%
+of baseline production changed lines by default), the consult queue for findings that need user input, and the
 queue-matching and fixed-point rules that stop later review passes from
 re-litigating queued findings. There is no iteration cap: the budgets are the
 bound.
 
 Orchestrator specifics:
 
-- Record `review_started` and `baseline_diff` in the loop state.
+- Resolve the absolute `review_findings_bin` launcher as required by
+  `review-guardrails`. Persist `review_started`, `scope_baseline`, and
+  `baseline_diff` with `"$review_findings_bin" scope-start`. On resume, load them
+  with `"$review_findings_bin" scope-status`.
+- Run `"$review_findings_bin" scope-check` after every accepted fix and before the
+  next review pass.
+  Its non-zero result immediately suspends the whole review as
+  blocked-on-consult; do not accumulate more findings up to `consult_cap`.
+- Present the CLI's completed findings, exact line/path overage, and the
+  `--reason` describing why remaining work merits a larger scope. Ask the user
+  for explicit authorization.
+- After approval, run `"$review_findings_bin" scope-authorize` with the user's words and revised scope,
+  then reset the current phase. On rejection, revert the over-budget batch,
+  defer the finding, and make `scope-check` pass before resuming.
 - Provisional fixes (Class A) are findings with status `provisional`; the review
   owner's keep-or-revert answer updates the finding to `fixed` or `rejected`.
 - Keep the consult queue in the findings database: each entry carries its

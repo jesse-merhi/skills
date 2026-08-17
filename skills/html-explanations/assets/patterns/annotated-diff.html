@@ -1,1523 +1,618 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
-<title>Uplinked Effect auth stack — direct-base walkthrough</title>
-<style>
-  :root {
-    color-scheme: dark;
-    --bg: #0a1016;
-    --surface: #131c25;
-    --surface-2: #192531;
-    --surface-3: #20303e;
-    --ink: #eef5f7;
-    --muted: #a6b7c0;
-    --line: #334857;
-    --blue: #7bc7ff;
-    --blue-soft: #15324a;
-    --red: #ff7b86;
-    --red-soft: #321a20;
-    --green: #78d9aa;
-    --green-soft: #122c24;
-    --amber: #f3c774;
-    --amber-soft: #392d17;
-    --code: #070c11;
-    --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { overflow-x: hidden; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font: 15px/1.52 var(--sans);
-  }
-  main {
-    width: min(1180px, calc(100% - 28px));
-    margin: 0 auto;
-    padding: 24px 0 64px;
-  }
-  a { color: var(--blue); text-underline-offset: 3px; }
-  button { font: inherit; }
-  button:focus-visible, a:focus-visible, summary:focus-visible {
-    outline: 3px solid var(--blue);
-    outline-offset: 3px;
-  }
-  code {
-    padding: .1em .32em;
-    border: 1px solid #3b4f5e;
-    border-radius: 4px;
-    background: #0f1820;
-    color: #dcf4ff;
-    font: .88em var(--mono);
-  }
-  pre {
-    min-width: 0;
-    margin: 0;
-    overflow-x: auto;
-    padding: 16px;
-    color: #dce8ed;
-    font: 12.5px/1.58 var(--mono);
-    tab-size: 2;
-  }
-  pre code {
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-  }
-  [hidden] { display: none !important; }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Effect HTTP auth stack — annotated diff</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #081018;
+      --panel: #0d1721;
+      --panel-2: #111e29;
+      --line: #294252;
+      --line-strong: #3d6177;
+      --text: #ecf4f8;
+      --muted: #9eb0bc;
+      --blue: #72c7ff;
+      --blue-soft: #102f43;
+      --green: #72d49d;
+      --green-soft: #102b20;
+      --red: #ff9a9a;
+      --red-soft: #361a20;
+      --yellow: #e5c07b;
+      --purple: #c9a5ff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-  .page-head {
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--line);
-  }
-  .page-head h1 {
-    margin: 0;
-    font-size: clamp(1.4rem, 3vw, 1.9rem);
-    line-height: 1.05;
-    letter-spacing: -.035em;
-  }
+    * { box-sizing: border-box; }
 
-  .stack-nav { margin-top: 10px; }
-  .stack-tabs {
-    display: flex;
-    gap: 8px;
-    max-width: 100%;
-    overflow-x: auto;
-    padding: 2px 2px 5px;
-  }
-  .stack-tab {
-    flex: 1 0 215px;
-    min-width: 0;
-    min-height: 58px;
-    padding: 8px 11px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--surface);
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  .stack-tab[aria-selected="true"] {
-    border-color: var(--blue);
-    background: var(--blue-soft);
-    box-shadow: inset 0 0 0 1px var(--blue);
-  }
-  .tab-meta {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--muted);
-    font: 700 11px/1 var(--mono);
-  }
-  .step {
-    display: inline-grid;
-    width: 21px;
-    height: 21px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--surface-3);
-    color: var(--blue);
-  }
-  .stack-tab[aria-selected="true"] .step { background: var(--blue); color: #08131c; }
-  .stack-tab strong { display: block; margin-top: 6px; font-size: 13px; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--text);
+    }
 
-  .layer { margin-top: 8px; }
-  .layer-head {
-    padding: 12px 14px;
-    border: 1px solid var(--line);
-    border-radius: 11px;
-    background: var(--surface);
-  }
-  .layer-title {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .layer-head h2 { margin: 0; font-size: clamp(1.2rem, 2.5vw, 1.55rem); line-height: 1.15; }
-  .layer-head p { max-width: 88ch; margin: 5px 0 0; color: var(--muted); font-size: 13.5px; }
-  .pr-link {
-    display: inline-flex;
-    flex: 0 0 auto;
-    min-height: 44px;
-    padding: 5px 8px;
-    align-items: center;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--blue);
-    font: 700 11px/1 var(--mono);
-    text-decoration: none;
-    white-space: nowrap;
-  }
+    button, input { font: inherit; }
 
-  .view-tabs {
-    display: inline-flex;
-    gap: 4px;
-    margin-top: 8px;
-    padding: 4px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--surface);
-  }
-  .view-tab {
-    min-height: 44px;
-    padding: 8px 13px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    font: 750 12px/1 var(--sans);
-  }
-  .view-tab[aria-selected="true"] { background: var(--blue-soft); color: var(--blue); }
-  .view-tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 2px;
+    }
 
-  .summary-title { margin: 14px 0 0; font-size: 1.08rem; }
-  .flow { margin-top: 5px; border-top: 1px solid var(--line); counter-reset: flow; }
-  .flow-step {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr);
-    gap: 12px;
-    align-items: center;
-    min-width: 0;
-    padding: 10px 2px;
-    border-bottom: 1px solid var(--line);
-  }
-  .flow-step::before {
-    counter-increment: flow;
-    content: counter(flow);
-    display: grid;
-    width: 23px;
-    height: 23px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--blue-soft);
-    color: var(--blue);
-    font: 800 11px/1 var(--mono);
-  }
-  .flow-step p { margin: 0; color: var(--muted); font-size: 12.5px; }
+    code {
+      padding: .08em .32em;
+      border: 1px solid var(--line);
+      border-radius: .28rem;
+      background: #071018;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: .9em;
+    }
 
-  .implementation, .diff-view { margin-top: 12px; }
-  .implementation > h3, .diff-view > h3, .files > h3 { margin: 0 0 9px; font-size: 1.08rem; }
-  .excerpt {
-    display: block;
-  }
-  .excerpt + .excerpt { margin-top: 11px; }
-  .code-panel {
-    min-width: 0;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--code);
-  }
-  .code-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--line);
-    background: var(--surface-2);
-    font: 700 11.5px/1.3 var(--mono);
-  }
-  .code-head span:last-child { color: var(--muted); font-weight: 500; }
-  pre.diff { padding: 12px 0; }
-  .diff-line {
-    display: block;
-    min-width: max-content;
-    padding-right: 16px;
-  }
-  .diff-line.remove { background: rgba(255, 123, 134, .12); }
-  .diff-line.add { background: rgba(120, 217, 170, .11); }
-  .diff-line.skip { color: #8598a5; font-style: italic; }
-  .diff-mark {
-    display: inline-block;
-    width: 28px;
-    margin-right: 8px;
-    color: #71818d;
-    text-align: center;
-    user-select: none;
-  }
-  .diff-line.remove .diff-mark { color: var(--red); }
-  .diff-line.add .diff-mark { color: var(--green); }
-  .marker {
-    display: inline-grid;
-    width: 18px;
-    height: 18px;
-    margin-right: 6px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--blue);
-    color: #07121b;
-    font: 900 10px/1 var(--mono);
-    user-select: none;
-  }
-  .notes { display: grid; gap: 8px; }
-  .note {
-    padding: 11px 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--surface);
-  }
-  .note strong { display: block; font-size: 13px; }
-  .note p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
-  .badge {
-    display: inline-grid;
-    width: 19px;
-    height: 19px;
-    margin-right: 6px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--blue-soft);
-    color: var(--blue);
-    font: 800 10px/1 var(--mono);
-  }
-  .enhanced-code .marker, .enhanced-code .notes { display: none; }
-  .review-note {
-    display: block;
-    margin: 10px -4px;
-    padding: 10px 12px;
-    border: 1px solid #37698f;
-    border-left: 4px solid var(--blue);
-    border-radius: 7px;
-    background: #10283a;
-    color: #dceaf2;
-    font: 13px/1.45 var(--sans);
-    white-space: normal;
-  }
-  .review-label {
-    display: block;
-    margin-bottom: 3px;
-    color: var(--blue);
-    font: 800 10px/1.2 var(--mono);
-    letter-spacing: .06em;
-    text-transform: uppercase;
-  }
-  .review-title { display: block; margin-bottom: 2px; color: var(--ink); font-weight: 750; }
-  .diff-view .review-note {
-    width: min(720px, calc(100vw - 92px));
-    margin: 10px 16px 10px 38px;
-  }
-  .tok-comment { color: #8598a5; font-style: italic; }
-  .tok-keyword { color: #ff8fb3; }
-  .tok-string { color: #a9dc76; }
-  .tok-number, .tok-literal { color: #ffd080; }
-  .tok-type { color: #82c3ff; }
-  .tok-call { color: #c7a7ff; }
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 34px 0 72px;
+    }
 
-  .files { margin-top: 18px; }
-  .file-table {
-    max-width: 100%;
-    overflow-x: auto;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-  }
-  table { width: 100%; min-width: 620px; border-collapse: collapse; background: var(--surface); }
-  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-  th { color: var(--muted); background: var(--surface-2); font: 800 10.5px/1.3 var(--mono); text-transform: uppercase; }
-  tr:last-child td { border-bottom: 0; }
-  td:last-child { color: var(--muted); }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--blue);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
 
-  details.proof {
-    margin-top: 13px;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--surface);
-  }
-  details.proof[open] { border-color: #4a614f; }
-  details.proof:not([open]) > :not(summary) { display: none; }
-  summary {
-    min-height: 44px;
-    padding: 11px 13px;
-    cursor: pointer;
-    font-weight: 800;
-  }
-  .proof-body {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 0 12px 12px;
-  }
-  .proof-item {
-    min-width: 0;
-    padding: 11px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--surface-2);
-  }
-  .proof-item strong { display: block; font-size: 13px; }
-  .proof-item p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
-  .proof-item.caveat { border-color: #6b5933; background: var(--amber-soft); }
-  .proof-item.caveat strong { color: var(--amber); }
+    h1 {
+      max-width: 800px;
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
 
-  @media (max-width: 880px) {
-    .flow { grid-template-columns: 1fr 1fr; }
-    .flow-step:nth-child(2)::after { display: none; }
-    .excerpt { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 520px) {
-    main { width: calc(100% - 18px); padding-top: 16px; }
-    .page-head h1 { font-size: 1.4rem; }
-    .stack-tab { flex-basis: 190px; }
-    .layer-head { padding: 11px; }
-    .layer-title { align-items: flex-start; }
-    .view-tabs { display: flex; width: 100%; }
-    .view-tab { flex: 1; }
-    .flow-step { grid-template-columns: 26px minmax(0, 1fr); gap: 4px 10px; }
-    .flow-step::before { grid-row: 1 / span 2; }
-    .flow-step p { grid-column: 2; }
-    .code-head { display: block; }
-    .code-head span { display: block; }
-    .code-head span + span { margin-top: 3px; }
-    .proof-body { grid-template-columns: 1fr; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
-  }
-  @media print {
-    :root { color-scheme: light; }
-    body { background: #fff; color: #111; }
-    main { width: 100%; padding: 0; }
-    .stack-nav, .view-tabs { display: none; }
-    .layer[hidden] { display: block !important; break-before: page; }
-    .view-panel[hidden] { display: block !important; }
-    .layer:first-of-type { break-before: auto; }
-    .layer-head, .flow-step, .code-panel, .review-note, .file-table, details.proof, .proof-item { background: #fff; break-inside: avoid; }
-    .layer-head p, .flow-step p, .note p, td:last-child, .proof-item p { color: #444; }
-    pre { color: #111; white-space: pre-wrap; }
-  }
-</style>
+    .lede {
+      max-width: 760px;
+      margin: 12px 0 24px;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+
+    .stack-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 3px 3px 10px;
+    }
+
+    .stack-tab {
+      min-width: 220px;
+      min-height: 58px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .stack-tab[aria-selected="true"] {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px var(--blue);
+    }
+
+    .stack-tab small,
+    .stack-tab strong { display: block; }
+    .stack-tab small { margin-bottom: 4px; color: var(--muted); }
+
+    .layer[hidden] { display: none; }
+
+    .layer-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 14px 0 16px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+
+    .layer-head h2 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+      line-height: 1.25;
+    }
+
+    .layer-head p {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .pr-pill {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 99px;
+      color: var(--blue);
+      font: 700 .8rem "SFMono-Regular", Consolas, monospace;
+    }
+
+    .review-bar {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--page) 92%, transparent);
+      backdrop-filter: blur(12px);
+    }
+
+    .file-search {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #071018;
+      color: var(--text);
+    }
+
+    .review-button {
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .viewed-progress {
+      min-width: 100px;
+      color: var(--muted);
+      font-size: .85rem;
+      text-align: right;
+    }
+
+    .file-diff {
+      margin: 0 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #070d13;
+    }
+
+    .file-diff[hidden] { display: none; }
+
+    .file-diff > summary {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 48px;
+      padding: 8px 12px;
+      background: var(--panel-2);
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .file-diff > summary::-webkit-details-marker { display: none; }
+
+    .chevron {
+      color: var(--muted);
+      transition: transform 120ms ease;
+    }
+
+    .file-diff[open] .chevron { transform: rotate(90deg); }
+
+    .file-name {
+      overflow: hidden;
+      font: 700 .82rem "SFMono-Regular", Consolas, monospace;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .language,
+    .change-count {
+      color: var(--muted);
+      font: .75rem "SFMono-Regular", Consolas, monospace;
+    }
+
+    .viewed-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 44px;
+      padding: 0 8px;
+      border-left: 1px solid var(--line);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    .viewed-control input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--green);
+    }
+
+    .file-diff.is-viewed > summary { background: #10231d; }
+    .file-diff.is-viewed .viewed-control { color: var(--green); }
+
+    .diff-scroll { overflow-x: auto; }
+
+    .diff {
+      min-width: 680px;
+      font: 11.5px/1.35 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-variant-ligatures: none;
+    }
+
+    .diff-row {
+      display: grid;
+      grid-template-columns: 42px 42px 20px minmax(max-content, 1fr);
+      min-height: 15.5px;
+      white-space: pre;
+    }
+
+    .line-no {
+      padding: 0 7px 0 3px;
+      border-right: 1px solid #1b2b36;
+      color: #60717c;
+      text-align: right;
+      user-select: none;
+    }
+
+    .sign { color: #60717c; text-align: center; user-select: none; }
+    .source { padding: 0 12px 0 2px; }
+    .diff-row.added { background: var(--green-soft); }
+    .diff-row.added .sign { color: var(--green); }
+    .diff-row.removed { background: var(--red-soft); }
+    .diff-row.removed .sign { color: var(--red); }
+
+    .hunk {
+      padding: 4px 12px 4px 104px;
+      border-block: 1px solid #193344;
+      background: #0b2130;
+      color: #7ca3bb;
+      font: 11px/1.35 "SFMono-Regular", Consolas, monospace;
+    }
+
+    .annotation {
+      margin: 8px 12px 9px 104px;
+      padding: 9px 12px;
+      border: 1px solid #397aa2;
+      border-left: 4px solid var(--blue);
+      border-radius: 7px;
+      background: #0c2839;
+      color: #dceef8;
+      font: 13px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+      white-space: normal;
+    }
+
+    .annotation strong { display: block; margin-bottom: 2px; }
+    .annotation .label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--blue);
+      font: 800 10px/1.2 "SFMono-Regular", Consolas, monospace;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .tok-keyword { color: #ff9ccf; }
+    .tok-string { color: var(--yellow); }
+    .tok-type { color: var(--blue); }
+    .tok-call { color: var(--purple); }
+    .tok-number { color: #f4a261; }
+    .tok-comment { color: #7f939f; font-style: italic; }
+
+    .empty-state {
+      display: none;
+      padding: 28px;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state.visible { display: block; }
+
+    @media (max-width: 700px) {
+      main { width: min(100% - 24px, 1180px); padding-top: 22px; }
+      .layer-head { display: block; padding: 15px; }
+      .pr-pill { display: inline-block; margin-top: 12px; }
+      .review-bar { grid-template-columns: 1fr 1fr; }
+      .file-search { grid-column: 1 / -1; }
+      .viewed-progress { align-self: center; }
+      .file-diff > summary { grid-template-columns: 18px minmax(0, 1fr) auto; }
+      .language { display: none; }
+      .viewed-control { grid-column: 2 / -1; justify-self: end; border-left: 0; }
+      .annotation {
+        position: sticky;
+        left: 12px;
+        width: calc(100vw - 50px);
+        max-width: calc(100vw - 50px);
+        margin-left: 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+
+    @media print {
+      :root { color-scheme: light; --page: #fff; --panel: #fff; --panel-2: #f5f7f8; --text: #111; --muted: #4a555c; --line: #b8c0c5; }
+      main { width: 100%; padding: 0; }
+      .stack-tabs, .review-bar, .viewed-control { display: none !important; }
+      .layer[hidden] { display: block; }
+      .file-diff { break-inside: avoid; }
+      .file-diff > summary { grid-template-columns: 18px 1fr auto; }
+      .diff-scroll { overflow: visible; }
+      .diff { min-width: 0; font-size: 8px; }
+      .annotation { color: #111; background: #eef8ff; }
+    }
+  </style>
 </head>
 <body>
-<main>
-  <header class="page-head">
-    <h1>Effect HTTP authentication stack</h1>
-  </header>
+  <main>
+    <p class="eyebrow">Annotated direct-base diff</p>
+    <h1>Login and onboarding now share one Effect session owner.</h1>
+    <p class="lede">Each stack layer shows only what it adds. Open a file to read its complete patch; the inline notes explain the file's role and the lines that change behavior.</p>
 
-  <nav class="stack-nav" aria-label="Effect auth pull request stack">
-    <div class="stack-tabs" role="tablist" aria-label="Stack layers, bottom to top">
-      <button class="stack-tab" id="tab-727" type="button" role="tab" aria-controls="layer-727" aria-selected="true">
-        <span class="tab-meta"><span class="step">1</span>#727 · base main</span>
-        <strong>Sessions and login</strong>
+    <nav class="stack-tabs" role="tablist" aria-label="Pull request stack">
+      <button class="stack-tab" id="tab-727" role="tab" aria-controls="layer-727" aria-selected="true">
+        <small>1 of 2 · PR #727 · base main</small>
+        <strong>Own login sessions</strong>
       </button>
-      <button class="stack-tab" id="tab-728" type="button" role="tab" aria-controls="layer-728" aria-selected="false" tabindex="-1">
-        <span class="tab-meta"><span class="step">2</span>#728 · base #727</span>
-        <strong>Onboarding completion</strong>
+      <button class="stack-tab" id="tab-728" role="tab" aria-controls="layer-728" aria-selected="false" tabindex="-1">
+        <small>2 of 2 · PR #728 · base #727</small>
+        <strong>Reuse sessions in onboarding</strong>
       </button>
-      <button class="stack-tab" id="tab-742" type="button" role="tab" aria-controls="layer-742" aria-selected="false" tabindex="-1">
-        <span class="tab-meta"><span class="step">3</span>#742 · base #728</span>
-        <strong>One-time auth codes</strong>
-      </button>
-      <button class="stack-tab" id="tab-743" type="button" role="tab" aria-controls="layer-743" aria-selected="false" tabindex="-1">
-        <span class="tab-meta"><span class="step">4</span>#743 · base #742</span>
-        <strong>Password reset</strong>
-      </button>
-    </div>
-  </nav>
+    </nav>
 
-  <section class="layer" id="layer-727" role="tabpanel" aria-labelledby="tab-727">
-    <div class="layer-head">
-      <div class="layer-title">
-        <h2>Login and onboarding share one Effectful session rule.</h2>
-        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/727" target="_blank" rel="noreferrer">PR #727</a>
-      </div>
-      <p><code>startSession</code> returns the actor and session through typed success, rejection, and outage channels; Express only translates them into HTTP.</p>
-    </div>
-
-    <h3 class="summary-title">Summary of changes</h3>
-    <div class="flow" aria-label="Session implementation flow">
-      <article class="flow-step"><p><code>startSession</code> wraps the Prisma lookup and Argon2 verification in Effect failures.</p></article>
-      <article class="flow-step"><p><code>LoginRejected.reason</code> distinguishes invalid credentials from inactive accounts; Express returns the same 401 body for both.</p></article>
-      <article class="flow-step"><p><code>createSession</code> owns the 30-day expiry and returns only the session ID and token.</p></article>
-      <article class="flow-step"><p><code>router/auth.ts</code> maps typed failures to 401/500, sets the cookie, and records the authenticated actor.</p></article>
-    </div>
-
-    <template class="diff-template">
-      <div class="diff-view">
-        <h3>Direct-base diff</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/auth/session.ts</span><span>main → #727</span></div>
-            <pre class="diff"><code><span class="diff-line remove"><span class="diff-mark">−</span>export type StartSessionResult =</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "started"; session: { id: number; token: string }; actor: SessionActor }</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "invalid-credentials"; message: "Invalid Credentials" }</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "inactive-account"; message: "Account is not active" };</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>type LoginRejectedReason = "InvalidCredentials" | "AccountInactive";</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>export class LoginRejected extends Data.TaggedError("LoginRejected")&lt;{</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  readonly reason: LoginRejectedReason;</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>}&gt; {}</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged input types omitted</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>export const startSession = async (input: StartSessionInput): Promise&lt;StartSessionResult&gt; =&gt; {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const user = await prisma.user.findFirst({ where: { email: input.email } });</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  if (!user || !(await argon2.verify(user.passwordHash, input.password))) {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>    return { kind: "invalid-credentials", message: "Invalid Credentials" };</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>export const startSession = Effect.fn("auth.startSession")(function* (input: StartSessionInput) {</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  const user = yield* Effect.tryPromise({</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    try: () =&gt; prisma.user.findFirst({ where: { email: input.email } }),</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    catch: sessionUnavailable,</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  });</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  if (!user) return yield* loginRejected.invalidCredentials;</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>password and active-account checks omitted</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>    kind: "started",</span><!--
---><span class="diff-line"><span class="diff-mark"> </span>    session: { id: session.id, token: session.token },</span><!--
---><span class="diff-line"><span class="diff-mark"> </span>    actor: { id: user.id, type: user.type },</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>});</span></code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>Failures become typed channels</strong><p>Expected rejection and infrastructure failure stop masquerading as successful result objects.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The use case becomes an Effect</strong><p>Lookup and password failures now stay distinct while success returns only the actor and session.</p></div>
-          </div>
+    <section class="layer" id="layer-727" role="tabpanel" aria-labelledby="tab-727" data-pr="727" data-diff-sha256="example-727-caf87c">
+      <header class="layer-head">
+        <div>
+          <h2>Session failures become typed Effect channels.</h2>
+          <p><code>startSession</code> owns credential checks and session creation; Express only converts its result into an HTTP response.</p>
         </div>
-      </div>
-    </template>
+        <span class="pr-pill">PR #727</span>
+      </header>
 
-    <div class="implementation">
-      <h3>Changed code</h3>
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/auth/session.ts</span><span>typed use case</span></div>
-          <pre><code>type LoginRejectedReason = "InvalidCredentials" | "AccountInactive";
-
-<span class="marker">1</span>export class LoginRejected extends Data.TaggedError("LoginRejected")&lt;{
-  readonly reason: LoginRejectedReason;
-}&gt; {}
-
-export class SessionUnavailable extends Data.TaggedError("SessionUnavailable")&lt;{
-  readonly cause: unknown;
-}&gt; {}
-
-export const startSession = Effect.fn("auth.startSession")(function* (input: StartSessionInput) {
-  const user = yield* Effect.tryPromise({
-    try: () =&gt; prisma.user.findFirst({ where: { email: input.email } }),
-    catch: sessionUnavailable,
-  });
-<span class="marker">2</span> if (!user) return yield* loginRejected.invalidCredentials;
-
-  // ... password verification and active-account check omitted ...
-
-<span class="marker">3</span> const session = yield* createSession({ userId: user.id, label: input.label, ip: input.ip });
-  return {
-    session: { id: session.id, token: session.token },
-    actor: { id: user.id, type: user.type },
-  };
-});</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Failure meaning is typed</strong><p>Expected rejection and infrastructure failure no longer look like successful Promise values.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Public wording is absent</strong><p>The use case yields a reason; it does not decide the HTTP message.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Success is the useful value</strong><p>No <code>kind: "started"</code> wrapper survives into callers.</p></div>
+      <div class="review-bar">
+        <input class="file-search" type="search" aria-label="Filter files in PR 727" placeholder="Filter changed files">
+        <button class="review-button toggle-files" type="button">Collapse all</button>
+        <span class="viewed-progress" aria-live="polite">0 of 2 viewed</span>
       </div>
 
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/router/auth.ts</span><span>Express adapter</span></div>
-          <pre><code><span class="marker">1</span>const result = await apiRuntime().runPromise(
-  Effect.either(startSession({ email, password: body.password, label: sessionLabel, ip })),
-);
+      <div class="files">
+        <details class="file-diff" open data-file="packages/backend/src/auth/session.ts">
+          <summary>
+            <span class="chevron" aria-hidden="true">›</span>
+            <span class="file-name">packages/backend/src/auth/session.ts</span>
+            <span class="language">TypeScript · <span style="color:var(--green)">+18</span> <span style="color:var(--red)">−2</span></span>
+            <label class="viewed-control"><input class="viewed" type="checkbox"> Viewed</label>
+          </summary>
+          <div class="diff-scroll"><div class="diff">
+            <div class="hunk">⋯ unchanged lines</div>
+            <div class="annotation" role="note"><span class="label">File purpose</span><strong>This file becomes the single owner of login sessions.</strong>It distinguishes rejected credentials from an unavailable dependency before returning the new session.</div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">12</span><span class="sign">+</span><span class="source"><span class="tok-keyword">type</span> <span class="tok-type">LoginRejectedReason</span> = <span class="tok-string">"InvalidCredentials"</span> | <span class="tok-string">"AccountInactive"</span>;</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">13</span><span class="sign">+</span><span class="source"></span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">14</span><span class="sign">+</span><span class="source"><span class="tok-keyword">export class</span> <span class="tok-type">LoginRejected</span> <span class="tok-keyword">extends</span> Data.TaggedError(<span class="tok-string">"LoginRejected"</span>)&lt;{</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">15</span><span class="sign">+</span><span class="source">  <span class="tok-keyword">readonly</span> reason: <span class="tok-type">LoginRejectedReason</span>;</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">16</span><span class="sign">+</span><span class="source">}&gt; {}</span></div>
+            <div class="annotation" role="note"><span class="label">Important line</span><strong>Expected rejection is no longer a successful Promise value.</strong>The caller must handle invalid credentials separately from infrastructure failure.</div>
+            <div class="diff-row context"><span class="line-no">21</span><span class="line-no">27</span><span class="sign"> </span><span class="source"><span class="tok-keyword">export const</span> <span class="tok-call">startSession</span> = Effect.fn(<span class="tok-string">"auth.startSession"</span>)(<span class="tok-keyword">function</span>* (input) {</span></div>
+            <div class="diff-row removed"><span class="line-no">22</span><span class="line-no"></span><span class="sign">−</span><span class="source">  <span class="tok-keyword">const</span> user = <span class="tok-keyword">await</span> prisma.user.<span class="tok-call">findUnique</span>({ where: { email: input.email } });</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">28</span><span class="sign">+</span><span class="source">  <span class="tok-keyword">const</span> user = <span class="tok-keyword">yield</span>* Effect.<span class="tok-call">tryPromise</span>({</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">29</span><span class="sign">+</span><span class="source">    try: () =&gt; prisma.user.<span class="tok-call">findUnique</span>({ where: { email: input.email } }),</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">30</span><span class="sign">+</span><span class="source">    catch: cause =&gt; <span class="tok-keyword">new</span> <span class="tok-type">SessionUnavailable</span>({ cause }),</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">31</span><span class="sign">+</span><span class="source">  });</span></div>
+            <div class="diff-row context"><span class="line-no">23</span><span class="line-no">32</span><span class="sign"> </span><span class="source"></span></div>
+            <div class="diff-row removed"><span class="line-no">24</span><span class="line-no"></span><span class="sign">−</span><span class="source">  <span class="tok-keyword">if</span> (!user) <span class="tok-keyword">return</span> { ok: <span class="tok-keyword">false</span> };</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">33</span><span class="sign">+</span><span class="source">  <span class="tok-keyword">if</span> (!user) <span class="tok-keyword">return yield</span>* <span class="tok-keyword">new</span> <span class="tok-type">LoginRejected</span>({ reason: <span class="tok-string">"InvalidCredentials"</span> });</span></div>
+            <div class="diff-row context"><span class="line-no">25</span><span class="line-no">34</span><span class="sign"> </span><span class="source"></span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">35</span><span class="sign">+</span><span class="source">  <span class="tok-keyword">return yield</span>* <span class="tok-call">persistSession</span>(user.id);</span></div>
+            <div class="diff-row context"><span class="line-no">26</span><span class="line-no">36</span><span class="sign"> </span><span class="source">});</span></div>
+          </div></div>
+        </details>
 
-if (Either.isLeft(result)) {
-<span class="marker">2</span> if (result.left._tag === "LoginRejected") {
-    logger.warn({ email, statusCode: 401, reason: result.left.reason }, "auth.login_failed");
-    return error(401, AUTHENTICATION_FAILED_MESSAGE);
-  }
-
-  logger.error({ cause: result.left.cause, email }, "auth.login_unavailable");
-  return error(500, SESSION_UNAVAILABLE_MESSAGE);
-}
-
-<span class="marker">3</span>const { actor, session } = result.right;
-setAuthenticatedAuditContext(getRequestContext(req), actor);
-res.cookie("session", session.token, { httpOnly: true, sameSite: "strict", secure: req.protocol === "https" });
-return success(200, { token: session.token });</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>One runtime crossing</strong><p>The route does not construct or dispose an Effect runtime.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Transport policy stays here</strong><p>HTTP status, public text, logging, and account-state privacy remain visible together.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Cookie and audit stay at the edge</strong><p>HTTP-only behavior does not leak into <code>startSession</code>.</p></div>
-        </div>
+        <details class="file-diff" data-file="packages/backend/src/auth/session.test.ts">
+          <summary>
+            <span class="chevron" aria-hidden="true">›</span>
+            <span class="file-name">packages/backend/src/auth/session.test.ts</span>
+            <span class="language">TypeScript · <span style="color:var(--green)">+11</span> <span style="color:var(--red)">−0</span></span>
+            <label class="viewed-control"><input class="viewed" type="checkbox"> Viewed</label>
+          </summary>
+          <div class="diff-scroll"><div class="diff">
+            <div class="hunk">⋯ unchanged lines</div>
+            <div class="annotation" role="note"><span class="label">File purpose</span><strong>These tests lock down the two failure channels.</strong>Bad credentials remain a normal 401 case, while a database outage remains an internal failure.</div>
+            <div class="diff-row context"><span class="line-no">48</span><span class="line-no">48</span><span class="sign"> </span><span class="source"><span class="tok-call">describe</span>(<span class="tok-string">"startSession"</span>, () =&gt; {</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">49</span><span class="sign">+</span><span class="source">  <span class="tok-call">it.effect</span>(<span class="tok-string">"rejects an unknown email"</span>, () =&gt;</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">50</span><span class="sign">+</span><span class="source">    Effect.<span class="tok-call">gen</span>(<span class="tok-keyword">function</span>* () {</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">51</span><span class="sign">+</span><span class="source">      <span class="tok-keyword">const</span> exit = <span class="tok-keyword">yield</span>* Effect.<span class="tok-call">exit</span>(<span class="tok-call">startSession</span>(unknownUser));</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">52</span><span class="sign">+</span><span class="source">      <span class="tok-call">expect</span>(exit).<span class="tok-call">toFailWith</span>(<span class="tok-keyword">new</span> <span class="tok-type">LoginRejected</span>({</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">53</span><span class="sign">+</span><span class="source">        reason: <span class="tok-string">"InvalidCredentials"</span>,</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">54</span><span class="sign">+</span><span class="source">      }));</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">55</span><span class="sign">+</span><span class="source">    }));</span></div>
+            <div class="annotation" role="note"><span class="label">What this proves</span><strong>The rejection reason stays typed end to end.</strong>The test inspects the Effect failure instead of inferring it from an HTTP response.</div>
+            <div class="diff-row context"><span class="line-no">49</span><span class="line-no">56</span><span class="sign"> </span><span class="source">});</span></div>
+          </div></div>
+        </details>
       </div>
-    </div>
+      <p class="empty-state">No changed files match that filter.</p>
+    </section>
 
-    <template class="test-template">
-      <div class="implementation tests-view">
-        <h3>Changed test code</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/tests/integration/router/auth-login.test.ts</span><span>changed in #727</span></div>
-            <pre><code>test("does not create a session for invalid credentials or an inactive account", async () =&gt; {
-  const active = await createTestUser({
-    email: "invalid-password@test.com",
-    passwordHash: await argon2.hash(PASSWORD),
-  });
-  const inactive = await createTestUser({
-    email: "inactive-login@test.com",
-    passwordHash: await argon2.hash(PASSWORD),
-    accountState: "PENDING_INVITE",
-  });
-
-  for (const login of [
-    { email: active.email, password: "wrong-password" },
-    { email: inactive.email, password: PASSWORD },
-  ]) {
-    const response = await fetch(`${server.baseUrl}/auth/login`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: login.email, password: login.password }),
-    });
-
-<span class="marker">1</span>   expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: "Invalid Credentials" });
-  }
-
-<span class="marker">2</span> expect(await prisma.session.count()).toBe(0);
-});</code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>One public rejection</strong><p>Wrong passwords and inactive accounts deliberately expose the same response, so login does not reveal account state.</p></div>
-            <div class="note"><strong><span class="badge">2</span>No rejected session survives</strong><p>Both failure paths leave the session table unchanged.</p></div>
-          </div>
+    <section class="layer" id="layer-728" role="tabpanel" aria-labelledby="tab-728" data-pr="728" data-diff-sha256="example-728-13f29a" hidden>
+      <header class="layer-head">
+        <div>
+          <h2>Onboarding delegates session creation to the owner from PR #727.</h2>
+          <p>The route deletes its duplicate cookie and persistence logic, then translates the shared Effect result into the same HTTP contract.</p>
         </div>
-      </div>
-    </template>
+        <span class="pr-pill">PR #728</span>
+      </header>
 
-    <div class="files">
-      <h3>Direct-base files</h3>
-      <div class="file-table"><table><thead><tr><th>File</th><th>Change in #727 only</th></tr></thead><tbody>
-        <tr><td><code>auth/session.ts</code></td><td>Effectful login/session owner and typed failures.</td></tr>
-        <tr><td><code>effect/runtime.ts</code> + <code>index.ts</code></td><td>One lazily shared API runtime, disposed once during shutdown.</td></tr>
-        <tr><td><code>router/auth.ts</code> + <code>router/onboarding.ts</code></td><td>Adapters use the shared owner; cookie and public response remain local.</td></tr>
-        <tr><td><code>auth-login.test.ts</code> + <code>onboarding-access.test.ts</code></td><td>Login privacy and reusable onboarding session behavior.</td></tr>
-      </tbody></table></div>
-    </div>
-
-    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
-      <div class="proof-item"><strong>Login behavior</strong><p>4 password-login integration cases pass, including inactive-account privacy.</p></div>
-      <div class="proof-item"><strong>Onboarding reuse</strong><p>79 onboarding-access cases pass; non-worker cookies authenticate and sessions expire after 30 days.</p></div>
-      <div class="proof-item"><strong>Repository gates</strong><p>Typecheck, lint, React Doctor, unit, integration, browser E2E, Docker, migration-image, and 4 Android shards passed.</p></div>
-      <div class="proof-item"><strong>Rollout</strong><p>No API shape, UI, database migration, or deployment configuration change.</p></div>
-    </div></details>
-  </section>
-
-  <section class="layer" id="layer-728" role="tabpanel" aria-labelledby="tab-728" hidden>
-    <div class="layer-head">
-      <div class="layer-title">
-        <h2>Onboarding completion becomes one atomic Effect workflow.</h2>
-        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/728" target="_blank" rel="noreferrer">PR #728</a>
-      </div>
-      <p>Validation, locking, writes, session creation, and confirmation move out of Express while the existing cookie and response behavior remain.</p>
-    </div>
-
-    <h3 class="summary-title">Summary of changes</h3>
-    <div class="flow" aria-label="Onboarding implementation flow">
-      <article class="flow-step"><p><code>token-lifecycle.ts</code> owns active-token lookup, identity matching, locks, and transactional revalidation.</p></article>
-      <article class="flow-step"><p><code>completeOnboarding</code> validates role associations and hashes the password before opening the write transaction.</p></article>
-      <article class="flow-step"><p>One Prisma transaction writes the user and relationship, consumes the token, and optionally creates a session.</p></article>
-      <article class="flow-step"><p><code>router/onboarding.ts</code> maps typed failures to the existing 400/404/500 responses and sets the cookie when a session token is returned.</p></article>
-    </div>
-
-    <template class="diff-template">
-      <div class="diff-view">
-        <h3>Direct-base diff</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/router/onboarding.ts</span><span>#727 → #728</span></div>
-            <pre class="diff"><code><span class="diff-line"><span class="diff-mark"> </span>completeOnboarding: async ({ body, req, res }) =&gt; {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const { token, name, phoneNumber, password, address, dob } = body;</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const passwordResult = StrongPassword.safeParse(password);</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  if (!passwordResult.success) {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>    return error(400, passwordResult.error.issues[0]?.message ?? "Password is invalid");</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  }</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const onboardingToken = await resolveOnboardingTokenForUse(token);</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>about 180 lines of inline locking, validation, writes, and email omitted</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>  const result = await apiRuntime().runPromise(</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    Effect.either(</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>      completeOnboarding({</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>        body,</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>        ip: req.ip ?? "unknown",</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>        sessionLabel: req.headers["user-agent"] ?? "onboarding",</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>      }),</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    ),</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  );</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>  if (Either.isLeft(result)) {</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    switch (result.left._tag) {</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>      case "OnboardingRejected":</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>        return error(400, ONBOARDING_REJECTION_MESSAGES[result.left.reason]);</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>      case "OnboardingTokenNotFound":</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>        return error(404, ONBOARDING_TOKEN_NOT_FOUND_MESSAGE);</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>      case "OnboardingUnavailable":</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>        return error(500, ONBOARDING_UNAVAILABLE_MESSAGE);</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    }</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  }</span></code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>The route delegates one workflow</strong><p>Validation, locking, writes, session creation, and confirmation move behind <code>completeOnboarding</code>.</p></div>
-            <div class="note"><strong><span class="badge">2</span>HTTP policy remains visible</strong><p>The route still owns the existing 400, 404, and 500 responses; it no longer owns the transaction.</p></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div class="implementation">
-      <h3>Changed code</h3>
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/onboarding/completion.ts</span><span>failure contract</span></div>
-          <pre><code><span class="marker">1</span>export type OnboardingRejectedReason =
-  | "InvalidAssociation"
-  | "MultipleAccounts"
-  | "AccountDeactivated"
-  | "AccountActive"
-  | "RoleMismatch"
-  | "AssociationMismatch"
-  | "UserNoLongerEligible";
-
-export class OnboardingRejected extends Data.TaggedError("OnboardingRejected")&lt;{
-  readonly reason: OnboardingRejectedReason;
-}&gt; {}
-
-<span class="marker">2</span>export class OnboardingTokenNotFound extends Data.TaggedError("OnboardingTokenNotFound") {}
-
-export class OnboardingUnavailable extends Data.TaggedError("OnboardingUnavailable")&lt;{
-  readonly cause: unknown;
-}&gt; {}
-
-<span class="marker">3</span>export type CompleteOnboardingError =
-  | OnboardingRejected
-  | OnboardingTokenNotFound
-  | OnboardingUnavailable;</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Expected rejection is closed</strong><p>The route can exhaustively map every business reason without parsing a message.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Missing token has its own meaning</strong><p>Expired, used, or absent tokens stay distinct from invalid account state.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Operational failure retains cause</strong><p>Database, hashing, lock, and session errors remain diagnosable.</p></div>
-        </div>
+      <div class="review-bar">
+        <input class="file-search" type="search" aria-label="Filter files in PR 728" placeholder="Filter changed files">
+        <button class="review-button toggle-files" type="button">Collapse all</button>
+        <span class="viewed-progress" aria-live="polite">0 of 2 viewed</span>
       </div>
 
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/onboarding/completion.ts</span><span>atomic save</span></div>
-          <pre><code>const saveOnboarding = Effect.fn("onboarding.save")(function* (input: SaveOnboardingInput) {
-<span class="marker">1</span> const runtime = yield* Effect.runtime&lt;never&gt;();
-  return yield* Effect.tryPromise({
-    try: () =&gt;
-      withOnboardingTokenEmailLock(input.token.email, async (lease) =&gt; {
-        lease.assertHeld();
-<span class="marker">2</span>       const result = await prisma.$transaction((tx) =&gt;
-          saveOnboardingTransaction(tx, input, runtime),
-        );
-        lease.markCommitted();
-        return result;
-      }),
-    catch: unavailable,
-  });
-});
+      <div class="files">
+        <details class="file-diff" open data-file="packages/backend/src/onboarding/complete.ts">
+          <summary>
+            <span class="chevron" aria-hidden="true">›</span>
+            <span class="file-name">packages/backend/src/onboarding/complete.ts</span>
+            <span class="language">TypeScript · <span style="color:var(--green)">+7</span> <span style="color:var(--red)">−12</span></span>
+            <label class="viewed-control"><input class="viewed" type="checkbox"> Viewed</label>
+          </summary>
+          <div class="diff-scroll"><div class="diff">
+            <div class="hunk">⋯ unchanged lines</div>
+            <div class="annotation" role="note"><span class="label">File purpose</span><strong>The onboarding route stops creating sessions itself.</strong>It completes the profile, calls the shared owner, and translates the typed outcome into HTTP.</div>
+            <div class="diff-row context"><span class="line-no">67</span><span class="line-no">67</span><span class="sign"> </span><span class="source"><span class="tok-keyword">const</span> user = <span class="tok-keyword">await</span> <span class="tok-call">completeProfile</span>(input);</span></div>
+            <div class="diff-row removed"><span class="line-no">68</span><span class="line-no"></span><span class="sign">−</span><span class="source"><span class="tok-keyword">const</span> token = <span class="tok-call">randomBytes</span>(<span class="tok-number">32</span>).<span class="tok-call">toString</span>(<span class="tok-string">"hex"</span>);</span></div>
+            <div class="diff-row removed"><span class="line-no">69</span><span class="line-no"></span><span class="sign">−</span><span class="source"><span class="tok-keyword">await</span> prisma.session.<span class="tok-call">create</span>({ data: { userId: user.id, token } });</span></div>
+            <div class="diff-row removed"><span class="line-no">70</span><span class="line-no"></span><span class="sign">−</span><span class="source">res.<span class="tok-call">cookie</span>(SESSION_COOKIE, token, cookieOptions);</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">68</span><span class="sign">+</span><span class="source"><span class="tok-keyword">const</span> session = <span class="tok-keyword">await</span> Effect.<span class="tok-call">runPromise</span>(<span class="tok-call">startSessionForUser</span>(user.id));</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">69</span><span class="sign">+</span><span class="source">res.<span class="tok-call">cookie</span>(SESSION_COOKIE, session.token, cookieOptions);</span></div>
+            <div class="annotation" role="note"><span class="label">Important line</span><strong>There is now one persistence path for every session.</strong>Onboarding can no longer drift from login on token shape or expiry.</div>
+            <div class="diff-row context"><span class="line-no">71</span><span class="line-no">70</span><span class="sign"> </span><span class="source">res.<span class="tok-call">status</span>(<span class="tok-number">204</span>).<span class="tok-call">end</span>();</span></div>
+          </div></div>
+        </details>
 
-// Inside saveOnboardingTransaction:
-<span class="marker">3</span>const session = user.type === UserType.WORKER
-  ? undefined
-  : await Runtime.runPromise(runtime)(
-      createSession({ userId: user.id, label: input.sessionLabel, ip: input.ip }, tx),
-    );</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Reuse the parent runtime</strong><p>The Prisma Promise callback does not start a second default Effect runtime.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Writes commit together</strong><p>User, token, relationship, and session cannot leave a half-finished onboarding.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Worker behavior remains explicit</strong><p>Only non-workers receive a browser session.</p></div>
-        </div>
+        <details class="file-diff" data-file="packages/backend/src/onboarding/complete.test.ts">
+          <summary>
+            <span class="chevron" aria-hidden="true">›</span>
+            <span class="file-name">packages/backend/src/onboarding/complete.test.ts</span>
+            <span class="language">TypeScript · <span style="color:var(--green)">+8</span> <span style="color:var(--red)">−1</span></span>
+            <label class="viewed-control"><input class="viewed" type="checkbox"> Viewed</label>
+          </summary>
+          <div class="diff-scroll"><div class="diff">
+            <div class="hunk">⋯ unchanged lines</div>
+            <div class="annotation" role="note"><span class="label">File purpose</span><strong>The route test proves onboarding still returns a working session.</strong>It checks the public cookie contract after session ownership moves.</div>
+            <div class="diff-row context"><span class="line-no">88</span><span class="line-no">88</span><span class="sign"> </span><span class="source"><span class="tok-keyword">const</span> response = <span class="tok-keyword">await</span> request(app).<span class="tok-call">post</span>(<span class="tok-string">"/onboarding/complete"</span>).<span class="tok-call">send</span>(profile);</span></div>
+            <div class="diff-row context"><span class="line-no">89</span><span class="line-no">89</span><span class="sign"> </span><span class="source"><span class="tok-call">expect</span>(response.status).<span class="tok-call">toBe</span>(<span class="tok-number">204</span>);</span></div>
+            <div class="diff-row removed"><span class="line-no">90</span><span class="line-no"></span><span class="sign">−</span><span class="source"><span class="tok-call">expect</span>(response.headers[<span class="tok-string">"set-cookie"</span>]).<span class="tok-call">toBeDefined</span>();</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">90</span><span class="sign">+</span><span class="source"><span class="tok-keyword">const</span> cookie = <span class="tok-call">readSessionCookie</span>(response);</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">91</span><span class="sign">+</span><span class="source"><span class="tok-call">expect</span>(<span class="tok-keyword">await</span> <span class="tok-call">lookupSession</span>(cookie.token)).<span class="tok-call">toMatchObject</span>({</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">92</span><span class="sign">+</span><span class="source">  userId: createdUser.id,</span></div>
+            <div class="diff-row added"><span class="line-no"></span><span class="line-no">93</span><span class="sign">+</span><span class="source">});</span></div>
+            <div class="annotation" role="note"><span class="label">What this proves</span><strong>The cookie points at the persisted session.</strong>The old assertion only proved that some cookie header existed.</div>
+          </div></div>
+        </details>
       </div>
+      <p class="empty-state">No changed files match that filter.</p>
+    </section>
+  </main>
 
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/router/onboarding.ts</span><span>thin HTTP adapter</span></div>
-          <pre><code>const result = await apiRuntime().runPromise(
-<span class="marker">1</span> Effect.either(
-    completeOnboarding({
-      body,
-      ip: req.ip ?? "unknown",
-      sessionLabel: req.headers["user-agent"] ?? "onboarding",
-    }),
-  ),
-);
+  <script>
+    const tabs = [...document.querySelectorAll('.stack-tab')];
+    const layers = [...document.querySelectorAll('.layer')];
 
-if (Either.isLeft(result)) {
-<span class="marker">2</span> switch (result.left._tag) {
-    case "OnboardingRejected":
-      return error(400, ONBOARDING_REJECTION_MESSAGES[result.left.reason]);
-    case "OnboardingTokenNotFound":
-      return error(404, ONBOARDING_TOKEN_NOT_FOUND_MESSAGE);
-    case "OnboardingUnavailable":
-      return error(500, ONBOARDING_UNAVAILABLE_MESSAGE);
-  }
-}
-
-<span class="marker">3</span>if (result.right.sessionToken) {
-  res.cookie("session", result.right.sessionToken, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: req.protocol === "https",
-  });
-}</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>No reconstructed Express request</strong><p>The workflow receives only body, IP, and session label.</p></div>
-          <div class="note"><strong><span class="badge">2</span>HTTP mapping is exhaustive</strong><p>Adding a failure reason without a public message becomes a type error.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Cookie stays transport-owned</strong><p>The use case returns an optional token; Express decides how to send it.</p></div>
-        </div>
-      </div>
-    </div>
-
-    <template class="test-template">
-      <div class="implementation tests-view">
-        <h3>Changed test code</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/tests/integration/router/onboarding-access.test.ts</span><span>changed in #728</span></div>
-            <pre><code>test("rolls back onboarding when the session cannot be created", async () =&gt; {
-  const supplier = await createTestSupplier({ name: "Onboarding Session Failure Supplier" });
-  const email = `onboarding-session-failure-${Date.now()}@test.com`;
-  const onboardingToken = await prisma.onboardingToken.create({
-    data: {
-      email,
-      userType: UserRoles.SUPPLIER_ADMIN,
-      supplierId: supplier.id,
-      createdById: baseline.adminUser.id,
-      expiresAt: expiresAt(),
-    },
-  });
-
-<span class="marker">1</span> vi.spyOn(sessionService, "createSession")
-    .mockRejectedValueOnce(new Error("session unavailable"));
-
-  const response = await fetch(`${server.baseUrl}/onboarding/complete`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      token: onboardingToken.token,
-      name: "Onboarding Session Failure",
-      phoneNumber: "+61400000000",
-      password: "CorrectHorseBatteryStaple123!",
-      address: "123 Test Street",
-      dob: "1990-01-01T00:00:00.000Z",
-    }),
-  });
-
-<span class="marker">2</span> expect(response.status).toBe(500);
-  expect(await prisma.user.findUnique({ where: { email } })).toBeNull();
-  await expect(
-    prisma.onboardingToken.findUniqueOrThrow({ where: { id: onboardingToken.id } }),
-  ).resolves.toEqual(expect.objectContaining({ usedAt: null }));
-});</code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>Force the late failure</strong><p>The test makes session creation fail after onboarding has already entered the write workflow.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The whole workflow rolls back</strong><p>The response is 500, no user remains, and the token is still unused.</p></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div class="files">
-      <h3>Direct-base files</h3>
-      <div class="file-table"><table><thead><tr><th>File or group</th><th>Change in #728 only</th></tr></thead><tbody>
-        <tr><td><code>onboarding/completion.ts</code></td><td>New Effect workflow, failure model, atomic save, and best-effort confirmation.</td></tr>
-        <tr><td><code>onboarding/token-lifecycle.ts</code></td><td>Shared token lookup, identity matching, locking, and transactional revalidation.</td></tr>
-        <tr><td><code>router/onboarding.ts</code></td><td>Removes 419 embedded lines; keeps status mapping, cookie, and response.</td></tr>
-        <tr><td><code>common/contract/onboarding.ts</code> + <code>users.ts</code></td><td>Reuses strong-password and role/client/supplier association rules.</td></tr>
-        <tr><td><code>mobile/app.json</code> + release notes</td><td>Contract policy bumps mobile to 1.0.45; no mobile UI changes.</td></tr>
-      </tbody></table></div>
-    </div>
-
-    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
-      <div class="proof-item"><strong>Atomicity and compatibility</strong><p>79 onboarding cases cover token, user, association, cookie, rollback, and existing 400/404/500 behavior.</p></div>
-      <div class="proof-item"><strong>Contract safety</strong><p>Common contract tests and the paid backward-compatibility diff passed.</p></div>
-      <div class="proof-item"><strong>Repository gates</strong><p>Typecheck, lint, React Doctor, unit, integration, migration, browser E2E, Docker, and 4 Android shards passed.</p></div>
-      <div class="proof-item"><strong>Rollout</strong><p>Mobile version 1.0.45 and store notes satisfy shared-contract policy; there is no changed UI.</p></div>
-    </div></details>
-  </section>
-
-  <section class="layer" id="layer-742" role="tabpanel" aria-labelledby="tab-742" hidden>
-    <div class="layer-head">
-      <div class="layer-title">
-        <h2>One-time codes stop returning hand-written result objects.</h2>
-        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/742" target="_blank" rel="noreferrer">PR #742</a>
-      </div>
-      <p>Issue and atomic exchange become Effect programs with Effect Clock, typed rejection, and unchanged 401/500 translation.</p>
-    </div>
-
-    <h3 class="summary-title">Summary of changes</h3>
-    <div class="flow" aria-label="Auth code implementation flow">
-      <article class="flow-step"><p><code>issueCode</code> creates 32 random bytes, reads expiry from Effect Clock, and stores a one-minute code.</p></article>
-      <article class="flow-step"><p>The code-login route runs <code>startSession</code> then <code>issueCode</code> inside one Effect runtime crossing.</p></article>
-      <article class="flow-step"><p><code>exchangeCode</code> atomically marks one active, unused code as consumed and returns its session.</p></article>
-      <article class="flow-step"><p><code>router/auth.ts</code> maps <code>AuthCodeRejected</code> to 401 and operational failures to 500.</p></article>
-    </div>
-
-    <template class="diff-template">
-      <div class="diff-view">
-        <h3>Direct-base diff</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/auth/code.ts</span><span>#728 → #742</span></div>
-            <pre class="diff"><code><span class="diff-line remove"><span class="diff-mark">−</span>export type ExchangeCodeResult =</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "exchanged"; session: { token: string }; actor: SessionActor }</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  | { kind: "invalid-code"; message: typeof INVALID_CODE_MESSAGE };</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>type AuthCodeRejectedReason = "InvalidOrExpired";</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>export class AuthCodeRejected extends Data.TaggedError("AuthCodeRejected")&lt;{</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  readonly reason: AuthCodeRejectedReason;</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>}&gt; {}</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged active-session filter omitted</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>export const exchangeCode = async (code: string): Promise&lt;ExchangeCodeResult&gt; =&gt; {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const now = new Date();</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>export const exchangeCode = Effect.fn("auth.exchangeCode")(function* (code: string) {</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  const now = new Date(yield* Clock.currentTimeMillis);</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const [authCode] = await prisma.authCode.updateManyAndReturn({</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  const [authCode] = yield* Effect.tryPromise({</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    try: () =&gt; prisma.authCode.updateManyAndReturn({</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged atomic consume query omitted</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    }),</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    catch: unavailable,</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  });</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>    return { kind: "invalid-code", message: INVALID_CODE_MESSAGE };</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>    return yield* authCodeRejected.invalidOrExpired;</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>    kind: "exchanged",</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>});</span></code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>Clock and database failures enter Effect</strong><p>The same atomic consume now uses Effect Clock and preserves operational failure as a separate channel.</p></div>
-            <div class="note"><strong><span class="badge">2</span>Invalid codes stop carrying HTTP text</strong><p>The domain yields a typed reason; the route chooses the public 401 message.</p></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div class="implementation">
-      <h3>Changed code</h3>
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/auth/code.ts</span><span>issue and exchange</span></div>
-          <pre><code>type AuthCodeRejectedReason = "InvalidOrExpired";
-
-export class AuthCodeRejected extends Data.TaggedError("AuthCodeRejected")&lt;{
-  readonly reason: AuthCodeRejectedReason;
-}&gt; {}
-
-export class AuthCodeUnavailable extends Data.TaggedError("AuthCodeUnavailable")&lt;{
-  readonly cause: unknown;
-}&gt; {}
-
-export const issueCode = Effect.fn("auth.issueCode")(function* (input: IssueCodeInput) {
-<span class="marker">1</span> const code = yield* Effect.try({
-    try: () =&gt; crypto.randomBytes(32).toString("hex"),
-    catch: unavailable,
-  });
-<span class="marker">2</span> const now = yield* Clock.currentTimeMillis;
-  yield* Effect.tryPromise({
-    try: () =&gt; prisma.authCode.create({
-      data: { code, purpose: input.purpose, session: { connect: { id: input.sessionId } }, expiresAt: new Date(now + EXPIRY_MS) },
-    }),
-    catch: unavailable,
-  });
-  return { code, expiresIn: EXPIRY_SECONDS };
-});</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Crypto failure is operational</strong><p>It cannot be mistaken for an invalid caller-supplied code.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Expiry is testable</strong><p>Effect Clock replaces direct <code>Date.now()</code> ownership.</p></div>
-        </div>
-      </div>
-
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/auth/code.ts</span><span>atomic single-use exchange</span></div>
-          <pre><code>export const exchangeCode = Effect.fn("auth.exchangeCode")(function* (code: string) {
-  const now = new Date(yield* Clock.currentTimeMillis);
-<span class="marker">1</span> const [authCode] = yield* Effect.tryPromise({
-    try: () =&gt; prisma.authCode.updateManyAndReturn({
-      where: { code, usedAt: null, expiresAt: { gt: now }, session: activeSession },
-      data: { usedAt: now },
-      include: { session: { include: { user: true } } },
-    }),
-    catch: unavailable,
-  });
-
-<span class="marker">2</span> if (!authCode) return yield* authCodeRejected.invalidOrExpired;
-
-  return {
-    session: { token: authCode.session.token },
-    actor: { id: authCode.session.user.id, type: authCode.session.user.type },
-  };
-});</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>The race-safe write remains</strong><p>Consumption is still conditional and atomic, so two exchanges cannot both win.</p></div>
-          <div class="note"><strong><span class="badge">2</span>No message in the domain</strong><p>The adapter owns “Invalid or expired code.”</p></div>
-        </div>
-      </div>
-
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/router/auth.ts</span><span>one composed runtime crossing</span></div>
-          <pre><code>const result = await apiRuntime().runPromise(
-  Effect.either(
-<span class="marker">1</span>   Effect.gen(function* () {
-      const started = yield* startSession({ email, password, label, ip });
-      const code = yield* issueCode({ sessionId: started.session.id, purpose: "LOGIN" });
-      return { ...started, code };
-    }),
-  ),
-);
-
-if (Either.isLeft(result)) {
-<span class="marker">2</span> if (result.left._tag === "LoginRejected") {
-    return error(401, AUTHENTICATION_FAILED_MESSAGE);
-  }
-
-  logger.error({ cause: result.left.cause, email }, "auth.login_code_unavailable");
-  return error(
-    500,
-    result.left._tag === "SessionUnavailable"
-      ? SESSION_UNAVAILABLE_MESSAGE
-      : AUTH_CODE_UNAVAILABLE_MESSAGE,
-  );
-}</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Session and code compose normally</strong><p>The route crosses the managed runtime once instead of awaiting two independent Promise use cases.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Failures remain distinguishable</strong><p>Authentication rejection, session outage, and code outage map separately.</p></div>
-        </div>
-      </div>
-    </div>
-
-    <template class="test-template">
-      <div class="implementation tests-view">
-        <h3>Test code</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/tests/integration/router/auth-handoff.test.ts</span><span>existing coverage — unchanged in #742</span></div>
-            <pre><code>test("exchanges a single-use handoff code for the existing authenticated session", async () =&gt; {
-  const user = await createTestUser({ email: "docs-handoff@example.com" });
-  const session = await createTestSession(user.id);
-
-  const handoffResponse = await fetch(`${server.baseUrl}/auth/handoff`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${session.token}` },
-  });
-  const handoff = contract.auth.handoff.responses[200].parse(await handoffResponse.json());
-
-  const exchangeResponse = await fetch(`${server.baseUrl}/auth/exchange`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code: handoff.data.code }),
-  });
-
-<span class="marker">1</span> expect(exchangeResponse.status).toBe(200);
-  await expect(exchangeResponse.json()).resolves.toEqual({ data: { token: session.token } });
-  expect(exchangeResponse.headers.get("set-cookie")).toContain(`session=${session.token}`);
-
-  const replayResponse = await fetch(`${server.baseUrl}/auth/exchange`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code: handoff.data.code }),
-  });
-<span class="marker">2</span> expect(replayResponse.status).toBe(401);
-});</code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>Exchange preserves the session</strong><p>The one-time handoff returns the existing token and sets the same session cookie.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The code remains single-use</strong><p>A replay is rejected after the first atomic exchange consumes the code.</p></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div class="files">
-      <h3>Direct-base files</h3>
-      <div class="file-table"><table><thead><tr><th>File</th><th>Change in #742 only</th></tr></thead><tbody>
-        <tr><td><code>auth/code.ts</code></td><td>Effect error model, Clock expiry, crypto wrapping, issue, and atomic exchange.</td></tr>
-        <tr><td><code>router/auth.ts</code></td><td>Composes code login, runs handoff/exchange, and owns 401/500 messages.</td></tr>
-      </tbody></table></div>
-    </div>
-
-    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
-      <div class="proof-item"><strong>One-time behavior</strong><p>11 focused login and handoff cases cover replay, expiry boundary, revoked/expired sessions, and inactive accounts.</p></div>
-      <div class="proof-item"><strong>Repository checks</strong><p>Backend typecheck, focused lint, and direct-base whitespace checks passed.</p></div>
-      <div class="proof-item"><strong>Scope</strong><p>Two production files only. No contract, database migration, UI, or deployment change.</p></div>
-      <div class="proof-item"><strong>Stack state</strong><p>Draft PR with clean stack-aware required checks; it becomes reviewable after lower layers merge.</p></div>
-    </div></details>
-  </section>
-
-  <section class="layer" id="layer-743" role="tabpanel" aria-labelledby="tab-743" hidden>
-    <div class="layer-head">
-      <div class="layer-title">
-        <h2>Password reset exposes its real behavior boundaries.</h2>
-        <a class="pr-link" href="https://github.com/UplinkedTeam/uplinked/pull/743" target="_blank" rel="noreferrer">PR #743</a>
-      </div>
-      <p>Token issue, throttling, email compensation, and atomic password save become named Effect operations without changing the privacy-safe response.</p>
-    </div>
-
-    <h3 class="summary-title">Summary of changes</h3>
-    <div class="flow" aria-label="Password reset implementation flow">
-      <article class="flow-step"><p><code>requestPasswordReset</code> returns the same privacy-safe response for missing, inactive, and cross-workspace accounts.</p></article>
-      <article class="flow-step"><p><code>issueResetToken</code> performs locks, throttling, stale-token cleanup, invalidation, and creation in one transaction.</p></article>
-      <article class="flow-step"><p><code>deliverResetEmail</code> runs in a runtime-owned fiber; failure invalidates the token and releases account throttle.</p></article>
-      <article class="flow-step"><p><code>resetPassword</code> consumes the token, changes the password, and revokes sessions in one transaction.</p></article>
-    </div>
-
-    <template class="diff-template">
-      <div class="diff-view">
-        <h3>Direct-base diff</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/src/auth/password-reset.ts</span><span>#742 → #743</span></div>
-            <pre class="diff"><code><span class="diff-line remove"><span class="diff-mark">−</span>const response = async (startedAtMs: number): Promise&lt;{ message: typeof RESPONSE_MESSAGE }&gt; =&gt; {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const remainingMs = MIN_RESPONSE_MS - (Date.now() - startedAtMs);</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">1</span>const response = Effect.fn("auth.passwordResetResponse")(function* (startedAtMs: number) {</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  const now = yield* Clock.currentTimeMillis;</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  const remainingMs = MIN_RESPONSE_MS - (now - startedAtMs);</span><!--
---><span class="diff-line"><span class="diff-mark"> </span>  if (remainingMs &gt; 0) {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>    await new Promise((resolve) =&gt; setTimeout(resolve, remainingMs));</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>    yield* Effect.sleep(remainingMs);</span><!--
---><span class="diff-line"><span class="diff-mark"> </span>  }</span><!--
---><span class="diff-line"><span class="diff-mark"> </span>  return { message: RESPONSE_MESSAGE };</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>});</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>token issue and delivery helpers omitted</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>export const requestPasswordReset = async (</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  input: RequestPasswordResetInput,</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>): Promise&lt;{ message: typeof RESPONSE_MESSAGE }&gt; =&gt; {</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  const startedAtMs = Date.now();</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span><span class="marker">2</span>export const requestPasswordReset = Effect.fn("auth.requestPasswordReset")(function* (</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  input: RequestPasswordResetInput,</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>) {</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  const startedAtMs = yield* Clock.currentTimeMillis;</span><!--
---><span class="diff-line skip"><span class="diff-mark">⋮</span>unchanged privacy-safe early exits omitted</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>  return response(startedAtMs);</span><!--
---><span class="diff-line remove"><span class="diff-mark">−</span>};</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>  return yield* response(startedAtMs);</span><!--
---><span class="diff-line add"><span class="diff-mark">+</span>});</span></code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>The privacy delay uses Effect Clock</strong><p>The 250 ms floor becomes deterministic without changing the safe public response.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The whole request becomes one Effect</strong><p>Early exits, token issue, background delivery, and the timing floor now compose in one runtime-owned program.</p></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div class="implementation">
-      <h3>Changed code</h3>
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/auth/password-reset.ts</span><span>request orchestration</span></div>
-          <pre><code>export const requestPasswordReset = Effect.fn("auth.requestPasswordReset")(function* (input) {
-<span class="marker">1</span> const startedAtMs = yield* Clock.currentTimeMillis;
-  const workspace = resolvePasswordResetWorkspace(input.hostname, input.requestedWorkspace);
-  if (!workspace) return yield* response(startedAtMs);
-
-  // ... account lookup and throttle-key preparation omitted ...
-
-<span class="marker">2</span> const resetToken = yield* issueResetToken({
-    user, workspace, ipHash, ipLock, accountThrottleKeys, now, windowStart,
-  });
-  if (!resetToken) return yield* response(startedAtMs);
-
-<span class="marker">3</span> yield* Effect.forkDaemon(
-    deliverResetEmail({ request: input, workspace, resetToken, accountThrottleKeys, requestedAt: now }),
-  );
-
-<span class="marker">4</span> return yield* response(startedAtMs);
-});</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Privacy time uses Effect Clock</strong><p>The 250 ms floor uses <code>Effect.sleep</code>, not a custom timer Promise.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Issuance owns its transaction</strong><p>The exported use case reads as orchestration instead of database detail.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Email is runtime-owned</strong><p>The old floating Promise becomes an Effect fiber with compensation behavior.</p></div>
-          <div class="note"><strong><span class="badge">4</span>The safe response stays uniform</strong><p>Missing, invalid, or throttled requests reveal nothing about account existence.</p></div>
-        </div>
-      </div>
-
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/auth/password-reset.ts</span><span>atomic password save</span></div>
-          <pre><code>const savePassword = (input: {
-  resetToken: ResetTokenWithUser;
-  passwordHash: string;
-  now: Date;
-}): Effect.Effect&lt;boolean, PasswordResetUnavailable&gt; =&gt;
-  Effect.tryPromise({
-    try: () =&gt; prisma.$transaction(async (tx) =&gt; {
-<span class="marker">1</span>     const consumed = await tx.passwordResetToken.updateMany({
-        where: { id: input.resetToken.id, usedAt: null, invalidatedAt: null, expiresAt: { gt: input.now } },
-        data: { usedAt: input.now },
-      });
-      if (consumed.count === 0) return false;
-
-<span class="marker">2</span>     await tx.passwordResetToken.updateMany({
-        where: { userId: input.resetToken.userId, id: { not: input.resetToken.id }, usedAt: null, invalidatedAt: null },
-        data: { invalidatedAt: input.now },
-      });
-<span class="marker">3</span>     await tx.user.update({
-        where: { id: input.resetToken.userId },
-        data: { passwordHash: input.passwordHash },
-      });
-<span class="marker">4</span>     await tx.session.updateMany({
-        where: { userId: input.resetToken.userId, revoked: false },
-        data: { revoked: true },
-      });
-      return true;
-    }),
-    catch: unavailable,
-  });</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>One confirmation wins</strong><p>The conditional consume closes the replay and concurrency race.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Sibling tokens are retired</strong><p>A successful reset leaves no other active reset link.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Password changes in the same commit</strong><p>No consumed token can coexist with an unchanged password.</p></div>
-          <div class="note"><strong><span class="badge">4</span>Existing sessions are revoked</strong><p>The reset removes access from every prior browser session.</p></div>
-        </div>
-      </div>
-
-      <div class="excerpt">
-        <div class="code-panel">
-          <div class="code-head"><span>packages/backend/src/router/auth.ts</span><span>typed confirmation mapping</span></div>
-          <pre><code>const result = await apiRuntime().runPromise(
-  Effect.either(
-    resetPassword({
-      token: body.token,
-      requestedWorkspace: body.workspace,
-      password: body.password,
-      hostname: req.hostname,
-    }),
-  ),
-);
-
-if (Either.isLeft(result)) {
-<span class="marker">1</span> if (result.left._tag === "PasswordResetRejected") {
-    return error(400, PASSWORD_RESET_REJECTION_MESSAGES[result.left.reason]);
-  }
-<span class="marker">2</span> logger.error({ cause: result.left.cause }, "auth.password_reset_confirm_unavailable");
-  return error(500, PASSWORD_RESET_UNAVAILABLE_MESSAGE);
-}
-
-<span class="marker">3</span>setAuthenticatedAuditContext(getRequestContext(req), result.right.actor);
-return success(200, { message: PASSWORD_RESET_COMPLETE_MESSAGE });</code></pre>
-        </div>
-        <div class="notes">
-          <div class="note"><strong><span class="badge">1</span>Reason chooses the 400 message</strong><p>Invalid/expired token and weak password are exhaustive typed reasons.</p></div>
-          <div class="note"><strong><span class="badge">2</span>Operational failure stays a 500</strong><p>Hashing and database causes remain available to logs.</p></div>
-          <div class="note"><strong><span class="badge">3</span>Audit context uses the real actor</strong><p>Success carries identity without a <code>kind: "reset"</code> wrapper.</p></div>
-        </div>
-      </div>
-    </div>
-
-    <template class="test-template">
-      <div class="implementation tests-view">
-        <h3>Changed test code</h3>
-        <div class="excerpt">
-          <div class="code-panel">
-            <div class="code-head"><span>packages/backend/tests/unit/auth/password-reset.test.ts</span><span>changed in #743</span></div>
-            <pre><code>test("keeps early responses pending for the 250 millisecond privacy floor", async () =&gt; {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-07-31T00:00:00.000Z"));
-  let settled = false;
-
-<span class="marker">1</span> const result = Effect.runPromise(
-    requestPasswordReset({
-      email: "person@example.com",
-      requestedWorkspace: "acme",
-      hostname: "other.uplinked.com",
-      protocol: "https",
-      ip: "203.0.113.42",
-    }),
-  ).then((value) =&gt; {
-    settled = true;
-    return value;
-  });
-
-  await vi.advanceTimersByTimeAsync(249);
-<span class="marker">2</span> expect(settled).toBe(false);
-
-  await vi.advanceTimersByTimeAsync(1);
-  await expect(result).resolves.toEqual({
-    message: "If an active account exists for that email, a reset link has been sent.",
-  });
-});</code></pre>
-          </div>
-          <div class="notes">
-            <div class="note"><strong><span class="badge">1</span>The test runs the real Effect</strong><p>The privacy delay is part of the Effect program rather than a Promise helper around it.</p></div>
-            <div class="note"><strong><span class="badge">2</span>The timing floor is observable</strong><p>The response cannot settle at 249 ms and resolves with the safe public message at 250 ms.</p></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <div class="files">
-      <h3>Direct-base files</h3>
-      <div class="file-table"><table><thead><tr><th>File</th><th>Change in #743 only</th></tr></thead><tbody>
-        <tr><td><code>auth/password-reset.ts</code></td><td>Typed errors, Clock/sleep, transactional issue/save, runtime-owned delivery, and compensation.</td></tr>
-        <tr><td><code>router/auth.ts</code></td><td>Runs request/confirm Effects and owns safe 200, rejection 400, outage 500, audit, and success text.</td></tr>
-        <tr><td><code>auth-password-reset.test.ts</code></td><td>Concurrency, replay, workspace isolation, inactive account, throttling, and email compensation.</td></tr>
-        <tr><td><code>unit/auth/password-reset.test.ts</code></td><td>Effect Clock proves the 250 ms privacy floor without wall-clock waiting.</td></tr>
-      </tbody></table></div>
-    </div>
-
-    <details class="proof"><summary>Proof and rollout</summary><div class="proof-body">
-      <div class="proof-item"><strong>Privacy and throttling</strong><p>1 timing test plus 20 integration cases preserve the safe response, 15-minute account throttle, and 20-request IP ceiling.</p></div>
-      <div class="proof-item"><strong>Concurrency and cleanup</strong><p>Tests cover one active token, one confirmation winner, replay, failed-email invalidation, and throttle compensation.</p></div>
-      <div class="proof-item"><strong>Scope</strong><p>No contract, database migration, UI, or deployment configuration change.</p></div>
-      <div class="proof-item caveat"><strong>Known lifecycle limit</strong><p>The daemon fiber is runtime-owned but not durable across a full restart. BullMQ needs a separate design so the raw reset secret is not stored in Redis.</p></div>
-    </div></details>
-  </section>
-</main>
-
-<script>
-  const stackTabs = Array.from(document.querySelectorAll('.stack-tab'));
-  const layers = Array.from(document.querySelectorAll('.layer'));
-
-  function selectLayer(tab, focus = false) {
-    stackTabs.forEach((candidate) => {
-      const selected = candidate === tab;
-      candidate.setAttribute('aria-selected', String(selected));
-      candidate.tabIndex = selected ? 0 : -1;
-    });
-    layers.forEach((layer) => {
-      layer.hidden = layer.id !== tab.getAttribute('aria-controls');
-    });
-    document.title = `${tab.textContent.trim().replace(/\s+/g, ' ')} — Uplinked Effect auth stack`;
-    if (focus) tab.focus();
-  }
-
-  stackTabs.forEach((tab, index) => {
-    tab.addEventListener('click', () => selectLayer(tab));
-    tab.addEventListener('keydown', (event) => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-      event.preventDefault();
-      let next = index;
-      if (event.key === 'ArrowLeft') next = (index - 1 + stackTabs.length) % stackTabs.length;
-      if (event.key === 'ArrowRight') next = (index + 1) % stackTabs.length;
-      if (event.key === 'Home') next = 0;
-      if (event.key === 'End') next = stackTabs.length - 1;
-      selectLayer(stackTabs[next], true);
-    });
-  });
-
-  function setupViewTabs(layer) {
-    const summaryTitle = layer.querySelector('.summary-title');
-    const flow = layer.querySelector('.flow');
-    const implementation = layer.querySelector('.implementation');
-    const diffTemplate = layer.querySelector('.diff-template');
-    const testTemplate = layer.querySelector('.test-template');
-    if (!summaryTitle || !flow || !implementation || !diffTemplate || !testTemplate) return;
-
-    const pr = layer.id.replace('layer-', '');
-    const viewTabs = document.createElement('div');
-    viewTabs.className = 'view-tabs';
-    viewTabs.setAttribute('role', 'tablist');
-    viewTabs.setAttribute('aria-label', `PR ${pr} code view`);
-
-    const diffTab = document.createElement('button');
-    diffTab.className = 'view-tab';
-    diffTab.type = 'button';
-    diffTab.id = `view-tab-${pr}-diff`;
-    diffTab.setAttribute('role', 'tab');
-    diffTab.setAttribute('aria-controls', `view-${pr}-diff`);
-    diffTab.setAttribute('aria-selected', 'true');
-    diffTab.textContent = 'Diff';
-
-    const implementationTab = document.createElement('button');
-    implementationTab.className = 'view-tab';
-    implementationTab.type = 'button';
-    implementationTab.id = `view-tab-${pr}-implementation`;
-    implementationTab.setAttribute('role', 'tab');
-    implementationTab.setAttribute('aria-controls', `view-${pr}-implementation`);
-    implementationTab.setAttribute('aria-selected', 'false');
-    implementationTab.tabIndex = -1;
-    implementationTab.textContent = 'Implementation';
-
-    const testsTab = document.createElement('button');
-    testsTab.className = 'view-tab';
-    testsTab.type = 'button';
-    testsTab.id = `view-tab-${pr}-tests`;
-    testsTab.setAttribute('role', 'tab');
-    testsTab.setAttribute('aria-controls', `view-${pr}-tests`);
-    testsTab.setAttribute('aria-selected', 'false');
-    testsTab.tabIndex = -1;
-    testsTab.textContent = 'Tests';
-    viewTabs.append(diffTab, implementationTab, testsTab);
-
-    const diffView = document.createElement('section');
-    diffView.className = 'view-panel';
-    diffView.id = `view-${pr}-diff`;
-    diffView.setAttribute('role', 'tabpanel');
-    diffView.setAttribute('aria-labelledby', diffTab.id);
-    diffView.append(diffTemplate.content.cloneNode(true));
-
-    const implementationView = document.createElement('section');
-    implementationView.className = 'view-panel';
-    implementationView.id = `view-${pr}-implementation`;
-    implementationView.setAttribute('role', 'tabpanel');
-    implementationView.setAttribute('aria-labelledby', implementationTab.id);
-    implementationView.hidden = true;
-
-    const testsView = document.createElement('section');
-    testsView.className = 'view-panel';
-    testsView.id = `view-${pr}-tests`;
-    testsView.setAttribute('role', 'tabpanel');
-    testsView.setAttribute('aria-labelledby', testsTab.id);
-    testsView.hidden = true;
-    testsView.append(testTemplate.content.cloneNode(true));
-
-    layer.insertBefore(viewTabs, flow);
-    layer.insertBefore(diffView, flow);
-    layer.insertBefore(implementationView, flow);
-    implementationView.append(summaryTitle, flow, implementation);
-    implementationView.after(testsView);
-    diffTemplate.remove();
-    testTemplate.remove();
-
-    const localTabs = [diffTab, implementationTab, testsTab];
-    const localViews = [diffView, implementationView, testsView];
-    function selectView(tab, focus = false) {
-      localTabs.forEach((candidate) => {
+    function selectLayer(tab, focus = false) {
+      tabs.forEach((candidate) => {
         const selected = candidate === tab;
         candidate.setAttribute('aria-selected', String(selected));
         candidate.tabIndex = selected ? 0 : -1;
       });
-      localViews.forEach((view) => {
-        view.hidden = view.id !== tab.getAttribute('aria-controls');
+      layers.forEach((layer) => {
+        layer.hidden = layer.id !== tab.getAttribute('aria-controls');
       });
       if (focus) tab.focus();
     }
 
-    localTabs.forEach((tab, index) => {
-      tab.addEventListener('click', () => selectView(tab));
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectLayer(tab));
       tab.addEventListener('keydown', (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
         let next = index;
-        if (event.key === 'ArrowLeft') next = (index - 1 + localTabs.length) % localTabs.length;
-        if (event.key === 'ArrowRight') next = (index + 1) % localTabs.length;
+        if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
         if (event.key === 'Home') next = 0;
-        if (event.key === 'End') next = localTabs.length - 1;
-        selectView(localTabs[next], true);
+        if (event.key === 'End') next = tabs.length - 1;
+        selectLayer(tabs[next], true);
       });
     });
-  }
 
-  function placeInlineNotes() {
-    document.querySelectorAll('.excerpt').forEach((excerpt) => {
-      const code = excerpt.querySelector('pre code');
-      const markers = Array.from(excerpt.querySelectorAll('.marker'));
-      const notes = Array.from(excerpt.querySelectorAll('.notes .note'));
-      if (!code || markers.length === 0 || markers.length !== notes.length) return;
+    layers.forEach((layer) => {
+      const files = [...layer.querySelectorAll('.file-diff')];
+      const search = layer.querySelector('.file-search');
+      const toggle = layer.querySelector('.toggle-files');
+      const progress = layer.querySelector('.viewed-progress');
+      const empty = layer.querySelector('.empty-state');
+      const revision = layer.dataset.diffSha256;
+      const pr = layer.dataset.pr;
 
-      markers.forEach((marker, index) => {
-        const sourceLine = marker.nextSibling;
-        const note = notes[index];
-        const heading = note.querySelector('strong')?.cloneNode(true);
-        heading?.querySelector('.badge')?.remove();
+      function storageKey(file) {
+        return JSON.stringify(['annotated-diff-viewed', pr, revision, file.dataset.file]);
+      }
 
-        const callout = document.createElement('span');
-        callout.className = 'review-note';
-        callout.setAttribute('role', 'note');
+      function updateProgress() {
+        const viewed = files.filter((file) => file.querySelector('.viewed').checked).length;
+        progress.textContent = `${viewed} of ${files.length} viewed`;
+      }
 
-        const label = document.createElement('span');
-        label.className = 'review-label';
-        label.textContent = note.closest('.tests-view')
-          ? 'What this proves'
-          : note.closest('.diff-view')
-            ? 'On this line'
-            : 'What changed';
+      files.forEach((file) => {
+        const checkbox = file.querySelector('.viewed');
+        const saved = localStorage.getItem(storageKey(file)) === 'true';
+        checkbox.checked = saved;
+        file.classList.toggle('is-viewed', saved);
+        if (saved) file.open = false;
 
-        const title = document.createElement('span');
-        title.className = 'review-title';
-        title.textContent = heading?.textContent.trim() || 'Explanation';
-
-        const copy = document.createElement('span');
-        copy.textContent = note.querySelector('p')?.textContent.trim() || '';
-        callout.append(label, title, copy);
-
-        const diffLine = marker.closest('.diff-line');
-        if (diffLine) {
-          diffLine.after(callout);
-          return;
-        }
-        if (sourceLine?.nodeType === Node.TEXT_NODE) {
-          const lineEnd = sourceLine.data.indexOf('\n');
-          if (lineEnd >= 0) {
-            const remainder = sourceLine.splitText(lineEnd + 1);
-            remainder.parentNode?.insertBefore(callout, remainder);
-            return;
-          }
-        }
-        marker.after(callout);
+        file.querySelector('.viewed-control').addEventListener('click', (event) => event.stopPropagation());
+        checkbox.addEventListener('change', () => {
+          const viewed = checkbox.checked;
+          localStorage.setItem(storageKey(file), String(viewed));
+          file.classList.toggle('is-viewed', viewed);
+          if (viewed) file.open = false;
+          updateProgress();
+        });
       });
 
-      excerpt.classList.add('enhanced-code');
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLowerCase();
+        let visible = 0;
+        files.forEach((file) => {
+          const match = file.dataset.file.toLowerCase().includes(query);
+          file.hidden = !match;
+          if (match) visible += 1;
+        });
+        empty.classList.toggle('visible', visible === 0);
+      });
+
+      toggle.addEventListener('click', () => {
+        const visible = files.filter((file) => !file.hidden);
+        const shouldOpen = visible.every((file) => !file.open);
+        visible.forEach((file) => { file.open = shouldOpen; });
+        toggle.textContent = shouldOpen ? 'Collapse all' : 'Expand all';
+      });
+
+      updateProgress();
     });
-  }
 
-  const keywords = new Set([
-    'as', 'async', 'await', 'catch', 'class', 'const', 'else', 'export', 'extends',
-    'for', 'from', 'function', 'if', 'import', 'in', 'interface', 'let', 'new', 'of',
-    'readonly', 'return', 'static', 'switch', 'throw', 'try', 'type', 'typeof', 'while', 'yield',
-  ]);
-  const literals = new Set(['false', 'null', 'true', 'undefined']);
-  const tokenPattern = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:as|async|await|catch|class|const|else|export|extends|false|for|from|function|if|import|in|interface|let|new|null|of|readonly|return|static|switch|throw|true|try|type|typeof|undefined|while|yield)\b|\b\d+(?:\.\d+)?\b|\b[A-Z][A-Za-z0-9_$]*\b|\b[A-Za-z_$][\w$]*(?=\s*\())/g;
-
-  function tokenClass(token) {
-    if (token.startsWith('//') || token.startsWith('/*')) return 'tok-comment';
-    if (token.startsWith('"') || token.startsWith("'") || token.startsWith('`')) return 'tok-string';
-    if (literals.has(token)) return 'tok-literal';
-    if (keywords.has(token)) return 'tok-keyword';
-    if (/^\d/.test(token)) return 'tok-number';
-    if (/^[A-Z]/.test(token)) return 'tok-type';
-    return 'tok-call';
-  }
-
-  function highlightCode() {
-    document.querySelectorAll('pre code').forEach((code) => {
-      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT, {
-        acceptNode(node) {
-          return node.parentElement?.closest('.review-note, .marker')
-            ? NodeFilter.FILTER_REJECT
-            : NodeFilter.FILTER_ACCEPT;
-        },
-      });
-      const textNodes = [];
-      while (walker.nextNode()) textNodes.push(walker.currentNode);
-
-      textNodes.forEach((node) => {
-        const fragment = document.createDocumentFragment();
-        let cursor = 0;
-        for (const match of node.data.matchAll(tokenPattern)) {
-          if (match.index > cursor) fragment.append(document.createTextNode(node.data.slice(cursor, match.index)));
-          const token = document.createElement('span');
-          token.className = tokenClass(match[0]);
-          token.textContent = match[0];
-          fragment.append(token);
-          cursor = match.index + match[0].length;
-        }
-        if (cursor === 0) return;
-        fragment.append(document.createTextNode(node.data.slice(cursor)));
-        node.replaceWith(fragment);
-      });
+    addEventListener('beforeprint', () => {
+      document.querySelectorAll('.file-diff').forEach((file) => { file.open = true; });
     });
-  }
-
-  layers.forEach(setupViewTabs);
-  placeInlineNotes();
-  highlightCode();
-  document.body.classList.add('enhanced-code');
-  selectLayer(stackTabs[0]);
-</script>
+  </script>
 </body>
 </html>

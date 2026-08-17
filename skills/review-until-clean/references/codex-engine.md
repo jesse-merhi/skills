@@ -45,3 +45,7 @@ does not change the review instructions.
 Do not treat stderr model-refresh warnings or startup noise as findings. A
 non-zero exit code, missing stdout verdict, interrupted run, or wrong-target run
 is not clean.
+
+Run the command through the `wait-efficiently` Codex shell-wait pattern. Resume
+a yielded cell instead of polling from separate model turns or restarting a
+quiet review.
