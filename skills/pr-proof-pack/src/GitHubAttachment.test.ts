@@ -247,6 +247,11 @@ case "$1:$2" in
       printf 'unexpected gh auth arguments: %s\\n' "$*" >&2
       exit 2
     fi
+    if [ "\${UPLOAD_TEST_AUTH_FAILURE:-}" = 1 ]; then
+      printf '%s\\n' 'sentinel-auth-token'
+      printf '%s\\n' 'auth lookup failed' >&2
+      exit 1
+    fi
     printf '%s\\n' 'test-token'
     ;;
   api:--hostname)
@@ -420,6 +425,12 @@ esac
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "sentinel-secret")
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "test-token")
       assertTemporaryPathsRemoved()
+
+      const authFailure = runLauncher(evidence, { UPLOAD_TEST_AUTH_FAILURE: "1" })
+      assertCommandFailure(authFailure)
+      assert.notInclude(`${authFailure.stdout}\n${authFailure.stderr}`, "sentinel-auth-token")
+      assert.include(`${authFailure.stdout}\n${authFailure.stderr}`, "auth lookup failed")
+      assert.notInclude(authFailure.stdout, "https://github.com/user-attachments/assets/abc-123")
 
       const redirectBodyLimit = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_BODY_LIMIT: "1" })
       assertCommandFailure(redirectBodyLimit)

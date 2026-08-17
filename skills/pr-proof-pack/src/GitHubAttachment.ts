@@ -240,7 +240,10 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   const assetUrl = yield* parseUploadResponse(uploadOutput)
   const redirectFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-" })
   const redirectHeadersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-headers-" })
-  const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], { displayCommand: "gh auth token --hostname github.com" }).pipe(
+  const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], {
+    displayCommand: "gh auth token --hostname github.com",
+    includeStdoutInError: false
+  }).pipe(
     Effect.flatMap(parseGitHubToken)
   )
   const redirectOutput = yield* checkedTrimmedText("curl", redirectRequestArgs(redirectFile, redirectHeadersFile, assetUrl), {
