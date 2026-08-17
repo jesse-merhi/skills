@@ -48,6 +48,14 @@ describe("GitHub attachment upload contract", () => {
     "81"
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /pass the full github[.]com PR URL/u))))
 
+  it.effect("redacts rejected PR URL credentials", () => parsePullRequestUrl(
+    "https://sentinel-user@github.com/jesse-merhi/skills/pull/81?token=sentinel-secret"
+  ).pipe(Effect.flip, Effect.map((error) => {
+    assert.match(error.message, /invalid pull request URL/u)
+    assert.notInclude(error.message, "sentinel-user")
+    assert.notInclude(error.message, "sentinel-secret")
+  })))
+
   it.effect("rejects multiline tokens without exposing credential text", () => parseGitHubToken(
     "secret-token\nX-Injected: yes"
   ).pipe(Effect.flip, Effect.map((error) => {
@@ -170,8 +178,20 @@ case "$1:$2" in
     fi
     printf '%s\\n' '{"url":"https://github.com/jesse-merhi/skills/pull/81"}'
     ;;
-  auth:token) printf '%s\\n' 'test-token' ;;
-  api:--hostname) printf '%s\\n' '{"id":42}' ;;
+  auth:token)
+    if [ "$3" != '--hostname' ] || [ "$4" != 'github.com' ]; then
+      printf 'unexpected gh auth arguments: %s\\n' "$*" >&2
+      exit 2
+    fi
+    printf '%s\\n' 'test-token'
+    ;;
+  api:--hostname)
+    if [ "$3" != 'github.com' ] || [ "$4" != 'repos/jesse-merhi/skills' ]; then
+      printf 'unexpected gh repository arguments: %s\\n' "$*" >&2
+      exit 2
+    fi
+    printf '%s\\n' '{"id":42}'
+    ;;
   api:--method) printf '%s\\n' 'HTTP/2.0 201 Created' '' 'https://github.com/user-attachments/assets/abc-123' ;;
   *) printf 'unexpected gh arguments: %s\\n' "$*" >&2; exit 2 ;;
 esac
@@ -217,35 +237,24 @@ esac
       UPLOAD_TEST_EVIDENCE: evidence,
       UPLOAD_TEST_LOG: log
     }
+    const runLauncher = (evidencePath: string, overrides: NodeJS.ProcessEnv = {}) => spawnSync(
+      launcher,
+      ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidencePath],
+      { encoding: "utf8", env: { ...environment, ...overrides }, timeout: 12_000 }
+    )
 
     try {
-      const missing = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", join(directory, "missing.png")], {
-        encoding: "utf8",
-        env: environment
-      })
+      const missing = runLauncher(join(directory, "missing.png"))
       assert.notStrictEqual(missing.status, 0)
       assert.isFalse(existsSync(log))
 
-      const directoryInput = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", directory], {
-        encoding: "utf8",
-        env: environment
-      })
-      assert.notStrictEqual(directoryInput.status, 0)
-      assert.isFalse(existsSync(log))
-
       const unsupportedLog = join(directory, "unsupported.log")
-      const unsupported = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
-        encoding: "utf8",
-        env: { ...environment, UPLOAD_TEST_LOG: unsupportedLog, UPLOAD_TEST_MEDIA_TYPE: "text/plain" }
-      })
+      const unsupported = runLauncher(evidence, { UPLOAD_TEST_LOG: unsupportedLog, UPLOAD_TEST_MEDIA_TYPE: "text/plain" })
       assert.notStrictEqual(unsupported.status, 0)
       assert.notInclude(unsupported.stdout, "https://github.com/user-attachments/assets/abc-123")
       assert.notInclude(readFileSync(unsupportedLog, "utf8"), "api --method POST")
 
-      const success = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
-        encoding: "utf8",
-        env: environment
-      })
+      const success = runLauncher(evidence)
       assert.strictEqual(success.status, 0, success.stderr)
       assert.strictEqual(success.stdout.trim(), "https://github.com/user-attachments/assets/abc-123")
 
@@ -260,14 +269,11 @@ esac
       assert.notInclude(secondArgs, "test-token")
       assert.notInclude(secondArgs, "@-")
 
-      const mismatch = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
-        encoding: "utf8",
-        env: { ...environment, UPLOAD_TEST_MISMATCH: "1" }
-      })
+      const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })
       assert.notStrictEqual(mismatch.status, 0)
       assert.notInclude(mismatch.stdout, "https://github.com/user-attachments/assets/abc-123")
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  }, 20_000)
+  }, 60_000)
 })

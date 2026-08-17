@@ -52,8 +52,9 @@ export const repositoryFromPullRequest = Effect.fn("GitHubAttachment.repositoryF
   return `${segments[1]}/${segments[2]}`
 })
 
-export const parsePullRequestUrl = (input: string) =>
-  decodeText(GitHubPullRequestUrl, input, "pull request URL; pass the full github.com PR URL")
+export const parsePullRequestUrl = (input: string) => Schema.decodeUnknownEffect(GitHubPullRequestUrl)(input).pipe(
+  Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid pull request URL; pass the full github.com PR URL" }))
+)
 
 export const parseGitHubToken = (input: string) => Schema.decodeUnknownEffect(GitHubToken)(input).pipe(
   Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid single-line authentication token" }))
