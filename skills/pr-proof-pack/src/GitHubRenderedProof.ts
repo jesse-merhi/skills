@@ -159,40 +159,77 @@ export const renderedProofLines = (result: RenderedProofResult) => [
   ...result.assets.map((asset) => `asset ${asset.index}: ${asset.kind} ${asset.contentType} bytes=${asset.bytes}`)
 ]
 
+const loadRenderedMedia = Effect.fn("GitHubRenderedProof.loadRenderedMedia")(function*(
+  repository: string,
+  pullRequestNumber: string
+) {
+  const response = yield* checkedTrimmedText("gh", renderedProofRequestArgs(repository, pullRequestNumber), {
+    displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
+    includeStdoutInError: false
+  })
+  return yield* parseRenderedProofResponse(response)
+})
+
+const renderedMediaIdentity = (item: RenderedMedia) => `${item.kind}:${item.url.origin}${item.url.pathname}`
+
+const requireSameRenderedMedia = Effect.fn("GitHubRenderedProof.requireSameRenderedMedia")(function*(
+  expected: ReadonlyArray<RenderedMedia>,
+  actual: ReadonlyArray<RenderedMedia>
+) {
+  if (
+    actual.length !== expected.length ||
+    actual.some((item, index) => {
+      const expectedItem = expected[index]
+      return expectedItem === undefined || renderedMediaIdentity(item) !== renderedMediaIdentity(expectedItem)
+    })
+  ) {
+    return yield* new GitHubAttachmentError({ message: "GitHub rendered proof changed during verification" })
+  }
+})
+
 export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pullRequest: string) {
   const fileSystem = yield* FileSystem.FileSystem
   const pullRequestUrl = yield* parsePullRequestUrl(pullRequest)
   const segments = pullRequestUrl.pathname.split("/")
   const repository = `${segments[1]}/${segments[2]}`
   const pullRequestNumber = segments[4] ?? ""
-  const response = yield* checkedTrimmedText("gh", renderedProofRequestArgs(repository, pullRequestNumber), {
-    displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
-    includeStdoutInError: false
-  })
-  const media = yield* parseRenderedProofResponse(response)
-  const assets = yield* Effect.forEach(media, (item, position) => Effect.scoped(Effect.gen(function*() {
-    const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-rendered-asset-" })
-    const fetched = yield* fetchTrustedAsset({
-      assetFile,
-      assetUrl: item.url.href,
-      label: `rendered PR asset ${position + 1}`
-    })
-    const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))
-    const info = yield* fileSystem.stat(assetFile)
-    yield* validateRenderedAsset({
-      bytes: info.size,
-      detectedContentType,
-      fetchedContentType: fetched.contentType,
-      kind: item.kind,
-      status: fetched.status
-    })
-    return {
-      bytes: info.size,
-      contentType: mediaTypeEssence(fetched.contentType),
-      index: position + 1,
-      kind: item.kind
-    }
-  })))
+  const media = yield* loadRenderedMedia(repository, pullRequestNumber)
+  const assets: Array<RenderedAssetResult> = []
+  const batchSize = 4
+  for (let start = 0; start < media.length; start += batchSize) {
+    const currentMedia = start === 0 ? media : yield* loadRenderedMedia(repository, pullRequestNumber)
+    if (start > 0) yield* requireSameRenderedMedia(media, currentMedia)
+    const batch = currentMedia.slice(start, start + batchSize)
+    const batchAssets = yield* Effect.forEach(batch, (item, offset) => {
+      const position = start + offset
+      return Effect.scoped(Effect.gen(function*() {
+        const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-rendered-asset-" })
+        const fetched = yield* fetchTrustedAsset({
+          assetFile,
+          assetUrl: item.url.href,
+          label: `rendered PR asset ${position + 1}`
+        })
+        const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile))
+        const info = yield* fileSystem.stat(assetFile)
+        yield* validateRenderedAsset({
+          bytes: info.size,
+          detectedContentType,
+          fetchedContentType: fetched.contentType,
+          kind: item.kind,
+          status: fetched.status
+        })
+        return {
+          bytes: info.size,
+          contentType: mediaTypeEssence(fetched.contentType),
+          index: position + 1,
+          kind: item.kind
+        }
+      })).pipe(Effect.mapError((error) => new GitHubAttachmentError({
+        message: `Rendered asset ${position + 1}: ${error.message}`
+      })))
+    }, { concurrency: "unbounded" })
+    assets.push(...batchAssets)
+  }
   return {
     assets,
     images: media.filter((item) => item.kind === "image").length,

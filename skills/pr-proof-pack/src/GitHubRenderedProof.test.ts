@@ -161,8 +161,8 @@ if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
   printf 'failed while reading rendered pull request\\n' >&2
   exit 1
 fi
-if [ "\${RENDERED_TEST_TWO_ASSETS:-}" = 1 ]; then
-  printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret\\"></p>"}'
+if [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
+  printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=sentinel-secret\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=sentinel-secret\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=sentinel-secret\\"><img src=\\"https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret\\"></p>"}'
 else
   printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
 fi
@@ -192,13 +192,6 @@ if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
   exit 28
 fi
 cp "$RENDERED_TEST_SOURCE" "$output"
-if [ -n "\${RENDERED_TEST_CLEANUP_STATE:-}" ]; then
-  if [ -f "$RENDERED_TEST_CLEANUP_STATE" ]; then
-    previous_output="$(cat "$RENDERED_TEST_CLEANUP_STATE")"
-    if [ -e "$previous_output" ]; then printf 'previous asset was not removed\\n' >&2; exit 6; fi
-  fi
-  printf '%s' "$output" > "$RENDERED_TEST_CLEANUP_STATE"
-fi
 if [ "\${RENDERED_TEST_REDIRECT:-}" = 'untrusted' ]; then
   printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://internal.example.com/admin' '' > "$headers"
   printf '%s' '{"status":302,"contentType":"text/html"}'
@@ -259,17 +252,21 @@ printf '%s\\n' 'image/jpeg'
       const result = runLauncher(overrides)
       assertCommandFailure(result)
       assertTemporaryPathsRemoved()
+      return result
     }
 
     try {
       const success = runLauncher({
-        RENDERED_TEST_CLEANUP_STATE: join(directory, "cleanup-state"),
-        RENDERED_TEST_TWO_ASSETS: "1"
+        RENDERED_TEST_FIVE_ASSETS: "1"
       })
       assert.strictEqual(success.status, 0, `${success.stderr}\n${readFileSync(log, "utf8")}`)
-      assert.include(success.stdout, "rendered media: images=2 videos=0")
+      assert.include(success.stdout, "rendered media: images=5 videos=0")
+      assert.include(success.stdout, "asset 1: image image/png bytes=14")
+      assert.include(success.stdout, "asset 5: image image/png bytes=14")
       assert.notInclude(`${success.stdout}\n${success.stderr}`, "sentinel-secret")
       assertTemporaryPathsRemoved()
+      const successRequests = readFileSync(log, "utf8")
+      assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("gh-args=")).length, 2)
 
       const trustedRedirect = runLauncher({
         RENDERED_TEST_REDIRECT_COUNT: "5",
@@ -283,7 +280,8 @@ printf '%s\\n' 'image/jpeg'
         RENDERED_TEST_REDIRECT_STATE: join(directory, "redirect-limit-state")
       })
       runFailure({ RENDERED_TEST_GH_FAILURE: "1" })
-      runFailure({ RENDERED_TEST_CURL_FAILURE: "1" })
+      const curlFailure = runFailure({ RENDERED_TEST_CURL_FAILURE: "1" })
+      assert.include(`${curlFailure.stdout}\n${curlFailure.stderr}`, "Rendered asset 1")
       runFailure({ RENDERED_TEST_REDIRECT: "untrusted" })
 
       const requests = readFileSync(log, "utf8")

@@ -512,8 +512,8 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" '`body_html` without printing it'
   assert_contains "$skill/references/screenshots.md" "For evidence uploaded during this refresh"
   assert_contains "$skill/references/screenshots.md" "does not need an exact size match"
-  assert_contains "$skill/references/screenshots.md" 'without credentials, curl configuration'
-  assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or'
+  assert_contains_normalized "$skill/references/screenshots.md" 'It keeps signed URLs out of process arguments and fetches every resolved asset without credentials, curl configuration, or untrusted redirects.'
+  assert_contains_normalized "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or CDN host.'
   assert_contains "$skill/references/screenshots.md" "Use an interactive browser for facts the server-rendered HTML cannot prove"
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
@@ -545,6 +545,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
+  assert_contains_normalized "$skill/references/mermaid.md" 'When the body contains a Mermaid block, inspect the final rendered diagram through the selected interactive browser after saving.'
+  assert_contains_normalized "$skill/references/mermaid.md" 'GitHub renders Mermaid client-side, so `body_html` exposes the code fence but cannot prove the diagram appeared correctly.'
+  assert_contains_normalized "$skill/references/mermaid.md" "Headless validation proves syntax; the browser check proves GitHub's final client-side rendering."
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
