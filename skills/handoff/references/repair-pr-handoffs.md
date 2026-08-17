@@ -19,17 +19,15 @@ When the next session is expected to fix code:
 - tell it to create a branch, but create or update the draft PR or planned stack
   only when the handoff includes publication authority under `AGENTS.md`
 - after authorized publication, tell it to run the `pr-proof-pack` freshness
-  check for each draft PR, then run
-  `code-review` bottom-to-top on each PR or branch until both review phases are
-  clean or honestly blocked
+  check for each draft PR, then apply the Review gate and Sign-off gate from
+  `AGENTS.md` bottom-to-top
 - tell it to resolve in-scope review findings, rerun affected validation, and
   check `pr-proof-pack` after final review fixes; refresh only stale proof before
   calling the PR ready
 - tell it to keep the PR draft/not-ready when proof-pack, review, validation,
   model, tooling, budget, or consult blockers remain
-- tell it to ask for and verify a `jesse-merhi` thumbs-up (`+1`) reaction on
-  every ready PR, including every stack layer, before merging; require it never
-  to create or remove that reaction on the user's behalf
+- tell it to summarize each review decision before human sign-off and require
+  it never to create or remove the user's reaction
 - require the final report to explain the original bug, root cause, changed
   files, verification commands, proof artifacts, the ordered PR/stack map with
   every URL and status, `code-review` results, and any residual risk or

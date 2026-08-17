@@ -42,9 +42,10 @@ Orchestrator specifics:
   next review pass.
   Its non-zero result immediately suspends the whole review as
   blocked-on-consult; do not accumulate more findings up to `consult_cap`.
-- Present the CLI's completed findings, exact line/path overage, and the
-  `--reason` describing why remaining work merits a larger scope. Ask the user
-  for explicit authorization.
+- Use the CLI report as evidence, not as the message. Follow
+  `review-guardrails`' user-facing scope-request rule: load
+  `speak-fking-english`, explain the extra boundary and concrete behavior in
+  plain language, then ask one direct question.
 - After approval, run `"$review_findings_bin" scope-authorize` with the user's words and revised scope,
   then reset the current phase. On rejection, revert the over-budget batch,
   defer the finding, and make `scope-check` pass before resuming.

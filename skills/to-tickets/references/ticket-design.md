@@ -46,9 +46,8 @@ ticket equals one PR or that every ticket blocker becomes a PR base.
    linear dependency path. Put foundations at the bottom and consumers above.
 5. Use standalone PRs or separate stacks for independent or forked paths. Never
    serialize independent groups merely to fit GitHub's linear stack model.
-6. After proof, review, validation, and CI pass, require a `jesse-merhi`
-   thumbs-up (`+1`) reaction on every ready PR. The agent must never create or
-   remove this human sign-off reaction.
+6. Before readiness or merge, apply the Review gate and Sign-off gate from
+   `AGENTS.md` to every PR and exact head.
 
 Every review group must name the outcome a reviewer can accept independently.
 If grouping tickets would make the PR too broad, or a group cannot stay green

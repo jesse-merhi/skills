@@ -169,7 +169,7 @@ Record each validation command as soon as it finishes:
 Example:
 
 ```sh
-"$review_findings_bin" record-command --repo sample-app --repo-path <repo-root> --branch <branch> --target <target> --base <base> --command "pnpm test refunds" --result passed --reason "Checks D1 duplicate refund guard." --decision-id D1
+"$review_findings_bin" record-command --repo sample-app --repo-path <repo-root> --branch <branch> --target <target> --base <base> --command "bun run test -- refunds" --result passed --reason "Checks D1 duplicate refund guard." --decision-id D1
 ```
 
 ## Closeout

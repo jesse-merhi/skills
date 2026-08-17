@@ -61,7 +61,9 @@ fields in its header.
    [queue-matching.md](references/queue-matching.md).
 8. Treat a non-zero `scope-check` as an immediate blocked-on-consult stop. Stop
    honestly when the wall-clock budget, diff-growth budget, consult cap, or
-   fixed point is reached.
+   fixed point is reached. Before showing any scope or consult question to the
+   user, load `speak-fking-english` and use the user-facing request rules in
+   [scope-governor.md](references/scope-governor.md).
 
 ## Completion Rules
 

@@ -69,6 +69,23 @@ Apply this especially to routing, parsing, validation, serialization, retries,
 queues, caching, middleware, request context, telemetry, date and time handling,
 resource lifecycle, and graceful shutdown.
 
+## Model turns
+
+Every return to the model re-sends the whole conversation, so the count of
+returns sets the cost of a task.
+
+- Batch independent calls into one turn. Reads, greps, and status checks that do
+  not depend on each other belong in a single request: `Promise.all` inside one
+  Codex code-mode cell, or several tool calls in one response where the harness
+  runs them natively. Keep dependent calls, writes, and approval-sensitive
+  actions serial.
+- Hold a wait for its full expected duration, never under 300 seconds. A wait
+  deadline is a ceiling rather than a delay, so it returns the moment the work
+  finishes and a short one only buys another round trip. In Codex code mode,
+  raise the cell's own budget with the `@exec` `yield_time_ms` directive too: an
+  inner wait cannot outlive the cell holding it. Load `wait-efficiently` for
+  anything longer or more involved than a single command.
+
 ## Working rules
 
 - Work on a branch in a dedicated git worktree. Never push agent-authored
@@ -84,14 +101,25 @@ resource lifecycle, and graceful shutdown.
   `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
-- After an agent-authored PR is published and its proof, review, and CI gates
-  pass, ask the user to add a thumbs-up (`+1`) reaction as human sign-off. For
-  a stack, require a separate `jesse-merhi` reaction on every open PR, not only
-  the top PR. Never add, remove, or modify that reaction on the user's behalf;
-  only read GitHub reactions and proceed after the expected reaction exists.
-  Treat this as an agent workflow gate, not a GitHub approval or branch-
-  protection rule. The reaction gates merge; it does not block authorized PR
-  updates or local repair work.
+- Review gate: before marking any PR ready, asking for human sign-off, or
+  merging, verify that `code-review` completed on the exact current head. A
+  valid closeout names that head and records the native phase, cold phase,
+  findings, review fixes, verification, and anything still open. Treat missing,
+  stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
+  review do not count. Tell the user and use the native structured question UI
+  to ask whether to run `code-review` or proceed without it for this PR and
+  head. Do not start the expensive review automatically.
+  An unanswered review decision blocks readiness and merge. Record an explicit
+  waiver in closeout.
+- Sign-off gate: after the review decision, proof, validation, and CI pass,
+  summarize the review findings and fixes or the explicit waiver, then ask the
+  user for a thumbs-up (`+1`) reaction. For a stack, apply both gates and require
+  a separate `jesse-merhi` reaction on every open PR, not only the top PR.
+  Never add, remove, or modify that reaction on the user's behalf; only read
+  GitHub reactions and proceed after the expected reaction exists. This is an
+  agent workflow gate, not a GitHub approval or branch-protection rule.
+  The reaction gates merge; it does not block authorized PR updates or local
+  repair work.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.
