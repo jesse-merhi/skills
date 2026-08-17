@@ -1,10 +1,9 @@
-import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 
-import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { type CheckedTextOptions, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 export class GitHubAttachmentError extends Schema.TaggedError<GitHubAttachmentError>()("GitHubAttachmentError", {
   message: Schema.String
@@ -153,17 +152,17 @@ export const allowTrustedRedirect = (redirects: number) => redirects < 5
 export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")(function*(options: {
   readonly assetFile: string
   readonly assetUrl: string
-  readonly forceKillAfter?: Duration.Input
   readonly label: string
+  readonly processOptions?: Pick<CheckedTextOptions, "env" | "extendEnv" | "forceKillAfter">
 }) {
   const fileSystem = yield* FileSystem.FileSystem
   let currentUrl = (yield* parseTrustedMediaUrl(options.assetUrl)).href
   for (let redirects = 0; redirects <= 5; redirects += 1) {
     const headersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-asset-headers-" })
     const output = yield* checkedTrimmedText("curl", fetchRequestArgs(options.assetFile, headersFile), {
+      ...options.processOptions,
       displayCommand: `curl [${options.label}]`,
       includeStdoutInError: false,
-      forceKillAfter: options.forceKillAfter,
       redactions: [currentUrl],
       stdin: curlUrlConfig(currentUrl)
     })

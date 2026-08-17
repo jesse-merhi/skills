@@ -1,3 +1,4 @@
+import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
@@ -19,10 +20,16 @@ import {
   renderedProofRequestArgs,
   requireRenderedByteBudget,
   validateRenderedAsset,
+  verifyGitHubRenderedProof,
   withRenderedProofDeadline
 } from "./GitHubRenderedProof.ts"
 
 const launcher = fileURLToPath(new URL("../scripts/github-verify-rendered-proof", import.meta.url))
+
+const node = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
+  // @effect-diagnostics-next-line strictEffectProvide:off
+  Effect.provide(NodeServices.layer)
+)
 
 const writeExecutable = (path: string, content: string) => {
   writeFileSync(path, content)
@@ -90,6 +97,90 @@ describe("rendered GitHub proof verification", () => {
     Effect.never,
     "10 millis"
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /verification exceeded 10 minutes/u))))
+
+  it.live("force-kills every deadline-bound verifier child and cleans temporary files", () => {
+    const directory = mkdtempSync(join(tmpdir(), "github-rendered-deadline-test-"))
+    const tool = `#!/usr/bin/env node
+const fs = require("node:fs")
+const path = require("node:path")
+const name = path.basename(process.argv[1])
+const args = process.argv.slice(2)
+fs.appendFileSync(process.env.VERIFY_PROCESS_LOG, name + "\\t" + JSON.stringify(args) + "\\n")
+const run = () => {
+  if (process.env.VERIFY_HANG_AT === name) {
+    process.on("SIGTERM", () => {})
+    fs.writeFileSync(process.env.VERIFY_READY_PATH, "ready")
+    setInterval(() => {}, 1000)
+    return
+  }
+  if (name === "gh") {
+    process.stdout.write(JSON.stringify({
+      body: "proof",
+      body_html: '<p><img src="https://private-user-images.githubusercontent.com/proof"></p>'
+    }))
+    return
+  }
+  if (name === "curl") {
+    fs.writeFileSync(args[args.indexOf("--output") + 1], "proof")
+    fs.writeFileSync(args[args.indexOf("--dump-header") + 1], "HTTP/1.1 200 OK\\r\\n")
+    process.stdout.write('{"status":200,"contentType":"image/png"}')
+    return
+  }
+  if (name === "file") {
+    process.stdout.write("image/png\\n")
+    return
+  }
+  process.exit(2)
+}
+if (name === "curl") {
+  process.stdin.resume()
+  process.stdin.on("end", run)
+} else {
+  run()
+}
+`
+    for (const name of ["gh", "curl", "file"]) writeExecutable(join(directory, name), tool)
+    const baseEnvironment: Record<string, string> = {}
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value !== undefined) baseEnvironment[key] = value
+    }
+    baseEnvironment.PATH = `${directory}:${baseEnvironment.PATH ?? ""}`
+
+    return node(Effect.gen(function*() {
+      for (const name of ["gh", "curl", "file"] as const) {
+        const log = join(directory, `${name}.log`)
+        const ready = join(directory, `${name}.ready`)
+        const startedAt = Date.now()
+        const error = yield* verifyGitHubRenderedProof(
+          "https://github.com/jesse-merhi/skills/pull/81",
+          {
+            deadline: "500 millis",
+            processOptions: {
+              env: {
+                ...baseEnvironment,
+                VERIFY_HANG_AT: name,
+                VERIFY_PROCESS_LOG: log,
+                VERIFY_READY_PATH: ready
+              },
+              forceKillAfter: "50 millis"
+            }
+          }
+        ).pipe(Effect.scoped, Effect.flip)
+        assert.match(error.message, /verification exceeded 10 minutes/u)
+        assert.isBelow(Date.now() - startedAt, 2_000)
+        assert.isTrue(existsSync(ready), `expected ${name} to install its SIGTERM handler`)
+        for (const line of readFileSync(log, "utf8").trim().split("\n")) {
+          const [loggedName, encodedArgs] = line.split("\t", 2)
+          if (loggedName !== "curl" || encodedArgs === undefined) continue
+          const args: ReadonlyArray<string> = JSON.parse(encodedArgs)
+          for (const flag of ["--output", "--dump-header"]) {
+            const temporaryPath = args[args.indexOf(flag) + 1]
+            if (temporaryPath !== undefined) assert.isFalse(existsSync(temporaryPath))
+          }
+        }
+      }
+    })).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))))
+  }, 10_000)
 
   it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
     parseTrustedMediaUrl("https://github.com/user-attachments/assets/abc-123"),

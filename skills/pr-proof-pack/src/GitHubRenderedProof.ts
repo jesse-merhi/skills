@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Schema from "effect/Schema"
 
-import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { type CheckedTextOptions, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import {
   fetchTrustedAsset,
   GitHubAttachmentError,
@@ -20,6 +20,9 @@ const RenderedPullRequest = Schema.Struct({
 })
 
 const maxRenderedTotalBytes = FileSystem.Size(500 * 1024 * 1024)
+const renderedProofProcessOptions = { forceKillAfter: "1 second" } as const
+
+type RenderedProofProcessOptions = Pick<CheckedTextOptions, "env" | "extendEnv" | "forceKillAfter">
 
 export interface RenderedMedia {
   readonly kind: "image" | "video"
@@ -197,11 +200,12 @@ export const renderedProofLines = (result: RenderedProofResult) => [
 
 const loadRenderedProof = Effect.fn("GitHubRenderedProof.loadRenderedProof")(function*(
   repository: string,
-  pullRequestNumber: string
+  pullRequestNumber: string,
+  processOptions: RenderedProofProcessOptions
 ) {
   const response = yield* checkedTrimmedText("gh", renderedProofRequestArgs(repository, pullRequestNumber), {
+    ...processOptions,
     displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
-    forceKillAfter: "1 second",
     includeStdoutInError: false
   })
   return yield* parseRenderedProofDocument(response)
@@ -252,20 +256,23 @@ const groupRenderedMedia = (media: ReadonlyArray<RenderedMedia>) => {
   return groups
 }
 
-const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pullRequest: string) {
+const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
+  pullRequest: string,
+  processOptions: RenderedProofProcessOptions
+) {
   const fileSystem = yield* FileSystem.FileSystem
   const pullRequestUrl = yield* parsePullRequestUrl(pullRequest)
   const segments = pullRequestUrl.pathname.split("/")
   const repository = `${segments[1]}/${segments[2]}`
   const pullRequestNumber = segments[4] ?? ""
-  const proof = yield* loadRenderedProof(repository, pullRequestNumber)
+  const proof = yield* loadRenderedProof(repository, pullRequestNumber, processOptions)
   const { media } = proof
   const groups = groupRenderedMedia(media)
   const assets: Array<RenderedAssetResult> = []
   let downloadedBytes = FileSystem.Size(0)
   for (let start = 0; start < groups.length;) {
     const batchSize = yield* renderedAssetBatchSize(downloadedBytes)
-    const currentProof = start === 0 ? proof : yield* loadRenderedProof(repository, pullRequestNumber)
+    const currentProof = start === 0 ? proof : yield* loadRenderedProof(repository, pullRequestNumber, processOptions)
     if (start > 0) yield* requireSameRenderedProof(proof, currentProof)
     const batch = groups.slice(start, start + batchSize)
     const batchAssets = yield* Effect.forEach(batch, (group) => {
@@ -279,11 +286,11 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pu
         const fetched = yield* fetchTrustedAsset({
           assetFile,
           assetUrl: item.url.href,
-          forceKillAfter: "1 second",
-          label: `rendered PR asset ${position + 1}`
+          label: `rendered PR asset ${position + 1}`,
+          processOptions
         })
         const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile), {
-          forceKillAfter: "1 second"
+          ...processOptions
         })
         const info = yield* fileSystem.stat(assetFile)
         yield* validateRenderedAsset({
@@ -317,7 +324,7 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pu
     }
     start += batchSize
   }
-  const finalProof = yield* loadRenderedProof(repository, pullRequestNumber)
+  const finalProof = yield* loadRenderedProof(repository, pullRequestNumber, processOptions)
   yield* requireSameRenderedProof(proof, finalProof)
   assets.sort((left, right) => left.index - right.index)
   return {
@@ -333,5 +340,13 @@ export const withRenderedProofDeadline = <A, E, R>(effect: Effect.Effect<A, E, R
     orElse: () => Effect.fail(new GitHubAttachmentError({ message: "GitHub rendered proof verification exceeded 10 minutes" }))
   }))
 
-export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verifyWithDeadline")((pullRequest: string) =>
-  withRenderedProofDeadline(verifyRenderedProof(pullRequest), "10 minutes"))
+export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verifyWithDeadline")((
+  pullRequest: string,
+  options?: {
+    readonly deadline?: Duration.Input
+    readonly processOptions?: RenderedProofProcessOptions
+  }
+) => withRenderedProofDeadline(
+  verifyRenderedProof(pullRequest, { ...renderedProofProcessOptions, ...options?.processOptions }),
+  options?.deadline ?? "10 minutes"
+))
