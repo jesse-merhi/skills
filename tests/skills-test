@@ -476,7 +476,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 
 test_pr_proof_pack_is_a_visual_publishing_gate() {
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local step_count done_count
+  local step_count done_count upload_help
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -505,6 +505,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
+  assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
   assert_contains "$skill/references/screenshots.md" "## GitHub Attachment Upload"
@@ -532,11 +533,15 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--disable", "--silent", "--show-error", "--location"'
   assert_not_contains "$skill/src/GitHubAttachment.ts" '"--location-trusted"'
-  assert_contains "$skill/src/GitHubAttachment.ts" 'if (fetchedInfo.size !== sourceInfo.size)'
+  assert_contains "$skill/src/GitHubAttachment.ts" 'yield* verifyAttachment'
   assert_contains "$skill/scripts/github-upload-attachment" 'github-upload-attachment.ts'
   if [[ ! -x "$skill/scripts/github-upload-attachment" ]]; then
     fail "expected github-upload-attachment wrapper to be executable"
   fi
+  upload_help="$("$skill/scripts/github-upload-attachment" --help)"
+  assert_output_contains "$upload_help" "--pr"
+  assert_output_contains "$upload_help" "Full https://github.com/<owner>/<repository>/pull/<number> URL"
+  assert_output_contains "$upload_help" "evidence-path"
   assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
   assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"
