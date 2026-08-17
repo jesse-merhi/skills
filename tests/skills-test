@@ -554,26 +554,52 @@ test_code_review_has_a_local_review_and_owner_checked_closeout() {
   assert_contains "$skill/references/final-output.md" 'through `speak-fking-english`'
 }
 
-test_review_waits_are_event_driven() {
-  local wait_skill="$ROOT_DIR/skills/wait-efficiently/SKILL.md"
+test_waits_hold_instead_of_polling() {
+  local wait_dir="$ROOT_DIR/skills/wait-efficiently"
+  local wait_skill="$wait_dir/SKILL.md"
+
+  # The durable rules live in SKILL.md and outlive any harness API.
+  assert_contains "$wait_skill" 'never below 300'
+  assert_contains "$wait_skill" 'deadline is a ceiling, not a delay'
+  assert_contains "$wait_skill" 'resume the same wait'
+  assert_contains "$wait_skill" 'Unchanged progress is not a state change'
+  assert_contains "$wait_skill" 'references/codex.md'
+  assert_contains "$wait_skill" 'references/claude-code.md'
+
+  # SKILL.md stays harness-agnostic; API names belong in the harness references.
+  assert_not_contains "$wait_skill" 'write_stdin'
+  assert_not_contains "$wait_skill" 'run_in_background'
+}
+
+test_harness_references_carry_the_api_surface() {
+  local refs="$ROOT_DIR/skills/wait-efficiently/references"
+
+  assert_contains "$refs/codex.md" '"yield_time_ms": 900000'
+  assert_contains "$refs/codex.md" 'yield_time_ms: 300000'
+  assert_contains "$refs/codex.md" 'const maxOutputTokens = 10000'
+  assert_contains "$refs/codex.md" 'originalTokens += result.original_token_count'
+  assert_contains "$refs/codex.md" 'returns when the process exits'
+  assert_contains "$refs/codex.md" 'output.push(result.output)'
+  assert_contains "$refs/codex.md" 'if (result.exit_code !== 0)'
+  assert_contains "$refs/codex.md" 'command output exceeded the safe result budget'
+  assert_contains "$refs/codex.md" 'persist its full artifact to a run-owned file'
+  assert_contains "$refs/codex.md" '`wait_agent` with `timeout_ms: 600000`'
+  assert_contains "$refs/codex.md" '`notify` is not a replacement'
+  assert_contains "$refs/codex.md" 'Do not restart the'
+  assert_contains "$refs/codex.md" 'single `Promise.all`'
+  # A 30-second yield is the measured failure mode; keep it named as such.
+  assert_contains "$refs/codex.md" '30-second yield is the most expensive setting'
+
+  assert_contains "$refs/claude-code.md" 'run_in_background: true'
+  assert_contains "$refs/claude-code.md" '`Monitor`'
+  assert_contains "$refs/claude-code.md" 'cover failure states as well as success'
+  assert_contains "$refs/claude-code.md" '600000 ms'
+  assert_contains "$refs/claude-code.md" 'wasted round trip'
+}
+
+test_review_waits_load_the_wait_skill() {
   local review_skill="$ROOT_DIR/skills/code-review"
 
-  assert_contains "$wait_skill" '`wait_agent` with `timeout_ms: 600000`'
-  assert_contains "$wait_skill" '"yield_time_ms": 900000'
-  assert_contains "$wait_skill" 'yield_time_ms: 300000'
-  assert_contains "$wait_skill" 'const maxOutputTokens = 10000'
-  assert_contains "$wait_skill" 'originalTokens += result.original_token_count'
-  assert_contains "$wait_skill" 'returns when the process exits'
-  assert_contains "$wait_skill" 'output.push(result.output)'
-  assert_contains "$wait_skill" 'if (result.exit_code !== 0)'
-  assert_contains "$wait_skill" 'command output exceeded the safe result budget'
-  assert_contains "$wait_skill" 'persist its full artifact to a run-owned file'
-  assert_contains "$wait_skill" '`notify` is not a replacement'
-  assert_contains "$wait_skill" 'wait again only when the required agent'
-  assert_contains "$wait_skill" 'Keep the parent turn active until the required agents'
-  assert_contains "$wait_skill" 'resume that cell with one long `functions.wait` call'
-  assert_contains "$wait_skill" 'not restart the command'
-  assert_not_contains "$wait_skill" '60-second `write_stdin` waits'
   assert_contains "$review_skill/references/subagents.md" '`wait-efficiently` subagent pattern'
   assert_contains "$review_skill/references/review-phase-rules.md" '`wait-efficiently` Codex shell-wait pattern'
   assert_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" 'Load `wait-efficiently`'
@@ -876,7 +902,9 @@ test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
 test_code_review_has_a_local_review_and_owner_checked_closeout
-test_review_waits_are_event_driven
+test_waits_hold_instead_of_polling
+test_harness_references_carry_the_api_surface
+test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
