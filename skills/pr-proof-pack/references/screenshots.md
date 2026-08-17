@@ -32,7 +32,7 @@ repository command:
 
 ```sh
 <skill-dir>/scripts/github-upload-attachment \
-  --pr <full-PR-URL-resolved-in-step-2> \
+  --pr <number-or-URL-resolved-in-step-2> \
   <path>
 ```
 

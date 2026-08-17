@@ -17,6 +17,7 @@ import {
   mediaTypeRequestArgs,
   parseFetchResult,
   parseGitHubToken,
+  parsePullRequestReference,
   parsePullRequestUrl,
   parseRedirectHeaders,
   parseRedirectResult,
@@ -52,6 +53,14 @@ describe("GitHub attachment upload contract", () => {
   it.effect("requires a full PR URL instead of an ambient repository number", () => parsePullRequestUrl(
     "81"
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /pass the full github[.]com PR URL/u))))
+
+  it.effect("accepts a positive PR number for gh resolution", () => Effect.all([
+    parsePullRequestReference("81"),
+    parsePullRequestReference("0").pipe(Effect.flip)
+  ]).pipe(Effect.map(([reference, error]) => {
+    assert.strictEqual(reference, "81")
+    assert.match(error.message, /positive PR number or full github[.]com PR URL/u)
+  })))
 
   it.effect("redacts rejected PR URL credentials", () => parsePullRequestUrl(
     "https://sentinel-user@github.com/jesse-merhi/skills/pull/81?token=sentinel-secret"
@@ -236,7 +245,7 @@ describe("GitHub attachment upload contract", () => {
 printf 'gh-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
 case "$1:$2" in
   pr:view)
-    if [ "$3" != 'https://github.com/jesse-merhi/skills/pull/81' ] || [ "$4" != '--json' ] || [ "$5" != 'url' ]; then
+    if { [ "$3" != '81' ] && [ "$3" != 'https://github.com/jesse-merhi/skills/pull/81' ]; } || [ "$4" != '--json' ] || [ "$5" != 'url' ]; then
       printf 'unexpected gh pr view arguments: %s\\n' "$*" >&2
       exit 2
     fi
@@ -342,9 +351,13 @@ esac
       UPLOAD_TEST_EVIDENCE: evidence,
       UPLOAD_TEST_LOG: log
     }
-    const runLauncher = (evidencePath: string, overrides: NodeJS.ProcessEnv = {}) => spawnSync(
+    const runLauncher = (
+      evidencePath: string,
+      overrides: NodeJS.ProcessEnv = {},
+      pullRequest = "https://github.com/jesse-merhi/skills/pull/81"
+    ) => spawnSync(
       launcher,
-      ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidencePath],
+      ["--pr", pullRequest, evidencePath],
       { encoding: "utf8", env: { ...environment, ...overrides }, timeout: 12_000 }
     )
     const assertCommandFailure = (result: ReturnType<typeof runLauncher>) => {
@@ -401,6 +414,11 @@ esac
       assert.notInclude(secondArgs, "@-")
       assert.notInclude(secondArgs, "sentinel-secret")
       assert.include(secondArgs, " --max-filesize 104857600 --max-time 600 ")
+      assertTemporaryPathsRemoved()
+
+      const numericReference = runLauncher(evidence, {}, "81")
+      assert.strictEqual(numericReference.status, 0, numericReference.stderr)
+      assert.strictEqual(numericReference.stdout.trim(), "https://github.com/user-attachments/assets/abc-123")
       assertTemporaryPathsRemoved()
 
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })

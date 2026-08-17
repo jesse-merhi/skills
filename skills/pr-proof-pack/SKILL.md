@@ -165,7 +165,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Reconfirm that the calling workflow authorizes the PR mutation. Follow
    [references/screenshots.md](references/screenshots.md) when visual evidence
    was selected. On `github.com`, run
-   `<skill-dir>/scripts/github-upload-attachment --pr <full-PR-URL-resolved-in-step-2> <path>`
+   `<skill-dir>/scripts/github-upload-attachment --pr <number-or-URL-resolved-in-step-2> <path>`
    for each selected image or video. Insert the URL printed only after the
    command has verified the upload. Put media in the main PR body, never in a
    detached comment or table. Text evidence needs no attachment.

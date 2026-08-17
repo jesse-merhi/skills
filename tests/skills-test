@@ -564,7 +564,7 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   fi
   upload_help="$("$skill/scripts/github-upload-attachment" --help)"
   assert_output_contains "$upload_help" "--pr"
-  assert_output_contains "$upload_help" "Full https://github.com/<owner>/<repository>/pull/<number> URL"
+  assert_output_contains "$upload_help" "Positive PR number or full https://github.com/<owner>/<repository>/pull/<number> URL"
   assert_output_contains "$upload_help" "evidence-path"
   if [[ ! -x "$skill/scripts/github-verify-rendered-proof" ]]; then
     fail "expected github-verify-rendered-proof wrapper to be executable"

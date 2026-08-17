@@ -69,6 +69,13 @@ export const parsePullRequestUrl = (input: string) => Schema.decodeUnknownEffect
   Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid pull request URL; pass the full github.com PR URL" }))
 )
 
+export const parsePullRequestReference = (input: string) => /^[1-9][0-9]*$/u.test(input)
+  ? Effect.succeed(input)
+  : parsePullRequestUrl(input).pipe(
+    Effect.map((url) => url.href),
+    Effect.mapError(() => new GitHubAttachmentError({ message: "Pass a positive PR number or full github.com PR URL" }))
+  )
+
 export const parseGitHubToken = (input: string) => Schema.decodeUnknownEffect(GitHubToken)(input).pipe(
   Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid single-line authentication token" }))
 )
@@ -221,8 +228,8 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
 }) {
   const fileSystem = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
-  const pullRequestUrl = yield* parsePullRequestUrl(options.pullRequest)
-  const pullRequestJson = yield* checkedTrimmedText("gh", ["pr", "view", pullRequestUrl.href, "--json", "url"])
+  const pullRequestReference = yield* parsePullRequestReference(options.pullRequest)
+  const pullRequestJson = yield* checkedTrimmedText("gh", ["pr", "view", pullRequestReference, "--json", "url"])
   const repository = yield* repositoryFromPullRequest(pullRequestJson)
   const repositoryJson = yield* checkedTrimmedText("gh", ["api", "--hostname", "github.com", `repos/${repository}`])
   const { id: repositoryId } = yield* decodeJson(Repository, repositoryJson, "repository ID")
