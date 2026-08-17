@@ -551,7 +551,7 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "provider-hosted media only for visual behavior"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Make PR context and proof concise and checkable."
+  assert_contains "$skill/agents/openai.yaml" "Make PR context, scope, and proof concise and checkable."
   assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
   assert_contains "$skill/references/video-editing.md" "Before — direct base"
   assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
