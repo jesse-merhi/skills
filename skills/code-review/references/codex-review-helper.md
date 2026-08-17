@@ -9,7 +9,7 @@ scripts/codex-review
 scripts/codex-review --mode branch --base origin/main
 scripts/codex-review --mode uncommitted
 scripts/codex-review --mode commit --commit HEAD
-scripts/codex-review --parallel-tests "pnpm test"
+scripts/codex-review --parallel-tests "bun run test"
 scripts/codex-review --output /tmp/codex-review.out
 scripts/codex-review --dry-run
 ```
@@ -47,6 +47,9 @@ before and after each review. If the target changes while the reviewer is
 running, it discards that stale answer, resolves the latest target, and reruns.
 It stops with an error after three continuously changing runs instead of
 claiming that an unstable target was reviewed.
+
+Run the helper through the `wait-efficiently` Codex shell-wait pattern. Resume a
+yielded cell instead of rerunning the helper.
 
 `--parallel-tests` runs the review and test command in one structured Effect
 scope. If either fails, the sibling is interrupted instead of being orphaned.

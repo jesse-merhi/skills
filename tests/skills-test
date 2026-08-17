@@ -392,6 +392,21 @@ test_codex_default_mode_questions_are_configured() {
   assert_contains "$ROOT_DIR/AGENTS.md" "including outside planning-only modes"
 }
 
+test_bun_runtime_and_openclaw_install_are_documented() {
+  assert_contains "$ROOT_DIR/package.json" '"packageManager": "bun@1.3.14"'
+  test -f "$ROOT_DIR/bun.lock" || fail "expected bun.lock to be committed"
+  test ! -e "$ROOT_DIR/pnpm-lock.yaml" || fail "expected pnpm-lock.yaml to be removed"
+  test ! -e "$ROOT_DIR/pnpm-workspace.yaml" || fail "expected pnpm-workspace.yaml to be removed"
+  assert_contains "$ROOT_DIR/README.md" "bun ci"
+  assert_contains "$ROOT_DIR/README.md" 'OpenClaw | `REPO/skills` via `skills.load.extraDirs`'
+  assert_contains "$ROOT_DIR/INSTALL.md" "openclaw config validate"
+  assert_contains "$ROOT_DIR/INSTALL.md" "skills.load.extraDirs"
+  assert_contains "$ROOT_DIR/INSTALL.md" "openclaw skills list --json"
+  assert_contains "$ROOT_DIR/.github/workflows/validate.yml" "oven-sh/setup-bun@v2"
+  assert_not_contains "$ROOT_DIR/.github/workflows/validate.yml" "npm install --global"
+  assert_contains "$ROOT_DIR/.github/workflows/validate.yml" "bun ci"
+}
+
 test_implementation_design_requires_user_decisions() {
   assert_contains "$ROOT_DIR/AGENTS.md" "Treat backward compatibility as the user's decision"
   assert_contains "$ROOT_DIR/AGENTS.md" "Do not add compatibility layers by default"
@@ -470,7 +485,10 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   local step_count done_count
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
-  assert_contains "$skill/SKILL.md" "Committing to, rebasing"
+  assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
+  assert_contains "$skill/SKILL.md" "A push triggers a freshness check"
+  assert_contains "$skill/SKILL.md" "This skill never grants publication authority"
+  assert_contains "$skill/SKILL.md" "report the no-op decision and leave the PR"
   assert_contains "$skill/SKILL.md" "If any gate cannot be completed, stop"
   assert_contains "$skill/references/proof-selection.md" "working in practice"
   assert_contains "$skill/SKILL.md" 'never satisfies `Visual proof`'
@@ -505,6 +523,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" 'Remove each exact run-owned upload-root copy'
   assert_contains "$skill/references/screenshots.md" 'Delete neither the original evidence file nor managed'
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
+  assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow"
   assert_contains "$skill/references/screenshots.md" "Use the same clipboard-first flow on GitHub, Bitbucket"
@@ -513,7 +532,9 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
   assert_contains "$skill/references/proof-selection.md" "The new test itself remains a supporting check"
   assert_contains "$skill/references/proof-selection.md" "Automated validation only supports this proof"
-  assert_contains "$skill/references/proof-selection.md" "deliberately paced video"
+  assert_contains "$skill/references/proof-selection.md" "make a concise edited"
+  assert_contains "$skill/references/proof-selection.md" "before/after proof is"
+  assert_not_contains "$skill/references/proof-selection.md" "Every PR still needs at least one uploaded screenshot"
   assert_contains "$skill/references/proof-selection.md" "Markdown table"
   assert_not_contains "$skill/references/proof-selection.md" "Default to prose"
   assert_not_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
@@ -521,9 +542,103 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
+  assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "do not use test or CI output as evidence"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Publish practical PR proof of working behavior."
+  assert_contains "$skill/agents/openai.yaml" "Check and refresh practical PR proof."
+  assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
+  assert_contains "$skill/references/video-editing.md" "Before — direct base"
+  assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
+  assert_contains "$skill/references/video-editing.md" "play the full edited file at 1× speed"
+}
+
+test_code_review_has_a_local_review_and_owner_checked_closeout() {
+  local skill="$ROOT_DIR/skills/code-review"
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "Never push agent-authored"
+  assert_contains "$ROOT_DIR/AGENTS.md" "request to fix or review authorizes local edits"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Jesse explicitly asks to push after the fix"
+  assert_contains "$ROOT_DIR/AGENTS.md" "The reaction gates merge"
+  assert_contains "$skill/references/review-phase-rules.md" "review and finding-fix loop local"
+  assert_contains "$skill/references/review-phase-rules.md" "full local validation"
+  assert_contains "$skill/references/pr-closeout.md" 'author.login` is `jesse-merhi'
+  assert_contains "$skill/references/pr-closeout.md" "one normal final push"
+  assert_contains "$skill/references/pr-closeout.md" "Do not force-push"
+  assert_contains "$skill/references/pr-closeout.md" "Run CI last"
+  assert_contains "$skill/references/findings-registry.md" 'closeout --summary'
+  assert_contains "$skill/references/findings-registry.md" "Write finding cards for the review owner"
+  assert_contains "$skill/references/final-output.md" "group every finding"
+  assert_contains "$skill/references/final-output.md" 'through `speak-fking-english`'
+}
+
+test_waits_hold_instead_of_polling() {
+  local wait_dir="$ROOT_DIR/skills/wait-efficiently"
+  local wait_skill="$wait_dir/SKILL.md"
+
+  # The durable rules live in SKILL.md and outlive any harness API. The floor is
+  # deliberately stated in AGENTS.md too, because the skill often is not loaded;
+  # keep the two lexically identical so a drifting copy is greppable.
+  assert_contains "$wait_skill" 'Hold a wait for its full expected duration, never under 300 seconds'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Hold a wait for its full expected duration, never under 300 seconds'
+  assert_contains "$wait_skill" 'deadline is a ceiling, not a delay'
+  assert_contains "$wait_skill" 'resume the same wait'
+  assert_contains "$wait_skill" 'Unchanged progress is not a state change'
+  assert_contains "$wait_skill" 'references/codex.md'
+  assert_contains "$wait_skill" 'references/claude-code.md'
+
+  # SKILL.md stays harness-agnostic; API names belong in the harness references.
+  assert_not_contains "$wait_skill" 'write_stdin'
+  assert_not_contains "$wait_skill" 'run_in_background'
+}
+
+test_harness_references_carry_the_api_surface() {
+  local refs="$ROOT_DIR/skills/wait-efficiently/references"
+
+  assert_contains "$refs/codex.md" '"yield_time_ms": 900000'
+  assert_contains "$refs/codex.md" 'yield_time_ms: 300000'
+  assert_contains "$refs/codex.md" 'const maxOutputTokens = 10000'
+  assert_contains "$refs/codex.md" 'originalTokens += result.original_token_count'
+  assert_contains "$refs/codex.md" 'returns when the process exits'
+  assert_contains "$refs/codex.md" 'output.push(result.output)'
+  assert_contains "$refs/codex.md" 'if (result.exit_code !== 0)'
+  assert_contains "$refs/codex.md" 'command output exceeded the safe result budget'
+  assert_contains "$refs/codex.md" 'persist its full artifact to a run-owned file'
+  assert_contains "$refs/codex.md" '`wait_agent` with `timeout_ms: 600000`'
+  assert_contains "$refs/codex.md" '`notify` is not a replacement'
+  assert_contains "$refs/codex.md" 'Do not restart the'
+  assert_contains "$refs/codex.md" 'single `Promise.all`'
+  # State the cost mechanic positively; naming the failing value makes it more
+  # available to the model that is about to choose one.
+  assert_contains "$refs/codex.md" 'Size both yields to the whole command'
+  assert_not_contains "$refs/codex.md" '30-second'
+
+  assert_contains "$refs/claude-code.md" 'run_in_background: true'
+  assert_contains "$refs/claude-code.md" '`Monitor`'
+  assert_contains "$refs/claude-code.md" 'cover failure states as well as success'
+  assert_contains "$refs/claude-code.md" '600000 ms'
+  assert_contains "$refs/claude-code.md" 'wasted round trip'
+}
+
+test_agents_md_bounds_model_turns() {
+  local agents="$ROOT_DIR/AGENTS.md"
+
+  assert_contains "$agents" '## Model turns'
+  assert_contains "$agents" 'Batch independent calls into one turn'
+  assert_contains "$agents" 'Promise.all'
+  assert_contains "$agents" 'Keep dependent calls, writes, and approval-sensitive'
+  assert_contains "$agents" 'never under 300 seconds'
+  assert_contains "$agents" 'ceiling rather than a delay'
+  assert_contains "$agents" '`@exec` `yield_time_ms` directive'
+  assert_contains "$agents" 'Load `wait-efficiently`'
+}
+
+test_review_waits_load_the_wait_skill() {
+  local review_skill="$ROOT_DIR/skills/code-review"
+
+  assert_contains "$review_skill/references/subagents.md" '`wait-efficiently` subagent pattern'
+  assert_contains "$review_skill/references/review-phase-rules.md" '`wait-efficiently` Codex shell-wait pattern'
+  assert_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" 'Load `wait-efficiently`'
+  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/SKILL.md" 'Load `wait-efficiently`'
 }
 
 test_openclaw_agent_discovery_paths() {
@@ -594,24 +709,35 @@ test_gh_stack_workflow_is_pinned_and_wired() {
   assert_contains "$ROOT_DIR/AGENTS.md" '`gh-stack` and plan a bottom-to-top stack'
   assert_contains "$ROOT_DIR/skills/parallel-slice-orchestration/SKILL.md" 'GitHub stacks are linear'
   assert_contains "$ROOT_DIR/skills/handoff/references/repair-pr-handoffs.md" 'tell it to load `gh-stack`'
-  assert_contains "$ROOT_DIR/skills/code-review/references/pr-closeout.md" 'inspect it with `gh stack view --json`'
+  assert_contains "$ROOT_DIR/skills/code-review/references/pr-closeout.md" "Preserve a planned stack with"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "scope proof to that layer's direct base"
   assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" "## PR Delivery"
   assert_contains "$ROOT_DIR/skills/to-spec/SKILL.md" 'record the logical'
   assert_contains "$ROOT_DIR/skills/to-tickets/references/ticket-design.md" "Do not assume one"
   assert_contains "$ROOT_DIR/skills/to-tickets/references/note-template.md" "PR Group Depends On:"
-  assert_contains "$ROOT_DIR/AGENTS.md" 'thumbs-up (`+1`) reaction as human sign-off'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Review gate:'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Sign-off gate:'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'thumbs-up (`+1`) reaction'
   assert_contains "$ROOT_DIR/AGENTS.md" 'Never add, remove, or modify that reaction'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'exact current head'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Do not start'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'An unanswered review decision blocks'
   assert_contains \
     "$ROOT_DIR/skills/parallel-slice-orchestration/SKILL.md" \
-    'Verify each reaction belongs to'
+    'Review gate and Sign-off gate from'
   assert_contains \
     "$ROOT_DIR/skills/code-review/references/pr-closeout.md" \
-    'Never create or remove that reaction on the user'
-  assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" 'Human sign-off gate:'
+    'exact final head'
+  assert_contains \
+    "$ROOT_DIR/skills/code-review/references/final-output.md" \
+    'exact reviewed head SHA'
+  assert_contains \
+    "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" \
+    'Proof-pack does not count as review.'
+  assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" 'PR gates:'
   assert_contains \
     "$ROOT_DIR/skills/to-tickets/references/ticket-design.md" \
-    'thumbs-up (`+1`) reaction on every ready PR'
+    'Review gate and Sign-off gate from'
 }
 
 test_wayfinder_obsidian_map_can_advance_its_frontier() {
@@ -813,6 +939,7 @@ test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
 test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
+test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_design_engineering_owns_motion_opportunity_audits
@@ -820,6 +947,11 @@ test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_visual_publishing_gate
+test_code_review_has_a_local_review_and_owner_checked_closeout
+test_waits_hold_instead_of_polling
+test_harness_references_carry_the_api_surface
+test_agents_md_bounds_model_turns
+test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command

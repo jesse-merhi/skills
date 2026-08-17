@@ -39,12 +39,12 @@ same slice plan sequentially and say that parallel execution was not available.
    [integration.md](references/integration.md).
 11. Resolve integration issues locally, then run the feature's relevant package
     verification commands.
-12. Publish the chosen delivery shape. For a stack, keep foundation at the
-    bottom, dependent behavior above it, and run `pr-proof-pack` separately for
-    every PR layer.
-13. After every layer's proof, review, validation, and CI pass, ask the user for
-    a thumbs-up (`+1`) reaction on every open PR. Verify each reaction belongs to
-    `jesse-merhi`; never create or remove it on the user's behalf.
+12. When publication is authorized under `AGENTS.md`, publish the chosen
+    delivery shape. Otherwise stop at a verified local checkpoint. For a stack,
+    keep foundation at the bottom, dependent behavior above it, and run the
+    `pr-proof-pack` freshness check separately for every PR layer.
+13. Before readiness or merge, apply the Review gate and Sign-off gate from
+    `AGENTS.md` to every PR layer and exact head.
 
 ## Slice Rules
 
@@ -86,7 +86,7 @@ same slice plan sequentially and say that parallel execution was not available.
 - Final verification ran in the integrated tree.
 - The delivery shape matches the dependency map, and every stacked layer has
   its own focused `pr-proof-pack` evidence.
-- Every ready PR has a verified `jesse-merhi` thumbs-up reaction before merge.
+- Every ready PR satisfies both `AGENTS.md` gates before merge.
 
 ## Context Pointers
 

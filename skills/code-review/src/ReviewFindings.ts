@@ -194,6 +194,28 @@ export interface Closeout {
   readonly scope_budget?: ScopeBudgetStatus
 }
 
+export interface CloseoutCount {
+  readonly label: string
+  readonly count: number
+}
+
+export interface CloseoutSummary {
+  readonly total_findings: number
+  readonly material_findings: number
+  readonly lower_risk_findings: number
+  readonly status_counts: ReadonlyArray<CloseoutCount>
+  readonly source_counts: ReadonlyArray<CloseoutCount>
+  readonly impact_counts: ReadonlyArray<CloseoutCount>
+  readonly priority_counts: ReadonlyArray<CloseoutCount>
+  readonly important_findings: ReadonlyArray<CloseoutFinding>
+  readonly important_findings_total: number
+  readonly still_open: ReadonlyArray<CloseoutFinding>
+  readonly still_open_total: number
+  readonly verification_counts: ReadonlyArray<CloseoutCount>
+  readonly verification_total: number
+  readonly scope_budget?: ScopeBudgetStatus
+}
+
 const nowSeconds = () => Math.floor(Date.now() / 1_000)
 const stableId = (parts: ReadonlyArray<string>) => createHash("sha256").update(parts.map((part) => `${part}\0`).join("")).digest("hex").slice(0, 32)
 const normalizeToken = (value: string) => value.trim().toLowerCase().replaceAll("_", "-")
@@ -855,7 +877,80 @@ const findingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, s
   return lines
 }
 
-export const printCloseout = (closeout: Closeout, json: boolean, materialOnly: boolean) => Effect.gen(function*() {
+const countLabels = (labels: ReadonlyArray<string>): ReadonlyArray<CloseoutCount> => {
+  const counts = new Map<string, number>()
+  for (const rawLabel of labels) {
+    const label = normalizeToken(rawLabel.length === 0 ? "unspecified" : rawLabel)
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+  return [...counts].map(([label, count]) => ({ label, count })).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+}
+
+const priorityRanks: Readonly<Record<string, number>> = { p0: 0, critical: 0, p1: 1, high: 1, p2: 2, medium: 2, p3: 3, low: 3, p4: 4 }
+const compareFindings = (left: CloseoutFinding, right: CloseoutFinding) => {
+  const priority = (priorityRanks[normalizeToken(left.priority)] ?? 5) - (priorityRanks[normalizeToken(right.priority)] ?? 5)
+  return priority !== 0 ? priority : left.decision_id.localeCompare(right.decision_id)
+}
+const commandResultLabel = (result: string) => {
+  const label = result.trim().split(/[\s:]/u)[0] ?? ""
+  return normalizeToken(label.length === 0 ? "unspecified" : label)
+}
+
+export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSummary => {
+  const important = closeout.material_findings.filter((finding) => !["open", "deferred", "provisional", "reopened"].includes(finding.status)).sort(compareFindings)
+  const stillOpen = [...closeout.still_open].sort(compareFindings)
+  return {
+    total_findings: closeout.findings_found.length,
+    material_findings: closeout.material_findings.length,
+    lower_risk_findings: closeout.lower_risk_findings.length,
+    status_counts: countLabels(closeout.findings_found.map((finding) => finding.status)),
+    source_counts: countLabels(closeout.findings_found.map((finding) => finding.source)),
+    impact_counts: countLabels(closeout.findings_found.map((finding) => finding.impact)),
+    priority_counts: countLabels(closeout.findings_found.map((finding) => finding.priority)),
+    important_findings: important.slice(0, limit),
+    important_findings_total: important.length,
+    still_open: stillOpen.slice(0, limit),
+    still_open_total: stillOpen.length,
+    verification_counts: countLabels(closeout.verification_run.map((command) => commandResultLabel(command.result))),
+    verification_total: closeout.verification_run.length,
+    ...(closeout.scope_budget === undefined ? {} : { scope_budget: closeout.scope_budget })
+  }
+}
+
+const readableCount = ({ label, count }: CloseoutCount) => `${count} ${label.replaceAll("-", " ")}`
+const countLine = (title: string, counts: ReadonlyArray<CloseoutCount>) => `- ${title}: ${counts.length === 0 ? "none" : counts.map(readableCount).join(", ")}`
+const limitedFindingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, total: number) => [
+  `${title} (${findings.length} of ${total} shown)`,
+  ...(findings.length === 0 ? ["- none"] : findingLines("", findings, true).slice(1))
+]
+
+const printSummary = (summary: CloseoutSummary) => {
+  const lines = [
+    "Review summary",
+    `- Findings: ${summary.total_findings} total; ${summary.material_findings} material; ${summary.lower_risk_findings} lower risk`,
+    countLine("Status", summary.status_counts),
+    countLine("Sources", summary.source_counts),
+    countLine("Areas", summary.impact_counts),
+    countLine("Priorities", summary.priority_counts), "",
+    ...limitedFindingLines("Important resolved findings", summary.important_findings, summary.important_findings_total), "",
+    ...limitedFindingLines("Still open", summary.still_open, summary.still_open_total), "",
+    "Verification summary",
+    `- Commands: ${summary.verification_total}`,
+    countLine("Results", summary.verification_counts), "",
+    "Scope budget",
+    ...(summary.scope_budget === undefined ? ["- not recorded"] : formatScopeBudgetStatus(summary.scope_budget).split("\n").map((line) => `- ${line}`))
+  ]
+  return Console.log(lines.join("\n"))
+}
+
+export type CloseoutView = "full" | "material" | "summary"
+
+export const printCloseout = (closeout: Closeout, json: boolean, view: CloseoutView, summaryLimit: number) => Effect.gen(function*() {
+  if (view === "summary") {
+    const summary = summarizeCloseout(closeout, summaryLimit)
+    if (json) return yield* Console.log(JSON.stringify(summary, null, 2))
+    return yield* printSummary(summary)
+  }
   if (json) return yield* Console.log(JSON.stringify(closeout, null, 2))
   const lines = [
     "Scope budget",
@@ -864,7 +959,7 @@ export const printCloseout = (closeout: Closeout, json: boolean, materialOnly: b
     ...findingLines("User-visible or workflow changes", closeout.user_visible_or_workflow_changes, true), "",
     ...findingLines("Security, data, and permission changes", closeout.security_data_permission_changes, true), ""
   ]
-  if (!materialOnly) {
+  if (view === "full") {
     lines.push(...findingLines("Lower-risk findings", closeout.lower_risk_findings, false), "")
     lines.push("Findings found", ...(closeout.findings_found.length === 0
       ? ["- none recorded"]

@@ -15,6 +15,7 @@ import { trustedExecutable } from "./NativeReview.ts"
 import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, formatReadyScopeBudget, formatScopeBudgetCheck, formatScopeBudgetStatus, getScopeBudget, initialize, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
+class CloseoutOptionError extends Schema.TaggedError<CloseoutOptionError>()("CloseoutOptionError", { message: Schema.String }) {}
 class ScopeDatabaseError extends Schema.TaggedError<ScopeDatabaseError>()("ScopeDatabaseError", { message: Schema.String }) {}
 
 // Environment defaults are resolved once at the CLI boundary before effects run.
@@ -88,11 +89,13 @@ const recordCommandCli = Command.make("record-command", {
   yield* Console.log(`recorded command=${result.commandId} run=${result.runId} db=${args.db}`)
 })))
 const closeout = Command.make("closeout", {
-  db, repo: Flag.string("repo"), repoPath: optionalString("repo-path"), branch: optionalString("branch"), target: optionalString("target"), base: optionalString("base"), material: Flag.boolean("material"), json: Flag.boolean("json")
+  db, repo: Flag.string("repo"), repoPath: optionalString("repo-path"), branch: optionalString("branch"), target: optionalString("target"), base: optionalString("base"), material: Flag.boolean("material"), summary: Flag.boolean("summary"), summaryLimit: Flag.integer("summary-limit").pipe(Flag.withDefault(12)), json: Flag.boolean("json")
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
+  if (args.material && args.summary) return yield* new CloseoutOptionError({ message: "closeout accepts either --material or --summary, not both" })
+  if (args.summaryLimit < 0) return yield* new CloseoutOptionError({ message: "closeout --summary-limit must be a non-negative integer" })
   const closeout = yield* buildCloseout({ repo: args.repo, ...(Option.isSome(args.repoPath) ? { repoPath: args.repoPath.value } : {}), ...(Option.isSome(args.branch) ? { branch: args.branch.value } : {}), ...(Option.isSome(args.target) ? { target: args.target.value } : {}), ...(Option.isSome(args.base) ? { base: args.base.value } : {}) })
-  yield* printCloseout(closeout, args.json, args.material)
+  yield* printCloseout(closeout, args.json, args.summary ? "summary" : args.material ? "material" : "full", args.summaryLimit)
 })))
 const inferGit = Effect.fn("ReviewFindings.inferGit")(function*(args: ReadonlyArray<string>) {
   const git = yield* trustedExecutable("git")
@@ -172,5 +175,5 @@ command.pipe(Command.run({ version: "2.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof ScopeDatabaseError ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))

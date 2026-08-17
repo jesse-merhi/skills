@@ -24,6 +24,10 @@ must not audit them as independent targets. Give it facts as plain text: target,
 base, frozen review boundary, changed-surface summary, and a neutral checklist.
 Do not fork parent turns and expect the reviewer to ignore them.
 
+After dispatch, finish useful independent coordinator work. Once the result is
+required, follow the `wait-efficiently` subagent pattern. Keep the parent turn
+active until the reviewer reaches a terminal state.
+
 For PRs:
 
 ```text

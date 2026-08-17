@@ -46,11 +46,13 @@ write.
 If the harness cannot run subagents, say so, continue only as best effort, and
 do not call the review clean unless the user accepts that limitation.
 
-After dispatch in Codex, load `wait-efficiently` and use an event-driven
-15-minute wait. It wakes as soon as the reviewer sends an update or returns.
-After a non-terminal update or first timeout, wait again without listing agent
-status. Inspect only after two consecutive timeouts or an explicit error. Keep
-the coordinator active: ending its turn is not a documented completion handoff.
+After dispatching a review batch, finish useful independent coordinator work.
+Once blocked in Codex, follow the `wait-efficiently` subagent pattern with an
+event-driven 15-minute wait. It wakes as soon as a reviewer sends an update or
+returns. After a
+non-terminal update or first timeout, wait again without listing agent status.
+Inspect only after two consecutive timeouts or an explicit error. Keep the
+parent turn active until every required reviewer reaches a terminal state.
 
 Run `monitoring-gh-actions` at the end, after both review phases and local
 validation are clean, when PR checks are pending and monitoring is in scope.

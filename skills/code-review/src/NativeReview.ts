@@ -1,4 +1,5 @@
 import * as Console from "effect/Console"
+import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
@@ -35,7 +36,7 @@ const CodexDoctorReport = Schema.fromJsonString(Schema.Struct({
 
 // Explicit tool overrides are trusted user configuration; defaults are resolved outside the checkout.
 // @effect-diagnostics-next-line processEnv:off
-const toolEnvironment = { CODEX_BIN: process.env.CODEX_BIN, GH_BIN: process.env.GH_BIN, GIT_BIN: process.env.GIT_BIN, PATH: process.env.PATH ?? "" }
+const toolEnvironment = { CODEX_BIN: process.env.CODEX_BIN, GH_BIN: process.env.GH_BIN, GIT_BIN: process.env.GIT_BIN, PATH: process.env.PATH ?? "", CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME }
 export const trustedExecutable = Effect.fn("NativeReview.trustedExecutable")(function*(name: string, reviewedRepoPath = process.cwd()) {
   const explicit = name === "git" ? toolEnvironment.GIT_BIN : name === "gh" ? toolEnvironment.GH_BIN : name === "codex" ? toolEnvironment.CODEX_BIN : undefined
   if (explicit !== undefined && explicit.length > 0) return explicit
@@ -231,6 +232,109 @@ const withReviewSnapshot = <A, E, R>(use: (cwd: string) => Effect.Effect<A, E, R
   return yield* lifecycle.pipe(Effect.ensuring(cleanup))
 }))
 
+const SessionMetaLine = Schema.fromJsonString(Schema.Struct({
+  type: Schema.Literal("session_meta"),
+  payload: Schema.Struct({
+    id: Schema.String,
+    cwd: Schema.String,
+    parent_thread_id: Schema.optionalKey(Schema.String)
+  })
+}))
+
+// One `codex review` writes two rollouts: a small driver session carrying the
+// entered_review_mode marker, and the subagent thread that holds the actual
+// review transcript, linked back by parent_thread_id. Archiving only the driver
+// leaves the larger half behind, so both are collected.
+const reviewSessionMarker = "\"entered_review_mode\""
+const sessionHeadBytes = 8192
+// The driver session is a few tens of KB; this bounds the marker read so a
+// concurrent interactive rollout is never loaded in full.
+const maxDriverSessionBytes = 4 * 1024 * 1024
+
+const sessionDay = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "/")
+
+const readSessionHead = Effect.fn("NativeReview.readSessionHead")(function*(path: string) {
+  const fs = yield* FileSystem.FileSystem
+  const head = yield* Effect.scoped(fs.open(path).pipe(Effect.flatMap((file) => file.readAlloc(sessionHeadBytes))))
+  if (Option.isNone(head)) return Option.none()
+  const firstLine = new TextDecoder().decode(head.value).split("\n", 1)[0] ?? ""
+  return yield* Schema.decodeUnknownEffect(SessionMetaLine)(firstLine).pipe(Effect.option)
+})
+
+export const archiveReviewSessions = Effect.fn("NativeReview.archiveReviewSessions")(function*(options: {
+  readonly reviewer: string
+  readonly reviewCwds: ReadonlyArray<string>
+  readonly since: Date
+  readonly sessionsRoot?: string
+}) {
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const codexHome = options.sessionsRoot !== undefined
+    ? undefined
+    : toolEnvironment.CODEX_HOME !== undefined && toolEnvironment.CODEX_HOME.length > 0
+    ? toolEnvironment.CODEX_HOME
+    : toolEnvironment.HOME !== undefined && toolEnvironment.HOME.length > 0
+    ? paths.join(toolEnvironment.HOME, ".codex")
+    : undefined
+  const root = options.sessionsRoot ?? (codexHome === undefined ? undefined : paths.join(codexHome, "sessions"))
+  if (root === undefined || !(yield* fs.exists(root))) return []
+  const cwds = new Set<string>()
+  for (const cwd of options.reviewCwds) {
+    const resolved = paths.resolve(cwd)
+    cwds.add(resolved)
+    cwds.add(yield* fs.realPath(resolved).pipe(Effect.orElseSucceed(() => resolved)))
+  }
+  // Session directories are named by date; one day of margin covers timezone
+  // skew between the directory name and the run window.
+  const cutoffDay = sessionDay(new Date(options.since.getTime() - 24 * 60 * 60 * 1000))
+  const cutoffTime = options.since.getTime() - 1000
+  const listDirectories = (path: string) => fs.readDirectory(path).pipe(Effect.orElseSucceed((): Array<string> => []))
+  const drivers: Array<string> = []
+  const children: Array<{ readonly id: string; readonly parent: string; readonly path: string }> = []
+  for (const year of yield* listDirectories(root)) {
+    for (const month of yield* listDirectories(paths.join(root, year))) {
+      for (const day of yield* listDirectories(paths.join(root, year, month))) {
+        if (`${year}/${month}/${day}` < cutoffDay) continue
+        for (const name of yield* listDirectories(paths.join(root, year, month, day))) {
+          if (!name.startsWith("rollout-") || !name.endsWith(".jsonl")) continue
+          const path = paths.join(root, year, month, day, name)
+          const info = yield* fs.stat(path).pipe(Effect.option)
+          if (Option.isNone(info)) continue
+          const mtime = Option.getOrUndefined(info.value.mtime)
+          if (mtime === undefined || mtime.getTime() < cutoffTime) continue
+          const meta = yield* readSessionHead(path)
+          if (Option.isNone(meta) || !cwds.has(meta.value.payload.cwd)) continue
+          const { id, parent_thread_id: parent } = meta.value.payload
+          if (parent !== undefined) {
+            children.push({ id, parent, path })
+            continue
+          }
+          if (info.value.size > maxDriverSessionBytes) continue
+          const content = yield* fs.readFileString(path).pipe(Effect.orElseSucceed(() => ""))
+          if (content.includes(reviewSessionMarker)) drivers.push(id)
+        }
+      }
+    }
+  }
+  const driverIds = new Set(drivers)
+  const archived: Array<string> = []
+  const archive = Effect.fn("NativeReview.archiveSession")(function*(id: string) {
+    const result = yield* checkedTrimmedText(options.reviewer, ["archive", id]).pipe(Effect.timeout("30 seconds"), Effect.option)
+    if (Option.isSome(result)) archived.push(id)
+    return Option.isSome(result)
+  })
+  for (const id of drivers) {
+    if (!(yield* archive(id))) yield* Console.error(`warning: could not archive review session ${id}`)
+  }
+  // Archiving a driver moves its subagent thread too, so only sweep the ones
+  // still sitting in the sessions directory afterwards.
+  for (const child of children) {
+    if (!driverIds.has(child.parent) || (yield* fs.exists(child.path).pipe(Effect.orElseSucceed(() => false))) === false) continue
+    if (!(yield* archive(child.id))) yield* Console.error(`warning: could not archive review subagent session ${child.id}`)
+  }
+  return archived
+})
+
 export const untilReviewStable = <A, E, R, E2, R2>(options: {
   readonly identity: Effect.Effect<string, E, R>
   readonly operation: Effect.Effect<A, E2, R2>
@@ -257,10 +361,22 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   const paths = yield* Path.Path
   const reviewer = options.codexBin.includes("/") ? paths.resolve(options.codexBin) : yield* trustedExecutable(options.codexBin)
   const shell = yield* trustedExecutable("sh")
+  // Each `codex review` run persists a rollout session under CODEX_HOME. Once
+  // the review output is captured the session is no longer needed for findings,
+  // so archive it to keep the resume picker and session search lean.
+  const reviewTarget = Effect.fn("NativeReview.reviewTarget")(function*(target: ReviewTarget, snapshotCwd?: string) {
+    const runCwd = snapshotCwd !== undefined && target.snapshot ? snapshotCwd : undefined
+    const startedAt = yield* DateTime.now
+    const output = yield* checkedText(reviewer, ["review", ...target.args], runCwd === undefined ? undefined : { cwd: runCwd })
+    yield* archiveReviewSessions({
+      reviewer,
+      reviewCwds: runCwd === undefined ? [process.cwd(), repo] : [runCwd],
+      since: DateTime.toDate(startedAt)
+    }).pipe(Effect.catch((error) => Console.error(`warning: review session archiving failed (${String(error)})`)))
+    return options.plan.targets.length === 1 ? output : `[${target.label}]\n${output}`
+  })
   const execute = (snapshotCwd?: string) => {
-    const reviews = Effect.forEach(options.plan.targets, (target) => checkedText(reviewer, ["review", ...target.args], snapshotCwd === undefined || !target.snapshot ? undefined : { cwd: snapshotCwd }).pipe(
-      Effect.map((output) => options.plan.targets.length === 1 ? output : `[${target.label}]\n${output}`)
-    )).pipe(Effect.map((outputs) => outputs.join("\n\n")))
+    const reviews = Effect.forEach(options.plan.targets, (target) => reviewTarget(target, snapshotCwd)).pipe(Effect.map((outputs) => outputs.join("\n\n")))
     if (Option.isNone(options.testCommand)) return reviews
     const test = checkedText(shell, ["-lc", options.testCommand.value], { cwd: snapshotCwd ?? repo })
     return Effect.all([reviews, test], { concurrency: "unbounded" }).pipe(Effect.map(([output]) => output))

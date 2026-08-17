@@ -86,17 +86,20 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 5. Prepare the findings registry.
 
    Read [references/findings-registry.md](references/findings-registry.md).
+   Load `speak-fking-english` and use its reader reset for each batch of finding
+   cards and for the final owner summary.
    Done when the review-findings helper path is resolved and every accepted,
    rejected, deferred, provisional, reopened, user, lens, native-review, and
    cold-review finding can be recorded instead of reconstructed from chat.
 
 6. Run Phase 1.
 
-   Load `review-until-clean` and run it until the native review is clean on the
-   current target. Use `finding-discipline` to triage findings before fixing.
-   Read [references/review-phase-rules.md](references/review-phase-rules.md)
-   for whole-target review, validation, finding classification, and
-   quiet-helper behavior. If Phase 1 uses the Codex engine,
+   Load `review-until-clean` and `wait-efficiently`, then run the native review
+   until it is clean on the current target. Use `finding-discipline` to triage
+   findings before fixing. Read
+   [references/review-phase-rules.md](references/review-phase-rules.md) for
+   whole-target review, validation, finding classification, and held-wait
+   behavior. If Phase 1 uses the Codex engine,
    also read [references/codex-review-helper.md](references/codex-review-helper.md).
 
 7. Run Phase 2.
@@ -105,6 +108,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    `cold-pr-review-until-clean` in a subagent until cold review is clean on the
    same target. Give it the one-time setup summary, neutral risk checklist, and
    any tracked-finding notices generated from currently open consult entries.
+   Wait through `wait-efficiently` so completion wakes the active wait instead
+   of being discovered by status polling.
 
 8. After an accepted Phase 1 finding:
 
@@ -131,14 +136,17 @@ remediation workflows, OpenGrep, merge, and advisory writing.
      native gate.
 
 10. Close out only after the Phase 1 native gate has passed and Phase 2 is
-    clean on the final target.
+    clean on the final local target.
 
-   Run one final `scope-check`. After it passes, run `scope-complete` with the
-   clean phase result so a later user-authorized review on the branch can start.
-   Read [references/pr-closeout.md](references/pr-closeout.md) for PR creation
-   or update, evidence, `pr-proof-pack`, pending GitHub Actions, and PR blockers.
+   Run the full local validation selected during setup. If it changes code,
+   rerun the affected review phase and validation. Once the final tree is clean
+   and validated, run one final `scope-check`, then `scope-complete` with the
+   clean phase result so a later user-authorized review can start. Read
+   [references/pr-closeout.md](references/pr-closeout.md) for the final PR-owner
+   gate, one final push, proof freshness, GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
-   final response.
+   final response. Record the exact final head or dirty snapshot identity in
+   the closeout so a later PR workflow can detect whether the review is current.
 
 ## Done Means
 
@@ -157,9 +165,13 @@ remediation workflows, OpenGrep, merge, and advisory writing.
   authorized reset records the user's words through `scope-authorize`.
 - Final validation for the affected surfaces passed, or blockers and residual
   risk are explicit.
+- No remote branch or PR mutation occurred while either review phase still had
+  findings. After both phases were clean, the final full local validation
+  passed before the reviewed result was pushed.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or
   the PR/proof blocker is reported separately from the review result.
 - The final answer is backed by `review-findings closeout`, not chat memory.
+- The final answer identifies the exact reviewed head or dirty snapshot.
 
 ## Stop Honestly
 
@@ -183,4 +195,5 @@ consult queue is resolved.
   requested;
 - leaving accepted fixes in a temporary snapshot instead of the real checkout;
 - pushing just to review;
+- pushing between findings, review phases, or targeted validation runs;
 - writing final closeout sections from chat history.
