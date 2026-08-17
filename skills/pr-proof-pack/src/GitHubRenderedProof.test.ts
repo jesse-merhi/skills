@@ -16,6 +16,8 @@ import {
   parseRenderedProofResponse,
   renderedProofLines,
   renderedProofRequestArgs,
+  requireRenderedByteBudget,
+  requireRenderedMediaCount,
   validateRenderedAsset
 } from "./GitHubRenderedProof.ts"
 
@@ -55,6 +57,7 @@ describe("rendered GitHub proof verification", () => {
   })))
 
   it.effect("redacts an invalid signed rendered-media URL", () => parseRenderedProofResponse(JSON.stringify({
+    body: "proof",
     body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>'
   })).pipe(Effect.flip, Effect.map((error) => {
     assert.match(error.message, /invalid rendered-media URL/u)
@@ -62,8 +65,18 @@ describe("rendered GitHub proof verification", () => {
   })))
 
   it.effect("rejects a malformed rendered pull request", () => parseRenderedProofResponse(
-    '{"body_html":42}'
+    '{"body":"","body_html":42}'
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /invalid rendered pull request/u))))
+
+  it.effect("bounds rendered media candidates and aggregate bytes", () => Effect.all([
+    requireRenderedMediaCount(20),
+    requireRenderedByteBudget(FileSystem.Size(500 * 1024 * 1024)),
+    requireRenderedMediaCount(21).pipe(Effect.flip),
+    requireRenderedByteBudget(FileSystem.Size((500 * 1024 * 1024) + 1)).pipe(Effect.flip)
+  ]).pipe(Effect.map((results) => {
+    assert.match(results[2]?.message ?? "", /exceeded 20 media candidates/u)
+    assert.match(results[3]?.message ?? "", /exceeded the 500 MiB/u)
+  })))
 
   it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
     parseTrustedMediaUrl("https://github.com/user-attachments/assets/abc-123"),
@@ -144,7 +157,7 @@ if [ "$1" != 'api' ] || [ "$2" != '--hostname' ] || [ "$3" != 'github.com' ] || 
   exit 2
 fi
 if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
-  printf '%s\\n' '{"body_html":"<img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\">"}'
+  printf '%s\\n' '{"body":"proof","body_html":"<img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\">"}'
   printf 'failed while reading rendered pull request\\n' >&2
   exit 1
 fi
@@ -156,12 +169,17 @@ if [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
   fi
   query='sentinel-secret'
   if [ "$call" -gt 1 ]; then query="sentinel-secret-refreshed-$call"; fi
+  body='proof'
+  if [ -n "\${RENDERED_TEST_BODY_CHANGED_AFTER:-}" ] && [ "$call" -gt "$RENDERED_TEST_BODY_CHANGED_AFTER" ]; then body='changed proof'; fi
+  semantic='40'
+  if [ -n "\${RENDERED_TEST_SEMANTIC_CHANGED_AFTER:-}" ] && [ "$call" -gt "$RENDERED_TEST_SEMANTIC_CHANGED_AFTER" ]; then semantic='400'; fi
   fifth='fifth'
+  if [ "\${RENDERED_TEST_DUPLICATE:-}" = 1 ]; then fifth='fourth'; fi
   if [ "\${RENDERED_TEST_CHANGED:-}" = 1 ] && [ "$call" -gt 1 ]; then fifth='changed-fifth'; fi
-  payload='{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__\\"></p>"}'
-  printf '%s\\n' "$payload" | sed -e "s/__QUERY__/$query/g" -e "s/__FIFTH__/$fifth/g"
+  payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"></p>"}'
+  printf '%s\\n' "$payload" | sed -e "s/__BODY__/$body/g" -e "s/__QUERY__/$query/g" -e "s/__SEMANTIC__/$semantic/g" -e "s/__FIFTH__/$fifth/g"
 else
-  printf '%s\\n' '{"body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
+  printf '%s\\n' '{"body":"proof","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
 fi
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
@@ -236,8 +254,8 @@ printf '%s\\n' 'image/jpeg'
       assert.notStrictEqual(result.status, 0)
       assert.notInclude(`${result.stdout}\n${result.stderr}`, "sentinel-secret")
     }
-    const assertTemporaryPathsRemoved = () => {
-      const args = readFileSync(log, "utf8").split("\n")
+    const assertTemporaryPathsRemoved = (processLog = log) => {
+      const args = readFileSync(processLog, "utf8").split("\n")
         .filter((line) => line.startsWith("curl-arg=")).map((line) => line.slice("curl-arg=".length))
       for (let index = 1; index < args.length; index += 1) {
         if (args[index - 1] === "--output" || args[index - 1] === "--dump-header") {
@@ -266,7 +284,21 @@ printf '%s\\n' 'image/jpeg'
       const successRequests = readFileSync(log, "utf8")
       assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("gh-args=")).length, 3)
       assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 5)
-      assert.include(successRequests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret-refreshed-2"')
+      assert.include(successRequests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret-refreshed-2&s=40"')
+
+      const duplicateLog = join(directory, "duplicate.log")
+      const duplicate = runLauncher({
+        RENDERED_TEST_DUPLICATE: "1",
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "duplicate-state"),
+        RENDERED_TEST_LOG: duplicateLog
+      })
+      assert.strictEqual(duplicate.status, 0, `${duplicate.stdout}\n${duplicate.stderr}`)
+      assert.include(duplicate.stdout, "rendered media: images=5 videos=0")
+      assert.include(duplicate.stdout, "asset 5: image image/png bytes=14")
+      const duplicateRequests = readFileSync(duplicateLog, "utf8")
+      assert.strictEqual(duplicateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 4)
+      assertTemporaryPathsRemoved(duplicateLog)
 
       const changedProof = runFailure({
         RENDERED_TEST_CHANGED: "1",
@@ -274,6 +306,20 @@ printf '%s\\n' 'image/jpeg'
         RENDERED_TEST_GH_STATE: join(directory, "changed-state")
       })
       assert.include(`${changedProof.stdout}\n${changedProof.stderr}`, "rendered proof changed")
+
+      const finalBodyChanged = runFailure({
+        RENDERED_TEST_BODY_CHANGED_AFTER: "2",
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "body-change-state")
+      })
+      assert.include(`${finalBodyChanged.stdout}\n${finalBodyChanged.stderr}`, "rendered proof changed")
+
+      const finalSemanticQueryChanged = runFailure({
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "semantic-change-state"),
+        RENDERED_TEST_SEMANTIC_CHANGED_AFTER: "2"
+      })
+      assert.include(`${finalSemanticQueryChanged.stdout}\n${finalSemanticQueryChanged.stderr}`, "rendered proof changed")
 
       const trustedRedirect = runLauncher({
         RENDERED_TEST_REDIRECT_COUNT: "5",
@@ -295,7 +341,7 @@ printf '%s\\n' 'image/jpeg'
       assert.include(requests, "gh-args=api --hostname github.com repos/jesse-merhi/skills/pulls/81 --header Accept: application/vnd.github.full+json")
       assert.include(requests, "curl-args=--disable --globoff --silent --show-error --output ")
       assert.include(requests, " --max-redirs 0 --proto =https ")
-      assert.include(requests, " --max-filesize 1073741824 --max-time 600 ")
+      assert.include(requests, " --max-filesize 104857600 --max-time 600 ")
       assert.include(requests, " --config -")
       assert.include(requests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2"')
       assert.include(requests, "file-args=--brief --mime-type -- ")

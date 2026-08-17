@@ -153,7 +153,7 @@ describe("GitHub attachment upload contract", () => {
     assert.deepStrictEqual([...redirectArgs], [
       "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/redirect",
       "--dump-header", "/tmp/redirect-headers", "--max-redirs", "0", "--proto", "=https",
-      "--max-filesize", "1073741824", "--max-time", "600",
+      "--max-filesize", "104857600", "--max-time", "600",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--header", "@-", "https://github.com/user-attachments/assets/abc-123"
     ])
@@ -163,7 +163,7 @@ describe("GitHub attachment upload contract", () => {
     assert.deepStrictEqual([...fetchArgs], [
       "--disable", "--globoff", "--silent", "--show-error", "--output", "/tmp/attachment",
       "--dump-header", "/tmp/attachment-headers", "--max-redirs", "0", "--proto", "=https",
-      "--max-filesize", "1073741824", "--max-time", "600",
+      "--max-filesize", "104857600", "--max-time", "600",
       "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
       "--config", "-"
     ])
@@ -361,13 +361,13 @@ esac
       assert.strictEqual(fileArgs[1], `file-args=--brief --mime-type -- ${secondArgv[5]}`)
       assert.include(requests, "first-stdin=Authorization: Bearer test-token")
       assert.notInclude(firstArgs, "--location")
-      assert.include(firstArgs, " --max-filesize 1073741824 --max-time 600 ")
+      assert.include(firstArgs, " --max-filesize 104857600 --max-time 600 ")
       assert.include(requests, 'second-stdin=url = "https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret"')
       assert.notInclude(secondArgs, "Authorization")
       assert.notInclude(secondArgs, "test-token")
       assert.notInclude(secondArgs, "@-")
       assert.notInclude(secondArgs, "sentinel-secret")
-      assert.include(secondArgs, " --max-filesize 1073741824 --max-time 600 ")
+      assert.include(secondArgs, " --max-filesize 104857600 --max-time 600 ")
       assertTemporaryPathsRemoved()
 
       const mismatch = runLauncher(evidence, { UPLOAD_TEST_MISMATCH: "1" })

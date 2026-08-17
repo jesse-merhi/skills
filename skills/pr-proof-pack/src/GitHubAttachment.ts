@@ -127,7 +127,7 @@ export const mediaTypeRequestArgs = (evidencePath: string) => ["--brief", "--mim
 export const redirectRequestArgs = (responseFile: string, headersFile: string, assetUrl: string) => [
   "--disable", "--globoff", "--silent", "--show-error", "--output", responseFile,
   "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
-  "--max-filesize", "1073741824", "--max-time", "600",
+  "--max-filesize", "104857600", "--max-time", "600",
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--header", "@-", assetUrl
 ] as const
@@ -135,7 +135,7 @@ export const redirectRequestArgs = (responseFile: string, headersFile: string, a
 export const fetchRequestArgs = (assetFile: string, headersFile: string) => [
   "--disable", "--globoff", "--silent", "--show-error", "--output", assetFile,
   "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
-  "--max-filesize", "1073741824", "--max-time", "600",
+  "--max-filesize", "104857600", "--max-time", "600",
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--config", "-"
 ] as const

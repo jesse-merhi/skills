@@ -12,7 +12,13 @@ import {
   parseTrustedMediaUrl
 } from "./GitHubAttachment.ts"
 
-const RenderedPullRequest = Schema.Struct({ body_html: Schema.String })
+const RenderedPullRequest = Schema.Struct({
+  body: Schema.NullOr(Schema.String),
+  body_html: Schema.String
+})
+
+const maxRenderedMedia = 20
+const maxRenderedTotalBytes = FileSystem.Size(500 * 1024 * 1024)
 
 export interface RenderedMedia {
   readonly kind: "image" | "video"
@@ -30,6 +36,11 @@ export interface RenderedProofResult {
   readonly assets: ReadonlyArray<RenderedAssetResult>
   readonly images: number
   readonly videos: number
+}
+
+interface RenderedProofDocument {
+  readonly body: string
+  readonly media: ReadonlyArray<RenderedMedia>
 }
 
 const decodeHtmlAttribute = (value: string) => value
@@ -133,11 +144,30 @@ export const extractRenderedMedia = Effect.fn("GitHubRenderedProof.extractRender
   return media
 })
 
-export const parseRenderedProofResponse = Effect.fn("GitHubRenderedProof.parseResponse")(function*(input: string) {
+const parseRenderedProofDocument = Effect.fn("GitHubRenderedProof.parseDocument")(function*(input: string) {
   const pullRequest = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(RenderedPullRequest))(input).pipe(
     Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid rendered pull request" }))
   )
-  return yield* extractRenderedMedia(pullRequest.body_html)
+  return {
+    body: pullRequest.body ?? "",
+    media: yield* extractRenderedMedia(pullRequest.body_html)
+  }
+})
+
+export const parseRenderedProofResponse = Effect.fn("GitHubRenderedProof.parseResponse")(function*(input: string) {
+  return (yield* parseRenderedProofDocument(input)).media
+})
+
+export const requireRenderedMediaCount = Effect.fn("GitHubRenderedProof.requireMediaCount")(function*(count: number) {
+  if (count > maxRenderedMedia) {
+    return yield* new GitHubAttachmentError({ message: `GitHub rendered proof exceeded ${maxRenderedMedia} media candidates` })
+  }
+})
+
+export const requireRenderedByteBudget = Effect.fn("GitHubRenderedProof.requireByteBudget")(function*(bytes: FileSystem.Size) {
+  if (bytes > maxRenderedTotalBytes) {
+    return yield* new GitHubAttachmentError({ message: "GitHub rendered proof exceeded the 500 MiB download budget" })
+  }
 })
 
 export const validateRenderedAsset = Effect.fn("GitHubRenderedProof.validateAsset")(function*(options: {
@@ -159,7 +189,7 @@ export const renderedProofLines = (result: RenderedProofResult) => [
   ...result.assets.map((asset) => `asset ${asset.index}: ${asset.kind} ${asset.contentType} bytes=${asset.bytes}`)
 ]
 
-const loadRenderedMedia = Effect.fn("GitHubRenderedProof.loadRenderedMedia")(function*(
+const loadRenderedProof = Effect.fn("GitHubRenderedProof.loadRenderedProof")(function*(
   repository: string,
   pullRequestNumber: string
 ) {
@@ -167,19 +197,29 @@ const loadRenderedMedia = Effect.fn("GitHubRenderedProof.loadRenderedMedia")(fun
     displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
     includeStdoutInError: false
   })
-  return yield* parseRenderedProofResponse(response)
+  return yield* parseRenderedProofDocument(response)
 })
 
-const renderedMediaIdentity = (item: RenderedMedia) => `${item.kind}:${item.url.origin}${item.url.pathname}`
+const renderedMediaIdentity = (item: RenderedMedia) => {
+  const url = new URL(item.url)
+  for (const key of [...url.searchParams.keys()]) {
+    const normalized = key.toLowerCase()
+    if (normalized === "jwt" || normalized.startsWith("x-amz-")) url.searchParams.delete(key)
+  }
+  url.searchParams.sort()
+  url.hash = ""
+  return `${item.kind}:${url.href}`
+}
 
-const requireSameRenderedMedia = Effect.fn("GitHubRenderedProof.requireSameRenderedMedia")(function*(
-  expected: ReadonlyArray<RenderedMedia>,
-  actual: ReadonlyArray<RenderedMedia>
+const requireSameRenderedProof = Effect.fn("GitHubRenderedProof.requireSameRenderedProof")(function*(
+  expected: RenderedProofDocument,
+  actual: RenderedProofDocument
 ) {
   if (
-    actual.length !== expected.length ||
-    actual.some((item, index) => {
-      const expectedItem = expected[index]
+    actual.body !== expected.body ||
+    actual.media.length !== expected.media.length ||
+    actual.media.some((item, index) => {
+      const expectedItem = expected.media[index]
       return expectedItem === undefined || renderedMediaIdentity(item) !== renderedMediaIdentity(expectedItem)
     })
   ) {
@@ -187,21 +227,47 @@ const requireSameRenderedMedia = Effect.fn("GitHubRenderedProof.requireSameRende
   }
 })
 
+const groupRenderedMedia = (media: ReadonlyArray<RenderedMedia>) => {
+  const groups: Array<{ readonly positions: Array<number> }> = []
+  const groupIndexByIdentity = new Map<string, number>()
+  for (let position = 0; position < media.length; position += 1) {
+    const item = media[position]
+    if (item === undefined) continue
+    const identity = renderedMediaIdentity(item)
+    const groupIndex = groupIndexByIdentity.get(identity)
+    if (groupIndex === undefined) {
+      groupIndexByIdentity.set(identity, groups.length)
+      groups.push({ positions: [position] })
+    } else {
+      groups[groupIndex]?.positions.push(position)
+    }
+  }
+  return groups
+}
+
 export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(pullRequest: string) {
   const fileSystem = yield* FileSystem.FileSystem
   const pullRequestUrl = yield* parsePullRequestUrl(pullRequest)
   const segments = pullRequestUrl.pathname.split("/")
   const repository = `${segments[1]}/${segments[2]}`
   const pullRequestNumber = segments[4] ?? ""
-  const media = yield* loadRenderedMedia(repository, pullRequestNumber)
+  const proof = yield* loadRenderedProof(repository, pullRequestNumber)
+  const { media } = proof
+  yield* requireRenderedMediaCount(media.length)
+  const groups = groupRenderedMedia(media)
   const assets: Array<RenderedAssetResult> = []
+  let downloadedBytes = FileSystem.Size(0)
   const batchSize = 4
-  for (let start = 0; start < media.length; start += batchSize) {
-    const currentMedia = start === 0 ? media : yield* loadRenderedMedia(repository, pullRequestNumber)
-    if (start > 0) yield* requireSameRenderedMedia(media, currentMedia)
-    const batch = currentMedia.slice(start, start + batchSize)
-    const batchAssets = yield* Effect.forEach(batch, (item, offset) => {
-      const position = start + offset
+  for (let start = 0; start < groups.length; start += batchSize) {
+    const currentProof = start === 0 ? proof : yield* loadRenderedProof(repository, pullRequestNumber)
+    if (start > 0) yield* requireSameRenderedProof(proof, currentProof)
+    const batch = groups.slice(start, start + batchSize)
+    const batchAssets = yield* Effect.forEach(batch, (group) => {
+      const position = group.positions[0] ?? 0
+      const item = currentProof.media[position]
+      if (item === undefined) {
+        return Effect.fail(new GitHubAttachmentError({ message: "GitHub rendered proof changed during verification" }))
+      }
       return Effect.scoped(Effect.gen(function*() {
         const assetFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-rendered-asset-" })
         const fetched = yield* fetchTrustedAsset({
@@ -221,17 +287,29 @@ export const verifyGitHubRenderedProof = Effect.fn("GitHubRenderedProof.verify")
         return {
           bytes: info.size,
           contentType: mediaTypeEssence(fetched.contentType),
-          index: position + 1,
-          kind: item.kind
+          kind: item.kind,
+          positions: group.positions
         }
       })).pipe(Effect.mapError((error) => new GitHubAttachmentError({
         message: `Rendered asset ${position + 1}: ${error.message}`
       })))
     }, { concurrency: "unbounded" })
-    assets.push(...batchAssets)
+    for (const asset of batchAssets) {
+      downloadedBytes = FileSystem.Size(downloadedBytes + asset.bytes)
+      yield* requireRenderedByteBudget(downloadedBytes)
+      for (const position of asset.positions) {
+        assets.push({
+          bytes: asset.bytes,
+          contentType: asset.contentType,
+          index: position + 1,
+          kind: asset.kind
+        })
+      }
+    }
   }
-  const finalMedia = yield* loadRenderedMedia(repository, pullRequestNumber)
-  yield* requireSameRenderedMedia(media, finalMedia)
+  const finalProof = yield* loadRenderedProof(repository, pullRequestNumber)
+  yield* requireSameRenderedProof(proof, finalProof)
+  assets.sort((left, right) => left.index - right.index)
   return {
     assets,
     images: media.filter((item) => item.kind === "image").length,
