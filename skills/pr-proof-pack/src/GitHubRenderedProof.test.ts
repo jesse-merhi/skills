@@ -281,7 +281,7 @@ if [ "$1" != 'api' ] || [ "$2" != '--hostname' ] || [ "$3" != 'github.com' ] || 
 fi
 if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
   printf '%s\\n' '{"body":"proof","body_html":"<img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\">","head":{"sha":"${expectedHeadSha}"}}'
-  printf 'failed while reading rendered pull request\\n' >&2
+  printf 'failed while reading rendered pull request https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\n' >&2
   exit 1
 fi
 if [ "\${RENDERED_TEST_MANY_DUPLICATES:-}" = 1 ]; then

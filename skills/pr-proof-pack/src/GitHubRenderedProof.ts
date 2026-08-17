@@ -208,6 +208,7 @@ const loadRenderedProof = Effect.fn("GitHubRenderedProof.loadRenderedProof")(fun
   const response = yield* checkedTrimmedText("gh", renderedProofRequestArgs(repository, pullRequestNumber), {
     ...processOptions,
     displayCommand: `gh api [rendered pull request ${repository}#${pullRequestNumber}]`,
+    includeStderrInError: false,
     includeStdoutInError: false
   })
   return yield* parseRenderedProofDocument(response)

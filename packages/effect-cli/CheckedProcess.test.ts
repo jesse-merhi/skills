@@ -65,6 +65,20 @@ describe("checked process boundary", () => {
     )
   ))
 
+  it.effect("can omit both captured streams from sensitive command failures", () => live(
+    checkedText(process.execPath, ["-e", "process.stdout.write('signed-output'); process.stderr.write('signed-stderr'); process.exit(8)"], {
+      displayCommand: "node [sensitive lookup]",
+      includeStderrInError: false,
+      includeStdoutInError: false
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error.message, "node [sensitive lookup] exited 8")
+        assert.strictEqual(error.stderr, "")
+      })
+    )
+  ))
+
   it.effect("redacts stderr and maps the exit code when a real child receives SIGTERM", () => live(
     checkedText(process.execPath, ["-e", "process.stderr.write('secret-value'); process.kill(process.pid, 'SIGTERM')"], {
       displayCommand: "node [redacted]",
@@ -75,6 +89,20 @@ describe("checked process boundary", () => {
         assert.strictEqual(error.exitCode, 143)
         assert.strictEqual(error.stderr, "[redacted]")
         assert.notInclude(error.message, "secret-value")
+      })
+    )
+  ))
+
+  it.effect("omits sensitive stderr when a child is interrupted", () => live(
+    checkedText(process.execPath, ["-e", "process.stderr.write('signed-stderr'); process.kill(process.pid, 'SIGTERM')"], {
+      displayCommand: "node [sensitive lookup]",
+      includeStderrInError: false
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error.exitCode, 143)
+        assert.strictEqual(error.stderr, "")
+        assert.notInclude(error.message, "signed-stderr")
       })
     )
   ))
