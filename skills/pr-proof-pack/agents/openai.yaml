@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
-  short_description: "Check and refresh practical PR proof."
-  default_prompt: "Use $pr-proof-pack to check whether this PR's proof is current. Prefer a tightly edited process video, include matched before/after UI proof when comparable, and refresh only stale evidence before delivery or merge."
+  short_description: "Make PR context, scope, and proof concise and checkable."
+  default_prompt: "Use $pr-proof-pack to make this PR quickly explain what broke and how it is fixed, break down large or multi-part changes by direct-base +LOC and -LOC, prove direct-base and PR outcomes with copyable text for textual behavior, and reserve uploaded media for claims that need visual evidence."

@@ -19,6 +19,27 @@ Use:
 Do not assume a ticket ID, sprint name, internal nickname, file path, class name,
 or agent-thread phrase explains the change.
 
+## Explain The Break Before The Mechanism
+
+Make the first two sentences answer:
+
+1. What could a person or system observe going wrong?
+2. Why did that matter?
+
+Make the next two answer:
+
+3. What does this PR do about the cause?
+4. What happens now?
+
+For a feature, use the missing capability in place of the break. Keep mechanism
+names out of these sentences unless the term is already common in the project.
+For example, prefer "the runner proves it can read the PR checkout" over
+"runner-preflight provenance is promoted to complete."
+
+After four sentences, a reviewer should be able to answer "why merge this?"
+without reading the diff. Later sections may add proof, reproduction, and one
+non-obvious implementation constraint; they should not retell the opening.
+
 ## PR Title
 
 Write one outcome a person can picture. Prefer an active verb and the observable
@@ -29,7 +50,7 @@ Good:
 
 - `Keep filters selected while results reorder`
 - `Reject invalid phone numbers before saving suppliers`
-- `Require visual evidence on every PR`
+- `Show broken and fixed outcomes in PR proof`
 
 Weak:
 
@@ -63,16 +84,16 @@ better PR title.
 ## Body, Captions, and Diagrams
 
 Use the same nouns for the same actor and behavior throughout. The opening
-paragraph supplies the premise; recordings and screenshots show the practical
-evidence; captions say the exact claim; diagrams explain the flow; verification
-tells the reviewer how to reproduce it.
+supplies the premise; proof shows the broken and fixed outcomes in their native
+form; diagrams explain only relationships that prose cannot; verification tells
+the reviewer how to reproduce the result.
 
 Read the finished PR from top to bottom and ask:
 
-1. Does the first paragraph explain the outcome before the mechanism?
-2. Can each title, caption, and diagram label stand on its own?
+1. Do the first two sentences explain the break and impact without jargon?
+2. Do the next two explain the fix and observable outcome?
 3. Is every unfamiliar term defined before it is used?
-4. Does each visual make one useful point?
+4. Is every visual proving a fact that copyable text would lose?
 5. Can a reviewer act without recovering context from a ticket or chat thread?
 
 Revise until every answer is yes.

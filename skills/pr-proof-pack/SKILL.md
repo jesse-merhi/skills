@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or check reviewer-visible proof when an authorized workflow is publishing a PR update or preparing a PR for merge. Refresh only when the pushed behavior or existing proof changed; local edits and commits do not trigger publication.
+description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, break down large changes by direct-base +LOC and -LOC, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
 ---
 
 # PR Proof Pack
@@ -33,34 +33,41 @@ trigger proof work. A push triggers a freshness check, not an automatic rewrite.
 
 Classify proof as:
 
-- `current`: the existing title, body, behavior claims, reproduction steps, and
-  practical evidence still match the final pushed net diff;
+- `current`: the existing title, concise opening context, behavior claims,
+  reproduction steps, and appropriately formatted practical evidence still
+  match the final pushed net diff;
 - `stale`: an important behavior, state, viewport, workflow, reproduction step,
-  or evidence claim changed, or required proof is missing;
+  evidence claim, or reader premise changed; required proof is missing; or the
+  evidence format makes the result harder to understand than a simpler form;
 - `blocked`: freshness or required practical evidence cannot be verified.
 
 Commit count, commit SHA, code churn, and a push by themselves do not make proof
 stale. When proof is current, report the no-op decision and leave the PR
 untouched.
 
-For a recordable process, proof is stale when static images are the only primary
-evidence or the recording contains avoidable dead time. For a UI change with
-comparable direct-base behavior, proof is stale when the before/after comparison
-is missing or mismatched.
+For a bug fix with reproducible direct-base behavior, proof is stale when the
+reviewer cannot compare the broken and fixed outcomes. A screenshot of textual
+output is stale when the same result would be clearer as short copyable text.
 
 ## Hard Gates For A Refresh
 
-- **Interactive browser:** Pass the preflight before any reviewer-visible PR
-  mutation, then use the same path for upload and rendered-page inspection.
-- **Practical evidence:** Capture the changed behavior working in practice.
-  Use a trimmed recording as primary proof whenever the behavior unfolds over
-  time and can be recorded. Automated validation remains supporting information
-  and never satisfies `Visual proof`.
+- **Practical evidence:** Exercise the changed behavior working in practice.
+  Automated validation remains supporting information and never replaces the
+  observed before/after result.
+- **Evidence fit:** Use copyable text for textual inputs, outputs, traces,
+  requests, responses, and state. Use visual evidence only when text would lose
+  an important fact about appearance, layout, motion, interaction, rendering,
+  or playback.
+- **Provider-hosted attachments:** When visual evidence is selected on
+  `github.com`, upload it through the repository command, which uses the scoped
+  `gh` credential.
+- **Rendered proof:** Check the rendered result headlessly by default. Use an
+  interactive browser only when client-side rendering, literal page appearance,
+  or playback must be inspected.
 - **Readable history:** Review the title and commit subjects before publishing.
 
 If any gate cannot be completed, stop. Tell the human which capability failed
-and what they must restore. Do not publish or update the PR through another
-path.
+and what they must restore.
 
 ## Reviewer Boundary
 
@@ -84,55 +91,58 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    load `gh-stack`, inspect `gh stack view --json`, and record the current
    layer's position and adjacent dependencies.
 
-   Done when the exact PR, final head, direct base, and existing proof are
-   known.
+   Done when the exact PR, provider hostname, final head, direct base, and
+   existing proof are known.
 
 3. Build the current proof surface.
 
    Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally with narrow file
    paths. Base every claim on the direct-base-to-final-`HEAD` net diff, not the
    latest commit or chat memory. Remove branch-only churn with no net diff from
-   consideration.
+   consideration. When the PR spans multiple meaningful parts, keep the
+   generated `+LOC` and `-LOC` breakdown. Split implementation into clearer
+   product areas only when the paths support exact, non-overlapping totals.
 
    Done when the final behavior and existing reviewer-visible claims can be
-   compared.
+   compared, and any claim that the PR is large has a direct-base breakdown
+   whose rows reconcile to the total.
 
 4. Make the freshness decision.
 
-   Compare the final behavior, reproduction steps, important viewports and
-   states, verification evidence, title, and existing attachments. Apply the
-   freshness rule above. If proof is `current`, report why and stop without any
-   PR mutation.
+   Compare the final behavior, opening problem/fix context, reproduction steps,
+   important states, verification evidence, title, and existing attachments.
+   Check whether each evidence item uses the simplest form that preserves the
+   claim. Apply the freshness rule above. If proof is `current`, report why and
+   stop without any PR mutation.
 
    Done when the result is `current`, `stale`, or `blocked`, with the affected
    claim or evidence named.
 
-5. Pass the interactive-browser preflight for stale proof.
+5. Pass the refresh preflight for stale proof.
 
-   Select the browser path native to the current harness. In OpenClaw, use its
-   browser tool or `openclaw browser`; inspect
-   `openclaw browser --json status` and `openclaw browser profiles` when the
-   active authenticated profile is unclear. In Claude environments, use this
-   order: Prefer Browser Use when available in the human-permitted
-   Chrome-family browser, including Chrome or Dia; otherwise load
-   `computer-use`. Open the PR and confirm the selected path can read and
-   operate the page.
+   For a `github.com` PR, confirm `gh auth status`. Identify whether practical
+   capture needs a browser or device, whether visual evidence needs upload, and
+   whether the finished body requires client-side inspection, such as a Mermaid
+   diagram. Do not require attachment or browser capabilities for text-only
+   proof.
 
-   Done when the selected interactive browser is demonstrably usable, or the
-   workflow has stopped with a concrete repair request.
+   Done when provider authentication and repository access work and every
+   browser or device capability genuinely needed later in the refresh is
+   available, or the workflow has stopped with a concrete repair request.
 
 6. Capture only the changed practical evidence.
 
-   Read the practical-evidence section of
-   [references/proof-selection.md](references/proof-selection.md), then
-   [references/screenshots.md](references/screenshots.md). For any recording,
-   also read [references/video-editing.md](references/video-editing.md).
+   Read [references/proof-selection.md](references/proof-selection.md).
    Reproduce the changed behavior and replace only evidence made stale by the
-   final net diff. Preserve current evidence.
+   final net diff. Read [references/screenshots.md](references/screenshots.md)
+   only when visual evidence is selected; for a recording, also read
+   [references/video-editing.md](references/video-editing.md). Preserve current
+   evidence that remains useful.
 
    Done when every changed important behavior has concise reviewer-checkable
-   evidence, comparable UI behavior has matched base/PR proof, recordings have
-   no irrelevant waiting, and unchanged evidence is left alone.
+   evidence, reproducible bugs have matched broken/fixed outcomes, visuals are
+   used only for visual claims, every selected visual has passed model inspection
+   for content and presentation, and unchanged useful evidence is left alone.
 
 7. Draft the smallest accurate PR update.
 
@@ -142,26 +152,41 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    evidence changes needed to restore accuracy. Load `speak-fking-english`
    immediately before saving the complete draft.
 
-   Done when the draft is self-contained, accurate, and free of performative
-   rewrites.
+   Done when the first two sentences explain what broke and why it matters, the
+   next two explain the fix and outcome, a multi-part or unusually large PR has
+   a compact change breakdown, the body stays within the default size budget or
+   justifies each exception, and the draft is self-contained.
 
-8. Confirm authority and upload evidence.
+8. Confirm authority and upload provider-hosted evidence.
 
-   Reconfirm that the calling workflow authorizes the PR mutation. Follow the
-   provider upload flow in [references/screenshots.md](references/screenshots.md)
-   with the selected browser. Put media in the main PR body, never in a detached
-   comment or table.
+   Reconfirm that the calling workflow authorizes the PR mutation. Follow
+   [references/screenshots.md](references/screenshots.md) when visual evidence
+   was selected. On `github.com`, run
+   `<skill-dir>/scripts/github-upload-attachment --pr <number-or-URL-resolved-in-step-2> <path>`
+   for each selected image or video. Insert the URL printed only after the
+   command has verified the upload. Put media in the main PR body, never in a
+   detached comment or table. Text evidence needs no attachment.
 
-   Done when every changed evidence item is provider-hosted in the main body,
-   or the workflow has stopped before mutation because authority is absent.
+   Done when every selected visual is provider-hosted and every text proof is
+   present in the main body, or the workflow has stopped before mutation
+   because authority is absent.
 
-9. Inspect the finished PR.
+9. Inspect the finished PR headlessly by default.
 
-   Open the rendered PR and check its title, section order, attachments,
-   captions, diagrams, and reproduction steps. Remove stale proof rather than
-   accumulating it.
+   Follow the rendered-verification path in
+   [references/screenshots.md](references/screenshots.md). On GitHub, inspect
+   `body_html`, confirm the title and section order, require image and video
+   elements only where expected, and fetch every resolved signed asset without
+   forwarding the `gh` token. Verify status, content type, and non-empty bytes
+   for all assets, plus exact byte size for evidence uploaded during this
+   refresh. Use an interactive browser when the body includes client-rendered
+   content such as Mermaid or when the proof depends on literal page layout,
+   pixel appearance, or playback. Remove stale proof rather than accumulating
+   it.
 
-   Done when the rendered PR accurately describes the final pushed net diff.
+   Done when the rendered PR accurately describes the final pushed net diff,
+   with browser inspection completed for every case headless checks cannot
+   prove.
 
 10. Hand the result back to the caller.
 
@@ -178,9 +203,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 - Every workflow step meets its `Done when` criterion.
 - A `current` result made no reviewer-visible mutation.
 - A `refreshed` result changed only stale claims and evidence.
-- Every affected PR describes its final direct-base behavior with practical,
-  provider-hosted proof.
-- Recordable processes use an edited, natural-speed recording as primary proof;
-  matched before/after evidence makes visible UI changes directly comparable.
+- Every affected PR explains the break and fix quickly, then proves final
+  direct-base behavior in the simplest format that preserves the claim.
+- A multi-part or unusually large PR shows exact direct-base `+LOC` and `-LOC`
+  by reviewer-meaningful part, with every file counted once and totals reconciled.
+- Textual behavior uses copyable text. Visual behavior uses provider-hosted
+  media verified headlessly or, where required, through an interactive browser.
+- Reproducible bug fixes show matched broken and fixed outcomes.
 - The workflow did not infer publication authority from branch or PR state.
 - The caller knows proof does not satisfy the exact-head review gate.

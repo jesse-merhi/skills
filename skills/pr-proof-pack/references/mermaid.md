@@ -27,11 +27,12 @@ If labels no longer fit comfortably, split the idea in prose or simplify it.
 Before creating or updating the PR body:
 
 1. Extract every `mermaid` fenced block from the final body.
-2. Validate each block with Mermaid CLI, an equivalent parser, or GitHub's draft
-   rendering inspected through the selected interactive browser.
+2. Validate each block headlessly with Mermaid CLI or an equivalent parser.
 3. Fix invalid syntax and unclear rendering.
-4. Inspect the final rendered diagram through the selected interactive browser
-   after saving.
+4. When the body contains a Mermaid block, inspect the final rendered diagram
+   through the selected interactive browser after saving. GitHub renders
+   Mermaid client-side, so `body_html` exposes the code fence but cannot prove
+   the diagram appeared correctly.
 
 Recommended local validation:
 
@@ -39,8 +40,10 @@ Recommended local validation:
 mmdc -i /tmp/pr-proof.mmd -o /tmp/pr-proof.svg
 ```
 
-If Mermaid cannot be validated, use a small plain-text flow diagram that GitHub
-can render predictably. Do not post unvalidated Mermaid.
+Headless validation proves syntax; the browser check proves GitHub's final
+client-side rendering. If Mermaid cannot be validated, use a small plain-text
+flow diagram that GitHub can render predictably. Do not post unvalidated
+Mermaid. Bodies without Mermaid do not need this browser check.
 
 Quote labels containing punctuation, slashes, code-like values, or symbols. Use
 `A["Search request"]` instead of exposing a route or function name when the

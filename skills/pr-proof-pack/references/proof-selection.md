@@ -1,68 +1,75 @@
 # Proof Selection
 
-Every PR needs visual evidence of the implementation working in practice. Start
-from the main behavioral claim and capture a reviewer performing or observing
-that behavior. Automated validation only supports this proof.
+Start from the PR's main claim and choose the smallest evidence form that lets a
+reviewer verify it without translating formats. Practical evidence shows the
+real behavior. Tests, builds, CI, and validators support that evidence but do
+not replace it.
 
-Whenever behavior unfolds over time and can be recorded, make a concise edited
-video the primary proof. Keep interactions at natural speed and remove setup or
-idle stretches that add no information. Add still images only for a matched
-before/after comparison or a distinct static state that the recording cannot
-show clearly.
+## Prefer Native Evidence
 
-## Evidence Is Behavior, Not Validation
+Use copyable text when the important facts are already textual:
 
-The following remain in the check run and never satisfy `Visual proof`. Do not
-repeat routine pass lists in the PR body:
+- commands and terminal output;
+- requests, responses, logs, traces, and error messages;
+- records, emitted events, queue state, configuration, and structured data;
+- concise before/after values or state transitions.
 
-- test output or pass counts;
-- build, CI, coverage, lint, type-check, or validator output;
-- green checkmarks or workflow dashboards;
-- code, diffs, diagrams, or an agent-written description of expected behavior.
+Use a fenced block, a short request/response example, or a small Markdown table.
+Do not turn text into a screenshot. A screenshot makes the result harder to
+copy, search, quote, and inspect without proving anything extra.
 
-Choose practical evidence by change type:
+Use visual evidence only when text would lose an important part of the claim:
 
-- **UI or interaction:** upload a deliberately paced, tightly edited video of
-  the manual flow from starting state through interaction, transition, and
-  outcome. When the direct base has comparable visible behavior, capture the
-  same scenario on the base and PR branch. Use matched still images when a
-  side-by-side comparison makes the visual change easier to inspect.
-- **API or backend:** exercise a real representative request and show the
-  response plus the resulting persisted state, emitted event, or absence of an
-  invalid side effect.
-- **Infrastructure, migration, worker, or scheduled job:** perform the operator
-  action or realistic dry run and show the resulting state, resource, record,
-  delivery, cleanup, or rollback behavior. Prefer an edited screen recording
-  when the operator process can be followed visually.
-- **Documentation:** show the rendered document being followed to accomplish the
-  changed task, or show the exact rendered comprehension improvement.
-- **Test-only:** demonstrate the product behavior the test protects in the
-  running system. The new test itself remains a supporting check.
-- **Performance:** show comparable before/after traces, recordings, charts, or
-  user-visible timing, and add a Markdown table with the same environment,
-  dataset, scenario, measurement method, and sample size.
+- appearance, spacing, hierarchy, responsive layout, or rendered output;
+- motion, timing, gesture, transition, or interaction feel;
+- a manual UI flow whose visible states and recovery matter;
+- media rendering or playback;
+- a trace, chart, or spatial comparison whose shape carries the result.
 
-Do not duplicate a sufficient interaction recording with standalone after-state
-screenshots. For UI changes with a comparable base, before/after proof is
-required: use matched base/PR videos for changed flows and a labeled
-side-by-side image for direct static comparison. When no meaningful base state
-exists, say so and show the new entry point and outcome instead.
+When visual evidence is necessary, use the smallest useful image or recording.
+Read [screenshots.md](screenshots.md); for recordings, also read
+[video-editing.md](video-editing.md). The model must inspect the actual pixels or
+frames before upload; file metadata and successful rendering are not a quality
+review.
 
-## Decide Whether Explanation Needs a Visual
+## Show The Break And Fix
 
-Keep explanation support out of the practical-evidence decision. In workflow
-step 8, `speak-fking-english` applies its visual filter to the complete
-reviewer-facing draft. That filter owns whether support is needed and which
-form to use.
+For a reproducible bug fix, use the same input and environment against the
+direct base and PR branch. Put the two outcomes next to each other and label
+them `Before — direct base` and `After — PR`. Include the failure point and
+reason in the before result, then show the corrected outcome and important side
+effect in the after result.
 
-An explanation visual explains the behavior. The screenshot or recording
-demonstrates the implementation running. These are different jobs, and many PRs
-need only the practical evidence. Never use a screenshot of an explanation
-visual as proof that the implementation ran.
+Use text for a textual comparison and matched media for a visual comparison.
+Do not make reviewers infer the baseline from prose or compare mismatched
+fixtures, viewports, inputs, or environments. If reproducing the base is unsafe
+or impossible, state the constraint and show the closest honest boundary.
 
-Use an API example or a small before/after table in addition when exact values
-matter, such as response shapes, ranking, counters, flags, permissions, or
-persisted state.
+## Choose By Change Type
 
-Do not use a generic net-diff table as proof. File groups and implementation
-buckets make the reviewer reconstruct the behavior instead of seeing it.
+- **UI or interaction:** use matched screenshots for a static visual change and
+  a concise recording for motion or a manual interaction. Use text for changed
+  labels, accessibility output, or textual state when appearance is not the
+  claim.
+- **API or backend:** show the representative request, response, and persisted
+  or rejected state as copyable text. Add a visual only when the response is
+  itself rendered or spatial.
+- **Infrastructure, migration, worker, or scheduled job:** show the operator
+  input and resulting resource, record, delivery, cleanup, or rollback. Prefer
+  a short text trace when those facts are textual; record the screen only when
+  the visible operator flow matters.
+- **Documentation:** quote the smallest changed instruction and show the result
+  of following it. Use a screenshot only when rendered layout or appearance is
+  the improvement.
+- **Test-only:** demonstrate the product behavior the test protects.
+  The test output remains a supporting check.
+- **Performance:** provide matched measurements with environment, method, and
+  sample size. Use a table for exact values and a chart or trace only when its
+  shape reveals information the table cannot.
+
+## Explanation Is Separate
+
+An explanation visual teaches how something works; practical evidence proves it
+ran. Let `speak-fking-english` decide whether the final explanation needs a
+diagram or other support. Do not use a diagram, diff, or screenshot of prose as
+proof of runtime behavior.
