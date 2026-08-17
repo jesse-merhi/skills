@@ -175,11 +175,10 @@ export const renderedAssetBatchSize = Effect.fn("GitHubRenderedProof.renderedAss
   downloadedBytes: FileSystem.Size
 ) {
   const remainingBytes = FileSystem.Size(maxRenderedTotalBytes - downloadedBytes)
-  const size = Math.min(4, Number(remainingBytes / maxAttachmentBytes))
-  if (size < 1) {
+  if (remainingBytes <= FileSystem.Size(0)) {
     return yield* new GitHubAttachmentError({ message: "GitHub rendered proof exceeded the 500 MiB download budget" })
   }
-  return size
+  return Math.max(1, Math.min(4, Number(remainingBytes / maxAttachmentBytes)))
 })
 
 export const validateRenderedAsset = Effect.fn("GitHubRenderedProof.validateAsset")(function*(options: {
@@ -287,6 +286,8 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
   let downloadedBytes = FileSystem.Size(0)
   for (let start = 0; start < groups.length;) {
     const batchSize = yield* renderedAssetBatchSize(downloadedBytes)
+    const remainingBytes = FileSystem.Size(maxRenderedTotalBytes - downloadedBytes)
+    const maxAssetBytes = FileSystem.Size(remainingBytes < maxAttachmentBytes ? remainingBytes : maxAttachmentBytes)
     const currentProof = start === 0 ? proof : yield* loadRenderedProof(repository, pullRequestNumber, processOptions)
     if (start > 0) yield* requireSameRenderedProof(proof, currentProof)
     const batch = groups.slice(start, start + batchSize)
@@ -302,6 +303,7 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
           assetFile,
           assetUrl: item.url.href,
           label: `rendered PR asset ${position + 1}`,
+          maxBytes: maxAssetBytes,
           processOptions
         })
         const detectedContentType = yield* checkedTrimmedText("file", mediaTypeRequestArgs(assetFile), {

@@ -60,11 +60,13 @@ describe("rendered GitHub proof verification", () => {
   it.effect("reserves the remaining aggregate budget before each download batch", () => Effect.all([
     renderedAssetBatchSize(FileSystem.Size(0)),
     renderedAssetBatchSize(FileSystem.Size(400 * 1024 * 1024)),
+    renderedAssetBatchSize(FileSystem.Size(450 * 1024 * 1024)),
     renderedAssetBatchSize(FileSystem.Size(500 * 1024 * 1024)).pipe(Effect.flip)
   ]).pipe(Effect.map((results) => {
     assert.strictEqual(results[0], 4)
     assert.strictEqual(results[1], 1)
-    assert.match(results[2]?.message ?? "", /exceeded the 500 MiB/u)
+    assert.strictEqual(results[2], 1)
+    assert.match(results[3]?.message ?? "", /exceeded the 500 MiB/u)
   })))
 
   it.effect("reads the actual src instead of src text inside another attribute", () => extractRenderedMedia(
@@ -342,7 +344,14 @@ if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
   printf '%s\\n' 'curl rejected https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2' >&2
   exit 28
 fi
-if [ "\${RENDERED_TEST_MAX_SIZE_ASSETS:-}" = 1 ]; then
+if [ "\${RENDERED_TEST_LARGE_FIRST:-}" = 1 ]; then
+  case "$config" in
+    *'/signed?'*|*'/second?'*|*'/third?'*|*'/fourth?'*)
+      /bin/dd if=/dev/zero of="$output" bs=1 count=0 seek=104857600 2>/dev/null ;;
+    *)
+      /bin/dd if=/dev/zero of="$output" bs=1 count=0 seek=1048576 2>/dev/null ;;
+  esac
+elif [ "\${RENDERED_TEST_MAX_SIZE_ASSETS:-}" = 1 ]; then
   /bin/dd if=/dev/zero of="$output" bs=1 count=0 seek=104857600 2>/dev/null
 else
   cp "$RENDERED_TEST_SOURCE" "$output"
@@ -469,6 +478,21 @@ printf '%s\\n' 'image/jpeg'
       const aggregateRequests = readFileSync(aggregateLog, "utf8")
       assert.strictEqual(aggregateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 5)
       assertTemporaryPathsRemoved(aggregateLog)
+
+      const mixedSizesLog = join(directory, "mixed-sizes.log")
+      const mixedSizes = runLauncher({
+        RENDERED_TEST_EIGHT_ASSETS: "1",
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "mixed-size-gh-state"),
+        RENDERED_TEST_LARGE_FIRST: "1",
+        RENDERED_TEST_LOG: mixedSizesLog
+      })
+      assert.strictEqual(mixedSizes.status, 0, `${mixedSizes.stdout}\n${mixedSizes.stderr}`)
+      assert.include(mixedSizes.stdout, "asset 8: image image/png bytes=1048576")
+      const mixedSizeRequests = readFileSync(mixedSizesLog, "utf8")
+      assert.strictEqual(mixedSizeRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 8)
+      assert.include(mixedSizeRequests, "--max-filesize 103809024")
+      assertTemporaryPathsRemoved(mixedSizesLog)
 
       const changedProof = runFailure({
         RENDERED_TEST_CHANGED: "1",

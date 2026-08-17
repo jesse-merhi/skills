@@ -135,10 +135,14 @@ export const redirectRequestArgs = (responseFile: string, headersFile: string, a
   "--header", "@-", assetUrl
 ] as const
 
-export const fetchRequestArgs = (assetFile: string, headersFile: string) => [
+export const fetchRequestArgs = (
+  assetFile: string,
+  headersFile: string,
+  maxBytes: FileSystem.Size = maxAttachmentBytes
+) => [
   "--disable", "--globoff", "--silent", "--show-error", "--output", assetFile,
   "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
-  "--max-filesize", maxAttachmentBytes.toString(), "--max-time", "600",
+  "--max-filesize", maxBytes.toString(), "--max-time", "600",
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--config", "-"
 ] as const
@@ -153,13 +157,18 @@ export const fetchTrustedAsset = Effect.fn("GitHubAttachment.fetchTrustedAsset")
   readonly assetFile: string
   readonly assetUrl: string
   readonly label: string
+  readonly maxBytes?: FileSystem.Size
   readonly processOptions?: Pick<CheckedTextOptions, "env" | "extendEnv" | "forceKillAfter">
 }) {
   const fileSystem = yield* FileSystem.FileSystem
   let currentUrl = (yield* parseTrustedMediaUrl(options.assetUrl)).href
   for (let redirects = 0; redirects <= 5; redirects += 1) {
     const headersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-asset-headers-" })
-    const output = yield* checkedTrimmedText("curl", fetchRequestArgs(options.assetFile, headersFile), {
+    const output = yield* checkedTrimmedText("curl", fetchRequestArgs(
+      options.assetFile,
+      headersFile,
+      options.maxBytes ?? maxAttachmentBytes
+    ), {
       ...options.processOptions,
       displayCommand: `curl [${options.label}]`,
       includeStdoutInError: false,

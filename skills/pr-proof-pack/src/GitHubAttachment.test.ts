@@ -169,6 +169,10 @@ describe("GitHub attachment upload contract", () => {
       "--config", "-"
     ])
     assert.strictEqual(curlUrlConfig(signedUrl), `url = "${signedUrl}"\n`)
+    assert.include(
+      fetchRequestArgs("/tmp/attachment", "/tmp/attachment-headers", FileSystem.Size(42)).join(" "),
+      "--max-filesize 42"
+    )
     assert.strictEqual(
       curlUrlConfig("https://private-user-images.githubusercontent.com/signed?value=one\\two"),
       'url = "https://private-user-images.githubusercontent.com/signed?value=one\\\\two"\n'
