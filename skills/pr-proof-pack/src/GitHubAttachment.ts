@@ -46,6 +46,8 @@ const TrustedMediaUrl = Schema.URLFromString.pipe(Schema.check(Schema.makeFilter
 const RedirectResult = Schema.Struct({ status: RedirectStatus, location: TrustedMediaUrl })
 const FetchResult = Schema.Struct({ status: Schema.Number, contentType: Schema.String })
 
+export const maxAttachmentBytes = FileSystem.Size(100 * 1024 * 1024)
+
 const decodeJson = <S extends Schema.Top>(schema: S, input: string, label: string) =>
   Schema.decodeUnknownEffect(Schema.fromJsonString(schema))(input).pipe(
     Effect.mapError(() => new GitHubAttachmentError({ message: `GitHub returned an invalid ${label}` }))
@@ -127,7 +129,7 @@ export const mediaTypeRequestArgs = (evidencePath: string) => ["--brief", "--mim
 export const redirectRequestArgs = (responseFile: string, headersFile: string, assetUrl: string) => [
   "--disable", "--globoff", "--silent", "--show-error", "--output", responseFile,
   "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
-  "--max-filesize", "104857600", "--max-time", "600",
+  "--max-filesize", maxAttachmentBytes.toString(), "--max-time", "600",
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--header", "@-", assetUrl
 ] as const
@@ -135,7 +137,7 @@ export const redirectRequestArgs = (responseFile: string, headersFile: string, a
 export const fetchRequestArgs = (assetFile: string, headersFile: string) => [
   "--disable", "--globoff", "--silent", "--show-error", "--output", assetFile,
   "--dump-header", headersFile, "--max-redirs", "0", "--proto", "=https",
-  "--max-filesize", "104857600", "--max-time", "600",
+  "--max-filesize", maxAttachmentBytes.toString(), "--max-time", "600",
   "--write-out", '{"status":%{http_code},"contentType":"%{content_type}"}',
   "--config", "-"
 ] as const
@@ -184,6 +186,12 @@ export const verifyAttachment = Effect.fn("GitHubAttachment.verifyAttachment")(f
   if (options.fetchedSize !== options.expectedSize) return yield* new GitHubAttachmentError({ message: `Downloaded attachment size ${options.fetchedSize} did not match ${options.expectedSize}` })
 })
 
+export const requireAttachmentSize = Effect.fn("GitHubAttachment.requireAttachmentSize")(function*(bytes: FileSystem.Size) {
+  if (bytes > maxAttachmentBytes) {
+    return yield* new GitHubAttachmentError({ message: "GitHub attachments cannot exceed 100 MiB" })
+  }
+})
+
 export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(function*(options: {
   readonly pullRequest: string
   readonly evidencePath: string
@@ -199,6 +207,7 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
     Effect.flatMap((value) => decodeText(MediaType, value, "image or video content type"))
   )
   const sourceInfo = yield* fileSystem.stat(options.evidencePath)
+  yield* requireAttachmentSize(sourceInfo.size)
   const uploadOutput = yield* checkedTrimmedText("gh", uploadRequestArgs({
     evidencePath: options.evidencePath,
     evidenceName: paths.basename(options.evidencePath),

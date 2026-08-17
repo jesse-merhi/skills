@@ -14,6 +14,7 @@ import { parseTrustedMediaUrl } from "./GitHubAttachment.ts"
 import {
   extractRenderedMedia,
   parseRenderedProofResponse,
+  renderedAssetBatchSize,
   renderedProofLines,
   renderedProofRequestArgs,
   requireRenderedByteBudget,
@@ -36,6 +37,16 @@ describe("rendered GitHub proof verification", () => {
     assert.strictEqual(media[0]?.kind, "image")
     assert.strictEqual(media[0]?.url.href, "https://camo.githubusercontent.com/signed?x=1&y=2")
     assert.strictEqual(media[1]?.kind, "video")
+  })))
+
+  it.effect("reserves the remaining aggregate budget before each download batch", () => Effect.all([
+    renderedAssetBatchSize(FileSystem.Size(0)),
+    renderedAssetBatchSize(FileSystem.Size(400 * 1024 * 1024)),
+    renderedAssetBatchSize(FileSystem.Size(500 * 1024 * 1024)).pipe(Effect.flip)
+  ]).pipe(Effect.map((results) => {
+    assert.strictEqual(results[0], 4)
+    assert.strictEqual(results[1], 1)
+    assert.match(results[2]?.message ?? "", /exceeded the 500 MiB/u)
   })))
 
   it.effect("reads the actual src instead of src text inside another attribute", () => extractRenderedMedia(
@@ -176,7 +187,11 @@ if [ "\${RENDERED_TEST_FIVE_ASSETS:-}" = 1 ]; then
   fifth='fifth'
   if [ "\${RENDERED_TEST_DUPLICATE:-}" = 1 ]; then fifth='fourth'; fi
   if [ "\${RENDERED_TEST_CHANGED:-}" = 1 ] && [ "$call" -gt 1 ]; then fifth='changed-fifth'; fi
-  payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"></p>"}'
+  if [ "\${RENDERED_TEST_EIGHT_ASSETS:-}" = 1 ]; then
+    payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/sixth?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/seventh?jwt=__QUERY__\\"><img src=\\"https://private-user-images.githubusercontent.com/eighth?jwt=__QUERY__\\"></p>"}'
+  else
+    payload='{"body":"__BODY__","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=__QUERY__&amp;s=__SEMANTIC__&amp;y=2\\"><img src=\\"https://private-user-images.githubusercontent.com/second?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/third?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/fourth?jwt=__QUERY__&amp;s=__SEMANTIC__\\"><img src=\\"https://private-user-images.githubusercontent.com/__FIFTH__?jwt=__QUERY__&amp;s=__SEMANTIC__\\"></p>"}'
+  fi
   printf '%s\\n' "$payload" | sed -e "s/__BODY__/$body/g" -e "s/__QUERY__/$query/g" -e "s/__SEMANTIC__/$semantic/g" -e "s/__FIFTH__/$fifth/g"
 else
   printf '%s\\n' '{"body":"proof","body_html":"<p><img src=\\"https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&amp;y=2\\"></p>"}'
@@ -206,7 +221,11 @@ if [ "\${RENDERED_TEST_CURL_FAILURE:-}" = 1 ]; then
   printf '%s\\n' 'curl rejected https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret&y=2' >&2
   exit 28
 fi
-cp "$RENDERED_TEST_SOURCE" "$output"
+if [ "\${RENDERED_TEST_MAX_SIZE_ASSETS:-}" = 1 ]; then
+  /bin/dd if=/dev/zero of="$output" bs=1 count=0 seek=104857600 2>/dev/null
+else
+  cp "$RENDERED_TEST_SOURCE" "$output"
+fi
 if [ "\${RENDERED_TEST_REDIRECT:-}" = 'untrusted' ]; then
   printf '%s\\n' 'HTTP/1.1 302 Found' 'Location: https://internal.example.com/admin' '' > "$headers"
   printf '%s' '{"status":302,"contentType":"text/html"}'
@@ -299,6 +318,24 @@ printf '%s\\n' 'image/jpeg'
       const duplicateRequests = readFileSync(duplicateLog, "utf8")
       assert.strictEqual(duplicateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 4)
       assertTemporaryPathsRemoved(duplicateLog)
+
+      const aggregateLog = join(directory, "aggregate.log")
+      const aggregate = runLauncher({
+        RENDERED_TEST_EIGHT_ASSETS: "1",
+        RENDERED_TEST_FIVE_ASSETS: "1",
+        RENDERED_TEST_GH_STATE: join(directory, "aggregate-state"),
+        RENDERED_TEST_LOG: aggregateLog,
+        RENDERED_TEST_MAX_SIZE_ASSETS: "1"
+      })
+      assertCommandFailure(aggregate)
+      assert.include(
+        `${aggregate.stdout}\n${aggregate.stderr}`,
+        "exceeded the 500 MiB download budget",
+        `${aggregate.stdout}\n${aggregate.stderr}\n${readFileSync(aggregateLog, "utf8")}`
+      )
+      const aggregateRequests = readFileSync(aggregateLog, "utf8")
+      assert.strictEqual(aggregateRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 5)
+      assertTemporaryPathsRemoved(aggregateLog)
 
       const changedProof = runFailure({
         RENDERED_TEST_CHANGED: "1",

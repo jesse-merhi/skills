@@ -4,7 +4,7 @@ import * as FileSystem from "effect/FileSystem"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
@@ -24,6 +24,7 @@ import {
   parseUploadResponse,
   redirectRequestArgs,
   repositoryFromPullRequest,
+  requireAttachmentSize,
   uploadRequestArgs,
   verifyAttachment
 } from "./GitHubAttachment.ts"
@@ -214,11 +215,19 @@ describe("GitHub attachment upload contract", () => {
     fetchedSize: FileSystem.Size(41)
   }).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /size 41 did not match 42/u))))
 
+  it.effect("rejects attachments larger than GitHub's 100 MiB limit", () => Effect.all([
+    requireAttachmentSize(FileSystem.Size(100 * 1024 * 1024)),
+    requireAttachmentSize(FileSystem.Size((100 * 1024 * 1024) + 1)).pipe(Effect.flip)
+  ]).pipe(Effect.map((results) => assert.match(results[1]?.message ?? "", /cannot exceed 100 MiB/u))))
+
   it("keeps credentials on the first curl request and prints only a verified URL", () => {
     const directory = mkdtempSync(join(tmpdir(), "github-attachment-test-"))
     const log = join(directory, "curl.log")
     const evidence = join(directory, "proof.png")
+    const oversizedEvidence = join(directory, "oversized.png")
     writeFileSync(evidence, "evidence")
+    writeFileSync(oversizedEvidence, "")
+    truncateSync(oversizedEvidence, (100 * 1024 * 1024) + 1)
     writeExecutable(join(directory, "gh"), `#!/bin/sh
 printf 'gh-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
 case "$1:$2" in
@@ -347,6 +356,12 @@ esac
       assertCommandFailure(unsupported)
       assert.notInclude(unsupported.stdout, "https://github.com/user-attachments/assets/abc-123")
       assert.notInclude(readFileSync(unsupportedLog, "utf8"), "api --method POST")
+
+      const oversizedLog = join(directory, "oversized.log")
+      const oversized = runLauncher(oversizedEvidence, { UPLOAD_TEST_LOG: oversizedLog })
+      assertCommandFailure(oversized)
+      assert.include(`${oversized.stdout}\n${oversized.stderr}`, "cannot exceed 100 MiB")
+      assert.notInclude(readFileSync(oversizedLog, "utf8"), "api --method POST")
 
       const success = runLauncher(evidence)
       assert.strictEqual(success.status, 0, `${success.stderr}\n${existsSync(log) ? readFileSync(log, "utf8") : "no process log"}`)
