@@ -38,6 +38,33 @@ behaviors, migration steps, or risks that a reviewer must act on. Remove
 repeated claims, exhaustive test inventories, review history, file lists, and
 implementation detail already clear from the diff.
 
+## Change Breakdown
+
+When a PR spans multiple reviewer-meaningful parts, or its size needs
+explanation, include one compact direct-base breakdown after the opening. Use
+the `+LOC` and `-LOC` totals from `pr-net-diff --markdown`. Every changed path
+must belong to exactly one row, and the rows must add up to the reported total.
+
+Start with implementation, tests and fixtures, documentation, CI/config/tooling,
+and dependencies/generated files. If implementation spans distinct product
+areas, replace that row with clearer non-overlapping labels grounded in the
+paths. Keep the table to the few rows that change how the PR should be reviewed.
+Binary files count as files but do not have textual LOC.
+
+```md
+## Change breakdown
+
+| Part | Files | +LOC | -LOC |
+| --- | ---: | ---: | ---: |
+| Checkout admission | 5 | +312 | -41 |
+| Review result plumbing | 4 | +407 | -58 |
+| Tests and fixtures | 18 | +1,130 | -30 |
+| **Total** | **27** | **+1,849** | **-129** |
+```
+
+Do not call a PR “large” or “huge” without this breakdown. Do not use file
+count, commit count, or a raw file inventory as a substitute.
+
 ## Default Shape
 
 Use only the sections the change needs:
@@ -119,15 +146,15 @@ persisted or emitted result. Keep secrets and verbose output out.
 
 ## Tables
 
-Use a table only when several cases need comparison across stable axes, such as
-input, previous outcome, new outcome, and side effect. Use adjacent code blocks
-for one before/after case. Do not use tables as a file inventory or a way to
-compress several paragraphs into cells.
+Use a table for the compact change breakdown above or when several cases need
+comparison across stable axes, such as input, previous outcome, new outcome,
+and side effect. Use adjacent code blocks for one before/after case. Do not use
+tables as a file inventory or a way to compress several paragraphs into cells.
 
 ## What To Leave Out
 
 - generic summary sections that repeat the opening;
-- net-diff tables, file inventories, and implementation buckets;
+- raw file inventories and implementation buckets that do not explain scope;
 - routine test, build, CI, coverage, lint, or type-check results;
 - review-loop history, agent activity, run labels, and planning notes;
 - unexplained project terms, ticket shorthand, paths, or class names;

@@ -168,6 +168,7 @@ behavior_checks = {
         "scripts/github-upload-attachment",
         "repository command",
         "`body_html`",
+        "direct-base `+LOC` and `-LOC`",
     ],
     root / "skills/pr-proof-pack/references/screenshots.md": [
         "GitHub Attachment Upload",
@@ -186,6 +187,7 @@ behavior_checks = {
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
         "simplest format that preserves the claim",
         "copyable text for textual behavior",
+        "## Change Breakdown",
     ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",

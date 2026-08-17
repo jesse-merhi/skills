@@ -13,6 +13,7 @@ export interface NetDiffReport {
   readonly head: string
   readonly changedFiles: ReadonlyArray<{ readonly status: string; readonly path: string }>
   readonly diffStat: string
+  readonly changeBreakdown: ChangeBreakdown
   readonly commits: ReadonlyArray<string>
   readonly branchOnlyChurnNoNetDiff: ReadonlyArray<string>
   readonly fileDetails: ReadonlyArray<{
@@ -22,6 +23,83 @@ export interface NetDiffReport {
     readonly proof_hint: string
   }>
   readonly proofPlan: ReadonlyArray<{ readonly path: string; readonly hint: string }>
+}
+
+export interface FileChange {
+  readonly path: string
+  readonly additions: number
+  readonly deletions: number
+  readonly binary: boolean
+}
+
+export interface ChangeBreakdownPart {
+  readonly part: string
+  readonly files: number
+  readonly additions: number
+  readonly deletions: number
+  readonly binaryFiles: number
+}
+
+export interface ChangeBreakdown {
+  readonly parts: ReadonlyArray<ChangeBreakdownPart>
+  readonly total: Omit<ChangeBreakdownPart, "part">
+}
+
+const breakdownParts = [
+  "Implementation",
+  "Tests and fixtures",
+  "Documentation",
+  "CI, config, and tooling",
+  "Dependencies and generated files"
+] as const
+
+const changePart = (path: string): typeof breakdownParts[number] => {
+  const lower = path.toLowerCase()
+  const segments = lower.split("/")
+  const basename = segments.at(-1) ?? lower
+  if (segments.some((segment) => ["__fixtures__", "__tests__", "fixtures", "spec", "specs", "test", "tests"].includes(segment)) || /[.](?:spec|test)[.][^.]+$/u.test(basename)) return "Tests and fixtures"
+  if (segments.some((segment) => ["doc", "docs", "documentation"].includes(segment)) || /[.](?:adoc|md|mdx|rst)$/u.test(basename)) return "Documentation"
+  if (["bun.lock", "bun.lockb", "composer.lock", "deno.lock", "gemfile.lock", "package-lock.json", "pnpm-lock.yaml", "poetry.lock", "uv.lock", "yarn.lock"].includes(basename) || segments.some((segment) => ["dist", "generated", "third_party", "vendor"].includes(segment))) return "Dependencies and generated files"
+  if (segments.some((segment) => [".circleci", ".github", "config", "configs", "script", "scripts", "tool", "tools"].includes(segment)) || /^(?:eslint|prettier|tsconfig|vitest|vite|webpack)[.-]/u.test(basename) || ["package.json", "turbo.json"].includes(basename)) return "CI, config, and tooling"
+  return "Implementation"
+}
+
+export const parseNumStat = (output: string): ReadonlyArray<FileChange> => output.split("\n").filter(Boolean).map((line) => {
+  const [added = "-", deleted = "-", ...pathParts] = line.split("\t")
+  const binary = added === "-" || deleted === "-"
+  return {
+    path: pathParts.join("\t"),
+    additions: binary ? 0 : Number(added),
+    deletions: binary ? 0 : Number(deleted),
+    binary
+  }
+})
+
+export const changeBreakdownFromNumStat = (changes: ReadonlyArray<FileChange>): ChangeBreakdown => {
+  const parts = new Map<string, Omit<ChangeBreakdownPart, "part">>()
+  for (const change of changes) {
+    const part = changePart(change.path)
+    const current = parts.get(part) ?? { files: 0, additions: 0, deletions: 0, binaryFiles: 0 }
+    parts.set(part, {
+      files: current.files + 1,
+      additions: current.additions + change.additions,
+      deletions: current.deletions + change.deletions,
+      binaryFiles: current.binaryFiles + (change.binary ? 1 : 0)
+    })
+  }
+  const rows = breakdownParts.flatMap((part) => {
+    const values = parts.get(part)
+    return values === undefined ? [] : [{ part, ...values }]
+  })
+  return {
+    parts: rows,
+    total: rows.reduce((total, row) => ({
+      files: total.files + row.files,
+      additions: total.additions + row.additions,
+      deletions: total.deletions + row.deletions,
+      binaryFiles: total.binaryFiles + row.binaryFiles
+    }), { files: 0, additions: 0, deletions: 0, binaryFiles: 0 })
+  }
 }
 
 const proofKind = (path: string) => {
@@ -62,9 +140,10 @@ export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: Readonly
   const base = yield* resolveBase
   const requestedPaths = paths.map((path) => path.replace(/^(?:\.\/)+/u, ""))
   const pathspec = requestedPaths.length === 0 ? [] : ["--", ...requestedPaths]
-  const [head, names, stat, log, touchedOutput] = yield* Effect.all([
+  const [head, names, stat, numStat, log, touchedOutput] = yield* Effect.all([
     git(["rev-parse", "HEAD"]), git(["diff", "--name-status", `${base.comparisonBase}...HEAD`, ...pathspec]),
-    git(["diff", "--stat", `${base.comparisonBase}...HEAD`, ...pathspec]), git(["log", "--oneline", `${base.comparisonBase}..HEAD`, ...pathspec]),
+    git(["diff", "--stat", `${base.comparisonBase}...HEAD`, ...pathspec]), git(["diff", "--numstat", `${base.comparisonBase}...HEAD`, ...pathspec]),
+    git(["log", "--oneline", `${base.comparisonBase}..HEAD`, ...pathspec]),
     git(["log", "--name-only", "--pretty=format:", `${base.comparisonBase}..HEAD`, ...pathspec])
   ], { concurrency: "unbounded" })
   const changedFiles = names.split("\n").filter(Boolean).map((line) => { const parts = line.split("\t"); return { status: parts[0] ?? "M", path: parts.at(-1) ?? line } })
@@ -80,11 +159,12 @@ export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: Readonly
       proof_hint: status === "modified" ? proofKind(gitPath) : "Omit from PR proof unless needed for context."
     } as const
   })), { concurrency: "unbounded" })
-  return { base, head, changedFiles, diffStat: stat, commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), fileDetails, proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofKind(path) })) } satisfies NetDiffReport
+  return { base, head, changedFiles, diffStat: stat, changeBreakdown: changeBreakdownFromNumStat(parseNumStat(numStat)), commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), fileDetails, proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofKind(path) })) } satisfies NetDiffReport
 })
 
 export const renderMarkdown = (report: NetDiffReport, proofPlan: boolean) => {
-  const lines = [`Base: ${report.base.ref} ${report.base.comparisonBase.slice(0, 12)}`, `Base source: ${report.base.source}`, `Head: ${report.head.slice(0, 12)}`, "", "## Net Changed Files", ...(report.changedFiles.length === 0 ? ["- None"] : report.changedFiles.map((row) => `- ${row.status} ${row.path}`)), "", "## Diff Stat", "```text", report.diffStat || "No net diff.", "```", "", "## Branch Commits", ...(report.commits.length === 0 ? ["- None"] : report.commits.map((line) => `- ${line}`)), "", "## Branch-Only Churn With No Net Diff", ...(report.branchOnlyChurnNoNetDiff.length === 0 ? ["- None"] : report.branchOnlyChurnNoNetDiff.map((path) => `- ${path}`))]
+  const breakdown = report.changeBreakdown
+  const lines = [`Base: ${report.base.ref} ${report.base.comparisonBase.slice(0, 12)}`, `Base source: ${report.base.source}`, `Head: ${report.head.slice(0, 12)}`, "", "## Change Breakdown", ...(breakdown.parts.length === 0 ? ["No net diff."] : ["| Part | Files | +LOC | -LOC |", "| --- | ---: | ---: | ---: |", ...breakdown.parts.map((row) => `| ${row.part} | ${row.files} | +${row.additions} | -${row.deletions} |`), `| **Total** | **${breakdown.total.files}** | **+${breakdown.total.additions}** | **-${breakdown.total.deletions}** |`, ...(breakdown.total.binaryFiles === 0 ? [] : [``, `${breakdown.total.binaryFiles} binary ${breakdown.total.binaryFiles === 1 ? "file is" : "files are"} included in the file count and excluded from LOC totals.`])]), "", "## Net Changed Files", ...(report.changedFiles.length === 0 ? ["- None"] : report.changedFiles.map((row) => `- ${row.status} ${row.path}`)), "", "## Diff Stat", "```text", report.diffStat || "No net diff.", "```", "", "## Branch Commits", ...(report.commits.length === 0 ? ["- None"] : report.commits.map((line) => `- ${line}`)), "", "## Branch-Only Churn With No Net Diff", ...(report.branchOnlyChurnNoNetDiff.length === 0 ? ["- None"] : report.branchOnlyChurnNoNetDiff.map((path) => `- ${path}`))]
   if (report.fileDetails.length > 0) lines.push("", "## Requested File Details", ...report.fileDetails.flatMap((detail) => [
     `- ${detail.path}: ${detail.status}`,
     ...detail.branch_commits.map((commit) => `  - ${commit}`),

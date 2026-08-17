@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
+description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, break down large changes by direct-base +LOC and -LOC, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
 ---
 
 # PR Proof Pack
@@ -99,10 +99,13 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally with narrow file
    paths. Base every claim on the direct-base-to-final-`HEAD` net diff, not the
    latest commit or chat memory. Remove branch-only churn with no net diff from
-   consideration.
+   consideration. When the PR spans multiple meaningful parts, keep the
+   generated `+LOC` and `-LOC` breakdown. Split implementation into clearer
+   product areas only when the paths support exact, non-overlapping totals.
 
    Done when the final behavior and existing reviewer-visible claims can be
-   compared.
+   compared, and any claim that the PR is large has a direct-base breakdown
+   whose rows reconcile to the total.
 
 4. Make the freshness decision.
 
@@ -150,8 +153,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    immediately before saving the complete draft.
 
    Done when the first two sentences explain what broke and why it matters, the
-   next two explain the fix and outcome, the body stays within the default size
-   budget or justifies each exception, and the draft is self-contained.
+   next two explain the fix and outcome, a multi-part or unusually large PR has
+   a compact change breakdown, the body stays within the default size budget or
+   justifies each exception, and the draft is self-contained.
 
 8. Confirm authority and upload provider-hosted evidence.
 
@@ -200,6 +204,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 - A `refreshed` result changed only stale claims and evidence.
 - Every affected PR explains the break and fix quickly, then proves final
   direct-base behavior in the simplest format that preserves the claim.
+- A multi-part or unusually large PR shows exact direct-base `+LOC` and `-LOC`
+  by reviewer-meaningful part, with every file counted once and totals reconciled.
 - Textual behavior uses copyable text. Visual behavior uses provider-hosted
   media verified headlessly or, where required, through an interactive browser.
 - Reproducible bug fixes show matched broken and fixed outcomes.
