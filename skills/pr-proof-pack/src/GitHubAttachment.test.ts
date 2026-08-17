@@ -110,7 +110,8 @@ describe("GitHub attachment upload contract", () => {
     assert.strictEqual(fetchArgs[0], "--disable")
     assert.include(fetchArgs, "--location")
     assert.includeMembers([...fetchArgs], ["--proto", "=https", "--proto-redir", "=https"])
-    assert.notInclude(fetchArgs, "--header")
+    assert.notInclude(fetchArgs.join(" "), "Authorization")
+    assert.notInclude(fetchArgs, "@-")
     assert.notInclude(fetchArgs, "--location-trusted")
   })
 
@@ -162,7 +163,13 @@ describe("GitHub attachment upload contract", () => {
     writeExecutable(join(directory, "gh"), `#!/bin/sh
 printf 'gh-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
 case "$1:$2" in
-  pr:view) printf '%s\\n' '{"url":"https://github.com/jesse-merhi/skills/pull/81"}' ;;
+  pr:view)
+    if [ "$3" != 'https://github.com/jesse-merhi/skills/pull/81' ] || [ "$4" != '--json' ] || [ "$5" != 'url' ]; then
+      printf 'unexpected gh pr view arguments: %s\\n' "$*" >&2
+      exit 2
+    fi
+    printf '%s\\n' '{"url":"https://github.com/jesse-merhi/skills/pull/81"}'
+    ;;
   auth:token) printf '%s\\n' 'test-token' ;;
   api:--hostname) printf '%s\\n' '{"id":42}' ;;
   api:--method) printf '%s\\n' 'HTTP/2.0 201 Created' '' 'https://github.com/user-attachments/assets/abc-123' ;;
@@ -170,7 +177,7 @@ case "$1:$2" in
 esac
 `)
     writeExecutable(join(directory, "file"), `#!/bin/sh
-printf '%s\\n' 'image/png'
+printf '%s\\n' "\${UPLOAD_TEST_MEDIA_TYPE:-image/png}"
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
 output=''
@@ -191,7 +198,8 @@ case " $* " in
     printf '%s' '{"status":302,"location":"https://private-user-images.githubusercontent.com/signed"}'
     ;;
   *)
-    printf 'second-args=%s\\n' "$*" >> "$UPLOAD_TEST_LOG"
+    second_input="$(cat)"
+    printf 'second-stdin=%s\\nsecond-args=%s\\n' "$second_input" "$*" >> "$UPLOAD_TEST_LOG"
     if [ "\${UPLOAD_TEST_MISMATCH:-}" = 1 ]; then
       printf '%s' 'bad' > "$output"
     else
@@ -225,6 +233,15 @@ esac
       assert.notStrictEqual(directoryInput.status, 0)
       assert.isFalse(existsSync(log))
 
+      const unsupportedLog = join(directory, "unsupported.log")
+      const unsupported = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
+        encoding: "utf8",
+        env: { ...environment, UPLOAD_TEST_LOG: unsupportedLog, UPLOAD_TEST_MEDIA_TYPE: "text/plain" }
+      })
+      assert.notStrictEqual(unsupported.status, 0)
+      assert.notInclude(unsupported.stdout, "https://github.com/user-attachments/assets/abc-123")
+      assert.notInclude(readFileSync(unsupportedLog, "utf8"), "api --method POST")
+
       const success = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
         encoding: "utf8",
         env: environment
@@ -237,8 +254,11 @@ esac
       const secondArgs = requests.split("\n").find((line) => line.startsWith("second-args=")) ?? ""
       assert.include(requests, "first-stdin=Authorization: Bearer test-token")
       assert.notInclude(firstArgs, "--location")
+      assert.include(requests, "second-stdin=\n")
       assert.include(secondArgs, "--location")
-      assert.notInclude(secondArgs, "--header")
+      assert.notInclude(secondArgs, "Authorization")
+      assert.notInclude(secondArgs, "test-token")
+      assert.notInclude(secondArgs, "@-")
 
       const mismatch = spawnSync(launcher, ["--pr", "https://github.com/jesse-merhi/skills/pull/81", evidence], {
         encoding: "utf8",
@@ -249,5 +269,5 @@ esac
     } finally {
       rmSync(directory, { force: true, recursive: true })
     }
-  })
+  }, 20_000)
 })

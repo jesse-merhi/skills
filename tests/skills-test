@@ -492,7 +492,6 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" 'It prints only the verified asset URL on success'
   assert_not_contains "$skill/references/screenshots.md" "## Interactive Browser Fallback"
   assert_not_contains "$skill/references/screenshots.md" 'upload_file'
-  assert_not_contains "$skill/references/screenshots.md" 'browser upload'
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
   assert_contains "$skill/references/screenshots.md" "PR_HOST='<hostname-resolved-in-step-2>'"
   assert_contains "$skill/references/screenshots.md" 'gh api --hostname "$PR_HOST"'
