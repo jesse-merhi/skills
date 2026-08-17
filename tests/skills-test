@@ -490,6 +490,7 @@ test_pr_proof_pack_is_a_visual_publishing_gate() {
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual explains the behavior"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
+  assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
   assert_contains "$skill/references/screenshots.md" "## GitHub Attachment Upload"
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-upload-attachment'

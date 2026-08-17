@@ -111,7 +111,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
 5. Pass the refresh preflight for stale proof.
 
-   For a `github.com` PR, confirm `gh auth status`. The upload command in step 8
+   For a `github.com` PR, confirm
+   `gh auth status --active --hostname github.com`. The upload command in step 8
    resolves and validates the exact PR and repository. Identify whether
    practical capture needs a browser or device and whether the finished body
    requires client-side inspection, such as a Mermaid diagram. Do not make an
