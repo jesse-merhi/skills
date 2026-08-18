@@ -681,9 +681,9 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   printf 'new path\n' > "$repo/helper.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "authorization race" --base main --reason "The new path needs authorization." \
+    --target "authorization race" --base main --reason "The additional production line needs authorization." \
     >"$tmp/block.out" 2>"$tmp/block.err"; then
-    fail "the new production path should block before authorization"
+    fail "production-line growth beyond the budget should block before authorization"
   fi
 
   (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
@@ -703,8 +703,8 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main \
-    --scope-summary "Include the explicitly approved helper path." \
-    --authorization "User explicitly approved the helper path." >/dev/null
+    --scope-summary "Include the explicitly approved production-line growth." \
+    --authorization "User explicitly approved the production-line growth." >/dev/null
   : > "$tmp/authorize.release"
   wait "$stale_pid"
   stale_code="$(cat "$tmp/authorize.code")"
@@ -714,7 +714,7 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main)"
   assert_output_contains "$out" "SCOPE BUDGET READY"
-  assert_output_contains "$out" "authorization=User explicitly approved the helper path."
+  assert_output_contains "$out" "authorization=User explicitly approved the production-line growth."
 }
 
 test_review_scope_budget_blocks_deterministically() {
@@ -876,26 +876,25 @@ test_review_scope_budget_blocks_deterministically() {
   assert_output_contains "$out" "authorization=User approved the additional startup-guard scope."
 
   printf 'helper\n' > "$repo/helper.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" \
     --repo sample-app \
     --repo-path "$repo" \
     --branch feature \
     --target "PR #12" \
     --base main \
-    --reason "A new helper would move production code outside the frozen file surface." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check should block a new production path even below the line-growth limit"
-  fi
-  assert_contains "$tmp/stderr" "New production paths outside the frozen scope:"
-  assert_contains "$tmp/stderr" "- helper.ts"
+    --reason "The accepted fix adds a small helper in a new production file.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=14 current=15 growth=1 allowed-growth=4 maximum=18"
+  assert_output_contains "$out" "Production paths added since the baseline (informational):"
+  assert_output_contains "$out" "- helper.ts"
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #12" --base main)"
   assert_output_contains "$out" "Scope budget"
-  assert_output_contains "$out" "SCOPE BUDGET BLOCKED"
-  assert_output_contains "$out" "new-production-paths:"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "Production paths added since the baseline (informational):"
   assert_output_contains "$out" "helper.ts"
 }
 

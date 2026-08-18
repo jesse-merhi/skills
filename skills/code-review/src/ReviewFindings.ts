@@ -567,7 +567,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   const newProductionPaths = measurement.productionPaths.filter((path) => !baselinePaths.has(path))
   const growthLines = Math.max(0, measurement.production.changedLines - budget.baselineProductionLines)
   const maximumProductionLines = budget.baselineProductionLines + budget.allowedGrowthLines
-  const blocked = measurement.production.changedLines > maximumProductionLines || newProductionPaths.length > 0
+  const blocked = measurement.production.changedLines > maximumProductionLines
   const status = blocked ? "blocked" : "ok"
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
@@ -821,6 +821,10 @@ const scopeCountsLine = (scope: ScopeBudgetStatus): string => {
   return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${scope.baselineProductionLines} current=${scope.currentProductionLines} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} limit=${scope.limitPercent}% excluded-tests=${scope.currentTestLines} excluded-generated=${scope.currentGeneratedLines}`
 }
 
+const productionPathsAddedLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => scope.newProductionPaths.length === 0
+  ? []
+  : ["Production paths added since the baseline (informational):", ...scope.newProductionPaths.map((path) => `- ${path}`)]
+
 export const formatReadyScopeBudget = (scope: ScopeBudgetStatus): string => [
   "SCOPE BUDGET READY",
   scopeCountsLine(scope),
@@ -834,32 +838,30 @@ export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
   `scope=${scope.scopeSummary}`,
   `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`,
   ...(scope.lastReason.length === 0 ? [] : [`last-reason=${scope.lastReason}`]),
-  ...(scope.newProductionPaths.length === 0 ? [] : ["new-production-paths:", ...scope.newProductionPaths.map((path) => `- ${path}`)])
+  ...productionPathsAddedLines(scope)
 ].join("\n")
 
 export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
   "SCOPE BUDGET OK",
   scopeCountsLine(check),
   `scope=${check.scopeSummary}`,
-  `next-work=${check.lastReason}`
+  `next-work=${check.lastReason}`,
+  ...productionPathsAddedLines(check)
 ].join("\n")
 
 function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
   const completed = check.completedFindings.length === 0
     ? ["- none recorded"]
     : check.completedFindings.map((finding) => `- ${finding.decision_id}: ${finding.summary}`)
-  const outside = check.newProductionPaths.length === 0
-    ? []
-    : ["New production paths outside the frozen scope:", ...check.newProductionPaths.map((path) => `- ${path}`)]
   return [
     "SCOPE BUDGET BLOCKED",
     scopeCountsLine(check),
-    ...outside,
+    ...productionPathsAddedLines(check),
     "Completed review work:",
     ...completed,
     `Why more scope is requested: ${check.lastReason}`,
     "Stop reviewing now.",
-    "Tell the user what has been completed, show the measured overage or new production paths, and explain why the remaining work justifies more scope.",
+    "Tell the user what has been completed, show the measured line overage, and explain why the remaining work justifies a larger diff.",
     "Ask the user for explicit authorization. Do not review or patch anything else until they answer.",
     "After approval, run scope-authorize with the user's authorization text and the new scope summary, then restart the current review phase."
   ].join("\n")

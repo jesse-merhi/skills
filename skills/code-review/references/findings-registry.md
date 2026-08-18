@@ -36,7 +36,7 @@ baseline:
 "$review_findings_bin" scope-start \
   --repo <repo> --repo-path <repo-root> --branch <branch> \
   --target <target> --base <base> --head <head> \
-  --scope-summary "<request, behavior, owner boundary, and files>"
+  --scope-summary "<request, behavior, and owner boundary>"
 ```
 
 After every accepted fix and before another review pass, run:
@@ -45,13 +45,14 @@ After every accepted fix and before another review pass, run:
 "$review_findings_bin" scope-check \
   --repo <repo> --repo-path <repo-root> --branch <branch> \
   --target <target> --base <base> \
-  --reason "<remaining work and why it may merit additional scope>"
+  --reason "<remaining work and why it may merit a larger diff>"
 ```
 
 A passing check prints the exact baseline, current production lines, allowed
-growth, excluded test/generated lines, and frozen scope. A blocked check exits
-non-zero and is an immediate stop: present its output to the user and do no more
-review or patch work.
+growth, excluded test/generated lines, frozen scope, and any production paths
+added for information. A blocked check exits non-zero only when production-line
+growth exceeds the budget and is an immediate stop: present its output to the
+user and do no more review or patch work.
 
 Only after the user explicitly approves a larger scope, record their words and
 the revised scope:
