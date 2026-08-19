@@ -66,13 +66,15 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
    ```sh
    review_findings_bin="<skill-dir>/scripts/review-findings"
+   "$review_findings_bin" schema
    "$review_findings_bin" scope-start \
      --repo <repo> --repo-path <repo-root> --branch <branch> \
      --target <target> --base <base> --head <head> \
      --scope-summary "<request, behavior, owner boundary, and files>"
    ```
 
-   On a resumed run, use `scope-status`; never rerun `scope-start` to move the
+   Treat `schema` output as the authoritative finding-record contract. On a
+   resumed run, use `scope-status`; never rerun `scope-start` to move the
    baseline. Done when `review-guardrails` is loaded and the CLI has persisted
    the baseline.
 
@@ -169,9 +171,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
-- Every accepted runtime finding has a recorded production path, reachability
-  evidence, likelihood, impact, actual consequence, and `accept` disposition
-  from the risk rating.
+- Every finding passes the current `review-findings schema`. Every accepted
+  runtime finding has a recorded production path, reachability evidence,
+  likelihood, risk impact, actual consequence, and `accept` disposition from
+  the risk rating.
 - Every autonomous fix names a current reachable contract and remains
   proportional to its impact.
 - `scope-start` persisted the original baseline, every accepted fix was followed

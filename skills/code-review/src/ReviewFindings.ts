@@ -22,7 +22,48 @@ export interface ReviewRun {
   readonly decisionLog: string
 }
 
-export interface Finding {
+export const FINDING_SCHEMA_VERSION = 2
+export const FINDING_KINDS = ["runtime", "maintenance"] as const
+export const FINDING_STATUSES = ["open", "fixed", "rejected", "deferred", "provisional", "reopened"] as const
+export const FINDING_DISPOSITIONS = ["accept", "investigate", "consult", "residual", "reject"] as const
+export const FINDING_FIX_SCOPES = ["local", "systemic"] as const
+export const FINDING_LIKELIHOODS = ["likely", "possible", "rare", "unknown", "theoretical"] as const
+export const FINDING_RISK_IMPACTS = ["critical", "high", "medium", "low"] as const
+export const FINDING_PRIORITIES = ["", "p0", "p1", "p2", "p3", "p4"] as const
+export const FINDING_IMPACTS = ["", "ui", "workflow", "api-contract", "permissions", "privacy", "finance", "data-correctness", "audit", "migration", "schema", "internal"] as const
+const acceptedRuntimePriorities: Readonly<Record<string, Readonly<Record<string, ReadonlyArray<string>>>>> = {
+  likely: { low: ["p3"], medium: ["p2"], high: ["p1", "p2"], critical: ["p0", "p1"] },
+  possible: { low: ["p3"], medium: ["p2", "p3"], high: ["p1", "p2"], critical: ["p1"] },
+  rare: { low: [], medium: ["p3"], high: ["p2"], critical: ["p1"] }
+}
+const acceptedPriorityLabel = (likelihood: string, impact: string) => {
+  const priorities = acceptedRuntimePriorities[likelihood]?.[impact] ?? []
+  return priorities.length === 0 ? "reject" : priorities.map((priority) => priority.toUpperCase()).join("/")
+}
+
+const FindingRecord = Schema.Struct({
+  decisionId: Schema.String,
+  status: Schema.Literals(FINDING_STATUSES),
+  source: Schema.String,
+  fingerprint: Schema.String,
+  summary: Schema.String,
+  impact: Schema.Literals(FINDING_IMPACTS),
+  priority: Schema.Literals(FINDING_PRIORITIES),
+  material: Schema.Boolean,
+  userImpact: Schema.String,
+  decision: Schema.String,
+  text: Schema.String,
+  findingKind: Schema.Literals(FINDING_KINDS),
+  productionPath: Schema.String,
+  reachabilityEvidence: Schema.String,
+  likelihood: Schema.Union([Schema.Literals(FINDING_LIKELIHOODS), Schema.Literal("")]),
+  riskImpact: Schema.Union([Schema.Literals(FINDING_RISK_IMPACTS), Schema.Literal("")]),
+  actualConsequence: Schema.String,
+  disposition: Schema.Literals(FINDING_DISPOSITIONS),
+  fixScope: Schema.Literals(FINDING_FIX_SCOPES)
+})
+
+export interface FindingInput {
   readonly decisionId: string
   readonly status: string
   readonly source: string
@@ -34,7 +75,66 @@ export interface Finding {
   readonly userImpact: string
   readonly decision: string
   readonly text: string
+  readonly findingKind: string
+  readonly productionPath: string
+  readonly reachabilityEvidence: string
+  readonly likelihood: string
+  readonly riskImpact: string
+  readonly actualConsequence: string
+  readonly disposition: string
+  readonly fixScope: string
 }
+
+export type Finding = typeof FindingRecord.Type
+
+export class InvalidFinding extends Error {
+  readonly _tag = "InvalidFinding"
+  constructor(message: string) {
+    super(`invalid finding: ${message}; run review-findings schema for the current record contract`)
+  }
+}
+
+export const formatFindingSchema = () => `review-findings record schema v${FINDING_SCHEMA_VERSION}
+
+Required for every finding:
+  --repo <name> --repo-path <root> --target <PR or range>
+  --finding-kind ${FINDING_KINDS.join("|")}
+  --status ${FINDING_STATUSES.join("|")}
+  --disposition ${FINDING_DISPOSITIONS.join("|")}
+  --fix-scope ${FINDING_FIX_SCOPES.join("|")}
+  --decision-id, --source, --fingerprint, --summary
+
+Optional finding metadata:
+  --branch, --base, --head, --run-status, --decision-log
+  --impact ${FINDING_IMPACTS.filter(Boolean).join("|")}
+  --priority ${FINDING_PRIORITIES.filter(Boolean).map((priority) => priority.toUpperCase()).join("|")} --material
+  --user-impact, --decision, --text
+
+Required for runtime findings:
+  --production-path <current producer -> transformations -> failing sink>
+  --reachability-evidence <observed payload, current contract, or repository invariant>
+  --likelihood ${FINDING_LIKELIHOODS.join("|")}
+  --risk-impact ${FINDING_RISK_IMPACTS.join("|")}
+  --actual-consequence <verified behavior and meaningful user/system impact>
+
+Runtime likelihood x impact acceptance matrix:
+  likely:      low=${acceptedPriorityLabel("likely", "low")}; medium=${acceptedPriorityLabel("likely", "medium")}; high=${acceptedPriorityLabel("likely", "high")}; critical=${acceptedPriorityLabel("likely", "critical")}
+  possible:    low=${acceptedPriorityLabel("possible", "low")}; medium=${acceptedPriorityLabel("possible", "medium")}; high=${acceptedPriorityLabel("possible", "high")}; critical=${acceptedPriorityLabel("possible", "critical")}
+  rare:        low=${acceptedPriorityLabel("rare", "low")}; medium=${acceptedPriorityLabel("rare", "medium")}; high=${acceptedPriorityLabel("rare", "high")}; critical=${acceptedPriorityLabel("rare", "critical")}
+  unknown:     investigate or consult; no priority or patch
+  theoretical: reject; no priority or patch
+
+Consistency rules:
+  accept -> open|fixed|provisional|reopened and an allowed priority for runtime findings
+  investigate -> open|reopened and no patch
+  consult -> open|deferred|reopened, no patch
+  residual -> deferred and no patch
+  reject -> rejected and no patch
+  systemic -> consult and no fixed/provisional status
+  maintenance -> omit all five runtime risk fields
+
+--impact is the affected area (for example permissions or workflow).
+--risk-impact is the likelihood-impact consequence rating.`
 
 export interface RecordedCommand {
   readonly command: string
@@ -59,6 +159,14 @@ export interface CloseoutFinding {
   readonly user_impact: string
   readonly decision: string
   readonly fingerprint: string
+  readonly finding_kind: string
+  readonly production_path: string
+  readonly reachability_evidence: string
+  readonly likelihood: string
+  readonly risk_impact: string
+  readonly actual_consequence: string
+  readonly disposition: string
+  readonly fix_scope: string
 }
 interface CloseoutFindingRow extends Omit<CloseoutFinding, "material"> { readonly material: number }
 interface CommandRow {
@@ -281,7 +389,7 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
-    `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
+    `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', disposition text not null default '', fix_scope text not null default '', decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
     `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, base_ref text not null, base_oid text not null, limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
     `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
@@ -292,6 +400,10 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     ["review_runs", "repo_key", "text"], ["review_runs", "branch", "text"], ["review_runs", "update_seq", "integer not null default 0"],
     ["issues", "first_seen_at", "integer"], ["issues", "last_seen_at", "integer"], ["issues", "seen_count", "integer not null default 1"],
     ["issues", "impact", "text"], ["issues", "priority", "text"], ["issues", "material", "integer not null default 0"], ["issues", "user_impact", "text"],
+    ["issues", "finding_kind", "text not null default ''"], ["issues", "production_path", "text not null default ''"],
+    ["issues", "reachability_evidence", "text not null default ''"], ["issues", "likelihood", "text not null default ''"],
+    ["issues", "risk_impact", "text not null default ''"], ["issues", "actual_consequence", "text not null default ''"],
+    ["issues", "disposition", "text not null default ''"], ["issues", "fix_scope", "text not null default ''"],
     ["review_scope_budgets", "generation", "integer not null default 0"]
   ] as const
   for (const [table, column, definition] of columns) {
@@ -640,7 +752,94 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
   }))
 })
 
-export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(run: ReviewRun, input: Finding) {
+const requiredFindingText = (finding: Finding) => {
+  const fields = [
+    ["--decision-id", finding.decisionId],
+    ["--source", finding.source],
+    ["--fingerprint", finding.fingerprint],
+    ["--summary", finding.summary]
+  ] as const
+  return fields.find(([, value]) => value.trim().length === 0)?.[0]
+}
+
+const findingConsistencyError = (finding: Finding) => {
+  const missing = requiredFindingText(finding)
+  if (missing !== undefined) return `${missing} must not be empty`
+
+  const runtimeFields = [
+    ["--production-path", finding.productionPath],
+    ["--reachability-evidence", finding.reachabilityEvidence],
+    ["--likelihood", finding.likelihood],
+    ["--risk-impact", finding.riskImpact],
+    ["--actual-consequence", finding.actualConsequence]
+  ] as const
+  if (finding.findingKind === "runtime") {
+    const missingRuntime = runtimeFields.find(([, value]) => value.trim().length === 0)?.[0]
+    if (missingRuntime !== undefined) return `runtime findings require ${missingRuntime}`
+  } else {
+    const unexpectedRuntime = runtimeFields.find(([, value]) => value.trim().length > 0)?.[0]
+    if (unexpectedRuntime !== undefined) return `maintenance findings must omit runtime risk field ${unexpectedRuntime}`
+  }
+
+  const allowedStatuses: Readonly<Record<Finding["disposition"], ReadonlyArray<Finding["status"]>>> = {
+    accept: ["open", "fixed", "provisional", "reopened"],
+    investigate: ["open", "reopened"],
+    consult: ["open", "deferred", "reopened"],
+    residual: ["deferred"],
+    reject: ["rejected"]
+  }
+  if (!allowedStatuses[finding.disposition].includes(finding.status)) {
+    return `disposition ${finding.disposition} cannot use status ${finding.status}`
+  }
+  if (finding.fixScope === "systemic" && finding.disposition !== "consult") {
+    return "systemic findings require disposition consult so the agent stops before a Band-Aid fix"
+  }
+  if (finding.findingKind === "maintenance") return undefined
+
+  if (finding.likelihood === "theoretical" && finding.disposition !== "reject") {
+    return "theoretical runtime findings must be rejected"
+  }
+  if ((finding.likelihood === "unknown" || finding.likelihood === "theoretical") && finding.priority.length > 0) {
+    return `${finding.likelihood} runtime findings must not assign a priority`
+  }
+  if (finding.likelihood === "unknown" && finding.disposition !== "investigate" && finding.disposition !== "consult") {
+    return "unknown-likelihood runtime findings must be investigated or consulted, not accepted or patched"
+  }
+  if (finding.disposition === "accept") {
+    if (finding.likelihood === "unknown" || finding.likelihood === "theoretical") {
+      return `${finding.likelihood} runtime findings cannot be accepted`
+    }
+    const allowed = acceptedRuntimePriorities[finding.likelihood]?.[finding.riskImpact] ?? []
+    if (!allowed.includes(finding.priority)) {
+      const expectation = allowed.length === 0 ? "no accepted finding or patch" : allowed.map((priority) => priority.toUpperCase()).join(" or ")
+      return `${finding.likelihood}+${finding.riskImpact} requires ${expectation}, not ${finding.priority.length === 0 ? "an empty priority" : finding.priority.toUpperCase()}`
+    }
+  }
+  return undefined
+}
+
+const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input: FindingInput) {
+  const normalized = {
+    ...input,
+    status: normalizeStatus(input.status),
+    impact: normalizeToken(input.impact),
+    priority: normalizeToken(input.priority),
+    findingKind: normalizeToken(input.findingKind),
+    likelihood: normalizeToken(input.likelihood),
+    riskImpact: normalizeToken(input.riskImpact),
+    disposition: normalizeToken(input.disposition),
+    fixScope: normalizeToken(input.fixScope)
+  }
+  const finding = yield* Schema.decodeUnknownEffect(FindingRecord)(normalized).pipe(
+    Effect.mapError(() => new InvalidFinding("one or more enum fields are outside schema v2"))
+  )
+  const consistencyError = findingConsistencyError(finding)
+  if (consistencyError !== undefined) return yield* Effect.fail(new InvalidFinding(consistencyError))
+  return finding
+})
+
+export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(run: ReviewRun, rawInput: FindingInput) {
+  const input = yield* decodeFinding(rawInput)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = yield* upsertRun(run)
@@ -651,18 +850,22 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingIssues = yield* sql<IdRow>`select id from issues where run_id = ${runId} and decision_id = ${input.decisionId} limit 1`
   const issueId = existingIssues[0]?.id ?? stableId([runId, input.decisionId])
   const timestamp = nowSeconds()
-  const impact = normalizeToken(input.impact)
-  const priority = normalizeToken(input.priority)
+  const impact = input.impact
+  const priority = input.priority
   const material = input.material || isUserVisible(impact) || isSensitive(impact) || materialPriorities.has(priority)
-  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, impact, priority, input.userImpact, input.decision, input.text].filter(Boolean).join(" ")
+  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, impact, priority, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.riskImpact, input.actualConsequence, input.disposition, input.fixScope, input.text].filter(Boolean).join(" ")
   yield* sql`
-    insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, impact, priority, material, user_impact, decision, text, decision_log_path, first_seen_at, last_seen_at, seen_count, updated_at)
-    values (${issueId}, ${runId}, ${input.decisionId}, ${normalizeStatus(input.status)}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${impact}, ${priority}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
+    insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, impact, priority, material, user_impact, decision, text, finding_kind, production_path, reachability_evidence, likelihood, risk_impact, actual_consequence, disposition, fix_scope, decision_log_path, first_seen_at, last_seen_at, seen_count, updated_at)
+    values (${issueId}, ${runId}, ${input.decisionId}, ${input.status}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${impact}, ${priority}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${input.findingKind}, ${input.productionPath}, ${input.reachabilityEvidence}, ${input.likelihood}, ${input.riskImpact}, ${input.actualConsequence}, ${input.disposition}, ${input.fixScope}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
     on conflict(id) do update set
       run_id=excluded.run_id, decision_id=excluded.decision_id, status=excluded.status,
       source=excluded.source, fingerprint=excluded.fingerprint, summary=excluded.summary,
       impact=excluded.impact, priority=excluded.priority, material=excluded.material,
       user_impact=excluded.user_impact, decision=excluded.decision, text=excluded.text,
+      finding_kind=excluded.finding_kind, production_path=excluded.production_path,
+      reachability_evidence=excluded.reachability_evidence, likelihood=excluded.likelihood,
+      risk_impact=excluded.risk_impact, actual_consequence=excluded.actual_consequence,
+      disposition=excluded.disposition, fix_scope=excluded.fix_scope,
       decision_log_path=coalesce(nullif(excluded.decision_log_path, ''), issues.decision_log_path, ''),
       first_seen_at=coalesce(issues.first_seen_at, excluded.first_seen_at),
       last_seen_at=excluded.last_seen_at, seen_count=issues.seen_count + 1,
@@ -709,7 +912,7 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   if (filters.base !== undefined) { where.push("coalesce(base, '') = ?"); params.push(filters.base) }
   const runs = yield* sql.unsafe<RunRow>(`select id from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 1`, params)
   const runId = runs[0]?.id
-  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as impact, coalesce(priority, '') as priority, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint from issues where run_id = ${runId} order by decision_id`
+  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as impact, coalesce(priority, '') as priority, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as risk_impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope from issues where run_id = ${runId} order by decision_id`
   const findings: ReadonlyArray<CloseoutFinding> = findingRows.map((finding) => ({ ...finding, material: finding.material !== 0 }))
   const commands = runId === undefined ? [] : yield* sql<CommandRow>`select command, result, reason, coalesce(decision_id, '') as decision_id from commands where run_id = ${runId} order by updated_at, command`
   const scopeBudget = runId === undefined ? Option.none() : yield* readScopeBudget(runId).pipe(Effect.option)
@@ -871,6 +1074,7 @@ const findingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, s
   for (const finding of findings) {
     const context = [finding.impact, finding.priority].filter(Boolean)
     lines.push(`- ${finding.decision_id} [${finding.status}] ${finding.source}${context.length === 0 ? "" : ` [${context.join(", ")}]`}: ${finding.summary}`)
+    if (showContext && finding.finding_kind === "runtime") lines.push(`  risk: ${finding.likelihood}/${finding.risk_impact}; ${finding.disposition}; ${finding.fix_scope}`)
     if (showContext && finding.user_impact.length > 0) lines.push(`  why it matters: ${finding.user_impact}`)
     if (showContext && finding.status === "fixed" && finding.decision.length > 0) lines.push(`  change: ${finding.decision}`)
   }

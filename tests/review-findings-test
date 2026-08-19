@@ -43,6 +43,98 @@ assert_output_not_contains() {
   fi
 }
 
+record_finding() {
+  local args=("$@")
+  local status="" decision_id="" disposition="accept" fix_scope="local" index
+  for ((index = 0; index < ${#args[@]}; index += 1)); do
+    case "${args[$index]}" in
+      --status) status="${args[$((index + 1))]}" ;;
+      --decision-id) decision_id="${args[$((index + 1))]}" ;;
+    esac
+  done
+  if [[ "$decision_id" == CONSULT-* ]]; then
+    disposition="consult"
+    fix_scope="systemic"
+  elif [[ "$status" == "deferred" ]]; then
+    disposition="residual"
+  elif [[ "$status" == "rejected" ]]; then
+    disposition="reject"
+  fi
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --finding-kind maintenance --disposition "$disposition" --fix-scope "$fix_scope" \
+    "${args[@]}"
+}
+
+test_review_findings_schema_is_visible_and_enforced() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" schema)"
+  assert_output_contains "$out" "review-findings record schema v2"
+  assert_output_contains "$out" "--finding-kind runtime|maintenance"
+  assert_output_contains "$out" "rare:        low=reject; medium=P3; high=P2; critical=P1"
+  assert_output_contains "$out" "--risk-impact is the likelihood-impact consequence rating"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D1 --status fixed --source review --fingerprint "missing schema" \
+    --summary "Old records are rejected." >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "record must require schema v2 fields"
+  fi
+  assert_contains "$tmp/stderr" "finding-kind"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D2 --status fixed --source review --fingerprint "rare low guard" \
+    --summary "Rare low-impact risk should not produce code." --priority P3 \
+    --finding-kind runtime --disposition accept --fix-scope local \
+    --production-path "supported input -> parser -> harmless fallback" \
+    --reachability-evidence "A supported but unusual input reaches the fallback." \
+    --likelihood rare --risk-impact low \
+    --actual-consequence "One retry with no data loss." >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "rare low-impact runtime findings must not be accepted"
+  fi
+  assert_contains "$tmp/stderr" "rare+low requires no accepted finding or patch"
+  assert_contains "$tmp/stderr" "review-findings schema"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D4 --status fixed --source review --fingerprint "systemic local patch" \
+    --summary "A systemic issue cannot be marked fixed locally." \
+    --finding-kind maintenance --disposition accept --fix-scope systemic \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "systemic findings must stop for consultation"
+  fi
+  assert_contains "$tmp/stderr" "systemic findings require disposition consult"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D5 --status rejected --source review --fingerprint "maintenance fake risk" \
+    --summary "Maintenance findings must not carry runtime evidence." \
+    --finding-kind maintenance --disposition reject --fix-scope local \
+    --production-path "synthetic value -> impossible sink" >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "maintenance findings must reject runtime risk fields"
+  fi
+  assert_contains "$tmp/stderr" "maintenance findings must omit runtime risk field --production-path"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D3 --status fixed --source review --fingerprint "key rotation race" \
+    --summary "A rare key-rotation race can cross the security boundary." --priority P1 \
+    --finding-kind runtime --disposition accept --fix-scope local \
+    --production-path "key rotation -> concurrent token verification -> stale key lookup" \
+    --reachability-evidence "The supported rotation path overlaps active verification." \
+    --likelihood rare --risk-impact critical \
+    --actual-consequence "A token can be verified against a retired key." >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --json \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main)"
+  assert_output_contains "$out" '"finding_kind": "runtime"'
+  assert_output_contains "$out" '"likelihood": "rare"'
+  assert_output_contains "$out" '"risk_impact": "critical"'
+  assert_output_contains "$out" '"disposition": "accept"'
+}
+
 test_review_findings_workflow_is_documented() {
   local skill_doc="$ROOT_DIR/skills/code-review/SKILL.md"
   local findings_doc="$ROOT_DIR/skills/code-review/references/findings-registry.md"
@@ -54,12 +146,15 @@ test_review_findings_workflow_is_documented() {
   assert_contains "$skill_doc" "Read [references/findings-registry.md](references/findings-registry.md)."
   assert_contains "$findings_doc" "The findings database is the working registry."
   assert_contains "$findings_doc" 'Use the Effect SQL `review-findings` CLI as the local SQLite search index'
+  assert_contains "$findings_doc" '"$review_findings_bin" schema'
+  assert_contains "$findings_doc" "authoritative, current contract"
   assert_contains "$skill_doc" '"$review_findings_bin" scope-start'
   assert_contains "$skill_doc" '"$review_findings_bin" scope-check'
   assert_contains "$findings_doc" '"$review_findings_bin" scope-authorize'
   assert_contains "$findings_doc" '"$review_findings_bin" scope-complete'
   assert_contains "$findings_doc" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
   assert_contains "$findings_doc" "--user-impact"
+  assert_contains "$findings_doc" "--risk-impact <critical|high|medium|low>"
   assert_contains "$findings_doc" '"$review_findings_bin" closeout --material'
   assert_contains "$output_doc" "--branch <branch> --base <base> --target <current-target>"
   assert_contains "$output_doc" "closeout --summary"
@@ -108,11 +203,11 @@ test_base_less_command_makes_its_run_current() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
     --target "target one" --base main --decision-id D1 --status fixed \
     --source review --fingerprint "target one" --summary "Target one finding." --text "one" >/dev/null
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
     --target "target two" --base main --decision-id D2 --status fixed \
     --source review --fingerprint "target two" --summary "Target two finding." --text "two" >/dev/null
@@ -133,7 +228,7 @@ test_review_findings_cli_generates_closeout_from_records() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -152,7 +247,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --decision "Changed src/refunds.ts so pending refunds count as active." \
     --text "Review found the active refund guard ignored pending provider refunds." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -171,7 +266,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --decision "Awaiting owner confirmation." \
     --text "Cold review could not prove the tenant filter from the changed diff alone." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -188,7 +283,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --decision "Renamed the helper in the focused test only." \
     --text "Low-risk internal review cleanup." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -292,7 +387,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -312,7 +407,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --decision "Fix before closeout." \
     --text "Native review found a role gate mismatch in the changed settings workflow." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -330,7 +425,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --decision "Collapsed the duplicate helper in the focused test." \
     --text "Low-risk internal cleanup found while reviewing the audit-history tests." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -349,7 +444,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --decision "Deferred pending owner confirmation." \
     --text "Cold review could not prove the export cursor contract from the changed diff alone." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -450,7 +545,7 @@ db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("l
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint legacy \
     --summary "Legacy finding updated." --text "updated" >/dev/null
@@ -476,7 +571,7 @@ test_review_findings_query_uses_latest_run_and_semantic_terms() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
   for base in old-base current-base; do
-    "$ROOT_DIR/skills/code-review/scripts/review-findings" record --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --base "$base" --decision-id D1 --status open --source review --fingerprint "invoice lookup" --summary "$base invoice regression" --text "$base invoice lookup failure" >/dev/null
+    record_finding --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --base "$base" --decision-id D1 --status open --source review --fingerprint "invoice lookup" --summary "$base invoice regression" --text "$base invoice lookup failure" >/dev/null
   done
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --json billing)"
   assert_output_contains "$out" "current-base invoice regression"
@@ -523,7 +618,7 @@ test_review_findings_shares_history_across_git_worktrees() {
   git -C "$repo" config user.email test@example.com
   git -C "$repo" commit --quiet --allow-empty --message initial
   git -C "$repo" worktree add --quiet -b linked "$linked"
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record --db "$db" --repo sample-app --repo-path "$repo" --branch shared --target "PR #10" --base main --decision-id D1 --status open --source review --fingerprint "shared history" --summary "Worktree history remains visible." --text "shared finding" >/dev/null
+  record_finding --db "$db" --repo sample-app --repo-path "$repo" --branch shared --target "PR #10" --base main --decision-id D1 --status open --source review --fingerprint "shared history" --summary "Worktree history remains visible." --text "shared finding" >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$linked" --branch shared --target "PR #10" shared)"
   assert_output_contains "$out" "Worktree history remains visible."
 }
@@ -537,12 +632,12 @@ test_review_findings_preserves_decision_log_on_update() {
   mkdir -p "$repo"
   printf 'accepted decision\n' > "$decision_log"
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #11" --base main --decision-log "$decision_log" \
     --decision-id D1 --status open --source review --fingerprint "decision path" \
     --summary "Keep the durable decision path." --text "Initial finding." >/dev/null
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #11" --base main \
     --decision-id D1 --status fixed --source review --fingerprint "decision path" \
@@ -565,7 +660,7 @@ test_failed_scope_start_does_not_hide_existing_findings() {
   git -C "$repo" commit --quiet --allow-empty --message base
   git -C "$repo" switch --quiet --create feature
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #13" --base main --decision-id D1 --status fixed \
     --source review --fingerprint "existing finding" \
@@ -799,7 +894,7 @@ test_review_scope_budget_blocks_deterministically() {
   fi
   assert_contains "$tmp/stderr" "only valid after scope-check has blocked"
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$repo" \
@@ -937,7 +1032,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Run the final clean review again." >/dev/null
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status open --source review --fingerprint "shared parser contract" \
@@ -951,7 +1046,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
   assert_contains "$tmp/stderr" "scope-complete requires every finding to be fixed, rejected, or explicitly deferred"
   assert_contains "$tmp/stderr" "CONSULT-001 [open]: Choose the shared parser contract."
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  record_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status deferred --source review --fingerprint "shared parser contract" \
@@ -962,7 +1057,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --target "first review" --base main --reason "Both required review phases are clean.")"
   assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
 
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  if record_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id LATE-001 \
     --status open --source review --fingerprint "late finding" \
@@ -1120,6 +1215,7 @@ test_review_scope_ignores_checkout_controlled_git() {
 
 test_review_findings_workflow_is_documented
 test_review_findings_runs_from_repo_launcher
+test_review_findings_schema_is_visible_and_enforced
 test_review_findings_record_command_without_base_requires_existing_run
 test_base_less_command_makes_its_run_current
 test_review_findings_cli_generates_closeout_from_records

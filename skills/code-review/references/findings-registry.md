@@ -18,7 +18,13 @@ skill instructions:
 
 ```sh
 review_findings_bin="<skill-dir>/scripts/review-findings"
+"$review_findings_bin" schema
 ```
+
+Run `schema` before the first finding record in every review. Its output is the
+authoritative, current contract for record fields, allowed values, and
+likelihood-impact consistency rules. If an example or remembered prompt
+disagrees with the CLI output, follow the CLI output.
 
 The launcher executes the checked-in Effect TypeScript implementation. The
 database stores records under:
@@ -115,8 +121,12 @@ For every finding, record:
   audit history integrity, billing/payroll/finance, schema/migrations, or API
   contracts
 - user impact: one sentence explaining why a product/review owner should care
+- finding kind: `runtime` for a claim about reachable product behavior or
+  `maintenance` for code-quality work without a runtime failure claim
+- fix scope: `local` when the owning boundary can be fixed directly, or
+  `systemic` when a local edit would be a Band-Aid and requires consultation
 - risk rating for runtime candidates: production path, reachability evidence,
-  likelihood, impact, actual consequence, and disposition
+  likelihood, risk impact, actual consequence, and disposition
 - short decision and validation result
 
 Record each finding as soon as it is triaged:
@@ -130,7 +140,10 @@ Record each finding as soon as it is triaged:
   --base <base> \
   --head <head> \
   --decision-id D<N> \
+  --finding-kind <runtime|maintenance> \
   --status <open|fixed|rejected|deferred|provisional|reopened> \
+  --disposition <accept|investigate|consult|residual|reject> \
+  --fix-scope <local|systemic> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
@@ -138,9 +151,20 @@ Record each finding as soon as it is triaged:
   --priority <P0|P1|P2|P3|P4> \
   --material \
   --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
+  --production-path "<current producer -> transformations -> failing sink>" \
+  --reachability-evidence "<observed payload, current contract, or repository invariant>" \
+  --likelihood <likely|possible|rare|unknown|theoretical> \
+  --risk-impact <critical|high|medium|low> \
+  --actual-consequence "<verified behavior and meaningful user/system impact>" \
   --decision "<owner or next action>" \
-  --text "<production path; reachability evidence; likelihood; impact; actual consequence; disposition; validation notes>"
+  --text "<validation notes or other searchable context>"
 ```
+
+The five runtime risk flags are required when `--finding-kind runtime` and must
+be omitted when `--finding-kind maintenance`. The CLI rejects missing fields,
+invalid enum values, contradictory status/disposition pairs, systemic findings
+that try to record a patch, and accepted runtime priorities outside the current
+likelihood-impact matrix.
 
 Query before dispatching subagents, resuming a review, or answering "what did
 review find?":
