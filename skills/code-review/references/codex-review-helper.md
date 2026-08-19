@@ -57,6 +57,6 @@ scope. If either fails, the sibling is interrupted instead of being orphaned.
 the reviewer succeeds, creating parent directories as needed so stale output
 cannot masquerade as a new result.
 
-The review workflow—not this transport helper—triages findings and determines
-the clean stop condition. Accept ordinary clean summaries; never require one
-magic phrase such as `No findings.`.
+The review workflow triages findings and determines the clean stop condition.
+This transport helper does not. Accept ordinary clean summaries; never require
+one magic phrase such as `No findings.`.

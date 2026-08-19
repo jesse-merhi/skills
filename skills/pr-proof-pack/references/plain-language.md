@@ -81,6 +81,30 @@ published to a PR, explain that rewording requires a history rewrite and ask for
 explicit human approval before doing it. Do not hide unclear commits with a
 better PR title.
 
+## Cut AI Tells
+
+Run the catalogue in
+[`speak-fking-english/references/ai-tells.md`](../../speak-fking-english/references/ai-tells.md)
+over the title, opening, captions, verification steps, and commit subjects.
+That file is the single copy of the rules; do not restate them here.
+
+Three of its entries decide most PR text:
+
+- No em dashes. Matched proof is labeled `Before: direct base` and `After: PR`.
+- No abstract metaphor nouns. "surface", "harness", "primitive", "scaffolding",
+  and "vector" all have plainer concrete words.
+- No inline-header lists whose bold label just restates the line that follows.
+
+A PR body takes only three of the six voice rules: be specific, vary rhythm,
+and acknowledge complexity. Leave out opinions, first person, and deliberate
+mess. A reviewer checks these sentences against a diff, so every claim must
+stay verifiable.
+
+Be specific means naming the observable result. "Improves reliability" is a
+feeling. "The runner stops instead of publishing" is a fact a reviewer can
+check. Acknowledge complexity means stating the cost you accepted, not hedging:
+"this rejects two valid inputs the old parser allowed" belongs in the body.
+
 ## Body, Captions, and Diagrams
 
 Use the same nouns for the same actor and behavior throughout. The opening
@@ -95,5 +119,6 @@ Read the finished PR from top to bottom and ask:
 3. Is every unfamiliar term defined before it is used?
 4. Is every visual proving a fact that copyable text would lose?
 5. Can a reviewer act without recovering context from a ticket or chat thread?
+6. Does any sentence still carry a catalogued AI tell?
 
 Revise until every answer is yes.

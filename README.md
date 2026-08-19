@@ -206,7 +206,7 @@ Internal review plumbing — loaded by the loops above, rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
-| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | The last pass before every final response: reader reset, re-pitch on "wait, what?", visuals only when they earn their place. |
+| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | The last pass before every final response: reader reset, re-pitch on "wait, what?", visuals only when they earn their place, and a catalogue of AI tells to cut. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text — code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
 ### Meta and operations
@@ -291,8 +291,9 @@ Matt Pocock's agent workflow ideas shaped the grilling, spec, slicing, and
 handoff parts of the loop, and `tdd` adapts his skill directly. Emil Kowalski's
 design-engineering work shaped the interaction, motion, and prototyping skills.
 Matt Pocock's `wait-what` and HumanLayer's `show-me` shaped the reader-reset and
-visual-selection passes now living inside `speak-fking-english`. Adapted
-material keeps its own MIT notices.
+visual-selection passes now living inside `speak-fking-english`, and pstack's
+`unslop` supplied its AI-tells catalogue. Adapted material keeps its own MIT
+notices.
 
 I took the shape, bent it around my own setup, and kept the parts that paid
 rent.

@@ -36,7 +36,7 @@ review.
 
 For a reproducible bug fix, use the same input and environment against the
 direct base and PR branch. Put the two outcomes next to each other and label
-them `Before — direct base` and `After — PR`. Include the failure point and
+them `Before: direct base` and `After: PR`. Include the failure point and
 reason in the before result, then show the corrected outcome and important side
 effect in the after result.
 

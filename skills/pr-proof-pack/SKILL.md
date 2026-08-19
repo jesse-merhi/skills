@@ -94,7 +94,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Done when the exact PR, provider hostname, final head, direct base, and
    existing proof are known.
 
-3. Build the current proof surface.
+3. Gather the current proof and net diff.
 
    Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally with narrow file
    paths. Base every claim on the direct-base-to-final-`HEAD` net diff, not the
@@ -150,12 +150,15 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    [references/body-shape.md](references/body-shape.md). Keep current sections
    that remain true. Draft only the title, body, caption, reproduction, or
    evidence changes needed to restore accuracy. Load `speak-fking-english`
-   immediately before saving the complete draft.
+   immediately before saving the complete draft, and tell it the draft is
+   reviewer-facing text so its AI-tells pass applies the PR voice rules rather
+   than the chat ones.
 
    Done when the first two sentences explain what broke and why it matters, the
    next two explain the fix and outcome, a multi-part or unusually large PR has
-   a compact change breakdown, the body stays within the default size budget or
-   justifies each exception, and the draft is self-contained.
+   a compact change breakdown, the body carries no catalogued AI tell, the body
+   stays within the default size budget or justifies each exception, and the
+   draft is self-contained.
 
 8. Confirm authority and upload provider-hosted evidence.
 
@@ -205,6 +208,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 - A `refreshed` result changed only stale claims and evidence.
 - Every affected PR explains the break and fix quickly, then proves final
   direct-base behavior in the simplest format that preserves the claim.
+- Reviewer-facing text carries no catalogued AI tell, and matched proof is
+  labeled `Before: direct base` and `After: PR`.
 - A multi-part or unusually large PR shows exact direct-base `+LOC` and `-LOC`
   by reviewer-meaningful part, with every file counted once and totals reconciled.
 - Textual behavior uses copyable text. Visual behavior uses provider-hosted

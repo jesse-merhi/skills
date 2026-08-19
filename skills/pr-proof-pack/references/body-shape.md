@@ -76,11 +76,11 @@ Use only the sections the change needs:
 
 ## Proof
 
-**Before — direct base**
+**Before: direct base**
 
 <Small copyable result, image, or recording showing the broken outcome.>
 
-**After — PR**
+**After: PR**
 
 <Matched result showing the corrected outcome and important side effect.>
 
@@ -116,7 +116,7 @@ Textual bug fix:
 
 Same pull request and restricted checkout in both runs:
 
-**Before — direct base**
+**Before: direct base**
 
 ```text
 review_status: complete
@@ -124,7 +124,7 @@ checkout_read_verified: false
 published: true
 ```
 
-**After — PR**
+**After: PR**
 
 ```text
 review_status: failed

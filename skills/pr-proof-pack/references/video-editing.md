@@ -29,7 +29,7 @@ without making the reviewer wait for the useful part.
 
 ## Before And After
 
-Use two clearly labeled recordings (`Before — direct base` and `After — PR`) or
+Use two clearly labeled recordings (`Before: direct base` and `After: PR`) or
 one recording with explicit title cards between matched segments. Never make the
 reviewer infer which version is shown.
 

@@ -113,7 +113,7 @@ Inspect the actual image at full readable detail and watch every finished video
 at 1× speed. Reject and recapture evidence that does not look deliberate and
 review-ready.
 
-- Crop to the product surface or result being proved. Exclude browser tabs,
+- Crop to the product area or result being proved. Exclude browser tabs,
   address bars, bookmarks, extensions, account avatars, operating-system chrome,
   docks, notifications, unrelated windows, and empty space.
 - Keep only interface controls that are part of the behavior. A browser frame is
@@ -137,7 +137,7 @@ Record the changed flow manually at a deliberate pace. A reviewer should be able
 to follow without scrubbing frame by frame.
 
 - begin before the first relevant action so the starting state is visible;
-- capture the page viewport or relevant product surface rather than the
+- capture the page viewport or relevant product area rather than the
   surrounding browser or desktop interface;
 - move the pointer deliberately and pause after important transitions;
 - show the input, loading or transition state, outcome, and relevant recovery;

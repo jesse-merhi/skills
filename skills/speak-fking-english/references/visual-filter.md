@@ -36,7 +36,7 @@ when it materially reduces the work needed to understand the idea.
    GitHub-renderable fenced text, `diff`, or Mermaid in chat and PR bodies, and
    validate Mermaid before relying on it.
 
-   A visual can explain behavior; only the actual rendered surface,
-   interaction, request, response, state, or operator outcome can prove it ran.
+   A visual can explain behavior. Only the actual rendered result, interaction,
+   request, response, state, or operator outcome can prove it ran.
    Done when the support answers the teaching question, repeats no prose, and
    leaves real evidence intact.
