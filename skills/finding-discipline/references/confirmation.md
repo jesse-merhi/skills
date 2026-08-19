@@ -11,6 +11,9 @@ Before finalizing a runtime finding, answer:
 5. Could this be a false positive because of an upstream guard or invariant?
 
 If answers 1-3 are hand-wavy, keep inspecting or drop the finding.
+Confirm that the finding record contains a complete risk rating. For a
+defensive-code finding, check capacity claims and delimiter claims
+independently; evidence for one does not prove the other.
 
 For a maintenance finding, answer instead:
 

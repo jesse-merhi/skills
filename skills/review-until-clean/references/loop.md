@@ -42,7 +42,10 @@ Repeat:
 3. Run the selected engine's bare review against the fixed target.
 4. Triage the findings:
    - reject only with recorded evidence
-   - uncertain findings -> provisional-fix test (review-guardrails):
+   - run `finding-discipline`'s likelihood-impact risk rating
+   - `investigate` or `consult` risk -> no patch; investigate or queue it
+   - apply `review-guardrails`' autonomous fix bar before accepting a patch
+   - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
        pass -> fix now, log Provisional, ask the user without waiting
        fail -> consult queue (Class B), ask the user without waiting
    - findings matching an open queue entry -> match note, no new entry

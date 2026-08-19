@@ -51,6 +51,19 @@ with the blocker or residual risk.
 
 ## Finding Handling
 
+- Treat native and cold reviewer output as candidates. Require
+  `finding-discipline`'s recorded likelihood-impact risk rating before accepting
+  severity or editing code.
+- Before editing an accepted finding, apply `review-guardrails`' systemic-finding
+  stop. Bring the user durable architecture options instead of applying a local
+  Band-Aid.
+- Apply `review-guardrails`' autonomous fix bar after `finding-discipline` and
+  before editing. A valid review observation is not automatically worth
+  permanent production code, compatibility behavior, or tests.
+- Reapply `reducing-cognitive-load`'s plausibility and proxy tests to every
+  guard, fallback, normalization, and helper introduced by a review fix. Remove
+  defenses without a current producer, supported contract, observed failure, or
+  boundary condition before the next review pass.
 - If an accepted finding shows a repeated bug class, inspect sibling instances
   in the current review scope before fixing. Fix the scoped pattern at once when
   practical, but stop at touched surfaces, owner boundaries, or clear follow-up
@@ -67,6 +80,9 @@ with the blocker or residual risk.
 - Read dependency docs/source/types when findings depend on external behavior.
 - Reject speculative edge cases, broad rewrites, and fixes that over-complicate
   the codebase.
+- Reject unsupported edge cases. Record residual risk only when reachability and
+  impact are proven and the current change deliberately leaves the risk
+  unresolved.
 - Prefer small fixes at the right ownership boundary.
 
 ## Hard Stops

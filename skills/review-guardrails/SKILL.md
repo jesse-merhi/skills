@@ -50,11 +50,16 @@ fields in its header.
 2. Apply the wall-clock budget and run the deterministic scope-budget CLI from
    [budgets.md](references/budgets.md) before each review cycle and after each
    accepted fix.
-3. Classify each accepted finding with the scope governor in
+3. Require `finding-discipline`'s recorded risk rating for each candidate,
+   then classify accepted findings and apply the autonomous fix bar in
    [scope-governor.md](references/scope-governor.md).
-4. Patch only in-scope blockers.
-5. For uncertain findings, use the provisional-fix or consult rules in
-   [uncertain-findings.md](references/uncertain-findings.md).
+4. Before patching, apply the systemic-finding stop in
+   [systemic-findings.md](references/systemic-findings.md). Patch only
+   non-systemic in-scope blockers.
+5. For accepted findings with an uncertain repair, use the provisional-fix or
+   consult rules in [uncertain-findings.md](references/uncertain-findings.md).
+   Do not use provisional code to resolve uncertainty about whether a risk
+   exists.
 6. When consult entries are open, provide reviewer notices according to
    [tracked-finding-notices.md](references/tracked-finding-notices.md).
 7. Match repeated queue findings and stop at the fixed point using
@@ -72,6 +77,7 @@ fields in its header.
 - A clean-except-queue fixed point is a blocked-on-consult state, not success.
 - Every patched finding must stay within `scope_baseline` and the diff-growth
   budget.
+- Every patched finding must pass the autonomous fix bar.
 - A clean verdict requires a persisted scope baseline, a final passing
   `scope-check`, and `scope-complete`; a prose estimate or reconstructed
   baseline does not count.
@@ -84,7 +90,9 @@ fields in its header.
 - Use [budgets.md](references/budgets.md) for the wall-clock and diff-growth
   budgets.
 - Use [scope-governor.md](references/scope-governor.md) for in-scope,
-  follow-up, and stop-and-consult classification.
+  follow-up, and stop-and-consult classification and the autonomous fix bar.
+- Use [systemic-findings.md](references/systemic-findings.md) when a local fix
+  may duplicate policy, accumulate special cases, or leave a shared root cause.
 - Use [uncertain-findings.md](references/uncertain-findings.md) for
   provisional fixes and consult-cap behavior.
 - Use [tracked-finding-notices.md](references/tracked-finding-notices.md) for

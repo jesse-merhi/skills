@@ -13,8 +13,36 @@ Patch only in-scope blockers. Record follow-ups as `deferred` findings and do
 not patch them in this PR. Add stop-and-consult findings to `consult_queue` with
 the scope reason, then record them in the findings database.
 
+## Autonomous Fix Bar
+
+Before patching an in-scope blocker, prove all of these:
+
+- The finding record contains `finding-discipline`'s risk rating with an
+  `accept` disposition, likelihood-impact rating, and non-synthetic reachability
+  and consequence evidence.
+- The failure violates the current task contract, not a stricter contract
+  invented by the reviewer.
+- The fix uses an existing repository or dependency primitive when one owns the
+  behavior. Do not emulate a dependency's full semantics through accumulating
+  special cases.
+- The fix is proportional to the observed impact. Count permanent branches,
+  fallbacks, schema fields, migrations, helpers, and tests as cost even when
+  production changed-line growth stays under budget.
+- The severity describes impact if the trigger occurs; it does not substitute
+  for reachability or likelihood evidence.
+
+Do not autonomously patch a P3 whose remedy only hardens hypothetical input. If
+the input is reachable but accepting its presentation or behavior is a product
+tolerance decision, consult without editing.
+
+Reject observations that fail the reality or contract test. Record residual
+risk only when reachability and impact are proven but the current change
+deliberately leaves it unresolved. Use stop-and-consult for a fix that needs a
+new contract or user-owned trade-off.
+
 Stop patching and consult when:
 
+- `systemic-findings` shows that a local patch would leave a shared root cause
 - the fix would change what the PR is about
 - the fix would cross the owner boundary
 - the fix would exceed the diff-growth budget

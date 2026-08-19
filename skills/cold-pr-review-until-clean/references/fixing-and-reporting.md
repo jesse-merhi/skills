@@ -3,6 +3,9 @@
 ## Fixing Findings
 
 - Fix only what maps to actionable cold-review findings.
+- Apply `review-guardrails`' autonomous fix bar before editing. Reject
+  unsupported cases; record residual risk only when reachability and impact are
+  proven.
 - Prefer the smallest change that addresses the reviewer's concern.
 - Do not bundle unrelated cleanup into the fix step.
 - Run the relevant tests, typechecks, linters, or UI validation for the changed

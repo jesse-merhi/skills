@@ -14,6 +14,10 @@ Include file and line references as tightly as the harness supports. In Codex
 app reviews, emit `::code-comment{...}` findings when the user asked for review
 findings.
 
+Assign priority only after the risk rating returns `accept`. Severity
+describes a proven risk's impact and urgency; it cannot turn `investigate`,
+`consult`, `residual`, or `reject` into an actionable finding.
+
 For a maintenance finding, use this body instead:
 
 ```md
@@ -35,4 +39,5 @@ boundary>. Fix by <specific simplification>.
   evidence-backed unnecessary complexity, or low-risk reviewer-blocker.
 
 Do not inflate severity to make a point. A precise `P2` beats a theatrical
-`P1`.
+`P1`. A hypothetical workflow failure is not a `P2`, and hypothetical
+presentation hardening is not a `P3`.

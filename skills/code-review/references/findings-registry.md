@@ -115,7 +115,9 @@ For every finding, record:
   audit history integrity, billing/payroll/finance, schema/migrations, or API
   contracts
 - user impact: one sentence explaining why a product/review owner should care
-- short decision, evidence, and validation result
+- risk rating for runtime candidates: production path, reachability evidence,
+  likelihood, impact, actual consequence, and disposition
+- short decision and validation result
 
 Record each finding as soon as it is triaged:
 
@@ -137,7 +139,7 @@ Record each finding as soon as it is triaged:
   --material \
   --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
   --decision "<owner or next action>" \
-  --text "<reason, evidence, impact, and validation notes>"
+  --text "<production path; reachability evidence; likelihood; impact; actual consequence; disposition; validation notes>"
 ```
 
 Query before dispatching subagents, resuming a review, or answering "what did

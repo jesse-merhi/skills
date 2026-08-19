@@ -1,7 +1,12 @@
 # Uncertain Findings
 
-Some findings are real enough to act on but uncertain: marked `PLAUSIBLE`,
-contested between passes, or a judgment call. Never silently fix or silently
+Use this workflow only after `finding-discipline`'s risk rating returned
+`accept`. It handles uncertainty about the repair, not uncertainty about whether
+the risk exists. A candidate with unproven reachability or consequence remains
+`investigate` or `consult`; do not apply a provisional fix.
+
+Some accepted findings still have an uncertain repair: contested between
+passes or a judgment call about implementation. Never silently fix or silently
 reject one.
 
 Use the provisional-fix test. All four checks must hold:

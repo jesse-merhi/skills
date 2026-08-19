@@ -11,10 +11,11 @@ Orchestrate two until-clean review phases for one target.
 2. Phase 2: run `cold-pr-review-until-clean` in a subagent until cold review is
    clean.
 
-Use `finding-discipline` throughout both phases. Phase 1 must satisfy the
-native clean stop condition before Phase 2 begins. Phase 2 must then stay in
-the cold-review loop until cold review is clean on the final target after the
-last accepted cold-review fix and affected validation.
+Use `finding-discipline` and `review-guardrails`' autonomous fix bar throughout
+both phases. A finding can be real without deserving an autonomous fix. Phase 1
+must satisfy the native clean stop condition before Phase 2 begins. Phase 2 must
+then stay in the cold-review loop until cold review is clean on the final target
+after the last accepted cold-review fix and affected validation.
 
 Phase 1 uses the harness-native review engine: bare `codex review` in Codex,
 the built-in `code-review` workflow in Claude Code. If the user names an
@@ -95,8 +96,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 6. Run Phase 1.
 
    Load `review-until-clean` and `wait-efficiently`, then run the native review
-   until it is clean on the current target. Use `finding-discipline` to triage
-   findings before fixing. Read
+   until it is clean on the current target. Use `finding-discipline` and the
+   autonomous fix bar to triage findings before fixing. Read
    [references/review-phase-rules.md](references/review-phase-rules.md) for
    whole-target review, validation, finding classification, and held-wait
    behavior. If Phase 1 uses the Codex engine,
@@ -113,8 +114,12 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 8. After an accepted Phase 1 finding:
 
+   - record its likelihood-impact risk rating and `accept` disposition before
+     editing;
+   - stop and consult if `review-guardrails` classifies the fix as systemic;
+   - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
-   - record the finding and fix in the findings database;
+   - update the finding with the fix in the findings database;
    - run affected validation and record each command;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
@@ -124,8 +129,12 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 9. After an accepted Phase 2 finding:
 
+   - record its likelihood-impact risk rating and `accept` disposition before
+     editing;
+   - stop and consult if `review-guardrails` classifies the fix as systemic;
+   - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
-   - record the finding and fix in the findings database;
+   - update the finding with the fix in the findings database;
    - run affected validation and record each command;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
@@ -160,6 +169,11 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
+- Every accepted runtime finding has a recorded production path, reachability
+  evidence, likelihood, impact, actual consequence, and `accept` disposition
+  from the risk rating.
+- Every autonomous fix names a current reachable contract and remains
+  proportional to its impact.
 - `scope-start` persisted the original baseline, every accepted fix was followed
   by `scope-check`, and the final check passed before `scope-complete`. Any
   authorized reset records the user's words through `scope-authorize`.
