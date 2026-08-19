@@ -22,24 +22,54 @@ export interface ReviewRun {
   readonly decisionLog: string
 }
 
-export const FINDING_SCHEMA_VERSION = 2
+export const FINDING_SCHEMA_VERSION = 3
 export const FINDING_KINDS = ["runtime", "maintenance"] as const
 export const FINDING_STATUSES = ["open", "fixed", "rejected", "deferred", "provisional", "reopened"] as const
 export const FINDING_DISPOSITIONS = ["accept", "investigate", "consult", "residual", "reject"] as const
 export const FINDING_FIX_SCOPES = ["local", "systemic"] as const
 export const FINDING_LIKELIHOODS = ["likely", "possible", "rare", "unknown", "theoretical"] as const
-export const FINDING_RISK_IMPACTS = ["critical", "high", "medium", "low"] as const
-export const FINDING_PRIORITIES = ["", "p0", "p1", "p2", "p3", "p4"] as const
-export const FINDING_IMPACTS = ["", "ui", "workflow", "api-contract", "permissions", "privacy", "finance", "data-correctness", "audit", "migration", "schema", "internal"] as const
-const acceptedRuntimePriorities: Readonly<Record<string, Readonly<Record<string, ReadonlyArray<string>>>>> = {
-  likely: { low: ["p3"], medium: ["p2"], high: ["p1", "p2"], critical: ["p0", "p1"] },
-  possible: { low: ["p3"], medium: ["p2", "p3"], high: ["p1", "p2"], critical: ["p1"] },
-  rare: { low: [], medium: ["p3"], high: ["p2"], critical: ["p1"] }
+export const FINDING_IMPACTS = ["critical", "high", "medium", "low"] as const
+export const FINDING_SEVERITIES = ["", "p0", "p1", "p2", "p3"] as const
+export const FINDING_AREAS = ["", "ui", "workflow", "api-contract", "permissions", "privacy", "finance", "data-correctness", "audit", "migration", "schema", "internal"] as const
+
+type FindingLikelihood = (typeof FINDING_LIKELIHOODS)[number]
+type FindingImpact = (typeof FINDING_IMPACTS)[number]
+type FindingSeverity = (typeof FINDING_SEVERITIES)[number]
+type FindingDisposition = (typeof FINDING_DISPOSITIONS)[number]
+interface FindingOutcome {
+  readonly severity: FindingSeverity
+  readonly disposition: FindingDisposition
 }
-const acceptedPriorityLabel = (likelihood: string, impact: string) => {
-  const priorities = acceptedRuntimePriorities[likelihood]?.[impact] ?? []
-  return priorities.length === 0 ? "reject" : priorities.map((priority) => priority.toUpperCase()).join("/")
+
+const RUNTIME_OUTCOMES = {
+  likely: {
+    low: { severity: "p3", disposition: "accept" }, medium: { severity: "p2", disposition: "accept" },
+    high: { severity: "p1", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
+  },
+  possible: {
+    low: { severity: "", disposition: "reject" }, medium: { severity: "p2", disposition: "accept" },
+    high: { severity: "p1", disposition: "accept" }, critical: { severity: "p1", disposition: "accept" }
+  },
+  rare: {
+    low: { severity: "", disposition: "reject" }, medium: { severity: "", disposition: "reject" },
+    high: { severity: "p2", disposition: "consult" }, critical: { severity: "p1", disposition: "consult" }
+  },
+  unknown: {
+    low: { severity: "", disposition: "investigate" }, medium: { severity: "", disposition: "investigate" },
+    high: { severity: "", disposition: "investigate" }, critical: { severity: "", disposition: "investigate" }
+  },
+  theoretical: {
+    low: { severity: "", disposition: "reject" }, medium: { severity: "", disposition: "reject" },
+    high: { severity: "", disposition: "reject" }, critical: { severity: "", disposition: "reject" }
+  }
+} as const satisfies Readonly<Record<FindingLikelihood, Readonly<Record<FindingImpact, FindingOutcome>>>>
+
+const outcomeLabel = (likelihood: FindingLikelihood, impact: FindingImpact) => {
+  const outcome = deriveRuntimeOutcome(likelihood, impact)
+  return `${outcome.severity.length === 0 ? "no severity" : outcome.severity.toUpperCase()}/${outcome.disposition}`
 }
+
+export const deriveRuntimeOutcome = (likelihood: FindingLikelihood, impact: FindingImpact): FindingOutcome => RUNTIME_OUTCOMES[likelihood][impact]
 
 const FindingRecord = Schema.Struct({
   decisionId: Schema.String,
@@ -47,8 +77,7 @@ const FindingRecord = Schema.Struct({
   source: Schema.String,
   fingerprint: Schema.String,
   summary: Schema.String,
-  impact: Schema.Literals(FINDING_IMPACTS),
-  priority: Schema.Literals(FINDING_PRIORITIES),
+  area: Schema.Literals(FINDING_AREAS),
   material: Schema.Boolean,
   userImpact: Schema.String,
   decision: Schema.String,
@@ -57,9 +86,8 @@ const FindingRecord = Schema.Struct({
   productionPath: Schema.String,
   reachabilityEvidence: Schema.String,
   likelihood: Schema.Union([Schema.Literals(FINDING_LIKELIHOODS), Schema.Literal("")]),
-  riskImpact: Schema.Union([Schema.Literals(FINDING_RISK_IMPACTS), Schema.Literal("")]),
+  impact: Schema.Union([Schema.Literals(FINDING_IMPACTS), Schema.Literal("")]),
   actualConsequence: Schema.String,
-  disposition: Schema.Literals(FINDING_DISPOSITIONS),
   fixScope: Schema.Literals(FINDING_FIX_SCOPES)
 })
 
@@ -69,8 +97,7 @@ export interface FindingInput {
   readonly source: string
   readonly fingerprint: string
   readonly summary: string
-  readonly impact: string
-  readonly priority: string
+  readonly area: string
   readonly material: boolean
   readonly userImpact: string
   readonly decision: string
@@ -79,13 +106,12 @@ export interface FindingInput {
   readonly productionPath: string
   readonly reachabilityEvidence: string
   readonly likelihood: string
-  readonly riskImpact: string
+  readonly impact: string
   readonly actualConsequence: string
-  readonly disposition: string
   readonly fixScope: string
 }
 
-export type Finding = typeof FindingRecord.Type
+export type Finding = typeof FindingRecord.Type & FindingOutcome
 
 export class InvalidFinding extends Error {
   readonly _tag = "InvalidFinding"
@@ -100,41 +126,39 @@ Required for every finding:
   --repo <name> --repo-path <root> --target <PR or range>
   --finding-kind ${FINDING_KINDS.join("|")}
   --status ${FINDING_STATUSES.join("|")}
-  --disposition ${FINDING_DISPOSITIONS.join("|")}
   --fix-scope ${FINDING_FIX_SCOPES.join("|")}
   --decision-id, --source, --fingerprint, --summary
 
 Optional finding metadata:
   --branch, --base, --head, --run-status, --decision-log
-  --impact ${FINDING_IMPACTS.filter(Boolean).join("|")}
-  --priority ${FINDING_PRIORITIES.filter(Boolean).map((priority) => priority.toUpperCase()).join("|")} --material
+  --area ${FINDING_AREAS.filter(Boolean).join("|")} --material
   --user-impact, --decision, --text
 
 Required for runtime findings:
   --production-path <current producer -> transformations -> failing sink>
   --reachability-evidence <observed payload, current contract, or repository invariant>
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
-  --risk-impact ${FINDING_RISK_IMPACTS.join("|")}
+  --impact ${FINDING_IMPACTS.join("|")}
   --actual-consequence <verified behavior and meaningful user/system impact>
 
-Runtime likelihood x impact acceptance matrix:
-  likely:      low=${acceptedPriorityLabel("likely", "low")}; medium=${acceptedPriorityLabel("likely", "medium")}; high=${acceptedPriorityLabel("likely", "high")}; critical=${acceptedPriorityLabel("likely", "critical")}
-  possible:    low=${acceptedPriorityLabel("possible", "low")}; medium=${acceptedPriorityLabel("possible", "medium")}; high=${acceptedPriorityLabel("possible", "high")}; critical=${acceptedPriorityLabel("possible", "critical")}
-  rare:        low=${acceptedPriorityLabel("rare", "low")}; medium=${acceptedPriorityLabel("rare", "medium")}; high=${acceptedPriorityLabel("rare", "high")}; critical=${acceptedPriorityLabel("rare", "critical")}
-  unknown:     investigate or consult; no priority or patch
-  theoretical: reject; no priority or patch
+CLI-derived severity/disposition matrix:
+  likely:      low=${outcomeLabel("likely", "low")}; medium=${outcomeLabel("likely", "medium")}; high=${outcomeLabel("likely", "high")}; critical=${outcomeLabel("likely", "critical")}
+  possible:    low=${outcomeLabel("possible", "low")}; medium=${outcomeLabel("possible", "medium")}; high=${outcomeLabel("possible", "high")}; critical=${outcomeLabel("possible", "critical")}
+  rare:        low=${outcomeLabel("rare", "low")}; medium=${outcomeLabel("rare", "medium")}; high=${outcomeLabel("rare", "high")}; critical=${outcomeLabel("rare", "critical")}
+  unknown:     all=no severity/investigate
+  theoretical: all=no severity/reject
 
 Consistency rules:
-  accept -> open|fixed|provisional|reopened and an allowed priority for runtime findings
+  accept -> open|fixed|provisional|reopened
   investigate -> open|reopened and no patch
   consult -> open|deferred|reopened, no patch
   residual -> deferred and no patch
   reject -> rejected and no patch
-  systemic -> consult and no fixed/provisional status
-  maintenance -> omit all five runtime risk fields
+  systemic accept -> consult and no fixed/provisional status
+  maintenance -> omit all five runtime risk fields; derive disposition from status and fix scope
 
---impact is the affected area (for example permissions or workflow).
---risk-impact is the likelihood-impact consequence rating.`
+Do not pass --priority or --disposition. The CLI derives both.
+--area names the affected part of the product. --impact says how bad the consequence is.`
 
 export interface RecordedCommand {
   readonly command: string
@@ -153,8 +177,8 @@ export interface CloseoutFinding {
   readonly status: string
   readonly source: string
   readonly summary: string
-  readonly impact: string
-  readonly priority: string
+  readonly area: string
+  readonly severity: string
   readonly material: boolean
   readonly user_impact: string
   readonly decision: string
@@ -163,7 +187,7 @@ export interface CloseoutFinding {
   readonly production_path: string
   readonly reachability_evidence: string
   readonly likelihood: string
-  readonly risk_impact: string
+  readonly impact: string
   readonly actual_consequence: string
   readonly disposition: string
   readonly fix_scope: string
@@ -313,8 +337,8 @@ export interface CloseoutSummary {
   readonly lower_risk_findings: number
   readonly status_counts: ReadonlyArray<CloseoutCount>
   readonly source_counts: ReadonlyArray<CloseoutCount>
-  readonly impact_counts: ReadonlyArray<CloseoutCount>
-  readonly priority_counts: ReadonlyArray<CloseoutCount>
+  readonly area_counts: ReadonlyArray<CloseoutCount>
+  readonly severity_counts: ReadonlyArray<CloseoutCount>
   readonly important_findings: ReadonlyArray<CloseoutFinding>
   readonly important_findings_total: number
   readonly still_open: ReadonlyArray<CloseoutFinding>
@@ -365,12 +389,12 @@ const dot = (left: SparseVector, right: SparseVector) => {
   return left.reduce((score, [index, value]) => score + value * (values.get(index) ?? 0), 0)
 }
 const round6 = (value: number) => Math.round(value * 1_000_000) / 1_000_000
-const userVisibleImpacts = new Set(["ui", "ux", "workflow", "user-workflow", "behavior", "route-behavior", "api-contract", "contract", "product"])
-const sensitiveImpacts = new Set(["permission", "permissions", "auth", "authorization", "privacy", "security", "finance", "billing", "payroll", "data", "data-correctness", "audit", "history", "migration", "schema"])
-const materialPriorities = new Set(["p0", "p1", "critical", "high"])
-const isUserVisible = (impact: string) => userVisibleImpacts.has(normalizeToken(impact))
-const isSensitive = (impact: string) => sensitiveImpacts.has(normalizeToken(impact))
-const isMaterial = (finding: Pick<CloseoutFinding, "material" | "impact" | "priority">) => finding.material || isUserVisible(finding.impact) || isSensitive(finding.impact) || materialPriorities.has(normalizeToken(finding.priority))
+const userVisibleAreas = new Set(["ui", "ux", "workflow", "user-workflow", "behavior", "route-behavior", "api-contract", "contract", "product"])
+const sensitiveAreas = new Set(["permission", "permissions", "auth", "authorization", "privacy", "security", "finance", "billing", "payroll", "data", "data-correctness", "audit", "history", "migration", "schema"])
+const materialSeverities = new Set(["p0", "p1", "critical", "high"])
+const isUserVisible = (area: string) => userVisibleAreas.has(normalizeToken(area))
+const isSensitive = (area: string) => sensitiveAreas.has(normalizeToken(area))
+const isMaterial = (finding: Pick<CloseoutFinding, "material" | "area" | "severity">) => finding.material || isUserVisible(finding.area) || isSensitive(finding.area) || materialSeverities.has(normalizeToken(finding.severity))
 
 export const canonicalRepoKey = Effect.fn("ReviewFindings.canonicalRepoKey")(function*(repoPath: string) {
   const fs = yield* FileSystem.FileSystem
@@ -752,7 +776,9 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
   }))
 })
 
-const requiredFindingText = (finding: Finding) => {
+type DecodedFinding = typeof FindingRecord.Type
+
+const requiredFindingText = (finding: DecodedFinding) => {
   const fields = [
     ["--decision-id", finding.decisionId],
     ["--source", finding.source],
@@ -762,7 +788,7 @@ const requiredFindingText = (finding: Finding) => {
   return fields.find(([, value]) => value.trim().length === 0)?.[0]
 }
 
-const findingConsistencyError = (finding: Finding) => {
+const findingInputError = (finding: DecodedFinding) => {
   const missing = requiredFindingText(finding)
   if (missing !== undefined) return `${missing} must not be empty`
 
@@ -770,7 +796,7 @@ const findingConsistencyError = (finding: Finding) => {
     ["--production-path", finding.productionPath],
     ["--reachability-evidence", finding.reachabilityEvidence],
     ["--likelihood", finding.likelihood],
-    ["--risk-impact", finding.riskImpact],
+    ["--impact", finding.impact],
     ["--actual-consequence", finding.actualConsequence]
   ] as const
   if (finding.findingKind === "runtime") {
@@ -781,7 +807,25 @@ const findingConsistencyError = (finding: Finding) => {
     if (unexpectedRuntime !== undefined) return `maintenance findings must omit runtime risk field ${unexpectedRuntime}`
   }
 
-  const allowedStatuses: Readonly<Record<Finding["disposition"], ReadonlyArray<Finding["status"]>>> = {
+  return undefined
+}
+
+const deriveFindingOutcome = (finding: DecodedFinding): FindingOutcome | undefined => {
+  if (finding.findingKind === "runtime") {
+    if (finding.likelihood === "" || finding.impact === "") return undefined
+    const outcome = deriveRuntimeOutcome(finding.likelihood, finding.impact)
+    return finding.fixScope === "systemic" && outcome.disposition === "accept"
+      ? { severity: outcome.severity, disposition: "consult" }
+      : outcome
+  }
+  if (finding.fixScope === "systemic") return { severity: "", disposition: "consult" }
+  if (finding.status === "rejected") return { severity: "", disposition: "reject" }
+  if (finding.status === "deferred") return { severity: "", disposition: "residual" }
+  return { severity: "", disposition: "accept" }
+}
+
+const findingStatusError = (finding: Finding) => {
+  const allowedStatuses: Readonly<Record<FindingDisposition, ReadonlyArray<Finding["status"]>>> = {
     accept: ["open", "fixed", "provisional", "reopened"],
     investigate: ["open", "reopened"],
     consult: ["open", "deferred", "reopened"],
@@ -791,30 +835,6 @@ const findingConsistencyError = (finding: Finding) => {
   if (!allowedStatuses[finding.disposition].includes(finding.status)) {
     return `disposition ${finding.disposition} cannot use status ${finding.status}`
   }
-  if (finding.fixScope === "systemic" && finding.disposition !== "consult") {
-    return "systemic findings require disposition consult so the agent stops before a Band-Aid fix"
-  }
-  if (finding.findingKind === "maintenance") return undefined
-
-  if (finding.likelihood === "theoretical" && finding.disposition !== "reject") {
-    return "theoretical runtime findings must be rejected"
-  }
-  if ((finding.likelihood === "unknown" || finding.likelihood === "theoretical") && finding.priority.length > 0) {
-    return `${finding.likelihood} runtime findings must not assign a priority`
-  }
-  if (finding.likelihood === "unknown" && finding.disposition !== "investigate" && finding.disposition !== "consult") {
-    return "unknown-likelihood runtime findings must be investigated or consulted, not accepted or patched"
-  }
-  if (finding.disposition === "accept") {
-    if (finding.likelihood === "unknown" || finding.likelihood === "theoretical") {
-      return `${finding.likelihood} runtime findings cannot be accepted`
-    }
-    const allowed = acceptedRuntimePriorities[finding.likelihood]?.[finding.riskImpact] ?? []
-    if (!allowed.includes(finding.priority)) {
-      const expectation = allowed.length === 0 ? "no accepted finding or patch" : allowed.map((priority) => priority.toUpperCase()).join(" or ")
-      return `${finding.likelihood}+${finding.riskImpact} requires ${expectation}, not ${finding.priority.length === 0 ? "an empty priority" : finding.priority.toUpperCase()}`
-    }
-  }
   return undefined
 }
 
@@ -822,20 +842,25 @@ const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input:
   const normalized = {
     ...input,
     status: normalizeStatus(input.status),
-    impact: normalizeToken(input.impact),
-    priority: normalizeToken(input.priority),
+    area: normalizeToken(input.area),
     findingKind: normalizeToken(input.findingKind),
     likelihood: normalizeToken(input.likelihood),
-    riskImpact: normalizeToken(input.riskImpact),
-    disposition: normalizeToken(input.disposition),
+    impact: normalizeToken(input.impact),
     fixScope: normalizeToken(input.fixScope)
   }
   const finding = yield* Schema.decodeUnknownEffect(FindingRecord)(normalized).pipe(
-    Effect.mapError(() => new InvalidFinding("one or more enum fields are outside schema v2"))
+    Effect.mapError(() => new InvalidFinding(`one or more enum fields are outside schema v${FINDING_SCHEMA_VERSION}`))
   )
-  const consistencyError = findingConsistencyError(finding)
-  if (consistencyError !== undefined) return yield* Effect.fail(new InvalidFinding(consistencyError))
-  return finding
+  const inputError = findingInputError(finding)
+  if (inputError !== undefined) return yield* Effect.fail(new InvalidFinding(inputError))
+  const outcome = deriveFindingOutcome(finding)
+  if (outcome === undefined) return yield* Effect.fail(new InvalidFinding("runtime findings require --likelihood and --impact"))
+  const completeFinding = { ...finding, ...outcome } satisfies Finding
+  const statusError = findingStatusError(completeFinding)
+  if (statusError !== undefined) {
+    return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`))
+  }
+  return completeFinding
 })
 
 export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(run: ReviewRun, rawInput: FindingInput) {
@@ -850,13 +875,11 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingIssues = yield* sql<IdRow>`select id from issues where run_id = ${runId} and decision_id = ${input.decisionId} limit 1`
   const issueId = existingIssues[0]?.id ?? stableId([runId, input.decisionId])
   const timestamp = nowSeconds()
-  const impact = input.impact
-  const priority = input.priority
-  const material = input.material || isUserVisible(impact) || isSensitive(impact) || materialPriorities.has(priority)
-  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, impact, priority, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.riskImpact, input.actualConsequence, input.disposition, input.fixScope, input.text].filter(Boolean).join(" ")
+  const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
+  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.disposition, input.fixScope, input.text].filter(Boolean).join(" ")
   yield* sql`
     insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, impact, priority, material, user_impact, decision, text, finding_kind, production_path, reachability_evidence, likelihood, risk_impact, actual_consequence, disposition, fix_scope, decision_log_path, first_seen_at, last_seen_at, seen_count, updated_at)
-    values (${issueId}, ${runId}, ${input.decisionId}, ${input.status}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${impact}, ${priority}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${input.findingKind}, ${input.productionPath}, ${input.reachabilityEvidence}, ${input.likelihood}, ${input.riskImpact}, ${input.actualConsequence}, ${input.disposition}, ${input.fixScope}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
+    values (${issueId}, ${runId}, ${input.decisionId}, ${input.status}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${input.area}, ${input.severity}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${input.findingKind}, ${input.productionPath}, ${input.reachabilityEvidence}, ${input.likelihood}, ${input.impact}, ${input.actualConsequence}, ${input.disposition}, ${input.fixScope}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
     on conflict(id) do update set
       run_id=excluded.run_id, decision_id=excluded.decision_id, status=excluded.status,
       source=excluded.source, fingerprint=excluded.fingerprint, summary=excluded.summary,
@@ -912,14 +935,14 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   if (filters.base !== undefined) { where.push("coalesce(base, '') = ?"); params.push(filters.base) }
   const runs = yield* sql.unsafe<RunRow>(`select id from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 1`, params)
   const runId = runs[0]?.id
-  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as impact, coalesce(priority, '') as priority, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as risk_impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope from issues where run_id = ${runId} order by decision_id`
+  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope from issues where run_id = ${runId} order by decision_id`
   const findings: ReadonlyArray<CloseoutFinding> = findingRows.map((finding) => ({ ...finding, material: finding.material !== 0 }))
   const commands = runId === undefined ? [] : yield* sql<CommandRow>`select command, result, reason, coalesce(decision_id, '') as decision_id from commands where run_id = ${runId} order by updated_at, command`
   const scopeBudget = runId === undefined ? Option.none() : yield* readScopeBudget(runId).pipe(Effect.option)
   return {
     material_findings: findings.filter(isMaterial),
-    user_visible_or_workflow_changes: findings.filter((finding) => isUserVisible(finding.impact)),
-    security_data_permission_changes: findings.filter((finding) => isSensitive(finding.impact)),
+    user_visible_or_workflow_changes: findings.filter((finding) => isUserVisible(finding.area)),
+    security_data_permission_changes: findings.filter((finding) => isSensitive(finding.area)),
     lower_risk_findings: findings.filter((finding) => !isMaterial(finding)),
     findings_found: findings,
     changes_made_while_reviewing: findings.filter((finding) => finding.status === "fixed"),
@@ -1072,9 +1095,9 @@ const findingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, s
   const lines = [title]
   if (findings.length === 0) return [...lines, "- none recorded"]
   for (const finding of findings) {
-    const context = [finding.impact, finding.priority].filter(Boolean)
+    const context = [finding.area, finding.severity].filter(Boolean)
     lines.push(`- ${finding.decision_id} [${finding.status}] ${finding.source}${context.length === 0 ? "" : ` [${context.join(", ")}]`}: ${finding.summary}`)
-    if (showContext && finding.finding_kind === "runtime") lines.push(`  risk: ${finding.likelihood}/${finding.risk_impact}; ${finding.disposition}; ${finding.fix_scope}`)
+    if (showContext && finding.finding_kind === "runtime") lines.push(`  risk: ${finding.likelihood}/${finding.impact}; ${finding.disposition}; ${finding.fix_scope}`)
     if (showContext && finding.user_impact.length > 0) lines.push(`  why it matters: ${finding.user_impact}`)
     if (showContext && finding.status === "fixed" && finding.decision.length > 0) lines.push(`  change: ${finding.decision}`)
   }
@@ -1090,10 +1113,10 @@ const countLabels = (labels: ReadonlyArray<string>): ReadonlyArray<CloseoutCount
   return [...counts].map(([label, count]) => ({ label, count })).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
 }
 
-const priorityRanks: Readonly<Record<string, number>> = { p0: 0, critical: 0, p1: 1, high: 1, p2: 2, medium: 2, p3: 3, low: 3, p4: 4 }
+const severityRanks: Readonly<Record<string, number>> = { p0: 0, p1: 1, p2: 2, p3: 3 }
 const compareFindings = (left: CloseoutFinding, right: CloseoutFinding) => {
-  const priority = (priorityRanks[normalizeToken(left.priority)] ?? 5) - (priorityRanks[normalizeToken(right.priority)] ?? 5)
-  return priority !== 0 ? priority : left.decision_id.localeCompare(right.decision_id)
+  const severity = (severityRanks[normalizeToken(left.severity)] ?? 5) - (severityRanks[normalizeToken(right.severity)] ?? 5)
+  return severity !== 0 ? severity : left.decision_id.localeCompare(right.decision_id)
 }
 const commandResultLabel = (result: string) => {
   const label = result.trim().split(/[\s:]/u)[0] ?? ""
@@ -1109,8 +1132,8 @@ export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSu
     lower_risk_findings: closeout.lower_risk_findings.length,
     status_counts: countLabels(closeout.findings_found.map((finding) => finding.status)),
     source_counts: countLabels(closeout.findings_found.map((finding) => finding.source)),
-    impact_counts: countLabels(closeout.findings_found.map((finding) => finding.impact)),
-    priority_counts: countLabels(closeout.findings_found.map((finding) => finding.priority)),
+    area_counts: countLabels(closeout.findings_found.map((finding) => finding.area)),
+    severity_counts: countLabels(closeout.findings_found.map((finding) => finding.severity)),
     important_findings: important.slice(0, limit),
     important_findings_total: important.length,
     still_open: stillOpen.slice(0, limit),
@@ -1134,8 +1157,8 @@ const printSummary = (summary: CloseoutSummary) => {
     `- Findings: ${summary.total_findings} total; ${summary.material_findings} material; ${summary.lower_risk_findings} lower risk`,
     countLine("Status", summary.status_counts),
     countLine("Sources", summary.source_counts),
-    countLine("Areas", summary.impact_counts),
-    countLine("Priorities", summary.priority_counts), "",
+    countLine("Areas", summary.area_counts),
+    countLine("Severity", summary.severity_counts), "",
     ...limitedFindingLines("Important resolved findings", summary.important_findings, summary.important_findings_total), "",
     ...limitedFindingLines("Still open", summary.still_open, summary.still_open_total), "",
     "Verification summary",

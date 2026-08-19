@@ -110,11 +110,11 @@ For every finding, record:
 - decision ID
 - source: native review, cold review, named lens, review
   owner, or user
-- severity or priority when available
+- CLI-derived severity when available
 - scope class when useful: direct, induced, adjacent, or unrelated
 - status: `open`, `fixed`, `rejected`, `deferred`, `provisional`, or `reopened`
 - affected files or behavior
-- impact category: `ui`, `workflow`, `api-contract`, `permissions`, `privacy`,
+- area: `ui`, `workflow`, `api-contract`, `permissions`, `privacy`,
   `finance`, `data-correctness`, `audit`, `migration`, `schema`, or `internal`
 - whether the finding is material to the review owner: mark material when it
   changes visible behavior, workflow, who can see/do what, data correctness,
@@ -126,7 +126,8 @@ For every finding, record:
 - fix scope: `local` when the owning boundary can be fixed directly, or
   `systemic` when a local edit would be a Band-Aid and requires consultation
 - risk rating for runtime candidates: production path, reachability evidence,
-  likelihood, risk impact, actual consequence, and disposition
+  likelihood, impact, and actual consequence; the CLI derives severity and
+  disposition
 - short decision and validation result
 
 Record each finding as soon as it is triaged:
@@ -142,29 +143,27 @@ Record each finding as soon as it is triaged:
   --decision-id D<N> \
   --finding-kind <runtime|maintenance> \
   --status <open|fixed|rejected|deferred|provisional|reopened> \
-  --disposition <accept|investigate|consult|residual|reject> \
   --fix-scope <local|systemic> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
-  --impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal> \
-  --priority <P0|P1|P2|P3|P4> \
+  --area <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal> \
   --material \
   --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
   --production-path "<current producer -> transformations -> failing sink>" \
   --reachability-evidence "<observed payload, current contract, or repository invariant>" \
   --likelihood <likely|possible|rare|unknown|theoretical> \
-  --risk-impact <critical|high|medium|low> \
+  --impact <critical|high|medium|low> \
   --actual-consequence "<verified behavior and meaningful user/system impact>" \
   --decision "<owner or next action>" \
   --text "<validation notes or other searchable context>"
 ```
 
 The five runtime risk flags are required when `--finding-kind runtime` and must
-be omitted when `--finding-kind maintenance`. The CLI rejects missing fields,
-invalid enum values, contradictory status/disposition pairs, systemic findings
-that try to record a patch, and accepted runtime priorities outside the current
-likelihood-impact matrix.
+be omitted when `--finding-kind maintenance`. Do not pass priority, severity,
+or disposition. The CLI derives severity and disposition from the current
+likelihood-impact matrix, then rejects a status that would patch an
+investigate, consult, reject, or systemic outcome.
 
 Query before dispatching subagents, resuming a review, or answering "what did
 review find?":

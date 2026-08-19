@@ -52,8 +52,8 @@ with the blocker or residual risk.
 ## Finding Handling
 
 - Treat native and cold reviewer output as candidates. Require
-  `finding-discipline`'s recorded likelihood-impact risk rating before accepting
-  severity or editing code.
+  `finding-discipline`'s recorded likelihood-impact risk rating and the CLI's
+  derived disposition before editing code.
 - Before editing an accepted finding, apply `review-guardrails`' systemic-finding
   stop. Bring the user durable architecture options instead of applying a local
   Band-Aid.

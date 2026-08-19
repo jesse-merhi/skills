@@ -434,12 +434,14 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Production path:"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Likelihood: likely | possible | rare | unknown | theoretical"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Low-probability, low-impact risk defaults to no finding and no code"
+  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Supply likelihood and impact. Do not choose severity or disposition"
+  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "| rare | no severity, reject | no severity, reject | P2, consult | P1, consult |"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "## Defence In Depth"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "The burden of proof belongs to the finding"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "it cannot supply missing production"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/output.md" 'A hypothetical workflow failure is not a `P2`'
+  assert_contains "$ROOT_DIR/skills/finding-discipline/references/output.md" "Use exactly the severity and disposition returned by the findings CLI"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "## Autonomous Fix Bar"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "risk rating with an"
+  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" 'CLI-derived `accept`'
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "does not substitute"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "Do not autonomously patch a P3"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "uncertainty about the repair"

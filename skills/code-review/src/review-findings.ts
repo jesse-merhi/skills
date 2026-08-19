@@ -12,7 +12,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_DISPOSITIONS, FINDING_FIX_SCOPES, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatScopeBudgetCheck, formatScopeBudgetStatus, getScopeBudget, initialize, InvalidFinding, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatScopeBudgetCheck, formatScopeBudgetStatus, getScopeBudget, initialize, InvalidFinding, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
 class CloseoutOptionError extends Schema.TaggedError<CloseoutOptionError>()("CloseoutOptionError", { message: Schema.String }) {}
@@ -75,12 +75,11 @@ const findingSchema = Command.make("schema", {}, () => Console.log(formatFinding
 const record = Command.make("record", {
   db, ...commonRun, runStatus: Flag.string("run-status").pipe(Flag.withDefault("active")), decisionLog: Flag.string("decision-log").pipe(Flag.withDefault("")),
   decisionId: Flag.string("decision-id"), status: Flag.choice("status", FINDING_STATUSES), source: Flag.string("source"), fingerprint: Flag.string("fingerprint"), summary: Flag.string("summary"),
-  impact: Flag.string("impact").pipe(Flag.withDefault("")), priority: Flag.string("priority").pipe(Flag.withDefault("")), material: Flag.boolean("material"),
+  area: Flag.string("area").pipe(Flag.withDefault("")), impact: Flag.string("impact").pipe(Flag.withDefault("")), material: Flag.boolean("material"),
   userImpact: Flag.string("user-impact").pipe(Flag.withDefault("")), decision: Flag.string("decision").pipe(Flag.withDefault("")), text: Flag.string("text").pipe(Flag.withDefault("")),
   findingKind: Flag.choice("finding-kind", FINDING_KINDS), productionPath: Flag.string("production-path").pipe(Flag.withDefault("")),
   reachabilityEvidence: Flag.string("reachability-evidence").pipe(Flag.withDefault("")), likelihood: Flag.string("likelihood").pipe(Flag.withDefault("")),
-  riskImpact: Flag.string("risk-impact").pipe(Flag.withDefault("")), actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
-  disposition: Flag.choice("disposition", FINDING_DISPOSITIONS), fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES)
+  actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")), fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES)
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const result = yield* recordFinding({ ...toRun(args), status: args.runStatus, decisionLog: args.decisionLog }, args)

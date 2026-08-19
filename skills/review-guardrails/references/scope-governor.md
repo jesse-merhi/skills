@@ -17,9 +17,9 @@ the scope reason, then record them in the findings database.
 
 Before patching an in-scope blocker, prove all of these:
 
-- The finding record contains `finding-discipline`'s risk rating with an
-  `accept` disposition, likelihood-impact rating, and non-synthetic reachability
-  and consequence evidence.
+- The finding record contains `finding-discipline`'s risk rating, non-synthetic
+  reachability and consequence evidence, and the CLI-derived `accept`
+  disposition and severity.
 - The failure violates the current task contract, not a stricter contract
   invented by the reviewer.
 - The fix uses an existing repository or dependency primitive when one owns the

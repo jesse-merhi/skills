@@ -45,23 +45,17 @@ assert_output_not_contains() {
 
 record_finding() {
   local args=("$@")
-  local status="" decision_id="" disposition="accept" fix_scope="local" index
+  local decision_id="" fix_scope="local" index
   for ((index = 0; index < ${#args[@]}; index += 1)); do
     case "${args[$index]}" in
-      --status) status="${args[$((index + 1))]}" ;;
       --decision-id) decision_id="${args[$((index + 1))]}" ;;
     esac
   done
   if [[ "$decision_id" == CONSULT-* ]]; then
-    disposition="consult"
     fix_scope="systemic"
-  elif [[ "$status" == "deferred" ]]; then
-    disposition="residual"
-  elif [[ "$status" == "rejected" ]]; then
-    disposition="reject"
   fi
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
-    --finding-kind maintenance --disposition "$disposition" --fix-scope "$fix_scope" \
+    --finding-kind maintenance --fix-scope "$fix_scope" \
     "${args[@]}"
 }
 
@@ -71,10 +65,20 @@ test_review_findings_schema_is_visible_and_enforced() {
   db="$tmp/reviews.sqlite"
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" schema)"
-  assert_output_contains "$out" "review-findings record schema v2"
+  assert_output_contains "$out" "review-findings record schema v3"
   assert_output_contains "$out" "--finding-kind runtime|maintenance"
-  assert_output_contains "$out" "rare:        low=reject; medium=P3; high=P2; critical=P1"
-  assert_output_contains "$out" "--risk-impact is the likelihood-impact consequence rating"
+  assert_output_contains "$out" "rare:        low=no severity/reject; medium=no severity/reject; high=P2/consult; critical=P1/consult"
+  assert_output_contains "$out" "Do not pass --priority or --disposition. The CLI derives both."
+  assert_output_contains "$out" "--area names the affected part of the product. --impact says how bad the consequence is."
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id OLD --status fixed --source review --fingerprint "agent severity" \
+    --summary "Agents cannot choose severity." --finding-kind maintenance --fix-scope local \
+    --priority P1 >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "record must reject agent-supplied priority"
+  fi
+  assert_contains "$tmp/stderr" "Unrecognized flag: --priority"
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
@@ -87,32 +91,32 @@ test_review_findings_schema_is_visible_and_enforced() {
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D2 --status fixed --source review --fingerprint "rare low guard" \
-    --summary "Rare low-impact risk should not produce code." --priority P3 \
-    --finding-kind runtime --disposition accept --fix-scope local \
+    --summary "Rare low-impact risk should not produce code." \
+    --finding-kind runtime --fix-scope local \
     --production-path "supported input -> parser -> harmless fallback" \
     --reachability-evidence "A supported but unusual input reaches the fallback." \
-    --likelihood rare --risk-impact low \
+    --likelihood rare --impact low \
     --actual-consequence "One retry with no data loss." >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "rare low-impact runtime findings must not be accepted"
   fi
-  assert_contains "$tmp/stderr" "rare+low requires no accepted finding or patch"
+  assert_contains "$tmp/stderr" "rare+low derives no severity/reject; disposition reject cannot use status fixed"
   assert_contains "$tmp/stderr" "review-findings schema"
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D4 --status fixed --source review --fingerprint "systemic local patch" \
     --summary "A systemic issue cannot be marked fixed locally." \
-    --finding-kind maintenance --disposition accept --fix-scope systemic \
+    --finding-kind maintenance --fix-scope systemic \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "systemic findings must stop for consultation"
   fi
-  assert_contains "$tmp/stderr" "systemic findings require disposition consult"
+  assert_contains "$tmp/stderr" "maintenance+no impact derives no severity/consult; disposition consult cannot use status fixed"
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D5 --status rejected --source review --fingerprint "maintenance fake risk" \
     --summary "Maintenance findings must not carry runtime evidence." \
-    --finding-kind maintenance --disposition reject --fix-scope local \
+    --finding-kind maintenance --fix-scope local \
     --production-path "synthetic value -> impossible sink" >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "maintenance findings must reject runtime risk fields"
   fi
@@ -120,19 +124,20 @@ test_review_findings_schema_is_visible_and_enforced() {
 
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
-    --decision-id D3 --status fixed --source review --fingerprint "key rotation race" \
-    --summary "A rare key-rotation race can cross the security boundary." --priority P1 \
-    --finding-kind runtime --disposition accept --fix-scope local \
+    --decision-id D3 --status open --source review --fingerprint "key rotation race" \
+    --summary "A rare key-rotation race can cross the security boundary." \
+    --finding-kind runtime --fix-scope local \
     --production-path "key rotation -> concurrent token verification -> stale key lookup" \
     --reachability-evidence "The supported rotation path overlaps active verification." \
-    --likelihood rare --risk-impact critical \
+    --likelihood rare --impact critical \
     --actual-consequence "A token can be verified against a retired key." >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --json \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main)"
   assert_output_contains "$out" '"finding_kind": "runtime"'
   assert_output_contains "$out" '"likelihood": "rare"'
-  assert_output_contains "$out" '"risk_impact": "critical"'
-  assert_output_contains "$out" '"disposition": "accept"'
+  assert_output_contains "$out" '"impact": "critical"'
+  assert_output_contains "$out" '"severity": "p1"'
+  assert_output_contains "$out" '"disposition": "consult"'
 }
 
 test_review_findings_workflow_is_documented() {
@@ -152,9 +157,10 @@ test_review_findings_workflow_is_documented() {
   assert_contains "$skill_doc" '"$review_findings_bin" scope-check'
   assert_contains "$findings_doc" '"$review_findings_bin" scope-authorize'
   assert_contains "$findings_doc" '"$review_findings_bin" scope-complete'
-  assert_contains "$findings_doc" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
+  assert_contains "$findings_doc" "--area <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
   assert_contains "$findings_doc" "--user-impact"
-  assert_contains "$findings_doc" "--risk-impact <critical|high|medium|low>"
+  assert_contains "$findings_doc" "--impact <critical|high|medium|low>"
+  assert_contains "$findings_doc" "The CLI derives severity and disposition"
   assert_contains "$findings_doc" '"$review_findings_bin" closeout --material'
   assert_contains "$output_doc" "--branch <branch> --base <base> --target <current-target>"
   assert_contains "$output_doc" "closeout --summary"
@@ -240,8 +246,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --source native-review \
     --fingerprint "src/refunds.ts createRefund pending guard" \
     --summary "Pending refunds can allow duplicate provider refunds." \
-    --impact data-correctness \
-    --priority P1 \
+    --area data-correctness \
     --material \
     --user-impact "Users could trigger duplicate provider refunds for the same payment." \
     --decision "Changed src/refunds.ts so pending refunds count as active." \
@@ -259,8 +264,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --source cold-review \
     --fingerprint "src/invoices.ts loadInvoice tenant filter" \
     --summary "Invoice lookup still needs tenant-boundary confirmation." \
-    --impact permissions \
-    --priority P1 \
+    --area permissions \
     --material \
     --user-impact "A tenant-boundary gap could expose invoice data across workspaces." \
     --decision "Awaiting owner confirmation." \
@@ -278,8 +282,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --source native-review \
     --fingerprint "tests/refunds.test.ts helper name" \
     --summary "Internal refund test helper name was misleading." \
-    --impact internal \
-    --priority P4 \
+    --area internal \
     --decision "Renamed the helper in the focused test only." \
     --text "Low-risk internal review cleanup." >/dev/null
 
@@ -295,8 +298,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --source cold-review \
     --fingerprint "src/refunds.ts retry state owner feedback" \
     --summary "Refund retry state did not explain when another attempt was safe." \
-    --impact workflow \
-    --priority P2 \
+    --area workflow \
     --material \
     --user-impact "Support staff could retry a refund before the provider state was settled." \
     --decision "Made the retry state and safe next action explicit." \
@@ -324,11 +326,11 @@ test_review_findings_cli_generates_closeout_from_records() {
 
   assert_output_contains "$out" "Findings found"
   assert_output_contains "$out" "Material findings"
-  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness, p1]"
+  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness]"
   assert_output_contains "$out" "why it matters: Users could trigger duplicate provider refunds"
   assert_output_contains "$out" "Security, data, and permission changes"
   assert_output_contains "$out" "Lower-risk findings"
-  assert_output_contains "$out" "D3 [fixed] native-review [internal, p4]"
+  assert_output_contains "$out" "D3 [fixed] native-review [internal]"
   assert_output_contains "$out" "Changes made while reviewing"
   assert_output_contains "$out" "Changed src/refunds.ts"
   assert_output_contains "$out" "Verification run"
@@ -346,8 +348,8 @@ test_review_findings_cli_generates_closeout_from_records() {
     --target "PR #88")"
 
   assert_output_contains "$out" "Material findings"
-  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness, p1]"
-  assert_output_contains "$out" "D2 [open] cold-review [permissions, p1]"
+  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness]"
+  assert_output_contains "$out" "D2 [open] cold-review [permissions]"
   assert_output_contains "$out" "Verification run"
   assert_output_not_contains "$out" "D3"
   assert_output_not_contains "$out" "Findings found"
@@ -400,8 +402,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --source native-review \
     --fingerprint "apps/web/settings.tsx role gated audit toggle" \
     --summary "Settings exposed an audit-history toggle to the wrong role." \
-    --impact workflow \
-    --priority P1 \
+    --area workflow \
     --material \
     --user-impact "Admins could see and use a workflow control outside the intended permission model." \
     --decision "Fix before closeout." \
@@ -420,8 +421,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --source cold-review \
     --fingerprint "apps/web/audit-history.test.ts helper duplicate setup" \
     --summary "Audit-history test setup duplicated an internal helper." \
-    --impact internal \
-    --priority P4 \
+    --area internal \
     --decision "Collapsed the duplicate helper in the focused test." \
     --text "Low-risk internal cleanup found while reviewing the audit-history tests." >/dev/null
 
@@ -438,8 +438,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --source cold-review \
     --fingerprint "apps/api/audit-history.ts export contract timestamp cursor" \
     --summary "Audit-history export cursor contract still needs owner confirmation." \
-    --impact api-contract \
-    --priority P2 \
+    --area api-contract \
     --user-impact "Consumers may depend on timestamp cursor ordering when exporting audit events." \
     --decision "Deferred pending owner confirmation." \
     --text "Cold review could not prove the export cursor contract from the changed diff alone." >/dev/null
@@ -457,8 +456,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --source native-review \
     --fingerprint "apps/web/settings.tsx role gated audit toggle" \
     --summary "Settings exposed an audit-history toggle to the wrong role." \
-    --impact workflow \
-    --priority P1 \
+    --area workflow \
     --material \
     --user-impact "Admins could see and use a workflow control outside the intended permission model." \
     --decision "Hid the audit-history toggle behind the owner role gate." \
@@ -499,8 +497,8 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --base main \
     --target "audit-history feature")"
 
-  assert_output_contains "$out" "D1 [fixed] native-review [workflow, p1]"
-  assert_output_contains "$out" "D3 [deferred] cold-review [api-contract, p2]"
+  assert_output_contains "$out" "D1 [fixed] native-review [workflow]"
+  assert_output_contains "$out" "D3 [deferred] cold-review [api-contract]"
   assert_output_contains "$out" "why it matters: Consumers may depend on timestamp cursor ordering"
   assert_output_contains "$out" "pnpm test audit-history"
   assert_output_contains "$out" "Still open"
@@ -516,7 +514,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --base main \
     --target "audit-history feature")"
 
-  assert_output_contains "$out" "D2 [fixed] cold-review [internal, p4]"
+  assert_output_contains "$out" "D2 [fixed] cold-review [internal]"
   assert_output_contains "$out" "Hid the audit-history toggle behind the owner role gate."
   assert_output_contains "$out" "D3 [deferred]"
   assert_output_not_contains "$out" "D1 [open]"
@@ -906,8 +904,7 @@ test_review_scope_budget_blocks_deterministically() {
     --source native-review \
     --fingerprint "app.ts startup guard" \
     --summary "Startup now rejects an invalid configuration." \
-    --impact internal \
-    --priority P2 \
+    --area internal \
     --decision "Added the startup guard." \
     --text "The accepted review fix is complete." >/dev/null
 

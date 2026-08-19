@@ -35,7 +35,7 @@ PR author can fix.
 ## Context Pointers
 
 - Use [risk-rating.md](references/risk-rating.md) for the required risk reality
-  check, likelihood-impact rating, disposition, and defence-in-depth exception.
+  check and CLI-derived likelihood-impact outcome.
 - Use [finding-bar.md](references/finding-bar.md) for the must-pass criteria.
 - Use [exclusions.md](references/exclusions.md) for observations to drop.
 - Use [confirmation.md](references/confirmation.md) before finalizing each

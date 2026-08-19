@@ -5,7 +5,7 @@ current production path and a meaningful consequence.
 
 ## Risk Reality Check
 
-Record this case before assigning severity or proposing code:
+Record this case before the findings CLI assigns severity and disposition:
 
 ```text
 Production path: <current producer -> transformations -> failing sink>
@@ -13,7 +13,6 @@ Reachability evidence: <observed payload, current contract, or repository invari
 Likelihood: likely | possible | rare | unknown | theoretical
 Impact: critical | high | medium | low
 Actual consequence: <verified behavior and meaningful user/system impact>
-Disposition: accept | investigate | consult | residual | reject
 ```
 
 Use these likelihood meanings:
@@ -38,21 +37,23 @@ Use these impact meanings:
 - `low`: presentation defect, minor inconvenience, or easy recovery without
   material loss.
 
-## Default Rating
+## Deterministic Rating
 
-Use this table as the default, then explain any exception:
+Supply likelihood and impact. Do not choose severity or disposition; the
+findings CLI derives them from this table:
 
 | Likelihood | Low impact | Medium impact | High impact | Critical impact |
 | --- | --- | --- | --- | --- |
-| likely | P3 only when repeated friction merits code | P2 | P1/P2 | P0/P1 |
-| possible | no fix or P3 | P2/P3 | P1/P2 | P1 |
-| rare | no fix | no fix or P3 | consult or P2 | consult or P1 |
-| unknown | investigate; no severity or patch | investigate; no severity or patch | investigate; no severity or patch | investigate or consult; no patch |
-| theoretical | reject | reject | reject | reject |
+| likely | P3, accept | P2, accept | P1, accept | P0, accept |
+| possible | no severity, reject | P2, accept | P1, accept | P1, accept |
+| rare | no severity, reject | no severity, reject | P2, consult | P1, consult |
+| unknown | no severity, investigate | no severity, investigate | no severity, investigate | no severity, investigate |
+| theoretical | no severity, reject | no severity, reject | no severity, reject | no severity, reject |
 
 Low-probability, low-impact risk defaults to no finding and no code. Severity
 reflects likelihood and impact together; worst-case impact alone cannot raise a
-finding.
+finding. A systemic finding that would otherwise be accepted becomes a consult
+so the agent cannot apply a local Band-Aid.
 
 ## Disposition
 
@@ -72,9 +73,8 @@ evidence.
 
 ## Defence In Depth
 
-Rare does not mean harmless. Accept or consult on a defence-in-depth fix when
-reachability is proven, impact is high or critical, the failure crosses a
-security, data-integrity, or irreversible boundary, and the defence belongs at
-the boundary that owns the invariant. Prefer an existing repository, framework,
-or dependency primitive. A custom maze of special cases fails the fix bar even
-when the underlying risk is serious.
+Rare does not mean harmless. Proven rare/high and rare/critical risks become
+consults with P2 and P1 severity respectively. Present the boundary and durable
+options before editing. Prefer an existing repository, framework, or dependency
+primitive when the user authorizes defence in depth. A custom maze of special
+cases fails the fix bar even when the underlying risk is serious.

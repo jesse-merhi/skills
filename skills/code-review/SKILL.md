@@ -116,8 +116,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 8. After an accepted Phase 1 finding:
 
-   - record its likelihood-impact risk rating and `accept` disposition before
-     editing;
+   - record its likelihood and impact before editing, and require the CLI to
+     derive `accept` and severity;
    - stop and consult if `review-guardrails` classifies the fix as systemic;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
@@ -131,8 +131,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 9. After an accepted Phase 2 finding:
 
-   - record its likelihood-impact risk rating and `accept` disposition before
-     editing;
+   - record its likelihood and impact before editing, and require the CLI to
+     derive `accept` and severity;
    - stop and consult if `review-guardrails` classifies the fix as systemic;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
@@ -173,8 +173,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
   the findings CLI.
 - Every finding passes the current `review-findings schema`. Every accepted
   runtime finding has a recorded production path, reachability evidence,
-  likelihood, risk impact, actual consequence, and `accept` disposition from
-  the risk rating.
+  likelihood, impact, and actual consequence; the CLI derived severity and
+  `accept` from the risk rating.
 - Every autonomous fix names a current reachable contract and remains
   proportional to its impact.
 - `scope-start` persisted the original baseline, every accepted fix was followed
