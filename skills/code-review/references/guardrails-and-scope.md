@@ -8,11 +8,8 @@ Before Phase 1, freeze the review scope:
 - base and target branch
 - intended behavior
 - owner boundary
+- changed files (text paths are informational; new binaries require approval)
 - non-test changed lines
-
-Keep changed files in the surface map for review visibility, but do not use the
-original file list as an approval boundary. An accepted fix may add or edit a
-production path while total production-line growth stays within budget.
 
 Before patching a reviewer finding, classify it:
 
@@ -47,9 +44,8 @@ Orchestrator specifics:
   blocked-on-consult; do not accumulate more findings up to `consult_cap`.
 - Use the CLI report as evidence, not as the message. Follow
   `review-guardrails`' user-facing scope-request rule: load
-  `speak-fking-english`, explain the measured line overage and concrete behavior
-  in plain language, mention added paths only as context, then ask one direct
-  question about authorizing a larger diff.
+  `speak-fking-english`, explain the extra boundary and concrete behavior in
+  plain language, then ask one direct question.
 - After approval, run `"$review_findings_bin" scope-authorize` with the user's words and revised scope,
   then reset the current phase. On rejection, revert the over-budget batch,
   defer the finding, and make `scope-check` pass before resuming.

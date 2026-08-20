@@ -9,7 +9,7 @@ import * as Runtime from "effect/Runtime"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { existsSync } from "node:fs"
 
-import { checkedInherit, CheckedProcessError, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
+import { checkedBytes, checkedInherit, CheckedProcessError, checkedText, platformErrorExitCode } from "./CheckedProcess.ts"
 
 const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => effect.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off
@@ -67,6 +67,36 @@ describe("checked process boundary", () => {
 
   it.effect("can omit both captured streams from sensitive command failures", () => live(
     checkedText(process.execPath, ["-e", "process.stdout.write('signed-output'); process.stderr.write('signed-stderr'); process.exit(8)"], {
+      displayCommand: "node [sensitive lookup]",
+      includeStderrInError: false,
+      includeStdoutInError: false
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error.message, "node [sensitive lookup] exited 8")
+        assert.strictEqual(error.stderr, "")
+      })
+    )
+  ))
+
+  it.effect("redacts byte-command stderr and omits its stdout from failures", () => live(
+    checkedBytes(process.execPath, ["-e", "process.stdout.write('signed-output'); process.stderr.write('failed secret-value'); process.exit(8)"], {
+      displayCommand: "node [redacted]",
+      includeStdoutInError: false,
+      redactions: ["secret-value"]
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => {
+        assert.strictEqual(error.message, "failed [redacted]")
+        assert.strictEqual(error.stderr, "failed [redacted]")
+        assert.notInclude(error.message, "signed-output")
+        assert.notInclude(error.message, "secret-value")
+      })
+    )
+  ))
+
+  it.effect("can omit both captured streams from byte-command failures", () => live(
+    checkedBytes(process.execPath, ["-e", "process.stdout.write('signed-output'); process.stderr.write('signed-stderr'); process.exit(8)"], {
       displayCommand: "node [sensitive lookup]",
       includeStderrInError: false,
       includeStdoutInError: false

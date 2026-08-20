@@ -23,11 +23,7 @@
   `*.spec.*`. Recognized lockfiles are encoded in the CLI and include the npm,
   pnpm, Yarn, Bun, Cargo, Ruby, PHP, Python Poetry, and uv lockfiles.
 - Calculate `allowed_growth = floor(baseline_production_lines * limit_percent / 100)`.
-  The review remains inside budget only when current production changed lines
-  are no greater than `baseline + allowed_growth`.
-- Keep reporting production paths added after the baseline so the reviewer can
-  see where the PR grew. New paths are informational and never block a review
-  by themselves.
+  Stay within `baseline + allowed_growth` with no new binary path; added text paths are informational.
 - Resolve `review_findings_bin` from the installed `code-review` skill directory as
   required by `review-guardrails`. Persist the baseline with
   `"$review_findings_bin" scope-start`. Run `"$review_findings_bin" scope-check` after
@@ -35,9 +31,8 @@
   review invocation. The command measures committed, staged, unstaged, and
   untracked files against the frozen base commit. Keep the SQLite database
   outside the reviewed repository.
-- A blocked check exits non-zero and prints the measured line overage,
-  informational new production paths, completed findings, requested reason,
-  and the required user consult.
+- A blocked check exits non-zero and prints the measured overage, new production
+  paths, completed findings, requested reason, and the required user consult.
   Stop the review immediately and present that information to the user.
 - Resume only after explicit user authorization. Record their words and the new
   scope with `"$review_findings_bin" scope-authorize`; this creates a new baseline and

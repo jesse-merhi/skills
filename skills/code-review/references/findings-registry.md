@@ -39,20 +39,23 @@ baseline:
   --scope-summary "<request, behavior, and owner boundary>"
 ```
 
+Measuring a historical `--head` without checking it out requires Git 2.41 or
+newer so binary attributes come from that target commit. On older Git, check out
+the requested head first or update Git before starting the scope budget.
+
 After every accepted fix and before another review pass, run:
 
 ```sh
 "$review_findings_bin" scope-check \
   --repo <repo> --repo-path <repo-root> --branch <branch> \
   --target <target> --base <base> \
-  --reason "<remaining work and why it may merit a larger diff>"
+  --reason "<remaining work and why it may merit additional scope>"
 ```
 
 A passing check prints the exact baseline, current production lines, allowed
-growth, excluded test/generated lines, frozen scope, and any production paths
-added for information. A blocked check exits non-zero only when production-line
-growth exceeds the budget and is an immediate stop: present its output to the
-user and do no more review or patch work.
+growth, exclusions, frozen scope, and informational text paths. A blocked check exits
+non-zero for line overage or a new binary path: present its output and do no more
+review or patch work.
 
 Only after the user explicitly approves a larger scope, record their words and
 the revised scope:
@@ -69,7 +72,10 @@ Use `scope-status` after compaction or handoff. `scope-start` refuses to replace
 an existing baseline or create a second active baseline under a renamed target,
 and `scope-authorize` refuses to run until a check has blocked. Keep the database
 outside the reviewed repository so its SQLite files cannot enter the measured
-diff.
+diff. The exception is a migrated budget whose status says rebaseline is
+required: after showing that reason and receiving explicit approval, run
+`scope-authorize` directly because `scope-check` intentionally cannot clear the
+migration state.
 
 After both review phases are clean and one final `scope-check` passes, close the
 budget:

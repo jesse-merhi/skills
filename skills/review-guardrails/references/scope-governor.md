@@ -13,11 +13,6 @@ Patch only in-scope blockers. Record follow-ups as `deferred` findings and do
 not patch them in this PR. Add stop-and-consult findings to `consult_queue` with
 the scope reason, then record them in the findings database.
 
-Classify scope by behavior and contract, not by the original file list. An
-accepted fix may edit or add any file while it preserves the task contract,
-owner boundary, and diff-growth budget. Never consult solely because a path was
-not in the baseline diff.
-
 Stop patching and consult when:
 
 - the fix would change what the PR is about

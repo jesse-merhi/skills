@@ -13,8 +13,8 @@ Use the provisional-fix test. All four checks must hold:
 2. **Right altitude**: the fix lands where the invariant lives. A special case
    added to shared infrastructure to protect one caller fails
    (`improve-codebase-architecture` has the long form).
-3. **Small and focused**: within the diff-growth budget and directly addresses
-   the accepted finding. It may touch files outside the original diff.
+3. **Small and local**: within the diff-growth budget and inside the mapped
+   review surface.
 4. **Cleanly reversible**: one commit or hunk whose revert restores the original
    exactly.
 
@@ -34,8 +34,7 @@ When the test passes:
 
 When the test fails, consult instead. This includes cases where the only
 available fix is a bandaid, the direction is the user's call (product, security
-posture, data migration), or the fix would break a budget or change the task
-contract.
+posture, data migration), or the fix would break a budget or the review surface.
 
 Add the finding to `consult_queue` with a fingerprint: file, code element, and a
 one-sentence root cause. Raise it with the user without waiting: immediately

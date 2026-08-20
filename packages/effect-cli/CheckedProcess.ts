@@ -25,7 +25,7 @@ export interface CheckedProcessOptions {
   readonly extendEnv?: boolean
   readonly displayCommand?: string
   readonly forceKillAfter?: ChildProcess.KillOptions["forceKillAfter"]
-  readonly stdin?: string
+  readonly stdin?: string | Uint8Array
 }
 export interface CheckedTextOptions extends CheckedProcessOptions {
   readonly allowedExitCodes?: ReadonlyArray<number>
@@ -34,12 +34,30 @@ export interface CheckedTextOptions extends CheckedProcessOptions {
   readonly redactions?: ReadonlyArray<string>
 }
 
-const commandInput = (stdin: string | undefined) => stdin === undefined
+const inputStream = (stdin: string | Uint8Array) => typeof stdin === "string"
+  ? Stream.make(stdin).pipe(Stream.encodeText)
+  : Stream.make(stdin)
+const commandInput = (stdin: string | Uint8Array | undefined) => stdin === undefined
   ? "inherit" as const
-  : Stream.make(stdin).pipe(Stream.encodeText)
-const capturedInput = (stdin: string | undefined) => stdin === undefined
+  : inputStream(stdin)
+const capturedInput = (stdin: string | Uint8Array | undefined) => stdin === undefined
   ? Stream.empty
-  : Stream.make(stdin).pipe(Stream.encodeText)
+  : inputStream(stdin)
+
+const concatBytes = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
+  const output = new Uint8Array(chunks.reduce((length, chunk) => length + chunk.length, 0))
+  let offset = 0
+  for (const chunk of chunks) {
+    output.set(chunk, offset)
+    offset += chunk.length
+  }
+  return output
+}
+
+const redactText = (text: string, redactions: ReadonlyArray<string>): string => redactions.reduce(
+  (output, value) => value.length === 0 ? output : output.replaceAll(value, "[redacted]"),
+  text
+)
 
 const processError = (executable: string, command: string, cause: PlatformError.PlatformError) => {
   const notFound = cause.reason._tag === "NotFound"
@@ -72,10 +90,6 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
     ...childOptions
   } = options ?? {}
   const commandText = displayCommand ?? [executable, ...args].join(" ")
-  const redact = (text: string) => redactions.reduce(
-    (output, value) => value.length === 0 ? output : output.replaceAll(value, "[redacted]"),
-    text
-  )
   return yield* Effect.scoped(Effect.gen(function*() {
     const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, forceKillAfter, stdin: capturedInput(stdin) })).pipe(
       Effect.mapError((cause) => processError(executable, commandText, cause))
@@ -95,13 +109,13 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
         command: commandText,
         exitCode,
         message: `${commandText} was interrupted`,
-        stderr: includeStderrInError ? redact(result.stderr) : "",
+        stderr: includeStderrInError ? redactText(result.stderr, redactions) : "",
         cause
       })
     }
     if (result.exit.value !== 0 && !allowedExitCodes.includes(Number(result.exit.value))) {
-      const stderr = includeStderrInError ? redact(result.stderr) : ""
-      const diagnostics = [stderr.trim(), ...(includeStdoutInError ? [redact(result.stdout).trim()] : [])]
+      const stderr = includeStderrInError ? redactText(result.stderr, redactions) : ""
+      const diagnostics = [stderr.trim(), ...(includeStdoutInError ? [redactText(result.stdout, redactions).trim()] : [])]
         .filter((text) => text.length > 0).join("\n")
       return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: diagnostics || `${commandText} exited ${result.exit.value}`, stderr })
     }
@@ -111,6 +125,51 @@ export const checkedText = Effect.fn("CheckedProcess.text")(function*(
 
 export const checkedTrimmedText = (executable: string, args: ReadonlyArray<string>, options?: CheckedTextOptions) =>
   checkedText(executable, args, options).pipe(Effect.map((output) => output.trim()))
+
+export const checkedBytes = Effect.fn("CheckedProcess.bytes")(function*(
+  executable: string,
+  args: ReadonlyArray<string>,
+  options?: CheckedTextOptions
+) {
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+  const {
+    allowedExitCodes = [],
+    displayCommand,
+    forceKillAfter,
+    includeStderrInError = true,
+    includeStdoutInError = true,
+    redactions = [],
+    stdin,
+    ...childOptions
+  } = options ?? {}
+  const commandText = displayCommand ?? [executable, ...args].join(" ")
+  return yield* Effect.scoped(Effect.gen(function*() {
+    const handle = yield* spawner.spawn(ChildProcess.make(executable, args, { ...childOptions, forceKillAfter, stdin: capturedInput(stdin) })).pipe(
+      Effect.mapError((cause) => processError(executable, commandText, cause))
+    )
+    const result = yield* Effect.all({
+      exit: Effect.exit(handle.exitCode),
+      stderr: Stream.mkString(Stream.decodeText(handle.stderr)),
+      stdout: Stream.runCollect(handle.stdout)
+    }, { concurrency: "unbounded" }).pipe(
+      Effect.mapError((cause) => new CheckedProcessError({ command: commandText, exitCode: 1, message: `failed while running ${commandText}`, stderr: "", cause }))
+    )
+    if (Exit.isFailure(result.exit)) {
+      const cause = Cause.squash(result.exit.cause)
+      const platformError = Cause.findErrorOption(result.exit.cause)
+      const exitCode = Option.isSome(platformError) ? platformErrorExitCode(platformError.value) ?? 1 : 1
+      return yield* new CheckedProcessError({ command: commandText, exitCode, message: `${commandText} was interrupted`, stderr: includeStderrInError ? redactText(result.stderr, redactions) : "", cause })
+    }
+    const stdout = concatBytes(result.stdout)
+    if (result.exit.value !== 0 && !allowedExitCodes.includes(Number(result.exit.value))) {
+      const stderr = includeStderrInError ? redactText(result.stderr, redactions) : ""
+      const decoded = includeStdoutInError ? redactText(new TextDecoder().decode(stdout), redactions).trim() : ""
+      const diagnostics = [stderr.trim(), decoded].filter((text) => text.length > 0).join("\n")
+      return yield* new CheckedProcessError({ command: commandText, exitCode: Number(result.exit.value), message: diagnostics || `${commandText} exited ${result.exit.value}`, stderr })
+    }
+    return stdout
+  }))
+})
 
 export const checkedInherit = Effect.fn("CheckedProcess.inherit")(function*(executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
