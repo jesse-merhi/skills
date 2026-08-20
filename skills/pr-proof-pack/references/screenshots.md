@@ -48,8 +48,11 @@ content types, and exact byte size.
 It prints only the verified asset URL on success.
 
 The command supports `github.com` PRs only and accepts only image or video
-content. If it fails, stop and report its diagnostics. Do not extract or reuse
-browser credentials.
+content. It requires curl 8.4 or newer so its byte limit also applies to
+responses without `Content-Length`. If the preflight fails, upgrade curl and
+ensure the newer binary is first on `PATH`.
+If it fails, stop and report its diagnostics. Do not extract or reuse browser
+credentials.
 
 Insert images with descriptive alt text. Insert videos as a bare URL on their
 own line; image Markdown such as `![](url)` does not produce a working MP4
@@ -72,7 +75,8 @@ gh pr view "$PR_URL" --json title,body --jq '{title, body}'
 Check the title, section order, captions, copyable reproduction steps, and every
 expected image and video in the Markdown. The repository verifier captures
 `body_html` without printing it, requires the PR to stay on the expected final
-head, and reports only media counts, types, and byte sizes. It
+head, preflights the same curl 8.4 requirement before fetching media, and
+reports only media counts, types, and byte sizes. It
 keeps signed URLs out of process arguments and fetches every resolved asset
 without credentials, user curl configuration, or untrusted redirects.
 Never forward the `gh` token to a resolved asset, Camo, or CDN host, and never

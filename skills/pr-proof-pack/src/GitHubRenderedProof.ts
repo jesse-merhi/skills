@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema"
 
 import { type CheckedTextOptions, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import {
+  checkCurlDownloadLimitSupport,
   fetchTrustedAsset,
   GitHubAttachmentError,
   maxAttachmentBytes,
@@ -283,6 +284,7 @@ const verifyRenderedProof = Effect.fn("GitHubRenderedProof.verify")(function*(
   yield* requireExpectedHead(expectedHeadSha, proof.headSha)
   const { media } = proof
   const groups = groupRenderedMedia(media)
+  if (groups.length > 0) yield* checkCurlDownloadLimitSupport(processOptions)
   const assets: Array<RenderedAssetResult> = []
   let downloadedBytes = FileSystem.Size(0)
   for (let start = 0; start < groups.length;) {

@@ -136,6 +136,10 @@ const run = () => {
     return
   }
   if (name === "curl") {
+    if (args[0] === "--version") {
+      process.stdout.write("curl 8.4.0 (test)\\n")
+      return
+    }
     fs.writeFileSync(args[args.indexOf("--output") + 1], "proof")
     fs.writeFileSync(args[args.indexOf("--dump-header") + 1], "HTTP/1.1 200 OK\\r\\n")
     process.stdout.write('{"status":200,"contentType":"image/png"}')
@@ -170,7 +174,7 @@ if (name === "curl") {
           "https://github.com/jesse-merhi/skills/pull/81",
           expectedHeadSha,
           {
-            deadline: "500 millis",
+            deadline: "1 second",
             processOptions: {
               env: {
                 ...baseEnvironment,
@@ -323,6 +327,10 @@ fi
     writeExecutable(join(directory, "curl"), `#!/bin/sh
 printf 'curl-args=%s\\n' "$*" >> "$RENDERED_TEST_LOG"
 for argument do printf 'curl-arg=%s\\n' "$argument" >> "$RENDERED_TEST_LOG"; done
+if [ "\${1:-}" = '--version' ]; then
+  printf 'curl %s (test)\\n' "\${RENDERED_TEST_CURL_VERSION:-8.4.0}"
+  exit 0
+fi
 case "$*" in
   *sentinel-secret*) printf 'signed URL entered argv\\n' >&2; exit 3 ;;
 esac
@@ -468,6 +476,15 @@ printf '%s\\n' 'image/jpeg'
       assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("gh-args=")).length, 3)
       assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 5)
       assert.include(successRequests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret-refreshed-2&s=40"')
+
+      const oldCurlLog = join(directory, "old-curl.log")
+      const oldCurl = runLauncher({
+        RENDERED_TEST_CURL_VERSION: "8.3.0",
+        RENDERED_TEST_LOG: oldCurlLog
+      })
+      assertCommandFailure(oldCurl)
+      assert.include(`${oldCurl.stdout}\n${oldCurl.stderr}`, "curl 8.4 or newer")
+      assert.notInclude(readFileSync(oldCurlLog, "utf8"), "curl-stdin=")
 
       const duplicateLog = join(directory, "duplicate.log")
       const duplicate = runLauncher({

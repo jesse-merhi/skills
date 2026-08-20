@@ -48,6 +48,8 @@ const RedirectResult = Schema.Struct({ status: RedirectStatus, location: Trusted
 const FetchResult = Schema.Struct({ status: Schema.Number, contentType: Schema.String })
 
 export const maxAttachmentBytes = FileSystem.Size(100 * 1024 * 1024)
+const minimumCurlMajor = 8
+const minimumCurlMinor = 4
 
 const decodeJson = <S extends Schema.Top>(schema: S, input: string, label: string) =>
   Schema.decodeUnknownEffect(Schema.fromJsonString(schema))(input).pipe(
@@ -87,6 +89,34 @@ export const parseUploadResponse = Effect.fn("GitHubAttachment.parseUploadRespon
 })
 
 export const parseFetchResult = (input: string) => decodeJson(FetchResult, input, "attachment verification response")
+
+export const requireCurlDownloadLimitSupport = Effect.fn("GitHubAttachment.requireCurlDownloadLimitSupport")(function*(
+  input: string
+) {
+  const match = /^curl ([0-9]+)[.]([0-9]+)(?:[.][0-9]+)?(?:\s|$)/u.exec(input)
+  const major = Number(match?.[1])
+  const minor = Number(match?.[2])
+  if (
+    !Number.isSafeInteger(major) ||
+    !Number.isSafeInteger(minor) ||
+    major < minimumCurlMajor ||
+    (major === minimumCurlMajor && minor < minimumCurlMinor)
+  ) {
+    return yield* new GitHubAttachmentError({
+      message: "curl 8.4 or newer is required to enforce proof download limits; upgrade curl and ensure it is first on PATH"
+    })
+  }
+})
+
+export const checkCurlDownloadLimitSupport = Effect.fn("GitHubAttachment.checkCurlDownloadLimitSupport")(function*(
+  processOptions?: Pick<CheckedTextOptions, "env" | "extendEnv" | "forceKillAfter">
+) {
+  const version = yield* checkedTrimmedText("curl", ["--version"], {
+    ...processOptions,
+    displayCommand: "curl --version"
+  })
+  yield* requireCurlDownloadLimitSupport(version)
+})
 
 export const mediaTypeEssence = (input: string) => input.split(";", 1)[0]?.trim().toLowerCase() ?? ""
 
@@ -238,6 +268,7 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   )
   const sourceInfo = yield* fileSystem.stat(options.evidencePath)
   yield* requireAttachmentSize(sourceInfo.size)
+  yield* checkCurlDownloadLimitSupport()
   const uploadOutput = yield* checkedTrimmedText("gh", uploadRequestArgs({
     evidencePath: options.evidencePath,
     evidenceName: paths.basename(options.evidencePath),

@@ -26,6 +26,7 @@ import {
   redirectRequestArgs,
   repositoryFromPullRequest,
   requireAttachmentSize,
+  requireCurlDownloadLimitSupport,
   uploadRequestArgs,
   verifyAttachment
 } from "./GitHubAttachment.ts"
@@ -233,6 +234,16 @@ describe("GitHub attachment upload contract", () => {
     requireAttachmentSize(FileSystem.Size((100 * 1024 * 1024) + 1)).pipe(Effect.flip)
   ]).pipe(Effect.map((results) => assert.match(results[1]?.message ?? "", /cannot exceed 100 MiB/u))))
 
+  it.effect("requires curl 8.4 or newer for enforced download limits", () => Effect.all([
+    requireCurlDownloadLimitSupport("curl 8.4.0 (test)"),
+    requireCurlDownloadLimitSupport("curl 9.0.1 (test)"),
+    requireCurlDownloadLimitSupport("curl 8.3.0 (test)").pipe(Effect.flip),
+    requireCurlDownloadLimitSupport("unexpected version output").pipe(Effect.flip)
+  ]).pipe(Effect.map((results) => {
+    assert.match(results[2]?.message ?? "", /curl 8[.]4 or newer/u)
+    assert.match(results[3]?.message ?? "", /upgrade curl/u)
+  })))
+
   it("keeps credentials on the first curl request and prints only a verified URL", () => {
     const directory = mkdtempSync(join(tmpdir(), "github-attachment-test-"))
     const log = join(directory, "curl.log")
@@ -294,6 +305,11 @@ else
 fi
 `)
     writeExecutable(join(directory, "curl"), `#!/bin/sh
+if [ "\${1:-}" = '--version' ]; then
+  printf 'curl-version=%s\\n' "\${UPLOAD_TEST_CURL_VERSION:-8.4.0}" >> "$UPLOAD_TEST_LOG"
+  printf 'curl %s (test)\\n' "\${UPLOAD_TEST_CURL_VERSION:-8.4.0}"
+  exit 0
+fi
 output=''
 headers=''
 previous=''
@@ -393,6 +409,13 @@ esac
       assertCommandFailure(oversized)
       assert.include(`${oversized.stdout}\n${oversized.stderr}`, "cannot exceed 100 MiB")
       assert.notInclude(readFileSync(oversizedLog, "utf8"), "api --method POST")
+
+      const oldCurlLog = join(directory, "old-curl.log")
+      const oldCurl = runLauncher(evidence, { UPLOAD_TEST_CURL_VERSION: "8.3.0", UPLOAD_TEST_LOG: oldCurlLog })
+      assertCommandFailure(oldCurl)
+      assert.include(`${oldCurl.stdout}\n${oldCurl.stderr}`, "curl 8.4 or newer")
+      assert.include(`${oldCurl.stdout}\n${oldCurl.stderr}`, "upgrade curl")
+      assert.notInclude(readFileSync(oldCurlLog, "utf8"), "api --method POST")
 
       const success = runLauncher(evidence)
       assert.strictEqual(success.status, 0, `${success.stderr}\n${existsSync(log) ? readFileSync(log, "utf8") : "no process log"}`)

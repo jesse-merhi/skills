@@ -124,10 +124,13 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    `gh auth status --active --hostname github.com`. The upload command in step 8
    resolves and validates the exact PR and repository. Identify whether
    practical capture needs a browser or device and whether the finished body
-   requires client-side inspection, such as a Mermaid diagram. Do not make an
-   interactive browser a prerequisite for `github.com` upload or ordinary
-   rendered-body checks, and do not require attachment or browser capabilities
-   for text-only proof.
+   requires client-side inspection, such as a Mermaid diagram. When attachment
+   upload or rendered-media verification will run, require curl 8.4 or newer so
+   download limits apply even when a server omits `Content-Length`; the
+   repository commands preflight this and stop with an upgrade instruction. Do
+   not make an interactive browser a prerequisite for `github.com` upload or
+   ordinary rendered-body checks, and do not require attachment or browser
+   capabilities for text-only proof.
 
    Done when provider authentication and repository access work and every
    browser or device capability genuinely needed later in the refresh is
