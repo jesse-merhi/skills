@@ -1,8 +1,8 @@
 # Global agent instructions
 
 Shared instructions for every coding agent tool (Claude Code, Codex,
-opencode, Pi). Keep this file agent-agnostic: anything Claude-specific
-belongs in `CLAUDE.md`, which imports this file and layers on top of it.
+opencode, Pi). Keep this file agent-agnostic. Anything Claude-specific belongs
+in `CLAUDE.md`, which imports this file and layers on top of it.
 
 ## Communication
 

@@ -466,7 +466,7 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   local refs="$ROOT_DIR/skills/speak-fking-english/references/ai-tells.md"
 
   assert_contains "$refs" "Cutting AI patterns is half the job"
-  assert_contains "$refs" "All six rules apply to a reply you are speaking to the user"
+  assert_contains "$refs" "All six rules apply to a reply you are speaking to a person"
   assert_contains "$refs" "Only the first three apply to reviewer-facing text"
   assert_contains "$refs" "**Be specific.**"
   assert_contains "$refs" "**Vary rhythm.**"
@@ -1000,6 +1000,18 @@ with tempfile.TemporaryDirectory() as tmp:
 PY
 }
 
+test_repo_text_obeys_the_ai_tells_catalogue() {
+  # The sweep in this PR is only durable if something keeps it swept.
+  # skill-cleaner.ts strips curly quotes, so its own character class is exempt.
+  local offenders
+  offenders="$(cd "$ROOT_DIR" && git grep -l -P '[\x{2014}\x{2018}\x{2019}\x{201C}\x{201D}]' \
+    -- '*.md' '*.ts' '*.yaml' '*.yml' '*.html' \
+    | grep -v 'skills/skill-cleaner/scripts/skill-cleaner.ts' || true)"
+  if [ -n "$offenders" ]; then
+    fail "em dash or curly quote found in: $offenders"
+  fi
+}
+
 test_skill_frontmatter_is_valid
 test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
@@ -1023,5 +1035,6 @@ test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier
+test_repo_text_obeys_the_ai_tells_catalogue
 
 printf 'ok - skills tests\n'

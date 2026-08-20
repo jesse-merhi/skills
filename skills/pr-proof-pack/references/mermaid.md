@@ -3,7 +3,7 @@
 Use a diagram only when it is genuinely useful teaching material for a
 relationship, sequence, state transition, decision, spatial layout, comparison,
 integration boundary, lifecycle, or interaction among several actors.
-Having several steps or components is not enough: if a short paragraph or list
+Having several steps or components is not enough. If a short paragraph or list
 is clearer, omit the diagram.
 
 ## Make the idea land

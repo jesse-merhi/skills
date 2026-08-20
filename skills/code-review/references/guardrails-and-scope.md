@@ -29,7 +29,7 @@ with the scope reason.
 (default 8 hours per run), the deterministic diff-growth budget (exactly 30%
 of baseline production changed lines by default), the consult queue for findings that need user input, and the
 queue-matching and fixed-point rules that stop later review passes from
-re-litigating queued findings. There is no iteration cap: the budgets are the
+re-litigating queued findings. There is no iteration cap. The budgets are the
 bound.
 
 Orchestrator specifics:

@@ -38,7 +38,7 @@ behaviors, migration steps, or risks that a reviewer must act on. Remove
 repeated claims, exhaustive test inventories, review history, file lists, and
 implementation detail already clear from the diff.
 
-## Change breakdown
+## Change Breakdown
 
 When a PR spans multiple reviewer-meaningful parts, or its size needs
 explanation, include one compact direct-base breakdown after the opening. Use
@@ -52,7 +52,7 @@ paths. Keep the table to the few rows that change how the PR should be reviewed.
 Binary files count as files but do not have textual LOC.
 
 ```md
-## Change breakdown
+## Change Breakdown
 
 | Part | Files | +LOC | -LOC |
 | --- | ---: | ---: | ---: |

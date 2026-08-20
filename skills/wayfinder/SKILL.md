@@ -162,8 +162,8 @@ effort, not a resumed ticket.
 
 ## Invocation
 
-Two modes. Either way, never resolve more than one ticket per session. Research
-tickets are the exception, because independent ones may run in parallel.
+Two modes. Either way, never resolve more than one ticket per session.
+Independent research tickets are the exception and may run in parallel.
 
 ### Chart the map
 

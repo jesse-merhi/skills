@@ -18,8 +18,10 @@ recognisable voice.
 
 ## What no rule reaches
 
-These three exceptions apply to every rule below. The test is always what the
-word denotes here. If it names a real thing, it stays.
+These three exceptions apply to every rule below. For a rule about a word, the
+test is what the word denotes here: if it names a real thing, it stays. For the
+character and formatting rules, the quoted-text exception is the one that
+applies.
 
 **Literal senses.** A rule bans a word used as padding or metaphor, never the
 word used to name something specific. An attack surface, a test harness, a
@@ -27,8 +29,10 @@ word used to name something specific. An attack surface, a test harness, a
 `Target Size (Enhanced)` criterion, and a Cargo `[features]` table all denote
 real things. Rewriting them corrupts the claim rather than clarifying it.
 
-**Proper nouns.** A package, product, tool, standard, or third-party API keeps
-the name its owner gave it, even when that name contains a banned word.
+**Proper nouns.** A package, product, tool, standard, third-party API, or named
+concept keeps the name its owner gave it, even when that name contains a banned
+word. `Primitive Obsession` is the code smell's name, not a description you may
+reword.
 
 **Quoted text.** Fix your own prose, not a quotation. When the draft reproduces
 someone else's words, or when a character is itself the finding, reproduce it
@@ -37,14 +41,17 @@ a file state that does not exist.
 
 ## Voice
 
-All six rules apply to a reply you are speaking to the user.
+All six rules apply to a reply you are speaking to a person, whatever that
+reply is about. Describing work someone will check does not make it
+reviewer-facing; addressing a person keeps it user-facing. A consult question
+is the clearest case, and `review-guardrails` routes it that way too.
 
-Only the first three apply to reviewer-facing text: anything another reader
-checks against a diff, a run, or a record. PR titles and bodies, captions,
-commit subjects, verification steps, finding cards, review reports, and
-consult questions are all reviewer-facing, whether a calling skill saves them
-or you return them in chat. When both descriptions fit, treat the text as
-reviewer-facing.
+Only the first three apply to reviewer-facing text: an artifact you write for
+a reader who is not in this conversation and who will check it against a diff,
+a run, or a record. PR titles and bodies, captions, commit subjects,
+verification steps, finding cards, and review reports saved to a file are all
+reviewer-facing. When a single piece of text is both, split it: keep the reply
+in your own voice and write the saved artifact in the reviewer-facing one.
 
 Both:
 
@@ -69,8 +76,10 @@ Speaking to the user only:
 2. **Name-dropping.** Listing publications without context. Pick one and say
    what it said.
 3. **Superficial -ing phrases.** "highlighting...", "ensuring...",
-   "reflecting...", "showcasing...", "fostering...". Delete, or expand with
-   real sources.
+   "reflecting...", "showcasing...", "fostering...". Delete, or expand into a
+   real claim. Upstream says "with real sources"; this catalogue runs over
+   writing about code, where the repair is usually a fact rather than a
+   citation.
 4. **Promotional language.** "nestled", "vibrant", "breathtaking",
    "groundbreaking", "renowned", "stunning", "must-visit". Describe neutrally.
 5. **Vague attributions.** "Experts believe", "Industry reports suggest", "Some
@@ -111,8 +120,8 @@ Speaking to the user only:
 14. **Colons.** A colon before a list, an example, or a label is fine. A colon
     as a mid-sentence connector is not. "If you are coming from traditional
     automation: instead of registering handlers, you describe conditions" gains
-    nothing from the colon. Rewrite it so the point stands alone: "Describing
-    when the scheduler should fire works best as plain English."
+    nothing from the colon. End the first clause and let the second stand:
+    "Traditional automation registers handlers. Here you describe conditions."
 15. **Boldface.** Bold the few phrases a skimming reader must not miss. Do
     not bold every proper noun or acronym. Bolding stays useful for a
     literal control the reader has to find, such as **Use Admin**.
@@ -149,31 +158,38 @@ Speaking to the user only:
 
 ## Jargon
 
-26. **Abstract metaphor nouns.** Substrate, wedge, vector, locus, vantage,
-    nexus, primitive, harness, surface, bedrock, scaffolding, modality,
-    paradigm, gold-plating, ratchet, evacuate, endgame, north star, flywheel.
-    These sound technical and usually have a plainer concrete word. Pick the
-    concrete word.
+26. **Abstract metaphor nouns.** Substrate, wedge, locus, vantage, nexus,
+    bedrock, modality, paradigm, gold-plating, endgame, north star, flywheel,
+    and the metaphorical use of vector, primitive, harness, surface,
+    scaffolding, ratchet, and evacuate. These sound technical and usually have a
+    plainer concrete word. Pick the concrete word.
 
-    | Instead of | Write |
+    Each row applies only to the metaphor. The literal sense of the same word
+    keeps its name.
+
+    | Metaphorical use | Write |
     | --- | --- |
     | substrate | base |
     | wedge in | add |
-    | vector | way, method |
-    | primitive | building block |
-    | harness | name the thing running the work |
-    | surface | the API, the screen, the changed code |
-    | scaffolding | setup code, starter files |
+    | vector (as in "attack vector") | way, method |
+    | primitive (a building block of a design) | building block |
+    | harness (as metaphor) | name the thing running the work |
+    | surface (a vague area, not a named one) | the API, the screen, the diff |
+    | scaffolding (as metaphor) | setup code, starter files |
     | gold-plating | more than the job needs |
-    | ratchet | the mechanism, or "a limit that only tightens" |
-    | evacuate | move out |
+    | ratchet (as metaphor) | the mechanism, or "a limit that only tightens" |
+    | evacuate (for moving code) | move out |
     | endgame | the last phase |
 
     The literal-sense exception above does most of the work here, because most
-    of these words have a real technical use. `browser-harness` in the skills
-    repository is the proper-noun case: `external.md` records it at a pinned
-    commit, and that record only helps if the name still matches the project a
-    reader has to go and find.
+    of these words have a real technical use. At the boundary, ask whether the
+    phrase is a named thing people look up or a vague gesture at an area.
+    "Attack surface" and "API surface" are named things and stay. "The product
+    surface" and "the proof surface" name no such thing and go.
+
+    `browser-harness` in the skills repository is the proper-noun case.
+    `external.md` records it at a pinned commit, and that record only helps if
+    the name still matches the project a reader has to go and find.
 
     Familiarity is not a defence for a genuine metaphor. If a phrase like
     "proof surface" is only comfortable because the repository repeats it,
@@ -207,4 +223,8 @@ Speaking to the user only:
 31. **Prefer the plain word.** "utilize" becomes "use". "leverage" becomes
     "use". "facilitate" becomes "help". "numerous" becomes "many". "in the
     event that" becomes "if". The fancier synonym is rarely clearer.
+
+    The padded sense only. Financial leverage, and leverage as a named design
+    property such as the one `improve-codebase-architecture` defines, both name
+    real things and stay.
 

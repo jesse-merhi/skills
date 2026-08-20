@@ -22,7 +22,8 @@ winner only after the user chooses.
    personality, motion, or interaction model.
 4. Use realistic content and working interactions. No lorem ipsum, dead
    controls, or instructions to imagine missing behavior.
-5. Reuse the project's stack, tokens, components, and installed dependencies.
+5. Reuse the project's stack, tokens, building blocks, and installed
+   dependencies.
    Do not add a dependency without the user's approval.
 6. Keep prototypes on an isolated route or page. Production code must not
    import from the prototype route.
