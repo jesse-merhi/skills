@@ -50,8 +50,9 @@ SOFTWARE.
 
 ## pstack `unslop`
 
-Source: <https://github.com/cursor/plugins/blob/main/pstack/skills/unslop/SKILL.md>,
-adapted from the revision fetched 2026-08-20.
+Source:
+<https://github.com/cursor/plugins/blob/99559f2f52047978602ef365589275831e76af07/pstack/skills/unslop/SKILL.md>,
+pinned at commit `99559f2f52047978602ef365589275831e76af07`.
 The `cursor/plugins` repository has no root license file; the `pstack` plugin
 carries its own at `pstack/LICENSE`.
 

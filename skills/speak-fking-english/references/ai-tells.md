@@ -17,11 +17,16 @@ recognisable voice.
 
 ## Voice
 
-All six rules apply to chat replies. Only the first three apply to PR titles,
-bodies, captions, commit subjects, and verification steps, because a reviewer
-has to check those claims against a diff.
+All six rules apply to a reply you are speaking to the user.
 
-Everywhere:
+Only the first three apply to reviewer-facing text: anything another reader
+checks against a diff, a run, or a record. PR titles and bodies, captions,
+commit subjects, verification steps, finding cards, review reports, and
+consult questions are all reviewer-facing, whether a calling skill saves them
+or you return them in chat. When both descriptions fit, treat the text as
+reviewer-facing.
+
+Both:
 
 - **Be specific.** Not "this is concerning" but "the runner published a review
   without ever opening the checkout".
@@ -29,7 +34,7 @@ Everywhere:
 - **Acknowledge complexity.** "Faster, but it drops the audit trail" beats
   "faster".
 
-Chat only:
+Speaking to the user only:
 
 - **Have opinions.** React to the facts instead of listing pros and cons at
   equal weight.
@@ -83,7 +88,8 @@ Chat only:
     as a mid-sentence connector is not. "If you are coming from traditional
     automation: instead of registering handlers, you describe conditions" gains
     nothing from the colon. Let the point stand without the comparison framing.
-15. **Boldface.** Do not bold every proper noun or acronym.
+15. **Boldface.** Bold the few phrases a skimming reader must not miss.
+    Leave proper nouns and acronyms unbolded.
 16. **Inline-header lists.** The tell is a bold label and colon that restates
     the line: "**Performance:** Performance improved...". Convert those to
     prose. A bold lead-in that ends in a period, names the item, and is followed
@@ -114,40 +120,46 @@ Chat only:
 
 ## Jargon
 
-26. **Abstract metaphor nouns.** Substrate, wedge, vector, locus, vantage,
-    nexus, primitive (as a noun), harness, surface, bedrock, scaffolding,
-    modality, paradigm, gold-plating, ratchet (as a metaphor), evacuate (for
-    moving code), endgame, north star, flywheel. These sound technical and
-    almost always have a plainer concrete word.
+26. **Abstract metaphor nouns.** Substrate, wedge, locus, vantage, nexus,
+    bedrock, modality, paradigm, gold-plating, endgame, north star, flywheel,
+    and the metaphorical use of vector, primitive, harness, surface,
+    scaffolding, ratchet, and evacuate. These sound technical and usually have
+    a plainer concrete word.
 
-    | Instead of | Write |
+    Every entry below applies only when the word is standing in for something
+    plainer. Ask what the word denotes here. If it names a real thing in the
+    domain, it stays.
+
+    | Metaphorical use | Write |
     | --- | --- |
     | substrate | base |
     | wedge in | add |
-    | vector | way, method |
-    | primitive | building block |
-    | harness | name the tool, or "agent tool" |
-    | surface | the screen, the API, what a reviewer sees |
-    | scaffolding | setup code, generated starter files |
+    | vector for | way, method |
+    | primitive (a building block of a design) | building block |
+    | harness (the thing running the work) | name it |
+    | surface (as in "API surface") | the API, the screen, the changed code |
+    | scaffolding (as in temporary support) | setup code, starter files |
     | gold-plating | more than the job needs |
-    | ratchet | the real mechanism, or "a limit that only tightens" |
-    | evacuate | move out |
+    | ratchet | the mechanism, or "a limit that only tightens" |
+    | evacuate (for moving code) | move out |
     | endgame | the last phase |
 
-    This ban has no carve-out for terms already common in the repository. When
-    an existing phrase like "proof surface" or "harness-agnostic" is the clearer
-    option in context, rename the concept rather than keeping the metaphor.
+    The literal senses keep their names. An attack surface, a rendering
+    surface, a test harness, a `harness = false` build key, a synchronization
+    or cryptographic primitive, a primitive type, a vector index, and the
+    `Primitive Obsession` code smell all denote real things. Rewriting them
+    corrupts the claim rather than clarifying it.
 
-    It bans the metaphor, not the literal sense. A primitive type, a vector
-    index, a rendering surface, and the `Primitive Obsession` code smell all
-    name real things, so they keep their names. Ask whether the word points
-    at a concrete thing in the domain or is standing in for a plainer word.
+    Proper nouns keep their names too. A package, product, tool, or
+    third-party API is called what its owner called it, even when that name
+    is a banned word. `external.md` pins the `browser-harness`
+    dependency by commit, so renaming it would break the install command. Quoted
+    external text is the same. Fix your own prose, not a quotation.
 
-    It does not reach proper nouns either. A package, product, tool, or
-    third-party API keeps the name its owner gave it, even when that name is
-    a banned word. The `browser-harness` dependency in `external.md` is
-    pinned by commit, so renaming it would break the install command. The
-    same holds for quoted external text: fix your own prose, not a quotation.
+    Familiarity is not a defence for a genuine metaphor. If a phrase like
+    "proof surface" is only comfortable because the repository repeats it,
+    rename the concept in the prose. This rule edits writing, so it never
+    licenses renaming an identifier, a config key, or a public API on its own.
 
 ## Plain speech
 
@@ -170,3 +182,6 @@ Chat only:
 31. **Plain words.** "utilize" becomes "use". "leverage" becomes "use".
     "facilitate" becomes "help". "numerous" becomes "many". "in the event that"
     becomes "if". The fancier synonym is rarely clearer.
+
+    As in rule 26, this covers the padded sense only. Financial leverage and
+    leverage as a named design property both denote real things and stay.

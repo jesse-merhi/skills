@@ -151,8 +151,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    that remain true. Draft only the title, body, caption, reproduction, or
    evidence changes needed to restore accuracy. Load `speak-fking-english`
    immediately before saving the complete draft, and tell it the draft is
-   reviewer-facing text so its AI-tells pass applies the PR voice rules rather
-   than the chat ones.
+   reviewer-facing text so its AI-tells pass applies the reviewer-facing voice
+   rules.
 
    Done when the first two sentences explain what broke and why it matters, the
    next two explain the fix and outcome, a multi-part or unusually large PR has

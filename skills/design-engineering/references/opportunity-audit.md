@@ -11,8 +11,7 @@ Reject a candidate as soon as one gate fails:
 
 1. **Frequency:** keep constant or expert actions instant; restrain frequent
    actions; allow ordinary motion for rarely visited parts of the UI and more
-   expression
-   only for rare first-run, empty, success, or celebration moments.
+   expression only for rare first-run, empty, success, or celebration moments.
 2. **Purpose:** require feedback, spatial continuity, state indication,
    prevention of a jarring change, explanation, or rare delight. "It looks
    cool" is not a purpose.

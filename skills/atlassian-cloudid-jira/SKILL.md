@@ -12,8 +12,7 @@ default Jira site.
 ## Choose the gateway
 
 1. Prefer a local Rovo-backed Atlassian MCP bridge provided by the agent tool
-   when it is
-   available. It is the same authentication path with less agent overhead.
+   when it is available. It is the same authentication path with less agent overhead.
 2. Otherwise run the bundled read-only launcher:
 
    ```sh
