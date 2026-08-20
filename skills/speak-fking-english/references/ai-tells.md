@@ -24,10 +24,11 @@ character and formatting rules, the quoted-text exception is the one that
 applies.
 
 **Literal senses.** A rule bans a word used as padding or metaphor, never the
-word used to name something specific. An attack surface, a test harness, a
-`harness = false` build key, a cryptographic primitive, a vector index, WCAG's
-`Target Size (Enhanced)` criterion, and a Cargo `[features]` table all denote
-real things. Rewriting them corrupts the claim rather than clarifying it.
+word used to name something specific. An attack surface, a test harness, an
+agent harness such as Claude Code or Codex, a `harness = false` build key, a
+cryptographic primitive, a vector index, WCAG's `Target Size (Enhanced)`
+criterion, and a Cargo `[features]` table all denote real things. Rewriting
+them corrupts the claim rather than clarifying it.
 
 **Proper nouns.** A package, product, tool, standard, third-party API, or named
 concept keeps the name its owner gave it, even when that name contains a banned

@@ -28,12 +28,12 @@ version-matched skill. The local browser requires the human to enable remote
 debugging and approve its connection prompt; the agent must not bypass either
 consent step.
 
-| Agent tool | Method |
+| Harness | Method |
 | --- | --- |
 | Claude Code | `uv tool install --python 3.12 --force 'browser-use==0.13.7' && browser-use skill install --target claude --no-install --force` |
 
 The Browser Use installer owns the external skill. Do not symlink or copy a
-`browser-use` skill from this repository. Other agent tools must skip this entry
+`browser-use` skill from this repository. Other harnesses must skip this entry
 until a tested command and workflow are added.
 
 ## gh-stack
@@ -54,10 +54,10 @@ until a tested command and workflow are added.
 ### Install
 
 Install the pinned extension, then install its official skill at user scope for
-the current agent tool. `--force` makes a reinstall converge on the reviewed
+the current harness. `--force` makes a reinstall converge on the reviewed
 version instead of silently retaining a different version.
 
-| Agent tool | Method |
+| Harness | Method |
 | --- | --- |
 | Claude Code | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent claude-code --scope user --force` |
 | Codex | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent codex --scope user --force` |
@@ -85,15 +85,15 @@ The installers own the external `gh-stack` skill and extension. Do not symlink
 
 ### Install
 
-Run from the directory above the agent tool's config directory, `~`, so the
+Run from the directory above the harness's config directory, `~`, so the
 installer writes into the normal global skills folder. Only Codex has been
-verified here; other agent tools must skip this entry until a tested command is
+verified here; other harnesses must skip this entry until a tested command is
 added. The installer cannot clone a raw commit SHA as a GitHub tree ref, so the
 command first proves that
 the upstream metadata branch still points at the reviewed commit and refuses to
 install if it moved.
 
-| Agent tool | Method |
+| Harness | Method |
 | --- | --- |
 | Codex | `test "$(git ls-remote https://github.com/mattpocock/skills.git refs/heads/codex-skill-metadata \| awk '{print $1}')" = "697d4ce9742da558fd1ba6697c8e9775e2e302dd" && (cd ~ && npx --yes skills@1.5.20 add 'https://github.com/mattpocock/skills/tree/codex-skill-metadata/skills/productivity/teach' --global --agent codex --skill teach --yes)` |
 
@@ -103,7 +103,7 @@ repo.
 ## Retired third-party skills
 
 Retired entries remain here as cleanup tombstones. Run the removal command for
-the current agent tool on every reinstall, even when the skill is already
+the current harness on every reinstall, even when the skill is already
 absent. Do not reinstall a retired skill unless the user explicitly asks for it.
 
 ### impeccable
@@ -111,7 +111,7 @@ absent. Do not reinstall a retired skill unless the user explicitly asks for it.
 Impeccable was replaced by the repo-owned frontend design skills. Remove all
 installer-owned copies so agent skill discovery cannot load the retired skill.
 
-| Agent tool | Removal command |
+| Harness | Removal command |
 | --- | --- |
 | Claude Code | `rm -rf ~/.claude/skills/impeccable` |
 | Codex | `rm -f ~/.codex/skills/impeccable && rm -rf ~/.agents/skills/impeccable` |
@@ -124,7 +124,7 @@ Preserve unrelated settings and delete the file only when nothing remains.
 
 Removing the skill directories is not enough. Impeccable's hook writes state
 outside them, and that state survived two reinstalls because the commands above
-never named it. Remove it on every reinstall, on every agent tool:
+never named it. Remove it on every reinstall, on every harness:
 
 ```sh
 rm -rf ~/.impeccable ~/.codex/.impeccable

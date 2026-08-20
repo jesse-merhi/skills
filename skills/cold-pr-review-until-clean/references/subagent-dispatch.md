@@ -1,6 +1,6 @@
 # Subagent dispatch
 
-Use a fresh subagent for every cold-review pass whenever the agent tool can
+Use a fresh subagent for every cold-review pass whenever the harness can
 spawn one. The loop is designed to fight implementer anchoring bias; a
 self-review inside the implementation context does not provide the same signal.
 
@@ -8,15 +8,15 @@ self-review inside the implementation context does not provide the same signal.
   tightly scoped review prompt. Never inherit the coordinator's turns.
 - In Claude Code, use the `Task` tool with a code-reviewer or general reviewer
   subagent.
-- In other agent tools, use the closest isolated reviewer agent/workspace.
+- In other harnesses, use the closest isolated reviewer agent/workspace.
 
-Only fall back to self-review when the agent tool truly has no subagent or
+Only fall back to self-review when the harness truly has no subagent or
 isolated reviewer mechanism. If you fall back, state that explicitly and treat
 the pass as lower-confidence in the final report.
 
 Use the `cold-pr-review` skill's pattern: dispatch an isolated reviewer with no
 implementation context. In Codex, use `spawn_agent`; in Claude Code, use `Task`;
-in other agent tools, use the closest isolated reviewer mechanism available.
+in other harnesses, use the closest isolated reviewer mechanism available.
 
 Isolation is about conversation history, not repository access. The reviewer
 may read unchanged files to understand runtime flows changed by the target, but

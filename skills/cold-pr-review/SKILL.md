@@ -13,7 +13,7 @@ prevents questioning whether it was correct.
 ## Workflow
 
 1. Dispatch a separate reviewer subagent by default. Use
-   [dispatch.md](references/dispatch.md) for tool-specific options and the
+   [dispatch.md](references/dispatch.md) for harness-specific options and the
    self-review fallback.
 2. Give the reviewer only what to review and a neutral checklist.
 3. Do not give your reasoning, design decisions, prior findings, fixes attempted,
@@ -37,7 +37,7 @@ prevents questioning whether it was correct.
 ## Context pointers
 
 - Use [dispatch.md](references/dispatch.md) for Codex, Claude Code, other
-  agent tools, and self-review fallback.
+  harnesses, and self-review fallback.
 - Use [checklist.md](references/checklist.md) for neutral review lenses.
 - Use [prompt-template.md](references/prompt-template.md) for the cold reviewer
   prompt.

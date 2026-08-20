@@ -5,7 +5,7 @@ description: 'Run authorized native reviews and fixes until two fresh passes are
 
 # Review until clean
 
-Run the agent tool's own built-in review in a loop. Every time the review
+Run the harness's own built-in review in a loop. Every time the review
 surfaces actionable findings, fix only those findings and run the review again.
 
 Stop after the selected engine produces **two consecutive clean runs** on the
@@ -13,7 +13,7 @@ same reviewed tree. This gives the native review loop one confirmation pass
 after the first clean result without returning to the old unbounded streak.
 
 This skill is separate from `cold-pr-review-until-clean`: the source of truth is
-the agent tool's native review mode, not a custom prompt, `cold-pr-review`, a
+the harness's native review mode, not a custom prompt, `cold-pr-review`, a
 repo-specific review command, or an ad hoc subagent.
 
 Do not use this skill for a one-off read-only review. A plain `codex review`,

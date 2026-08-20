@@ -21,7 +21,7 @@ agent unless a repo-specific fix workflow applies.
 ## Non-negotiables
 
 ```yaml
-review_tool: must invoke cold-pr-review through an independent subagent whenever the agent tool supports subagents
+review_tool: must invoke cold-pr-review through an independent subagent whenever the harness supports subagents
 review_context: subagent gets only the target, the neutral review checklist, and tracked-finding notices generated per review-guardrails; no other prior rationale or findings
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
@@ -30,7 +30,7 @@ stop_condition: one cold review run with zero actionable findings
 counter_reset: any actionable finding resets consecutive_clean to 0
 no_early_exit: do not stop before a fresh cold review returns clean
 no_self_review: do not substitute the implementer's judgement for a cold review
-fresh_reviewer: use a new isolated subagent for each review pass whenever the agent tool supports it
+fresh_reviewer: use a new isolated subagent for each review pass whenever the harness supports it
 consult_findings: consult-worthy findings go to the consult queue; keep fixing other findings instead of waiting
 queue_matched_passes: a pass whose only findings match the open consult queue counts toward the clean target but can never produce a final clean verdict
 fixed_point: when the clean target is met and the consult queue is non-empty, suspend as blocked-on-consult; never keep re-running reviews on an unchanged tree
@@ -78,7 +78,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 ## Done means
 
-- Every review pass used a fresh isolated reviewer whenever the agent tool
+- Every review pass used a fresh isolated reviewer whenever the harness
   supported one.
 - The reviewer did not receive prior findings, fixes already attempted, design
   rationale, CI confidence signals, desired verdicts, or earlier `code-review`

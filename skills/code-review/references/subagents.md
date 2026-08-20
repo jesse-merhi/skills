@@ -7,7 +7,7 @@ the risk checklist from the one-time setup.
 
 Every review subagent must start without coordinator conversation history. In
 Codex, set `fork_turns: "none"`; use the equivalent context-free option in
-other agent tools. Pass only a self-contained text brief containing the target,
+other harnesses. Pass only a self-contained text brief containing the target,
 base, changed-flow summary, and the lens it owns. Repository inspection is
 allowed and expected; inherited turns are not.
 
@@ -43,7 +43,7 @@ log exists, give them its path only with the guard above; after the verdict,
 they should append long-form rationale or return the entries if they cannot
 write.
 
-If the agent tool cannot run subagents, say so, continue only as best effort,
+If the harness cannot run subagents, say so, continue only as best effort,
 and do not call the review clean unless the user accepts that limitation.
 
 After dispatching a review batch, finish useful independent coordinator work.

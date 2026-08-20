@@ -224,7 +224,7 @@ Before saying the work is done:
   handoff, plan, or lesson likely to be saved.
 - Report anything you did not verify.
 - Always include a clickable absolute local-file Markdown link in the final
-  reply, using the file path format supported by the current agent tool.
+  reply, using the file path format supported by the current harness.
 
 ## Pattern library
 

@@ -15,7 +15,7 @@ behavior changes. Load the relevant repo/domain skill before decomposition.
 
 Only spawn subagents when the user has explicitly asked for subagents,
 delegation, or parallel agent work. Otherwise, produce the slice plan and ask
-before spawning. If subagents are unavailable in the current agent tool, run the
+before spawning. If subagents are unavailable in the current harness, run the
 same slice plan sequentially and say that parallel execution was not available.
 
 ## Orchestrator workflow

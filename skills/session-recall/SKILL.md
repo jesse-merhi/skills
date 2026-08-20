@@ -19,7 +19,7 @@ session logs into external tools.
    `agent-session-find --index-since 14d --max-sources 80 "<query>"`.
 3. Add repo or cwd context when the project is known:
    `agent-session-find --cwd "<repo-name>" --since 30d "<query>"`.
-4. Search one source when the likely agent tool is known:
+4. Search one source when the likely harness is known:
    `agent-session-find --source codex "<query>"` or
    `agent-session-find --source claude "<query>"`.
 5. If the user mentions a handoff, worker, subagent, delegated implementation,

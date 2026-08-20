@@ -181,7 +181,7 @@ Independent research tickets are the exception and may run in parallel.
    Yet Specified.
 5. Dispatch one `research` subagent per research ticket. Have each subagent
    claim its assigned ticket before work, then link the result and resolve the
-   ticket. If the agent tool cannot dispatch subagents, leave the research
+   ticket. If the harness cannot dispatch subagents, leave the research
    tickets on the frontier and report that limitation.
 6. Stop. Charting the map is one session's work; do not hand-resolve a
    non-research ticket too.

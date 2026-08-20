@@ -35,7 +35,7 @@ iter 3: code-review workflow high main...HEAD -> clean (2/2)
 On termination, report:
 
 - Final iteration count
-- Engine used and why (agent tool default or user override)
+- Engine used and why (harness default or user override)
 - Stop reason: `clean-pass-met`, `blocked-on-consult`, `budget-expired`, or
   `ambiguous-review`
 - Target command or workflow args used

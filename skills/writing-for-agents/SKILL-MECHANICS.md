@@ -15,7 +15,7 @@ Choose between two invocation modes:
   human to invoke it. Pay cognitive load instead of permanent context load.
 
 Choose model invocation only when the model or another skill must reach the
-skill without the human naming it. Use tool-specific metadata to enforce the
+skill without the human naming it. Use harness-specific metadata to enforce the
 choice. In Codex, set `policy.allow_implicit_invocation: false` in
 `agents/openai.yaml` for user-invoked skills; omit that policy for model-invoked
 skills.

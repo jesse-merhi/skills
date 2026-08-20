@@ -15,7 +15,7 @@ If it is unavailable and this checkout is present, use the wrapper:
 ```
 
 The CLI reads local Codex and Claude JSONL stores and writes a local SQLite FTS
-index. When working in another agent tool, use that agent tool's equivalent
+index. When working in another harness, use that harness's equivalent
 local session store or recall tool if one exists; keep the same privacy rule and
 search only local transcript data.
 

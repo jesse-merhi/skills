@@ -35,19 +35,19 @@ bun ci
 Then start your agent inside that directory and hand it the installer:
 
 ```text
-Read INSTALL.md and install these skills for your agent tool.
+Read INSTALL.md and install these skills for your harness.
 ```
 
 [`INSTALL.md`](INSTALL.md) is the authoritative installer and is written *to the
-agent*, not to you. It detects the agent tool, links the global instruction
+agent*, not to you. It detects the harness, links the global instruction
 files, surveys what is already in your skills directory, symlinks each repo
 skill in by its frontmatter `name`, reconciles third-party skills from
 [`external.md`](external.md), and runs the tests. It asks before touching
 anything it did not put there.
 
-Where the skills land, per agent tool:
+Where the skills land, per harness:
 
-| Agent tool | Skills directory | Global instructions |
+| Harness | Skills directory | Global instructions |
 | --- | --- | --- |
 | Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` |
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` |
@@ -55,16 +55,16 @@ Where the skills land, per agent tool:
 | Pi | `~/.pi/agent/skills` | not linked |
 | OpenClaw | `REPO/skills` via `skills.load.extraDirs` | not linked |
 
-The install model is deliberately boring. In the four link-based agent tools,
+The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
 symlink inside it. OpenClaw watches `REPO/skills` directly instead. So you can
 pull, diff, and update this repo like any other, and nothing turns into a
 mystery tree. Hand-written local skills are never replaced without asking.
 
-**Honesty about agent tool coverage:** the installer handles four link-based
-agent tools plus a locally running OpenClaw Gateway. The skills themselves were
+**Honesty about harness coverage:** the installer handles four link-based
+harnesses plus a locally running OpenClaw Gateway. The skills themselves were
 written and exercised almost entirely on Codex and Claude Code, and several
-name those agent tools directly. `code-review` picks between `codex review` and
+name those harnesses directly. `code-review` picks between `codex review` and
 Claude Code's built-in review, `session-recall` indexes Codex and Claude session
 logs, `acpx-frontend-delegation` drives Claude Code from Codex. On opencode, Pi,
 and OpenClaw they will install; whether every one of them *works* is not
@@ -79,12 +79,12 @@ are needed.
 
 Two ways one gets used:
 
-- **The agent picks it.** Agent tools keep every skill's `name` and
+- **The agent picks it.** Harnesses keep every skill's `name` and
   `description` in context and load the body when the description matches the
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either agent tool. Codex marks eight skills as
+  "use `grilling` on this" in either harness. Codex marks eight skills as
   explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,
   `prototype`, `to-spec`, `to-tickets`, `wayfinder`, and
   `clawsweeper-until-clean`. They can review and fix code, operate desktop UI,
@@ -125,7 +125,7 @@ The skills are not a menu. They snap into the loop I actually run:
    than they return.
 
 A worked example, three skills deep: `code-review` is a thin orchestrator. It
-runs `review-until-clean`, which loops the agent tool's *own* review command
+runs `review-until-clean`, which loops the harness's *own* review command
 until two consecutive passes come back clean. Then it runs
 `cold-pr-review-until-clean`, which spawns a fresh subagent per pass with zero
 implementation context: no rationale, no prior findings, no CI status. Knowing
@@ -143,14 +143,14 @@ Every skill in the repo, once each.
 
 ### Review and PR delivery
 
-The distinction that matters: **native** reviews run the agent tool's own review
+The distinction that matters: **native** reviews run the harness's own review
 engine, **cold** reviews run an independent subagent that was never told why the
 code looks the way it does.
 
 | Skill | What it does |
 | --- | --- |
 | [`code-review`](skills/code-review/SKILL.md) | Entry point: runs the native until-clean phase, then the cold until-clean phase, on one frozen target. |
-| [`review-until-clean`](skills/review-until-clean/SKILL.md) | Loops the tool-native review (`codex review`, Claude Code's built-in) and fixes findings until two consecutive passes are clean. |
+| [`review-until-clean`](skills/review-until-clean/SKILL.md) | Loops the harness-native review (`codex review`, Claude Code's built-in) and fixes findings until two consecutive passes are clean. |
 | [`cold-pr-review`](skills/cold-pr-review/SKILL.md) | One independent review pass by a subagent given only the target and a neutral checklist, so it cannot inherit the author's anchoring. |
 | [`cold-pr-review-until-clean`](skills/cold-pr-review-until-clean/SKILL.md) | Repeats fresh cold reviews and fixes until one full pass returns zero actionable findings. |
 | [`pr-rubbish-audit`](skills/pr-rubbish-audit/SKILL.md) | Hunts the diff for things the feature never asked for: stray refactors, dead comments, generated drift, unrelated deletions. |
@@ -236,10 +236,10 @@ else. They will only be useful to you if you work on those projects.
 
 Some workflows are better owned by whoever maintains them.
 [`external.md`](external.md) pins those to a reviewed version and records the
-install command per agent tool; the installer runs them, and this repo never
+install command per harness; the installer runs them, and this repo never
 copies or symlinks their files.
 
-| Skill | Owner | Agent tools with a tested command |
+| Skill | Owner | Harnesses with a tested command |
 | --- | --- | --- |
 | `browser-use` | Browser Use | Claude Code |
 | `gh-stack` | GitHub | Claude Code, Codex, opencode, Pi |

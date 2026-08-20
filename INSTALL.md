@@ -1,14 +1,14 @@
 # Installation
 
 You are an AI coding agent. The user has cloned this skills repository and
-asked you to install it into your agent tool. Follow these steps in order.
+asked you to install it into your harness. Follow these steps in order.
 
 Throughout this file, `REPO` refers to the absolute path of this cloned
 repository.
 
-## 1. Identify your agent tool
+## 1. Identify your harness
 
-Figure out which agent tool you're running in:
+Figure out which harness you're running in:
 
 - **Claude Code**: `~/.claude/`, `CLAUDE.md`, a `skills/` directory,
   `plugins/`
@@ -18,31 +18,31 @@ Figure out which agent tool you're running in:
 - **OpenClaw**: a running Gateway, the matching `openclaw` CLI, and
   `~/.openclaw/openclaw.json`
 
-If you cannot determine the agent tool with confidence, ask the user before
+If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
 ## 2. Link global instructions
 
 This repo owns the user's global agent instructions:
 
-- `REPO/AGENTS.md` holds shared instructions for every agent tool.
+- `REPO/AGENTS.md` holds shared instructions for every harness.
 - `REPO/CLAUDE.md` is Claude Code only. It imports `AGENTS.md` via
   `@AGENTS.md` and layers Claude-specific content (model delegation policy)
   on top. Never move Claude-specific content into `AGENTS.md`: Codex reads
   `AGENTS.md` directly and must not see instructions about delegating to
   itself.
 
-Link per agent tool (replace existing dead symlinks; ask before replacing real
+Link per harness (replace existing dead symlinks; ask before replacing real
 files with local edits):
 
-| Agent tool | Command |
+| Harness | Command |
 | --- | --- |
 | Claude Code | `ln -sf REPO/CLAUDE.md ~/.claude/CLAUDE.md` and `ln -sf REPO/AGENTS.md ~/.claude/AGENTS.md` |
 | Codex | `ln -sf REPO/AGENTS.md ~/.codex/AGENTS.md` |
 | opencode | `ln -sf REPO/AGENTS.md ~/.config/opencode/AGENTS.md` |
 
 The extra `~/.claude/AGENTS.md` symlink exists only so the relative
-`@AGENTS.md` import in `CLAUDE.md` resolves regardless of whether the agent tool
+`@AGENTS.md` import in `CLAUDE.md` resolves regardless of whether the harness
 resolves imports against the symlink location or the real file. Claude Code
 does not load `~/.claude/AGENTS.md` by itself.
 
@@ -64,7 +64,7 @@ that the installed Codex version does not support it and continue installing
 the skills. A new Codex task or app restart may be required before an existing
 session exposes the question UI.
 
-Skip this step for other agent tools.
+Skip this step for other harnesses.
 
 ## 4. Install repo runtime dependencies
 
@@ -84,7 +84,7 @@ fails. Do not substitute a global TypeScript, Effect, or package installation.
 For Claude Code, Codex, opencode, or Pi, inventory the target skills directory
 before touching anything:
 
-| Agent tool | Skills target |
+| Harness | Skills target |
 | --- | --- |
 | Claude Code | `~/.claude/skills` |
 | Codex | `~/.codex/skills` |
@@ -181,8 +181,8 @@ managed Gateway, use `openclaw gateway restart`.
 ## 8. Reconcile third-party skills
 
 Read `external.md`. For each active or retired entry, run only the install or
-removal command for the current agent tool. Skip entries that do not list your
-agent tool and report the skip. Retired entries are intentional cleanup
+removal command for the current harness. Skip entries that do not list your
+harness and report the skip. Retired entries are intentional cleanup
 tombstones: keep processing them on every reinstall so old external copies do
 not survive after this repository stops using them.
 
@@ -199,7 +199,7 @@ runtime and report its SQLite database path:
 REPO/skills/code-review/scripts/review-findings path
 ```
 
-Retire any `AGENT_REVIEW_FINDINGS_BIN` export from agent tool configuration.
+Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration.
 That override belonged to the removed Rust installation and can silently select
 a CLI that lacks the required scope commands. The skill-owned launcher above is
 the only supported entrypoint.
@@ -216,7 +216,7 @@ bun run validate:effect
 
 Report:
 
-- agent tool detected
+- harness detected
 - OpenClaw connected or skipped; when connected, report the extra skills root,
   collisions or ineligible skills, and whether a new session or restart is
   required

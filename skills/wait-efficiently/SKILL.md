@@ -25,11 +25,11 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
    Done when one hold spans the whole expected duration.
 
-3. Make the hold with the mechanism for the current agent tool.
+3. Make the hold with the mechanism for the current harness.
 
    Codex: read [references/codex.md](references/codex.md).
    Claude Code: read [references/claude-code.md](references/claude-code.md).
-   Another agent tool: use its longest single blocking wait, and prefer a
+   Another harness: use its longest single blocking wait, and prefer a
    completion callback over any wait at all.
 
    Done when the work is running under exactly one pending call.
@@ -64,7 +64,7 @@ Done when one call spanned the whole requested delay.
 
 ## Subagents
 
-Use the agent tool's event-driven agent wait. In Codex, call `wait_agent` with a
+Use the harness's event-driven agent wait. In Codex, call `wait_agent` with a
 15-minute timeout. It returns immediately when the reviewer sends an update or
 finishes, so the timeout is a ceiling rather than a delay.
 

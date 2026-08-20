@@ -50,7 +50,7 @@ Send one useful terminal update without turning Telegram into a progress log.
    If the current final reply already goes to the same Telegram route, use that
    reply and do not duplicate it. Otherwise prefer OpenClaw's `message` tool.
    When only the CLI is available, first write the exact generated message to a
-   run-owned mode-`0600` file through the agent tool's safe file-writing API.
+   run-owned mode-`0600` file through the harness's safe file-writing API.
    Pass the file contents as one quoted argument; never substitute generated
    handoff text into a shell command template. Then use:
 
