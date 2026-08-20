@@ -3,7 +3,7 @@ name: speak-fking-english
 description: 'Run before every final response: clarify prose, cut AI tells, re-pitch confusion, and use visuals only when they help.'
 ---
 
-# Speak Fking English
+# Speak fking English
 
 Run this over the complete draft as the last editing pass before returning or
 saving it.

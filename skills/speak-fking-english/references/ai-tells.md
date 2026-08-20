@@ -136,6 +136,12 @@ Chat only:
     an existing phrase like "proof surface" or "harness-agnostic" is the clearer
     option in context, rename the concept rather than keeping the metaphor.
 
+    It does not reach proper nouns. A package, product, tool, or third-party
+    API keeps the name its owner gave it, even when that name is a banned
+    word. The `browser-harness` dependency in `external.md` is pinned by
+    commit, so renaming it would break the install command. The same holds
+    for quoted external text: fix your own prose, not a quotation.
+
 ## Plain speech
 
 27. **Say what it does, not how it feels.** "the database stays close at hand",
