@@ -87,10 +87,12 @@ const mediaStartTags = (bodyHtml: string) => {
       else if (quote === undefined && character === ">") break
     }
     if (end < bodyHtml.length) {
+      const value = bodyHtml.slice(index, end + 1)
+      const sourceUsesSrcset = normalized === "source" && startTagAttribute(value, "srcset") !== undefined
       tags.push({
-        attribute: normalized === "source" ? "srcset" : "src",
-        kind: normalized === "video" ? "video" : "image",
-        value: bodyHtml.slice(index, end + 1)
+        attribute: sourceUsesSrcset ? "srcset" : "src",
+        kind: normalized === "video" || (normalized === "source" && !sourceUsesSrcset) ? "video" : "image",
+        value
       })
       index = end + 1
     } else {
@@ -139,8 +141,8 @@ export const extractRenderedMedia = Effect.fn("GitHubRenderedProof.extractRender
   const media: Array<RenderedMedia> = []
   for (const tag of tags) {
     const encodedValue = startTagAttribute(tag.value, tag.attribute)
-    if (encodedValue === undefined && tag.attribute === "srcset") continue
-    const candidates = tag.attribute === "srcset" ? srcsetCandidates(encodedValue ?? "") : [encodedValue ?? ""]
+    if (encodedValue === undefined) continue
+    const candidates = tag.attribute === "srcset" ? srcsetCandidates(encodedValue) : [encodedValue]
     for (const candidate of candidates) {
       const url = yield* parseTrustedMediaUrl(decodeHtmlAttribute(candidate)).pipe(
         Effect.mapError(() => new GitHubAttachmentError({ message: "GitHub returned an invalid rendered-media URL" }))

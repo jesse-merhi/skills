@@ -467,11 +467,13 @@ esac
       assert.notInclude(`${redirectFailure.stdout}\n${redirectFailure.stderr}`, "test-token")
       assertTemporaryPathsRemoved()
 
-      const authFailure = runLauncher(evidence, { UPLOAD_TEST_AUTH_FAILURE: "1" })
+      const authFailureLog = join(directory, "auth-failure.log")
+      const authFailure = runLauncher(evidence, { UPLOAD_TEST_AUTH_FAILURE: "1", UPLOAD_TEST_LOG: authFailureLog })
       assertCommandFailure(authFailure)
       assert.notInclude(`${authFailure.stdout}\n${authFailure.stderr}`, "sentinel-auth-token")
       assert.include(`${authFailure.stdout}\n${authFailure.stderr}`, "auth lookup failed")
       assert.notInclude(authFailure.stdout, "https://github.com/user-attachments/assets/abc-123")
+      assert.notInclude(readFileSync(authFailureLog, "utf8"), "api --method POST")
 
       const redirectBodyLimit = runLauncher(evidence, { UPLOAD_TEST_REDIRECT_BODY_LIMIT: "1" })
       assertCommandFailure(redirectBodyLimit)

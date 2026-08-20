@@ -269,6 +269,12 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   const sourceInfo = yield* fileSystem.stat(options.evidencePath)
   yield* requireAttachmentSize(sourceInfo.size)
   yield* checkCurlDownloadLimitSupport()
+  const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], {
+    displayCommand: "gh auth token --hostname github.com",
+    includeStdoutInError: false
+  }).pipe(
+    Effect.flatMap(parseGitHubToken)
+  )
   const uploadOutput = yield* checkedTrimmedText("gh", uploadRequestArgs({
     evidencePath: options.evidencePath,
     evidenceName: paths.basename(options.evidencePath),
@@ -278,12 +284,6 @@ export const uploadGitHubAttachment = Effect.fn("GitHubAttachment.upload")(funct
   const assetUrl = yield* parseUploadResponse(uploadOutput)
   const redirectFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-" })
   const redirectHeadersFile = yield* fileSystem.makeTempFileScoped({ prefix: "pr-proof-redirect-headers-" })
-  const token = yield* checkedTrimmedText("gh", ["auth", "token", "--hostname", "github.com"], {
-    displayCommand: "gh auth token --hostname github.com",
-    includeStdoutInError: false
-  }).pipe(
-    Effect.flatMap(parseGitHubToken)
-  )
   const redirectOutput = yield* checkedTrimmedText("curl", redirectRequestArgs(redirectFile, redirectHeadersFile, assetUrl), {
     displayCommand: `curl [GitHub attachment redirect ${assetUrl}]`,
     includeStdoutInError: false,

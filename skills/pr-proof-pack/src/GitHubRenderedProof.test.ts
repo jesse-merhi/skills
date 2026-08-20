@@ -96,6 +96,14 @@ describe("rendered GitHub proof verification", () => {
     ])
   })))
 
+  it.effect("classifies video source elements as videos", () => extractRenderedMedia(
+    '<video controls><source src="https://private-user-images.githubusercontent.com/proof.mp4" type="video/mp4"></video>'
+  ).pipe(Effect.map((media) => {
+    assert.deepStrictEqual(media.map((item) => [item.kind, item.url.href]), [
+      ["video", "https://private-user-images.githubusercontent.com/proof.mp4"]
+    ])
+  })))
+
   it.effect("redacts an invalid signed rendered-media URL", () => parseRenderedProofResponse(JSON.stringify({
     body: "proof",
     body_html: '<video src="https://internal.example.com/file?token=sentinel-secret"></video>',
@@ -297,7 +305,9 @@ if [ "\${RENDERED_TEST_GH_FAILURE:-}" = 1 ]; then
   printf 'failed while reading rendered pull request https://private-user-images.githubusercontent.com/signed?jwt=sentinel-secret\\n' >&2
   exit 1
 fi
-if [ "\${RENDERED_TEST_MANY_DUPLICATES:-}" = 1 ]; then
+if [ "\${RENDERED_TEST_VIDEO_SOURCE:-}" = 1 ]; then
+  printf '%s\\n' '{"body":"proof","body_html":"<video controls><source src=\\"https://private-user-images.githubusercontent.com/proof.mp4\\" type=\\"video/mp4\\"></video>","head":{"sha":"${expectedHeadSha}"}}'
+elif [ "\${RENDERED_TEST_MANY_DUPLICATES:-}" = 1 ]; then
   /usr/bin/python3 - <<'PY'
 import json
 print(json.dumps({
@@ -423,8 +433,9 @@ elif [ -n "\${RENDERED_TEST_REDIRECT_COUNT:-}" ]; then
     printf '%s' '{"status":200,"contentType":"image/png; qs=0.85"}'
   fi
 else
-  printf '%s\\n' 'HTTP/1.1 200 OK' 'Content-Type: image/png' '' > "$headers"
-  printf '%s' '{"status":200,"contentType":"image/png; qs=0.85"}'
+  content_type="\${RENDERED_TEST_MEDIA_TYPE:-image/png}"
+  printf '%s\\n' 'HTTP/1.1 200 OK' "Content-Type: $content_type" '' > "$headers"
+  printf '{"status":200,"contentType":"%s; qs=0.85"}' "$content_type"
 fi
 `)
     writeExecutable(join(directory, "file"), `#!/bin/sh
@@ -433,7 +444,7 @@ if [ "$1" != '--brief' ] || [ "$2" != '--mime-type' ] || [ "$3" != '--' ] || [ -
   printf 'unexpected file arguments\\n' >&2
   exit 2
 fi
-printf '%s\\n' 'image/jpeg'
+printf '%s\\n' "\${RENDERED_TEST_MEDIA_TYPE:-image/jpeg}"
 `)
     const environment = {
       ...process.env,
@@ -485,6 +496,17 @@ printf '%s\\n' 'image/jpeg'
       assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("gh-args=")).length, 3)
       assert.strictEqual(successRequests.split("\n").filter((line) => line.startsWith("curl-stdin=")).length, 5)
       assert.include(successRequests, 'curl-stdin=url = "https://private-user-images.githubusercontent.com/fifth?jwt=sentinel-secret-refreshed-2&s=40"')
+
+      const videoSourceLog = join(directory, "video-source.log")
+      const videoSource = runLauncher({
+        RENDERED_TEST_LOG: videoSourceLog,
+        RENDERED_TEST_MEDIA_TYPE: "video/mp4",
+        RENDERED_TEST_VIDEO_SOURCE: "1"
+      })
+      assert.strictEqual(videoSource.status, 0, `${videoSource.stdout}\n${videoSource.stderr}`)
+      assert.include(videoSource.stdout, "rendered media: images=0 videos=1")
+      assert.include(videoSource.stdout, "asset 1: video video/mp4 bytes=14")
+      assertTemporaryPathsRemoved(videoSourceLog)
 
       const oldCurlLog = join(directory, "old-curl.log")
       const oldCurl = runLauncher({
