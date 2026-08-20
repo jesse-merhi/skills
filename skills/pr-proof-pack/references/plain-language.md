@@ -88,18 +88,14 @@ Run the catalogue in
 over the title, opening, captions, verification steps, and commit subjects.
 That file is the single copy of the rules. Do not restate them here.
 
-One consequence is worth naming, because it fixes a label this repository
-used to spell with a dash: matched proof is labeled `Before: direct base` and
-`After: PR`.
+One consequence is worth naming here, because it changed a label the skills
+repository used to spell with a dash. Matched proof is labeled
+`Before: direct base` and `After: PR`.
 
-A PR body is reviewer-facing text, so it takes the reviewer-facing voice
-rules rather than the chat ones. `ai-tells.md` says which. A reviewer checks
+A PR body is reviewer-facing text, so it takes the reviewer-facing voice rules
+rather than the six a reply spoken to the user gets. `ai-tells.md` says which. A reviewer checks
 these sentences against a diff, so every claim must stay verifiable.
 
-Be specific means naming the observable result. "Improves reliability" is a
-feeling. "The runner stops instead of publishing" is a fact a reviewer can
-check. Acknowledge complexity means stating the cost you accepted, not hedging:
-"this rejects two valid inputs the old parser allowed" belongs in the body.
 
 ## Body, captions, and diagrams
 

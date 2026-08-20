@@ -76,8 +76,8 @@ returns sets the cost of a task.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one
-  Codex code-mode cell, or several tool calls in one response where the
-  harness runs them natively. Keep dependent calls, writes, and approval-sensitive
+  Codex code-mode cell, or several such calls in one response where the agent
+  tool runs them natively. Keep dependent calls, writes, and approval-sensitive
   actions serial.
 - Hold a wait for its full expected duration, never under 300 seconds. A wait
   deadline is a ceiling rather than a delay, so it returns the moment the work

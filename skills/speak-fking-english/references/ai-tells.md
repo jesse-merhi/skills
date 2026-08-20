@@ -69,11 +69,12 @@ Speaking to the user only:
 9. **"Not just X, but Y."** State the point directly.
 10. **Rule of three.** Forcing ideas into groups of three. Use the natural
     number.
-11. **Synonym cycling.** Use the same word for the same actor and behavior.
-    Distinct names for distinct things stay distinct: if `Job`, `Task`, and
-    `Run` are three tables, they are not synonyms. Protagonist, main
-    character, central figure, hero in
-    one paragraph. Pick one word and repeat it.
+11. **Synonym cycling.** Protagonist, main character, central figure, and hero
+    in one paragraph. Pick one word for one actor and repeat it.
+
+    Distinct names for distinct things stay distinct. If `Job`, `Task`, and
+    `Run` are three tables, they are not synonyms and collapsing them makes
+    the sentence wrong.
 12. **False ranges.** "from X to Y" where X and Y sit on no shared scale. List
     the items.
 

@@ -21,7 +21,7 @@ For operational apps, look especially for:
 - empty states that shove controls off-screen
 - modals too tall for mobile
 
-Also check for repeated decorative framing, weak type hierarchy, washed-out
+Also check for repeated generic visual filler, weak type hierarchy, washed-out
 muted text, nested containers, monotonous spacing, layout that depends on short
 placeholder copy, and motion that delays frequent actions. Treat these as
 contextual observations rather than automatic failures.

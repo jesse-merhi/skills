@@ -434,7 +434,7 @@ Controls:
 Effect `3.22.1` is current and mature. It can deliver most of the same domain
 benefits with separate `@effect/cli`, `@effect/platform`, and `@effect/sql`
 packages. Its Node SQLite driver uses `better-sqlite3`, which adds a native
-dependency and binary-install cost. Choose v3 only if prerelease APIs are
+dependency and binary-install footprint. Choose v3 only if prerelease APIs are
 unacceptable and a later v4 migration is knowingly accepted.
 
 ### Do not wait without a spike
