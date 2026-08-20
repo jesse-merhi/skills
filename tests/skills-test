@@ -483,6 +483,9 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" "Proper nouns keep their names too"
   assert_contains "$refs" "licenses renaming an identifier"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "single copy of the rules"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[AI-tells pass](references/ai-tells.md)"
+  assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "speak-fking-english/references/ai-tells.md"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "cut AI tells"
 }
 
 test_speak_fking_english_owns_the_visual_decision() {

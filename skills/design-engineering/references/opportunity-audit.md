@@ -53,4 +53,4 @@ for one view:
 
 Then include two to five deliberate rejections and name the failed gate. If
 nothing survives, say so. Conclude with how much motion the interface needs and
-the single highest-leverage opportunity.
+the single most valuable opportunity.

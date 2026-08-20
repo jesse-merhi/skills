@@ -86,8 +86,9 @@ The installers own the external `gh-stack` skill and extension. Do not symlink
 ### Install
 
 Run from the directory above the agent tool's config directory, `~`, so the
-installer writes into the normal global skills folder. Only Codex has been verified here; other agent
-tools must skip this entry until a tested command is added. The installer cannot
+installer writes into the normal global skills folder. Only Codex has been
+verified here; other agent tools must skip this entry until a tested command is
+added. The installer cannot
 clone a raw commit SHA as a GitHub tree ref, so the command first proves that
 the upstream metadata branch still points at the reviewed commit and refuses to
 install if it moved.

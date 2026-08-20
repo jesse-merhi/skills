@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>Concept lesson — Idempotency keys</title>
+<title>Concept lesson: idempotency keys</title>
 <style>
   :root {
     --bg: #f8f3e8;
@@ -127,7 +127,7 @@
   <article>
     <h2>Check the mental model</h2>
     <div class="quiz" id="quiz">
-      <p><strong>A user double-clicks “Pay”, but the UI creates a fresh idempotency key for each click. What can the server safely conclude?</strong></p>
+      <p><strong>A user double-clicks "Pay", but the UI creates a fresh idempotency key for each click. What can the server safely conclude?</strong></p>
       <div class="answers">
         <button type="button" data-correct="false">Both requests are retries of one payment.</button>
         <button type="button" data-correct="true">The requests may be two separate payment intentions.</button>

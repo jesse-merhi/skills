@@ -46,8 +46,8 @@ Speaking to the user only:
 1. **Puffery.** "pivotal moment", "testament to", "evolving landscape",
    "setting the stage for", "indelible mark", "deeply rooted". State what
    happened.
-2. **Name-dropping.** Listing sources without content. Pick one and say what it
-   said.
+2. **Name-dropping.** Listing publications without content. Pick one and say
+   what it said.
 3. **Superficial -ing phrases.** "highlighting...", "ensuring...",
    "reflecting...", "showcasing...", "fostering...". Delete, or expand into a
    real claim.
@@ -69,18 +69,26 @@ Speaking to the user only:
 9. **"Not just X, but Y."** State the point directly.
 10. **Rule of three.** Forcing ideas into groups of three. Use the natural
     number.
-11. **Synonym cycling.** Protagonist, main character, central figure, hero in
+11. **Synonym cycling.** Use the same word for the same actor and behavior.
+    Distinct names for distinct things stay distinct: if `Job`, `Task`, and
+    `Run` are three tables, they are not synonyms. Protagonist, main
+    character, central figure, hero in
     one paragraph. Pick one word and repeat it.
 12. **False ranges.** "from X to Y" where X and Y sit on no shared scale. List
     the items.
 
 ## Style
 
+Every rule in this section governs your own prose. When the draft quotes
+someone else's text, or when a character is itself the finding, reproduce it
+exactly. Normalising a curly quote or a stray dash inside a bug report
+describes a file state that does not exist.
+
 13. **Em dashes.** Do not use them. Use a period or a comma. Do not substitute
     parentheses, en dashes, or a hyphen standing in for a dash, which trade one
     tell for another. If a thought needs separation, end the sentence.
 
-    This repository labels matched proof `Before: direct base` and
+    The skills repository labels matched proof `Before: direct base` and
     `After: PR`. The colon is the label separator. Do not reintroduce the dash
     form.
 
@@ -88,12 +96,14 @@ Speaking to the user only:
     as a mid-sentence connector is not. "If you are coming from traditional
     automation: instead of registering handlers, you describe conditions" gains
     nothing from the colon. Let the point stand without the comparison framing.
-15. **Boldface.** Bold the few phrases a skimming reader must not miss.
-    Leave proper nouns and acronyms unbolded.
+15. **Boldface.** Bold the few phrases a skimming reader must not miss. Do
+    not bold every proper noun or acronym. Bolding stays useful for a
+    literal control the reader has to find, such as **Use Admin**.
 16. **Inline-header lists.** The tell is a bold label and colon that restates
     the line: "**Performance:** Performance improved...". Convert those to
-    prose. A bold lead-in that ends in a period, names the item, and is followed
-    by genuinely new detail is fine.
+    prose. A bold lead-in that ends in a period, names the item, and is
+    followed by genuinely new detail is fine: "**Schema in TypeScript.**
+    Tables live in one file."
 17. **Title case headings.** Use sentence case. This does not reach a heading
     another workflow looks up by its exact spelling, such as the section names
     in a note template. Renaming those breaks the lookup.
@@ -137,12 +147,16 @@ Speaking to the user only:
     | vector for | way, method |
     | primitive (a building block of a design) | building block |
     | harness (the thing running the work) | name it |
-    | surface (as in "API surface") | the API, the screen, the changed code |
+    | surface (when a plainer word exists) | the API, the screen, the changed code |
     | scaffolding (as in temporary support) | setup code, starter files |
     | gold-plating | more than the job needs |
     | ratchet | the mechanism, or "a limit that only tightens" |
     | evacuate (for moving code) | move out |
     | endgame | the last phase |
+
+    The test is whether a plainer word carries the same meaning. "API surface"
+    becomes "the API" and loses nothing, so it goes. "Attack surface" has no
+    plainer equivalent, so it stays.
 
     The literal senses keep their names. An attack surface, a rendering
     surface, a test harness, a `harness = false` build key, a synchronization
@@ -152,9 +166,11 @@ Speaking to the user only:
 
     Proper nouns keep their names too. A package, product, tool, or
     third-party API is called what its owner called it, even when that name
-    is a banned word. `external.md` pins the `browser-harness`
-    dependency by commit, so renaming it would break the install command. Quoted
-    external text is the same. Fix your own prose, not a quotation.
+    is a banned word. The skills repository records the
+    `browser-harness` dependency at a pinned commit in `external.md`, and that
+    record is only useful if the name still matches the project a reader has
+    to go and find. Quoted external text is the same. Fix your own prose, not
+    a quotation.
 
     Familiarity is not a defence for a genuine metaphor. If a phrase like
     "proof surface" is only comfortable because the repository repeats it,
@@ -177,8 +193,9 @@ Speaking to the user only:
     actor. "queries are validated" becomes "the compiler validates queries".
     Passive is fine only when the actor is unknown or genuinely does not matter.
 30. **Adverbs.** "runs quickly" becomes "is fast", or the measured number.
-    "significantly improves" becomes the delta. An adverb propping up a weak
-    verb means the verb is wrong.
+    "significantly improves" becomes the delta you measured. If you did not
+    measure one, cut the claim rather than inventing a figure. An adverb
+    propping up a weak verb means the verb is wrong.
 31. **Plain words.** "utilize" becomes "use". "leverage" becomes "use".
     "facilitate" becomes "help". "numerous" becomes "many". "in the event that"
     becomes "if". The fancier synonym is rarely clearer.

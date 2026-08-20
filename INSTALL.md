@@ -84,7 +84,7 @@ fails. Do not substitute a global TypeScript, Effect, or package installation.
 For Claude Code, Codex, opencode, or Pi, inventory the target skills directory
 before touching anything:
 
-| Agent tool | Skills Target |
+| Agent tool | Skills target |
 | --- | --- |
 | Claude Code | `~/.claude/skills` |
 | Codex | `~/.codex/skills` |

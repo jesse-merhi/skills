@@ -16,7 +16,7 @@ winner only after the user chooses.
 ## Rules
 
 1. Prototype one UI piece per run. Narrow broad requests to the
-   highest-leverage component or interaction.
+   component or interaction with the most at stake.
 2. Default to three variants; use at most five.
 3. Give every variant a name and a distinct axis such as layout, density,
    personality, motion, or interaction model.
