@@ -6,8 +6,8 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 import { uploadGitHubAttachment } from "./GitHubAttachment.ts"
 
 const command = Command.make("github-upload-attachment", {
-  pullRequest: Flag.string("pr"),
-  evidencePath: Argument.string("evidence-path")
+  pullRequest: Flag.string("pr").pipe(Flag.withDescription("Positive PR number or full https://github.com/<owner>/<repository>/pull/<number> URL")),
+  evidencePath: Argument.file("evidence-path", { mustExist: true }).pipe(Argument.withDescription("Existing image or video file"))
 }, Effect.fn("githubUploadAttachment.handler")(function*({ pullRequest, evidencePath }) {
   const assetUrl = yield* uploadGitHubAttachment({ pullRequest, evidencePath }).pipe(Effect.scoped)
   yield* Console.log(assetUrl)

@@ -495,7 +495,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local step_count done_count
+  local step_count done_count rendered_help upload_help
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -526,6 +526,8 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
+  assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
+  assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
   assert_contains "$skill/references/screenshots.md" "## GitHub Attachment Upload"
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-upload-attachment'
@@ -535,14 +537,15 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_not_contains "$skill/references/screenshots.md" "## Interactive Browser Fallback"
   assert_not_contains "$skill/references/screenshots.md" 'upload_file'
   assert_not_contains "$skill/references/screenshots.md" 'browser upload'
+  assert_contains "$skill/references/screenshots.md" "If it fails, stop and report its diagnostics"
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
-  assert_contains "$skill/references/screenshots.md" "PR_HOST='<hostname-resolved-in-step-2>'"
-  assert_contains "$skill/references/screenshots.md" 'gh api --hostname "$PR_HOST"'
-  assert_contains "$skill/references/screenshots.md" "--jq '{title, body_html}'"
+  assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-verify-rendered-proof'
+  assert_contains "$skill/references/screenshots.md" "--jq '{title, body}'"
+  assert_contains "$skill/references/screenshots.md" '`body_html` without printing it'
   assert_contains "$skill/references/screenshots.md" "For evidence uploaded during this refresh"
   assert_contains "$skill/references/screenshots.md" "does not need an exact size match"
-  assert_contains "$skill/references/screenshots.md" 'with unauthenticated `curl --location`'
-  assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or'
+  assert_contains "$skill/references/screenshots.md" "keeps signed URLs out of process arguments"
+  assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or CDN host'
   assert_contains "$skill/references/screenshots.md" "Use an interactive browser for facts the server-rendered HTML cannot prove"
   assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
@@ -555,13 +558,21 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
-  assert_contains "$skill/src/GitHubAttachment.ts" '"--disable", "--silent", "--show-error", "--location"'
-  assert_not_contains "$skill/src/GitHubAttachment.ts" '"--location-trusted"'
-  assert_contains "$skill/src/GitHubAttachment.ts" 'if (fetchedInfo.size !== sourceInfo.size)'
   assert_contains "$skill/scripts/github-upload-attachment" 'github-upload-attachment.ts'
   if [[ ! -x "$skill/scripts/github-upload-attachment" ]]; then
     fail "expected github-upload-attachment wrapper to be executable"
   fi
+  upload_help="$("$skill/scripts/github-upload-attachment" --help)"
+  assert_output_contains "$upload_help" "--pr"
+  assert_output_contains "$upload_help" "Positive PR number or full https://github.com/<owner>/<repository>/pull/<number> URL"
+  assert_output_contains "$upload_help" "evidence-path"
+  if [[ ! -x "$skill/scripts/github-verify-rendered-proof" ]]; then
+    fail "expected github-verify-rendered-proof wrapper to be executable"
+  fi
+  rendered_help="$("$skill/scripts/github-verify-rendered-proof" --help)"
+  assert_output_contains "$rendered_help" "--pr"
+  assert_output_contains "$rendered_help" "--head"
+  assert_output_contains "$rendered_help" "without printing signed URLs"
   assert_contains "$skill/references/screenshots.md" "A terminal showing only a test, build, validator, or success exit code is not"
   assert_contains "$skill/references/screenshots.md" "## Performance Proof"
   assert_contains "$skill/references/proof-selection.md" "The test output remains a supporting check"
