@@ -1,4 +1,4 @@
-# Review And Validation
+# Review and validation
 
 Review Claude's diff yourself:
 

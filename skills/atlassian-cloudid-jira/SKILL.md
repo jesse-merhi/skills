@@ -9,9 +9,10 @@ Route Atlassian work through the user's authenticated Rovo Dev gateway. Always
 name the intended site explicitly; the CLI may otherwise inherit an unrelated
 default Jira site.
 
-## Choose the gateway surface
+## Choose the gateway
 
-1. Prefer a harness-provided local Rovo-backed Atlassian MCP bridge when it is
+1. Prefer a local Rovo-backed Atlassian MCP bridge provided by the agent tool
+   when it is
    available. It is the same authentication path with less agent overhead.
 2. Otherwise run the bundled read-only launcher:
 
@@ -47,7 +48,7 @@ Do not fall back to anonymous browsing for private Atlassian content.
 Keep discovery read-only unless the user clearly asks for a mutation. Before a
 write, resolve and state the exact site, issue/page key, and change. Never post
 comments, create issues, or edit fields merely because the user asked for a
-draft. Use the harness's normal action-time confirmation when it is required.
+draft. Use the agent tool's normal action-time confirmation when it is required.
 
 ## Failure recovery
 

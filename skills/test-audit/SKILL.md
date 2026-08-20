@@ -3,7 +3,7 @@ name: test-audit
 description: "Audit test coverage, gaps, useless tests, stale assertions, brittle mocks, impossible states, and removals."
 ---
 
-# Test Audit
+# Test audit
 
 Audit tests as product-risk coverage. Run this for any PR that touches code with
 nearby or related tests, and for every PR that changes tests. Also use this
@@ -52,7 +52,7 @@ There are two gates:
      types changed.
 7. Report using the buckets in [output.md](references/output.md).
 
-## Required Judgment
+## Required judgment
 
 - A real future bug means a failure path you can show from current code,
   contracts, data, permissions, or user flows.
@@ -65,7 +65,7 @@ There are two gates:
 - A tautological assertion gives no confidence: expected values must come from
   an independent source of truth, not from re-running the implementation logic.
 
-## Context Pointers
+## Context pointers
 
 - Use [classifications.md](references/classifications.md) for labels such as
   `keeper`, `missing`, `no-test-needed`, and `dangerous-removal`.

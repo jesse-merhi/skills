@@ -1,6 +1,6 @@
-# Security Policy
+# Security policy
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
 Please report security issues through GitHub private vulnerability reporting or
 a private security advisory for this repository. Do not open a public issue for

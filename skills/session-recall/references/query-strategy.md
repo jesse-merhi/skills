@@ -1,4 +1,4 @@
-# Query Strategy
+# Query strategy
 
 Use the words the user or agent likely typed, not a perfect summary. Good query
 terms include:
@@ -22,6 +22,6 @@ If nothing matches:
 - try synonyms
 - omit `--max-sources` for a fuller local refresh
 
-If the relevant work happened in another harness, prefer its native local
-history or a configured `agent-session-find` source for that harness before
+If the relevant work happened in another agent tool, prefer its native local
+history or a configured `agent-session-find` source for that agent tool before
 asking the user to reconstruct context from memory.

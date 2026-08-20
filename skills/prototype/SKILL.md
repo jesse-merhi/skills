@@ -3,7 +3,7 @@ name: prototype
 description: 'Build 3–5 UI variants behind a visual picker when explicitly asked to prototype or compare directions.'
 ---
 
-# Prototype UI Variants
+# Prototype UI variants
 
 Explore one UI decision by building several defensible directions at full
 scale. The value is divergence: three tints of the same answer teach the user
@@ -22,17 +22,17 @@ winner only after the user chooses.
    personality, motion, or interaction model.
 4. Use realistic content and working interactions. No lorem ipsum, dead
    controls, or instructions to imagine missing behavior.
-5. Reuse the project's stack, tokens, primitives, and installed dependencies.
+5. Reuse the project's stack, tokens, components, and installed dependencies.
    Do not add a dependency without the user's approval.
 6. Keep prototypes on an isolated route or page. Production code must not
-   import from the prototype surface.
+   import from the prototype screen.
 7. Render one variant at a time in realistic surrounding context. Do not judge
    UI from side-by-side thumbnails.
 8. Use the fixed picker contract in
-   [references/picker.md](references/picker.md). Treat it as harness chrome,
+   [references/picker.md](references/picker.md). Treat it as picker chrome,
    not as a design direction.
 9. When the user chooses a winner, integrate only that direction and remove the
-   prototype surface unless asked to keep it.
+   prototype screen unless asked to keep it.
 
 ## Workflow
 
@@ -64,15 +64,15 @@ Before coding, list each direction with its axis.
 | --- | --- | --- |
 | Quiet | Low visual and motion intensity | Can the interaction disappear into a daily-use tool? |
 | Editorial | Hierarchy and generous measure | Does the moment need more explanatory weight? |
-| Direct | Interaction model | Can the user act without opening another surface? |
+| Direct | Interaction model | Can the user act without opening another screen? |
 
 If two directions differ only in color or copy, combine them and replace one
 with a genuine alternative.
 
-### 4. Build the harness
+### 4. Build the picker page
 
 - In an existing application, use an isolated route such as
-  `/prototypes/<slug>`, one module per variant, and one small harness.
+  `/prototypes/<slug>`, one module per variant, and one small picker page.
 - In a static context, use one self-contained HTML file.
 - Load [references/picker.md](references/picker.md) before building. Preserve
   its classes, keyboard behavior, URL persistence, and one-at-a-time stage.
@@ -82,7 +82,7 @@ with a genuine alternative.
 
 ### 5. Verify and pause
 
-Open the harness, flip through every direction, exercise every control, and
+Open the picker page, flip through every direction, exercise every control, and
 check wide and narrow layouts. Check console output, keyboard access, visible
 focus, reduced motion, and the project-specific verification commands.
 
@@ -103,7 +103,7 @@ After the user picks:
 3. remove the prototype route and unselected variants unless the user asked to
    keep them.
 
-If the user asks for another round, keep the harness and diverge around the
+If the user asks for another round, keep the picker page and diverge around the
 direction they preferred.
 
 This skill adapts Emil Kowalski's prototype workflow. See

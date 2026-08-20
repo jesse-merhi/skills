@@ -1,6 +1,6 @@
-# Session Behavior
+# Session behavior
 
-## Challenge Against The Glossary
+## Challenge against the glossary
 
 When the user uses a term that conflicts with existing language in `CONTEXT.md`,
 call it out immediately.
@@ -13,7 +13,7 @@ plan seems to allow cancelling one line item. Which meaning should we
 use here?
 ```
 
-## Sharpen Fuzzy Language
+## Sharpen fuzzy language
 
 When the user uses vague or overloaded terms, propose a precise term.
 
@@ -24,12 +24,12 @@ You are saying "account". Do you mean the Customer, the User, or the
 workspace? Those are different concepts in this repo.
 ```
 
-## Discuss Concrete Scenarios
+## Discuss concrete scenarios
 
 Stress-test domain relationships with specific scenarios. Invent edge cases
 that force clear boundaries between concepts, states, and ownership.
 
-## Cross-Reference With Code
+## Cross-Reference with code
 
 When the user states how something works, check whether the code agrees. If you
 find a contradiction, surface it as the next question.
@@ -42,7 +42,7 @@ cancellation. Should the plan change, or is the code missing a required
 state?
 ```
 
-## Check UI Readiness
+## Check UI readiness
 
 When the plan changes user-facing frontend UI, make the design and review bar
 explicit before calling the plan ready:
@@ -61,7 +61,7 @@ explicit before calling the plan ready:
 - If the feature will go through `code-review`, call out that UI changes need
   the rendered validation pass before the review can be called clean.
 
-## Update Context Inline
+## Update context inline
 
 When a project-specific term is resolved, update the external project context
 `CONTEXT.md` right away using [context-format.md](context-format.md).
@@ -74,7 +74,7 @@ Do not create or edit product-repo `CONTEXT.md`, `CONTEXT-MAP.md`, or
 the user's Obsidian-backed project notes when available. If write access or the
 target path is unclear, return the note body and proposed Obsidian path.
 
-## Offer ADRs Sparingly
+## Offer ADRs sparingly
 
 Offer to create an ADR only when all three are true:
 

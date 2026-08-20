@@ -1,4 +1,4 @@
-# Preview Contract
+# Preview contract
 
 The public origin must be a loopback HTTP server that owns the UI and all data
 visible through it. Use browser-side mocks or static fixtures only.

@@ -1,4 +1,4 @@
-# Upstream Licenses
+# Upstream licenses
 
 ## Matt Pocock `wait-what`
 

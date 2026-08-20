@@ -1,4 +1,4 @@
-# Skill Mechanics
+# Skill mechanics
 
 Use these rules when the document being written is a skill. Use
 [SKILL.md](SKILL.md) for the writing principles shared by every agent-facing
@@ -15,7 +15,7 @@ Choose between two invocation modes:
   human to invoke it. Pay cognitive load instead of permanent context load.
 
 Choose model invocation only when the model or another skill must reach the
-skill without the human naming it. Use harness-specific metadata to enforce the
+skill without the human naming it. Use tool-specific metadata to enforce the
 choice. In Codex, set `policy.allow_implicit_invocation: false` in
 `agents/openai.yaml` for user-invoked skills; omit that policy for model-invoked
 skills.
@@ -25,7 +25,7 @@ pointer: state what the skill does and name each distinct trigger branch. For a
 user-invoked skill, keep the human-facing summary short because the model does
 not use it for implicit triggering.
 
-## Splitting By Invocation
+## Splitting by invocation
 
 Split off a model-invoked skill only when it has a distinct leading word that
 should trigger independently or another skill must reach it. The new always-
@@ -35,7 +35,7 @@ Split a sequence when visible later steps repeatedly cause premature
 completion and a sharper completion criterion has not fixed it. The split must
 cross a real context boundary; an inline call leaves the later steps visible.
 
-## Router Skills
+## Router skills
 
 When user-invoked skills multiply beyond what a person can remember, create one
 user-invoked router that names them and explains when to reach for each. The

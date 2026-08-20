@@ -1,4 +1,4 @@
-# Target Resolution
+# Target resolution
 
 Prefer a PR number/URL or explicit git range. If absent, use the current branch
 against the default base.

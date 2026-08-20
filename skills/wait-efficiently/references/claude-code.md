@@ -1,9 +1,9 @@
 # Claude Code hold mechanisms
 
-Claude Code API surface. Replace this file when the API changes; the rules in
+Claude Code API. Replace this file when the API changes; the rules in
 `SKILL.md` do not change with it.
 
-Claude Code re-invokes the agent when harness-tracked work finishes, so the
+Claude Code re-invokes the agent when tool-tracked work finishes, so the
 cheapest hold is usually no wait at all.
 
 ## One notification when work finishes
@@ -46,7 +46,7 @@ running agent needs new information.
 
 ## Scheduled wake-ups
 
-`ScheduleWakeup` fits external state the harness cannot observe, such as a CI
+`ScheduleWakeup` fits external state the agent tool cannot observe, such as a CI
 run or a remote queue, sized to how fast that state actually changes. For
-harness-tracked work, the completion notification already arrives, so a wake-up
+tool-tracked work, the completion notification already arrives, so a wake-up
 scheduled to check on it is a wasted round trip.

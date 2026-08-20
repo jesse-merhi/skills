@@ -3,7 +3,7 @@ name: acpx-frontend-delegation
 description: Delegate frontend work from Codex to Claude Code through acpx, with scoped ownership and validation.
 ---
 
-# ACP Frontend Delegation
+# ACP frontend delegation
 
 Use Claude Code through `acpx` as a frontend specialist while Codex keeps
 ownership of scope, files, validation, and the final answer.
@@ -22,7 +22,7 @@ ownership of scope, files, validation, and the final answer.
 5. Review Claude's diff yourself using [review.md](references/review.md).
 6. Validate with the normal frontend proof before reporting done.
 
-## Required Behavior
+## Required behavior
 
 - Use the named `frontend` session only for read-only planning and design
   direction.
@@ -31,7 +31,7 @@ ownership of scope, files, validation, and the final answer.
   that delegation was skipped.
 - Prefer a fresh worktree when the current checkout is dirty.
 
-## Context Pointers
+## Context pointers
 
 - Use [commands.md](references/commands.md) for planning, implementation, and
   command-option details.

@@ -3,13 +3,13 @@ name: design-engineering
 description: 'Audit, design, or implement UI motion: transitions, gestures, springs, easing, timing, and interaction feel.'
 ---
 
-# Design Engineering
+# Design engineering
 
 Make interaction behavior feel immediate, coherent, and deliberate. Treat the
 rules below as strong defaults; preserve product conventions and justify
 exceptions with the interaction's purpose and measured behavior.
 
-## Route The Task
+## Route the task
 
 - For a read-only sweep of where motion would genuinely help, read
   [references/opportunity-audit.md](references/opportunity-audit.md). Report
@@ -22,7 +22,7 @@ exceptions with the interaction's purpose and measured behavior.
 - For broad layout, typography, color, or page composition, use
   `frontend-design`; this skill owns the interaction layer.
 
-## Decide Before Animating
+## Decide before animating
 
 1. Name the purpose: feedback, state change, spatial continuity, explanation,
    or preventing a jarring change.
@@ -35,7 +35,7 @@ exceptions with the interaction's purpose and measured behavior.
 Remove motion that delays a frequent action, competes with the task, or exists
 only because the implementation supports animation.
 
-## Timing And Easing
+## Timing and easing
 
 - Use immediate visual response for press and pointer-down feedback.
 - Prefer ease-out for entering or responding elements, ease-in-out for objects
@@ -48,7 +48,7 @@ only because the implementation supports animation.
 - Tune values against the product's personality instead of applying one curve
   everywhere.
 
-## Physical And Spatial Coherence
+## Physical and spatial coherence
 
 - Start from the element's current rendered value when an interaction can be
   interrupted.
@@ -60,7 +60,7 @@ only because the implementation supports animation.
 - Let draggable content track the pointer directly, capture the pointer during
   drag, and apply resistance beyond natural boundaries.
 
-## Component Feel
+## Component feel
 
 - Give pressable controls immediate feedback without changing layout.
 - Avoid animating every property with `transition: all`; name the properties

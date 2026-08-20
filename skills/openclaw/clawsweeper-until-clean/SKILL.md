@@ -3,7 +3,7 @@ name: clawsweeper-until-clean
 description: 'Re-review Clawsweeper PRs in a fix-and-rerun loop until clean.'
 ---
 
-# Clawsweeper Until Clean
+# Clawsweeper until clean
 
 Use this skill when the source of truth is the Clawsweeper bot acting on the
 GitHub PR, not a local review command. Trigger Clawsweeper, wait for the fresh
@@ -71,7 +71,7 @@ Between consecutive clean re-reviews, do not edit code or push commits. The
 streak is only meaningful when Clawsweeper agrees with itself three times on the
 same tree.
 
-## Completion Criteria
+## Completion criteria
 
 - Final stop reason is `3-consecutive-clean`, `safety-cap-hit`, or
   `wall-clock-cap-hit`.
@@ -82,7 +82,7 @@ same tree.
 - Every counted response is fresh, finished, and from Clawsweeper.
 - The final report follows [reporting.md](references/reporting.md).
 
-## Context Pointers
+## Context pointers
 
 - Use [polling-and-freshness.md](references/polling-and-freshness.md) for the
   baseline command, polling command, response identity, finished-response rules,

@@ -3,7 +3,7 @@ name: openclaw-local-test
 description: 'Run an isolated local OpenClaw test Gateway using current Codex or Claude login and settings.'
 ---
 
-# OpenClaw Local Test
+# OpenClaw local test
 
 Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
 
@@ -65,7 +65,7 @@ Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
    route classes, config path, lease expiry, relevant degraded logs, and the
    `--status` / `--stop` commands.
 
-## Context Pointers
+## Context pointers
 
 - Read [references/helper-behavior.md](references/helper-behavior.md) to explain
   runtime selection, state paths, config overlays, proxy behavior, startup
@@ -73,7 +73,7 @@ Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
 - Read [references/troubleshooting.md](references/troubleshooting.md) when
   startup, native login, model routing, proxy, channel, or cleanup fails.
 
-## Done Means
+## Done means
 
 - The helper is installed and `--inspect` identifies at least one usable native
   runtime.

@@ -1,9 +1,9 @@
-# Proof Video Editing
+# Proof video editing
 
 The finished recording should show context, action, transition, and outcome
 without making the reviewer wait for the useful part.
 
-## Capture For Editing
+## Capture for editing
 
 - Record a little extra time before and after the flow so cuts do not clip the
   starting state or outcome.
@@ -12,7 +12,7 @@ without making the reviewer wait for the useful part.
 - For before/after proof, use the same route, fixture, data, viewport, starting
   state, and actions on the direct base and PR branch.
 
-## Trim Standard
+## Trim standard
 
 - Keep about one second of the recognizable starting state before the first
   action and a short hold after each important transition and final outcome.
@@ -27,7 +27,7 @@ without making the reviewer wait for the useful part.
 - Keep the raw capture until the edited upload plays correctly in the rendered
   PR.
 
-## Before And After
+## Before and after
 
 Use two clearly labeled recordings (`Before: direct base` and `After: PR`) or
 one recording with explicit title cards between matched segments. Never make the
@@ -38,7 +38,7 @@ scale, data, and viewport. Use separate full-size images only when a composite
 would make the details unreadable. Do not add standalone screenshots that merely
 repeat the after-state already clear in the video.
 
-## FFmpeg Recipe
+## FFmpeg recipe
 
 Use an installed video editor when available. With FFmpeg, keep one continuous
 range with:

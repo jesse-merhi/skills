@@ -1,4 +1,4 @@
-# Analyzer Notes
+# Analyzer notes
 
 - The script mirrors Codex's model-visible line shape:
   `- name: description (file: path)`.
@@ -20,8 +20,8 @@
   then plugin skills, then personal/repo copies.
 - It scans `~/.codex/history.jsonl` and recent `~/.codex/sessions/**/*.jsonl` by
   default. Add `--deep-logs` for archived Codex sessions.
-- When auditing another harness, add its skill roots with `--root <path>` and
-  use that harness's local history or usage logs as supporting evidence when
+- When auditing another agent tool, add its skill roots with `--root <path>` and
+  use that agent tool's local history or usage logs as supporting evidence when
   available.
 - Usage evidence comes only from user messages and actual tool-call arguments.
   Developer skill catalogs are ignored, and file reads are realpath-deduped.

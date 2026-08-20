@@ -1,10 +1,10 @@
-# PR Body Shape
+# PR body shape
 
 A reviewer should know what broke, why it mattered, and how this PR fixes it
 before they reach the first heading. Use the net diff to discover the story;
 do not turn its files, commits, or implementation buckets into the story.
 
-## Opening Contract
+## Opening contract
 
 Use the first four sentences deliberately:
 
@@ -30,7 +30,7 @@ Weak:
 > This PR adds exact-head admission, runner preflight provenance, and cache
 > promotion across the review lifecycle.
 
-## Size Budget
+## Size budget
 
 Default to at most 300 words of prose, excluding copyable proof snippets and
 commands. Exceed that only when the PR has multiple independently important
@@ -38,7 +38,7 @@ behaviors, migration steps, or risks that a reviewer must act on. Remove
 repeated claims, exhaustive test inventories, review history, file lists, and
 implementation detail already clear from the diff.
 
-## Change Breakdown
+## Change breakdown
 
 When a PR spans multiple reviewer-meaningful parts, or its size needs
 explanation, include one compact direct-base breakdown after the opening. Use
@@ -62,10 +62,10 @@ Binary files count as files but do not have textual LOC.
 | **Total** | **27** | **+1,849** | **-129** |
 ```
 
-Do not call a PR “large” or “huge” without this breakdown. Do not use file
+Do not call a PR "large" or "huge" without this breakdown. Do not use file
 count, commit count, or a raw file inventory as a substitute.
 
-## Default Shape
+## Default shape
 
 Use only the sections the change needs:
 
@@ -102,7 +102,7 @@ For a new feature without a meaningful baseline, say so in one sentence and
 show the new entry point and outcome. For a tiny change, the opening and one
 proof block may be enough.
 
-## Proof Shape
+## Proof shape
 
 Follow [proof-selection.md](proof-selection.md). Use text blocks for textual
 behavior and uploaded media only for visual behavior. Put enough context beside
@@ -137,7 +137,7 @@ For matched visual proof, label the direct-base and PR evidence explicitly.
 Use one side-by-side image for a readable static comparison or two short
 recordings for an interaction. Never put media in a Markdown table.
 
-## API And Backend Proof
+## API and backend proof
 
 Show the smallest copyable request, response, and resulting state that proves
 the contract. For rejected work, show both the boundary response and the absence
@@ -151,7 +151,7 @@ comparison across stable axes, such as input, previous outcome, new outcome,
 and side effect. Use adjacent code blocks for one before/after case. Do not use
 tables as a file inventory or a way to compress several paragraphs into cells.
 
-## What To Leave Out
+## What to leave out
 
 - generic summary sections that repeat the opening;
 - raw file inventories and implementation buckets that do not explain scope;

@@ -12,16 +12,16 @@ question.
 
 Replace the default gallery with a small set of repo-owned patterns:
 
-1. **Decision brief** — recommendation, criteria, evidence, trade-offs, next
+1. **Decision brief.** Recommendation, criteria, evidence, trade-offs, next
    action.
-2. **Code flow** — observable result, invariant, flow, exact files and symbols,
+2. **Code flow.** Observable result, invariant, flow, exact files and symbols,
    proof.
-3. **Incident report** — impact, timeline, causal chain, recovery, follow-ups.
-4. **Interactive model** — assumptions, live result, sensitivity, formula and
+3. **Incident report.** Impact, timeline, causal chain, recovery, follow-ups.
+4. **Interactive model.** Assumptions, live result, sensitivity, formula and
    source data.
-5. **Concept lesson** — mission, invariant, worked example, edge cases,
+5. **Concept lesson.** Mission, invariant, worked example, edge cases,
    retrieval check.
-6. **Implementation plan** — target behavior, phases and dependencies, risks,
+6. **Implementation plan.** Target behavior, phases and dependencies, risks,
    acceptance proof.
 
 Keep the upstream galleries as research references, not as the templates an
@@ -102,7 +102,8 @@ Sources:
 GOV.UK recommends testing whether a page works without an accordion before
 using one and warns against hiding content every reader needs. In these
 explanations, `<details>` should hold long code, raw logs, formulas, or source
-notes—not the recommendation, key evidence, or required next action.
+notes. It must not hide the recommendation, key evidence, or required next
+action.
 
 Source:
 
@@ -161,8 +162,8 @@ Every repo-owned example should satisfy this checklist:
   container.
 - JavaScript has no console errors and exists only where a reader can test or
   inspect a claim.
-- Exact evidence—files, symbols, commands, dates, measurements, or source
-  links—sits next to the claim it supports.
+- Exact evidence sits next to the claim it supports: files, symbols, commands,
+  dates, measurements, or source links.
 
 ## Implementation recommendation
 

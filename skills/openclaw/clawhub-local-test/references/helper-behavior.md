@@ -1,4 +1,4 @@
-# Helper Behavior
+# Helper behavior
 
 The helper:
 

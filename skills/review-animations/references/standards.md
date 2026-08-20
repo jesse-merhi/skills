@@ -1,9 +1,9 @@
-# Motion Review Standards
+# Motion review standards
 
 Use these as review defaults, then account for product conventions, platform
 behavior, measured performance, distance, and interaction frequency.
 
-## Purpose And Frequency
+## Purpose and frequency
 
 | Frequency | Default posture |
 | --- | --- |
@@ -39,7 +39,7 @@ time.
 Flag `ease-in` when it delays visible response, not merely because the token is
 present.
 
-## Physical Coherence
+## Physical coherence
 
 - Anchor popovers and menus to their trigger.
 - Keep modals centered when they have no spatial trigger.
@@ -54,7 +54,7 @@ present.
 - Prefer `transform` and `opacity` for frequent motion.
 - Accept `clip-path`, filters, layout animation, or JavaScript motion when the
   interaction needs them and representative-device measurement supports them.
-- Prefer transitions, WAAPI, or interruptible animation primitives for targets
+- Prefer transitions, WAAPI, or interruptible animation APIs for targets
   that can change mid-flight.
 - Avoid broad inherited variable updates when a direct element update is
   sufficient.

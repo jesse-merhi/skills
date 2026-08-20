@@ -3,7 +3,7 @@ name: clawhub-local-test
 description: Run a guarded local ClawHub test instance with development Convex data refreshed from production.
 ---
 
-# ClawHub Local Test
+# ClawHub local test
 
 Give the user a ready-to-test local ClawHub instance with a development Convex
 deployment populated from a production snapshot. The Convex target may be a
@@ -45,7 +45,7 @@ must never be production.
    - `clawhub-local-test --status`
    - `clawhub-local-test --stop`
 
-## Context Pointers
+## Context pointers
 
 - Read [references/helper-behavior.md](references/helper-behavior.md) when you
   need to explain setup, Convex target safety, production export/import,
@@ -56,7 +56,7 @@ must never be production.
 - Read [references/troubleshooting.md](references/troubleshooting.md) when
   startup, import, dev auth, abuse fixtures, or local persona behavior fails.
 
-## Done Means
+## Done means
 
 - The helper path is installed or already present.
 - The instance uses the intended ClawHub checkout/worktree.

@@ -1,4 +1,4 @@
-# Execution Contract
+# Execution contract
 
 Each ticket note is both a planning artifact and an execution guardrail. The
 agent implementing a ticket must work through its todos in order:

@@ -1,4 +1,4 @@
-# Tracked-Finding Notices
+# Tracked-Finding notices
 
 Open Class B findings sit unfixed in the tree, so every later pass would
 re-derive them and the streak would degrade. Give later reviewers the open-thread

@@ -1,4 +1,4 @@
-# Findings Registry
+# Findings registry
 
 The findings database is the working registry. The SQLite findings database is
 the durable registry for every finding raised by native review, cold review,
@@ -27,7 +27,7 @@ database stores records under:
 ~/.local/state/agent-review-findings/reviews.sqlite
 ```
 
-## Scope Budget Records
+## Scope budget records
 
 Start each new review run by freezing its user-authorized scope and direct-diff
 baseline:
@@ -83,7 +83,7 @@ budget:
 An active budget blocks any second `scope-start` for the same repository and
 branch. `scope-complete` releases that lock for a later user-authorized review.
 
-## Finding Records
+## Finding records
 
 Write finding cards for the review owner, not for the reviewer that discovered
 them. Before recording each batch, apply the `speak-fking-english` reader reset
@@ -149,7 +149,7 @@ review find?":
 "$review_findings_bin" query --repo sample-app --repo-path <repo-root> --branch <branch> --target <current-target> --json "blocked consult payment reversal"
 ```
 
-## Validation Records
+## Validation records
 
 Record each validation command as soon as it finishes:
 

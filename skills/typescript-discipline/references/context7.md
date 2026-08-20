@@ -1,4 +1,4 @@
-# Remote Context7 Documentation
+# Remote Context7 documentation
 
 Context7 is an optional remote MCP documentation service. Use it only through
 the Context7 tools exposed by the current agent session.

@@ -3,14 +3,14 @@ name: frontend-ui-validation
 description: 'Validate web UI with Playwright screenshots, layout checks, responsive states, and reference comparisons.'
 ---
 
-# Frontend UI Validation
+# Frontend UI validation
 
 This is a visual gate, not a vibe check. A screenshot by itself is not
 validation.
 
 Use this to prove that rendered UI has no obvious layout failures: horizontal
 overflow, clipped text, sibling overlap, tiny tap targets, console errors,
-broken responsive states, weak hierarchy, generic visual scaffolding, or
+broken responsive states, weak hierarchy, generic visual filler, or
 mismatch with the intended design direction.
 
 This skill is for ad-hoc validation during a task. Persistent Playwright specs
@@ -45,7 +45,7 @@ belong in project testing skills.
 6. For native React Native / Expo screens, switch to native proof.
 
    Read [references/native-expo.md](references/native-expo.md). Browser checks
-   still apply to web-rendered surfaces, but native screens need simulator proof
+   still apply to web-rendered screens, but native screens need simulator proof
    from the mobile app itself.
 
 7. For Figma, mockup, reference, theme, density, auth, or operational-app
@@ -56,7 +56,7 @@ belong in project testing skills.
    fix each finding and re-run the same viewport and state. Otherwise, return
    the evidence and recommended fix without editing source.
 
-## Done Means
+## Done means
 
 Final response must include evidence like:
 

@@ -1,4 +1,4 @@
-# Effect ecosystem architecture research — 2026-08-12
+# Effect ecosystem architecture research, 2026-08-12
 
 ## Recommendation
 
@@ -19,7 +19,7 @@ For this repository, the valuable Effect stack is:
 - TypeScript 5.9 plus `@effect/language-service` for compiler checking and
   Effect-aware correctness diagnostics.
 
-Do **not** interpret “use Effect fully” as “import every Effect subsystem.”
+Do **not** interpret "use Effect fully" as "import every Effect subsystem."
 Cluster, workflow, RPC, HTTP servers, persistence, event log, browser atoms,
 AI providers, and OpenTelemetry export do not solve current repository
 requirements. Adding them would create architecture rather than remove it.
@@ -51,7 +51,7 @@ ecosystem relevant to local developer tools:
 - current npm metadata for the proposed direct dependencies;
 - the repository's current scripts, CI, and symlink-based install contract.
 
-“Entire ecosystem” here means every official package family and official
+"Entire ecosystem" here means every official package family and official
 development tool was considered. It does not mean every provider-specific SQL,
 AI, frontend, or cloud package was read line by line when the repository has no
 corresponding use case.
@@ -90,7 +90,7 @@ attempts group termination with a configurable `SIGTERM` to `SIGKILL`
 fallback. That is the library-owned version of lifecycle code the review helper
 has repeatedly implemented imperfectly.
 
-## What “full Effect” should mean here
+## What "full Effect" should mean here
 
 ### Adopt as the default vocabulary
 
@@ -271,7 +271,7 @@ usage during the beta.
 #### ESLint plugin
 
 Do not add `@effect/eslint-plugin` for Effect correctness. Its current public
-surface is old and small: Dprint integration and a barrel-import rule. The
+API is old and small: Dprint integration and a barrel-import rule. The
 language service/`tsgo` owns the meaningful Effect-aware diagnostics. General
 formatting and non-Effect linting can be chosen separately if the repo needs
 them.
@@ -434,7 +434,7 @@ Controls:
 Effect `3.22.1` is current and mature. It can deliver most of the same domain
 benefits with separate `@effect/cli`, `@effect/platform`, and `@effect/sql`
 packages. Its Node SQLite driver uses `better-sqlite3`, which adds a native
-dependency and binary-install surface. Choose v3 only if prerelease APIs are
+dependency and binary-install cost. Choose v3 only if prerelease APIs are
 unacceptable and a later v4 migration is knowingly accepted.
 
 ### Do not wait without a spike
@@ -457,8 +457,8 @@ cannot truthfully run on the Node 18 minimum advertised by the platform
 package. Node 24 also gives a release-candidate SQLite API rather than the
 earlier experimental status.
 
-Raising the runtime floor is a compatibility change and needs user approval.
-If Node 22 support must remain, pin at least Node 22.19 and add a startup version
+Raising the runtime floor is a compatibility change and needs user approval. If
+Node 22 support must remain, pin at least Node 22.19 and add a startup version
 check; Node 18/20 cannot support the proposed v4 stack.
 
 ### Package and install shape
@@ -478,9 +478,10 @@ Before choosing a bundler, build the first CLI both ways:
 1. Node ESM plus root `pnpm install --frozen-lockfile`;
 2. one bundled ESM file with source map and legal notices.
 
-Measure cold start, artifact size, install size, stack traces, and cross-platform
-execution. Prefer the simpler root-install model unless the standalone skill
-contract requires copying one skill without its repository root.
+Measure cold start, artifact size, install size, stack traces, and
+cross-platform execution. Prefer the simpler root-install model unless the
+standalone skill contract requires copying one skill without its repository
+root.
 
 Do not use Bun standalone binaries as the primary distribution: they require a
 platform/architecture release matrix and complicate public installation. Bun
@@ -555,7 +556,7 @@ the relevant behavior contract passes.
   existing validation all pass;
 - dependency alignment and security audit pass from the lockfile;
 - the first and final PRs report code size, install size, artifact size, and
-  cold-start time so “more robust” is measurable rather than assumed.
+  cold-start time so "more robust" is measurable rather than assumed.
 
 ## Accepted implementation decisions
 
@@ -589,8 +590,8 @@ rewrite began:
   VS Code can recognize the active pull request, uses structured subprocess
   arguments, and removes a newly created worktree if checkout fails.
 
-This evidence supports continuing the stack, but it also narrows “fullest
-extent”: TypeScript-Go should wait until the Effect codebase itself adopts the
+This evidence supports continuing the stack, but it also narrows "fullest
+extent": TypeScript-Go should wait until the Effect codebase itself adopts the
 TypeScript 7 compiler path.
 
 ## Primary sources

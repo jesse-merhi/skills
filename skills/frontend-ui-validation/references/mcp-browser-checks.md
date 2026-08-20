@@ -1,9 +1,9 @@
-# MCP Browser Checks
+# MCP Browser checks
 
 When using a browser MCP connector directly, use the tool names exposed in the
 current session. Do not assume older unprefixed Playwright MCP names such as
-`browser_evaluate` are available. Some harnesses expose prefixed browser tools;
-others expose browser control through `node_repl` plus Playwright.
+`browser_evaluate` are available. Some agent tools expose prefixed browser
+tools; others expose browser control through `node_repl` plus Playwright.
 
 Required checks, regardless of tool spelling:
 

@@ -3,7 +3,7 @@ name: session-recall
 description: Find prior local Codex or Claude sessions; keep contents local and inspect cards before opening logs.
 ---
 
-# Session Recall
+# Session recall
 
 Use `agent-session-find` as the first recall step when previous agent work may
 answer the current question. The goal is to recover the right full session with
@@ -19,7 +19,7 @@ session logs into external tools.
    `agent-session-find --index-since 14d --max-sources 80 "<query>"`.
 3. Add repo or cwd context when the project is known:
    `agent-session-find --cwd "<repo-name>" --since 30d "<query>"`.
-4. Search one source when the likely harness is known:
+4. Search one source when the likely agent tool is known:
    `agent-session-find --source codex "<query>"` or
    `agent-session-find --source claude "<query>"`.
 5. If the user mentions a handoff, worker, subagent, delegated implementation,
@@ -47,7 +47,7 @@ For stale or long-running projects, prefer `--index-since 90d` over an
 unbounded first pass. Run `agent-session-find status` when you need to see index
 size before widening.
 
-## Context Pointers
+## Context pointers
 
 - Use [command-setup.md](references/command-setup.md) for binary, wrapper,
   privacy, database, and parallel-refresh rules.

@@ -1,4 +1,4 @@
-# Upstream License
+# Upstream license
 
 This skill adapts material from
 [`emilkowalski/skills`](https://github.com/emilkowalski/skills), inspected at

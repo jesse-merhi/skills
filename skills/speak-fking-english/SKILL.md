@@ -8,7 +8,7 @@ description: 'Run before every final response: clarify prose, cut AI tells, re-p
 Run this over the complete draft as the last editing pass before returning or
 saving it.
 
-## Route The Pass
+## Route the pass
 
 - Before every final response, run the complete pass below.
 - For an explicit "wait, what?" or re-pitch request, run only the reader reset.
@@ -19,7 +19,7 @@ saving it.
 - When another skill calls this one, return the revised reviewer-facing text to
   that skill instead of addressing the user directly.
 
-## Complete Pass
+## Complete pass
 
 1. Apply the [reader reset](references/reader-reset.md) to the complete draft
    without changing its facts, scope, or requested action.

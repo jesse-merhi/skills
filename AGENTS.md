@@ -1,7 +1,7 @@
-# Global Agent Instructions
+# Global agent instructions
 
-Shared instructions for every coding agent harness (Claude Code, Codex,
-opencode, Pi). Keep this file harness-agnostic: anything Claude-specific
+Shared instructions for every coding agent tool (Claude Code, Codex,
+opencode, Pi). Keep this file agent-agnostic: anything Claude-specific
 belongs in `CLAUDE.md`, which imports this file and layers on top of it.
 
 ## Communication
@@ -18,7 +18,7 @@ belongs in `CLAUDE.md`, which imports this file and layers on top of it.
   itself as the primary proof.
 - Immediately before every final response, load `speak-fking-english`.
 - Stay concise while preserving the explanation needed to understand the work.
-- When user input is genuinely required, use the harness's native structured
+- When user input is genuinely required, use the agent tool's native structured
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
@@ -76,8 +76,8 @@ returns sets the cost of a task.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one
-  Codex code-mode cell, or several tool calls in one response where the harness
-  runs them natively. Keep dependent calls, writes, and approval-sensitive
+  Codex code-mode cell, or several tool calls in one response where the agent
+  tool runs them natively. Keep dependent calls, writes, and approval-sensitive
   actions serial.
 - Hold a wait for its full expected duration, never under 300 seconds. A wait
   deadline is a ceiling rather than a delay, so it returns the moment the work

@@ -1,6 +1,6 @@
-# Review Loop
+# Review loop
 
-## Classifying A Run
+## Classifying A run
 
 Classify every run from the engine's review output after triage:
 
@@ -17,7 +17,7 @@ Classify every run from the engine's review output after triage:
 When in doubt, treat the run as `has_findings` or `ambiguous`. Extra cycles are
 cheaper than falsely declaring convergence.
 
-## Loop State
+## Loop state
 
 Before the loop, resolve `review_findings_bin` from the installed `code-review`
 skill directory as required by `review-guardrails`. Use its absolute launcher;

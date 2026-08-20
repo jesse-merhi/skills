@@ -1,4 +1,4 @@
-# Codex Review Helper
+# Codex review helper
 
 Use `scripts/codex-review` whenever Phase 1 uses Codex. It is a thin Effect CLI
 over native `codex review`; it does not duplicate the reviewer, invent a second

@@ -1,9 +1,9 @@
-# Apple-Inspired Fluid Interaction
+# Apple-Inspired fluid interaction
 
 Load this reference for gesture-driven interfaces, springs, sheets, direct
 manipulation, velocity, momentum, rubber-banding, and interruptible motion.
 
-## Core Model
+## Core model
 
 Make the interface respond like a continuous physical system:
 
@@ -14,7 +14,7 @@ Make the interface respond like a continuous physical system:
 5. Keep the animation interruptible and reversible.
 6. Use resistance rather than hard stops at natural boundaries.
 
-## Direct Manipulation
+## Direct manipulation
 
 - Respond visually on pointer or touch down; commit the action according to the
   control's normal activation semantics.
@@ -23,7 +23,7 @@ Make the interface respond like a continuous physical system:
 - Ignore additional touch points once a single-pointer gesture owns the object.
 - Update visual position continuously during the gesture.
 
-## Velocity And Momentum
+## Velocity and momentum
 
 - Track recent positions and timestamps rather than deriving velocity from one
   stale sample.
@@ -42,7 +42,7 @@ Make the interface respond like a continuous physical system:
 - Cancel or redirect the existing animation instead of starting a second
   competing animation.
 
-## Boundaries And Sheets
+## Boundaries and sheets
 
 - Apply increasing resistance when dragging beyond a natural edge.
 - Keep the sheet attached to the finger while dragging.
@@ -52,7 +52,7 @@ Make the interface respond like a continuous physical system:
 - Test nested scroll views and sheet gestures together; do not let both claim
   the same movement accidentally.
 
-## Spatial Consistency
+## Spatial consistency
 
 - Enter and leave along paths that explain where content came from.
 - Use the trigger as the origin for anchored popovers and menus.
@@ -61,15 +61,15 @@ Make the interface respond like a continuous physical system:
   states; use a continuity or shared-element transition when it clarifies the
   relationship.
 
-## Materials And Feedback
+## Materials and feedback
 
 - Use translucency and depth to communicate hierarchy, not as decoration.
-- Keep stacked translucent surfaces legible.
+- Keep stacked translucent layers legible.
 - Combine motion with sound or haptics only when the platform, product, and user
   settings support them.
 - Match feedback strength to the significance of the action.
 
-## Accessibility And Testing
+## Accessibility and testing
 
 - Provide a reduced-motion path with less travel and fewer scale changes.
 - Test gestures on real hardware when practical; simulators do not reproduce

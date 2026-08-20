@@ -1,4 +1,4 @@
-# Result Handling
+# Result handling
 
 Treat search results as routing metadata:
 

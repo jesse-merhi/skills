@@ -3,7 +3,7 @@ name: to-spec
 description: 'Turn a resolved conversation into an Obsidian spec with testing seams and PR delivery shape.'
 ---
 
-# To Spec
+# To spec
 
 This skill takes the current conversation context and codebase understanding and
 produces a spec. Do not interview the user; synthesize what has already been
@@ -42,7 +42,7 @@ unclear, return the Markdown body and proposed `Specs/` path.
    prototype produced a snippet that encodes a decision more precisely than
    prose can, inline the decision-rich part and name or link the prototype.
 
-## Context Pointers
+## Context pointers
 
 - Use [note-template.md](references/note-template.md) for the spec note body.
 - Use [frontend-spec.md](references/frontend-spec.md) for rendered UI design and

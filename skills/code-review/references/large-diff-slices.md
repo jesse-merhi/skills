@@ -1,17 +1,17 @@
-# Large Diff Discovery Slices
+# Large diff discovery slices
 
 Use slices to improve coverage, not to multiply clean gates.
 
 ## Trigger
 
-Run this stage once when the surface map contains at least three substantially
-independent runtime surfaces whose entrypoints and downstream effects can be
+Run this stage once when the flow map contains at least three substantially
+independent runtime flows whose entrypoints and downstream effects can be
 reviewed separately. File count alone is not a trigger.
 
 ## Dispatch
 
 - Create two to four read-only discovery slices. Merge small or heavily
-  overlapping surfaces rather than creating more agents.
+  overlapping flows rather than creating more agents.
 - In Codex, use `fork_turns: "none"`. Give each reviewer a self-contained text
   brief with the target, base, slice boundary, shared contracts, and neutral
   risk checklist.
@@ -28,5 +28,5 @@ Unproven observations are discarded or investigated before Phase 1.
 
 The normal whole-target native and cold phases remain authoritative. A slice is
 never declared clean, and there is no clean-pass requirement per slice. If a
-later fix materially adds a new runtime surface, update the map; do not rerun
+later fix materially adds a new runtime flow, update the map; do not rerun
 all discovery slices unless the target changed enough to invalidate them.

@@ -3,7 +3,7 @@ name: cold-pr-review
 description: 'Cold-review a PR, branch, or feature with neutral context, changed-flow coverage, and actionable findings.'
 ---
 
-# Cold PR Review
+# Cold PR review
 
 Run an independent review subagent with zero implementation context. The
 reviewer sees only the work product, not your reasoning, decisions, or prior
@@ -13,7 +13,7 @@ prevents questioning whether it was correct.
 ## Workflow
 
 1. Dispatch a separate reviewer subagent by default. Use
-   [dispatch.md](references/dispatch.md) for harness-specific options and the
+   [dispatch.md](references/dispatch.md) for tool-specific options and the
    self-review fallback.
 2. Give the reviewer only what to review and a neutral checklist.
 3. Do not give your reasoning, design decisions, prior findings, fixes attempted,
@@ -25,7 +25,7 @@ prevents questioning whether it was correct.
 6. Require `finding-discipline`: report only concrete actionable findings tied
    to changed code or contracts, not style nits or vague risks.
 
-## Required Discipline
+## Required discipline
 
 - Prefer a separate subagent. A cold review loses most of its value if the same
   context that implemented the change also performs the review.
@@ -34,10 +34,10 @@ prevents questioning whether it was correct.
 - If a separate reviewer is unavailable, say so explicitly and perform a fresh
   self-review after deliberately discarding the implementation rationale.
 
-## Context Pointers
+## Context pointers
 
 - Use [dispatch.md](references/dispatch.md) for Codex, Claude Code, other
-  harnesses, and self-review fallback.
+  agent tools, and self-review fallback.
 - Use [checklist.md](references/checklist.md) for neutral review lenses.
 - Use [prompt-template.md](references/prompt-template.md) for the cold reviewer
   prompt.

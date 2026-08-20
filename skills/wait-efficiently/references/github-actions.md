@@ -1,4 +1,4 @@
-# GitHub Actions Waiting
+# GitHub Actions waiting
 
 Use historical durations to choose the next useful observation.
 

@@ -1,6 +1,6 @@
-# Guardrails And Scope
+# Guardrails and scope
 
-## Scope Governor
+## Scope governor
 
 Before Phase 1, freeze the review scope:
 
@@ -23,7 +23,7 @@ Patch only in-scope blockers. Record follow-ups in the findings database and do
 not patch them in this PR. Put stop-and-consult findings in the consult queue
 with the scope reason.
 
-## Budgets And Consult Gates
+## Budgets and consult gates
 
 `review-guardrails` owns the bounds for this skill: the wall-clock budget
 (default 8 hours per run), the deterministic diff-growth budget (exactly 30%

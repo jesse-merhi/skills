@@ -1,4 +1,4 @@
-# When To Mock
+# When to mock
 
 Mock at system boundaries only:
 
@@ -13,7 +13,7 @@ Do not mock:
 - internal collaborators;
 - behavior the ticket is supposed to prove.
 
-## Designing For Mockability
+## Designing for mockability
 
 At system boundaries, design interfaces that are easy to mock. Pass external
 dependencies in rather than creating them internally.

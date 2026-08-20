@@ -3,7 +3,7 @@ name: writing-for-agents
 description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs with precise behavioral instructions.'
 ---
 
-# Writing For Agents
+# Writing for agents
 
 Treat every document an agent consumes as part of one instruction system:
 skills, `AGENTS.md`, `CLAUDE.md`, and documents reached through pointers all use
@@ -14,7 +14,7 @@ When the target is a skill, also read
 and router skills. The upstream MIT notice is in
 [upstream-license.md](references/upstream-license.md).
 
-## Context Pointers
+## Context pointers
 
 A context pointer is text already in the agent's context that names material
 outside it and says when to load that material. A skill description is one. An
@@ -30,7 +30,7 @@ branch that should trigger it.
 - Use one trigger per real branch. Collapse synonyms for the same branch.
 - Remove identity or explanation the target already carries.
 
-## The Two Loads
+## The two loads
 
 Budget two different costs:
 
@@ -44,7 +44,7 @@ pointer's line. Material with no pointer spends cognitive load because the
 human becomes its index. Spend cognitive load where human judgment matters;
 remove it where reliable automatic retrieval is better.
 
-## Information Hierarchy
+## Information hierarchy
 
 Separate two content types:
 
@@ -65,15 +65,15 @@ Co-locate a concept's definition, rules, and caveats under one heading. Grouped
 material reads like documentation; scattered material makes the agent rebuild
 the concept from fragments.
 
-## Steps And Completion Criteria
+## Steps and completion criteria
 
 End every step with a completion criterion that is both clear and demanding:
 
 - **Clarity** lets the agent distinguish done from not done.
 - **Demand** determines the legwork required before done is true.
 
-Prefer checkable, exhaustive criteria such as “every modified model accounted
-for” over vague output requests such as “produce a change list.” Sharpen the
+Prefer checkable, exhaustive criteria such as "every modified model accounted
+for" over vague output requests such as "produce a change list." Sharpen the
 criterion before adding more process.
 
 Visible later steps can pull attention toward being finished and cause
@@ -81,7 +81,7 @@ premature completion. When a criterion cannot be made sharper and the rush is
 observed, split the sequence across a real context boundary so later steps are
 not loaded yet.
 
-## Leading Words
+## Leading words
 
 Use a leading word: a compact concept already present in model pretraining that
 anchors behavior. Repeat the token, not its full definition.

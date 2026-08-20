@@ -1,6 +1,6 @@
 # Budgets
 
-## Wall-Clock Budget
+## Wall-Clock budget
 
 - Default: **8 hours per review run**, measured from `review_started`.
 - Check before starting each review cycle.
@@ -11,7 +11,7 @@
 - A machine-local override may set a different budget value for one machine. It
   must name a value; "no budget" is not a valid override.
 
-## Diff-Growth Budget
+## Diff-Growth budget
 
 - Limit: exactly **30% of baseline production changed lines**. The review CLI
   exposes no flag that lets the agent raise this percentage.
@@ -25,7 +25,7 @@
 - Calculate `allowed_growth = floor(baseline_production_lines * limit_percent / 100)`.
   The review remains inside budget only when current production changed lines
   are no greater than `baseline + allowed_growth` and no new production path
-  exists outside the frozen baseline file surface.
+  exists outside the frozen baseline file set.
 - Resolve `review_findings_bin` from the installed `code-review` skill directory as
   required by `review-guardrails`. Persist the baseline with
   `"$review_findings_bin" scope-start`. Run `"$review_findings_bin" scope-check` after

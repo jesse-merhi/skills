@@ -21,7 +21,7 @@ On termination, report:
 - any findings that needed a repo-specific fix workflow rather than direct edits
 - the PR head SHA at the moment of the final clean re-review
 
-## Hard Rules
+## Hard rules
 
 - Always re-trigger via comment. The body must be exactly
   `/clawsweeper re-review`.
@@ -38,7 +38,7 @@ On termination, report:
 - Do not impersonate Clawsweeper by writing your own "looks clean" comment. The
   verdict must come from the bot.
 
-## Common Mistakes
+## Common mistakes
 
 | Mistake | Why it breaks the skill |
 |---|---|

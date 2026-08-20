@@ -3,13 +3,13 @@ name: reducing-cognitive-load
 description: 'Review dense, clever, stringly typed, weakly typed, over-abstracted, or hard-to-read code.'
 ---
 
-# Reducing Cognitive Load
+# Reducing cognitive load
 
 Use this skill to make code easier to read without turning it into a maze of
 tiny wrapper functions. The goal is not "more abstraction"; the goal is a
 smaller mental stack for the next maintainer.
 
-## Core Rule
+## Core rule
 
 Prefer code that exposes domain concepts, invariants, and data shapes. Avoid
 code that makes readers reverse-engineer hidden protocols, positional fields,
@@ -34,7 +34,7 @@ duplicated types, or clever inline transformations.
 7. When reviewing a diff, use [review-checklist.md](references/review-checklist.md)
    and prefer concrete rewrites over vague "make this cleaner" comments.
 
-## Completion Criteria
+## Completion criteria
 
 - The code exposes the domain concept before the encoding detail.
 - Shared contracts use shared types instead of duplicated local shapes.
@@ -43,7 +43,7 @@ duplicated types, or clever inline transformations.
   proxy tests.
 - The reader can see what is being built before studying how it is encoded.
 
-## Context Pointers
+## Context pointers
 
 - Use [red-flags.md](references/red-flags.md) for common cognitive-load smells.
 - Use [patterns.md](references/patterns.md) for typed objects, unions,

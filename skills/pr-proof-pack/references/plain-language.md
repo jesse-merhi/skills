@@ -1,10 +1,10 @@
-# Plain-Language PR Writing
+# Plain-Language PR writing
 
 Apply the same test to the PR title, commit subjects, opening paragraph,
 screenshot captions, verification steps, and diagram labels: could a reviewer
 understand this without the agent thread?
 
-## Restore the Missing Premise
+## Restore the missing premise
 
 Back up just far enough to explain why the change exists. Lead with the idea in
 everyday language. Name the technical mechanism only after the outcome is clear.
@@ -19,7 +19,7 @@ Use:
 Do not assume a ticket ID, sprint name, internal nickname, file path, class name,
 or agent-thread phrase explains the change.
 
-## Explain The Break Before The Mechanism
+## Explain the break before the mechanism
 
 Make the first two sentences answer:
 
@@ -40,7 +40,7 @@ After four sentences, a reviewer should be able to answer "why merge this?"
 without reading the diff. Later sections may add proof, reproduction, and one
 non-obvious implementation constraint; they should not retell the opening.
 
-## PR Title
+## PR title
 
 Write one outcome a person can picture. Prefer an active verb and the observable
 result. Keep required repository prefixes or ticket IDs, but do not let them
@@ -58,7 +58,7 @@ Weak:
 - `SUP-142 validation changes`
 - `Refactor proof pack workflow`
 
-## Commit Subjects
+## Commit subjects
 
 Make each commit subject a small, readable claim that belongs to the PR's story.
 Follow repository convention, use an active verb, and name the behavioral or
@@ -81,7 +81,7 @@ published to a PR, explain that rewording requires a history rewrite and ask for
 explicit human approval before doing it. Do not hide unclear commits with a
 better PR title.
 
-## Cut AI Tells
+## Cut AI tells
 
 Run the catalogue in
 [`speak-fking-english/references/ai-tells.md`](../../speak-fking-english/references/ai-tells.md)
@@ -105,7 +105,7 @@ feeling. "The runner stops instead of publishing" is a fact a reviewer can
 check. Acknowledge complexity means stating the cost you accepted, not hedging:
 "this rejects two valid inputs the old parser allowed" belongs in the body.
 
-## Body, Captions, and Diagrams
+## Body, captions, and diagrams
 
 Use the same nouns for the same actor and behavior throughout. The opening
 supplies the premise; proof shows the broken and fixed outcomes in their native

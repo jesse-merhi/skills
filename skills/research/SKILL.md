@@ -30,7 +30,7 @@ posts, summaries, forum answers, or search snippets.
 5. Return the note path and the key conclusion. Do not keep important findings
    only in chat.
 
-## Output Shape
+## Output shape
 
 ```md
 # Research: <question>

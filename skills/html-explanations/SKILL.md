@@ -3,9 +3,11 @@ name: html-explanations
 description: 'Create standalone HTML for complex explanations, code walkthroughs, plans, reports, diagrams, or research.'
 ---
 
-# HTML Explanations
+# HTML explanations
 
-Use this skill when the user needs to understand something and prose would become a wall of text. Produce a standalone `.html` file that the user can open locally.
+Use this skill when the user needs to understand something and prose would
+become a wall of text. Produce a standalone `.html` file that the user can open
+locally.
 
 Good fits:
 
@@ -28,7 +30,7 @@ Good fits:
 4. Keep the final chat reply short: what file you created, an absolute
    Markdown link to open it, what it covers, and how it was verified.
 
-## Output Rules
+## Output rules
 
 - Use one self-contained `.html` file with inline CSS and inline JavaScript.
 - Do not add a build step or remote runtime dependency.
@@ -95,7 +97,7 @@ Good fits:
 - Honor `prefers-reduced-motion` and include print styles that remove controls
   and decorative backgrounds without removing the argument.
 
-## Page Shapes
+## Page shapes
 
 Use these as starting points:
 
@@ -109,7 +111,7 @@ Use these as starting points:
 - **Plan/report**: goal or current state, phases or timeline, blockers, risks, checks, decisions needed, next actions.
 - **Incident report**: impact, timeline, trigger, cause, fix, follow-ups, evidence.
 
-## PR And Diff Pages
+## PR and diff pages
 
 - Explain the change; do not judge it unless the user asks for review.
 - Gather title, body, changed files, commits, key symbols, tests, and visible user/system behavior.
@@ -185,7 +187,7 @@ When the reader wants to understand what changed in a PR or stack, use
 - In the proof view, explain what each group proves in plain
   language. Examples: "the old one-search request still works," "bad input is
   rejected before any search starts," and "one search call is followed by one
-  tool call." Put harness, fixture, storage, and protocol details second.
+  tool call." Put tooling, fixture, storage, and protocol details second.
 - Show the unchanged canonical owner or path when reuse is an important part of
   the design. This makes delegation visible and rules out duplicate logic.
 - Add review orientation or a complexity judgment only when requested or when
@@ -195,7 +197,7 @@ When the reader wants to understand what changed in a PR or stack, use
   parsed file and line counts against the source metadata, and retain a digest
   of the exact diff for revision-keyed state and reproducibility.
 
-## Plans, Reports, Incidents, And Handoffs
+## Plans, reports, incidents, and handoffs
 
 - Pick the report shape first: plan, status, incident, or handoff.
 - Mark unknowns plainly; do not let the visual format make uncertain plans look more certain.
@@ -222,9 +224,9 @@ Before saying the work is done:
   handoff, plan, or lesson likely to be saved.
 - Report anything you did not verify.
 - Always include a clickable absolute local-file Markdown link in the final
-  reply, using the file path format supported by the current harness.
+  reply, using the file path format supported by the current agent tool.
 
-## Pattern Library
+## Pattern library
 
 Read `references/html-effectiveness-patterns.md` before choosing a page shape.
 The seven examples in `assets/patterns/` are intentionally different reasoning

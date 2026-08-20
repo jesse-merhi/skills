@@ -33,7 +33,7 @@ map's Decisions So Far. Wrap the title in an Obsidian wikilink. When the stored
 file path or slug differs from that title, use an alias such as
 `[[<ticket note>|<ticket title>]]` so the link stays valid and readable.
 
-## The Map
+## The map
 
 The map is a single Obsidian issue note: the canonical artifact. Its tickets are
 child Obsidian issue notes. Each ticket links back through its `Wayfinder` field
@@ -107,7 +107,7 @@ Do not add an answer when creating a ticket. On resolution, append a
 close the ticket. The decision lives in that section; Decisions So Far only
 gists and links it.
 
-## Ticket Types
+## Ticket types
 
 Every ticket is either HITL, worked with a human who speaks for themselves, or
 AFK, driven by the agent alone. A HITL ticket only resolves through that live
@@ -127,7 +127,7 @@ exchange; the agent never stands in for the human's side of it.
   delivering the destination. Record what happened and any facts later tickets
   need when resolving it.
 
-## Fog Of War
+## Fog of war
 
 The map is deliberately incomplete: do not chart what you cannot yet see.
 Beyond the live tickets is fog: decisions and investigations you can tell are
@@ -179,7 +179,8 @@ tickets are the exception: independent research tickets may run in parallel.
    Yet Specified.
 5. Dispatch one `research` subagent per research ticket. Have each subagent
    claim its assigned ticket before work, then link the result and resolve the
-   ticket. If the harness cannot dispatch subagents, leave the research tickets
+   ticket. If the agent tool cannot dispatch subagents, leave the research
+   tickets
    on the frontier and report that limitation.
 6. Stop. Charting the map is one session's work; do not hand-resolve a
    non-research ticket too.

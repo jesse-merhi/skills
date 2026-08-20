@@ -1,6 +1,6 @@
 # Codex hold mechanisms
 
-Codex API surface, current as of Codex CLI 0.147. Replace this file when the
+Codex API, current as of Codex CLI 0.147. Replace this file when the
 API changes; the rules in `SKILL.md` do not change with it.
 
 ## Shell commands

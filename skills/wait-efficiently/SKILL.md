@@ -3,7 +3,7 @@ name: wait-efficiently
 description: 'Wait for a command, CI run, subagent, or timed delay by holding one long call instead of polling; report only meaningful state changes.'
 ---
 
-# Wait Efficiently
+# Wait efficiently
 
 A wait costs one model round trip every time it returns. One hold that spans the
 whole wait costs one round trip. Polling the same wait costs one per check, and
@@ -25,11 +25,11 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
    Done when one hold spans the whole expected duration.
 
-3. Make the hold with the mechanism for the current harness.
+3. Make the hold with the mechanism for the current agent tool.
 
    Codex: read [references/codex.md](references/codex.md).
    Claude Code: read [references/claude-code.md](references/claude-code.md).
-   Another harness: use its longest single blocking wait, and prefer a
+   Another agent tool: use its longest single blocking wait, and prefer a
    completion callback over any wait at all.
 
    Done when the work is running under exactly one pending call.
@@ -53,7 +53,8 @@ unchanged progress.
 
 ## Timed delays
 
-For "wait five minutes" and similar, resolve `<skill-dir>` to this skill and run:
+For "wait five minutes" and similar, resolve `<skill-dir>` to this skill and
+run:
 
 ```sh
 <skill-dir>/scripts/quiet-wait 5m
@@ -63,7 +64,7 @@ Done when one call spanned the whole requested delay.
 
 ## Subagents
 
-Use the harness's event-driven agent wait. In Codex, call `wait_agent` with a
+Use the agent tool's event-driven agent wait. In Codex, call `wait_agent` with a
 15-minute timeout. It returns immediately when the reviewer sends an update or
 finishes, so the timeout is a ceiling rather than a delay.
 

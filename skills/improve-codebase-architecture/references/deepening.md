@@ -4,7 +4,7 @@ How to deepen a cluster of shallow modules safely. Assumes the vocabulary in
 [language.md](language.md): **module**, **interface**, **seam**, and
 **adapter**.
 
-## Dependency Categories
+## Dependency categories
 
 ### In-Process
 
@@ -17,18 +17,18 @@ Dependencies with local test stand-ins, such as an in-memory filesystem or local
 database substitute. Deepen when the stand-in exists and tests can run through
 the module interface.
 
-### Remote But Owned
+### Remote but owned
 
 Your own services across a network seam. Define a port at the seam. The deep
 module owns the logic; transport is injected as an adapter. Tests use an
 in-memory adapter. Production uses HTTP, gRPC, or a queue adapter.
 
-### True External
+### True external
 
 Third-party systems you do not control. The deepened module takes the external
 dependency as an injected port; tests provide a mock adapter.
 
-## Seam Discipline
+## Seam discipline
 
 - Do not introduce a port unless at least two adapters are justified, usually
   production and test.
@@ -36,7 +36,7 @@ dependency as an injected port; tests provide a mock adapter.
   tests. Do not expose internal seams through the external interface just
   because tests use them.
 
-## Testing Strategy
+## Testing strategy
 
 - Write tests at the deepened module's interface.
 - Tests assert observable outcomes through the interface, not internal state.

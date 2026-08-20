@@ -1,4 +1,4 @@
-# Spec Note Template
+# Spec note template
 
 ```md
 # Spec: <Outcome>

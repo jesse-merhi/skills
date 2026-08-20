@@ -1,4 +1,4 @@
-# Upstream License
+# Upstream license
 
 This skill is adapted from Matt Pocock's `writing-for-agents` skill in
 `mattpocock/skills`.

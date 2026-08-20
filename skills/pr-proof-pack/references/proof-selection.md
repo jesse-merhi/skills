@@ -1,11 +1,11 @@
-# Proof Selection
+# Proof selection
 
 Start from the PR's main claim and choose the smallest evidence form that lets a
 reviewer verify it without translating formats. Practical evidence shows the
 real behavior. Tests, builds, CI, and validators support that evidence but do
 not replace it.
 
-## Prefer Native Evidence
+## Prefer native evidence
 
 Use copyable text when the important facts are already textual:
 
@@ -32,7 +32,7 @@ Read [screenshots.md](screenshots.md); for recordings, also read
 frames before upload; file metadata and successful rendering are not a quality
 review.
 
-## Show The Break And Fix
+## Show the break and fix
 
 For a reproducible bug fix, use the same input and environment against the
 direct base and PR branch. Put the two outcomes next to each other and label
@@ -45,7 +45,7 @@ Do not make reviewers infer the baseline from prose or compare mismatched
 fixtures, viewports, inputs, or environments. If reproducing the base is unsafe
 or impossible, state the constraint and show the closest honest boundary.
 
-## Choose By Change Type
+## Choose by change type
 
 - **UI or interaction:** use matched screenshots for a static visual change and
   a concise recording for motion or a manual interaction. Use text for changed
@@ -67,7 +67,7 @@ or impossible, state the constraint and show the closest honest boundary.
   sample size. Use a table for exact values and a chart or trace only when its
   shape reveals information the table cannot.
 
-## Explanation Is Separate
+## Explanation is separate
 
 An explanation visual teaches how something works; practical evidence proves it
 ran. Let `speak-fking-english` decide whether the final explanation needs a

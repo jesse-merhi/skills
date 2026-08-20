@@ -14,7 +14,7 @@ gh pr checks --json name,state,workflow,link
 
 Add `--required` if only required checks matter.
 
-## Monitor A Workflow Run
+## Monitor A workflow run
 
 Estimate the next useful observation, wait through `wait-efficiently`, then
 fetch the run once:
@@ -24,7 +24,7 @@ fetch the run once:
 gh run view <run-id> --json status,conclusion,jobs,updatedAt
 ```
 
-## Manual Polling Fallback
+## Manual polling fallback
 
 If no comparable history exists, use the estimator's 120-second fallback. Keep
 the sleep and next status fetch inside one held tool call:
@@ -42,7 +42,7 @@ Report only state changes or meaningful progress:
 - new failing job
 - all checks complete
 
-## Common Mistakes
+## Common mistakes
 
 - Using `gh run watch` with its default `3s` refresh interval.
 - Using `gh pr checks --watch` with its default `10s` interval.

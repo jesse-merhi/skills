@@ -1,4 +1,4 @@
-# Why It Works
+# Why it works
 
 When you implement code and review it yourself, or guide a reviewer with
 context, you anchor on your decisions. A reviewer who knows "we decided to
@@ -11,7 +11,7 @@ and catches:
 - implicit assumptions that are not documented
 - edge cases the implementer considered and dismissed too quickly
 
-## Common Mistakes
+## Common mistakes
 
 | Mistake | Why it matters |
 |---------|----------------|

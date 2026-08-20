@@ -1,4 +1,4 @@
-# Cold Review Loop
+# Cold review loop
 
 Before the loop, resolve `review_findings_bin` from the installed `code-review`
 skill directory as required by `review-guardrails`. Use its absolute launcher;

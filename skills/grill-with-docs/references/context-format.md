@@ -1,4 +1,4 @@
-# CONTEXT.md Format
+# CONTEXT.md format
 
 ## Structure
 
@@ -53,7 +53,7 @@ repos/
 If write access or the target path is unclear, return the proposed note body and
 path instead of writing into the product repo.
 
-## Single vs Multi-Context Notes
+## Single vs multi-context notes
 
 Most repos have one note-backed `CONTEXT.md`.
 

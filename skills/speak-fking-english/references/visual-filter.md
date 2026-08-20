@@ -1,4 +1,4 @@
-# Visual Filter
+# Visual filter
 
 Treat this as a visual filter, not a request to draw something. Add support only
 when it materially reduces the work needed to understand the idea.

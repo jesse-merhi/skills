@@ -1,4 +1,4 @@
-# Common Options
+# Common options
 
 Use a specific checkout:
 

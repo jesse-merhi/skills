@@ -1,4 +1,4 @@
-# Codex Engine
+# Codex engine
 
 Invoke `codex review` with the target flag only. Do not append a prompt.
 
@@ -17,14 +17,14 @@ codex review --commit <sha>
 
 For GitHub PRs, check out the PR branch locally first, then use
 `codex review --base <base-branch>`. `codex review` does not take a PR number in
-the tested CLI surface.
+the tested CLI.
 
 Prefer `--base <branch>` or `--uncommitted` for review-until-clean loops where
 you expect to edit fixes. A commit SHA is immutable: after fixing findings from
 `codex review --commit <sha>`, do **not** keep reviewing the old SHA. Either
 amend/create the fix commit and retarget the command to the new SHA, or switch
-the loop target to `codex review --base <branch>` or `codex review --uncommitted`
-so Codex reviews the fixed tree.
+the loop target to `codex review --base <branch>` or `codex review
+--uncommitted` so Codex reviews the fixed tree.
 
 Do not use these forms:
 

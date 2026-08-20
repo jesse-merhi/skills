@@ -1,4 +1,4 @@
-# Reader Reset
+# Reader reset
 
 1. Find the missing premise.
 

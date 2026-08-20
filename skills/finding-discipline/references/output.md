@@ -10,7 +10,7 @@ That breaks <contract/user-visible behavior> because <evidence>. Fix by
 <specific direction>.
 ```
 
-Include file and line references as tightly as the harness supports. In Codex
+Include file and line references as tightly as the agent tool supports. In Codex
 app reviews, emit `::code-comment{...}` findings when the user asked for review
 findings.
 

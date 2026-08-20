@@ -1,4 +1,4 @@
-# AI Tells
+# AI tells
 
 Cutting AI patterns is half the job. Sterile, voiceless text reads as machine
 written even when every pattern is gone. Run both passes.

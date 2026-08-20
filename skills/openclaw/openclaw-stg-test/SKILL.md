@@ -3,7 +3,7 @@ name: openclaw-stg-test
 description: 'Publish and inspect temporary OpenClaw Control UI previews through guarded Cloudflare Quick Tunnels, verify with a fresh OpenClaw browser profile, and send a terminal Telegram handoff.'
 ---
 
-# OpenClaw Staging Test
+# OpenClaw staging test
 
 Publish a reviewer-testable Control UI without exposing an authenticated
 OpenClaw Gateway, browser proxy, or operator credentials.
@@ -21,7 +21,7 @@ OpenClaw Gateway, browser proxy, or operator credentials.
 2. Prepare a loopback-only preview from the intended checkout.
 
    Reuse the checkout's Control UI and repository-owned E2E mock Gateway. Keep
-   scenario files under `.artifacts/openclaw-stg-test/` so proof scaffolding is
+   scenario files under `.artifacts/openclaw-stg-test/` so proof setup files are
    not committed. Serve the required safety attestation from the same origin.
    Read [references/preview-contract.md](references/preview-contract.md) for the
    contract and Vite middleware example.
@@ -57,8 +57,8 @@ OpenClaw Gateway, browser proxy, or operator credentials.
    Choose a unique, run-owned profile name of 1–64 characters. It must begin
    with a lowercase letter or digit and contain only lowercase letters, digits,
    and hyphens. Never reuse an existing disposable or authenticated profile. On
-   the host that owns the browser, create the profile, run the public walkthrough
-   through it, then delete only that run-owned profile:
+   the host that owns the browser, create the profile, run the public
+   walkthrough through it, then delete only that run-owned profile:
 
    ```bash
    openclaw browser create-profile --name <unique-fresh-profile>
@@ -77,10 +77,10 @@ OpenClaw Gateway, browser proxy, or operator credentials.
 
    A remote node browser proxy rejects persistent profile creation and deletion.
    For a proxied browser, run those lifecycle commands on the browser node and
-   temporarily expose the new profile through `nodeHost.browserProxy.allowProfiles`
-   when that allowlist is configured. Remove that run-owned entry as part of
-   the required cleanup. Keep the browser proxy loopback-only and outside the
-   tunnel.
+   temporarily expose the new profile through
+   `nodeHost.browserProxy.allowProfiles` when that allowlist is configured.
+   Remove that run-owned entry as part of the required cleanup. Keep the browser
+   proxy loopback-only and outside the tunnel.
 
 6. When publishing proof to GitHub, use the persistent managed `github`
    browser profile owned by the `openclaw` service user:
@@ -115,7 +115,7 @@ OpenClaw Gateway, browser proxy, or operator credentials.
    unavailable. Never invent a reference or put a raw route-bearing session key
    in Telegram.
 
-## Done Means
+## Done means
 
 - The preview runs from the intended checkout and demonstrates the changed
   behavior with a browser-side mock or static fixture.

@@ -3,7 +3,7 @@ name: skill-cleaner
 description: "Audit agent skills: loaded roots, duplicate skills, unused skills, prompt-budget costs, compact descriptions."
 ---
 
-# Skill Cleaner
+# Skill cleaner
 
 Use this when trimming skill prompt budget, finding duplicate skills, auditing
 enabled/disabled skill roots, or deciding which skills/plugins to remove.
@@ -28,7 +28,7 @@ This is an Effect-based adaptation of the MIT-licensed analyzer maintained in
 [`steipete/agent-scripts`](https://github.com/steipete/agent-scripts). Preserve
 [the upstream license](references/upstream-license.md) when redistributing it.
 
-## Required Discipline
+## Required discipline
 
 - Suggest first; edit only when the user asks.
 - Verify the kept copy exists and is loaded before deleting duplicates.
@@ -38,7 +38,7 @@ This is an Effect-based adaptation of the MIT-licensed analyzer maintained in
 - Do not delete ignored/untracked skill dirs without naming the destination or
   confirming they are disposable.
 
-## Context Pointers
+## Context pointers
 
 - Use [commands.md](references/commands.md) for analyzer command variants.
 - Use [report-guide.md](references/report-guide.md) for report reading order.

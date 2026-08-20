@@ -44,7 +44,7 @@ concentrate in one place.
 - Depth is a property of the interface, not the implementation.
 - Deletion test: if deleting a module makes complexity vanish, it was a
   pass-through. If complexity reappears across callers, it was earning its keep.
-- The interface is the test surface.
+- The interface is what the tests exercise.
 - One adapter means a hypothetical seam. Two adapters means a real seam.
 
 ## Relationships

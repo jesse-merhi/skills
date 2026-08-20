@@ -1,4 +1,4 @@
-# Understandable Diagrams
+# Understandable diagrams
 
 Use a diagram only when it is genuinely useful teaching material for a
 relationship, sequence, state transition, decision, spatial layout, comparison,
@@ -6,7 +6,7 @@ integration boundary, lifecycle, or interaction among several actors.
 Having several steps or components is not enough: if a short paragraph or list
 is clearer, omit the diagram.
 
-## Make the Idea Land
+## Make the idea land
 
 Introduce the diagram with one sentence explaining what the reviewer should
 learn. Then make the diagram readable without source-code context:
@@ -22,7 +22,7 @@ learn. Then make the diagram readable without source-code context:
 
 If labels no longer fit comfortably, split the idea in prose or simplify it.
 
-## Validate Before Publishing
+## Validate before publishing
 
 Before creating or updating the PR body:
 
