@@ -6,18 +6,14 @@ understand this without the agent thread?
 
 ## Restore the missing premise
 
-Back up just far enough to explain why the change exists. Lead with the idea in
-everyday language. Name the technical mechanism only after the outcome is clear.
+The reader reset in
+[`speak-fking-english/references/reader-reset.md`](../../speak-fking-english/references/reader-reset.md)
+owns this move. Run it with the reviewer as the reader, and back up just far
+enough to explain why the change exists.
 
-Use:
-
-- simple words and short sentences;
-- one concrete example when an abstract rule is hard to picture;
-- established project terms, with a brief definition when they may be new;
-- only the technical detail the reviewer needs to understand or act.
-
-Do not assume a ticket ID, sprint name, internal nickname, file path, class name,
-or agent-thread phrase explains the change.
+One thing it cannot know: a ticket ID, sprint name, internal nickname, file
+path, or class name is not a premise. None of them explains the change to
+someone outside the agent thread.
 
 ## Explain the break before the mechanism
 

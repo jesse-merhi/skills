@@ -38,17 +38,14 @@ saving it.
 
 3. Apply the [AI-tells pass](references/ai-tells.md) to the complete draft,
    including any support added by the visual filter. Cut the catalogued
-   patterns, then add voice using the rules for the destination. A reply you
-   are speaking to the user takes all six voice rules. Reviewer-facing text
-   takes only be specific, vary rhythm, and acknowledge complexity.
-   `ai-tells.md` defines which texts count as reviewer-facing.
+   patterns, then add voice using the rules for this draft's destination, which
+   `ai-tells.md` defines.
 
    Done when no catalogued pattern survives, every fact and evidence claim is
    unchanged, and the draft does not read as generated.
 
 4. Return the final draft.
 
-   Remove repeated explanation, unnecessary headings, and session-only jargon.
    For chat, return the revised draft as the whole final response. For a calling
    skill, return the revised reviewer-facing text for that skill to save.
 

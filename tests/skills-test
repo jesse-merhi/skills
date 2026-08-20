@@ -475,7 +475,7 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" '**Use "I" when it fits.**'
   assert_contains "$refs" "**Let some mess in.**"
   assert_contains "$refs" "Do not use them. Use a period or a comma"
-  assert_contains "$refs" "Before: direct base"
+  assert_contains "$refs" "It never licenses renaming an identifier"
   assert_contains "$refs" "Use sentence case"
   assert_contains "$refs" "looks up by its exact spelling"
   assert_contains "$refs" "**Literal senses.**"

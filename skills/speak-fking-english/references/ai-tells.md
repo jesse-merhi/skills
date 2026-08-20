@@ -114,10 +114,6 @@ Speaking to the user only:
     parentheses, en dashes, or a hyphen standing in for a dash, which trade one
     tell for another. If a thought needs separation, end the sentence.
 
-    The skills repository labels matched proof `Before: direct base` and
-    `After: PR`. The colon is the label separator. Do not reintroduce the dash
-    form.
-
 14. **Colons.** A colon before a list, an example, or a label is fine. A colon
     as a mid-sentence connector is not. "If you are coming from traditional
     automation: instead of registering handlers, you describe conditions" gains
@@ -182,20 +178,10 @@ Speaking to the user only:
     | evacuate (for moving code) | move out |
     | endgame | the last phase |
 
-    The literal-sense exception above does most of the work here, because most
-    of these words have a real technical use. At the boundary, ask whether the
-    phrase is a named thing people look up or a vague gesture at an area.
-    "Attack surface" and "API surface" are named things and stay. "The product
-    surface" and "the proof surface" name no such thing and go.
-
-    `browser-harness` in the skills repository is the proper-noun case.
-    `external.md` records it at a pinned commit, and that record only helps if
-    the name still matches the project a reader has to go and find.
-
-    Familiarity is not a defence for a genuine metaphor. If a phrase like
-    "proof surface" is only comfortable because the repository repeats it,
-    rename the concept in the prose. This rule edits writing, so it never
-    licenses renaming an identifier, a config key, or a public API on its own.
+    At the boundary, ask whether the phrase is a named thing people look up or
+    a vague gesture at an area. "Attack surface" stays; "the proof surface"
+    goes, even where a repository repeats it. Renaming prose is all this rule
+    does. It never licenses renaming an identifier, a config key, or an API.
 
 ## Plain speech
 
