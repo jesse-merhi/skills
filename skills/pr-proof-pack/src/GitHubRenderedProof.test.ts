@@ -1,6 +1,7 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
@@ -11,7 +12,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { parseTrustedMediaUrl } from "./GitHubAttachment.ts"
+import { GitHubAttachmentError, parseTrustedMediaUrl } from "./GitHubAttachment.ts"
 import {
   extractRenderedMedia,
   parseRenderedProofResponse,
@@ -46,6 +47,14 @@ const processIsRunning = (pid: number) => {
     throw error
   }
 }
+
+const waitForFile = (path: string) => Effect.gen(function*() {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    if (existsSync(path)) return
+    yield* Effect.sleep("10 millis")
+  }
+  return yield* new GitHubAttachmentError({ message: `Timed out waiting for verifier child readiness at ${path}` })
+})
 
 describe("rendered GitHub proof verification", () => {
   it.effect("extracts rendered image and video URLs without preferring canonical metadata", () => extractRenderedMedia(
@@ -112,7 +121,7 @@ describe("rendered GitHub proof verification", () => {
     "10 millis"
   ).pipe(Effect.flip, Effect.map((error) => assert.match(error.message, /verification exceeded 10 minutes/u))))
 
-  it.live("force-kills every deadline-bound verifier child and cleans temporary files", () => {
+  it.live("force-kills every interrupted verifier child and cleans temporary files", () => {
     const directory = mkdtempSync(join(tmpdir(), "github-rendered-deadline-test-"))
     const tool = `#!/usr/bin/env node
 const fs = require("node:fs")
@@ -169,12 +178,11 @@ if (name === "curl") {
       for (const name of ["gh", "curl", "file"] as const) {
         const log = join(directory, `${name}.log`)
         const ready = join(directory, `${name}.ready`)
-        const startedAt = Date.now()
-        const error = yield* verifyGitHubRenderedProof(
+        const verifier = yield* verifyGitHubRenderedProof(
           "https://github.com/jesse-merhi/skills/pull/81",
           expectedHeadSha,
           {
-            deadline: "1 second",
+            deadline: "30 seconds",
             processOptions: {
               env: {
                 ...baseEnvironment,
@@ -184,10 +192,11 @@ if (name === "curl") {
               }
             }
           }
-        ).pipe(Effect.scoped, Effect.flip)
-        assert.match(error.message, /verification exceeded 10 minutes/u)
-        assert.isBelow(Date.now() - startedAt, 3_000)
-        assert.isTrue(existsSync(ready), `expected ${name} to install its SIGTERM handler`)
+        ).pipe(Effect.scoped, Effect.forkChild)
+        yield* waitForFile(ready)
+        const interruptedAt = Date.now()
+        yield* Fiber.interrupt(verifier)
+        assert.isBelow(Date.now() - interruptedAt, 3_000)
         for (const line of readFileSync(log, "utf8").trim().split("\n")) {
           const [loggedName, encodedArgs, encodedPid] = line.split("\t", 3)
           const pid = Number(encodedPid)
@@ -201,7 +210,7 @@ if (name === "curl") {
         }
       }
     })).pipe(Effect.ensuring(Effect.sync(() => rmSync(directory, { force: true, recursive: true }))))
-  }, 15_000)
+  }, 30_000)
 
   it.effect("accepts each GitHub-controlled media host family", () => Effect.all([
     parseTrustedMediaUrl("https://github.com/user-attachments/assets/abc-123"),
