@@ -1,5 +1,8 @@
 # AI tells
 
+This is the deep catalogue pass. Load it only when `SKILL.md` selects the
+explicit route.
+
 Cutting AI patterns is half the job. Sterile, voiceless text reads as machine
 written even when every pattern is gone. Run both passes.
 
@@ -214,4 +217,3 @@ Speaking to the user only:
     The padded sense only. Financial leverage, and leverage as a named design
     property such as the one `improve-codebase-architecture` defines, both name
     real things and stay.
-

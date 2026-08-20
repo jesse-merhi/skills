@@ -463,8 +463,22 @@ test_speak_fking_english_owns_repitch_guidance() {
 }
 
 test_speak_fking_english_owns_the_ai_tells_catalogue() {
+  local natural="$ROOT_DIR/skills/speak-fking-english/references/natural-writing.md"
   local refs="$ROOT_DIR/skills/speak-fking-english/references/ai-tells.md"
+  local word_count
 
+  assert_contains "$natural" "Lead with the outcome"
+  assert_contains "$natural" "Make the explanation concrete"
+  assert_contains "$natural" "Cut the work imposed on the reader"
+  assert_contains "$natural" "Use the voice for the destination"
+  assert_contains "$natural" "Keep the presentation quiet"
+  word_count="$(wc -w < "$natural")"
+  if (( word_count > 300 )); then
+    fail "expected the implicit natural-writing pass to stay within 300 words, found $word_count"
+  fi
+
+  assert_contains "$refs" "Load it only when"
+  assert_contains "$refs" "explicit route"
   assert_contains "$refs" "Cutting AI patterns is half the job"
   assert_contains "$refs" "All six rules apply to a reply you are speaking to a person"
   assert_contains "$refs" "Only the first three apply to reviewer-facing text"
@@ -482,10 +496,16 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" "attack surface"
   assert_contains "$refs" "**Proper nouns.**"
   assert_contains "$refs" "licenses renaming an identifier"
-  assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "single copy of the rules"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[AI-tells pass](references/ai-tells.md)"
-  assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "speak-fking-english/references/ai-tells.md"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "cut AI tells"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "implicit route"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "explicit route"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "skip the deep catalogue pass, and return"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Merely"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "discussing the skill does not select this explicit route"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "the deep catalogue pass, and then return"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[natural-writing pass](references/natural-writing.md)"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[full AI-tells catalogue](references/ai-tells.md)"
+  assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "full clarity and AI-tells pass"
 }
 
 test_speak_fking_english_owns_the_visual_decision() {

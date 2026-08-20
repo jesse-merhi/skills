@@ -206,7 +206,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
-| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | The last pass before every final response: reader reset, re-pitch on "wait, what?", visuals only when they earn their place, and a catalogue of AI tells to cut. |
+| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Runs a compact clarity and voice pass before every final response, then adds the full AI-tells catalogue when the user invokes the skill explicitly. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
 ### Meta and operations

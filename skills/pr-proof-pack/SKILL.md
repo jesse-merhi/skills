@@ -151,12 +151,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    that remain true. Draft only the title, body, caption, reproduction, or
    evidence changes needed to restore accuracy. Load `speak-fking-english`
    immediately before saving the complete draft, and tell it the draft is
-   reviewer-facing text so its AI-tells pass applies the reviewer-facing voice
-   rules.
+   reviewer-facing text. Unless the user explicitly invoked that skill for this
+   artifact, its compact natural-writing pass applies.
 
    Done when the first two sentences explain what broke and why it matters, the
    next two explain the fix and outcome, a multi-part or unusually large PR has
-   a compact change breakdown, the body carries no catalogued AI tell, the body
+   a compact change breakdown, the body reads clearly and naturally, the body
    stays within the default size budget or justifies each exception, and the
    draft is self-contained.
 

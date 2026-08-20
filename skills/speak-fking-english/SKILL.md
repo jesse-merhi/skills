@@ -10,16 +10,22 @@ saving it.
 
 ## Route the pass
 
-- Before every final response, run the complete pass below.
-- For an explicit "wait, what?" or re-pitch request, run only the reader reset.
-- For an explicit "show me" or visual-support request, run only the visual
-  filter.
-- For an explicit unslop, de-slop, or "this reads like AI" request, run only
-  the AI-tells pass.
+- When the model loads this skill as the final-response checkpoint, run the
+  shared pass below, skip the deep catalogue pass, and return the result. This
+  is the implicit route.
+- When the user asks you to use `speak-fking-english`, invokes it with the
+  harness's skill syntax, or asks for the full unslop or de-slop pass, run the
+  shared pass, add the deep catalogue pass, and then return the result. Merely
+  discussing the skill does not select this explicit route.
+- For a "wait, what?" or re-pitch request that does not explicitly invoke this
+  skill, run only the reader reset.
+- For a "show me" or visual-support request that does not explicitly invoke
+  this skill, run only the visual filter.
 - When another skill calls this one, return the revised reviewer-facing text to
-  that skill instead of addressing the user directly.
+  that skill instead of addressing the user directly. Treat the call as
+  implicit unless the user explicitly invoked this skill for that artifact.
 
-## Complete pass
+## Shared pass
 
 1. Apply the [reader reset](references/reader-reset.md) to the complete draft
    without changing its facts, scope, or requested action.
@@ -36,21 +42,29 @@ saving it.
    one clear teaching question, with every evidence claim still pointing to the
    behavior that produced it.
 
-3. Apply the [AI-tells pass](references/ai-tells.md) to the complete draft,
-   including any support added by the visual filter. Cut the catalogued
-   patterns, then add voice using the rules for this draft's destination, which
-   `ai-tells.md` defines.
+3. Apply the [natural-writing pass](references/natural-writing.md) to the
+   complete draft, including any support added by the visual filter.
 
-   Done when no catalogued pattern survives, every fact and evidence claim is
-   unchanged, and the draft does not read as generated.
+   Done when the result is direct, concrete, easy to follow, and recognisably
+   written by a person, with every fact and evidence claim unchanged.
 
-4. Return the final draft.
+## Deep catalogue pass
 
-   For chat, return the revised draft as the whole final response. For a calling
-   skill, return the revised reviewer-facing text for that skill to save.
+Run this only on the explicit route. Apply the
+[full AI-tells catalogue](references/ai-tells.md) to the result of the shared
+pass. Keep the facts, scope, requested action, intended tone, exact names, and
+evidence unchanged.
 
-   Done when the output stands alone, contains no duplicated explanation, and
-   uses the return path expected by the caller.
+Done when no catalogued pattern survives and the draft still says exactly what
+it needs to say.
+
+## Return
+
+For chat, return the revised draft as the whole final response. For a calling
+skill, return the revised reviewer-facing text for that skill to save.
+
+Done when the output stands alone, contains no duplicated explanation, and uses
+the return path expected by the caller.
 
 This skill incorporates MIT-licensed guidance adapted from Matt Pocock's
 `wait-what`, HumanLayer's `show-me`, and pstack's `unslop`. See

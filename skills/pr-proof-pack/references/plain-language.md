@@ -77,21 +77,20 @@ published to a PR, explain that rewording requires a history rewrite and ask for
 explicit human approval before doing it. Do not hide unclear commits with a
 better PR title.
 
-## Cut AI tells
+## Finish the writing pass
 
-Run the catalogue in
-[`speak-fking-english/references/ai-tells.md`](../../speak-fking-english/references/ai-tells.md)
-over the title, opening, captions, verification steps, and commit subjects.
-That file is the single copy of the rules. Do not restate them here.
+Run `speak-fking-english` over the title, opening, captions, verification steps,
+and commit subjects. Do not load its full catalogue directly. The skill uses its
+compact natural-writing pass for an implicit call and adds the catalogue only
+when the user explicitly invoked it for this artifact.
 
 One consequence is worth naming here, because it changed a label the skills
 repository used to spell with a dash. Matched proof is labeled
 `Before: direct base` and `After: PR`.
 
-A PR body is reviewer-facing text, so it takes the reviewer-facing voice rules
-rather than the six a reply spoken to the user gets. `ai-tells.md` says which.
-A reviewer checks these sentences against a diff, so every claim must stay
-verifiable.
+A PR body is reviewer-facing text, so it stays specific and candid without
+chatty asides. A reviewer checks these sentences against a diff, so every claim
+must stay verifiable.
 
 ## Body, captions, and diagrams
 
@@ -107,6 +106,7 @@ Read the finished PR from top to bottom and ask:
 3. Is every unfamiliar term defined before it is used?
 4. Is every visual proving a fact that copyable text would lose?
 5. Can a reviewer act without recovering context from a ticket or chat thread?
-6. Does any sentence still carry a catalogued AI tell?
+6. Does any sentence still read as generated or make the reviewer work to
+   understand it?
 
-Revise until every answer is yes.
+Revise until the first five answers are yes and the last is no.
