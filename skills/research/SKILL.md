@@ -35,7 +35,7 @@ posts, summaries, forum answers, or search snippets.
 ```md
 # Research: <question>
 
-## Short Answer
+## Short answer
 <answer>
 
 ## Findings
@@ -44,6 +44,6 @@ posts, summaries, forum answers, or search snippets.
 ## Caveats
 - <version, date, uncertainty, or open question>
 
-## Next Step
+## Next step
 - <how this should feed grilling, planning, implementation, or review>
 ```

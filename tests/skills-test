@@ -477,10 +477,10 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" "Do not use them. Use a period or a comma"
   assert_contains "$refs" "Before: direct base"
   assert_contains "$refs" "Use sentence case"
-  assert_contains "$refs" "another workflow looks up by its exact spelling"
-  assert_contains "$refs" "The literal senses keep their names"
+  assert_contains "$refs" "looks up by its exact spelling"
+  assert_contains "$refs" "**Literal senses.**"
   assert_contains "$refs" "attack surface"
-  assert_contains "$refs" "Proper nouns keep their names too"
+  assert_contains "$refs" "**Proper nouns.**"
   assert_contains "$refs" "licenses renaming an identifier"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "single copy of the rules"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[AI-tells pass](references/ai-tells.md)"
@@ -641,7 +641,7 @@ test_waits_hold_instead_of_polling() {
   local wait_dir="$ROOT_DIR/skills/wait-efficiently"
   local wait_skill="$wait_dir/SKILL.md"
 
-  # The durable rules live in SKILL.md and outlive any harness API. The floor is
+  # The durable rules live in SKILL.md and outlive any agent tool API. The floor is
   # deliberately stated in AGENTS.md too, because the skill often is not loaded;
   # keep the two lexically identical so a drifting copy is greppable.
   assert_contains "$wait_skill" 'Hold a wait for its full expected duration, never under 300 seconds'
@@ -652,7 +652,7 @@ test_waits_hold_instead_of_polling() {
   assert_contains "$wait_skill" 'references/codex.md'
   assert_contains "$wait_skill" 'references/claude-code.md'
 
-  # SKILL.md stays harness-agnostic; API names belong in the harness references.
+  # SKILL.md stays agent-agnostic; API names belong in the per-tool references.
   assert_not_contains "$wait_skill" 'write_stdin'
   assert_not_contains "$wait_skill" 'run_in_background'
 }

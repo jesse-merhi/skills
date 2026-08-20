@@ -93,9 +93,9 @@ repository used to spell with a dash. Matched proof is labeled
 `Before: direct base` and `After: PR`.
 
 A PR body is reviewer-facing text, so it takes the reviewer-facing voice rules
-rather than the six a reply spoken to the user gets. `ai-tells.md` says which. A reviewer checks
-these sentences against a diff, so every claim must stay verifiable.
-
+rather than the six a reply spoken to the user gets. `ai-tells.md` says which.
+A reviewer checks these sentences against a diff, so every claim must stay
+verifiable.
 
 ## Body, captions, and diagrams
 

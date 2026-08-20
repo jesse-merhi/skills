@@ -5,7 +5,8 @@ written even when every pattern is gone. Run both passes.
 
 1. Scan the draft against the catalogue below and list every match.
 
-2. Rewrite each match. Keep the facts, scope, and requested action unchanged.
+2. Rewrite each match. Keep the facts, the scope, the requested action, and
+   the intended tone unchanged.
 
 3. Add voice, using the rules for the destination.
 
@@ -14,6 +15,25 @@ written even when every pattern is gone. Run both passes.
 
 Done when no catalogued pattern survives, no fact changed, and the draft has a
 recognisable voice.
+
+## What no rule reaches
+
+These three exceptions apply to every rule below. The test is always what the
+word denotes here. If it names a real thing, it stays.
+
+**Literal senses.** A rule bans a word used as padding or metaphor, never the
+word used to name something specific. An attack surface, a test harness, a
+`harness = false` build key, a cryptographic primitive, a vector index, WCAG's
+`Target Size (Enhanced)` criterion, and a Cargo `[features]` table all denote
+real things. Rewriting them corrupts the claim rather than clarifying it.
+
+**Proper nouns.** A package, product, tool, standard, or third-party API keeps
+the name its owner gave it, even when that name contains a banned word.
+
+**Quoted text.** Fix your own prose, not a quotation. When the draft reproduces
+someone else's words, or when a character is itself the finding, reproduce it
+exactly. Normalising a curly quote or a stray dash inside a bug report describes
+a file state that does not exist.
 
 ## Voice
 
@@ -39,18 +59,18 @@ Speaking to the user only:
 - **Have opinions.** React to the facts instead of listing pros and cons at
   equal weight.
 - **Use "I" when it fits.** First person is not unprofessional.
-- **Let some mess in.** Flawless parallel structure looks generated.
+- **Let some mess in.** Perfect structure looks machine-made.
 
 ## Content
 
 1. **Puffery.** "pivotal moment", "testament to", "evolving landscape",
    "setting the stage for", "indelible mark", "deeply rooted". State what
    happened.
-2. **Name-dropping.** Listing publications without content. Pick one and say
+2. **Name-dropping.** Listing publications without context. Pick one and say
    what it said.
 3. **Superficial -ing phrases.** "highlighting...", "ensuring...",
-   "reflecting...", "showcasing...", "fostering...". Delete, or expand into a
-   real claim.
+   "reflecting...", "showcasing...", "fostering...". Delete, or expand with
+   real sources.
 4. **Promotional language.** "nestled", "vibrant", "breathtaking",
    "groundbreaking", "renowned", "stunning", "must-visit". Describe neutrally.
 5. **Vague attributions.** "Experts believe", "Industry reports suggest", "Some
@@ -76,14 +96,9 @@ Speaking to the user only:
     `Run` are three tables, they are not synonyms and collapsing them makes
     the sentence wrong.
 12. **False ranges.** "from X to Y" where X and Y sit on no shared scale. List
-    the items.
+    the topics directly.
 
 ## Style
-
-Every rule in this section governs your own prose. When the draft quotes
-someone else's text, or when a character is itself the finding, reproduce it
-exactly. Normalising a curly quote or a stray dash inside a bug report
-describes a file state that does not exist.
 
 13. **Em dashes.** Do not use them. Use a period or a comma. Do not substitute
     parentheses, en dashes, or a hyphen standing in for a dash, which trade one
@@ -96,7 +111,8 @@ describes a file state that does not exist.
 14. **Colons.** A colon before a list, an example, or a label is fine. A colon
     as a mid-sentence connector is not. "If you are coming from traditional
     automation: instead of registering handlers, you describe conditions" gains
-    nothing from the colon. Let the point stand without the comparison framing.
+    nothing from the colon. Rewrite it so the point stands alone: "Describing
+    when the scheduler should fire works best as plain English."
 15. **Boldface.** Bold the few phrases a skimming reader must not miss. Do
     not bold every proper noun or acronym. Bolding stays useful for a
     literal control the reader has to find, such as **Use Admin**.
@@ -106,8 +122,10 @@ describes a file state that does not exist.
     followed by genuinely new detail is fine: "**Schema in TypeScript.**
     Tables live in one file."
 17. **Title case headings.** Use sentence case. This does not reach a heading
-    another workflow looks up by its exact spelling, such as the section names
-    in a note template. Renaming those breaks the lookup.
+    something else looks up by its exact spelling, whether that is a test, a
+    later session reading a note, or prose elsewhere that names the section.
+    Renaming those breaks the lookup. Check before renaming; a template
+    heading nothing refers to is not exempt.
 18. **Decorative emojis.** Remove them from headings and bullets.
 19. **Curly quotes.** Use straight quotes.
 
@@ -131,47 +149,31 @@ describes a file state that does not exist.
 
 ## Jargon
 
-26. **Abstract metaphor nouns.** Substrate, wedge, locus, vantage, nexus,
-    bedrock, modality, paradigm, gold-plating, endgame, north star, flywheel,
-    and the metaphorical use of vector, primitive, harness, surface,
-    scaffolding, ratchet, and evacuate. These sound technical and usually have
-    a plainer concrete word.
+26. **Abstract metaphor nouns.** Substrate, wedge, vector, locus, vantage,
+    nexus, primitive, harness, surface, bedrock, scaffolding, modality,
+    paradigm, gold-plating, ratchet, evacuate, endgame, north star, flywheel.
+    These sound technical and usually have a plainer concrete word. Pick the
+    concrete word.
 
-    Every entry below applies only when the word is standing in for something
-    plainer. Ask what the word denotes here. If it names a real thing in the
-    domain, it stays.
-
-    | Metaphorical use | Write |
+    | Instead of | Write |
     | --- | --- |
     | substrate | base |
     | wedge in | add |
-    | vector for | way, method |
-    | primitive (a building block of a design) | building block |
-    | harness (the thing running the work) | name it |
-    | surface (when a plainer word exists) | the API, the screen, the changed code |
-    | scaffolding (as in temporary support) | setup code, starter files |
+    | vector | way, method |
+    | primitive | building block |
+    | harness | name the thing running the work |
+    | surface | the API, the screen, the changed code |
+    | scaffolding | setup code, starter files |
     | gold-plating | more than the job needs |
     | ratchet | the mechanism, or "a limit that only tightens" |
-    | evacuate (for moving code) | move out |
+    | evacuate | move out |
     | endgame | the last phase |
 
-    The test is whether a plainer word carries the same meaning. "API surface"
-    becomes "the API" and loses nothing, so it goes. "Attack surface" has no
-    plainer equivalent, so it stays.
-
-    The literal senses keep their names. An attack surface, a rendering
-    surface, a test harness, a `harness = false` build key, a synchronization
-    or cryptographic primitive, a primitive type, a vector index, and the
-    `Primitive Obsession` code smell all denote real things. Rewriting them
-    corrupts the claim rather than clarifying it.
-
-    Proper nouns keep their names too. A package, product, tool, or
-    third-party API is called what its owner called it, even when that name
-    is a banned word. The skills repository records the
-    `browser-harness` dependency at a pinned commit in `external.md`, and that
-    record is only useful if the name still matches the project a reader has
-    to go and find. Quoted external text is the same. Fix your own prose, not
-    a quotation.
+    The literal-sense exception above does most of the work here, because most
+    of these words have a real technical use. `browser-harness` in the skills
+    repository is the proper-noun case: `external.md` records it at a pinned
+    commit, and that record only helps if the name still matches the project a
+    reader has to go and find.
 
     Familiarity is not a defence for a genuine metaphor. If a phrase like
     "proof surface" is only comfortable because the repository repeats it,
@@ -185,21 +187,24 @@ describes a file state that does not exist.
     the mechanism or a number instead: "`.toSQL()` returns the exact string sent
     to the database", "a column rename fails the build". Ask what the sentence
     tells the reader to do or know, then write that. If you cannot restate it as
-    a concrete instruction, fact, or number, cut it. One more check: a sentence
-    that could appear unchanged in another project's documentation says nothing
-    about this one.
-28. **Dense sentences.** If the reader has to backtrack to parse a sentence,
-    split it or drop clauses. One idea per sentence.
-29. **Active voice.** Catch "is/are/was/were + past participle" and name the
-    actor. "queries are validated" becomes "the compiler validates queries".
-    Passive is fine only when the actor is unknown or genuinely does not matter.
-30. **Adverbs.** "runs quickly" becomes "is fast", or the measured number.
-    "significantly improves" becomes the delta you measured. If you did not
-    measure one, cut the claim rather than inventing a figure. An adverb
-    propping up a weak verb means the verb is wrong.
-31. **Plain words.** "utilize" becomes "use". "leverage" becomes "use".
-    "facilitate" becomes "help". "numerous" becomes "many". "in the event that"
-    becomes "if". The fancier synonym is rarely clearer.
+    a concrete instruction, fact, or number, cut it. One more check, for a
+    sentence that claims something about this project: if it could appear
+    unchanged in another project's documentation, it says nothing about this
+    one. Cut it. A portable instruction is meant to be portable and stays.
+28. **Shorten or split dense sentences.** If the reader has to backtrack to
+    parse a sentence, split it or drop clauses. One idea per sentence.
+29. **Active voice.** Prefer it. Catch "is/are/was/were + past participle" and
+    name the actor: "queries are validated" becomes "the compiler validates
+    queries", "the file is parsed by the loader" becomes "the loader parses the
+    file". Passive is fine only when the actor is unknown or genuinely does not
+    matter.
+30. **Cut adverbs, or use a stronger verb.** "runs quickly" becomes "is fast",
+    or the measured number. "significantly improves" becomes the delta you
+    measured. Never invent a figure. If you did not measure one, either state
+    the direction without a magnitude, as in "retries drop; I did not measure by
+    how much", or cut the claim. An adverb propping up a weak verb means the
+    verb is wrong.
+31. **Prefer the plain word.** "utilize" becomes "use". "leverage" becomes
+    "use". "facilitate" becomes "help". "numerous" becomes "many". "in the
+    event that" becomes "if". The fancier synonym is rarely clearer.
 
-    As in rule 26, this covers the padded sense only. Financial leverage and
-    leverage as a named design property both denote real things and stay.

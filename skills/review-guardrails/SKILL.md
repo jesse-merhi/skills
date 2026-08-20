@@ -9,7 +9,7 @@ Load this skill at the start of any until-clean review loop (`code-review`,
 `review-until-clean`, `cold-pr-review-until-clean`). It bounds how long an
 autonomous review may run, how much review fixes may grow the PR, and what
 happens to findings that need the user instead of autonomy. There is no
-iteration cap: the budgets are the bound.
+iteration cap. The budgets are the bound.
 
 ## Required state
 

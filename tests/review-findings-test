@@ -883,7 +883,7 @@ test_review_scope_budget_blocks_deterministically() {
     --branch feature \
     --target "PR #12" \
     --base main \
-    --reason "A new helper would move production code outside the frozen file surface." \
+    --reason "A new helper would move production code outside the frozen file set." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "scope-check should block a new production path even below the line-growth limit"
   fi

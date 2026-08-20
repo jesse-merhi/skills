@@ -81,9 +81,8 @@ Two ways one gets used:
 
 - **The agent picks it.** Agent tools keep every skill's `name` and
   `description` in context and load the body when the description matches the
-  task. That is
-  why the descriptions in this repo are written as trigger conditions rather
-  than summaries.
+  task. That is why the descriptions in this repo are written as trigger
+  conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
   "use `grilling` on this" in either agent tool. Codex marks eight skills as
   explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,

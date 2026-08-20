@@ -10,9 +10,9 @@ code. For defects in existing motion, use `review-animations`.
 Reject a candidate as soon as one gate fails:
 
 1. **Frequency:** keep constant or expert actions instant; restrain frequent
-   actions; allow ordinary motion for occasional panels, drawers, and toasts,
-   and more expression only for rare first-run, empty, success, or celebration
-   moments.
+   actions; allow ordinary motion for occasional elements such as panels,
+   drawers, modals, sheets, and toasts, and more expression only for rare
+   first-run, empty, success, or celebration moments.
 2. **Purpose:** require feedback, spatial continuity, state indication,
    prevention of a jarring change, explanation, or rare delight. "It looks
    cool" is not a purpose.

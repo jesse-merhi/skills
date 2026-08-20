@@ -18,7 +18,7 @@ continuing.
 Format every question as:
 
 ```markdown
-❓ **Q1** - **<question title>**: <question body or choices>
+❓ **Q1**. **<question title>**: <question body or choices>
 
 ➡️ <recommended answer>
 ```

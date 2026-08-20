@@ -5,11 +5,12 @@ description: 'Map multi-session work as Obsidian decision tickets and resolve th
 
 # Wayfinder
 
-A loose idea has arrived, too big for one agent session and wrapped in fog: the
-way from here to the destination is not visible yet. Wayfinding is about finding
-that way, not charging at the destination. This skill charts the way as a shared
-map in Obsidian, then works its decision tickets: questions whose resolution is
-a decision, not slices of a build to execute. Resolve them one at a time until
+A loose idea has arrived, too big for one agent session and wrapped in fog.
+The way from here to the destination is not visible yet. Wayfinding is about
+finding that way, not charging at the destination. This skill charts the way as
+a shared map in Obsidian, then works its decision tickets. A decision ticket
+asks a question whose resolution is a decision, not a slice of a build to
+execute. Resolve them one at a time until
 the route is clear.
 
 The destination varies per effort, and naming it is the first act of charting:
@@ -20,7 +21,7 @@ structure migration. The map is domain-agnostic.
 ## Plan, don't do
 
 Wayfinder is planning by default. Each ticket resolves a decision, and the map
-is done when the way is clear: nothing is left to decide before someone builds
+is done when the way is clear. Nothing is left to decide before someone builds
 the thing. Treat the pull to start building as a signal that you have reached
 the edge of the planning map and should hand off. An effort can override this in
 its Notes, carrying execution into the map itself, but absent that, produce
@@ -35,12 +36,12 @@ file path or slug differs from that title, use an alias such as
 
 ## The map
 
-The map is a single Obsidian issue note: the canonical artifact. Its tickets are
-child Obsidian issue notes. Each ticket links back through its `Wayfinder` field
-and to its blockers through `Blocked By`.
+The map is a single Obsidian issue note and the canonical artifact. Its
+tickets are child Obsidian issue notes. Each ticket links back through its
+`Wayfinder` field and to its blockers through `Blocked By`.
 
 The map is an index, not a store. It lists decisions made and points at the
-tickets that hold their detail. A decision lives in exactly one place: its
+tickets that hold their detail. A decision lives in exactly one place, its
 ticket. The map never restates it, only gists it and links.
 
 Use Obsidian `Issues/` unless the vault already has a better convention.
@@ -129,9 +130,10 @@ exchange; the agent never stands in for the human's side of it.
 
 ## Fog of war
 
-The map is deliberately incomplete: do not chart what you cannot yet see.
-Beyond the live tickets is fog: decisions and investigations you can tell are
-coming but cannot yet pin down because they hang on open questions. Write that
+The map is deliberately incomplete. Do not chart what you cannot yet see.
+Beyond the live tickets lies fog, made of decisions and investigations you can
+tell are coming but cannot yet pin down because they hang on open questions.
+Write that
 dim view in Not Yet Specified. Resolving a ticket clears the fog ahead of it,
 graduating whatever is now specifiable into fresh tickets until the way to the
 destination is clear and no open tickets remain.
@@ -152,7 +154,7 @@ ruled out of scope.
 Fog gathers toward the destination. Work beyond the destination belongs in Out
 Of Scope and never graduates unless the destination changes. If an existing
 ticket turns out to sit beyond the destination, close it and add one linked line
-to Out Of Scope with the reason. Do not add it to Decisions So Far: setting a
+to Out Of Scope with the reason. Do not add it to Decisions So Far. Setting a
 scope boundary is not a decision on the route.
 
 If the destination changes, treat previously out-of-scope work as a fresh
@@ -161,7 +163,7 @@ effort, not a resumed ticket.
 ## Invocation
 
 Two modes. Either way, never resolve more than one ticket per session. Research
-tickets are the exception: independent research tickets may run in parallel.
+tickets are the exception, because independent ones may run in parallel.
 
 ### Chart the map
 
