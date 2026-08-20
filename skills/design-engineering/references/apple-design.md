@@ -1,4 +1,4 @@
-# Apple-Inspired fluid interaction
+# Apple-inspired fluid interaction
 
 Load this reference for gesture-driven interfaces, springs, sheets, direct
 manipulation, velocity, momentum, rubber-banding, and interruptible motion.

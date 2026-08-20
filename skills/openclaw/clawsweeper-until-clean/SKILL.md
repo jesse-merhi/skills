@@ -16,7 +16,7 @@ Do not use this skill for a one-shot trigger. A single `/clawsweeper re-review`
 comment is enough for that. Use this skill when you want the loop run to
 convergence.
 
-## Non-Negotiables
+## Non-negotiables
 
 ```yaml
 trigger: comment exactly `/clawsweeper re-review` on the PR via `gh pr comment`
@@ -28,7 +28,7 @@ no_early_exit: do not stop on 1 or 2 clean re-reviews
 no_self_review: do not skip a re-trigger because you "already know it's clean"
 ```
 
-## Pre-Flight
+## Pre-flight
 
 1. Confirm the target PR number and repo. Pin those values; reuse them every
    iteration.

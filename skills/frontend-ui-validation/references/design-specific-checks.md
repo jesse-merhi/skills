@@ -1,4 +1,4 @@
-# Design-Specific checks
+# Design-specific checks
 
 If the UI uses dark mode, theme variants, density modes, or auth/empty states,
 validate each one the user can reasonably reach.

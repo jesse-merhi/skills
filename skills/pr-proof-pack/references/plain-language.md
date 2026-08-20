@@ -1,4 +1,4 @@
-# Plain-Language PR writing
+# Plain-language PR writing
 
 Apply the same test to the PR title, commit subjects, opening paragraph,
 screenshot captions, verification steps, and diagram labels: could a reviewer
@@ -86,19 +86,15 @@ better PR title.
 Run the catalogue in
 [`speak-fking-english/references/ai-tells.md`](../../speak-fking-english/references/ai-tells.md)
 over the title, opening, captions, verification steps, and commit subjects.
-That file is the single copy of the rules; do not restate them here.
+That file is the single copy of the rules. Do not restate them here.
 
-Three of its entries decide most PR text:
+One consequence is worth naming, because it fixes a label this repository
+used to spell with a dash: matched proof is labeled `Before: direct base` and
+`After: PR`.
 
-- No em dashes. Matched proof is labeled `Before: direct base` and `After: PR`.
-- No abstract metaphor nouns. "surface", "harness", "primitive", "scaffolding",
-  and "vector" all have plainer concrete words.
-- No inline-header lists whose bold label just restates the line that follows.
-
-A PR body takes only three of the six voice rules: be specific, vary rhythm,
-and acknowledge complexity. Leave out opinions, first person, and deliberate
-mess. A reviewer checks these sentences against a diff, so every claim must
-stay verifiable.
+A PR body is reviewer-facing text, so it takes the reviewer-facing voice
+rules rather than the chat ones. `ai-tells.md` says which. A reviewer checks
+these sentences against a diff, so every claim must stay verifiable.
 
 Be specific means naming the observable result. "Improves reliability" is a
 feeling. "The runner stops instead of publishing" is a fact a reviewer can

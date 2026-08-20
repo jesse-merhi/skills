@@ -48,7 +48,7 @@ test_review_findings_workflow_is_documented() {
   local findings_doc="$ROOT_DIR/skills/code-review/references/findings-registry.md"
   local output_doc="$ROOT_DIR/skills/code-review/references/final-output.md"
 
-  assert_contains "$ROOT_DIR/INSTALL.md" "Verify Repo-Owned CLIs"
+  assert_contains "$ROOT_DIR/INSTALL.md" "Verify repo-owned CLIs"
   assert_contains "$ROOT_DIR/README.md" 'Effect SQL `review-findings` CLI'
   assert_contains "$ROOT_DIR/INSTALL.md" 'Retire any `AGENT_REVIEW_FINDINGS_BIN` export'
   assert_contains "$skill_doc" "Read [references/findings-registry.md](references/findings-registry.md)."

@@ -25,14 +25,14 @@ winner only after the user chooses.
 5. Reuse the project's stack, tokens, components, and installed dependencies.
    Do not add a dependency without the user's approval.
 6. Keep prototypes on an isolated route or page. Production code must not
-   import from the prototype screen.
+   import from the prototype picker page.
 7. Render one variant at a time in realistic surrounding context. Do not judge
    UI from side-by-side thumbnails.
 8. Use the fixed picker contract in
    [references/picker.md](references/picker.md). Treat it as picker chrome,
    not as a design direction.
 9. When the user chooses a winner, integrate only that direction and remove the
-   prototype screen unless asked to keep it.
+   prototype picker page unless asked to keep it.
 
 ## Workflow
 

@@ -1,6 +1,6 @@
 # Commands
 
-## Read-Only planning
+## Read-only planning
 
 For unclear design direction, ask Claude for a read-only plan:
 

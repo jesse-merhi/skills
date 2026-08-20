@@ -3,7 +3,7 @@ name: tdd
 description: 'Build or fix test-first with red-green-refactor and integration tests when requested.'
 ---
 
-# Test-Driven development
+# Test-driven development
 
 This skill adapts Matt Pocock's upstream `tdd` skill. Preserve its pre-agreed
 seam and red -> green loop semantics unless this repository intentionally

@@ -1,6 +1,6 @@
 # Review loop
 
-## Classifying A run
+## Classifying a run
 
 Classify every run from the engine's review output after triage:
 

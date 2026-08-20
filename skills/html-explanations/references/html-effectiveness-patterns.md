@@ -17,7 +17,7 @@ secondary.
 | `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
 | `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, complete annotated direct-base diff, file review progress, secondary proof only when needed |
 
-## Reusing A pattern
+## Reusing a pattern
 
 When a pattern closely matches the task:
 
@@ -29,7 +29,7 @@ When a pattern closely matches the task:
 
 Use `assets/explanation-template.html` only when none of the seven patterns fit.
 
-## Choosing A shape
+## Choosing a shape
 
 - If the user asks "which option should we pick?", use the decision brief.
 - If the user asks "how does this work?", use code flow.

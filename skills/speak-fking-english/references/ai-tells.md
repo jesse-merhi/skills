@@ -88,7 +88,9 @@ Chat only:
     the line: "**Performance:** Performance improved...". Convert those to
     prose. A bold lead-in that ends in a period, names the item, and is followed
     by genuinely new detail is fine.
-17. **Title case headings.** Use sentence case.
+17. **Title case headings.** Use sentence case. This does not reach a heading
+    another workflow looks up by its exact spelling, such as the section names
+    in a note template. Renaming those breaks the lookup.
 18. **Decorative emojis.** Remove them from headings and bullets.
 19. **Curly quotes.** Use straight quotes.
 
@@ -136,11 +138,16 @@ Chat only:
     an existing phrase like "proof surface" or "harness-agnostic" is the clearer
     option in context, rename the concept rather than keeping the metaphor.
 
-    It does not reach proper nouns. A package, product, tool, or third-party
-    API keeps the name its owner gave it, even when that name is a banned
-    word. The `browser-harness` dependency in `external.md` is pinned by
-    commit, so renaming it would break the install command. The same holds
-    for quoted external text: fix your own prose, not a quotation.
+    It bans the metaphor, not the literal sense. A primitive type, a vector
+    index, a rendering surface, and the `Primitive Obsession` code smell all
+    name real things, so they keep their names. Ask whether the word points
+    at a concrete thing in the domain or is standing in for a plainer word.
+
+    It does not reach proper nouns either. A package, product, tool, or
+    third-party API keeps the name its owner gave it, even when that name is
+    a banned word. The `browser-harness` dependency in `external.md` is
+    pinned by commit, so renaming it would break the install command. The
+    same holds for quoted external text: fix your own prose, not a quotation.
 
 ## Plain speech
 

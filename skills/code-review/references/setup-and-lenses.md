@@ -68,7 +68,7 @@ overlay changes.
      transitions, gestures, springs, or interaction timing.
 
 5. Build a neutral risk checklist for `cold-pr-review-until-clean` from the
-   changed-file map and required/conditional lenses. Include checklist
+   changed-flow summary and required/conditional lenses. Include checklist
    topics, not prior findings, desired conclusions, implementation rationale, or
    earlier review results.
 

@@ -1,4 +1,4 @@
-# MCP Browser checks
+# MCP browser checks
 
 When using a browser MCP connector directly, use the tool names exposed in the
 current session. Do not assume older unprefixed Playwright MCP names such as

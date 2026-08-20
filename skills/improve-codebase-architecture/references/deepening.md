@@ -6,12 +6,12 @@ How to deepen a cluster of shallow modules safely. Assumes the vocabulary in
 
 ## Dependency categories
 
-### In-Process
+### In-process
 
 Pure computation, in-memory state, no I/O. Usually safe to deepen by merging
 modules and testing through the new interface.
 
-### Local-Substitutable
+### Local-substitutable
 
 Dependencies with local test stand-ins, such as an in-memory filesystem or local
 database substitute. Deepen when the stand-in exists and tests can run through

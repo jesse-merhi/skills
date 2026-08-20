@@ -29,7 +29,7 @@ workspace? Those are different concepts in this repo.
 Stress-test domain relationships with specific scenarios. Invent edge cases
 that force clear boundaries between concepts, states, and ownership.
 
-## Cross-Reference with code
+## Cross-reference with code
 
 When the user states how something works, check whether the code agrees. If you
 find a contradiction, surface it as the next question.

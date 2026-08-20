@@ -4,7 +4,7 @@ Prefer one status fetch after a history-aware silent wait. GitHub CLI watch
 commands hide their polling loop, cannot adapt their interval from historical
 duration, and default to very short refresh intervals.
 
-## Monitor A PR
+## Monitor a PR
 
 Fetch the PR's current check state:
 
@@ -14,7 +14,7 @@ gh pr checks --json name,state,workflow,link
 
 Add `--required` if only required checks matter.
 
-## Monitor A workflow run
+## Monitor a workflow run
 
 Estimate the next useful observation, wait through `wait-efficiently`, then
 fetch the run once:

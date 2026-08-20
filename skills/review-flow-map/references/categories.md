@@ -17,4 +17,4 @@ with `frontend-ui-validation`.
 
 If the diff includes CI, dependency, publishing, generated/vendor, permission,
 secret-handling, or code-execution changes, call those out explicitly in the
-changed-file map.
+changed-flow summary.

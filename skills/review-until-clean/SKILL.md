@@ -21,7 +21,7 @@ Do not use this skill for a one-off read-only review. A plain `codex review`,
 without editing unless the user explicitly asks for the until-clean loop or
 `code-review` has selected this as its native review phase.
 
-## Non-Negotiables
+## Non-negotiables
 
 ```yaml
 review_tool: must invoke the selected engine's bare built-in review; do not substitute a self-review or ad hoc subagent

@@ -18,7 +18,7 @@ skipped. The source of truth here is `cold-pr-review`, not an OpenClaw-specific
 review workflow or Clawsweeper. Fixes are handled directly by the implementing
 agent unless a repo-specific fix workflow applies.
 
-## Non-Negotiables
+## Non-negotiables
 
 ```yaml
 review_tool: must invoke cold-pr-review through an independent subagent whenever the agent tool supports subagents

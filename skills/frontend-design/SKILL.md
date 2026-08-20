@@ -17,9 +17,9 @@ complete rendered result.
    existing states. Preserve working conventions; change the system only when
    the product outcome justifies it.
 3. Name the design direction in one sentence. Make it specific to the task and
-   register: product UI should optimize task clarity; brand screens may carry
+   register: product UI should optimize task clarity; brand work may carry
    more expression.
-4. Implement the full screen, including loading, empty, error, disabled, long
+4. Implement every state, including loading, empty, error, disabled, long
    content, narrow viewport, keyboard, focus, and touch behavior when relevant.
 5. When motion, gestures, transitions, micro-interactions, or component feel
    materially affect the result, load `design-engineering` before implementing

@@ -49,7 +49,7 @@ For a bug fix with reproducible direct-base behavior, proof is stale when the
 reviewer cannot compare the broken and fixed outcomes. A screenshot of textual
 output is stale when the same result would be clearer as short copyable text.
 
-## Hard gates for A refresh
+## Hard gates for a refresh
 
 - **Practical evidence:** Exercise the changed behavior working in practice.
   Automated validation remains supporting information and never replaces the

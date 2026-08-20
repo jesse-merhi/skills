@@ -1,6 +1,6 @@
 # Budgets
 
-## Wall-Clock budget
+## Wall-clock budget
 
 - Default: **8 hours per review run**, measured from `review_started`.
 - Check before starting each review cycle.
@@ -11,7 +11,7 @@
 - A machine-local override may set a different budget value for one machine. It
   must name a value; "no budget" is not a valid override.
 
-## Diff-Growth budget
+## Diff-growth budget
 
 - Limit: exactly **30% of baseline production changed lines**. The review CLI
   exposes no flag that lets the agent raise this percentage.
