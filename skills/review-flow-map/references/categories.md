@@ -1,7 +1,7 @@
-# Surfaces
+# Change categories
 
-Classify changed files by review surface. Use surfaces that match behavior, not
-directory order:
+Classify changed files by behavior category. Use categories that match
+behavior, not directory order:
 
 - entrypoint: route, CLI command, job, handler, workflow, screen, public API
 - contract: schema, type, protocol, config, permission, env var, API response
@@ -16,5 +16,5 @@ For rendered frontend UI, include viewport/state proof in validation targets
 with `frontend-ui-validation`.
 
 If the diff includes CI, dependency, publishing, generated/vendor, permission,
-secret-handling, or code-execution surfaces, call those out explicitly in the
-changed-surface map.
+secret-handling, or code-execution changes, call those out explicitly in the
+changed-flow summary.

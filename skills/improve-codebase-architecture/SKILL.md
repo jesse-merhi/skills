@@ -3,7 +3,7 @@ name: improve-codebase-architecture
 description: 'Review architecture for module depth, interfaces, locality, dependencies, and testability.'
 ---
 
-# Improve Codebase Architecture
+# Improve codebase architecture
 
 Use this as an architectural review lens. Do not refactor by default; first
 identify the smallest structural change that improves the work the user actually
@@ -53,7 +53,7 @@ Lead with findings and concrete paths. Include:
 - verification strategy
 - durable note path when something should be stored in Obsidian
 
-## Context Pointers
+## Context pointers
 
 - Use [language.md](references/language.md) for architecture vocabulary and
   principles.

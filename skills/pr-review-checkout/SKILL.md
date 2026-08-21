@@ -3,7 +3,7 @@ name: pr-review-checkout
 description: Review a GitHub PR in VS Code with local diffs, inline comments, navigation, and its worktree preserved.
 ---
 
-# PR Review Checkout
+# PR review checkout
 
 Open a PR in its branch's real worktree, then review it through VS Code's
 dedicated active-pull-request view. This gives the user the PR diff and comment
@@ -31,7 +31,7 @@ proof of that behavior, and leave generated or mechanical changes until their
 upstream purpose is clear. State uncertainty when the available PR description,
 code, or tests do not establish part of the model.
 
-## The review surface
+## The review view
 
 Use the **GitHub Pull Request** activity-bar view for an active, locally checked
 out PR:
@@ -47,7 +47,7 @@ out PR:
 The general GitHub/Octocat view is for discovering PRs, issues, and
 notifications. Opening an un-checked-out PR from that browser can produce a
 locked virtual document in Partial Mode. Do not mistake that remote preview for
-the active PR review surface.
+the active PR review view.
 
 ## Worktree setup
 

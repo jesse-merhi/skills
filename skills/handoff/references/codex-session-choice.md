@@ -1,4 +1,4 @@
-# Codex Session Choice
+# Codex session choice
 
 Use a **brand-new Codex session/thread** when the next work is:
 

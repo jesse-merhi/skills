@@ -3,7 +3,7 @@ name: review-animations
 description: 'Review motion code for purpose, timing, easing, coherence, interruption, performance, and reduced motion.'
 ---
 
-# Review Animations
+# Review animations
 
 Review motion as interaction behavior, not decoration. Report only actionable
 findings that affect feel, comprehension, responsiveness, accessibility, or
@@ -11,7 +11,7 @@ runtime performance.
 
 ## Scope
 
-- Review the changed motion surface and its trigger, enter, steady, interrupt,
+- Review the changed motion and its trigger, enter, steady, interrupt,
   reverse, and exit states.
 - Keep general code correctness outside this skill unless it directly changes
   the animation's behavior.
@@ -20,7 +20,7 @@ runtime performance.
   findings. Treat its numbers as defaults that may be overridden by measured
   product or platform evidence.
 
-## Review Order
+## Review order
 
 1. **Purpose and frequency:** Does the motion communicate feedback, state,
    continuity, or explanation? Is its intensity appropriate for how often it
@@ -41,7 +41,7 @@ runtime performance.
 8. **Cohesion:** Does the motion belong to the component and the rest of the
    product?
 
-## Finding Discipline
+## Finding discipline
 
 For each finding include:
 

@@ -1,4 +1,4 @@
-# Ticket Note Template
+# Ticket note template
 
 ```md
 # Ticket: <Outcome>

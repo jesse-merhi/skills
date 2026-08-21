@@ -3,7 +3,7 @@ name: parallel-slice-orchestration
 description: 'Implement specs with parallel agents, disjoint ownership, integration, and verification.'
 ---
 
-# Parallel Slice Orchestration
+# Parallel slice orchestration
 
 Use this when the user wants an existing spec or slice plan implemented with
 subagents. The orchestrator owns decomposition, dependency order, integration,
@@ -18,7 +18,7 @@ delegation, or parallel agent work. Otherwise, produce the slice plan and ask
 before spawning. If subagents are unavailable in the current harness, run the
 same slice plan sequentially and say that parallel execution was not available.
 
-## Orchestrator Workflow
+## Orchestrator workflow
 
 1. Read the spec, slice notes, issue, or plan plus the relevant repo
    instructions.
@@ -46,7 +46,7 @@ same slice plan sequentially and say that parallel execution was not available.
 13. Before readiness or merge, apply the Review gate and Sign-off gate from
     `AGENTS.md` to every PR layer and exact head.
 
-## Slice Rules
+## Slice rules
 
 - Parallelize independent behavior slices, not architectural layers.
 - A good slice crosses the real behavior path: UI to API to persistence, command
@@ -58,7 +58,7 @@ same slice plan sequentially and say that parallel execution was not available.
 - Prefer fewer well-scoped workers over many tiny workers that create
   integration overhead.
 
-## PR Delivery Shape
+## PR delivery shape
 
 - Use one PR when the result is one cohesive review unit.
 - Use one `gh-stack` stack when two or more independently reviewable concerns
@@ -72,7 +72,7 @@ same slice plan sequentially and say that parallel execution was not available.
   scoped changes and evidence; they do not independently publish branches from
   a shared stack.
 
-## Completion Criteria
+## Completion criteria
 
 - Every worker result has been read before integration.
 - Changed files match assigned ownership.
@@ -88,7 +88,7 @@ same slice plan sequentially and say that parallel execution was not available.
   its own focused `pr-proof-pack` evidence.
 - Every ready PR satisfies both `AGENTS.md` gates before merge.
 
-## Context Pointers
+## Context pointers
 
 - Use [decomposition.md](references/decomposition.md) for dependency mapping and
   vertical slicing.

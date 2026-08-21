@@ -3,7 +3,7 @@ name: to-tickets
 description: 'Turn a plan or spec into tracer-bullet Obsidian tickets with blockers and logical PR groups.'
 ---
 
-# To Tickets
+# To tickets
 
 Break a plan, spec, or conversation into a set of tickets: tracer-bullet
 vertical slices, each declaring the tickets that block it. Publish tickets to
@@ -39,7 +39,7 @@ Obsidian `Issues/`.
    Markdown bodies and proposed paths.
 11. Do not close or modify any parent spec unless the user explicitly asks.
 
-## Context Pointers
+## Context pointers
 
 - Use [ticket-design.md](references/ticket-design.md) for tracer-bullet rules,
   wide refactors, and blocker checks.

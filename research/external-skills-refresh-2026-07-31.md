@@ -1,4 +1,4 @@
-# External skills refresh — 2026-07-31
+# External skills refresh, 2026-07-31
 
 ## Recommendation
 

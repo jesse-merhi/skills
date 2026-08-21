@@ -3,7 +3,7 @@ name: session-recall
 description: Find prior local Codex or Claude sessions; keep contents local and inspect cards before opening logs.
 ---
 
-# Session Recall
+# Session recall
 
 Use `agent-session-find` as the first recall step when previous agent work may
 answer the current question. The goal is to recover the right full session with
@@ -47,7 +47,7 @@ For stale or long-running projects, prefer `--index-since 90d` over an
 unbounded first pass. Run `agent-session-find status` when you need to see index
 size before widening.
 
-## Context Pointers
+## Context pointers
 
 - Use [command-setup.md](references/command-setup.md) for binary, wrapper,
   privacy, database, and parallel-refresh rules.

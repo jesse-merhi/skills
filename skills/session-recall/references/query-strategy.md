@@ -1,4 +1,4 @@
-# Query Strategy
+# Query strategy
 
 Use the words the user or agent likely typed, not a perfect summary. Good query
 terms include:

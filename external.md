@@ -85,10 +85,11 @@ The installers own the external `gh-stack` skill and extension. Do not symlink
 
 ### Install
 
-Run from the harness-level parent directory so the installer writes into the
-normal global skills folder. Only Codex has been verified here; other harnesses
-must skip this entry until a tested command is added. The installer cannot
-clone a raw commit SHA as a GitHub tree ref, so the command first proves that
+Run from the directory above the harness's config directory, `~`, so the
+installer writes into the normal global skills folder. Only Codex has been
+verified here; other harnesses must skip this entry until a tested command is
+added. The installer cannot clone a raw commit SHA as a GitHub tree ref, so the
+command first proves that
 the upstream metadata branch still points at the reviewed commit and refuses to
 install if it moved.
 
@@ -102,8 +103,8 @@ repo.
 ## Retired third-party skills
 
 Retired entries remain here as cleanup tombstones. Run the removal command for
-the current harness on every reinstall, even when the skill is already absent.
-Do not reinstall a retired skill unless the user explicitly asks for it.
+the current harness on every reinstall, even when the skill is already
+absent. Do not reinstall a retired skill unless the user explicitly asks for it.
 
 ### impeccable
 

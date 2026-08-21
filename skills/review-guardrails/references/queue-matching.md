@@ -1,4 +1,4 @@
-# Queue Matching And The Fixed Point
+# Queue matching and the fixed point
 
 Even with notices, a reviewer may independently re-derive an open queue item.
 The codex engine gets no notices at all. Matching exists to recognize those
@@ -19,7 +19,7 @@ re-raises during triage, never to fabricate a clean verdict.
   no instructions, and cold reviewers must stay neutral. Matching happens only
   while triaging their output.
 
-## Pass Classification With An Open Queue
+## Pass classification with an open queue
 
 - `clean-except-queue`: every finding in the pass matches an open queue entry.
   The reviewer confirmed there is nothing new, so the pass counts toward the

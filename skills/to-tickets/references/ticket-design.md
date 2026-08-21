@@ -1,4 +1,4 @@
-# Ticket Design
+# Ticket design
 
 Tracer-bullet tickets should be:
 
@@ -33,7 +33,7 @@ Ask the user:
 - Are stack edges real code dependencies rather than convenient ordering?
 - Are the correct tickets marked `AFK` and `HITL`?
 
-## PR Delivery Groups
+## PR delivery groups
 
 Tickets organize implementation; PR groups organize review. Do not assume one
 ticket equals one PR or that every ticket blocker becomes a PR base.
@@ -53,7 +53,7 @@ Every review group must name the outcome a reviewer can accept independently.
 If grouping tickets would make the PR too broad, or a group cannot stay green
 against its direct base, split or reorder the groups before asking for approval.
 
-## Good Tickets
+## Good tickets
 
 Prefer:
 
@@ -69,7 +69,7 @@ Avoid:
 
 Layer tasks are implementation details. A ticket is a behavior.
 
-## Wide Refactors
+## Wide refactors
 
 Wide refactors are the exception to vertical slicing. A wide refactor is one
 mechanical change whose blast radius crosses much of the codebase, such as

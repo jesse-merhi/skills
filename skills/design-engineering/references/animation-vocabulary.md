@@ -1,10 +1,10 @@
-# Animation Vocabulary
+# Animation vocabulary
 
 Use this reverse lookup when the user describes an effect without knowing its
 name. Lead with the most likely term, define it in one sentence, and offer at
 most two close alternatives when the description is ambiguous.
 
-## Entrances And Sequence
+## Entrances and sequence
 
 - **Fade**: appear or disappear through opacity.
 - **Slide**: enter, leave, or move along an axis.
@@ -13,7 +13,7 @@ most two close alternatives when the description is ambiguous.
 - **Stagger**: start related items in a short sequence.
 - **Orchestration**: coordinate several animations as one transition.
 
-## Continuity And Layout
+## Continuity and layout
 
 - **Crossfade**: fade one object out while another fades in at the same place.
 - **Morph**: transform one visible shape into another.
@@ -26,7 +26,7 @@ most two close alternatives when the description is ambiguous.
 - **Origin-aware animation**: grow or move content from the control that
   triggered it.
 
-## Gesture And Physics
+## Gesture and physics
 
 - **Drag**: move an object through direct manipulation.
 - **Swipe to dismiss**: throw content away along a supported axis.
@@ -36,7 +36,7 @@ most two close alternatives when the description is ambiguous.
   fixed easing curve.
 - **Interruptible animation**: redirect motion from its current visible state.
 
-## Scroll And Ambient Motion
+## Scroll and ambient motion
 
 - **Scroll reveal**: trigger an entrance when content enters the viewport.
 - **Scroll-driven animation**: bind progress directly to scroll position.
@@ -44,7 +44,7 @@ most two close alternatives when the description is ambiguous.
 - **Marquee**: loop content continuously along one direction.
 - **Idle animation**: subtle autonomous motion while an element waits.
 
-## Masks And Effects
+## Masks and effects
 
 - **Clip-path reveal**: uncover content with a hard geometric clipping edge.
 - **Mask reveal**: uncover content with a shape or soft gradient.
@@ -52,7 +52,7 @@ most two close alternatives when the description is ambiguous.
 - **Number ticker**: roll or interpolate digits toward a new value.
 - **Skeleton shimmer**: animate a loading placeholder's highlight.
 
-## Easing Terms
+## Easing terms
 
 - **Ease-out**: start quickly and settle slowly.
 - **Ease-in-out**: accelerate and then decelerate.

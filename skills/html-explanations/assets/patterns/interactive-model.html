@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>Interactive model — Retry delay</title>
+<title>Interactive model: retry delay</title>
 <style>
   :root {
     --bg: #eef3f6;
@@ -98,7 +98,7 @@
 <main>
   <header>
     <div class="eyebrow">Interactive model · change an assumption</div>
-    <h1>More retries recover more jobs—and delay the failures you need to see.</h1>
+    <h1>More retries recover more jobs. They also delay the failures you need to see.</h1>
     <p class="lead">Adjust attempts and base delay. The model shows the maximum wait before a job becomes terminal and the share expected to recover under a simple transient-failure assumption.</p>
   </header>
 
@@ -183,7 +183,7 @@
     const posture = totalWait > 1800
       ? 'The recovery window is broad, but terminal failures stay hidden for more than 30 minutes.'
       : recovered < 70
-        ? 'Failures surface quickly, but many transient jobs still need manual recovery.'
+        ? `Failures show up after ${formatSeconds(totalWait)} of modeled retry delay, but many transient jobs still need manual recovery.`
         : 'The model balances transient recovery with a visible terminal state.';
     document.getElementById('reading').innerHTML = `<strong>Reading:</strong> ${posture}`;
   }

@@ -58,7 +58,7 @@ session will focus on and tailor the document accordingly.
    new agent to read the handoff before acting, and names any required
    repo/worktree path. For forks, still link the handoff document.
 
-## Done Means
+## Done means
 
 - The handoff document is saved outside the workspace.
 - The document is compact but self-contained enough for a fresh agent to act.

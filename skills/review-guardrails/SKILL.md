@@ -3,15 +3,15 @@ name: review-guardrails
 description: 'Manage budgets, scope, findings, consults, provisional fixes, and fixed-point rules for autonomous reviews.'
 ---
 
-# Review Guardrails
+# Review guardrails
 
 Load this skill at the start of any until-clean review loop (`code-review`,
 `review-until-clean`, `cold-pr-review-until-clean`). It bounds how long an
 autonomous review may run, how much review fixes may grow the PR, and what
 happens to findings that need the user instead of autonomy. There is no
-iteration cap: the budgets are the bound.
+iteration cap. The budgets are the bound.
 
-## Required State
+## Required state
 
 Record at setup, before the first review cycle:
 
@@ -65,7 +65,7 @@ fields in its header.
    user, load `speak-fking-english` and use the user-facing request rules in
    [scope-governor.md](references/scope-governor.md).
 
-## Completion Rules
+## Completion rules
 
 - A fully clean verdict is valid only when the clean streak requirement is met
   and the consult queue has no open entries.
@@ -79,7 +79,7 @@ fields in its header.
   recorded in the findings database or loop report.
 - Do not keep re-running an unchanged tree after the fixed point.
 
-## Context Pointers
+## Context pointers
 
 - Use [budgets.md](references/budgets.md) for the wall-clock and diff-growth
   budgets.

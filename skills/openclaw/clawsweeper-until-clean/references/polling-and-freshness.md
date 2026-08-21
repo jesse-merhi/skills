@@ -1,4 +1,4 @@
-# Polling And Freshness
+# Polling and freshness
 
 Capture a **baseline timestamp** before the first trigger so you can distinguish
 new Clawsweeper output from history:
@@ -32,7 +32,7 @@ Stop polling only when at least one fresh response is present and Clawsweeper ha
 clearly finished. Look for a final summary comment or review submission, not
 just an in-progress "working on it" reply.
 
-## Recognising Clawsweeper's Response
+## Recognising Clawsweeper's response
 
 Clawsweeper may post as a regular issue comment or as a PR review. Watch both.
 Match its identity loosely, such as a login containing `clawsweeper`, possibly
@@ -49,7 +49,7 @@ A response is finished when one of these is true:
 
 If you only see an in-progress placeholder, keep polling. Do not classify yet.
 
-## Head-SHA Discipline
+## Head-SHA discipline
 
 Always re-check the PR head SHA when polling. If a new commit lands on the PR
 after your trigger but before Clawsweeper finishes, Clawsweeper may be reviewing

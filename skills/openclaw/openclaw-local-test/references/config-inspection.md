@@ -1,4 +1,4 @@
-# Config Inspection
+# Config inspection
 
 Inspect the generated OpenClaw config before testing behavior. The running
 Gateway uses `~/.openclaw-local-test/openclaw.json`. Report the selected native

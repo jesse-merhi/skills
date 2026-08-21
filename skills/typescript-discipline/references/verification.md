@@ -1,4 +1,4 @@
-# Functions And Verification
+# Functions and verification
 
 - Let obvious local helpers infer return types.
 - Add explicit return types to exported functions and public API boundaries.

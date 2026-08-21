@@ -1,4 +1,4 @@
-# Red Flags
+# Red flags
 
 - Anonymous string protocols such as delimiter-joined snapshot keys, cache keys,
   sync keys, or audit keys.

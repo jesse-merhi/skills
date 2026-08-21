@@ -20,7 +20,7 @@ Do not start with a fix. Start by making the failure observable and repeatable.
 8. Verify with the original failing command and the affected broader command set.
 9. Report using [reporting.md](references/reporting.md).
 
-## Required Discipline
+## Required discipline
 
 - If you cannot reproduce the failure, say what you tried and narrow the next
   probe.
@@ -29,7 +29,7 @@ Do not start with a fix. Start by making the failure observable and repeatable.
 - Do not patch around an unknown cause.
 - If a proposed fix is speculative, label it as such and keep digging.
 
-## Context Pointers
+## Context pointers
 
 - Use [feedback-loop.md](references/feedback-loop.md) for reproduction and
   instrumentation options.

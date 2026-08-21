@@ -1,9 +1,9 @@
-# PR Closeout
+# PR closeout
 
 Code review is a local fix loop followed by one delivery. Do not mutate a
 remote branch, PR, or GitHub Actions run while either review phase has findings.
 
-## Publication Authority
+## Publication authority
 
 Invoking `code-review` grants authority for one normal final push to the
 existing PR branch after both review phases and full local validation are clean,
@@ -31,7 +31,7 @@ An explicit instruction from Jesse to push after a fix, publish, ship, or update
 the PR remains valid publication authority under `AGENTS.md`. The author check
 above still governs `code-review`'s automatic final push.
 
-## Final Delivery Order
+## Final delivery order
 
 1. Finish locally.
 
@@ -109,7 +109,7 @@ above still governs `code-review`'s automatic final push.
    waiver and the required human reaction, or the response clearly asks Jesse
    for either decision.
 
-## Local Handoff
+## Local handoff
 
 When publication is unauthorized or blocked, report the review result
 separately from delivery. Include the verified local tree, validation result,

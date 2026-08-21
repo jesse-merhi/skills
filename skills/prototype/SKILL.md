@@ -3,7 +3,7 @@ name: prototype
 description: 'Build 3–5 UI variants behind a visual picker when explicitly asked to prototype or compare directions.'
 ---
 
-# Prototype UI Variants
+# Prototype UI variants
 
 Explore one UI decision by building several defensible directions at full
 scale. The value is divergence: three tints of the same answer teach the user
@@ -16,23 +16,24 @@ winner only after the user chooses.
 ## Rules
 
 1. Prototype one UI piece per run. Narrow broad requests to the
-   highest-leverage component or interaction.
+   component or interaction with the most at stake.
 2. Default to three variants; use at most five.
 3. Give every variant a name and a distinct axis such as layout, density,
    personality, motion, or interaction model.
 4. Use realistic content and working interactions. No lorem ipsum, dead
    controls, or instructions to imagine missing behavior.
-5. Reuse the project's stack, tokens, primitives, and installed dependencies.
+5. Reuse the project's stack, tokens, building blocks, and installed
+   dependencies.
    Do not add a dependency without the user's approval.
-6. Keep prototypes on an isolated route or page. Production code must not
-   import from the prototype surface.
+6. Keep prototypes in isolated routes, pages, and modules. Production code must
+   not import from prototype-only routes, pages, or modules.
 7. Render one variant at a time in realistic surrounding context. Do not judge
    UI from side-by-side thumbnails.
 8. Use the fixed picker contract in
-   [references/picker.md](references/picker.md). Treat it as harness chrome,
-   not as a design direction.
-9. When the user chooses a winner, integrate only that direction and remove the
-   prototype surface unless asked to keep it.
+   [references/picker.md](references/picker.md). Treat it as chrome around the
+   variants, not as a design direction.
+9. When the user chooses a winner, integrate only that direction and remove all
+   prototype-only routes, pages, and modules unless asked to keep them.
 
 ## Workflow
 
@@ -64,15 +65,15 @@ Before coding, list each direction with its axis.
 | --- | --- | --- |
 | Quiet | Low visual and motion intensity | Can the interaction disappear into a daily-use tool? |
 | Editorial | Hierarchy and generous measure | Does the moment need more explanatory weight? |
-| Direct | Interaction model | Can the user act without opening another surface? |
+| Direct | Interaction model | Can the user act without opening another screen? |
 
 If two directions differ only in color or copy, combine them and replace one
 with a genuine alternative.
 
-### 4. Build the harness
+### 4. Build the picker page
 
 - In an existing application, use an isolated route such as
-  `/prototypes/<slug>`, one module per variant, and one small harness.
+  `/prototypes/<slug>`, one module per variant, and one small picker page.
 - In a static context, use one self-contained HTML file.
 - Load [references/picker.md](references/picker.md) before building. Preserve
   its classes, keyboard behavior, URL persistence, and one-at-a-time stage.
@@ -82,7 +83,7 @@ with a genuine alternative.
 
 ### 5. Verify and pause
 
-Open the harness, flip through every direction, exercise every control, and
+Open the picker page, flip through every direction, exercise every control, and
 check wide and narrow layouts. Check console output, keyboard access, visible
 focus, reduced motion, and the project-specific verification commands.
 
@@ -100,10 +101,11 @@ After the user picks:
 
 1. integrate the selected direction using production conventions;
 2. run the relevant behavior and visual checks;
-3. remove the prototype route and unselected variants unless the user asked to
+3. remove every prototype-only route, page, and module, including the picker
+   page and selected or unselected variant modules, unless the user asked to
    keep them.
 
-If the user asks for another round, keep the harness and diverge around the
+If the user asks for another round, keep the picker page and diverge around the
 direction they preferred.
 
 This skill adapts Emil Kowalski's prototype workflow. See

@@ -3,10 +3,10 @@ name: review-until-clean
 description: 'Run authorized native reviews and fixes until two fresh passes are clean.'
 ---
 
-# Review Until Clean
+# Review until clean
 
-Run the harness's own built-in review in a loop. Every time the review surfaces
-actionable findings, fix only those findings and run the review again.
+Run the harness's own built-in review in a loop. Every time the review
+surfaces actionable findings, fix only those findings and run the review again.
 
 Stop after the selected engine produces **two consecutive clean runs** on the
 same reviewed tree. This gives the native review loop one confirmation pass
@@ -21,7 +21,7 @@ Do not use this skill for a one-off read-only review. A plain `codex review`,
 without editing unless the user explicitly asks for the until-clean loop or
 `code-review` has selected this as its native review phase.
 
-## Non-Negotiables
+## Non-negotiables
 
 ```yaml
 review_tool: must invoke the selected engine's bare built-in review; do not substitute a self-review or ad hoc subagent
@@ -51,11 +51,11 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 2. Pre-flight the target.
 
-   Confirm the target: uncommitted local diff, base branch, or commit SHA.
-   Check engine availability, inspect the working tree, load
-   `review-guardrails`, confirm the persisted scope budget with `scope-status`,
-   and identify verification commands. Done when fixes will land in the intended
-   checkout, the scope budget is ready, and no review checklist or implementation
+   Confirm the target: uncommitted local diff, base branch, or commit SHA. Check
+   engine availability, inspect the working tree, load `review-guardrails`,
+   confirm the persisted scope budget with `scope-status`, and identify
+   verification commands. Done when fixes will land in the intended checkout,
+   the scope budget is ready, and no review checklist or implementation
    rationale will be fed to the engine.
 
 3. Run the until-clean loop.
@@ -73,7 +73,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
    finding, affected validation has run, invalid findings are recorded with
    evidence, and final reporting includes the stop reason and review state path.
 
-## Done Means
+## Done means
 
 - The selected engine's bare built-in review ran for each iteration.
 - No custom prompt, output-format prompt, desired verdict, or prior rationale

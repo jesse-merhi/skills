@@ -1,4 +1,4 @@
-# Clean Criteria
+# Clean criteria
 
 Treat a cold review run as clean only when:
 

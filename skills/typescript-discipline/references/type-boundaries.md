@@ -1,6 +1,6 @@
-# Type Boundaries And Data Shape
+# Type boundaries and data shape
 
-## Type Boundaries
+## Type boundaries
 
 - Reuse existing exported domain, schema, API/client, route, and module contract
   types before creating local ones.
@@ -11,7 +11,7 @@
 - Derive related types with `typeof`, `ReturnType<T>`, mapped types, `Pick`, or
   `Omit` instead of copying fields by hand.
 
-## Data Shape
+## Data shape
 
 - Prefer discriminated unions for meaningful states.
 - Use `as const` for literal inference.

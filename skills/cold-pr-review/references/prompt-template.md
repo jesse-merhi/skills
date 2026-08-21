@@ -1,4 +1,4 @@
-# Prompt Template
+# Prompt template
 
 ```text
 Review PR #<number> on this repository. Run `gh pr view <number>`
@@ -9,7 +9,7 @@ changed flows, entrypoints, contracts, side effects, and validation targets.
 Check for unrelated diff rubbish, architecture issues, cognitive load, and
 React state ownership issues. Check TypeScript type boundaries, API/client contracts,
 schemas, casts, `any`, `unknown`, and ts-ignore usage when TypeScript changed.
-Apply security and UI lenses when the diff touches those surfaces. Report only
+Apply security and UI lenses when the diff touches those areas. Report only
 concrete actionable findings. Every finding must identify the changed line or
 contract that causes, exposes, or worsens the problem. Exclude pre-existing
 improvements and unrelated defects. Report every distinct actionable finding in

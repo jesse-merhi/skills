@@ -3,7 +3,7 @@ name: wait-efficiently
 description: 'Wait for a command, CI run, subagent, or timed delay by holding one long call instead of polling; report only meaningful state changes.'
 ---
 
-# Wait Efficiently
+# Wait efficiently
 
 A wait costs one model round trip every time it returns. One hold that spans the
 whole wait costs one round trip. Polling the same wait costs one per check, and
@@ -53,7 +53,8 @@ unchanged progress.
 
 ## Timed delays
 
-For "wait five minutes" and similar, resolve `<skill-dir>` to this skill and run:
+For "wait five minutes" and similar, resolve `<skill-dir>` to this skill and
+run:
 
 ```sh
 <skill-dir>/scripts/quiet-wait 5m

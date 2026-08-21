@@ -1,4 +1,4 @@
-# Design-Specific Checks
+# Design-specific checks
 
 If the UI uses dark mode, theme variants, density modes, or auth/empty states,
 validate each one the user can reasonably reach.
@@ -21,7 +21,7 @@ For operational apps, look especially for:
 - empty states that shove controls off-screen
 - modals too tall for mobile
 
-Also check for repeated decorative scaffolding, weak type hierarchy, washed-out
+Also check for repeated generic visual filler, weak type hierarchy, washed-out
 muted text, nested containers, monotonous spacing, layout that depends on short
 placeholder copy, and motion that delays frequent actions. Treat these as
 contextual observations rather than automatic failures.

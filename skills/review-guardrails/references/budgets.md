@@ -1,6 +1,6 @@
 # Budgets
 
-## Wall-Clock Budget
+## Wall-clock budget
 
 - Default: **8 hours per review run**, measured from `review_started`.
 - Check before starting each review cycle.
@@ -11,7 +11,7 @@
 - A machine-local override may set a different budget value for one machine. It
   must name a value; "no budget" is not a valid override.
 
-## Diff-Growth Budget
+## Diff-growth budget
 
 - Limit: the greater of **150 production changed lines** and **30% of baseline
   production changed lines**. The review CLI exposes no flag that lets the agent
@@ -50,8 +50,9 @@
   `*.spec.*`. Recognized lockfiles are encoded in the CLI and include the npm,
   pnpm, Yarn, Bun, Cargo, Ruby, PHP, Python Poetry, and uv lockfiles.
 - Calculate `floor_lines = baseline_production_lines > 0 ? 150 : 0`, then
-  `allowed_growth = max(floor_lines, floor(baseline_production_lines * limit_percent / 100))`.
-  Stay within `baseline + allowed_growth` with no new binary path; added text paths are informational.
+  `allowed_growth = max(floor_lines, floor(baseline_production_lines *
+  limit_percent / 100))`. Stay within `baseline + allowed_growth` with no new
+  binary path; added text paths are informational.
 - Resolve `review_findings_bin` from the installed `code-review` skill directory as
   required by `review-guardrails`. Persist the baseline with
   `"$review_findings_bin" scope-start`. Run `"$review_findings_bin" scope-check` after

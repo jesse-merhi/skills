@@ -2,20 +2,20 @@
 
 Always use subagents for code-review work. At minimum, every review needs a
 subagent using `cold-pr-review-until-clean`; do not use `cold-pr-review` for
-this skill. Give that subagent the target, base, changed-surface summary, and
+this skill. Give that subagent the target, base, changed-flow summary, and
 the risk checklist from the one-time setup.
 
 Every review subagent must start without coordinator conversation history. In
 Codex, set `fork_turns: "none"`; use the equivalent context-free option in
 other harnesses. Pass only a self-contained text brief containing the target,
-base, changed-surface summary, and the lens it owns. Repository inspection is
+base, changed-flow summary, and the lens it owns. Repository inspection is
 allowed and expected; inherited turns are not.
 
 Always add a focused `test-audit` subagent when the PR touches code with nearby
 or related tests, or when the PR changes, adds, or deletes tests. Ask it to
 check both coverage drift and changed-test usefulness.
 
-Always add a focused `typescript-discipline` subagent when the changed surface
+Always add a focused `typescript-discipline` subagent when the changed code
 includes TypeScript production code, shared domain types, schemas,
 API/client/server contracts, exported helpers, typed React components, or
 assertions/`any`/`unknown` boundary handling.
@@ -28,7 +28,7 @@ Add other focused subagents with the relevant named skills when useful:
 - `frontend-ui-validation`
 - `review-animations`
 
-Give subagents neutral prompts: target, base, changed-surface summary, and the
+Give subagents neutral prompts: target, base, changed-flow summary, and the
 checklist they own. State the frozen review boundary: inspect the changed diff
 and the runtime flows it directly changes; read unchanged files only to
 understand those flows. Every finding must identify the changed line or contract
@@ -43,8 +43,8 @@ log exists, give them its path only with the guard above; after the verdict,
 they should append long-form rationale or return the entries if they cannot
 write.
 
-If the harness cannot run subagents, say so, continue only as best effort, and
-do not call the review clean unless the user accepts that limitation.
+If the harness cannot run subagents, say so, continue only as best effort,
+and do not call the review clean unless the user accepts that limitation.
 
 After dispatching a review batch, finish useful independent coordinator work.
 Once blocked in Codex, follow the `wait-efficiently` subagent pattern with an

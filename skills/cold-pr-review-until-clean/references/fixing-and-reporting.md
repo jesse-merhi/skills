@@ -1,12 +1,12 @@
-# Fixing And Reporting
+# Fixing and reporting
 
-## Fixing Findings
+## Fixing findings
 
 - Fix only what maps to actionable cold-review findings.
 - Prefer the smallest change that addresses the reviewer's concern.
 - Do not bundle unrelated cleanup into the fix step.
 - Run the relevant tests, typechecks, linters, or UI validation for the changed
-  surface before the next cold review.
+  flows before the next cold review.
 - Record why each added or changed test catches a reachable product, API,
   workflow, security, or data regression in the related finding record.
 - Inspect the diff after fixing so you can confirm the next reviewer is seeing

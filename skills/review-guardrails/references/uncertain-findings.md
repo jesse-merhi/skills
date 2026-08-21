@@ -1,4 +1,4 @@
-# Uncertain Findings
+# Uncertain findings
 
 Some findings are real enough to act on but uncertain: marked `PLAUSIBLE`,
 contested between passes, or a judgment call. Never silently fix or silently
@@ -14,11 +14,11 @@ Use the provisional-fix test. All four checks must hold:
    added to shared infrastructure to protect one caller fails
    (`improve-codebase-architecture` has the long form).
 3. **Small and local**: within the diff-growth budget and inside the mapped
-   review surface.
+   review boundary.
 4. **Cleanly reversible**: one commit or hunk whose revert restores the original
    exactly.
 
-## Provisional Fix: Class A
+## Provisional fix: class A
 
 When the test passes:
 
@@ -30,11 +30,12 @@ When the test passes:
 - If the user rejects it, revert the commit or hunk, reset the streak, and
   resume.
 
-## Consult: Class B
+## Consult: class B
 
 When the test fails, consult instead. This includes cases where the only
 available fix is a bandaid, the direction is the user's call (product, security
-posture, data migration), or the fix would break a budget or the review surface.
+posture, data migration), or the fix would break a budget or the review
+boundary.
 
 Add the finding to `consult_queue` with a fingerprint: file, code element, and a
 one-sentence root cause. Raise it with the user without waiting: immediately
@@ -43,7 +44,7 @@ fixing other findings.
 
 In Claude Code use the question tool. In Codex, ask in the reply.
 
-## Consult Cap
+## Consult cap
 
 The consult cap bounds how much uncertainty may pile up. When open questions for
 the user reach `consult_cap` (default 5, counting open Class B entries plus

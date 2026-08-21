@@ -3,7 +3,7 @@ name: pr-proof-pack
 description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, break down large changes by direct-base +LOC and -LOC, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
 ---
 
-# PR Proof Pack
+# PR proof pack
 
 Treat this workflow as a delivery and merge-readiness gate. A proof check asks
 whether the existing PR still tells the truth. A proof refresh changes the PR
@@ -14,7 +14,7 @@ that authority before pushing a branch, editing a PR, or uploading evidence.
 Local edits, local commits, review findings, and targeted tests stay local and
 do not trigger this workflow.
 
-## Trigger Branches
+## Trigger branches
 
 - Creating, publishing, reopening, converting, or marking a PR ready: check the
   final proof and refresh it when stale.
@@ -29,7 +29,7 @@ do not trigger this workflow.
 A commit, rebase, or local branch change is not reviewer-visible and does not
 trigger proof work. A push triggers a freshness check, not an automatic rewrite.
 
-## Freshness Rule
+## Freshness rule
 
 Classify proof as:
 
@@ -49,7 +49,7 @@ For a bug fix with reproducible direct-base behavior, proof is stale when the
 reviewer cannot compare the broken and fixed outcomes. A screenshot of textual
 output is stale when the same result would be clearer as short copyable text.
 
-## Hard Gates For A Refresh
+## Hard gates for a refresh
 
 - **Practical evidence:** Exercise the changed behavior working in practice.
   Automated validation remains supporting information and never replaces the
@@ -69,7 +69,7 @@ output is stale when the same result would be clearer as short copyable text.
 If any gate cannot be completed, stop. Tell the human which capability failed
 and what they must restore.
 
-## Reviewer Boundary
+## Reviewer boundary
 
 Assume the reviewer has not seen the agent thread, planning notes, decision log,
 local branch history, or private chat. Every claim must be understandable from
@@ -94,7 +94,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Done when the exact PR, provider hostname, final head, direct base, and
    existing proof are known.
 
-3. Build the current proof surface.
+3. Gather the current proof and net diff.
 
    Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally with narrow file
    paths. Base every claim on the direct-base-to-final-`HEAD` net diff, not the
@@ -156,12 +156,15 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    [references/body-shape.md](references/body-shape.md). Keep current sections
    that remain true. Draft only the title, body, caption, reproduction, or
    evidence changes needed to restore accuracy. Load `speak-fking-english`
-   immediately before saving the complete draft.
+   immediately before saving the complete draft, and tell it the draft is
+   reviewer-facing text. Unless the user explicitly invoked that skill for this
+   artifact, its compact natural-writing pass applies.
 
    Done when the first two sentences explain what broke and why it matters, the
    next two explain the fix and outcome, a multi-part or unusually large PR has
-   a compact change breakdown, the body stays within the default size budget or
-   justifies each exception, and the draft is self-contained.
+   a compact change breakdown, the body reads clearly and naturally, the body
+   stays within the default size budget or justifies each exception, and the
+   draft is self-contained.
 
 8. Confirm authority and upload provider-hosted evidence.
 
@@ -206,13 +209,15 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
     Done when the caller knows whether proof changed and which PRs still need
     an exact-head review decision or human sign-off.
 
-## Done Means
+## Done means
 
 - Every workflow step meets its `Done when` criterion.
 - A `current` result made no reviewer-visible mutation.
 - A `refreshed` result changed only stale claims and evidence.
 - Every affected PR explains the break and fix quickly, then proves final
   direct-base behavior in the simplest format that preserves the claim.
+- Reviewer-facing text reads clearly and naturally, and matched proof is
+  labeled `Before: direct base` and `After: PR`.
 - A multi-part or unusually large PR shows exact direct-base `+LOC` and `-LOC`
   by reviewer-meaningful part, with every file counted once and totals reconciled.
 - Textual behavior uses copyable text. Visual behavior uses provider-hosted

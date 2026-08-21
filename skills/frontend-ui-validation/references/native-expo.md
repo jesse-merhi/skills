@@ -1,4 +1,4 @@
-# Native Expo Checks
+# Native Expo checks
 
 When the changed UI is a native Expo screen:
 

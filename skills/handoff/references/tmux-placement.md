@@ -1,4 +1,4 @@
-# Tmux Placement
+# Tmux placement
 
 For Codex CLI, use tmux placement only when this session is running under tmux.
 Check `TMUX` and `TMUX_PANE` first:

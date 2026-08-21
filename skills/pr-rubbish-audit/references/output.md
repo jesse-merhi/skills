@@ -2,7 +2,7 @@
 
 When reporting the audit, include:
 
-- `Kept`: concise list of feature-critical surfaces.
+- `Kept`: concise list of feature-critical areas.
 - `Removed/restored`: exact files or hunks cleaned up.
 - `Risks checked`: dangerous-removal categories inspected.
 - `Validation`: commands run and pass/fail result.

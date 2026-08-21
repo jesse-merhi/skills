@@ -1,4 +1,4 @@
-# Scope Governor
+# Scope governor
 
 Before applying a review-driven fix, classify the finding against the frozen
 `scope_baseline`:

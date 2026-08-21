@@ -1,6 +1,6 @@
 # Claude Code hold mechanisms
 
-Claude Code API surface. Replace this file when the API changes; the rules in
+Claude Code API. Replace this file when the API changes; the rules in
 `SKILL.md` do not change with it.
 
 Claude Code re-invokes the agent when harness-tracked work finishes, so the
@@ -22,7 +22,7 @@ that needs inspecting.
 ## One notification per occurrence
 
 Use `Monitor`, whose every stdout line becomes a notification. Filter to the
-lines worth acting on, and cover failure states as well as success — a filter
+lines worth acting on, and cover failure states as well as success. A filter
 matching only the success marker stays silent through a crash, and silence reads
 as "still running".
 

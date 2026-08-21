@@ -1,11 +1,11 @@
-# Interface Design
+# Interface design
 
 Use this when the user wants alternative interfaces for a chosen deepening
 candidate.
 
 ## Process
 
-### Frame The Problem
+### Frame the problem
 
 Explain:
 
@@ -13,7 +13,7 @@ Explain:
 - dependencies and their category from [deepening.md](deepening.md)
 - a short illustrative code sketch to make the constraints concrete
 
-### Explore Alternatives
+### Explore alternatives
 
 Produce at least three meaningfully different interface designs:
 

@@ -14,7 +14,7 @@
 - Add targeted tests for protocols: included fields, stable ordering, nullish
   handling, and changes that must invalidate the signature.
 
-## Snapshot / Cache Key Pattern
+## Snapshot / cache key pattern
 
 Avoid:
 

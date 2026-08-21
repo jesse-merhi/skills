@@ -1,19 +1,19 @@
-# Visual Evidence And Attachments
+# Visual evidence and attachments
 
 ## Contents
 
-- [When This File Applies](#when-this-file-applies)
-- [GitHub Attachment Upload](#github-attachment-upload)
-- [Rendered PR Verification](#rendered-pr-verification)
-- [Evidence Contract](#evidence-contract)
-- [Presentation Gate](#presentation-gate)
-- [UI Interaction Proof](#ui-interaction-proof)
-- [Recording Edit](#recording-edit)
-- [Backend and Operator Proof](#backend-and-operator-proof)
-- [Performance Proof](#performance-proof)
+- [When this file applies](#when-this-file-applies)
+- [GitHub attachment upload](#github-attachment-upload)
+- [Rendered PR verification](#rendered-pr-verification)
+- [Evidence contract](#evidence-contract)
+- [Presentation gate](#presentation-gate)
+- [UI interaction proof](#ui-interaction-proof)
+- [Recording edit](#recording-edit)
+- [Backend and operator proof](#backend-and-operator-proof)
+- [Performance proof](#performance-proof)
 - [Placement](#placement)
 
-## When This File Applies
+## When this file applies
 
 Read this file only after `proof-selection.md` determines that an important
 claim would lose information in text. This file owns how to capture and publish
@@ -25,7 +25,7 @@ upload, asset verification, or a required visual inspection fails,
 stop before completing the PR update. Tell the human the concrete failure and
 ask them to restore the blocked capability. Continue only after it works.
 
-## GitHub Attachment Upload
+## GitHub attachment upload
 
 For a PR hosted on exactly `github.com`, upload each image or video with the
 repository command:
@@ -60,7 +60,7 @@ player. Keep every attachment in the main PR body, never in a table or detached
 comment. Do not commit proof media to the repository unless the project or user
 explicitly requests that storage model.
 
-## Rendered PR Verification
+## Rendered PR verification
 
 On GitHub, inspect the final title and Markdown body, then verify the
 server-rendered body without opening a browser:
@@ -102,7 +102,7 @@ video viewer. Inspect the fetched rendered asset again after upload. A file with
 real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
-## Evidence Contract
+## Evidence contract
 
 Every selected visual answers these questions in nearby text:
 
@@ -117,13 +117,13 @@ Every selected visual answers these questions in nearby text:
 Use real output from the current branch. Before means the direct PR base, not a
 previous feature-branch commit. Recapture after every related branch change.
 
-## Presentation Gate
+## Presentation gate
 
 Inspect the actual image at full readable detail and watch every finished video
 at 1× speed. Reject and recapture evidence that does not look deliberate and
 review-ready.
 
-- Crop to the product surface or result being proved. Exclude browser tabs,
+- Crop to the product area or result being proved. Exclude browser tabs,
   address bars, bookmarks, extensions, account avatars, operating-system chrome,
   docks, notifications, unrelated windows, and empty space.
 - Keep only interface controls that are part of the behavior. A browser frame is
@@ -141,13 +141,13 @@ The model must be able to state what the visual proves, where the result appears
 and why the composition is sufficient. Recapture when any answer depends on the
 caption rather than visible content.
 
-## UI Interaction Proof
+## UI interaction proof
 
 Record the changed flow manually at a deliberate pace. A reviewer should be able
 to follow without scrubbing frame by frame.
 
 - begin before the first relevant action so the starting state is visible;
-- capture the page viewport or relevant product surface rather than the
+- capture the page viewport or relevant product area rather than the
   surrounding browser or desktop interface;
 - move the pointer deliberately and pause after important transitions;
 - show the input, loading or transition state, outcome, and relevant recovery;
@@ -162,7 +162,7 @@ to follow without scrubbing frame by frame.
 A test runner video, a replay of automated E2E output, or a screenshot of
 textual output does not prove a visual interaction.
 
-## Recording Edit
+## Recording edit
 
 Follow [video-editing.md](video-editing.md) before upload. Remove inactive
 lead-in, setup, and dead stretches; retain a short readable hold on the starting
@@ -172,7 +172,7 @@ speed. Preserve real waiting when duration or performance is itself the claim.
 Play the finished video once at 1× speed. Done when the flow is easy to follow,
 no informative state is rushed, and no long idle interval remains.
 
-## Backend and Operator Proof
+## Backend and operator proof
 
 Show the changed system behavior, not the command that checked it:
 
@@ -188,7 +188,7 @@ interaction, rendering, or timing is itself part of the claim.
 A terminal showing only a test, build, validator, or success exit code is not
 evidence.
 
-## Performance Proof
+## Performance proof
 
 Show the experience or system becoming faster, smaller, or more stable:
 

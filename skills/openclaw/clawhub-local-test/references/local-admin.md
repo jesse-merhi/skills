@@ -1,4 +1,4 @@
-# Local Admin And The Wrench
+# Local admin and the wrench
 
 The floating bottom-right wrench is the local dev persona control. It only
 appears when the app is opened on `localhost` or `127.0.0.1` and
