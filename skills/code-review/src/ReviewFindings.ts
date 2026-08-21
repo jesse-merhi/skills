@@ -153,6 +153,29 @@ export interface ScopeBudgetCheck extends ScopeBudgetStatus {
 
 export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
 
+/**
+ * Absolute floor on allowed production growth, in changed lines.
+ *
+ * A percentage alone starves small reviews: a 40-line baseline yields a
+ * 12-line allowance, too tight to absorb one honest fix. The floor gives such a
+ * review a workable minimum, and the percentage governs again once it exceeds
+ * the floor.
+ */
+export const MINIMUM_SCOPE_GROWTH_LINES = 150
+
+/**
+ * A baseline with no production changes keeps a zero allowance, so it must ask
+ * before touching production at all. This covers less than it sounds like:
+ * `measureScopeDiff` counts everything that is not a test path or a recognized
+ * lockfile as production, so only an empty, all-test or all-lockfile diff
+ * reaches zero.
+ */
+const scopeGrowthFloor = (baselineProductionLines: number): number =>
+  baselineProductionLines > 0 ? MINIMUM_SCOPE_GROWTH_LINES : 0
+
+export const allowedScopeGrowth = (baselineProductionLines: number, limitPercent: number): number =>
+  Math.max(scopeGrowthFloor(baselineProductionLines), Math.floor(baselineProductionLines * limitPercent / 100))
+
 export class MissingScopeBudget extends Error {
   readonly _tag = "MissingScopeBudget"
   constructor() {
@@ -492,7 +515,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const checkoutOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: run.repoPath })
   const pinnedHeadOid = targetOid === checkoutOid ? "" : targetOid
   const measurement = yield* measureScopeDiff(run.repoPath, baseOid, targetOid)
-  const allowedGrowthLines = Math.floor(measurement.production.changedLines * input.limitPercent / 100)
+  const allowedGrowthLines = allowedScopeGrowth(measurement.production.changedLines, input.limitPercent)
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = input.runId ?? (yield* (input.freshRun === true ? createScopeRun(run) : upsertRun(run)))
@@ -850,9 +873,17 @@ export const pruneFindings = Effect.fn("ReviewFindings.pruneFindings")(function*
   return issues.length
 })
 
+/**
+ * Reports only the stored numbers, never the rule that produced them.
+ *
+ * The allowance is frozen when a budget is created, so any rule rendered at
+ * print time is computed from whatever the current policy is and contradicts a
+ * budget created under an older one. `allowed-growth` and `maximum` come from
+ * the row and are always the bound actually enforced.
+ */
 const scopeCountsLine = (scope: ScopeBudgetStatus): string => {
   const maximum = scope.baselineProductionLines + scope.allowedGrowthLines
-  return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${scope.baselineProductionLines} current=${scope.currentProductionLines} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} limit=${scope.limitPercent}% excluded-tests=${scope.currentTestLines} excluded-generated=${scope.currentGeneratedLines}`
+  return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${scope.baselineProductionLines} current=${scope.currentProductionLines} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} excluded-tests=${scope.currentTestLines} excluded-generated=${scope.currentGeneratedLines}`
 }
 
 const productionPathsAddedLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {

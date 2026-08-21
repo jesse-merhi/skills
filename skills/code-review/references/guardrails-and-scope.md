@@ -26,8 +26,7 @@ with the scope reason.
 ## Budgets And Consult Gates
 
 `review-guardrails` owns the bounds for this skill: the wall-clock budget
-(default 8 hours per run), the deterministic diff-growth budget (exactly 30%
-of baseline production changed lines by default), the consult queue for findings that need user input, and the
+(default 8 hours per run), the deterministic diff-growth budget, the consult queue for findings that need user input, and the
 queue-matching and fixed-point rules that stop later review passes from
 re-litigating queued findings. There is no iteration cap: the budgets are the
 bound.
