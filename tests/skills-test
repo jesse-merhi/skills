@@ -427,6 +427,15 @@ test_implementation_design_requires_user_decisions() {
   assert_contains "$ROOT_DIR/AGENTS.md" "the durable alternative"
 }
 
+test_prototypes_stay_isolated_from_production() {
+  local skill="$ROOT_DIR/skills/prototype/SKILL.md"
+
+  assert_contains "$skill" "Keep prototypes in isolated routes, pages, and modules"
+  assert_contains "$skill" "not import from prototype-only routes, pages, or modules"
+  assert_contains "$skill" "remove all"
+  assert_contains "$skill" "prototype-only routes, pages, and modules unless asked to keep them"
+}
+
 test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" "plausibility and proxy tests"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "admin-provided connection string"
@@ -529,6 +538,13 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_output_not_contains "$implicit_route" "add the deep catalogue pass"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Before editing, freeze exact names, technical terms, quoted text, code, logs,"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Every step below preserves them character for character"
+  awk '
+    /^## Shared pass$/ { in_shared = 1; next }
+    in_shared && /Before editing, freeze exact names/ { freeze_line = NR }
+    in_shared && /^1\. Apply the \[reader reset\]/ { reset_line = NR; exit }
+    END { exit !(freeze_line > 0 && reset_line > freeze_line) }
+  ' "$ROOT_DIR/skills/speak-fking-english/SKILL.md" \
+    || fail "expected exact-text invariants before the reader reset"
   proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
   assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
 }
@@ -698,7 +714,7 @@ test_review_flow_map_is_the_public_review_mapping_skill() {
   assert_contains "$ROOT_DIR/README.md" '`review-flow-map`'
   assert_contains "$ROOT_DIR/skills/cold-pr-review/references/checklist.md" '`review-flow-map`'
   assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" '`review-flow-map`'
-  stale_callers="$(cd "$ROOT_DIR" && git grep -l -F '$review-surface-map' -- '*.md' '*.yaml' '*.yml' || true)"
+  stale_callers="$(cd "$ROOT_DIR" && git grep -l -F 'review-surface-map' -- '*.md' '*.yaml' '*.yml' || true)"
   if [[ -n "$stale_callers" ]]; then
     fail "retired review-surface-map invocation found in: $stale_callers"
   fi
@@ -707,17 +723,18 @@ test_review_flow_map_is_the_public_review_mapping_skill() {
 test_examples_report_the_exact_command_or_computed_value() {
   local codex_engine="$ROOT_DIR/skills/review-until-clean/references/codex-engine.md"
   local retry_model="$ROOT_DIR/skills/html-explanations/assets/patterns/interactive-model.html"
-  local positive_forms
+  local expected_commands positive_commands
 
-  positive_forms="$(awk '
+  positive_commands="$(awk '
     /^Use these forms:$/ { found = 1; next }
     found && /^```sh$/ { in_block = 1; next }
     in_block && /^```$/ { exit }
-    in_block { print }
+    in_block && !/^#/ && NF { print }
   ' "$codex_engine")"
-  assert_output_contains "$positive_forms" "codex review --uncommitted"
-  assert_output_contains "$positive_forms" "codex review --base main"
-  assert_output_contains "$positive_forms" "codex review --commit <sha>"
+  expected_commands=$'codex review --uncommitted\ncodex review --base main\ncodex review --commit <sha>'
+  if [[ "$positive_commands" != "$expected_commands" ]]; then
+    fail "expected the valid Codex example block to contain only the three exact commands"
+  fi
   assert_contains "$retry_model" 'Failures show up after ${formatSeconds(totalWait)} of modeled retry delay'
   assert_not_contains "$retry_model" "within one retry cycle"
 
@@ -1170,6 +1187,7 @@ test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
 test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
+test_prototypes_stay_isolated_from_production
 test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_design_engineering_owns_motion_opportunity_audits
 test_speak_fking_english_owns_repitch_guidance
