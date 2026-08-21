@@ -208,7 +208,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 - A `refreshed` result changed only stale claims and evidence.
 - Every affected PR explains the break and fix quickly, then proves final
   direct-base behavior in the simplest format that preserves the claim.
-- Reviewer-facing text carries no catalogued AI tell, and matched proof is
+- Reviewer-facing text reads clearly and naturally, and matched proof is
   labeled `Before: direct base` and `After: PR`.
 - A multi-part or unusually large PR shows exact direct-base `+LOC` and `-LOC`
   by reviewer-meaningful part, with every file counted once and totals reconciled.

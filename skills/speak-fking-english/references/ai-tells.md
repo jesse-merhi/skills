@@ -27,11 +27,11 @@ character and formatting rules, the quoted-text exception is the one that
 applies.
 
 **Literal senses.** A rule bans a word used as padding or metaphor, never the
-word used to name something specific. An attack surface, a test harness, an
-agent harness such as Claude Code or Codex, a `harness = false` build key, a
-cryptographic primitive, a vector index, WCAG's `Target Size (Enhanced)`
-criterion, and a Cargo `[features]` table all denote real things. Rewriting
-them corrupts the claim rather than clarifying it.
+word used to name something specific. An attack surface, an attack vector, a
+test harness, an agent harness such as Claude Code or Codex, a `harness = false`
+build key, a cryptographic primitive, a vector index, WCAG's `Target Size
+(Enhanced)` criterion, and a Cargo `[features]` table all denote real things.
+Rewriting them corrupts the claim rather than clarifying it.
 
 **Proper nouns.** A package, product, tool, standard, third-party API, or named
 concept keeps the name its owner gave it, even when that name contains a banned
@@ -39,9 +39,9 @@ word. `Primitive Obsession` is the code smell's name, not a description you may
 reword.
 
 **Quoted text.** Fix your own prose, not a quotation. When the draft reproduces
-someone else's words, or when a character is itself the finding, reproduce it
-exactly. Normalising a curly quote or a stray dash inside a bug report describes
-a file state that does not exist.
+someone else's words, reproduce it exactly. When a character is itself the
+finding, keep it exact too. Normalising a curly quote or a stray dash inside a
+bug report describes a file state that does not exist.
 
 ## Voice
 
@@ -171,7 +171,7 @@ Speaking to the user only:
     | --- | --- |
     | substrate | base |
     | wedge in | add |
-    | vector (as in "attack vector") | way, method |
+    | vector (a vague route, not a named technical term) | way, method |
     | primitive (a building block of a design) | building block |
     | harness (as metaphor) | name the thing running the work |
     | surface (a vague area, not a named one) | the API, the screen, the diff |
@@ -182,9 +182,10 @@ Speaking to the user only:
     | endgame | the last phase |
 
     At the boundary, ask whether the phrase is a named thing people look up or
-    a vague gesture at an area. "Attack surface" stays; "the proof surface"
-    goes, even where a repository repeats it. Renaming prose is all this rule
-    does. It never licenses renaming an identifier, a config key, or an API.
+    a vague gesture at an area. "Attack vector" and "attack surface" stay;
+    "the proof surface" goes, even where a repository repeats it. Renaming prose
+    is all this rule does. It never licenses renaming an identifier, a config
+    key, or an API.
 
 ## Plain speech
 

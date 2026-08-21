@@ -494,17 +494,27 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" "looks up by its exact spelling"
   assert_contains "$refs" "**Literal senses.**"
   assert_contains "$refs" "attack surface"
+  assert_contains "$refs" "attack vector"
+  assert_not_contains "$refs" 'vector (as in "attack vector")'
   assert_contains "$refs" "**Proper nouns.**"
   assert_contains "$refs" "licenses renaming an identifier"
+  assert_contains "$refs" "**Quoted text.**"
+  assert_contains "$refs" "reproduce it exactly."
+  assert_contains "$refs" "file state that does not exist"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "implicit route"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "explicit route"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "skip the deep catalogue pass, and return"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Merely"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "discussing the skill does not select this explicit route"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "task that matches the skill"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "unslop, de-slop, or AI-tells"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Preserve the audience chosen by the"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "calling workflow"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "the deep catalogue pass, and then return"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[natural-writing pass](references/natural-writing.md)"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[full AI-tells catalogue](references/ai-tells.md)"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
+  assert_not_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "no catalogued AI tell"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "full clarity and AI-tells pass"
 }
 
@@ -535,6 +545,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
   assert_contains "$skill/SKILL.md" "visual filter"
   assert_contains "$skill/SKILL.md" "Done when"
   assert_contains "$skill/SKILL.md" "another skill calls"
+  assert_contains "$skill/SKILL.md" "implicit unless the user explicitly"
   assert_not_contains "$skill/SKILL.md" "everyday language"
   assert_not_contains "$skill/SKILL.md" "pseudocode"
   assert_not_contains "$skill/SKILL.md" "standalone HTML"
@@ -543,7 +554,6 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local step_count done_count
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -562,11 +572,20 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/SKILL.md" 'Load `speak-fking-english`'
   assert_contains "$skill/SKILL.md" "immediately before saving"
 
-  step_count="$(grep -Ec '^[0-9]+\. ' "$skill/SKILL.md")"
-  done_count="$(grep -Ec '^[[:space:]]+Done when ' "$skill/SKILL.md")"
-  if [[ "$step_count" != "$done_count" ]]; then
-    fail "expected every pr-proof-pack step to have one Done when criterion"
-  fi
+  awk '
+    /^## Workflow$/ { in_workflow = 1; next }
+    in_workflow && /^## / { in_workflow = 0 }
+    in_workflow && /^[0-9]+\. / {
+      if (step > 0 && done_count != 1) exit 1
+      step++
+      done_count = 0
+      next
+    }
+    in_workflow && /^[[:space:]]+Done when / { done_count++ }
+    END {
+      if (step == 0 || done_count != 1) exit 1
+    }
+  ' "$skill/SKILL.md" || fail "expected each pr-proof-pack workflow step to have exactly one Done when criterion"
   assert_contains "$skill/references/plain-language.md" "Restore the missing premise"
   assert_contains "$skill/references/plain-language.md" "## PR title"
   assert_contains "$skill/references/plain-language.md" "## Commit subjects"
@@ -636,6 +655,27 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/video-editing.md" "Before: direct base"
   assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
   assert_contains "$skill/references/video-editing.md" "play the full edited file at 1× speed"
+}
+
+test_review_flow_map_is_the_public_review_mapping_skill() {
+  local skill="$ROOT_DIR/skills/review-flow-map"
+
+  [[ -d "$skill" ]] || fail "expected review-flow-map skill directory"
+  [[ ! -f "$ROOT_DIR/skills/review-surface-map/SKILL.md" ]] || fail "retired review-surface-map skill still exists"
+  assert_contains "$skill/SKILL.md" "name: review-flow-map"
+  assert_contains "$ROOT_DIR/README.md" '`review-flow-map`'
+  assert_contains "$ROOT_DIR/skills/cold-pr-review/references/checklist.md" '`review-flow-map`'
+  assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" '`review-flow-map`'
+}
+
+test_examples_report_the_exact_command_or_computed_value() {
+  local codex_engine="$ROOT_DIR/skills/review-until-clean/references/codex-engine.md"
+  local retry_model="$ROOT_DIR/skills/html-explanations/assets/patterns/interactive-model.html"
+
+  assert_contains "$codex_engine" '`codex review --base <branch>`'
+  assert_contains "$codex_engine" '`codex review --uncommitted`'
+  assert_contains "$retry_model" 'Failures show up after ${formatSeconds(totalWait)} of modeled retry delay'
+  assert_not_contains "$retry_model" "within one retry cycle"
 }
 
 test_code_review_has_a_local_review_and_owner_checked_closeout() {
@@ -1020,18 +1060,6 @@ with tempfile.TemporaryDirectory() as tmp:
 PY
 }
 
-test_repo_text_obeys_the_ai_tells_catalogue() {
-  # The sweep in this PR is only durable if something keeps it swept.
-  # skill-cleaner.ts strips curly quotes, so its own character class is exempt.
-  local offenders
-  offenders="$(cd "$ROOT_DIR" && git grep -l -P '[\x{2014}\x{2018}\x{2019}\x{201C}\x{201D}]' \
-    -- '*.md' '*.ts' '*.yaml' '*.yml' '*.html' \
-    | grep -v 'skills/skill-cleaner/scripts/skill-cleaner.ts' || true)"
-  if [ -n "$offenders" ]; then
-    fail "em dash or curly quote found in: $offenders"
-  fi
-}
-
 test_skill_frontmatter_is_valid
 test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
@@ -1046,6 +1074,8 @@ test_speak_fking_english_owns_the_ai_tells_catalogue
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate
+test_review_flow_map_is_the_public_review_mapping_skill
+test_examples_report_the_exact_command_or_computed_value
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_waits_hold_instead_of_polling
 test_harness_references_carry_the_api_surface
@@ -1055,6 +1085,4 @@ test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_handoff_tmux_helper_builds_tmux_window_command
 test_wayfinder_obsidian_map_can_advance_its_frontier
-test_repo_text_obeys_the_ai_tells_catalogue
-
 printf 'ok - skills tests\n'

@@ -23,8 +23,8 @@ Prefer `--base <branch>` or `--uncommitted` for review-until-clean loops where
 you expect to edit fixes. A commit SHA is immutable. After fixing findings from
 `codex review --commit <sha>`, do **not** keep reviewing the old SHA. Either
 amend/create the fix commit and retarget the command to the new SHA, or switch
-the loop target to `codex review --base <branch>` or `codex review
---uncommitted` so Codex reviews the fixed tree.
+the loop target to `codex review --base <branch>` or
+`codex review --uncommitted` so Codex reviews the fixed tree.
 
 Do not use these forms:
 

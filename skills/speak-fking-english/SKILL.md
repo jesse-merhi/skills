@@ -10,20 +10,21 @@ saving it.
 
 ## Route the pass
 
-- When the model loads this skill as the final-response checkpoint, run the
-  shared pass below, skip the deep catalogue pass, and return the result. This
-  is the implicit route.
 - When the user asks you to use `speak-fking-english`, invokes it with the
-  harness's skill syntax, or asks for the full unslop or de-slop pass, run the
-  shared pass, add the deep catalogue pass, and then return the result. Merely
-  discussing the skill does not select this explicit route.
+  harness's skill syntax, or asks for the full unslop, de-slop, or AI-tells
+  pass, run the shared pass, add the deep catalogue pass, and then return the
+  result. Merely discussing the skill does not select this explicit route.
 - For a "wait, what?" or re-pitch request that does not explicitly invoke this
   skill, run only the reader reset.
 - For a "show me" or visual-support request that does not explicitly invoke
   this skill, run only the visual filter.
-- When another skill calls this one, return the revised reviewer-facing text to
-  that skill instead of addressing the user directly. Treat the call as
-  implicit unless the user explicitly invoked this skill for that artifact.
+- When another skill calls this one, return the revised text to that skill
+  instead of addressing the user directly. Preserve the audience chosen by the
+  calling workflow. Treat the call as implicit unless the user explicitly
+  invoked this skill for that artifact.
+- For every other model-selected call, including a task that matches the skill
+  description or the final-response checkpoint, run the shared pass below,
+  skip the deep catalogue pass, and return. This is the implicit route.
 
 ## Shared pass
 
@@ -61,7 +62,7 @@ it needs to say.
 ## Return
 
 For chat, return the revised draft as the whole final response. For a calling
-skill, return the revised reviewer-facing text for that skill to save.
+skill, return the revised text for that skill to use with its intended audience.
 
 Done when the output stands alone, contains no duplicated explanation, and uses
 the return path expected by the caller.
