@@ -19,7 +19,7 @@ Record at setup, before the first review cycle:
 review_started = <local timestamp>
 baseline_diff  = <changed files and changed lines of the original target,
                   persisted by `$review_findings_bin scope-start`>
-scope_baseline = <request, target, intended behavior, owner boundary, files>
+scope_baseline = <request, target, intended behavior, owner boundary>
 findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
 decision_log_path = <optional path for long-form rationale, when available>
 consult_queue  = []
@@ -52,7 +52,7 @@ fields in its header.
    accepted fix.
 3. Classify each accepted finding with the scope governor in
    [scope-governor.md](references/scope-governor.md).
-4. Patch only in-scope blockers.
+4. Patch blockers within the task and diff budget; allow new text paths, but require authorization for new binaries.
 5. For uncertain findings, use the provisional-fix or consult rules in
    [uncertain-findings.md](references/uncertain-findings.md).
 6. When consult entries are open, provide reviewer notices according to
@@ -70,8 +70,8 @@ fields in its header.
 - A fully clean verdict is valid only when the clean streak requirement is met
   and the consult queue has no open entries.
 - A clean-except-queue fixed point is a blocked-on-consult state, not success.
-- Every patched finding must stay within `scope_baseline` and the diff-growth
-  budget.
+- Every patch must preserve `scope_baseline` and the diff budget. Text paths are
+  informational; new binary production paths require authorization.
 - A clean verdict requires a persisted scope baseline, a final passing
   `scope-check`, and `scope-complete`; a prose estimate or reconstructed
   baseline does not count.

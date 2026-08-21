@@ -53,7 +53,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
    review_started = <local timestamp>
    baseline_diff = <changed files and changed lines of the original target>
-   scope_baseline = <request, target, intended behavior, owner boundary, files>
+   scope_baseline = <request, target, intended behavior, owner boundary>
    consult_queue = []
    findings_registry = <SQLite findings database>
    ```
@@ -68,7 +68,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    "$review_findings_bin" scope-start \
      --repo <repo> --repo-path <repo-root> --branch <branch> \
      --target <target> --base <base> --head <head> \
-     --scope-summary "<request, behavior, owner boundary, and files>"
+     --scope-summary "<request, behavior, and owner boundary>"
    ```
 
    On a resumed run, use `scope-status`; never rerun `scope-start` to move the

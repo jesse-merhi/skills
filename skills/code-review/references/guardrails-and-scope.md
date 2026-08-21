@@ -8,7 +8,7 @@ Before Phase 1, freeze the review scope:
 - base and target branch
 - intended behavior
 - owner boundary
-- changed files
+- changed files (text paths are informational; new binaries require approval)
 - non-test changed lines
 
 Before patching a reviewer finding, classify it:
@@ -26,8 +26,7 @@ with the scope reason.
 ## Budgets and consult gates
 
 `review-guardrails` owns the bounds for this skill: the wall-clock budget
-(default 8 hours per run), the deterministic diff-growth budget (exactly 30%
-of baseline production changed lines by default), the consult queue for findings that need user input, and the
+(default 8 hours per run), the deterministic diff-growth budget, the consult queue for findings that need user input, and the
 queue-matching and fixed-point rules that stop later review passes from
 re-litigating queued findings. There is no iteration cap. The budgets are the
 bound.

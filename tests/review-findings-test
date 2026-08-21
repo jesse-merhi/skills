@@ -57,6 +57,7 @@ test_review_findings_workflow_is_documented() {
   assert_contains "$skill_doc" '"$review_findings_bin" scope-start'
   assert_contains "$skill_doc" '"$review_findings_bin" scope-check'
   assert_contains "$findings_doc" '"$review_findings_bin" scope-authorize'
+  assert_contains "$findings_doc" "\`scope-authorize\` directly because \`scope-check\`"
   assert_contains "$findings_doc" '"$review_findings_bin" scope-complete'
   assert_contains "$findings_doc" "--impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal>"
   assert_contains "$findings_doc" "--user-impact"
@@ -444,9 +445,15 @@ const db = new DatabaseSync(process.argv[2])
 db.exec(`
   create table review_runs (id text primary key, repo_name text not null, repo_path text not null, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, updated_at integer not null);
   create table issues (id text primary key, run_id text not null, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, decision text, text text not null, decision_log_path text, updated_at integer not null, unique(run_id, decision_id));
+  create table review_scope_budgets (run_id text primary key, generation integer not null default 0, base_ref text not null, base_oid text not null, limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, last_reason text not null default '', started_at integer not null, updated_at integer not null);
 `)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "active", "", 1, 1)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", "sample-app", process.argv[2], "PR #2", "main", "old-head", "active", "", 1, 1)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", "sample-app", process.argv[2], "PR #3", "main", "old-head", "complete", "", 1, 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-issue", "legacy-run", "D0", "open", "legacy", "legacy", "Legacy finding", "", "legacy text", "", 1)
+db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", 0, "main", "base-oid", 30, "Legacy scope", "", 1, 0, 0, '["asset.bin"]', "ready", 1, 0, 0, 0, 0, "[]", "", 1, 1)
+db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", 0, "main", "base-oid", 30, "Over budget", "", 1, 0, 0, '["app.ts"]', "blocked", 2, 0, 0, 1, 0, "[]", "Existing line overage requires authorization.", 1, 1)
+db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", 0, "main", "base-oid", 30, "Complete", "", 1, 0, 0, '["done.ts"]', "complete", 1, 0, 0, 0, 0, "[]", "", 1, 1)
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
@@ -454,6 +461,15 @@ NODE
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint legacy \
     --summary "Legacy finding updated." --text "updated" >/dev/null
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json, new_binary_production_paths_json, status, last_reason from review_scope_budgets where run_id = 'legacy-run'").get()
+if (row?.baseline_binary_paths_json !== "[]" || row.new_binary_production_paths_json !== "[]" || row.status !== "rebaseline-required" || !row.last_reason.includes("explicit rebaseline")) process.exit(1)
+const over = new DatabaseSync(process.argv[2]).prepare("select status, last_reason from review_scope_budgets where run_id = 'legacy-over'").get()
+if (over?.status !== "rebaseline-required" || !over.last_reason.includes("explicit rebaseline") || !over.last_reason.includes("Existing line overage requires authorization.")) process.exit(1)
+const complete = new DatabaseSync(process.argv[2]).prepare("select status from review_scope_budgets where run_id = 'legacy-complete'").get()
+if (complete?.status !== "complete") process.exit(1)
+NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main)"
   assert_output_contains "$out" "D0 [fixed]"
@@ -678,12 +694,12 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main --scope-summary "Test authorization transition serialization." >/dev/null
-  printf 'new path\n' > "$repo/helper.ts"
+  for number in {1..200}; do printf 'helper %s\n' "$number"; done > "$repo/helper.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "authorization race" --base main --reason "The new path needs authorization." \
+    --target "authorization race" --base main --reason "The additional production line needs authorization." \
     >"$tmp/block.out" 2>"$tmp/block.err"; then
-    fail "the new production path should block before authorization"
+    fail "production-line growth beyond the budget should block before authorization"
   fi
 
   (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
@@ -703,8 +719,8 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main \
-    --scope-summary "Include the explicitly approved helper path." \
-    --authorization "User explicitly approved the helper path." >/dev/null
+    --scope-summary "Include the explicitly approved production-line growth." \
+    --authorization "User explicitly approved the production-line growth." >/dev/null
   : > "$tmp/authorize.release"
   wait "$stale_pid"
   stale_code="$(cat "$tmp/authorize.code")"
@@ -714,7 +730,77 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main)"
   assert_output_contains "$out" "SCOPE BUDGET READY"
-  assert_output_contains "$out" "authorization=User explicitly approved the helper path."
+  assert_output_contains "$out" "authorization=User explicitly approved the production-line growth."
+}
+
+test_review_scope_authorize_resolves_moved_base() {
+  local tmp db repo out base_oid
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "moved base review" --base main \
+    --scope-summary "Measure the feature against its initial base." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "moved base review" --base main \
+    --reason "Confirm the initial feature scope." >/dev/null
+
+  git -C "$repo" switch --quiet main
+  for number in {1..100}; do printf 'main %s\n' "$number"; done > "$repo/main-only.ts"
+  git -C "$repo" add main-only.ts
+  git -C "$repo" commit --quiet --message "move main"
+  git -C "$repo" switch --quiet feature
+  git -C "$repo" rebase --quiet main
+  for number in {11..14}; do printf 'feature %s\n' "$number"; done >> "$repo/app.ts"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "moved base review" --base main \
+    --scope-summary "Measure only the rebased feature." \
+    --authorization "User approved the rebased feature scope.")"
+  base_oid="$(git -C "$repo" rev-parse --short=12 main)"
+  assert_output_contains "$out" "base=main@$base_oid baseline=14 current=14"
+}
+
+test_review_scope_authorize_resolves_moved_base_from_ready() {
+  local tmp db repo out base_oid
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "moved ready base review" --base main \
+    --scope-summary "Measure the feature from ready state." >/dev/null
+
+  git -C "$repo" switch --quiet main
+  git -C "$repo" commit --quiet --allow-empty --message "move main"
+  git -C "$repo" switch --quiet feature
+  git -C "$repo" rebase --quiet main
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "moved ready base review" --base main \
+    --scope-summary "Measure the rebased ready feature." \
+    --authorization "User approved the rebased ready scope.")"
+  base_oid="$(git -C "$repo" rev-parse --short=12 main)"
+  assert_output_contains "$out" "base=main@$base_oid baseline=10 current=10"
 }
 
 test_review_scope_budget_blocks_deterministically() {
@@ -816,8 +902,9 @@ test_review_scope_budget_blocks_deterministically() {
     --decision "Added the startup guard." \
     --text "The accepted review fix is complete." >/dev/null
 
-  git -C "$repo" branch --force main feature
   printf 'line 11\nline 12\nline 13\n' >> "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message 'accepted review fix'
   for number in {1..100}; do printf 'test %s\n' "$number"; done > "$repo/app.test.ts"
   for number in {1..100}; do printf 'lock %s\n' "$number"; done > "$repo/pnpm-lock.yaml"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
@@ -827,13 +914,13 @@ test_review_scope_budget_blocks_deterministically() {
     --branch feature \
     --target "PR #12" \
     --base main \
-    --reason "The remaining finding needs one more production line.")"
+    --reason "The remaining finding needs more production lines.")"
   assert_output_contains "$out" "SCOPE BUDGET OK"
-  assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=3 maximum=13"
+  assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=150 maximum=160"
   assert_output_contains "$out" "excluded-tests=100"
   assert_output_contains "$out" "excluded-generated=100"
 
-  printf 'line 14\n' >> "$repo/app.ts"
+  for number in {14..161}; do printf 'line %s\n' "$number"; done >> "$repo/app.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" \
     --repo sample-app \
@@ -841,15 +928,15 @@ test_review_scope_budget_blocks_deterministically() {
     --branch feature \
     --target "PR #12" \
     --base main \
-    --reason "The remaining finding needs one more production line." \
+    --reason "The remaining finding needs more production lines." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check should block after deterministic growth exceeds 30 percent"
+    fail "scope-check should block after growth exceeds the minimum growth floor"
   fi
   assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=10 current=14 growth=4 allowed-growth=3 maximum=13"
+  assert_contains "$tmp/stderr" "baseline=10 current=161 growth=151 allowed-growth=150 maximum=160"
   assert_contains "$tmp/stderr" "Completed review work:"
   assert_contains "$tmp/stderr" "D1: Startup now rejects an invalid configuration."
-  assert_contains "$tmp/stderr" "Why more scope is requested: The remaining finding needs one more production line."
+  assert_contains "$tmp/stderr" "Why more scope is requested: The remaining finding needs more production lines."
   assert_contains "$tmp/stderr" "Stop reviewing now."
   assert_contains "$tmp/stderr" "Ask the user for explicit authorization"
 
@@ -872,31 +959,106 @@ test_review_scope_budget_blocks_deterministically() {
     --target "PR #12" \
     --base main)"
   assert_output_contains "$out" "SCOPE BUDGET READY"
-  assert_output_contains "$out" "baseline=14"
+  assert_output_contains "$out" "baseline=161"
   assert_output_contains "$out" "authorization=User approved the additional startup-guard scope."
 
   printf 'helper\n' > "$repo/helper.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" \
     --repo sample-app \
     --repo-path "$repo" \
     --branch feature \
     --target "PR #12" \
     --base main \
-    --reason "A new helper would move production code outside the frozen file set." \
+    --reason "The accepted fix adds a small helper in a new production file.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=161 current=162 growth=1 allowed-growth=150 maximum=311"
+  assert_output_contains "$out" "Production paths added since the baseline (informational):"
+  assert_output_contains "$out" "- helper.ts"
+
+  ln -s helper.ts "$repo/helper-link.ts"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --reason "The fix adds a symlink.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=161 current=163 growth=2 allowed-growth=150 maximum=311"
+
+  for _ in {1..9000}; do printf 'a'; done > "$repo/late-nul.txt"
+  printf '\0\n' >> "$repo/late-nul.txt"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --reason "The text file has a NUL beyond Git's binary probe.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=161 current=164 growth=3 allowed-growth=150 maximum=311"
+
+  printf '*.dat -diff\n*.txt diff\n*.drv diff=opaque\n*.reserved diff=set\n' > "$repo/.gitattributes"
+  git -C "$repo" config diff.opaque.binary true
+  git -C "$repo" config diff.set.binary true
+  printf 'NUL-free binary payload\n' > "$repo/forced.dat"
+  printf '\0forced text payload\n' > "$repo/forced.txt"
+  printf 'driver-defined binary payload\n' > "$repo/forced.drv"
+  printf 'reserved-driver binary payload\n' > "$repo/forced.reserved"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --reason "The fix adds an attribute-defined binary." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check should block a new production path even below the line-growth limit"
+    fail "scope-check must honor -diff for an untracked NUL-free file"
   fi
-  assert_contains "$tmp/stderr" "New production paths outside the frozen scope:"
-  assert_contains "$tmp/stderr" "- helper.ts"
+  assert_contains "$tmp/stderr" "- forced.dat"
+  assert_contains "$tmp/stderr" "- forced.drv"
+  assert_contains "$tmp/stderr" "- forced.reserved"
+  assert_output_not_contains "$(sed -n '/Binary production paths/,/Production paths added/p' "$tmp/stderr")" "- forced.txt"
+  assert_contains "$tmp/stderr" "- forced.txt"
+  rm "$repo/.gitattributes" "$repo/forced.dat" "$repo/forced.txt" "$repo/forced.drv" "$repo/forced.reserved"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --reason "The binary probe is removed." >/dev/null
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #12" --base main)"
   assert_output_contains "$out" "Scope budget"
-  assert_output_contains "$out" "SCOPE BUDGET BLOCKED"
-  assert_output_contains "$out" "new-production-paths:"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "Production paths added since the baseline (informational):"
   assert_output_contains "$out" "helper.ts"
+
+  printf '\0binary payload\n' > "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main \
+    --reason "The accepted fix adds a binary production asset." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must block a new binary production path whose size the line budget cannot measure"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- asset.bin"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main)"
+  assert_output_contains "$out" "Binary production paths added since the baseline"
+  test "$(printf '%s\n' "$out" | grep -Fxc -- "- asset.bin")" = 1 \
+    || fail "persisted binary path must appear once and must not be informational"
+
+  rm "$repo/asset.bin"
+  printf '\0literal pathspec payload\n' > "$repo/:(glob)magic.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --reason "The binary filename resembles pathspec magic." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must measure pathspec-like filenames literally"
+  fi
+  assert_contains "$tmp/stderr" "- :(glob)magic.bin"
+  rm "$repo/:(glob)magic.bin"
+  printf '\0replacement binary\n' > "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --reason "The fix converts a baseline text path to binary." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must block when a baseline text path becomes binary"
+  fi
+  assert_contains "$tmp/stderr" "- app.ts"
 }
 
 test_review_scope_budget_can_close_before_a_later_review() {
@@ -920,7 +1082,9 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Run the final clean review." >/dev/null
 
-  printf 'feature\npost-check change\n' > "$repo/app.ts"
+  # Post-check drift past the allowance must block scope-complete and route to
+  # scope-authorize, rather than closing on the stale passing check.
+  { printf 'feature\n'; for number in {1..200}; do printf 'post-check change %s\n' "$number"; done; } > "$repo/app.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Stale clean result." \
@@ -1054,7 +1218,7 @@ test_review_scope_budget_uses_the_merge_base() {
 }
 
 test_review_scope_budget_measures_the_requested_head() {
-  local tmp db repo target_head out
+  local tmp db repo target_head out hooks
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
   repo="$tmp/repo"
@@ -1064,19 +1228,479 @@ test_review_scope_budget_measures_the_requested_head() {
   git -C "$repo" commit --quiet --allow-empty --message base
   git -C "$repo" switch --quiet --create feature
   printf 'target\n' > "$repo/app.ts"
-  git -C "$repo" add app.ts
+  printf '*.dat -diff\n' > "$repo/.gitattributes"
+  printf 'attribute-defined binary\n' > "$repo/asset.dat"
+  git -C "$repo" add app.ts .gitattributes asset.dat
   git -C "$repo" commit --quiet --message target
   target_head="$(git -C "$repo" rev-parse HEAD)"
+  printf '*.dat diff\n' > "$repo/.gitattributes"
   for number in {1..100}; do printf 'later %s\n' "$number"; done > "$repo/later.ts"
-  git -C "$repo" add later.ts
+  git -C "$repo" add .gitattributes later.ts
   git -C "$repo" commit --quiet --message later
+  hooks="$tmp/hooks"
+  mkdir "$hooks"
+  printf '#!/bin/sh\nprintf invoked > %s\n' "$tmp/historical-hook-marker" > "$hooks/post-index-change"
+  chmod +x "$hooks/post-index-change"
+  git -C "$repo" config core.hooksPath "$hooks"
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "requested commit review" --base main --head "$target_head" \
     --scope-summary "Review only the requested one-line commit.")"
+  assert_output_contains "$out" "baseline=3 current=3"
+  assert_output_not_contains "$out" "baseline=103"
+  node --input-type=module - "$db" "$target_head" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const database = new DatabaseSync(process.argv[2])
+const row = database.prepare("select baseline_binary_paths_json from review_scope_budgets").get()
+if (row?.baseline_binary_paths_json !== '["asset.dat"]') process.exit(1)
+const run = database.prepare("select head from review_runs").get()
+if (run?.head !== process.argv[3]) process.exit(1)
+NODE
+  test ! -e "$tmp/historical-hook-marker" || fail "historical temporary-index measurement must not execute Git hooks"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "requested commit review" --base main \
+    --reason "Confirm the pinned historical review remains unchanged.")"
+  assert_output_contains "$out" "baseline=3 current=3"
+  assert_output_not_contains "$out" "current=103"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "requested commit review" --base main \
+    --reason "Pinned historical review is clean.")"
+  assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+}
+
+test_review_scope_budget_rejects_old_git_for_historical_heads() {
+  local tmp db repo target_head git_wrapper real_git
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git_wrapper="$tmp/git-2.40"
+  real_git="$(command -v git)"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'target\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message target
+  target_head="$(git -C "$repo" rev-parse HEAD)"
+  printf 'later\n' > "$repo/later.ts"
+  git -C "$repo" add later.ts
+  git -C "$repo" commit --quiet --message later
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'if [ "$1" = version ]; then printf "git version 2.40.0\\n"; exit 0; fi' \
+    'exec "$SCOPE_REAL_GIT" "$@"' > "$git_wrapper"
+  chmod +x "$git_wrapper"
+
+  if env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "old git historical review" --base main --head "$target_head" \
+      --scope-summary "Reject unreliable historical attributes." \
+      >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "historical-head measurement must reject Git older than 2.41"
+  fi
+  assert_contains "$tmp/stderr" "Historical-head scope measurement requires Git 2.41 or newer"
+  if grep -Fq -- "at file://" "$tmp/stderr"; then
+    fail "the expected historical Git error must not print an internal stack trace"
+  fi
+}
+
+test_review_scope_budget_supports_git_2_30_checked_out_reviews() {
+  local tmp db repo git_wrapper real_git out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git_wrapper="$tmp/git-2.30"
+  real_git="$(command -v git)"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'if [ "$1" = version ]; then printf "git version 2.30.0\\n"; exit 0; fi' \
+    'case " $* " in *" --sparse "*|*" --path-format="*) printf "unsupported modern option\\n" >&2; exit 99;; esac' \
+    'exec "$SCOPE_REAL_GIT" "$@"' > "$git_wrapper"
+  chmod +x "$git_wrapper"
+
+  out="$(env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "old git checked out review" --base main \
+      --scope-summary "Keep ordinary checked-out measurement compatible.")"
   assert_output_contains "$out" "baseline=1 current=1"
-  assert_output_not_contains "$out" "baseline=101"
+}
+
+test_review_scope_budget_supports_old_git_sparse_checkout() {
+  local tmp db repo git_wrapper real_git out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git_wrapper="$tmp/git-2.33"
+  real_git="$(command -v git)"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'kept\n' > "$repo/kept.txt"
+  git -C "$repo" add kept.txt
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  git -C "$repo" sparse-checkout init --no-cone
+  git -C "$repo" sparse-checkout set kept.txt
+  mkdir -p "$repo/outside"
+  printf 'outside\n' > "$repo/outside/payload.ts"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'if [ "$1" = version ]; then printf "git version 2.33.0\\n"; exit 0; fi' \
+    'case " $* " in *" --sparse "*) printf "unsupported --sparse\\n" >&2; exit 99;; esac' \
+    'exec "$SCOPE_REAL_GIT" "$@"' > "$git_wrapper"
+  chmod +x "$git_wrapper"
+
+  out="$(env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
+    "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+      --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+      --target "old git sparse review" --base main \
+      --scope-summary "Measure an old-Git out-of-cone path.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+}
+
+test_review_scope_budget_counts_untracked_feature_path_from_zero() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..100}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+  git -C "$repo" rm --quiet --cached app.ts
+  for number in {101..140}; do printf 'feature %s\n' "$number"; done >> "$repo/app.ts"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "untracked replacement review" --base main \
+    --scope-summary "Count the whole untracked feature file.")"
+  assert_output_contains "$out" "baseline=140 current=140"
+}
+
+test_review_scope_budget_counts_embedded_repository() {
+  local tmp db repo nested out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  nested="$repo/nested"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  git init --quiet --initial-branch main "$nested"
+  git -C "$nested" config user.name Test
+  git -C "$nested" config user.email test@example.com
+  git -C "$nested" commit --quiet --allow-empty --message nested
+  git -C "$repo" config diff.ignoreSubmodules all
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "embedded repository review" --base main \
+    --scope-summary "Count the embedded repository path.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+}
+
+test_review_scope_budget_distinguishes_binary_deletions_from_additions() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf '\0binary payload\n' > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  git -C "$repo" rm --quiet asset.bin
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary deletion review" --base main \
+    --scope-summary "Delete a binary production path.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary deletion review" --base main \
+    --reason "The binary production path remains deleted.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+
+  printf '\0replacement payload\n' > "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary deletion review" --base main \
+    --reason "Re-add the deleted binary production path." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must block a binary re-addition after a deletion baseline"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- asset.bin"
+}
+
+test_review_scope_budget_uses_current_side_binary_state() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf '\0binary base\n' > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'text replacement\n' > "$repo/asset.bin"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "current binary side review" --base main \
+    --scope-summary "Replace a binary path with text." >/dev/null
+  printf '\0binary replacement\n' > "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "current binary side review" --base main \
+    --reason "Return the text baseline path to binary." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must block a binary replacement after a text baseline"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- asset.bin"
+}
+
+test_review_scope_budget_counts_binary_to_text_replacements_as_text() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf '\0binary base\n' > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..100}; do printf 'text %s\n' "$number"; done > "$repo/asset.bin"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary to text review" --base main \
+    --scope-summary "Count the measurable text replacement." >"$tmp/start"
+  assert_contains "$tmp/start" "baseline=100 current=100"
+  for number in {101..251}; do printf 'text %s\n' "$number"; done >> "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary to text review" --base main \
+    --reason "Grow the text replacement beyond its line budget." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "binary-to-text growth must use measurable current text lines"
+  fi
+  assert_contains "$tmp/stderr" "baseline=100 current=251 growth=151 allowed-growth=150 maximum=250"
+}
+
+test_review_scope_budget_applies_deleted_attributes_to_tracked_files() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf '*.dat -diff\n' > "$repo/.gitattributes"
+  git -C "$repo" add .gitattributes
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "deleted attributes tracked review" --base main \
+    --scope-summary "Measure tracked text after deleting a binary rule." >/dev/null
+  rm "$repo/.gitattributes"
+  printf 'tracked text\n' > "$repo/payload.dat"
+  git -C "$repo" add payload.dat
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "deleted attributes tracked review" --base main \
+    --reason "Delete the binary rule and add a tracked text file.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=10 current=12 growth=2 allowed-growth=150 maximum=160"
+  assert_output_not_contains "$out" "Binary production paths added since the baseline"
+}
+
+test_review_scope_budget_blocks_staged_binary_attribute_file() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary attributes review" --base main \
+    --scope-summary "Block a new binary attribute file." >/dev/null
+
+  printf '.gitattributes -diff\n' > "$repo/.gitattributes"
+  git -C "$repo" add .gitattributes
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "binary attributes review" --base main \
+    --reason "Add a staged binary attribute file." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must block a staged binary .gitattributes file"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- .gitattributes"
+}
+
+test_review_scope_budget_preserves_sparse_parent_attributes_for_staged_attribute_files() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'kept\n' > "$repo/kept.txt"
+  printf 'nested/.gitattributes -diff\n' > "$repo/.gitattributes"
+  git -C "$repo" add kept.txt .gitattributes
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  git -C "$repo" sparse-checkout init --no-cone
+  git -C "$repo" sparse-checkout set kept.txt
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "sparse staged attributes review" --base main \
+    --scope-summary "Preserve sparse parent attributes." >/dev/null
+
+  mkdir -p "$repo/nested"
+  printf '*.bin -diff\n' > "$repo/nested/.gitattributes"
+  git -C "$repo" add --sparse nested/.gitattributes
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "sparse staged attributes review" --base main \
+    --reason "Add the staged nested binary attribute file." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must preserve sparse parent attributes for a staged attribute file"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- nested/.gitattributes"
+}
+
+test_review_scope_budget_counts_directory_to_file_replacement() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  mkdir "$repo/replaced"
+  printf 'tracked child\n' > "$repo/replaced/child.ts"
+  git -C "$repo" add replaced/child.ts
+  git -C "$repo" commit --quiet --message feature
+  git -C "$repo" rm --quiet -r replaced
+  printf 'replacement file\n' > "$repo/replaced"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "directory replacement review" --base main \
+    --scope-summary "Count the replacement file.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+}
+
+test_review_scope_budget_honors_staged_attribute_deletion() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf '*.bin diff\n' > "$repo/.gitattributes"
+  git -C "$repo" add .gitattributes
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "attribute deletion review" --base main \
+    --scope-summary "Honor the staged attribute deletion." >/dev/null
+  git -C "$repo" rm --quiet .gitattributes
+  printf '\0binary after deletion\n' > "$repo/new.bin"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "attribute deletion review" --base main --reason "Add the binary after deleting its text rule." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must honor staged attribute deletions"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- new.bin"
+}
+
+test_review_scope_budget_honors_unstaged_attribute_deletion() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf '*.txt -diff\n' > "$repo/.gitattributes"
+  git -C "$repo" add .gitattributes
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "unstaged attribute deletion review" --base main \
+    --scope-summary "Honor the unstaged attribute deletion." >/dev/null
+  rm "$repo/.gitattributes"
+  # The growth floor gives any production baseline 150 lines, so the text file
+  # has to clear that for the line gate to fire.
+  for number in {1..151}; do printf 'text after deletion %s\n' "$number"; done > "$repo/new.txt"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "unstaged attribute deletion review" --base main --reason "Add text after deleting its binary rule." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "line growth should still exceed the zero-line allowance"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  assert_contains "$tmp/stderr" "baseline=1 current=153 growth=152 allowed-growth=150 maximum=151"
+  if grep -Fq -- "Binary production paths added since the baseline" "$tmp/stderr"; then
+    fail "scope-check must not use an unstaged deleted binary rule"
+  fi
 }
 
 test_review_scope_budget_counts_dangling_symlinks() {
@@ -1095,6 +1719,307 @@ test_review_scope_budget_counts_dangling_symlinks() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "symlink review" --base main --scope-summary "Add one symlink.")"
   assert_output_contains "$out" "baseline=1 current=1"
+}
+
+test_review_scope_budget_measures_outside_sparse_checkout() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'kept\n' > "$repo/kept.txt"
+  mkdir -p "$repo/outside"
+  printf '*.dat -diff\n' > "$repo/outside/.gitattributes"
+  git -C "$repo" add kept.txt outside/.gitattributes
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  git -C "$repo" sparse-checkout init --no-cone
+  git -C "$repo" sparse-checkout set kept.txt
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "sparse review" --base main --scope-summary "Measure outside-sparse files.")"
+  assert_output_contains "$out" "baseline=0 current=0"
+  mkdir -p "$repo/outside"
+  printf 'attribute-defined binary\n' > "$repo/outside/payload.dat"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "sparse review" --base main --reason "Add the outside-sparse binary." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must preserve indexed attributes outside sparse checkout"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- outside/payload.dat"
+}
+
+test_review_scope_budget_measures_committed_sparse_paths() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'kept\n' > "$repo/kept.txt"
+  git -C "$repo" add kept.txt
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  mkdir -p "$repo/outside"
+  printf '\0committed binary\n' > "$repo/outside/asset.bin"
+  git -C "$repo" add outside/asset.bin
+  git -C "$repo" commit --quiet --message feature
+  git -C "$repo" sparse-checkout init --no-cone
+  git -C "$repo" sparse-checkout set kept.txt
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "committed sparse review" --base main \
+    --scope-summary "Measure a committed path outside the sparse checkout.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json from review_scope_budgets").get()
+if (row?.baseline_binary_paths_json !== '["outside/asset.bin"]') process.exit(1)
+NODE
+}
+
+test_review_scope_budget_measures_absent_assume_unchanged_paths() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf '\0committed binary\n' > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message feature
+  git -C "$repo" update-index --assume-unchanged asset.bin
+  rm "$repo/asset.bin"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "assume unchanged review" --base main \
+    --scope-summary "Measure an absent assume-unchanged path from the index.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json from review_scope_budgets").get()
+if (row?.baseline_binary_paths_json !== '["asset.bin"]') process.exit(1)
+NODE
+}
+
+test_review_scope_budget_measures_materialized_assume_unchanged_paths() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'text %s\n' "$number"; done > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "materialized assume unchanged review" --base main \
+    --scope-summary "Measure materialized assume-unchanged content." >/dev/null
+
+  git -C "$repo" update-index --assume-unchanged asset.bin
+  printf '\0binary replacement\n' > "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "materialized assume unchanged review" --base main \
+    --reason "Replace materialized assumed text with binary content." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must inspect materialized assume-unchanged content"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- asset.bin"
+}
+
+test_review_scope_budget_measures_materialized_skip_worktree_paths() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'text %s\n' "$number"; done > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "skip worktree review" --base main \
+    --scope-summary "Measure materialized skip-worktree content." >/dev/null
+
+  git -C "$repo" update-index --skip-worktree asset.bin
+  printf '\0binary replacement\n' > "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "skip worktree review" --base main \
+    --reason "Replace materialized skip-worktree text with binary content." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must inspect materialized skip-worktree content"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- asset.bin"
+}
+
+test_review_scope_budget_measures_materialized_combined_index_flags() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'text %s\n' "$number"; done > "$repo/asset.bin"
+  git -C "$repo" add asset.bin
+  git -C "$repo" commit --quiet --message feature
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "combined index flags review" --base main \
+    --scope-summary "Measure materialized content with combined index flags." >/dev/null
+
+  git -C "$repo" update-index --assume-unchanged asset.bin
+  git -C "$repo" update-index --skip-worktree asset.bin
+  printf '\0binary replacement\n' > "$repo/asset.bin"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "combined index flags review" --base main \
+    --reason "Replace materialized flagged text with binary content." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must inspect materialized content with both index flags"
+  fi
+  assert_contains "$tmp/stderr" "Binary production paths added since the baseline"
+  assert_contains "$tmp/stderr" "- asset.bin"
+}
+
+test_review_scope_budget_preserves_non_utf8_path_bytes() {
+  local tmp db repo bad_name out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  bad_name="$(printf 'asset-\377.bin')"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  if ! (printf '\0binary payload\n' > "$repo/$bad_name") 2>/dev/null; then
+    return
+  fi
+  git -C "$repo" add -- "$bad_name"
+  git -C "$repo" commit --quiet --message feature
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "non-utf8 path review" --base main \
+    --scope-summary "Measure a valid non-UTF-8 Git path.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+}
+
+test_review_scope_budget_persists_reversible_quoted_paths() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf '\0binary payload\n' > "$repo/café.bin"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "quoted path review" --base main \
+    --scope-summary "Persist a reversible quoted Git path." >/dev/null
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json from review_scope_budgets").get()
+const paths = JSON.parse(row?.baseline_binary_paths_json ?? "[]")
+if (paths.length !== 1 || paths[0] !== '"caf\\303\\251.bin"') process.exit(1)
+NODE
+}
+
+test_review_scope_budget_handles_partially_staged_files() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'staged\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  printf 'unstaged\n' >> "$repo/app.ts"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "partially staged review" --base main \
+    --scope-summary "Measure staged and unstaged content together.")"
+  assert_output_contains "$out" "baseline=2 current=2"
+}
+
+test_review_scope_budget_handles_changed_tracked_ignored_files() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'tracked.log\n' > "$repo/.gitignore"
+  printf 'base\n' > "$repo/tracked.log"
+  git -C "$repo" add .gitignore
+  git -C "$repo" add --force tracked.log
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/tracked.log"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "tracked ignored review" --base main \
+    --scope-summary "Measure an intentionally tracked ignored file.")"
+  assert_output_contains "$out" "baseline=2 current=2"
+}
+
+test_review_scope_budget_classifies_quoted_paths() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  mkdir -p "$repo/tests" "$repo/café"
+  printf 'production\n' > "$repo/app.ts"
+  for number in {1..20}; do printf 'test %s\n' "$number"; done > "$repo/tests/café.ts"
+  for number in {1..30}; do printf 'lock %s\n' "$number"; done > "$repo/café/package-lock.json"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "quoted classification review" --base main \
+    --scope-summary "Classify quoted test and generated paths.")"
+  assert_output_contains "$out" "baseline=1 current=1"
+  assert_output_contains "$out" "excluded-tests=20 excluded-generated=30"
 }
 
 test_review_scope_ignores_checkout_controlled_git() {
@@ -1118,7 +2043,234 @@ test_review_scope_ignores_checkout_controlled_git() {
   test ! -e "$tmp/marker" || fail "scope commands must not execute checkout-controlled Git"
 }
 
+test_review_scope_temporary_index_ignores_hooks() {
+  local tmp db repo hooks
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  hooks="$tmp/hooks"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  mkdir "$hooks"
+  printf '#!/bin/sh\nprintf invoked > %s\n' "$tmp/hook-marker" > "$hooks/post-index-change"
+  chmod +x "$hooks/post-index-change"
+  git -C "$repo" config core.hooksPath "$hooks"
+  for number in {1..10}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "hook-safe review" --base main --scope-summary "Measure without hooks." >/dev/null
+  test ! -e "$tmp/hook-marker" || fail "temporary-index measurement must not execute Git hooks"
+  printf '*.txt diff\n' > "$repo/.gitattributes"
+  git -C "$repo" add .gitattributes
+  rm -f "$tmp/hook-marker"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "hook-safe review" --base main --reason "Measure a changed attribute file without hooks." >/dev/null
+  test ! -e "$tmp/hook-marker" || fail "attribute-side temporary-index measurement must not execute Git hooks"
+}
+
+test_review_scope_rebaseline_state_requires_authorization() {
+  local tmp db repo
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  git -C "$repo" switch --quiet --create feature
+  printf 'feature\n' > "$repo/app.ts"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "rebaseline review" --base main --scope-summary "Initial scope." >/dev/null
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+new DatabaseSync(process.argv[2]).exec("update review_scope_budgets set status = 'rebaseline-required', last_reason = 'explicit rebaseline required'")
+NODE
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "rebaseline review" --base main --reason "Try to bypass authorization." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check must not clear rebaseline-required"
+  fi
+  assert_contains "$tmp/stderr" "explicit rebaseline required"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "rebaseline review" --base main --scope-summary "Authorized scope." \
+    --authorization "User approved rebaseline." >/dev/null
+  local out
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "rebaseline review" --base main)"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+  assert_output_contains "$out" "authorization=User approved rebaseline."
+}
+
+test_review_scope_budget_uses_the_percentage_above_the_floor() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..600}; do printf 'line %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #21" --base main --head "$(git -C "$repo" rev-parse HEAD)" \
+    --scope-summary "A baseline above the minimum growth floor." >/dev/null
+
+  for number in {601..780}; do printf 'line %s\n' "$number"; done >> "$repo/app.ts"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #21" --base main \
+    --reason "The accepted fixes grow the diff to exactly 30 percent.")"
+  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "baseline=600 current=780 growth=180 allowed-growth=180 maximum=780"
+
+  printf 'line 781\n' >> "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #21" --base main \
+    --reason "One line past the percentage." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-check should block once growth exceeds 30 percent of a large baseline"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  assert_contains "$tmp/stderr" "baseline=600 current=781 growth=181 allowed-growth=180 maximum=780"
+
+  # Authorizing re-measures the tree, so the allowance must be recomputed from
+  # the new baseline. 30% of 781 is 234, which a carried-forward 180 or a
+  # floor-only 150 would both fail.
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #21" --base main \
+    --scope-summary "Include the approved production-line growth." \
+    --authorization "User approved the larger diff." >/dev/null
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #21" --base main)"
+  assert_output_contains "$out" "baseline=781 current=781 growth=0 allowed-growth=234 maximum=1015"
+}
+
+test_review_scope_budget_keeps_a_zero_production_baseline_at_zero() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..40}; do printf 'test %s\n' "$number"; done > "$repo/app.test.ts"
+  git -C "$repo" add app.test.ts
+  git -C "$repo" commit --quiet --message "tests only"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #23" --base main --head "$(git -C "$repo" rev-parse HEAD)" \
+    --scope-summary "A test-only branch may not grow production code.")"
+  assert_output_contains "$out" "baseline=0 current=0 growth=0 allowed-growth=0 maximum=0"
+
+  printf 'production\n' > "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #23" --base main \
+    --reason "The fix wants to touch production code." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "a zero-production baseline must block the first production line"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  assert_contains "$tmp/stderr" "baseline=0 current=1 growth=1 allowed-growth=0 maximum=0"
+}
+
+test_review_scope_budget_keeps_the_allowance_it_was_created_with() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..40}; do printf 'line %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #22" --base main --head "$(git -C "$repo" rev-parse HEAD)" \
+    --scope-summary "A budget keeps the allowance it was created with." >/dev/null
+
+  # Plant an allowance lower than the current rule would produce.
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+db.exec("update review_scope_budgets set allowed_growth_lines = 12")
+NODE
+
+  # A budget keeps the allowance it was created with. Reading one never
+  # rewrites it, so the stored bound stays the bound the review was held to and
+  # the recorded status and event trail keep agreeing with it.
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #22" --base main)"
+  assert_output_contains "$out" "baseline=40 current=40 growth=0 allowed-growth=12 maximum=52"
+
+  # The counts line reports stored numbers only. A rule rendered at print time
+  # is computed from the current policy and would contradict this row, whose
+  # allowance predates it.
+  printf '%s\n' "$out" | grep -Fq -- "limit=" && {
+    printf '%s\n' "$out" >&2
+    fail "the scope counts line must not print a growth rule alongside a stored allowance"
+  }
+  assert_output_contains "$out" "maximum=52 excluded-tests=0 excluded-generated=0"
+
+  # The stale case fails safe: the older allowance is the tighter one, so the
+  # review stops and asks rather than quietly widening.
+  for number in {41..120}; do printf 'fix %s\n' "$number"; done >> "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #22" --base main \
+    --reason "A fix beyond the allowance this budget was created with." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "a budget created before the floor must keep its tighter allowance"
+  fi
+  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+  assert_contains "$tmp/stderr" "current=120 growth=80 allowed-growth=12"
+
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+const row = db.prepare("select allowed_growth_lines as stored from review_scope_budgets").get()
+if (row.stored !== 12) {
+  console.error(`expected the stored allowance to be left at 12, found ${row.stored}`)
+  process.exit(1)
+}
+NODE
+}
+
 test_review_findings_workflow_is_documented
+test_review_scope_budget_keeps_a_zero_production_baseline_at_zero
+test_review_scope_budget_keeps_the_allowance_it_was_created_with
+test_review_scope_budget_uses_the_percentage_above_the_floor
 test_review_findings_runs_from_repo_launcher
 test_review_findings_record_command_without_base_requires_existing_run
 test_base_less_command_makes_its_run_current
@@ -1134,11 +2286,40 @@ test_review_findings_preserves_decision_log_on_update
 test_failed_scope_start_does_not_hide_existing_findings
 test_concurrent_scope_start_allows_only_one_active_budget
 test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state
+test_review_scope_authorize_resolves_moved_base
+test_review_scope_authorize_resolves_moved_base_from_ready
 test_review_scope_budget_blocks_deterministically
 test_review_scope_budget_can_close_before_a_later_review
 test_review_scope_budget_uses_the_merge_base
 test_review_scope_budget_measures_the_requested_head
+test_review_scope_budget_rejects_old_git_for_historical_heads
+test_review_scope_budget_supports_git_2_30_checked_out_reviews
+test_review_scope_budget_supports_old_git_sparse_checkout
+test_review_scope_budget_counts_untracked_feature_path_from_zero
+test_review_scope_budget_counts_embedded_repository
+test_review_scope_budget_distinguishes_binary_deletions_from_additions
+test_review_scope_budget_uses_current_side_binary_state
+test_review_scope_budget_counts_binary_to_text_replacements_as_text
+test_review_scope_budget_applies_deleted_attributes_to_tracked_files
+test_review_scope_budget_blocks_staged_binary_attribute_file
+test_review_scope_budget_preserves_sparse_parent_attributes_for_staged_attribute_files
+test_review_scope_budget_counts_directory_to_file_replacement
+test_review_scope_budget_honors_staged_attribute_deletion
+test_review_scope_budget_honors_unstaged_attribute_deletion
 test_review_scope_budget_counts_dangling_symlinks
+test_review_scope_budget_measures_outside_sparse_checkout
+test_review_scope_budget_measures_committed_sparse_paths
+test_review_scope_budget_measures_absent_assume_unchanged_paths
+test_review_scope_budget_measures_materialized_assume_unchanged_paths
+test_review_scope_budget_measures_materialized_skip_worktree_paths
+test_review_scope_budget_measures_materialized_combined_index_flags
+test_review_scope_budget_preserves_non_utf8_path_bytes
+test_review_scope_budget_persists_reversible_quoted_paths
+test_review_scope_budget_handles_partially_staged_files
+test_review_scope_budget_handles_changed_tracked_ignored_files
+test_review_scope_budget_classifies_quoted_paths
 test_review_scope_ignores_checkout_controlled_git
+test_review_scope_temporary_index_ignores_hooks
+test_review_scope_rebaseline_state_requires_authorization
 
 printf 'ok - review-findings tests\n'
