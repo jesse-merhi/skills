@@ -501,6 +501,8 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_output_contains "$both_voice" "**Vary rhythm.**"
   assert_output_contains "$both_voice" "**Acknowledge complexity.**"
   assert_output_not_contains "$both_voice" "**Have opinions.**"
+  assert_output_not_contains "$both_voice" '**Use "I" when it fits.**'
+  assert_output_not_contains "$both_voice" "**Let some mess in.**"
   user_only_voice="$(sed -n '/^Speaking to the user only:$/,/^## Content$/p' "$refs")"
   assert_output_contains "$user_only_voice" "**Have opinions.**"
   assert_output_contains "$user_only_voice" '**Use "I" when it fits.**'
