@@ -1,4 +1,4 @@
-# Confirmation Pass
+# Confirmation pass
 
 Before finalizing a runtime finding, answer:
 

@@ -3,7 +3,7 @@ name: typescript-discipline
 description: 'Write or review TypeScript with shared types, boundary validation, safe narrowing, and verification.'
 ---
 
-# TypeScript Discipline
+# TypeScript discipline
 
 Use TypeScript to model the real contract. Prefer named types, validated
 boundaries, and compiler-checked narrowing over casts or informal object shapes.
@@ -21,7 +21,7 @@ boundaries, and compiler-checked narrowing over casts or informal object shapes.
    [context7.md](references/context7.md) when its tools are available.
 6. Verify with repo scripts using [verification.md](references/verification.md).
 
-## Required Discipline
+## Required discipline
 
 - Do not use `any` without asking the user first.
 - Do not add `@ts-ignore` or `@ts-expect-error` unless the user asks, and explain
@@ -29,7 +29,7 @@ boundaries, and compiler-checked narrowing over casts or informal object shapes.
 - Model structured data first. Serialize strings, cache keys, and protocol
   values only at an explicit boundary.
 
-## Context Pointers
+## Context pointers
 
 - Use [type-boundaries.md](references/type-boundaries.md) for shared/local type
   placement and data modeling.

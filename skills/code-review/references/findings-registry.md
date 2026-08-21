@@ -1,4 +1,4 @@
-# Findings Registry
+# Findings registry
 
 The findings database is the working registry. The SQLite findings database is
 the durable registry for every finding raised by native review, cold review,
@@ -33,7 +33,7 @@ database stores records under:
 ~/.local/state/agent-review-findings/reviews.sqlite
 ```
 
-## Scope Budget Records
+## Scope budget records
 
 Start each new review run by freezing its user-authorized scope and direct-diff
 baseline:
@@ -42,8 +42,12 @@ baseline:
 "$review_findings_bin" scope-start \
   --repo <repo> --repo-path <repo-root> --branch <branch> \
   --target <target> --base <base> --head <head> \
-  --scope-summary "<request, behavior, owner boundary, and files>"
+  --scope-summary "<request, behavior, and owner boundary>"
 ```
+
+Measuring a historical `--head` without checking it out requires Git 2.41 or
+newer so binary attributes come from that target commit. On older Git, check out
+the requested head first or update Git before starting the scope budget.
 
 After every accepted fix and before another review pass, run:
 
@@ -55,8 +59,8 @@ After every accepted fix and before another review pass, run:
 ```
 
 A passing check prints the exact baseline, current production lines, allowed
-growth, excluded test/generated lines, and frozen scope. A blocked check exits
-non-zero and is an immediate stop: present its output to the user and do no more
+growth, exclusions, frozen scope, and informational text paths. A blocked check exits
+non-zero for line overage or a new binary path: present its output and do no more
 review or patch work.
 
 Only after the user explicitly approves a larger scope, record their words and
@@ -74,7 +78,10 @@ Use `scope-status` after compaction or handoff. `scope-start` refuses to replace
 an existing baseline or create a second active baseline under a renamed target,
 and `scope-authorize` refuses to run until a check has blocked. Keep the database
 outside the reviewed repository so its SQLite files cannot enter the measured
-diff.
+diff. The exception is a migrated budget whose status says rebaseline is
+required: after showing that reason and receiving explicit approval, run
+`scope-authorize` directly because `scope-check` intentionally cannot clear the
+migration state.
 
 After both review phases are clean and one final `scope-check` passes, close the
 budget:
@@ -89,7 +96,7 @@ budget:
 An active budget blocks any second `scope-start` for the same repository and
 branch. `scope-complete` releases that lock for a later user-authorized review.
 
-## Finding Records
+## Finding records
 
 Write finding cards for the review owner, not for the reviewer that discovered
 them. Before recording each batch, apply the `speak-fking-english` reader reset
@@ -218,7 +225,7 @@ review find?":
 "$review_findings_bin" query --repo sample-app --repo-path <repo-root> --branch <branch> --target <current-target> --json "blocked consult payment reversal"
 ```
 
-## Validation Records
+## Validation records
 
 Record each validation command as soon as it finishes:
 

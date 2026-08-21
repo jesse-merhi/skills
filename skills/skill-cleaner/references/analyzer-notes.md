@@ -1,4 +1,4 @@
-# Analyzer Notes
+# Analyzer notes
 
 - The script mirrors Codex's model-visible line shape:
   `- name: description (file: path)`.

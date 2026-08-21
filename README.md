@@ -39,9 +39,9 @@ Read INSTALL.md and install these skills for your harness.
 ```
 
 [`INSTALL.md`](INSTALL.md) is the authoritative installer and is written *to the
-agent*, not to you. It detects the harness, links the global instruction files,
-surveys what is already in your skills directory, symlinks each repo skill in by
-its frontmatter `name`, reconciles third-party skills from
+agent*, not to you. It detects the harness, links the global instruction
+files, surveys what is already in your skills directory, symlinks each repo
+skill in by its frontmatter `name`, reconciles third-party skills from
 [`external.md`](external.md), and runs the tests. It asks before touching
 anything it did not put there.
 
@@ -64,7 +64,7 @@ mystery tree. Hand-written local skills are never replaced without asking.
 **Honesty about harness coverage:** the installer handles four link-based
 harnesses plus a locally running OpenClaw Gateway. The skills themselves were
 written and exercised almost entirely on Codex and Claude Code, and several
-name those harnesses directly — `code-review` picks between `codex review` and
+name those harnesses directly. `code-review` picks between `codex review` and
 Claude Code's built-in review, `session-recall` indexes Codex and Claude session
 logs, `acpx-frontend-delegation` drives Claude Code from Codex. On opencode, Pi,
 and OpenClaw they will install; whether every one of them *works* is not
@@ -73,16 +73,16 @@ something this repo proves.
 ## What a skill actually is
 
 A skill is a directory with a `SKILL.md` inside it. The frontmatter carries a
-`name` and a one-line `description`; the body is the workflow — steps, rules,
+`name` and a one-line `description`; the body is the workflow: steps, rules,
 stop conditions, and pointers to reference files that only get read when they
 are needed.
 
 Two ways one gets used:
 
-- **The agent picks it.** Harnesses keep every skill's `name` and `description`
-  in context and load the body when the description matches the task. That is
-  why the descriptions in this repo are written as trigger conditions rather
-  than summaries.
+- **The agent picks it.** Harnesses keep every skill's `name` and
+  `description` in context and load the body when the description matches the
+  task. That is why the descriptions in this repo are written as trigger
+  conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
   "use `grilling` on this" in either harness. Codex marks eight skills as
   explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,
@@ -92,7 +92,7 @@ Two ways one gets used:
   you to name them.
 
 Some skills are not entry points at all. `review-guardrails`,
-`finding-discipline`, and `review-surface-map` are plumbing that the review
+`finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
 ## The loop
@@ -100,7 +100,7 @@ loops load; you can invoke them directly, but usually something else does.
 The skills are not a menu. They snap into the loop I actually run:
 
 1. **Find the thing.** `session-recall` for context I already had,
-   `review-surface-map` for a change I need to understand, `diagnose` for a bug
+   `review-flow-map` for a change I need to understand, `diagnose` for a bug
    that is still vague.
 2. **Brief it.** `grill-with-docs` pulls repo docs, code, and Obsidian notes in
    before the agent starts guessing. `research` when the answer lives in
@@ -114,7 +114,7 @@ The skills are not a menu. They snap into the loop I actually run:
    `parallel-slice-orchestration` when several isolated worktrees should move at
    once, external `gh-stack` when one story is really a dependency-ordered
    stack.
-6. **Prove it.** `test-audit`, `frontend-ui-validation`, `diagnose` — because
+6. **Prove it.** `test-audit`, `frontend-ui-validation`, `diagnose`, because
    the transcript is not evidence.
 7. **Review it like I hate it.** `code-review` runs the native engine until
    clean, then an independent cold reviewer until clean. `pr-rubbish-audit`
@@ -125,14 +125,14 @@ The skills are not a menu. They snap into the loop I actually run:
    than they return.
 
 A worked example, three skills deep: `code-review` is a thin orchestrator. It
-runs `review-until-clean`, which loops the harness's *own* review command until
-two consecutive passes come back clean. Then it runs
+runs `review-until-clean`, which loops the harness's *own* review command
+until two consecutive passes come back clean. Then it runs
 `cold-pr-review-until-clean`, which spawns a fresh subagent per pass with zero
-implementation context — no rationale, no prior findings, no CI status — because
-knowing why a decision was made stops you asking whether it was right. Under
-both, `finding-discipline` throws out nits and vague risks, and
-`review-guardrails` caps how far review-driven fixes may grow the PR before it
-has to come back and ask me.
+implementation context: no rationale, no prior findings, no CI status. Knowing
+why a decision was made stops you asking whether it was right. Under both,
+`finding-discipline` throws out nits and vague risks, and `review-guardrails`
+caps how far review-driven fixes may grow the PR before it has to come back and
+ask me.
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
@@ -154,17 +154,17 @@ code looks the way it does.
 | [`cold-pr-review`](skills/cold-pr-review/SKILL.md) | One independent review pass by a subagent given only the target and a neutral checklist, so it cannot inherit the author's anchoring. |
 | [`cold-pr-review-until-clean`](skills/cold-pr-review-until-clean/SKILL.md) | Repeats fresh cold reviews and fixes until one full pass returns zero actionable findings. |
 | [`pr-rubbish-audit`](skills/pr-rubbish-audit/SKILL.md) | Hunts the diff for things the feature never asked for: stray refactors, dead comments, generated drift, unrelated deletions. |
-| [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge — never on local commits. |
+| [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge, never on local commits. |
 | [`pr-review-checkout`](skills/pr-review-checkout/SKILL.md) | Opens a PR in its real worktree and reviews it through VS Code, with an answer-first orientation for a cold reader. |
 | [`monitoring-gh-actions`](skills/monitoring-gh-actions/SKILL.md) | Waits on GitHub Actions with history-derived intervals and reports state changes, instead of polling or triaging. |
 
-Internal review plumbing — loaded by the loops above, rarely called directly:
+Internal review plumbing, loaded by the loops above and rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
 | [`review-guardrails`](skills/review-guardrails/SKILL.md) | Bounds an autonomous review: scope baseline, budgets, consult queue, provisional fixes, and the fixed point where it must stop and ask. |
-| [`finding-discipline`](skills/finding-discipline/SKILL.md) | Sets the bar a finding must clear — concrete failure or present cost — and merges duplicates into one root cause. |
-| [`review-surface-map`](skills/review-surface-map/SKILL.md) | Traces the changed runtime flows, contracts, and side effects before anyone is allowed to write a finding. |
+| [`finding-discipline`](skills/finding-discipline/SKILL.md) | Requires a concrete failure or a present cost before a finding counts, and merges duplicates into one root cause. |
+| [`review-flow-map`](skills/review-flow-map/SKILL.md) | Traces the changed runtime flows, contracts, and side effects before anyone is allowed to write a finding. |
 
 ### Code quality and correctness
 
@@ -175,7 +175,7 @@ Internal review plumbing — loaded by the loops above, rarely called directly:
 | [`tdd`](skills/tdd/SKILL.md) | The red-green-refactor loop and the rules that make the tests worth keeping; loaded by orchestration workflows more than called directly. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
-| [`improve-codebase-architecture`](skills/improve-codebase-architecture/SKILL.md) | An architectural lens — module depth, interfaces, locality, testability — that proposes the smallest structural change, not a refactor. |
+| [`improve-codebase-architecture`](skills/improve-codebase-architecture/SKILL.md) | An architectural lens over module depth, interfaces, locality, and testability. Proposes the smallest structural change, not a refactor. |
 
 ### Planning, context, and handoff
 
@@ -183,7 +183,7 @@ Internal review plumbing — loaded by the loops above, rarely called directly:
 | --- | --- |
 | [`grilling`](skills/grilling/SKILL.md) | Interviews you as a design tree, one full round of questions at a time, each with a recommended answer. |
 | [`grill-with-docs`](skills/grill-with-docs/SKILL.md) | Same, but grounded first in repo docs, code, ADRs, specs, and tickets. |
-| [`research`](skills/research/SKILL.md) | Answers a question from primary sources — official docs, source, specs — with citations, not blog posts. |
+| [`research`](skills/research/SKILL.md) | Answers a question from primary sources such as official docs, source, and specs, with citations rather than blog posts. |
 | [`to-spec`](skills/to-spec/SKILL.md) | Turns a settled conversation into an Obsidian spec including testing seams and the intended PR delivery shape. |
 | [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
 | [`wayfinder`](skills/wayfinder/SKILL.md) | For work too foggy for one session: charts it as decision tickets in Obsidian and resolves them until the route is visible. |
@@ -195,7 +195,7 @@ Internal review plumbing — loaded by the loops above, rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
-| [`frontend-design`](skills/frontend-design/SKILL.md) | Layout, hierarchy, typography, colour, and every state of the surface — implemented, not sketched. |
+| [`frontend-design`](skills/frontend-design/SKILL.md) | Layout, hierarchy, typography, colour, and every state of the screen, implemented rather than sketched. |
 | [`design-engineering`](skills/design-engineering/SKILL.md) | Owns the interaction layer: transitions, gestures, springs, easing, and how it feels under the finger. |
 | [`review-animations`](skills/review-animations/SKILL.md) | Reviews existing motion code for purpose, timing, interruption, performance, and reduced-motion support. |
 | [`prototype`](skills/prototype/SKILL.md) | Builds 3–5 genuinely divergent UI variants behind a picker, isolated from production. Explicit request only. |
@@ -206,8 +206,8 @@ Internal review plumbing — loaded by the loops above, rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
-| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | The last pass before every final response: reader reset, re-pitch on "wait, what?", visuals only when they earn their place. |
-| [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text — code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
+| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Runs a compact clarity and voice pass before every final response, then adds the full AI-tells catalogue when the user invokes the skill explicitly. |
+| [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
 ### Meta and operations
 
@@ -229,8 +229,8 @@ else. They will only be useful to you if you work on those projects.
 | [`openclaw-local-test`](skills/openclaw/openclaw-local-test/SKILL.md) | Brings up an isolated local OpenClaw Gateway for manual browser testing using the current Codex or Claude login. |
 | [`openclaw-stg-test`](skills/openclaw/openclaw-stg-test/SKILL.md) | Publishes a temporary Control UI preview through a guarded Cloudflare Quick Tunnel without exposing an authenticated Gateway. |
 | [`openclaw-telegram-handoff`](skills/openclaw/openclaw-telegram-handoff/SKILL.md) | Sends one terminal update to an approved Telegram route when work is done or blocked, and relays the reply back to the source session. |
-| [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot — never production itself. |
-| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Loops the Clawsweeper PR bot — trigger, wait, fix, push — until three consecutive re-reviews come back clean. |
+| [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot, never production itself. |
+| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Loops the Clawsweeper PR bot through trigger, wait, fix, and push until three consecutive re-reviews come back clean. |
 
 ## External skills
 
@@ -246,7 +246,7 @@ copies or symlinks their files.
 | `teach` | Matt Pocock | Codex |
 
 `external.md` also keeps tombstones for retired third-party skills, with removal
-commands that run on every reinstall. `impeccable` is there now — removing its
+commands that run on every reinstall. `impeccable` is there now. Removing its
 directory was never enough, since its hook wrote state outside it that survived
 two reinstalls.
 
@@ -267,7 +267,7 @@ The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
 [`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
 backs the review loops with a local SQLite store of findings, verification
 records, and scope baselines. It runs from that launcher against the repo's own
-Effect runtime — there is no separate global install.
+Effect runtime. There is no separate global install.
 
 ## Contributing
 
@@ -291,8 +291,9 @@ Matt Pocock's agent workflow ideas shaped the grilling, spec, slicing, and
 handoff parts of the loop, and `tdd` adapts his skill directly. Emil Kowalski's
 design-engineering work shaped the interaction, motion, and prototyping skills.
 Matt Pocock's `wait-what` and HumanLayer's `show-me` shaped the reader-reset and
-visual-selection passes now living inside `speak-fking-english`. Adapted
-material keeps its own MIT notices.
+visual-selection passes now living inside `speak-fking-english`, and Lauren
+Tan's `unslop` supplied its AI-tells catalogue. Adapted material keeps its own MIT
+notices.
 
 I took the shape, bent it around my own setup, and kept the parts that paid
 rent.
@@ -308,7 +309,7 @@ Personal and opinionated does not mean secret. Workflow stays. Leaks do not.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Adapted third-party material retains its own
+MIT. See [`LICENSE`](LICENSE). Adapted third-party material retains its own
 notices.
 
 ## Security

@@ -1,6 +1,6 @@
-# Good And Bad Tests
+# Good and bad tests
 
-## Good Tests
+## Good tests
 
 Integration-style tests go through real interfaces, not mocks of internal parts.
 
@@ -21,7 +21,7 @@ Good tests:
 - describe what, not how;
 - carry one logical assertion.
 
-## Bad Tests
+## Bad tests
 
 Implementation-detail tests couple to internal structure.
 

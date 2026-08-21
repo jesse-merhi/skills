@@ -1,4 +1,4 @@
-# Upstream License
+# Upstream license
 
 The `skill-cleaner` workflow and analyzer originated in
 [`steipete/agent-scripts`](https://github.com/steipete/agent-scripts). This

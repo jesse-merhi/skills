@@ -1,4 +1,4 @@
-# Claude Engine
+# Claude engine
 
 Inside Claude Code, invoke the built-in reviewer through its named workflow.
 This is the same finder-and-verify review that `/code-review` runs, and the

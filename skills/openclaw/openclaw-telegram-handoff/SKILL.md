@@ -3,11 +3,11 @@ name: openclaw-telegram-handoff
 description: 'Notify the operator on Telegram when an OpenClaw agent finishes, becomes blocked or stalled, or needs user input; also relay a Telegram reply back to the named source session. Use for terminal task handoffs and after openclaw-stg-test, not for routine progress updates.'
 ---
 
-# OpenClaw Telegram Handoff
+# OpenClaw Telegram handoff
 
 Send one useful terminal update without turning Telegram into a progress log.
 
-## Outbound Handoff
+## Outbound handoff
 
 1. Decide whether this is a terminal handoff.
 
@@ -50,7 +50,7 @@ Send one useful terminal update without turning Telegram into a progress log.
    If the current final reply already goes to the same Telegram route, use that
    reply and do not duplicate it. Otherwise prefer OpenClaw's `message` tool.
    When only the CLI is available, first write the exact generated message to a
-   run-owned mode-`0600` file through the harness's safe file-writing surface.
+   run-owned mode-`0600` file through the harness's safe file-writing API.
    Pass the file contents as one quoted argument; never substitute generated
    handoff text into a shell command template. Then use:
 
@@ -67,7 +67,7 @@ Send one useful terminal update without turning Telegram into a progress log.
    failed notification does not turn completed work into failure; report the
    delivery failure through the originating session and still remove the file.
 
-## Reply Relay
+## Reply relay
 
 When a Telegram message names the bound stable label from one of these handoffs
 and supplies the requested answer:
@@ -85,7 +85,7 @@ and supplies the requested answer:
    accepted. Do not answer a distinct source agent's blocked question on its
    behalf.
 
-## Done Means
+## Done means
 
 - Exactly one terminal update reaches the intended Telegram route, or the
   originating session clearly reports why no approved route exists.

@@ -1,4 +1,4 @@
-# HITL Checkpoints
+# HITL checkpoints
 
 HITL means the slice needs user/product review while work is in flight, such as
 an architectural decision, design review, workflow choice, or

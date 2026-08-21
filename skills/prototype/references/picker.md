@@ -1,8 +1,8 @@
-# Prototype Picker Contract
+# Prototype picker contract
 
-Use this fixed picker for every prototype. It is harness chrome, not part of
-the design being judged. Keep its classes, values, and behavior stable across
-projects.
+Use this fixed picker for every prototype. It frames the variants and is not
+part of the design being judged. Keep its classes, values, and behavior stable
+across projects.
 
 ## Markup
 

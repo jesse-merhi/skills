@@ -22,7 +22,7 @@ longer exposes that field, and no compatibility/privacy contract requires
 testing its absence. Assert the new alert list shape instead.
 ```
 
-## Stale API Assertion Example
+## Stale API assertion example
 
 If a PR replaces:
 

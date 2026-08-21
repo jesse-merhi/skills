@@ -3,15 +3,15 @@ name: review-guardrails
 description: 'Manage budgets, scope, findings, consults, provisional fixes, and fixed-point rules for autonomous reviews.'
 ---
 
-# Review Guardrails
+# Review guardrails
 
 Load this skill at the start of any until-clean review loop (`code-review`,
 `review-until-clean`, `cold-pr-review-until-clean`). It bounds how long an
 autonomous review may run, how much review fixes may grow the PR, and what
 happens to findings that need the user instead of autonomy. There is no
-iteration cap: the budgets are the bound.
+iteration cap. The budgets are the bound.
 
-## Required State
+## Required state
 
 Record at setup, before the first review cycle:
 
@@ -19,7 +19,7 @@ Record at setup, before the first review cycle:
 review_started = <local timestamp>
 baseline_diff  = <changed files and changed lines of the original target,
                   persisted by `$review_findings_bin scope-start`>
-scope_baseline = <request, target, intended behavior, owner boundary, files>
+scope_baseline = <request, target, intended behavior, owner boundary>
 findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
 decision_log_path = <optional path for long-form rationale, when available>
 consult_queue  = []
@@ -56,7 +56,8 @@ fields in its header.
    [scope-governor.md](references/scope-governor.md).
 4. Before patching, apply the systemic-finding stop in
    [systemic-findings.md](references/systemic-findings.md). Patch only
-   non-systemic in-scope blockers.
+   non-systemic blockers within the task and diff budget. Allow new text paths,
+   but require authorization for new binaries.
 5. For accepted findings with an uncertain repair, use the provisional-fix or
    consult rules in [uncertain-findings.md](references/uncertain-findings.md).
    Do not use provisional code to resolve uncertainty about whether a risk
@@ -71,13 +72,13 @@ fields in its header.
    user, load `speak-fking-english` and use the user-facing request rules in
    [scope-governor.md](references/scope-governor.md).
 
-## Completion Rules
+## Completion rules
 
 - A fully clean verdict is valid only when the clean streak requirement is met
   and the consult queue has no open entries.
 - A clean-except-queue fixed point is a blocked-on-consult state, not success.
-- Every patched finding must stay within `scope_baseline` and the diff-growth
-  budget.
+- Every patch must preserve `scope_baseline` and the diff budget. Text paths are
+  informational; new binary production paths require authorization.
 - Every patched finding must pass the autonomous fix bar.
 - A clean verdict requires a persisted scope baseline, a final passing
   `scope-check`, and `scope-complete`; a prose estimate or reconstructed
@@ -86,7 +87,7 @@ fields in its header.
   recorded in the findings database or loop report.
 - Do not keep re-running an unchanged tree after the fixed point.
 
-## Context Pointers
+## Context pointers
 
 - Use [budgets.md](references/budgets.md) for the wall-clock and diff-growth
   budgets.

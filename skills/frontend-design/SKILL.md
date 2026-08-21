@@ -3,7 +3,7 @@ name: frontend-design
 description: 'Design production UI: layout, hierarchy, typography, color, responsive states, systems, and polish.'
 ---
 
-# Frontend Design
+# Frontend design
 
 Shape interfaces around the product and its existing system, then implement the
 complete rendered result.
@@ -17,9 +17,9 @@ complete rendered result.
    existing states. Preserve working conventions; change the system only when
    the product outcome justifies it.
 3. Name the design direction in one sentence. Make it specific to the task and
-   register: product UI should optimize task clarity; brand surfaces may carry
+   register: product UI should optimize task clarity; brand work may carry
    more expression.
-4. Implement the full surface, including loading, empty, error, disabled, long
+4. Implement every state, including loading, empty, error, disabled, long
    content, narrow viewport, keyboard, focus, and touch behavior when relevant.
 5. When motion, gestures, transitions, micro-interactions, or component feel
    materially affect the result, load `design-engineering` before implementing
@@ -27,7 +27,7 @@ complete rendered result.
 6. Validate visible changes with `frontend-ui-validation` or the repo-owned
    native UI-quality workflow before reporting completion.
 
-## Design Principles
+## Design principles
 
 ### Hierarchy and content
 

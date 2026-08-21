@@ -1,4 +1,4 @@
-# Finding Bar
+# Finding bar
 
 A review finding must satisfy all of these:
 

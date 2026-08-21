@@ -1,4 +1,4 @@
-# Questions And Moves
+# Questions and moves
 
 ## Questions
 
@@ -12,7 +12,7 @@
 - Can the behavior be tested without constructing the whole app?
 - Is the pain real in this codebase, or only a preference?
 
-## Useful Moves
+## Useful moves
 
 - Move policy decisions closer to the domain boundary.
 - Split orchestration from pure transformation when that improves testability.

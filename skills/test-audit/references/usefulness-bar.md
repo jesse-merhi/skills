@@ -1,4 +1,4 @@
-# Usefulness Bar
+# Usefulness bar
 
 A test earns its keep only when you can answer all five:
 
@@ -21,7 +21,7 @@ records, or stable accessibility contracts. Do not add tests that only lock
 incidental UI copy unless that exact copy is the current product contract, such
 as a legal notice, required error message, or accessibility label.
 
-## Good Test Signals
+## Good test signals
 
 - It would fail if a future refactor broke the new contract.
 - It checks a real caller, route, screen, permission, state transition, data
@@ -36,7 +36,7 @@ as a legal notice, required error message, or accessibility label.
 - It prevents a regression that has happened before or is demonstrably reachable
   from the changed code.
 
-## Waste Signals
+## Waste signals
 
 - It asserts a removed field is absent after the API was intentionally replaced.
 - It tests branch-local history, such as "old behavior no longer happens."

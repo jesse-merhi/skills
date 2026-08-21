@@ -1,4 +1,4 @@
-# Common Options
+# Common options
 
 Inspect both native clients without starting OpenClaw:
 

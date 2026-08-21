@@ -1,4 +1,4 @@
-# Browser Layout Audit
+# Browser layout audit
 
 Run the bundled layout audit script through Playwright at each required width:
 

@@ -1,6 +1,6 @@
-# Guardrails And Scope
+# Guardrails and scope
 
-## Scope Governor
+## Scope governor
 
 Before Phase 1, freeze the review scope:
 
@@ -8,7 +8,7 @@ Before Phase 1, freeze the review scope:
 - base and target branch
 - intended behavior
 - owner boundary
-- changed files
+- changed files (text paths are informational; new binaries require approval)
 - non-test changed lines
 
 Before patching a reviewer finding, classify it:
@@ -23,13 +23,12 @@ Patch only in-scope blockers. Record follow-ups in the findings database and do
 not patch them in this PR. Put stop-and-consult findings in the consult queue
 with the scope reason.
 
-## Budgets And Consult Gates
+## Budgets and consult gates
 
 `review-guardrails` owns the bounds for this skill: the wall-clock budget
-(default 8 hours per run), the deterministic diff-growth budget (exactly 30%
-of baseline production changed lines by default), the consult queue for findings that need user input, and the
+(default 8 hours per run), the deterministic diff-growth budget, the consult queue for findings that need user input, and the
 queue-matching and fixed-point rules that stop later review passes from
-re-litigating queued findings. There is no iteration cap: the budgets are the
+re-litigating queued findings. There is no iteration cap. The budgets are the
 bound.
 
 Orchestrator specifics:

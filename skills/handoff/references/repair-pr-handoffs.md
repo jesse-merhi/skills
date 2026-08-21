@@ -1,4 +1,4 @@
-# Repair And PR Handoffs
+# Repair and PR handoffs
 
 When the next session is expected to fix code:
 

@@ -1,4 +1,4 @@
-# Feedback Loop
+# Feedback loop
 
 Find or create the fastest deterministic feedback loop:
 

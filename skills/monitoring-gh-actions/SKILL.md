@@ -8,7 +8,7 @@ description: 'Monitor GitHub Actions with history-aware waits; report state chan
 Use this skill when the job is to **wait on GitHub Actions** rather than debug
 or fix them. This is a monitoring skill, not a CI triage/fix skill.
 
-## Core Rule
+## Core rule
 
 Use `wait-efficiently` for every wait. Keep the current command or wait pending
 inside one tool call so the model is not re-entered between checks.
@@ -36,7 +36,7 @@ seconds.
 6. If the goal shifts from waiting to fixing CI, stop using this skill and
    switch to a CI-fix workflow instead.
 
-## Context Pointers
+## Context pointers
 
 - Use [preflight.md](references/preflight.md) before watching.
 - Use [commands.md](references/commands.md) for PR checks, workflow runs, manual

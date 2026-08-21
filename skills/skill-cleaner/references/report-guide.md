@@ -1,4 +1,4 @@
-# Report Guide
+# Report guide
 
 Read the report in this order:
 

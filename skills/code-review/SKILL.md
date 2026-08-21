@@ -3,7 +3,7 @@ name: code-review
 description: 'Run authorized native and independent fix-and-rerun reviews for a PR, branch, commit, or diff.'
 ---
 
-# Code Review
+# Code review
 
 Orchestrate two until-clean review phases for one target.
 
@@ -37,8 +37,8 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    When Codex is selected, confirm the current runtime identity can resolve and
    authenticate the standalone Codex CLI before review.
 
-   Use the model configured by the selected harness. Do not hard-code or probe
-   private model catalogues before review; the native command owns model
+   Use the model configured by the selected harness. Do not hard-code or
+   probe private model catalogues before review; the native command owns model
    availability and reports an actionable failure when its configuration is
    invalid.
 
@@ -54,7 +54,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
    review_started = <local timestamp>
    baseline_diff = <changed files and changed lines of the original target>
-   scope_baseline = <request, target, intended behavior, owner boundary, files>
+   scope_baseline = <request, target, intended behavior, owner boundary>
    consult_queue = []
    findings_registry = <SQLite findings database>
    ```
@@ -70,7 +70,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    "$review_findings_bin" scope-start \
      --repo <repo> --repo-path <repo-root> --branch <branch> \
      --target <target> --base <base> --head <head> \
-     --scope-summary "<request, behavior, owner boundary, and files>"
+     --scope-summary "<request, behavior, and owner boundary>"
    ```
 
    Treat `schema` output as the authoritative finding-record contract. On a
@@ -81,7 +81,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 4. Run one-time setup for the current target.
 
    Read [references/setup-and-lenses.md](references/setup-and-lenses.md). Done
-   when the changed surface is mapped, required lenses have run, conditional
+   when the changed flows are mapped, required lenses have run, conditional
    lenses have run or been marked not applicable, the Fowler smell baseline has
    been considered on the Standards path, the neutral cold-review risk checklist
    exists, and validation targets are known.
@@ -167,11 +167,11 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    final response. Record the exact final head or dirty snapshot identity in
    the closeout so a later PR workflow can detect whether the review is current.
 
-## Done Means
+## Done means
 
 - The selected harness-native review engine started successfully with its
   configured model.
-- `review-surface-map`, required lenses, applicable conditional lenses,
+- `review-flow-map`, required lenses, applicable conditional lenses,
   `review-guardrails`, and `finding-discipline` were used.
 - Native review met its clean stop condition before Phase 2, and cold review
   met its clean stop condition on the final target and dirty-tree/snapshot
@@ -188,7 +188,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - `scope-start` persisted the original baseline, every accepted fix was followed
   by `scope-check`, and the final check passed before `scope-complete`. Any
   authorized reset records the user's words through `scope-authorize`.
-- Final validation for the affected surfaces passed, or blockers and residual
+- Final validation for the affected flows passed, or blockers and residual
   risk are explicit.
 - No remote branch or PR mutation occurred while either review phase still had
   findings. After both phases were clean, the final full local validation
@@ -198,7 +198,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - The final answer is backed by `review-findings closeout`, not chat memory.
 - The final answer identifies the exact reviewed head or dirty snapshot.
 
-## Stop Honestly
+## Stop honestly
 
 Stop without claiming clean when tools or the selected native engine are
 unavailable, validation is blocked, budgets expire, the user stops the run,

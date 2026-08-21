@@ -1,4 +1,4 @@
-# Context Reading
+# Context reading
 
 Trace each changed flow end to end. For every meaningful flow, identify:
 

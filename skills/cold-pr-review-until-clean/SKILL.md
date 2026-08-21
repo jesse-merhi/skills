@@ -3,7 +3,7 @@ name: cold-pr-review-until-clean
 description: 'Repeat fresh cold reviews and fixes until the configured clean stop condition.'
 ---
 
-# Cold PR Review Until Clean
+# Cold PR review until clean
 
 Run independent cold-review subagents in a loop. Every time a cold reviewer
 surfaces actionable findings, fix only those findings and run another fresh
@@ -18,7 +18,7 @@ skipped. The source of truth here is `cold-pr-review`, not an OpenClaw-specific
 review workflow or Clawsweeper. Fixes are handled directly by the implementing
 agent unless a repo-specific fix workflow applies.
 
-## Non-Negotiables
+## Non-negotiables
 
 ```yaml
 review_tool: must invoke cold-pr-review through an independent subagent whenever the harness supports subagents
@@ -48,7 +48,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 2. Build neutral reviewer context.
 
-   If `code-review` already ran `review-surface-map`, `pr-rubbish-audit`,
+   If `code-review` already ran `review-flow-map`, `pr-rubbish-audit`,
    `typescript-discipline`, `improve-codebase-architecture`,
    `reducing-cognitive-load`, `frontend-ui-validation`, or
    `finding-discipline`, do not pass those results to the reviewer. Convert
@@ -76,7 +76,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
    [references/fixing-and-reporting.md](references/fixing-and-reporting.md)
    before editing or reporting.
 
-## Done Means
+## Done means
 
 - Every review pass used a fresh isolated reviewer whenever the harness
   supported one.

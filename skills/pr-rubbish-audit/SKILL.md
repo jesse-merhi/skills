@@ -3,7 +3,7 @@ name: pr-rubbish-audit
 description: 'Audit PR diffs for unrelated artifacts, noisy comments, deletions, generated drift, and stray refactors.'
 ---
 
-# PR Rubbish Audit
+# PR rubbish audit
 
 Audit the diff for coherence, not minimalism. The goal is **no rubbish in the
 PR**, not reduced functionality. Keep real behavior, tests, docs, and
@@ -37,7 +37,7 @@ compatibility that the feature needs.
    deadlocks or cannot run, run its constituent commands and state the caveat.
 8. Report using [output.md](references/output.md).
 
-## Required Judgment
+## Required judgment
 
 - Do not remove functionality just to shrink the diff.
 - If a hunk might be behavior-preserving refactor but does not help the feature,
@@ -48,7 +48,7 @@ compatibility that the feature needs.
   only prove the old behavior is gone unless a current compatibility, privacy,
   migration, or security contract requires that absence.
 
-## Context Pointers
+## Context pointers
 
 - Use [classifications.md](references/classifications.md) for required,
   suspicious, rubbish, and dangerous-removal labels.

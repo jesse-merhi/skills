@@ -1,4 +1,4 @@
-# Review Phase Rules
+# Review phase rules
 
 ## Validation
 
@@ -9,7 +9,7 @@ package scripts for tests, typecheck, lint, build, UI/E2E, migrations, security,
 or generated-artifact checks. If required validation cannot run, stop honestly
 with the blocker or residual risk.
 
-## Target Handling
+## Target handling
 
 - Default to whole PR/branch review. If the branch has committed PR changes and
   dirty local changes, review a temporary snapshot that includes both the branch
@@ -25,7 +25,7 @@ with the blocker or residual risk.
   Use branch mode only when the requested target is the committed branch by
   itself.
 
-## Run Handling
+## Run handling
 
 - Run the review helper through the `wait-efficiently` Codex shell-wait pattern.
   If a wait deadline expires while the helper is still running, resume the same
@@ -49,7 +49,7 @@ with the blocker or residual risk.
 - Prefer read-only tools and web search during review when dependency behavior
   matters.
 
-## Finding Handling
+## Finding handling
 
 - Treat native and cold reviewer output as candidates. Before editing code,
   require `finding-discipline`'s recorded likelihood-impact risk rating for a
@@ -68,7 +68,7 @@ with the blocker or residual risk.
   boundary condition before the next review pass.
 - If an accepted finding shows a repeated bug class, inspect sibling instances
   in the current review scope before fixing. Fix the scoped pattern at once when
-  practical, but stop at touched surfaces, owner boundaries, or clear follow-up
+  practical, but stop at touched flows, owner boundaries, or clear follow-up
   territory.
 - Classify each finding as:
   `direct`, `induced`, `adjacent`, or `unrelated`. Direct findings point at
@@ -87,7 +87,7 @@ with the blocker or residual risk.
   unresolved.
 - Prefer small fixes at the right ownership boundary.
 
-## Hard Stops
+## Hard stops
 
 - Treat a non-zero `"$review_findings_bin" scope-check` as an immediate stop.
   Present a plain-language scope request according to `review-guardrails`, and

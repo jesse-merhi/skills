@@ -1,4 +1,4 @@
-# Spec Note Template
+# Spec note template
 
 ```md
 # Spec: <Outcome>
@@ -42,7 +42,7 @@ Excluded:
 ## PR Delivery
 - Shape: Single PR | Stack | Separate PRs/stacks | Open question
 - Review groups, in dependency order when stacked:
-  1. <logical review unit> — depends on <group or None>; proves <reviewer-visible outcome>
+  1. <logical review unit>. Depends on <group or None>; proves <reviewer-visible outcome>
 - Boundary rule: <why these changes belong together or need separate review>
 - Keep independent groups out of a linear stack; do not turn every acceptance criterion into its own PR.
 - PR gates: before readiness or merge, apply the Review gate and Sign-off gate

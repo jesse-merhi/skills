@@ -1,10 +1,10 @@
-# Neutral Checklist
+# Neutral checklist
 
 Give the reviewer enough structure to be effective without leaking prior
 rationale:
 
-- Start with `review-surface-map`: identify changed flows, entrypoints,
-  contracts, state, side effects, risk surfaces, and validation targets.
+- Start with `review-flow-map`: identify changed flows, entrypoints,
+  contracts, state, side effects, risk areas, and validation targets.
 - Apply `frontend-ui-validation` expectations when rendered UI changed. The
   reviewer may request browser validation if screenshots or computed styles
   would materially affect confidence.

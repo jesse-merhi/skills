@@ -1,4 +1,4 @@
-# Unsafe Types
+# Unsafe types
 
 - Do not use `any` without asking the user first.
 - Treat `unknown` as boundary data. Validate or narrow it immediately, then

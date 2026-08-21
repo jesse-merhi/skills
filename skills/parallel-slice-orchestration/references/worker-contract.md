@@ -1,4 +1,4 @@
-# Worker Assignment Contract
+# Worker assignment contract
 
 Each worker prompt must include:
 

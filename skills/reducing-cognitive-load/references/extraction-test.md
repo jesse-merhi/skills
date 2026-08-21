@@ -1,4 +1,4 @@
-# Extraction Test
+# Extraction test
 
 Extract a helper only when at least one is true:
 

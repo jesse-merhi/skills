@@ -7,7 +7,7 @@ Classify each fresh, finished response:
 - `ambiguous`: errored, "I couldn't review", rate-limited, no structured
   verdict, or not clearly finished.
 
-## What Counts As Clean
+## What counts as clean
 
 Treat a Clawsweeper re-review as clean only when:
 

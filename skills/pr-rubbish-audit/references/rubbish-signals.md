@@ -1,4 +1,4 @@
-# Rubbish Signals
+# Rubbish signals
 
 Look hard at:
 

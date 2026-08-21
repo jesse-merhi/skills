@@ -1,4 +1,4 @@
-# Claude Global Instructions
+# Claude global instructions
 
 @AGENTS.md
 

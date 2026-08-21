@@ -1,4 +1,4 @@
-# ADR Format
+# ADR format
 
 ADRs live in the user's Obsidian-backed project notes unless the user explicitly
 asks for repo-local docs.
@@ -26,7 +26,7 @@ path instead of writing into the product repo.
 An ADR can be a single paragraph. The value is in recording that a decision was
 made and why.
 
-## Optional Sections
+## Optional sections
 
 Only include these when they add genuine value. Most ADRs will not need them.
 
@@ -40,7 +40,7 @@ Only include these when they add genuine value. Most ADRs will not need them.
 Scan the target `ADRs/` directory for the highest existing number and increment
 by one.
 
-## When To Offer An ADR
+## When to offer an ADR
 
 All three of these must be true:
 

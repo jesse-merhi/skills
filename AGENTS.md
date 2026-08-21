@@ -1,8 +1,8 @@
-# Global Agent Instructions
+# Global agent instructions
 
-Shared instructions for every coding agent harness (Claude Code, Codex,
-opencode, Pi). Keep this file harness-agnostic: anything Claude-specific
-belongs in `CLAUDE.md`, which imports this file and layers on top of it.
+Shared instructions for every coding harness (Claude Code, Codex,
+opencode, Pi). Keep this file harness-agnostic. Anything Claude-specific belongs
+in `CLAUDE.md`, which imports this file and layers on top of it.
 
 ## Communication
 

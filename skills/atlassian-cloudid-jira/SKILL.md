@@ -9,7 +9,7 @@ Route Atlassian work through the user's authenticated Rovo Dev gateway. Always
 name the intended site explicitly; the CLI may otherwise inherit an unrelated
 default Jira site.
 
-## Choose the gateway surface
+## Choose the gateway
 
 1. Prefer a harness-provided local Rovo-backed Atlassian MCP bridge when it is
    available. It is the same authentication path with less agent overhead.

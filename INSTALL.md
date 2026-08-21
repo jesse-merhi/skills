@@ -6,7 +6,7 @@ asked you to install it into your harness. Follow these steps in order.
 Throughout this file, `REPO` refers to the absolute path of this cloned
 repository.
 
-## 1. Identify Your Harness
+## 1. Identify your harness
 
 Figure out which harness you're running in:
 
@@ -21,12 +21,12 @@ Figure out which harness you're running in:
 If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
-## 2. Link Global Instructions
+## 2. Link global instructions
 
 This repo owns the user's global agent instructions:
 
-- `REPO/AGENTS.md` — shared, harness-agnostic instructions.
-- `REPO/CLAUDE.md` — Claude Code only. It imports `AGENTS.md` via
+- `REPO/AGENTS.md` holds shared instructions for every harness.
+- `REPO/CLAUDE.md` is Claude Code only. It imports `AGENTS.md` via
   `@AGENTS.md` and layers Claude-specific content (model delegation policy)
   on top. Never move Claude-specific content into `AGENTS.md`: Codex reads
   `AGENTS.md` directly and must not see instructions about delegating to
@@ -49,7 +49,7 @@ does not load `~/.claude/AGENTS.md` by itself.
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
 
-## 3. Configure Codex Interaction
+## 3. Configure Codex interaction
 
 For Codex, enable the native structured question UI in Default mode when the
 installed build supports it:
@@ -66,7 +66,7 @@ session exposes the question UI.
 
 Skip this step for other harnesses.
 
-## 4. Install Repo Runtime Dependencies
+## 4. Install repo runtime dependencies
 
 Repo-owned TypeScript helpers require Node 24 or newer and the exact Bun
 version declared in `package.json`. From `REPO`, run:
@@ -79,12 +79,12 @@ bun ci
 Stop and report the missing prerequisite if either command is unavailable or
 fails. Do not substitute a global TypeScript, Effect, or package installation.
 
-## 5. Survey Existing Skills
+## 5. Survey existing skills
 
 For Claude Code, Codex, opencode, or Pi, inventory the target skills directory
 before touching anything:
 
-| Harness | Skills Target |
+| Harness | Skills target |
 | --- | --- |
 | Claude Code | `~/.claude/skills` |
 | Codex | `~/.codex/skills` |
@@ -103,7 +103,7 @@ Classify existing entries:
 Skip this step for OpenClaw; its existing skills are inspected after connecting
 the repo in step 7.
 
-## 6. Link Skills
+## 6. Link skills
 
 For Claude Code, Codex, opencode, or Pi, always use per-skill symlinks. The
 target skills directory should remain a real directory; each repo skill gets
@@ -133,7 +133,7 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 7. Connect a Running OpenClaw Gateway
+## 7. Connect a running OpenClaw Gateway
 
 Only run this step when the user asked to install these skills into OpenClaw.
 OpenClaw discovers nested `SKILL.md` files from an extra skills directory, so
@@ -178,7 +178,7 @@ Gateway. Start a new OpenClaw session so it receives the updated skill set. If
 the CLI explicitly says a restart is required, follow that instruction; for a
 managed Gateway, use `openclaw gateway restart`.
 
-## 8. Reconcile Third-Party Skills
+## 8. Reconcile third-party skills
 
 Read `external.md`. For each active or retired entry, run only the install or
 removal command for the current harness. Skip entries that do not list your
@@ -189,7 +189,7 @@ not survive after this repository stops using them.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 9. Verify Repo-Owned CLIs
+## 9. Verify repo-owned CLIs
 
 The `review-findings` CLI runs directly from the linked skill and uses the
 repo-owned Effect runtime installed in step 4. Verify it can resolve that
@@ -199,9 +199,9 @@ runtime and report its SQLite database path:
 REPO/skills/code-review/scripts/review-findings path
 ```
 
-Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration. That
-override belonged to the removed Rust installation and can silently select a
-CLI that lacks the required scope commands. The skill-owned launcher above is
+Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration.
+That override belonged to the removed Rust installation and can silently select
+a CLI that lacks the required scope commands. The skill-owned launcher above is
 the only supported entrypoint.
 
 ## 10. Verify

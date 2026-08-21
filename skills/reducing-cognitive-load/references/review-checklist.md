@@ -1,4 +1,4 @@
-# Review Checklist
+# Review checklist
 
 When reviewing a diff, call out code that forces a maintainer to ask:
 
@@ -11,14 +11,14 @@ When reviewing a diff, call out code that forces a maintainer to ask:
 
 Prefer concrete rewrites over vague "make this cleaner" comments.
 
-## Plausibility Test
+## Plausibility test
 
 For each changed guard, fallback, normalization, or sanitization, identify a
 current producer, contract, observed failure, or boundary condition that can
 plausibly trigger it. Report the code when no such evidence exists and removing
 it preserves current behavior. "Just in case" is not evidence.
 
-## Proxy Test
+## Proxy test
 
 Report a one-use helper that only forwards, converts, or lightly transforms a
 value when inlining it preserves behavior and makes the caller easier to read.

@@ -1,4 +1,4 @@
-# Frontend Spec Guidance
+# Frontend spec guidance
 
 For frontend UI work, capture the design direction and rendered validation bar
 before publishing:

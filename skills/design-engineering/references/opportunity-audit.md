@@ -1,17 +1,18 @@
-# Animation Opportunity Audit
+# Animation opportunity audit
 
 Use this read-only mode when the user asks what could animate or how to make an
 interface feel more alive. Find the few moments where motion would improve
 feedback, continuity, state understanding, or delight. Do not modify source
 code. For defects in existing motion, use `review-animations`.
 
-## Gate Every Candidate
+## Gate every candidate
 
 Reject a candidate as soon as one gate fails:
 
 1. **Frequency:** keep constant or expert actions instant; restrain frequent
-   actions; allow ordinary motion for occasional surfaces and more expression
-   only for rare first-run, empty, success, or celebration moments.
+   actions; allow ordinary motion for occasional elements such as panels,
+   drawers, modals, sheets, and toasts, and more expression only for rare
+   first-run, empty, success, or celebration moments.
 2. **Purpose:** require feedback, spatial continuity, state indication,
    prevention of a jarring change, explanation, or rare delight. "It looks
    cool" is not a purpose.
@@ -28,7 +29,8 @@ and interaction frequency. Then inspect:
 
 - pressable controls without visible feedback;
 - conditional content, accordions, or list changes that snap;
-- anchored surfaces disconnected from their trigger;
+- anchored elements disconnected from their trigger, such as a popover, menu,
+  tooltip, hovercard, or sheet;
 - enter and exit paths with conflicting spatial stories;
 - gesture-driven elements with hard stops or no settling model;
 - rare completion, empty, onboarding, or success moments rendered flat.
@@ -36,7 +38,7 @@ and interaction frequency. Then inspect:
 Search code as evidence, but inspect the rendered experience when available.
 When it is unavailable, state the uncertainty.
 
-## Describe Survivors
+## Describe survivors
 
 Each surviving opportunity needs exact properties, values, duration, easing,
 interruptibility, and a reduced-motion path, drawn from the project when
@@ -53,4 +55,4 @@ for one view:
 
 Then include two to five deliberate rejections and name the failed gate. If
 nothing survives, say so. Conclude with how much motion the interface needs and
-the single highest-leverage opportunity.
+the single most valuable opportunity.

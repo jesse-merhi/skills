@@ -3,10 +3,10 @@ name: grill-with-docs
 description: 'Ground a plan in repo docs, code, Obsidian notes, ADRs, specs, and tickets, then grill its decisions.'
 ---
 
-# Grill With Docs
+# Grill with docs
 
 Run a `grilling` session after grounding the plan in project context.
-`grilling` is the interview primitive; this skill adds docs, code, and Obsidian
+`grilling` is the interview workflow; this skill adds docs, code, and Obsidian
 context before the questioning starts.
 
 ## Workflow
@@ -39,7 +39,7 @@ context before the questioning starts.
 9. Return either a tightened plan with assumptions and first ticket made clear,
    or a short set of blockers/questions if the plan is not ready.
 
-## Output Shape
+## Output shape
 
 Prefer short sections:
 
@@ -53,7 +53,7 @@ When the plan is ready, stop asking and give the tightened plan. If the user has
 not confirmed the shared understanding, make the confirmation request the next
 round instead of proceeding.
 
-## Context Pointers
+## Context pointers
 
 - Use [grounding.md](references/grounding.md) for project context search
   targets.

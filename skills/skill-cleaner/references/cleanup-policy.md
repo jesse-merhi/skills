@@ -1,4 +1,4 @@
-# Cleanup Policy
+# Cleanup policy
 
 Before deleting or editing:
 

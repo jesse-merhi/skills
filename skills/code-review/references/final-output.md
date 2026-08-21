@@ -1,4 +1,4 @@
-# Final Output
+# Final output
 
 Rebuild every closeout from the findings database. Do not rely on chat memory,
 especially after compaction. Resolve `review_findings_bin` as
@@ -37,8 +37,8 @@ identity with the current head without relying on chat memory or CI state.
    that retrieves every persisted finding.
 
 Say that the final pass had no remaining findings only after summarizing the
-whole run. Do not reduce a review that found and fixed problems to “no
-findings.”
+whole run. Do not reduce a review that found and fixed problems to "no
+findings."
 
 Run the complete draft through `speak-fking-english`. Preserve finding counts,
 IDs, outcomes, and risk while removing reviewer jargon and repeated sections.

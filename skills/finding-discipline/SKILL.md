@@ -3,7 +3,7 @@ name: finding-discipline
 description: 'Confirm actionable review findings, deduplicate root causes, and exclude nits, vague risks, and style notes.'
 ---
 
-# Finding Discipline
+# Finding discipline
 
 Use this skill after you have inspected enough code to know a concrete runtime
 failure or present maintenance cost. The goal is fewer, sharper findings that a
@@ -21,7 +21,7 @@ PR author can fix.
    [output.md](references/output.md).
 5. Perform the final review pass before presenting findings.
 
-## Required Discipline
+## Required discipline
 
 - Optimize candidate generation for recall and finding acceptance for precision.
 - Prefer no finding over a weak finding.
@@ -32,7 +32,7 @@ PR author can fix.
 - Check each line reference still overlaps the reviewed change when possible.
 - Make titles action-oriented, not diagnostic labels.
 
-## Context Pointers
+## Context pointers
 
 - Use [risk-rating.md](references/risk-rating.md) for the required risk reality
   check and CLI-derived likelihood-impact outcome.

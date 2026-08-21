@@ -101,7 +101,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
 
     const lines = [
       created
-        ? `No worktree bound to '${pullRequest.headRefName}' — created a managed review worktree at:`
+        ? `No worktree bound to '${pullRequest.headRefName}'. Created a managed review worktree at:`
         : managed
         ? `Refreshing managed review worktree for PR #${prNumber}:`
         : `Reusing existing worktree for '${pullRequest.headRefName}':`,
@@ -119,7 +119,7 @@ export const checkoutForReview = Effect.fn("checkoutForReview")(function*(prNumb
       `  • Under 'Changes in Pull Request #${prNumber}', click a filename to open its diff.`,
       "  • Navigate from the modified/right pane with Cmd-click, F12, or Shift+F12.",
       "  • Use the general GitHub/Octocat view only to discover PRs and issues.",
-      "  • A locked tab or 'Partial mode' means the wrong remote-preview surface is open."
+      "  • A locked tab or 'Partial mode' means the wrong remote-preview view is open."
     ]
 
     if (preparation !== null) {

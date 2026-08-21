@@ -1,4 +1,4 @@
-# Worktree Isolation
+# Worktree isolation
 
 Treat the current working directory as the coordinator's workspace, not the
 default worker workspace.
