@@ -465,7 +465,7 @@ test_speak_fking_english_owns_repitch_guidance() {
 test_speak_fking_english_owns_the_ai_tells_catalogue() {
   local natural="$ROOT_DIR/skills/speak-fking-english/references/natural-writing.md"
   local refs="$ROOT_DIR/skills/speak-fking-english/references/ai-tells.md"
-  local word_count
+  local caller_route explicit_route implicit_route proper_nouns word_count
 
   assert_contains "$natural" "Lead with the outcome"
   assert_contains "$natural" "Make the explanation concrete"
@@ -516,6 +516,19 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
   assert_not_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "no catalogued AI tell"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "full clarity and AI-tells pass"
+
+  explicit_route="$(sed -n '/^- When the user asks/,/^- For a "wait, what?"/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md")"
+  assert_output_contains "$explicit_route" "run the shared pass, add the deep catalogue pass"
+  assert_output_not_contains "$explicit_route" "skip the deep catalogue pass"
+  caller_route="$(sed -n '/^- When another skill calls/,/^- For every other model-selected call/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md")"
+  assert_output_contains "$caller_route" "Preserve the audience chosen by the"
+  assert_output_contains "$caller_route" "Treat the call as implicit"
+  implicit_route="$(sed -n '/^- For every other model-selected call/,/^## Shared pass/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md")"
+  assert_output_contains "$implicit_route" "run the shared pass below"
+  assert_output_contains "$implicit_route" "skip the deep catalogue pass"
+  assert_output_not_contains "$implicit_route" "add the deep catalogue pass"
+  proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
+  assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
 }
 
 test_speak_fking_english_owns_the_visual_decision() {
@@ -671,10 +684,14 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
 
 test_review_flow_map_is_the_public_review_mapping_skill() {
   local skill="$ROOT_DIR/skills/review-flow-map"
+  local metadata="$skill/agents/openai.yaml"
 
   [[ -d "$skill" ]] || fail "expected review-flow-map skill directory"
   [[ ! -f "$ROOT_DIR/skills/review-surface-map/SKILL.md" ]] || fail "retired review-surface-map skill still exists"
   assert_contains "$skill/SKILL.md" "name: review-flow-map"
+  assert_contains "$metadata" 'display_name: "Review Flow Map"'
+  assert_contains "$metadata" '$review-flow-map'
+  assert_not_contains "$metadata" '$review-surface-map'
   assert_contains "$ROOT_DIR/README.md" '`review-flow-map`'
   assert_contains "$ROOT_DIR/skills/cold-pr-review/references/checklist.md" '`review-flow-map`'
   assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" '`review-flow-map`'
@@ -683,11 +700,78 @@ test_review_flow_map_is_the_public_review_mapping_skill() {
 test_examples_report_the_exact_command_or_computed_value() {
   local codex_engine="$ROOT_DIR/skills/review-until-clean/references/codex-engine.md"
   local retry_model="$ROOT_DIR/skills/html-explanations/assets/patterns/interactive-model.html"
+  local positive_forms
 
-  assert_contains "$codex_engine" '`codex review --base <branch>`'
-  assert_contains "$codex_engine" '`codex review --uncommitted`'
+  positive_forms="$(awk '
+    /^Use these forms:$/ { found = 1; next }
+    found && /^```sh$/ { in_block = 1; next }
+    in_block && /^```$/ { exit }
+    in_block { print }
+  ' "$codex_engine")"
+  assert_output_contains "$positive_forms" "codex review --uncommitted"
+  assert_output_contains "$positive_forms" "codex review --base main"
+  assert_output_contains "$positive_forms" "codex review --commit <sha>"
   assert_contains "$retry_model" 'Failures show up after ${formatSeconds(totalWait)} of modeled retry delay'
   assert_not_contains "$retry_model" "within one retry cycle"
+
+  RETRY_MODEL="$retry_model" node --input-type=module <<'JS'
+import fs from "node:fs"
+import vm from "node:vm"
+
+const html = fs.readFileSync(process.env.RETRY_MODEL, "utf8")
+const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1]
+if (script === undefined) throw new Error("interactive retry model has no inline script")
+
+const element = (value = "") => ({
+  value,
+  textContent: "",
+  innerHTML: "",
+  style: {},
+  listeners: new Map(),
+  addEventListener(type, listener) {
+    this.listeners.set(type, listener)
+  },
+})
+const elements = new Map([
+  ["attempts", element("5")],
+  ["delay", element("30")],
+  ["recovery", element("45")],
+  ...[
+    "attempts-value",
+    "delay-value",
+    "recovery-value",
+    "wait-result",
+    "recover-result",
+    "recover-bar",
+    "terminal-bar",
+    "recover-bar-value",
+    "terminal-bar-value",
+    "reading",
+  ].map((id) => [id, element()]),
+])
+const document = {
+  getElementById(id) {
+    const found = elements.get(id)
+    if (found === undefined) throw new Error(`missing DOM stub for ${id}`)
+    return found
+  },
+}
+
+vm.runInNewContext(script, { document, Math, Number, String })
+elements.get("attempts").value = "8"
+elements.get("delay").value = "5"
+elements.get("recovery").value = "10"
+const update = elements.get("attempts").listeners.get("input")
+if (update === undefined) throw new Error("attempts input listener was not registered")
+update()
+
+if (elements.get("wait-result").textContent !== "10m 35s") {
+  throw new Error("retry wait result was not rendered from the changed inputs")
+}
+if (!elements.get("reading").innerHTML.includes("after 10m 35s of modeled retry delay")) {
+  throw new Error("retry reading did not report the computed delay")
+}
+JS
 }
 
 test_code_review_has_a_local_review_and_owner_checked_closeout() {
