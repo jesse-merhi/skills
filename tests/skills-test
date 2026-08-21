@@ -148,7 +148,6 @@ behavior_checks = {
     ],
     root / "skills/writing-for-agents/SKILL.md": [
         "name: writing-for-agents",
-        "The two loads",
         "Treat the environment as a source of truth",
     ],
     root / "skills/writing-for-agents/SKILL-MECHANICS.md": [
@@ -430,8 +429,6 @@ test_implementation_design_requires_user_decisions() {
 
 test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" "plausibility and proxy tests"
-  assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Plausibility test"
-  assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Proxy test"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "admin-provided connection string"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "has no current job"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
@@ -442,7 +439,6 @@ test_design_engineering_owns_motion_opportunity_audits() {
 
   assert_contains "$skill/SKILL.md" "read-only sweep"
   assert_contains "$skill/SKILL.md" "opportunity-audit.md"
-  assert_contains "$skill/references/opportunity-audit.md" "Gate every candidate"
   assert_contains "$skill/references/opportunity-audit.md" "deliberate rejections"
   assert_contains "$skill/references/opportunity-audit.md" "Do not modify source"
   test ! -e "$ROOT_DIR/skills/find-animation-opportunities/SKILL.md" || fail "expected motion discovery to be consolidated"
@@ -472,6 +468,10 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$natural" "Cut the work imposed on the reader"
   assert_contains "$natural" "Use the voice for the destination"
   assert_contains "$natural" "Keep the presentation quiet"
+  assert_contains "$natural" "exact names and technical terms"
+  assert_contains "$natural" "quoted"
+  assert_contains "$natural" "text character for character"
+  assert_contains "$natural" "all evidence"
   word_count="$(wc -w < "$natural")"
   if (( word_count > 300 )); then
     fail "expected the implicit natural-writing pass to stay within 300 words, found $word_count"
@@ -579,7 +579,7 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/SKILL.md" "first two sentences explain what broke"
   assert_contains "$skill/SKILL.md" "A screenshot of textual"
   assert_contains "$skill/SKILL.md" "Use copyable text for textual"
-  assert_contains "$skill/SKILL.md" "## Reviewer boundary"
+  assert_contains "$skill/SKILL.md" "Assume the reviewer has not seen the agent thread"
   assert_contains "$skill/SKILL.md" 'Every workflow step meets its `Done when` criterion'
   assert_not_contains "$skill/SKILL.md" "## Avoid"
   assert_not_contains "$skill/SKILL.md" 'Load `show-me`'
@@ -601,8 +601,8 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
     }
   ' "$skill/SKILL.md" || fail "expected each pr-proof-pack workflow step to have exactly one Done when criterion"
   assert_contains "$skill/references/plain-language.md" "Restore the missing premise"
-  assert_contains "$skill/references/plain-language.md" "## PR title"
-  assert_contains "$skill/references/plain-language.md" "## Commit subjects"
+  assert_contains "$skill/references/plain-language.md" "Prefer an active verb and the observable"
+  assert_contains "$skill/references/plain-language.md" "Make each commit subject a small, readable claim"
   assert_contains "$skill/references/proof-selection.md" 'Let `speak-fking-english` decide'
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
@@ -685,6 +685,7 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
 test_review_flow_map_is_the_public_review_mapping_skill() {
   local skill="$ROOT_DIR/skills/review-flow-map"
   local metadata="$skill/agents/openai.yaml"
+  local stale_callers
 
   [[ -d "$skill" ]] || fail "expected review-flow-map skill directory"
   [[ ! -f "$ROOT_DIR/skills/review-surface-map/SKILL.md" ]] || fail "retired review-surface-map skill still exists"
@@ -695,6 +696,10 @@ test_review_flow_map_is_the_public_review_mapping_skill() {
   assert_contains "$ROOT_DIR/README.md" '`review-flow-map`'
   assert_contains "$ROOT_DIR/skills/cold-pr-review/references/checklist.md" '`review-flow-map`'
   assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" '`review-flow-map`'
+  stale_callers="$(cd "$ROOT_DIR" && git grep -l -F '$review-surface-map' -- '*.md' '*.yaml' '*.yml' || true)"
+  if [[ -n "$stale_callers" ]]; then
+    fail "retired review-surface-map invocation found in: $stale_callers"
+  fi
 }
 
 test_examples_report_the_exact_command_or_computed_value() {

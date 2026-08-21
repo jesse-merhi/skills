@@ -1,7 +1,8 @@
 # Natural writing
 
 Rewrite the complete draft for the person reading it. Preserve the facts,
-scope, requested action, intended tone, exact names, and evidence.
+scope, requested action, intended tone, exact names and technical terms, quoted
+text character for character, and all evidence.
 
 1. Lead with the outcome.
 
