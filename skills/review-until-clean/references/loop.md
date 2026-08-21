@@ -42,8 +42,12 @@ Repeat:
 3. Run the selected engine's bare review against the fixed target.
 4. Triage the findings:
    - reject only with recorded evidence
-   - run `finding-discipline`'s likelihood-impact risk rating
-   - `investigate` or `consult` risk -> no patch; investigate or queue it
+   - for a runtime candidate, run `finding-discipline`'s likelihood-impact risk
+     rating
+   - for a maintenance candidate, use `--current-job-evidence` to prove that the
+     changed code has no current job and `--present-cost` for its concrete
+     current reading, change, test, or ownership cost
+   - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - apply `review-guardrails`' autonomous fix bar before accepting a patch
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
        pass -> fix now, log Provisional, ask the user without waiting

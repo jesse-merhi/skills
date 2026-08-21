@@ -28,8 +28,9 @@ identity with the current head without relying on chat memory or CI state.
    finding IDs so the counts reconcile with the complete audit. Explain the
    highest-impact findings and their fixes. Do not print hundreds of repetitive
    cards.
-3. **Still open:** decisions, deferred work, failed or skipped validation, and
-   residual risk.
+3. **Still open:** unresolved decisions, deferred work, and failed or skipped
+   validation. Report explicitly accepted residual risk separately so it is
+   visible without being mislabeled as resolved or unresolved.
 4. **Delivery:** final local validation, proof freshness result, PR URL or owner
    blocker, CI state, and the required thumbs-up sign-off.
 5. **Full audit:** include the exact `closeout --json` or scoped `query` command

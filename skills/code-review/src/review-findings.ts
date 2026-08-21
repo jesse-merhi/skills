@@ -79,7 +79,10 @@ const record = Command.make("record", {
   userImpact: Flag.string("user-impact").pipe(Flag.withDefault("")), decision: Flag.string("decision").pipe(Flag.withDefault("")), text: Flag.string("text").pipe(Flag.withDefault("")),
   findingKind: Flag.choice("finding-kind", FINDING_KINDS), productionPath: Flag.string("production-path").pipe(Flag.withDefault("")),
   reachabilityEvidence: Flag.string("reachability-evidence").pipe(Flag.withDefault("")), likelihood: Flag.string("likelihood").pipe(Flag.withDefault("")),
-  actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")), fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES)
+  actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
+  currentJobEvidence: Flag.string("current-job-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
+  fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES),
+  ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const result = yield* recordFinding({ ...toRun(args), status: args.runStatus, decisionLog: args.decisionLog }, args)
@@ -175,7 +178,7 @@ if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== un
 } else if (rootDb?.startsWith("--db=") && process.argv[3] !== undefined) {
   process.argv.splice(2, 2, process.argv[3], rootDb)
 }
-command.pipe(Command.run({ version: "3.0.0" }),
+command.pipe(Command.run({ version: "3.1.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)

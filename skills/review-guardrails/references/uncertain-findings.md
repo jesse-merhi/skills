@@ -1,8 +1,11 @@
 # Uncertain Findings
 
-Use this workflow only after `finding-discipline`'s risk rating returned
-`accept`. It handles uncertainty about the repair, not uncertainty about whether
-the risk exists. A candidate with unproven reachability or consequence remains
+Use this workflow only after the findings CLI returned `accept`: from
+`finding-discipline`'s risk rating for a runtime candidate, or from current-job
+and present-cost evidence for a maintenance candidate.
+It handles uncertainty about the repair, not uncertainty about whether the
+finding exists. A runtime candidate with unproven reachability or consequence
+remains
 `investigate` or `consult`; do not apply a provisional fix.
 
 Some accepted findings still have an uncertain repair: contested between
@@ -34,6 +37,8 @@ When the test passes:
 - If the user keeps it, close the entry.
 - If the user rejects it, revert the commit or hunk, reset the streak, and
   resume.
+- Record either terminal answer with `--owner-resolution approved|declined`
+  and the user's decision text.
 
 ## Consult: Class B
 

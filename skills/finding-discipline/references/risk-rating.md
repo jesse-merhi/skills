@@ -53,7 +53,12 @@ findings CLI derives them from this table:
 Low-probability, low-impact risk defaults to no finding and no code. Severity
 reflects likelihood and impact together; worst-case impact alone cannot raise a
 finding. A systemic finding that would otherwise be accepted becomes a consult
-so the agent cannot apply a local Band-Aid.
+so the agent cannot apply a local Band-Aid. When the owner deliberately defers
+an accepted local finding, the CLI records it as residual risk without changing
+its severity. The owner may reject a consulted finding without turning it into
+an autonomous patch; the terminal update records that separate decision with
+`--owner-resolution`. An unanswered consult stays open; deferring it requires
+an explicit declined owner resolution.
 
 ## Disposition
 

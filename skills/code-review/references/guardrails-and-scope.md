@@ -50,7 +50,8 @@ Orchestrator specifics:
   then reset the current phase. On rejection, revert the over-budget batch,
   defer the finding, and make `scope-check` pass before resuming.
 - Provisional fixes (Class A) are findings with status `provisional`; the review
-  owner's keep-or-revert answer updates the finding to `fixed` or `rejected`.
+  owner's keep-or-revert answer updates the finding to `fixed` or `rejected`
+  with `--owner-resolution approved|declined` and their decision text.
 - Keep the consult queue in the findings database: each entry carries its
   fingerprint (file, code element, root cause). Review passes that re-raise a
   queued finding get a one-line match note on that finding instead of a new
@@ -65,8 +66,8 @@ Orchestrator specifics:
 - When a phase suspends as `blocked-on-consult`, bring the queue to the user:
   ask directly in an interactive session, otherwise end with the questions in
   the report. Resume the phase when answers arrive: accepted findings get fixed
-  and reset the phase; rejections are recorded and let the suspended streak
-  close.
+  and reset the phase; record either terminal outcome with
+  `--owner-resolution approved|declined` and the user's decision text.
 - The overall review cannot close while the queue has open entries. There is no
   "clean except" verdict: the result is clean only after the queue is resolved,
   otherwise it is blocked-on-consult.

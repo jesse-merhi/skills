@@ -129,8 +129,11 @@ For every finding, record:
   likelihood, impact, and actual consequence; the CLI derives severity and
   disposition
 - short decision and validation result
+- explicit owner resolution when a consultation or provisional fix reaches a
+  terminal state
 
-Record each finding as soon as it is triaged:
+Record each finding as soon as it is triaged. Use a runtime record for reachable
+behavior:
 
 ```sh
 "$review_findings_bin" record \
@@ -141,7 +144,7 @@ Record each finding as soon as it is triaged:
   --base <base> \
   --head <head> \
   --decision-id D<N> \
-  --finding-kind <runtime|maintenance> \
+  --finding-kind runtime \
   --status <open|fixed|rejected|deferred|provisional|reopened> \
   --fix-scope <local|systemic> \
   --source <native-review|cold-review|lens|user> \
@@ -159,11 +162,52 @@ Record each finding as soon as it is triaged:
   --text "<validation notes or other searchable context>"
 ```
 
-The five runtime risk flags are required when `--finding-kind runtime` and must
-be omitted when `--finding-kind maintenance`. Do not pass priority, severity,
-or disposition. The CLI derives severity and disposition from the current
-likelihood-impact matrix, then rejects a status that would patch an
-investigate, consult, reject, or systemic outcome.
+For `unknown` or `theoretical`, production-path, reachability, and consequence
+proof may be incomplete, but `--decision` must state the investigation or
+rejection rationale.
+
+Use a maintenance record for unnecessary changed code:
+
+```sh
+"$review_findings_bin" record \
+  --repo <repo-display-name> \
+  --repo-path <repo-root> \
+  --branch <branch-or-review-key> \
+  --target <PR-or-range> \
+  --base <base> \
+  --head <head> \
+  --decision-id D<N> \
+  --finding-kind maintenance \
+  --status <open|fixed|deferred|provisional|reopened> \
+  --fix-scope <local|systemic> \
+  --source <native-review|cold-review|lens|user> \
+  --fingerprint "<file + code element + root cause>" \
+  --summary "<one-sentence finding>" \
+  --current-job-evidence "<repository proof the changed code has no current job>" \
+  --present-cost "<current reading, change, test, or ownership cost>" \
+  --decision "<owner or next action>" \
+  --text "<validation notes or other searchable context>"
+```
+
+Runtime records must omit the two maintenance evidence flags. Maintenance
+records must omit all five runtime risk flags. To reject an unsupported
+maintenance candidate, use `--status rejected`, omit both maintenance evidence
+flags, and record the rejection rationale in `--decision`.
+
+Do not pass priority, severity, or disposition. The CLI derives severity and
+disposition from the current likelihood-impact matrix and recorded evidence,
+then rejects a status that would patch an investigate, consult, reject, or
+systemic outcome. An accepted local finding recorded as deferred becomes
+residual risk and requires `--decision` to explain why that risk is accepted.
+A consulted finding may be marked fixed or rejected only
+with `--owner-resolution approved|declined` and `--decision` containing the
+owner's decision. Use the same explicit resolution when the owner keeps or
+declines a provisional fix. A consulted finding may be deferred only with
+`--owner-resolution declined` and the owner's decision; an unanswered consult
+stays open. An owner-resolved record is terminal and immutable. Repeating the
+exact record is harmless, including after scope completion; changing any field
+requires a new decision ID. Closeout does not list explicitly deferred terminal
+findings under `Still open`.
 
 Query before dispatching subagents, resuming a review, or answering "what did
 review find?":
@@ -211,7 +255,7 @@ SQLite instead of chat history:
   --target <current-target>
 ```
 
-The summary reports totals, status, sources, impact areas, priorities, important
+The summary reports totals, status, sources, impact areas, severities, important
 findings, unresolved work, and verification counts. Retrieve the complete audit
 when writing or checking the summary:
 

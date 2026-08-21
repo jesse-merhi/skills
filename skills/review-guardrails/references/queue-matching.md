@@ -33,11 +33,12 @@ re-raises during triage, never to fabricate a clean verdict.
 ## Resolution
 
 - The user accepts a queued finding: fix it, close the entry, reset the streak,
-  and resume the loop on the changed tree.
+  and resume the loop on the changed tree. Record the terminal update with
+  `--owner-resolution approved` and the user's decision text.
 - The user rejects it: record the rejection and its reason in the findings
-  database. If the streak was already met and no queue entries remain open,
-  report success citing those rejections; the completed streak already covered
-  this exact tree.
+  database using `--owner-resolution declined`. If the streak was already met
+  and no queue entries remain open, report success citing those rejections; the
+  completed streak already covered this exact tree.
 - Never report a fully clean verdict while the queue has open entries.
 
 Why this terminates: every pass either fixes something (bounded by the

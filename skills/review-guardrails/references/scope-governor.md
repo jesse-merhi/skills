@@ -17,9 +17,13 @@ the scope reason, then record them in the findings database.
 
 Before patching an in-scope blocker, prove all of these:
 
-- The finding record contains `finding-discipline`'s risk rating, non-synthetic
+- A runtime finding contains `finding-discipline`'s risk rating, non-synthetic
   reachability and consequence evidence, and the CLI-derived `accept`
   disposition and severity.
+- A maintenance finding records repository proof that the changed code has no
+  current job in `--current-job-evidence` and a concrete current reading,
+  change, test, or ownership cost in `--present-cost`. It has the CLI-derived
+  `accept` disposition, but no runtime risk fields or severity.
 - The failure violates the current task contract, not a stricter contract
   invented by the reviewer.
 - The fix uses an existing repository or dependency primitive when one owns the
@@ -28,8 +32,8 @@ Before patching an in-scope blocker, prove all of these:
 - The fix is proportional to the observed impact. Count permanent branches,
   fallbacks, schema fields, migrations, helpers, and tests as cost even when
   production changed-line growth stays under budget.
-- The severity describes impact if the trigger occurs; it does not substitute
-  for reachability or likelihood evidence.
+- For a runtime finding, severity combines likelihood and impact. It does not substitute
+  for reachability, likelihood, or consequence evidence.
 
 Do not autonomously patch a P3 whose remedy only hardens hypothetical input. If
 the input is reachable but accepting its presentation or behavior is a product

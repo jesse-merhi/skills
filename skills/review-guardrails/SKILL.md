@@ -50,8 +50,9 @@ fields in its header.
 2. Apply the wall-clock budget and run the deterministic scope-budget CLI from
    [budgets.md](references/budgets.md) before each review cycle and after each
    accepted fix.
-3. Require `finding-discipline`'s recorded risk rating for each candidate,
-   then classify accepted findings and apply the autonomous fix bar in
+3. Require `finding-discipline`'s recorded risk rating for a runtime candidate,
+   or its current-job and present-cost evidence for a maintenance candidate.
+   Then classify accepted findings and apply the autonomous fix bar in
    [scope-governor.md](references/scope-governor.md).
 4. Before patching, apply the systemic-finding stop in
    [systemic-findings.md](references/systemic-findings.md). Patch only

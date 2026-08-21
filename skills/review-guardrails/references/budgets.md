@@ -43,6 +43,7 @@
 - After the full review is clean, run a final passing check and
   `"$review_findings_bin" scope-complete`. Until then, another `scope-start` on the same
   repository and branch is rejected even if the caller changes the target label.
-- Past the budget, remaining findings become `deferred` entries in the findings
-  database or loop report.
+- Past the time budget, stop and record the expiry in the loop report. Keep
+  unanswered consult and investigate findings open. Use `deferred` only for
+  explicitly accepted residual risk or an explicit owner decision.
 - When the honest answer is that the PR should be split, say so plainly.

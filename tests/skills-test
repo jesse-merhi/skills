@@ -442,12 +442,15 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/output.md" "Use exactly the severity and disposition returned by the findings CLI"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "## Autonomous Fix Bar"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" 'CLI-derived `accept`'
+  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "severity combines likelihood and impact"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "does not substitute"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "Do not autonomously patch a P3"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "uncertainty about the repair"
+  assert_contains "$ROOT_DIR/skills/review-guardrails/SKILL.md" "for a maintenance candidate"
+  assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "for a maintenance candidate"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "do not apply a provisional fix"
-  assert_contains "$ROOT_DIR/skills/review-until-clean/references/loop.md" '`investigate` or `consult` risk -> no patch'
-  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/references/loop.md" '`investigate` or `consult` risk -> no patch'
+  assert_contains "$ROOT_DIR/skills/review-until-clean/references/loop.md" 'CLI-derived `investigate` or `consult` -> no patch'
+  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/references/loop.md" 'CLI-derived `investigate` or `consult` -> no patch'
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "For a capacity cap or truncation path"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "For escaping or delimiter handling"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "complete risk rating"
@@ -456,6 +459,17 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Smallest durable option"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" 'Load `improve-codebase-architecture`'
   assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "risk rating for runtime candidates"
+  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind runtime"
+  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind maintenance"
+  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "To reject an unsupported"
+  assert_not_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind <runtime|maintenance>"
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "for a maintenance finding"
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--current-job-evidence`'
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--present-cost`'
+  assert_contains "$ROOT_DIR/skills/code-review/references/review-phase-rules.md" "only runtime findings receive severity"
+  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "but no runtime risk fields or severity"
+  assert_contains "$ROOT_DIR/skills/review-until-clean/references/loop.md" "for a maintenance candidate"
+  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/references/loop.md" "for a maintenance candidate"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Plausibility Test"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Proxy Test"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "admin-provided connection string"
