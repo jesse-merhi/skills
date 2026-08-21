@@ -429,11 +429,16 @@ test_implementation_design_requires_user_decisions() {
 
 test_prototypes_stay_isolated_from_production() {
   local skill="$ROOT_DIR/skills/prototype/SKILL.md"
+  local promotion
 
   assert_contains "$skill" "Keep prototypes in isolated routes, pages, and modules"
   assert_contains "$skill" "not import from prototype-only routes, pages, or modules"
   assert_contains "$skill" "remove all"
   assert_contains "$skill" "prototype-only routes, pages, and modules unless asked to keep them"
+  promotion="$(sed -n '/^### 6\. Promote$/,/^If the user asks for another round/p' "$skill")"
+  assert_output_contains "$promotion" "remove every prototype-only route, page, and module"
+  assert_output_contains "$promotion" "picker"
+  assert_output_contains "$promotion" "selected or unselected variant modules"
 }
 
 test_code_review_flags_unsupported_defense_and_proxy_helpers() {
@@ -470,7 +475,7 @@ test_speak_fking_english_owns_repitch_guidance() {
 test_speak_fking_english_owns_the_ai_tells_catalogue() {
   local natural="$ROOT_DIR/skills/speak-fking-english/references/natural-writing.md"
   local refs="$ROOT_DIR/skills/speak-fking-english/references/ai-tells.md"
-  local caller_route explicit_route implicit_route proper_nouns word_count
+  local both_voice caller_route explicit_route freeze_clause implicit_route proper_nouns user_only_voice word_count
 
   assert_contains "$natural" "Lead with the outcome"
   assert_contains "$natural" "Make the explanation concrete"
@@ -491,12 +496,15 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" "Cutting AI patterns is half the job"
   assert_contains "$refs" "All six rules apply to a reply you are speaking to a person"
   assert_contains "$refs" "Only the first three apply to reviewer-facing text"
-  assert_contains "$refs" "**Be specific.**"
-  assert_contains "$refs" "**Vary rhythm.**"
-  assert_contains "$refs" "**Acknowledge complexity.**"
-  assert_contains "$refs" "**Have opinions.**"
-  assert_contains "$refs" '**Use "I" when it fits.**'
-  assert_contains "$refs" "**Let some mess in.**"
+  both_voice="$(sed -n '/^Both:$/,/^Speaking to the user only:$/p' "$refs")"
+  assert_output_contains "$both_voice" "**Be specific.**"
+  assert_output_contains "$both_voice" "**Vary rhythm.**"
+  assert_output_contains "$both_voice" "**Acknowledge complexity.**"
+  assert_output_not_contains "$both_voice" "**Have opinions.**"
+  user_only_voice="$(sed -n '/^Speaking to the user only:$/,/^## Content$/p' "$refs")"
+  assert_output_contains "$user_only_voice" "**Have opinions.**"
+  assert_output_contains "$user_only_voice" '**Use "I" when it fits.**'
+  assert_output_contains "$user_only_voice" "**Let some mess in.**"
   assert_contains "$refs" "Do not use them. Use a period or a comma"
   assert_contains "$refs" "It never licenses renaming an identifier"
   assert_contains "$refs" "Use sentence case"
@@ -536,8 +544,8 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_output_contains "$implicit_route" "run the shared pass below"
   assert_output_contains "$implicit_route" "skip the deep catalogue pass"
   assert_output_not_contains "$implicit_route" "add the deep catalogue pass"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Before editing, freeze exact names, technical terms, quoted text, code, logs,"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Every step below preserves them character for character"
+  freeze_clause="$(sed -n '/^Before editing, freeze/,/^1\. Apply the \[reader reset\]/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md" | tr '\n' ' ' | tr -s '[:space:]' ' ')"
+  assert_output_contains "$freeze_clause" "Before editing, freeze exact names, technical terms, quoted text, code, logs, commands, and evidence. Every step below preserves them character for character."
   awk '
     /^## Shared pass$/ { in_shared = 1; next }
     in_shared && /Before editing, freeze exact names/ { freeze_line = NR }

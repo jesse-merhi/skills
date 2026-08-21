@@ -101,7 +101,8 @@ After the user picks:
 
 1. integrate the selected direction using production conventions;
 2. run the relevant behavior and visual checks;
-3. remove the prototype route and unselected variants unless the user asked to
+3. remove every prototype-only route, page, and module, including the picker
+   page and selected or unselected variant modules, unless the user asked to
    keep them.
 
 If the user asks for another round, keep the picker page and diverge around the
