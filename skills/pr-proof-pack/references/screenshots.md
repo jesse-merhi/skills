@@ -42,12 +42,17 @@ and requires a `201` response with a canonical
 `https://github.com/user-attachments/assets/*` URL. It then authenticates only
 the initial canonical URL, follows redirects without forwarding credentials to
 another host, ignores user curl configuration that could weaken that boundary,
-and verifies HTTP status, HTTP and detected content types, and exact byte size.
+keeps signed redirect URLs out of process arguments, rejects redirects outside
+GitHub-controlled media hosts, and verifies HTTP status, HTTP and detected
+content types, and exact byte size.
 It prints only the verified asset URL on success.
 
 The command supports `github.com` PRs only and accepts only image or video
-content. If it fails, stop and report its diagnostics. Do not extract or reuse
-browser credentials.
+content. It requires curl 8.4 or newer so its byte limit also applies to
+responses without `Content-Length`. If the preflight fails, upgrade curl and
+ensure the newer binary is first on `PATH`.
+If it fails, stop and report its diagnostics. Do not extract or reuse browser
+credentials.
 
 Insert images with descriptive alt text. Insert videos as a bare URL on their
 own line; image Markdown such as `![](url)` does not produce a working MP4
@@ -57,26 +62,33 @@ explicitly requests that storage model.
 
 ## Rendered PR verification
 
-On GitHub, inspect the final server-rendered body without opening a browser:
+On GitHub, inspect the final title and Markdown body, then verify the
+server-rendered body without opening a browser:
 
 ```sh
-PR_HOST='<hostname-resolved-in-step-2>'
-REPOSITORY='<owner/repo-resolved-in-step-2>'
-PR_NUMBER='<number-resolved-in-step-2>'
-gh api --hostname "$PR_HOST" "repos/$REPOSITORY/pulls/$PR_NUMBER" \
-  --header 'Accept: application/vnd.github.full+json' \
-  --jq '{title, body_html}'
+PR_URL='<full-PR-URL-resolved-in-step-2>'
+PR_HEAD='<final-head-SHA-resolved-in-step-2>'
+gh pr view "$PR_URL" --json title,body --jq '{title, body}'
+<skill-dir>/scripts/github-verify-rendered-proof --pr "$PR_URL" --head "$PR_HEAD"
 ```
 
 Check the title, section order, captions, copyable reproduction steps, and every
-expected `<img>` and `<video controls>` element. Fetch each resolved asset URL
-with unauthenticated `curl --location`; require `200`, the expected content type,
-and non-empty bytes. Never forward the `gh` token to a resolved asset, Camo, or
-CDN host. For evidence uploaded during this refresh, also require the fetched
-byte size to match its local source. Preserved evidence may not have a run-owned
-local source and does not need an exact size match. This proves that GitHub
-stored the new bytes, kept preserved assets available, and produced the
-expected media markup.
+expected image and video in the Markdown. The repository verifier captures
+`body_html` without printing it, requires the PR to stay on the expected final
+head, preflights the same curl 8.4 requirement before fetching media, and
+reports only media counts, types, and byte sizes. It
+keeps signed URLs out of process arguments and fetches every resolved asset
+without credentials, user curl configuration, or untrusted redirects.
+Never forward the `gh` token to a resolved asset, Camo, or CDN host, and never
+print a resolved signed asset URL. The HTTP and detected content types must both
+match the rendered image or video family after MIME parameters are removed,
+which allows GitHub's safe image subtype normalization.
+For evidence uploaded during this refresh, require the reported byte size to
+match its local source.
+Preserved evidence may not have a run-owned local source.
+It does not need an exact size match.
+This proves that GitHub stored the new bytes, kept preserved assets available,
+and produced the expected media markup.
 
 Use an interactive browser for facts the server-rendered HTML cannot prove:
 
@@ -88,9 +100,7 @@ Use an interactive browser for facts the server-rendered HTML cannot prove:
 Inspect the finished evidence locally before upload with the model's image or
 video viewer. Inspect the fetched rendered asset again after upload. A file with
 real bytes, a successful status, or the expected content type does not prove
-that its pixels or frames show the intended behavior or look presentable. On
-another provider, use an equivalent rendered-body API when available and fall
-back to the browser for unsupported checks.
+that its pixels or frames show the intended behavior or look presentable.
 
 ## Evidence contract
 

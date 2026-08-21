@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Proof Pack"
   short_description: "Make PR context, scope, and proof concise and checkable."
-  default_prompt: "Use $pr-proof-pack to make this PR quickly explain what broke and how it is fixed, break down large or multi-part changes by direct-base +LOC and -LOC, prove direct-base and PR outcomes with copyable text for textual behavior, and reserve uploaded media for claims that need visual evidence."
+  default_prompt: "Use $pr-proof-pack to make this PR quickly explain what broke and how it is fixed, break down large or multi-part changes by direct-base +LOC and -LOC, prove direct-base and PR outcomes with copyable text for textual behavior, upload selected github.com media with the repository command, and verify rendered proof headlessly or in a browser where required."
