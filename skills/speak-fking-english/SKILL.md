@@ -28,6 +28,9 @@ saving it.
 
 ## Shared pass
 
+Before editing, freeze exact names, technical terms, quoted text, code, logs,
+commands, and evidence. Every step below preserves them character for character.
+
 1. Apply the [reader reset](references/reader-reset.md) to the complete draft
    without changing its facts, scope, or requested action.
 

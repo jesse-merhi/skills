@@ -527,6 +527,8 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_output_contains "$implicit_route" "run the shared pass below"
   assert_output_contains "$implicit_route" "skip the deep catalogue pass"
   assert_output_not_contains "$implicit_route" "add the deep catalogue pass"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Before editing, freeze exact names, technical terms, quoted text, code, logs,"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Every step below preserves them character for character"
   proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
   assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
 }
