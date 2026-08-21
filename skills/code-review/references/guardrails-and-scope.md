@@ -8,7 +8,7 @@ Before Phase 1, freeze the review scope:
 - base and target branch
 - intended behavior
 - owner boundary
-- changed files
+- changed files (text paths are informational; new binaries require approval)
 - non-test changed lines
 
 Before patching a reviewer finding, classify it:

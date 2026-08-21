@@ -23,9 +23,7 @@
   `*.spec.*`. Recognized lockfiles are encoded in the CLI and include the npm,
   pnpm, Yarn, Bun, Cargo, Ruby, PHP, Python Poetry, and uv lockfiles.
 - Calculate `allowed_growth = floor(baseline_production_lines * limit_percent / 100)`.
-  The review remains inside budget only when current production changed lines
-  are no greater than `baseline + allowed_growth` and no new production path
-  exists outside the frozen baseline file surface.
+  Stay within `baseline + allowed_growth` with no new binary path; added text paths are informational.
 - Resolve `review_findings_bin` from the installed `code-review` skill directory as
   required by `review-guardrails`. Persist the baseline with
   `"$review_findings_bin" scope-start`. Run `"$review_findings_bin" scope-check` after
