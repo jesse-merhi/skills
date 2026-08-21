@@ -793,15 +793,39 @@ vm.runInNewContext(script, { document, Math, Number, String })
 elements.get("attempts").value = "8"
 elements.get("delay").value = "5"
 elements.get("recovery").value = "10"
-const update = elements.get("attempts").listeners.get("input")
-if (update === undefined) throw new Error("attempts input listener was not registered")
-update()
+const trigger = (id) => {
+  const update = elements.get(id).listeners.get("input")
+  if (update === undefined) throw new Error(`${id} input listener was not registered`)
+  update()
+}
+trigger("attempts")
 
 if (elements.get("wait-result").textContent !== "10m 35s") {
-  throw new Error("retry wait result was not rendered from the changed inputs")
+  throw new Error("attempts listener did not render the changed retry wait")
 }
 if (!elements.get("reading").innerHTML.includes("after 10m 35s of modeled retry delay")) {
-  throw new Error("retry reading did not report the computed delay")
+  throw new Error("attempts listener did not report the computed delay")
+}
+
+elements.get("attempts").value = "3"
+elements.get("delay").value = "20"
+trigger("delay")
+if (elements.get("wait-result").textContent !== "1m") {
+  throw new Error("delay listener did not render the changed retry wait")
+}
+if (!elements.get("reading").innerHTML.includes("after 1m of modeled retry delay")) {
+  throw new Error("delay listener did not report the computed delay")
+}
+
+elements.get("attempts").value = "4"
+elements.get("delay").value = "10"
+elements.get("recovery").value = "80"
+trigger("recovery")
+if (elements.get("recover-result").textContent !== "99%") {
+  throw new Error("recovery listener did not render the changed recovery rate")
+}
+if (!elements.get("reading").innerHTML.includes("balances transient recovery")) {
+  throw new Error("recovery listener did not update the explanatory reading")
 }
 JS
 }
