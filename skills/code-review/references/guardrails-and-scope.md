@@ -48,9 +48,11 @@ Orchestrator specifics:
 - After approval, run `"$review_findings_bin" scope-authorize` with the user's words and revised scope,
   then reset the current phase. On rejection, revert the over-budget batch,
   defer the finding, and make `scope-check` pass before resuming.
-- Provisional fixes (Class A) are findings with status `provisional`; the review
-  owner's keep-or-revert answer updates the finding to `fixed` or `rejected`
-  with `--owner-resolution approved|declined` and their decision text.
+- Provisional fixes (Class A) are findings with status `provisional`. If the
+  review owner keeps the repair, update the finding to `fixed` with
+  `--owner-resolution approved` and their decision text. If they reject the
+  repair, revert it and update the finding to `reopened` with their decision
+  text but no owner resolution; the finding itself remains active.
 - Keep the consult queue in the findings database: each entry carries its
   fingerprint (file, code element, root cause). Review passes that re-raise a
   queued finding get a one-line match note on that finding instead of a new
