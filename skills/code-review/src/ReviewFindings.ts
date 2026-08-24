@@ -145,7 +145,7 @@ Optional finding metadata:
   Omitted --branch or --base reuses one matching repo-and-target run; ambiguous omissions are rejected.
   --area ${FINDING_AREAS.filter(Boolean).join("|")} --material
   --user-impact, --decision, --text
-  --owner-resolution ${FINDING_OWNER_RESOLUTIONS.join("|")} for an explicit terminal owner decision
+  --owner-resolution ${FINDING_OWNER_RESOLUTIONS.join("|")} for an explicit terminal decision about the finding
 
 Required for runtime findings:
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
@@ -192,6 +192,7 @@ Consistency rules:
   owner approved + decision text -> fixed accepted/consulted finding
   owner declined + decision text -> rejected accepted/consulted finding
   owner declined + decision text -> deferred consulted finding
+  declined provisional repair + decision text -> reopened accepted finding; omit owner resolution because the finding remains open
   owner-resolved record -> terminal and immutable; exact replay is a no-op even after scope completion
   supported maintenance -> both evidence fields derive accept, consult, follow-up, or residual
   rejected unsupported maintenance candidate -> no evidence fields and required decision derive reject
@@ -1136,7 +1137,14 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   if (scope[0]?.status === "complete") {
     return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review before recording more findings"))
   }
-  if (existingIssue?.status === "provisional" && input.status !== "provisional" && input.ownerResolution.length === 0) {
+  if (existingIssue?.status === "provisional" && input.status === "rejected") {
+    return yield* Effect.fail(new InvalidFinding("declining a provisional repair requires --status reopened and --decision; the accepted finding remains open"))
+  }
+  if (existingIssue?.status === "provisional" && input.status === "reopened") {
+    if (input.ownerResolution.length > 0 || input.decision.trim().length === 0) {
+      return yield* Effect.fail(new InvalidFinding("reopening a declined provisional repair requires --decision and must omit --owner-resolution"))
+    }
+  } else if (existingIssue?.status === "provisional" && input.status !== "provisional" && input.ownerResolution.length === 0) {
     return yield* Effect.fail(new InvalidFinding("closing a provisional finding requires --owner-resolution and --decision"))
   }
   if (existingIssue?.disposition === "consult" && input.disposition !== "consult" && input.ownerResolution.length === 0) {

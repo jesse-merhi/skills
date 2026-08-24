@@ -101,7 +101,8 @@ test_review_findings_schema_is_visible_and_enforced() {
   assert_output_contains "$out" "consult -> open|reopened, no autonomous patch"
   assert_output_contains "$out" "follow-up -> deferred, nonblocking, and requires decision text"
   assert_output_contains "$out" "handling reject -> reject proven runtime behavior allowed by the current contract; requires decision text"
-  assert_output_contains "$out" "--owner-resolution approved|declined for an explicit terminal owner decision"
+  assert_output_contains "$out" "--owner-resolution approved|declined for an explicit terminal decision about the finding"
+  assert_output_contains "$out" "declined provisional repair + decision text -> reopened accepted finding; omit owner resolution because the finding remains open"
   assert_output_contains "$out" "owner-resolved record -> terminal and immutable; exact replay is a no-op even after scope completion"
   assert_output_contains "$out" "--maintenance-evidence <repository evidence of unnecessary complexity, duplication, or code with no current job>"
   assert_output_contains "$out" "--present-cost <current reading, change, test, or ownership cost>"
@@ -494,7 +495,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --reachability-evidence "A supported request reaches the handler." \
     --likelihood possible --impact high \
     --actual-consequence "The core workflow is blocked." >/dev/null
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D12 --status rejected --source review --fingerprint "declined provisional runtime fix" \
     --summary "The owner declined the provisional runtime fix." \
@@ -503,7 +504,21 @@ test_review_findings_schema_is_visible_and_enforced() {
     --reachability-evidence "A supported request reaches the handler." \
     --likelihood possible --impact high \
     --actual-consequence "The core workflow is blocked." \
-    --owner-resolution declined --decision "The owner asked to revert the provisional fix." >/dev/null
+    --owner-resolution declined --decision "The owner asked to revert the provisional fix." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "declining a provisional repair must not reject the underlying finding"
+  fi
+  assert_contains "$tmp/stderr" "declining a provisional repair requires --status reopened"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D12 --status reopened --source review --fingerprint "declined provisional runtime fix" \
+    --summary "The owner declined the provisional runtime fix." \
+    --finding-kind runtime --fix-scope local --handling fix \
+    --production-path "supported request -> handler -> workflow failure" \
+    --reachability-evidence "A supported request reaches the handler." \
+    --likelihood possible --impact high \
+    --actual-consequence "The core workflow is blocked." \
+    --decision "The owner asked to revert the provisional fix." >/dev/null
 
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
@@ -513,11 +528,11 @@ test_review_findings_schema_is_visible_and_enforced() {
     "${MAINTENANCE_EVIDENCE[@]}" >/dev/null
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
-    --decision-id D13 --status rejected --source review --fingerprint "declined provisional maintenance fix" \
+    --decision-id D13 --status reopened --source review --fingerprint "declined provisional maintenance fix" \
     --summary "The owner declined the provisional maintenance fix." \
     --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
-    --owner-resolution declined --decision "The owner asked to revert the provisional maintenance fix." >/dev/null
+    --decision "The owner asked to revert the provisional maintenance fix." >/dev/null
 
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
@@ -588,17 +603,12 @@ test_review_findings_schema_is_visible_and_enforced() {
     fail "owner approval must not be reversible"
   fi
   assert_contains "$tmp/stderr" "owner-resolved findings are immutable; only an exact idempotent replay is allowed"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D13 --status fixed --source review --fingerprint "declined provisional maintenance fix" \
-    --summary "A later update reversed the owner decline." \
+    --summary "A later repair fixed the reopened maintenance finding." \
     --finding-kind maintenance --fix-scope local --handling fix \
-    "${MAINTENANCE_EVIDENCE[@]}" \
-    --owner-resolution approved --decision "The owner now approves the provisional fix." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "owner decline must not be reversible"
-  fi
-  assert_contains "$tmp/stderr" "owner-resolved findings are immutable; only an exact idempotent replay is allowed"
+    "${MAINTENANCE_EVIDENCE[@]}" >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
@@ -656,9 +666,10 @@ test_review_findings_schema_is_visible_and_enforced() {
       if (d9b?.status !== "deferred" || d9b.handling !== "follow-up" || d9b.disposition !== "follow-up") process.exit(1);
       if (!closeout.deferred_work.some((item) => item.decision_id === "D9B") || closeout.still_open.some((item) => item.decision_id === "D9B")) process.exit(1);
       if (byId.get("D11")?.owner_resolution !== "approved") process.exit(1);
-      if (byId.get("D12")?.owner_resolution !== "declined") process.exit(1);
+      const d12 = byId.get("D12");
+      if (d12?.status !== "reopened" || d12.owner_resolution !== "" || !closeout.still_open.some((item) => item.decision_id === "D12")) process.exit(1);
       const d13 = byId.get("D13");
-      if (d13?.disposition !== "accept" || d13.owner_resolution !== "declined") process.exit(1);
+      if (d13?.status !== "fixed" || d13.disposition !== "accept" || d13.owner_resolution !== "") process.exit(1);
       if (d13.maintenance_evidence !== "The supported parser is duplicated across three changed modules." || d13.present_cost !== "The branch adds reading and regression-test cost.") process.exit(1);
     });
   '

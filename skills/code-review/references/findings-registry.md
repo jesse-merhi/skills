@@ -222,8 +222,11 @@ finding handled as `fix` and recorded as deferred becomes residual risk and
 requires `--decision` to explain why that risk is accepted.
 A consulted finding may be marked fixed or rejected only
 with `--owner-resolution approved|declined` and `--decision` containing the
-owner's decision. Use the same explicit resolution when the owner keeps or
-declines a provisional fix. A consulted finding may be deferred only with
+owner's decision. Use the same explicit resolution when the owner keeps a
+provisional fix. If the owner declines a provisional repair, revert it and
+record the accepted finding as `reopened` with `--decision`; omit
+`--owner-resolution` because the finding remains active. A consulted finding
+may be deferred only with
 `--owner-resolution declined` and the owner's decision; an unanswered consult
 stays open. An owner-resolved record is terminal and immutable. Repeating the
 exact record is harmless, including after scope completion; changing any field

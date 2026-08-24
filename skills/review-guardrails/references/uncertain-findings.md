@@ -34,11 +34,12 @@ When the test passes:
   database.
 - Ask the user in parallel; do not wait for the answer.
 - Continue the loop on the fixed tree so later passes review the actual state.
-- If the user keeps it, close the entry.
-- If the user rejects it, revert the commit or hunk, reset the streak, and
-  resume.
-- Record either terminal answer with `--owner-resolution approved|declined`
-  and the user's decision text.
+- If the user keeps it, close the entry as `fixed` with
+  `--owner-resolution approved` and the user's decision text.
+- If the user rejects the repair, revert the commit or hunk, reset the streak,
+  and resume. Record the entry as `reopened` with the user's decision text and
+  omit `--owner-resolution`: the repair was declined, but the finding remains
+  active.
 
 ## Consult: class B
 
