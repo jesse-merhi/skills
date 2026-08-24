@@ -17,8 +17,8 @@ independently; evidence for one does not prove the other.
 
 For a maintenance finding, answer instead:
 
-1. What exact changed code is unnecessary?
-2. What repository evidence proves it has no current job?
+1. What exact changed code is unnecessarily complex, duplicated, or unused?
+2. What repository evidence proves that present maintenance problem?
 3. What present reading, change, test, or ownership cost does it add?
 4. What smaller code preserves all current behavior?
 5. What boundary, domain concept, dependency direction, expected variability,

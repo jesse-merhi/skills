@@ -477,7 +477,7 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "To reject an unsupported"
   assert_not_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind <runtime|maintenance>"
   assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "for a maintenance finding"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--current-job-evidence`'
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--maintenance-evidence`'
   assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--present-cost`'
   assert_contains "$ROOT_DIR/skills/code-review/references/review-phase-rules.md" "only runtime findings receive severity"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "but no runtime risk fields or severity"
@@ -486,7 +486,7 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Plausibility test"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Proxy test"
   assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "admin-provided connection string"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "has no current job"
+  assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "current unnecessary"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
 }
 

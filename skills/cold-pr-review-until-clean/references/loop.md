@@ -26,9 +26,9 @@ Repeat:
    - reject only with recorded evidence
    - for a runtime candidate, run `finding-discipline`'s likelihood-impact risk
      rating
-   - for a maintenance candidate, use `--current-job-evidence` to prove that the
-     changed code has no current job and `--present-cost` for its concrete
-     current reading, change, test, or ownership cost
+   - for a maintenance candidate, use `--maintenance-evidence` to prove current
+     unnecessary complexity, duplication, or code with no current job, and
+     `--present-cost` for its concrete reading, change, test, or ownership cost
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
        pass -> fix now, log Provisional, ask the user without waiting

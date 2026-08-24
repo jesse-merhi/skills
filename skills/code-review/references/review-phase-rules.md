@@ -53,11 +53,12 @@ with the blocker or residual risk.
 
 - Treat native and cold reviewer output as candidates. Before editing code,
   require `finding-discipline`'s recorded likelihood-impact risk rating for a
-  runtime candidate, or its current-job and present-cost evidence for a
+  runtime candidate, or its maintenance and present-cost evidence for a
   maintenance candidate. Require the CLI's derived disposition in either case;
   only runtime findings receive severity. Record `--handling fix` for current
-  in-scope work, `consult` for an owner decision, or `follow-up` for real work
-  outside this review.
+  in-scope work, `consult` for an owner decision, `follow-up` for real work
+  outside this review, or `reject` for proven runtime behavior the current
+  contract allows.
 - Before editing an accepted finding, apply `review-guardrails`' systemic-finding
   stop. Bring the user durable architecture options instead of applying a local
   Band-Aid.

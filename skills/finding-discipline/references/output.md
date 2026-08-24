@@ -23,9 +23,9 @@ For a maintenance finding, use this body instead:
 ```md
 [maintenance] Imperative title under 80 characters
 
-The changed code in `path/to/file.ts` adds <defense or indirection>, but
-<caller/producer/contract evidence> shows it has no current job. This makes
-<specific reading/change/test cost> harder without preserving <behavior or
+The changed code in `path/to/file.ts` adds <defense, duplication, or
+indirection>, and <repository evidence> proves the present maintenance problem.
+This adds <specific reading/change/test cost> without improving <behavior or
 boundary>. Fix by <specific simplification>.
 ```
 

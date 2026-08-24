@@ -118,10 +118,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
    - for a runtime finding, record likelihood and impact before editing, and
      require the CLI to derive `accept` and severity;
-   - for a maintenance finding, pass `--current-job-evidence` proving the
-     changed code has no current job and `--present-cost` naming its current
-     reading, change, test, or ownership cost; require the CLI to derive
-     `accept` without a severity;
+   - for a maintenance finding, pass `--maintenance-evidence` proving current
+     unnecessary complexity, duplication, or code with no current job, and
+     `--present-cost` naming its current reading, change, test, or ownership
+     cost; require the CLI to derive `accept` without a severity;
    - stop and consult if `review-guardrails` classifies the fix as systemic;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
@@ -137,10 +137,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
    - for a runtime finding, record likelihood and impact before editing, and
      require the CLI to derive `accept` and severity;
-   - for a maintenance finding, pass `--current-job-evidence` proving the
-     changed code has no current job and `--present-cost` naming its current
-     reading, change, test, or ownership cost; require the CLI to derive
-     `accept` without a severity;
+   - for a maintenance finding, pass `--maintenance-evidence` proving current
+     unnecessary complexity, duplication, or code with no current job, and
+     `--present-cost` naming its current reading, change, test, or ownership
+     cost; require the CLI to derive `accept` without a severity;
    - stop and consult if `review-guardrails` classifies the fix as systemic;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;

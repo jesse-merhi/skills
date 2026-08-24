@@ -81,7 +81,7 @@ const record = Command.make("record", {
   findingKind: Flag.choice("finding-kind", FINDING_KINDS), productionPath: Flag.string("production-path").pipe(Flag.withDefault("")),
   reachabilityEvidence: Flag.string("reachability-evidence").pipe(Flag.withDefault("")), likelihood: Flag.string("likelihood").pipe(Flag.withDefault("")),
   actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
-  currentJobEvidence: Flag.string("current-job-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
+  maintenanceEvidence: Flag.string("maintenance-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
   fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES),
   handling: Flag.choice("handling", FINDING_HANDLINGS),
   ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))

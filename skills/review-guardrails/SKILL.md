@@ -51,7 +51,7 @@ fields in its header.
    [budgets.md](references/budgets.md) before each review cycle and after each
    accepted fix.
 3. Require `finding-discipline`'s recorded risk rating for a runtime candidate,
-   or its current-job and present-cost evidence for a maintenance candidate.
+   or its maintenance and present-cost evidence for a maintenance candidate.
    Then classify accepted findings and apply the autonomous fix bar in
    [scope-governor.md](references/scope-governor.md).
 4. Before patching, apply the systemic-finding stop in

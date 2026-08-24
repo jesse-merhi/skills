@@ -23,7 +23,8 @@ other defensive path must pass the risk rating and the relevant evidence test:
   renderer or parser produces a material failure. An arbitrary string type or
   synthetically constructed value is not enough.
 
-A maintenance finding must use repository evidence to prove the changed code
-has no current job and name the reading, change, test, or ownership cost it adds.
+A maintenance finding must use repository evidence to prove current unnecessary
+complexity, duplication, or code with no current job, and name the reading,
+change, test, or ownership cost it adds.
 
 Prefer no finding over a weak finding.

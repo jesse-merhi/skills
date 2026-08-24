@@ -1,7 +1,7 @@
 # Uncertain findings
 
 Use this workflow only after the findings CLI returned `accept`: from
-`finding-discipline`'s risk rating for a runtime candidate, or from current-job
+`finding-discipline`'s risk rating for a runtime candidate, or from maintenance
 and present-cost evidence for a maintenance candidate.
 It handles uncertainty about the repair, not uncertainty about whether the
 finding exists. A runtime candidate with unproven reachability or consequence

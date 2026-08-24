@@ -21,10 +21,11 @@ Before patching an in-scope blocker, prove all of these:
 - A runtime finding contains `finding-discipline`'s risk rating, non-synthetic
   reachability and consequence evidence, and the CLI-derived `accept`
   disposition and severity.
-- A maintenance finding records repository proof that the changed code has no
-  current job in `--current-job-evidence` and a concrete current reading,
-  change, test, or ownership cost in `--present-cost`. It has the CLI-derived
-  `accept` disposition, but no runtime risk fields or severity.
+- A maintenance finding records repository proof of current unnecessary
+  complexity, duplication, or code with no current job in
+  `--maintenance-evidence`, plus a concrete current reading, change, test, or
+  ownership cost in `--present-cost`. It has the CLI-derived `accept`
+  disposition, but no runtime risk fields or severity.
 - The failure violates the current task contract, not a stricter contract
   invented by the reviewer.
 - The fix uses an existing repository or dependency primitive when one owns the
@@ -37,8 +38,10 @@ Before patching an in-scope blocker, prove all of these:
   for reachability, likelihood, or consequence evidence.
 
 Do not autonomously patch a P3 whose remedy only hardens hypothetical input. If
-the input is reachable but accepting its presentation or behavior is a product
-tolerance decision, record `--handling consult` and do not edit.
+the input is reachable and the current contract explicitly permits the
+behavior, record `--handling reject` with that contract evidence. If accepting
+it is instead a product tolerance decision, record `--handling consult` and do
+not edit.
 
 Reject observations that fail the reality or contract test. Record residual
 risk only when reachability and impact are proven but the current change

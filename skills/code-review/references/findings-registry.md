@@ -132,8 +132,9 @@ For every finding, record:
   `maintenance` for code-quality work without a runtime failure claim
 - fix scope: `local` when the owning boundary can be fixed directly, or
   `systemic` when a local edit would be a Band-Aid and requires consultation
-- handling: `fix` for current in-scope work, `consult` for an owner decision, or
-  `follow-up` for real nonblocking work outside this review
+- handling: `fix` for current in-scope work, `consult` for an owner decision,
+  `follow-up` for real nonblocking work outside this review, or `reject` when
+  proven runtime behavior is allowed by the current contract
 - risk rating for runtime candidates: production path, reachability evidence,
   likelihood, impact, and actual consequence; the CLI derives severity and
   disposition
@@ -156,7 +157,7 @@ behavior:
   --finding-kind runtime \
   --status <open|fixed|rejected|deferred|provisional|reopened> \
   --fix-scope <local|systemic> \
-  --handling <fix|consult|follow-up> \
+  --handling <fix|consult|follow-up|reject> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
@@ -194,7 +195,7 @@ Use a maintenance record for unnecessary changed code:
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
-  --current-job-evidence "<repository proof the changed code has no current job>" \
+  --maintenance-evidence "<repository proof of unnecessary complexity, duplication, or code with no current job>" \
   --present-cost "<current reading, change, test, or ownership cost>" \
   --decision "<owner or next action>" \
   --text "<validation notes or other searchable context>"
@@ -214,7 +215,9 @@ disposition from the current likelihood-impact matrix, evidence, and required
 `--handling`. Handling routes proven work but cannot raise a rejected or
 unproven risk. `fix` is invalid for systemic findings. `consult` waits for an
 owner decision. `follow-up` requires deferred status plus an owner or next
-action, stays nonblocking, and appears under `Deferred work`. An accepted local
+action, stays nonblocking, and appears under `Deferred work`. `reject` requires
+a rejected runtime record plus a decision naming the current contract that
+allows the behavior. An accepted local
 finding handled as `fix` and recorded as deferred becomes residual risk and
 requires `--decision` to explain why that risk is accepted.
 A consulted finding may be marked fixed or rejected only
