@@ -40,7 +40,7 @@ Use these impact meanings:
 ## Deterministic Rating
 
 Supply likelihood and impact. Do not choose severity or disposition; the
-findings CLI derives them from this table:
+findings CLI derives the risk outcome from this table:
 
 | Likelihood | Low impact | Medium impact | High impact | Critical impact |
 | --- | --- | --- | --- | --- |
@@ -52,13 +52,15 @@ findings CLI derives them from this table:
 
 Low-probability, low-impact risk defaults to no finding and no code. Severity
 reflects likelihood and impact together; worst-case impact alone cannot raise a
-finding. A systemic finding that would otherwise be accepted becomes a consult
-so the agent cannot apply a local Band-Aid. When the owner deliberately defers
-an accepted local finding, the CLI records it as residual risk without changing
-its severity. The owner may reject a consulted finding without turning it into
-an autonomous patch; the terminal update records that separate decision with
-`--owner-resolution`. An unanswered consult stays open; deferring it requires
-an explicit declined owner resolution.
+finding. Supply `--handling fix|consult|follow-up` separately: it routes a
+proven finding without changing severity or turning a rejected or unproven risk
+into work. Systemic findings cannot use `fix`. When the owner deliberately
+defers an accepted local finding, the CLI records it as residual risk without
+changing its severity. The owner may reject a consulted finding without turning
+it into an autonomous patch; the terminal update records that separate decision
+with `--owner-resolution`. An unanswered consult stays open. A real adjacent
+issue uses `follow-up`, is reported as deferred work, and does not block the
+current review.
 
 ## Disposition
 
@@ -68,6 +70,8 @@ an explicit declined owner resolution.
   Gather evidence; do not patch.
 - `consult`: the risk is proven, but tolerance or scope is a product, security,
   compatibility, operational, or architectural choice. Ask before patching.
+- `follow-up`: the issue is real but belongs outside the current review. Record
+  the owner or next action without blocking the current PR.
 - `residual`: the risk is proven and the current change deliberately leaves it
   unresolved. Record it without patching.
 - `reject`: the path is theoretical or the combined risk does not justify code.

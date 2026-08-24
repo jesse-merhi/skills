@@ -29,8 +29,8 @@ identity with the current head without relying on chat memory or CI state.
    highest-impact findings and their fixes. Do not print hundreds of repetitive
    cards.
 3. **Still open:** unresolved decisions and failed or skipped validation.
-   Report owner-declined deferred work and explicitly accepted residual risk as
-   separate categories so neither is mislabeled as resolved or unresolved.
+   Report follow-ups and owner-declined deferred work separately from explicitly
+   accepted residual risk so none is mislabeled as resolved or unresolved.
 4. **Delivery:** final local validation, proof freshness result, PR URL or owner
    blocker, CI state, and the required thumbs-up sign-off.
 5. **Full audit:** include the exact `closeout --json` or scoped `query` command

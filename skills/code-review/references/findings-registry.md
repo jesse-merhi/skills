@@ -132,6 +132,8 @@ For every finding, record:
   `maintenance` for code-quality work without a runtime failure claim
 - fix scope: `local` when the owning boundary can be fixed directly, or
   `systemic` when a local edit would be a Band-Aid and requires consultation
+- handling: `fix` for current in-scope work, `consult` for an owner decision, or
+  `follow-up` for real nonblocking work outside this review
 - risk rating for runtime candidates: production path, reachability evidence,
   likelihood, impact, and actual consequence; the CLI derives severity and
   disposition
@@ -154,6 +156,7 @@ behavior:
   --finding-kind runtime \
   --status <open|fixed|rejected|deferred|provisional|reopened> \
   --fix-scope <local|systemic> \
+  --handling <fix|consult|follow-up> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
@@ -187,6 +190,7 @@ Use a maintenance record for unnecessary changed code:
   --finding-kind maintenance \
   --status <open|fixed|deferred|provisional|reopened> \
   --fix-scope <local|systemic> \
+  --handling <fix|consult|follow-up> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
@@ -206,10 +210,13 @@ maintenance candidate, use `--status rejected`, omit both maintenance evidence
 flags, and record the rejection rationale in `--decision`.
 
 Do not pass priority, severity, or disposition. The CLI derives severity and
-disposition from the current likelihood-impact matrix and recorded evidence,
-then rejects a status that would patch an investigate, consult, reject, or
-systemic outcome. An accepted local finding recorded as deferred becomes
-residual risk and requires `--decision` to explain why that risk is accepted.
+disposition from the current likelihood-impact matrix, evidence, and required
+`--handling`. Handling routes proven work but cannot raise a rejected or
+unproven risk. `fix` is invalid for systemic findings. `consult` waits for an
+owner decision. `follow-up` requires deferred status plus an owner or next
+action, stays nonblocking, and appears under `Deferred work`. An accepted local
+finding handled as `fix` and recorded as deferred becomes residual risk and
+requires `--decision` to explain why that risk is accepted.
 A consulted finding may be marked fixed or rejected only
 with `--owner-resolution approved|declined` and `--decision` containing the
 owner's decision. Use the same explicit resolution when the owner keeps or
@@ -217,9 +224,9 @@ declines a provisional fix. A consulted finding may be deferred only with
 `--owner-resolution declined` and the owner's decision; an unanswered consult
 stays open. An owner-resolved record is terminal and immutable. Repeating the
 exact record is harmless, including after scope completion; changing any field
-requires a new decision ID. Closeout lists owner-declined consults under
-`Deferred work`, accepted local risk under `Accepted residual risk`, and
-unresolved decisions under `Still open`.
+requires a new decision ID. Closeout lists follow-ups and owner-declined
+consults under `Deferred work`, accepted local risk under `Accepted residual
+risk`, and unresolved decisions under `Still open`.
 
 Query before dispatching subagents, resuming a review, or answering "what did
 review find?":

@@ -9,10 +9,10 @@ Before applying a review-driven fix, classify the finding against the frozen
 - `Stop-and-consult`: requires a new shared contract, migration, API shape,
   storage shape, product/security judgment, or different owner boundary.
 
-Patch only in-scope blockers. Keep a follow-up `open` until its owner decides
-whether to accept, reject, or defer it; do not patch it in this PR. Add
-stop-and-consult findings to `consult_queue` with the scope reason, then record
-them in the findings database.
+Patch only in-scope blockers. Record adjacent work as `--handling follow-up`
+with `--status deferred` and its owner or next action; it stays visible without
+blocking this PR. Add stop-and-consult findings to `consult_queue` with the
+scope reason, then record them with `--handling consult`.
 
 ## Autonomous Fix Bar
 
@@ -38,7 +38,7 @@ Before patching an in-scope blocker, prove all of these:
 
 Do not autonomously patch a P3 whose remedy only hardens hypothetical input. If
 the input is reachable but accepting its presentation or behavior is a product
-tolerance decision, consult without editing.
+tolerance decision, record `--handling consult` and do not edit.
 
 Reject observations that fail the reality or contract test. Record residual
 risk only when reachability and impact are proven but the current change

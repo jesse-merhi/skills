@@ -12,7 +12,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatScopeBudgetCheck, formatScopeBudgetStatus, getScopeBudget, initialize, InvalidFinding, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatScopeBudgetCheck, formatScopeBudgetStatus, getScopeBudget, initialize, InvalidFinding, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
@@ -83,6 +83,7 @@ const record = Command.make("record", {
   actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
   currentJobEvidence: Flag.string("current-job-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
   fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES),
+  handling: Flag.choice("handling", FINDING_HANDLINGS),
   ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()

@@ -50,7 +50,7 @@ assert_output_not_contains() {
 
 record_maintenance_finding() {
   local args=("$@")
-  local decision_id="" fix_scope="local" index
+  local decision_id="" fix_scope="local" handling="fix" index
   for ((index = 0; index < ${#args[@]}; index += 1)); do
     case "${args[$index]}" in
       --decision-id) decision_id="${args[$((index + 1))]}" ;;
@@ -58,16 +58,17 @@ record_maintenance_finding() {
   done
   if [[ "$decision_id" == CONSULT-* ]]; then
     fix_scope="systemic"
+    handling="consult"
   fi
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
-    --finding-kind maintenance --fix-scope "$fix_scope" \
+    --finding-kind maintenance --fix-scope "$fix_scope" --handling "$handling" \
     "${MAINTENANCE_EVIDENCE[@]}" \
     "${args[@]}"
 }
 
 record_runtime_finding() {
   local args=("$@")
-  local decision_id="" fix_scope="local" index
+  local decision_id="" fix_scope="local" handling="fix" index
   for ((index = 0; index < ${#args[@]}; index += 1)); do
     case "${args[$index]}" in
       --decision-id) decision_id="${args[$((index + 1))]}" ;;
@@ -75,9 +76,10 @@ record_runtime_finding() {
   done
   if [[ "$decision_id" == CONSULT-* ]]; then
     fix_scope="systemic"
+    handling="consult"
   fi
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
-    --finding-kind runtime --fix-scope "$fix_scope" \
+    --finding-kind runtime --fix-scope "$fix_scope" --handling "$handling" \
     "${args[@]}"
 }
 
@@ -87,8 +89,9 @@ test_review_findings_schema_is_visible_and_enforced() {
   db="$tmp/reviews.sqlite"
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" schema)"
-  assert_output_contains "$out" "review-findings record schema v5"
+  assert_output_contains "$out" "review-findings record schema v6"
   assert_output_contains "$out" "--finding-kind runtime|maintenance"
+  assert_output_contains "$out" "--handling fix|consult|follow-up"
   assert_output_contains "$out" "Omitted --branch or --base reuses one matching repo-and-target run; ambiguous omissions are rejected."
   assert_output_contains "$out" "rare:        low=no severity/reject; medium=no severity/reject; high=P2/consult; critical=P1/consult"
   assert_output_contains "$out" "Do not pass --priority or --disposition. The CLI derives both."
@@ -96,6 +99,7 @@ test_review_findings_schema_is_visible_and_enforced() {
   assert_output_contains "$out" "accepted local + deferred -> residual"
   assert_output_contains "$out" "deferred legacy record without disposition -> unresolved until re-recorded"
   assert_output_contains "$out" "consult -> open|reopened, no autonomous patch"
+  assert_output_contains "$out" "follow-up -> deferred, nonblocking, and requires decision text"
   assert_output_contains "$out" "--owner-resolution approved|declined for an explicit terminal owner decision"
   assert_output_contains "$out" "owner-resolved record -> terminal and immutable; exact replay is a no-op even after scope completion"
   assert_output_contains "$out" "--current-job-evidence <repository proof the changed code has no current job>"
@@ -106,9 +110,20 @@ test_review_findings_schema_is_visible_and_enforced() {
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D0H --status fixed --source review --fingerprint "missing handling" \
+    --summary "Every finding needs an explicit handling route." \
+    --finding-kind maintenance --fix-scope local \
+    "${MAINTENANCE_EVIDENCE[@]}" \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "record must require handling"
+  fi
+  assert_contains "$tmp/stderr" "handling"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D0 --status fixed --source review --fingerprint "unsupported cleanup" \
     --summary "Maintenance acceptance requires structured evidence." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "maintenance findings must require current-job evidence"
   fi
@@ -118,7 +133,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D0B --status fixed --source review --fingerprint "incomplete cleanup evidence" \
     --summary "Maintenance acceptance requires a present cost." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     --current-job-evidence "Repository callers do not use this changed branch." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "maintenance findings must require present cost"
@@ -129,7 +144,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D0C --status fixed --source review --fingerprint "mixed evidence kinds" \
     --summary "Runtime findings must not carry maintenance evidence." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> workflow failure" \
     --reachability-evidence "The supported request reaches the handler." \
     --likelihood possible --impact medium \
@@ -144,7 +159,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D0D --status rejected --source review --fingerprint "unsupported cleanup without rationale" \
     --summary "Unsupported maintenance candidates need an auditable rejection." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "unsupported maintenance rejections must require a rationale"
   fi
@@ -154,14 +169,14 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D0D --status rejected --source review --fingerprint "unsupported cleanup with rationale" \
     --summary "The maintenance candidate is unsupported." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     --decision "Repository callers still use the changed branch, so it has a current job." >/dev/null
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D0E --status rejected --source review --fingerprint "proven cleanup marked unsupported" \
     --summary "Maintenance proof must derive acceptance independently of status." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "proven maintenance findings must not be caller-reclassified as rejected"
@@ -171,7 +186,7 @@ test_review_findings_schema_is_visible_and_enforced() {
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id OLD --status fixed --source review --fingerprint "agent severity" \
-    --summary "Agents cannot choose severity." --finding-kind maintenance --fix-scope local \
+    --summary "Agents cannot choose severity." --finding-kind maintenance --fix-scope local --handling fix \
     --priority P1 >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "record must reject agent-supplied priority"
   fi
@@ -189,7 +204,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D2 --status fixed --source review --fingerprint "rare low guard" \
     --summary "Rare low-impact risk should not produce code." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported input -> parser -> harmless fallback" \
     --reachability-evidence "A supported but unusual input reaches the fallback." \
     --likelihood rare --impact low \
@@ -203,7 +218,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D4 --status fixed --source review --fingerprint "systemic local patch" \
     --summary "A systemic issue cannot be marked fixed locally." \
-    --finding-kind maintenance --fix-scope systemic \
+    --finding-kind maintenance --fix-scope systemic --handling consult \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "systemic findings must stop for consultation"
@@ -212,9 +227,20 @@ test_review_findings_schema_is_visible_and_enforced() {
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D4B --status open --source review --fingerprint "systemic autonomous route" \
+    --summary "A systemic finding cannot request autonomous handling." \
+    --finding-kind maintenance --fix-scope systemic --handling fix \
+    "${MAINTENANCE_EVIDENCE[@]}" \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "systemic findings must not use fix handling"
+  fi
+  assert_contains "$tmp/stderr" "systemic findings require --handling consult or --handling follow-up"
+
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D5 --status rejected --source review --fingerprint "maintenance fake risk" \
     --summary "Maintenance findings must not carry runtime evidence." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     --production-path "synthetic value -> impossible sink" >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "maintenance findings must reject runtime risk fields"
   fi
@@ -224,7 +250,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D6 --status fixed --source review --fingerprint "unknown workflow failure" \
     --summary "An unproven failure cannot be marked fixed." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> unknown sink" \
     --reachability-evidence "The sink behavior has not been established." \
     --likelihood unknown --impact high \
@@ -238,7 +264,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D6B --status open --source review --fingerprint "unknown candidate without invented proof" \
     --summary "The candidate needs investigation before its path is known." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --likelihood unknown --impact high \
     --decision "Investigate whether a supported request reaches this sink." >/dev/null
 
@@ -246,7 +272,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D6C --status rejected --source review --fingerprint "theoretical candidate without invented proof" \
     --summary "The candidate exists only for arbitrary input outside the contract." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --likelihood theoretical --impact high \
     --decision "Reject: no current producer can create this value." >/dev/null
 
@@ -254,7 +280,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D7 --status fixed --source review --fingerprint "systemic runtime failure" \
     --summary "A systemic runtime issue cannot be marked fixed locally." \
-    --finding-kind runtime --fix-scope systemic \
+    --finding-kind runtime --fix-scope systemic --handling consult \
     --production-path "supported request -> shared policy -> workflow failure" \
     --reachability-evidence "A supported request reaches the shared policy." \
     --likelihood possible --impact high \
@@ -267,17 +293,37 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D8 --status fixed --source review --fingerprint "supported workflow failure" \
     --summary "A supported request blocks the core workflow." --area workflow --material \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> blocked workflow" \
     --reachability-evidence "The public request contract reaches the handler." \
     --likelihood possible --impact high \
     --actual-consequence "The user cannot complete the workflow." >/dev/null
 
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D8B --status open --source review --fingerprint "local product tolerance" \
+    --summary "A local product tolerance needs the owner's decision." \
+    --finding-kind runtime --fix-scope local --handling consult \
+    --production-path "supported request -> local tolerance -> visible fallback" \
+    --reachability-evidence "The supported request reaches the documented fallback." \
+    --likelihood likely --impact medium \
+    --actual-consequence "The user sees behavior that requires a product choice." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D8B --status fixed --source review --fingerprint "local product tolerance" \
+    --summary "A local product tolerance needs the owner's decision." \
+    --finding-kind runtime --fix-scope local --handling consult \
+    --production-path "supported request -> local tolerance -> visible fallback" \
+    --reachability-evidence "The supported request reaches the documented fallback." \
+    --likelihood likely --impact medium \
+    --actual-consequence "The user sees behavior that requires a product choice." \
+    --owner-resolution approved --decision "The owner approved the local behavior change." >/dev/null
+
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D9 --status deferred --source review --fingerprint "deferred supported failure" \
     --summary "A supported failure is deliberately left unresolved." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> recoverable failure" \
     --reachability-evidence "The public request contract reaches the failure." \
     --likelihood possible --impact medium \
@@ -290,18 +336,42 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D9 --status deferred --source review --fingerprint "deferred supported failure" \
     --summary "A supported failure is deliberately left unresolved." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> recoverable failure" \
     --reachability-evidence "The public request contract reaches the failure." \
     --likelihood possible --impact medium \
     --actual-consequence "The user must retry the operation later." \
     --decision "Accept the retry requirement for this release." >/dev/null
 
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D9B --status deferred --source review --fingerprint "adjacent follow-up" \
+    --summary "A real adjacent issue belongs in later work." \
+    --finding-kind runtime --fix-scope local --handling follow-up \
+    --production-path "supported request -> adjacent component -> recoverable failure" \
+    --reachability-evidence "The adjacent component is reached outside this PR's changed flow." \
+    --likelihood possible --impact medium \
+    --actual-consequence "The adjacent workflow requires a retry." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "follow-up findings must require an owner or next action"
+  fi
+  assert_contains "$tmp/stderr" "follow-up deferrals require --decision"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D9B --status deferred --source review --fingerprint "adjacent follow-up" \
+    --summary "A real adjacent issue belongs in later work." \
+    --finding-kind runtime --fix-scope local --handling follow-up \
+    --production-path "supported request -> adjacent component -> recoverable failure" \
+    --reachability-evidence "The adjacent component is reached outside this PR's changed flow." \
+    --likelihood possible --impact medium \
+    --actual-consequence "The adjacent workflow requires a retry." \
+    --decision "Assign the adjacent workflow to its owner after this PR." >/dev/null
+
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D10 --status rejected --source review --fingerprint "declined systemic cleanup" \
     --summary "The owner declined the systemic maintenance change." --area workflow --material \
-    --finding-kind maintenance --fix-scope systemic --owner-resolution declined \
+    --finding-kind maintenance --fix-scope systemic --handling consult --owner-resolution declined \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --decision "The owner declined this change." >/dev/null
 
@@ -309,7 +379,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D11 --status fixed --source review --fingerprint "approved without decision" \
     --summary "Owner resolution needs an auditable decision." \
-    --finding-kind maintenance --fix-scope systemic --owner-resolution approved \
+    --finding-kind maintenance --fix-scope systemic --handling consult --owner-resolution approved \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "owner resolution must require decision text"
@@ -320,7 +390,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D11 --status open --source review --fingerprint "approved systemic runtime fix" \
     --summary "A systemic runtime fix awaits owner approval." \
-    --finding-kind runtime --fix-scope systemic \
+    --finding-kind runtime --fix-scope systemic --handling consult \
     --production-path "supported request -> shared policy -> workflow failure" \
     --reachability-evidence "A supported request reaches the shared policy." \
     --likelihood possible --impact high \
@@ -329,7 +399,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D11 --status fixed --source review --fingerprint "approved systemic runtime fix" \
     --summary "The owner approved the systemic runtime fix." \
-    --finding-kind runtime --fix-scope systemic \
+    --finding-kind runtime --fix-scope systemic --handling consult \
     --production-path "supported request -> shared policy -> workflow failure" \
     --reachability-evidence "A supported request reaches the shared policy." \
     --likelihood possible --impact high \
@@ -340,7 +410,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D12 --status provisional --source review --fingerprint "declined provisional runtime fix" \
     --summary "A provisional runtime fix awaits owner review." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> workflow failure" \
     --reachability-evidence "A supported request reaches the handler." \
     --likelihood possible --impact high \
@@ -349,7 +419,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D12 --status rejected --source review --fingerprint "declined provisional runtime fix" \
     --summary "The owner declined the provisional runtime fix." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "supported request -> handler -> workflow failure" \
     --reachability-evidence "A supported request reaches the handler." \
     --likelihood possible --impact high \
@@ -360,13 +430,13 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D13 --status provisional --source review --fingerprint "declined provisional maintenance fix" \
     --summary "A provisional maintenance fix awaits owner review." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" >/dev/null
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D13 --status rejected --source review --fingerprint "declined provisional maintenance fix" \
     --summary "The owner declined the provisional maintenance fix." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --owner-resolution declined --decision "The owner asked to revert the provisional maintenance fix." >/dev/null
 
@@ -374,13 +444,13 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D15 --status provisional --source review --fingerprint "unresolved provisional fix" \
     --summary "A provisional fix still awaits owner review." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D15 --status fixed --source review --fingerprint "unresolved provisional fix" \
     --summary "A provisional fix was closed without owner review." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "provisional findings must not close without owner resolution"
@@ -391,13 +461,13 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status open --source review --fingerprint "systemic consult reclassification" \
     --summary "A systemic maintenance finding awaits owner review." \
-    --finding-kind maintenance --fix-scope systemic \
+    --finding-kind maintenance --fix-scope systemic --handling consult \
     "${MAINTENANCE_EVIDENCE[@]}" >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
     --summary "A systemic finding was reclassified as a local fix." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "existing consults must not be reclassified without owner resolution"
@@ -407,21 +477,21 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
     --summary "The owner approved the reclassified local fix." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --owner-resolution approved --decision "The owner approved the local fix." >/dev/null
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
     --summary "The owner approved the reclassified local fix." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --owner-resolution approved --decision "The owner approved the local fix." >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
     --summary "The same owner decision cannot rewrite the resolved finding." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --owner-resolution approved --decision "The owner approved the local fix." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -432,7 +502,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status rejected --source review --fingerprint "systemic consult reclassification" \
     --summary "A later update reversed the owner approval." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --owner-resolution declined --decision "The owner now declines the local fix." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -443,7 +513,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D13 --status fixed --source review --fingerprint "declined provisional maintenance fix" \
     --summary "A later update reversed the owner decline." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     --owner-resolution approved --decision "The owner now approves the provisional fix." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -454,7 +524,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
     --summary "A later update omitted the owner decision." \
-    --finding-kind maintenance --fix-scope local \
+    --finding-kind maintenance --fix-scope local --handling fix \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "later updates must not erase an owner resolution"
@@ -465,7 +535,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D14 --status deferred --source review --fingerprint "unanswered deferred consult" \
     --summary "An unanswered consult must remain open." \
-    --finding-kind maintenance --fix-scope systemic \
+    --finding-kind maintenance --fix-scope systemic --handling consult \
     "${MAINTENANCE_EVIDENCE[@]}" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "consult findings must not be deferred without owner resolution"
@@ -476,7 +546,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D3 --status open --source review --fingerprint "key rotation race" \
     --summary "A rare key-rotation race can cross the security boundary." \
-    --finding-kind runtime --fix-scope local \
+    --finding-kind runtime --fix-scope local --handling fix \
     --production-path "key rotation -> concurrent token verification -> stale key lookup" \
     --reachability-evidence "The supported rotation path overlaps active verification." \
     --likelihood rare --impact critical \
@@ -491,10 +561,15 @@ test_review_findings_schema_is_visible_and_enforced() {
       const closeout = JSON.parse(input);
       const byId = new Map(closeout.findings_found.map((item) => [item.decision_id, item]));
       const d8 = byId.get("D8");
-      if (d8?.finding_kind !== "runtime" || d8.likelihood !== "possible" || d8.impact !== "high" || d8.severity !== "p1" || d8.disposition !== "accept") process.exit(1);
+      if (d8?.finding_kind !== "runtime" || d8.likelihood !== "possible" || d8.impact !== "high" || d8.severity !== "p1" || d8.disposition !== "accept" || d8.handling !== "fix") process.exit(1);
       if (d8.production_path !== "supported request -> handler -> blocked workflow" || d8.reachability_evidence !== "The public request contract reaches the handler." || d8.actual_consequence !== "The user cannot complete the workflow.") process.exit(1);
+      const d8b = byId.get("D8B");
+      if (d8b?.handling !== "consult" || d8b.disposition !== "consult" || d8b.owner_resolution !== "approved") process.exit(1);
       const d9 = byId.get("D9");
       if (d9?.status !== "deferred" || d9.disposition !== "residual" || closeout.still_open.some((item) => item.decision_id === "D9")) process.exit(1);
+      const d9b = byId.get("D9B");
+      if (d9b?.status !== "deferred" || d9b.handling !== "follow-up" || d9b.disposition !== "follow-up") process.exit(1);
+      if (!closeout.deferred_work.some((item) => item.decision_id === "D9B") || closeout.still_open.some((item) => item.decision_id === "D9B")) process.exit(1);
       if (byId.get("D11")?.owner_resolution !== "approved") process.exit(1);
       if (byId.get("D12")?.owner_resolution !== "declined") process.exit(1);
       const d13 = byId.get("D13");
@@ -557,7 +632,7 @@ test_review_findings_prunes_terminal_deferred_records() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #prune" --base main \
     --decision-id D1 --status deferred --source review --fingerprint "accepted retry risk" \
-    --summary "The retry risk is explicitly accepted." --finding-kind runtime --fix-scope local --material \
+    --summary "The retry risk is explicitly accepted." --finding-kind runtime --fix-scope local --handling fix --material \
     --production-path "request -> recoverable failure -> retry" \
     --reachability-evidence "The supported request can reach the recoverable failure." \
     --likelihood likely --impact low --actual-consequence "The user retries once." \
@@ -565,7 +640,7 @@ test_review_findings_prunes_terminal_deferred_records() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #prune" --base main \
     --decision-id D2 --status open --source review --fingerprint "open workflow failure" \
-    --summary "The workflow failure remains open." --finding-kind runtime --fix-scope local \
+    --summary "The workflow failure remains open." --finding-kind runtime --fix-scope local --handling fix \
     --production-path "request -> handler -> failure" \
     --reachability-evidence "The supported request reaches the handler." \
     --likelihood likely --impact medium --actual-consequence "The workflow fails." >/dev/null
@@ -1711,6 +1786,15 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --summary "Choose the shared parser contract." --decision "Track as an adjacent follow-up." \
     --owner-resolution declined \
     --text "The follow-up is explicitly deferred outside this review." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --decision-id FOLLOWUP-001 \
+    --status deferred --source review --fingerprint "adjacent formatter cleanup" \
+    --summary "An adjacent formatter cleanup belongs in later work." \
+    --finding-kind maintenance --fix-scope local --handling follow-up \
+    "${MAINTENANCE_EVIDENCE[@]}" \
+    --decision "Assign the formatter cleanup to its owning module after this PR." \
+    --text "The current review records this as nonblocking follow-up work." >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Both required review phases are clean.")"
@@ -1745,6 +1829,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
   assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
   assert_output_contains "$out" "Deferred work"
   assert_output_contains "$out" "CONSULT-001 [deferred]"
+  assert_output_contains "$out" "FOLLOWUP-001 [deferred]"
   assert_output_contains "$out" "pnpm test final"
   assert_output_not_contains "$out" "LATE-001"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --json \
@@ -1758,6 +1843,8 @@ test_review_scope_budget_can_close_before_a_later_review() {
       const closeout = JSON.parse(input);
       if (closeout.still_open.some((item) => item.decision_id === "CONSULT-001")) process.exit(1);
       if (!closeout.deferred_work.some((item) => item.decision_id === "CONSULT-001")) process.exit(1);
+      if (closeout.still_open.some((item) => item.decision_id === "FOLLOWUP-001")) process.exit(1);
+      if (!closeout.deferred_work.some((item) => item.decision_id === "FOLLOWUP-001")) process.exit(1);
     });
   '
 
