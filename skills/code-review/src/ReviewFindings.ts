@@ -554,10 +554,12 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     ["issues", "owner_resolution", "text not null default ''"],
     ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "pinned_head_oid", "text not null default ''"], ["review_scope_budgets", "baseline_binary_paths_json", "text not null default '[]'"], ["review_scope_budgets", "new_binary_production_paths_json", "text not null default '[]'"]
   ] as const
+  let addedMaintenanceEvidence = false
   for (const [table, column, definition] of columns) {
     const existing = yield* sql.unsafe<TableInfoRow>(`pragma table_info(${table})`)
     if (!existing.some((row) => row.name === column)) {
       yield* sql.unsafe(`alter table ${table} add column ${column} ${definition}`)
+      if (table === "issues" && column === "maintenance_evidence") addedMaintenanceEvidence = true
       if (column === "baseline_binary_paths_json") yield* sql.unsafe(`update review_scope_budgets
         set status = 'rebaseline-required',
             last_reason = 'Binary baseline data was unavailable after upgrade; explicit rebaseline is required.' ||
@@ -565,7 +567,9 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
         where status != 'complete'`)
     }
   }
-  yield* sql.unsafe(`update issues set maintenance_evidence = current_job_evidence where coalesce(maintenance_evidence, '') = '' and coalesce(current_job_evidence, '') != ''`)
+  if (addedMaintenanceEvidence) {
+    yield* sql.unsafe(`update issues set maintenance_evidence = current_job_evidence where coalesce(maintenance_evidence, '') = '' and coalesce(current_job_evidence, '') != ''`)
+  }
   yield* sql.unsafe(`update issues set handling = case when disposition = 'consult' then 'consult' when disposition = 'follow-up' then 'follow-up' else 'fix' end where coalesce(handling, '') = ''`)
   const timestamp = nowSeconds()
   yield* sql.unsafe(`update issues set first_seen_at = coalesce(first_seen_at, updated_at, ?), last_seen_at = coalesce(last_seen_at, updated_at, ?), seen_count = coalesce(seen_count, 1)`, [timestamp, timestamp])

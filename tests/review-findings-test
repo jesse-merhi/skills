@@ -1285,6 +1285,15 @@ const consult = db.prepare("select handling, maintenance_evidence from issues wh
 const residual = db.prepare("select handling from issues where decision_id = 'RESIDUAL'").get()
 if (consult?.handling !== "consult" || consult.maintenance_evidence !== "Duplicated parser policy") process.exit(1)
 if (residual?.handling !== "fix") process.exit(1)
+db.prepare("update issues set finding_kind = 'runtime', maintenance_evidence = '' where decision_id = 'CONSULT'").run()
+NODE
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db" >/dev/null
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+const consult = db.prepare("select finding_kind, current_job_evidence, maintenance_evidence from issues where decision_id = 'CONSULT'").get()
+if (consult?.finding_kind !== "runtime" || consult.current_job_evidence !== "Duplicated parser policy" || consult.maintenance_evidence !== "") process.exit(1)
 NODE
 }
 
