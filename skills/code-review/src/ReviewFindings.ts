@@ -138,6 +138,7 @@ Required for every finding:
 
 Optional finding metadata:
   --branch, --base, --head, --run-status, --decision-log
+  Omitted --branch or --base reuses one matching repo-and-target run; ambiguous omissions are rejected.
   --area ${FINDING_AREAS.filter(Boolean).join("|")} --material
   --user-impact, --decision, --text
   --owner-resolution ${FINDING_OWNER_RESOLUTIONS.join("|")} for an explicit terminal owner decision
@@ -199,6 +200,7 @@ export interface RecordedCommand {
 }
 
 interface RunRow { readonly id: string }
+interface RunIdentityRow extends RunRow { readonly branch: string; readonly base: string }
 interface IdRow { readonly id: string }
 interface ExistingIssueRow extends CloseoutFindingRow { readonly id: string; readonly text: string }
 interface SequenceRow { readonly sequence: number }
@@ -326,6 +328,9 @@ const isFindingTerminal = (finding: Pick<CloseoutFinding, "status" | "dispositio
   return finding.disposition === "consult" && finding.owner_resolution.length > 0
 }
 
+const isDeferredWork = (finding: Pick<CloseoutFinding, "status" | "disposition" | "owner_resolution">) =>
+  finding.status === "deferred" && finding.disposition === "consult" && finding.owner_resolution.length > 0
+
 export interface ScopeBudgetStatus {
   readonly runId: string
   readonly generation: number
@@ -425,6 +430,7 @@ export interface Closeout {
   readonly findings_found: ReadonlyArray<CloseoutFinding>
   readonly changes_made_while_reviewing: ReadonlyArray<CloseoutFinding>
   readonly verification_run: ReadonlyArray<CommandRow>
+  readonly deferred_work: ReadonlyArray<CloseoutFinding>
   readonly still_open: ReadonlyArray<CloseoutFinding>
   readonly scope_budget?: ScopeBudgetStatus
 }
@@ -446,6 +452,8 @@ export interface CloseoutSummary {
   readonly important_findings_total: number
   readonly accepted_residual_risk: ReadonlyArray<CloseoutFinding>
   readonly accepted_residual_risk_total: number
+  readonly deferred_work: ReadonlyArray<CloseoutFinding>
+  readonly deferred_work_total: number
   readonly still_open: ReadonlyArray<CloseoutFinding>
   readonly still_open_total: number
   readonly verification_counts: ReadonlyArray<CloseoutCount>
@@ -652,6 +660,29 @@ const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<Re
     [repoKey, run.branch, run.target, run.base]
   )
   return rows[0]?.id
+})
+
+const resolveRecordRun = Effect.fn("ReviewFindings.resolveRecordRun")(function*(run: ReviewRun) {
+  if (run.branch.length > 0 && run.base.length > 0) return run
+  const sql = yield* SqlClient.SqlClient
+  const repoKey = yield* canonicalRepoKey(run.repoPath)
+  const where = ["repo_key = ?", "target = ?"]
+  const params: Array<unknown> = [repoKey, run.target]
+  if (run.branch.length > 0) { where.push("coalesce(branch, '') = ?"); params.push(run.branch) }
+  if (run.base.length > 0) { where.push("coalesce(base, '') = ?"); params.push(run.base) }
+  const matches = yield* sql.unsafe<RunIdentityRow>(
+    `select id, coalesce(branch, '') as branch, coalesce(base, '') as base from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 2`,
+    params
+  )
+  if (matches.length > 1) {
+    return yield* Effect.fail(new InvalidFinding("omitted run identity fields match multiple review runs; pass --branch and --base"))
+  }
+  const match = matches[0]
+  return match === undefined ? run : {
+    ...run,
+    branch: run.branch.length > 0 ? run.branch : match.branch,
+    base: run.base.length > 0 ? run.base : match.base
+  }
 })
 
 const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {
@@ -1042,10 +1073,11 @@ const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input:
   return completeFinding
 })
 
-export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(run: ReviewRun, rawInput: FindingInput) {
+export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput) {
   const input = yield* decodeFinding(rawInput)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
+  const run = yield* resolveRecordRun(rawRun)
   const existingRunId = yield* exactRunId(run)
   const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
   const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.currentJobEvidence, input.presentCost, input.disposition, input.fixScope, input.ownerResolution, input.text].filter(Boolean).join(" ")
@@ -1147,6 +1179,7 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
     findings_found: findings,
     changes_made_while_reviewing: findings.filter((finding) => finding.status === "fixed"),
     verification_run: commands,
+    deferred_work: findings.filter(isDeferredWork),
     still_open: findings.filter((finding) => !isFindingTerminal(finding)),
     ...(Option.isSome(scopeBudget) ? { scope_budget: scopeBudget.value } : {})
   } satisfies Closeout
@@ -1350,7 +1383,8 @@ const commandResultLabel = (result: string) => {
 
 export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSummary => {
   const acceptedResidualRisk = closeout.findings_found.filter((finding) => finding.disposition === "residual").sort(compareFindings)
-  const important = closeout.material_findings.filter((finding) => finding.disposition !== "residual" && isFindingTerminal(finding)).sort(compareFindings)
+  const deferredWork = [...closeout.deferred_work].sort(compareFindings)
+  const important = closeout.material_findings.filter((finding) => finding.disposition !== "residual" && !isDeferredWork(finding) && isFindingTerminal(finding)).sort(compareFindings)
   const stillOpen = [...closeout.still_open].sort(compareFindings)
   return {
     total_findings: closeout.findings_found.length,
@@ -1364,6 +1398,8 @@ export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSu
     important_findings_total: important.length,
     accepted_residual_risk: acceptedResidualRisk.slice(0, limit),
     accepted_residual_risk_total: acceptedResidualRisk.length,
+    deferred_work: deferredWork.slice(0, limit),
+    deferred_work_total: deferredWork.length,
     still_open: stillOpen.slice(0, limit),
     still_open_total: stillOpen.length,
     verification_counts: countLabels(closeout.verification_run.map((command) => commandResultLabel(command.result))),
@@ -1389,6 +1425,7 @@ const printSummary = (summary: CloseoutSummary) => {
     countLine("Severity", summary.severity_counts), "",
     ...limitedFindingLines("Important resolved findings", summary.important_findings, summary.important_findings_total), "",
     ...limitedFindingLines("Accepted residual risk", summary.accepted_residual_risk, summary.accepted_residual_risk_total), "",
+    ...limitedFindingLines("Deferred work", summary.deferred_work, summary.deferred_work_total), "",
     ...limitedFindingLines("Still open", summary.still_open, summary.still_open_total), "",
     "Verification summary",
     `- Commands: ${summary.verification_total}`,
@@ -1433,6 +1470,6 @@ export const printCloseout = (closeout: Closeout, json: boolean, view: CloseoutV
       `- ${finding.decision_id} [${finding.status}]: ${finding.summary}`,
       ...(finding.user_impact.length === 0 ? [] : [`  why it matters: ${finding.user_impact}`])
     ])
-  lines.push("Verification run", ...verification, "", "Still open", ...stillOpen)
+  lines.push(...findingLines("Deferred work", closeout.deferred_work, true), "", "Verification run", ...verification, "", "Still open", ...stillOpen)
   yield* Console.log(lines.join("\n"))
 })

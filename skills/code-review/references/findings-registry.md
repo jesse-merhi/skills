@@ -196,6 +196,10 @@ Use a maintenance record for unnecessary changed code:
   --text "<validation notes or other searchable context>"
 ```
 
+`--branch` and `--base` may be omitted when the repository and target identify
+exactly one existing run. If more than one run matches, the CLI rejects the
+record and requires both fields instead of guessing.
+
 Runtime records must omit the two maintenance evidence flags. Maintenance
 records must omit all five runtime risk flags. To reject an unsupported
 maintenance candidate, use `--status rejected`, omit both maintenance evidence
@@ -213,8 +217,9 @@ declines a provisional fix. A consulted finding may be deferred only with
 `--owner-resolution declined` and the owner's decision; an unanswered consult
 stays open. An owner-resolved record is terminal and immutable. Repeating the
 exact record is harmless, including after scope completion; changing any field
-requires a new decision ID. Closeout does not list explicitly deferred terminal
-findings under `Still open`.
+requires a new decision ID. Closeout lists owner-declined consults under
+`Deferred work`, accepted local risk under `Accepted residual risk`, and
+unresolved decisions under `Still open`.
 
 Query before dispatching subagents, resuming a review, or answering "what did
 review find?":

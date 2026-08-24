@@ -9,9 +9,10 @@ Before applying a review-driven fix, classify the finding against the frozen
 - `Stop-and-consult`: requires a new shared contract, migration, API shape,
   storage shape, product/security judgment, or different owner boundary.
 
-Patch only in-scope blockers. Record follow-ups as `deferred` findings and do
-not patch them in this PR. Add stop-and-consult findings to `consult_queue` with
-the scope reason, then record them in the findings database.
+Patch only in-scope blockers. Keep a follow-up `open` until its owner decides
+whether to accept, reject, or defer it; do not patch it in this PR. Add
+stop-and-consult findings to `consult_queue` with the scope reason, then record
+them in the findings database.
 
 ## Autonomous Fix Bar
 

@@ -48,7 +48,7 @@ assert_output_not_contains() {
   fi
 }
 
-record_finding() {
+record_maintenance_finding() {
   local args=("$@")
   local decision_id="" fix_scope="local" index
   for ((index = 0; index < ${#args[@]}; index += 1)); do
@@ -65,6 +65,22 @@ record_finding() {
     "${args[@]}"
 }
 
+record_runtime_finding() {
+  local args=("$@")
+  local decision_id="" fix_scope="local" index
+  for ((index = 0; index < ${#args[@]}; index += 1)); do
+    case "${args[$index]}" in
+      --decision-id) decision_id="${args[$((index + 1))]}" ;;
+    esac
+  done
+  if [[ "$decision_id" == CONSULT-* ]]; then
+    fix_scope="systemic"
+  fi
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --finding-kind runtime --fix-scope "$fix_scope" \
+    "${args[@]}"
+}
+
 test_review_findings_schema_is_visible_and_enforced() {
   local tmp db out
   tmp="$(mktemp -d)"
@@ -73,6 +89,7 @@ test_review_findings_schema_is_visible_and_enforced() {
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" schema)"
   assert_output_contains "$out" "review-findings record schema v5"
   assert_output_contains "$out" "--finding-kind runtime|maintenance"
+  assert_output_contains "$out" "Omitted --branch or --base reuses one matching repo-and-target run; ambiguous omissions are rejected."
   assert_output_contains "$out" "rare:        low=no severity/reject; medium=no severity/reject; high=P2/consult; critical=P1/consult"
   assert_output_contains "$out" "Do not pass --priority or --disposition. The CLI derives both."
   assert_output_contains "$out" "--area names the affected part of the product. --impact says how bad the consequence is."
@@ -402,6 +419,17 @@ test_review_findings_schema_is_visible_and_enforced() {
     --owner-resolution approved --decision "The owner approved the local fix." >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
+    --summary "The same owner decision cannot rewrite the resolved finding." \
+    --finding-kind maintenance --fix-scope local \
+    "${MAINTENANCE_EVIDENCE[@]}" \
+    --owner-resolution approved --decision "The owner approved the local fix." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "an owner-resolved replay must reject changed content"
+  fi
+  assert_contains "$tmp/stderr" "owner-resolved findings are immutable; only an exact idempotent replay is allowed"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status rejected --source review --fingerprint "systemic consult reclassification" \
     --summary "A later update reversed the owner approval." \
     --finding-kind maintenance --fix-scope local \
@@ -455,26 +483,23 @@ test_review_findings_schema_is_visible_and_enforced() {
     --actual-consequence "A token can be verified against a retired key." >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --json \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main)"
-  assert_output_contains "$out" '"finding_kind": "runtime"'
-  assert_output_contains "$out" '"likelihood": "rare"'
-  assert_output_contains "$out" '"impact": "critical"'
-  assert_output_contains "$out" '"severity": "p1"'
-  assert_output_contains "$out" '"disposition": "consult"'
-  assert_output_contains "$out" '"production_path": "supported request -> handler -> blocked workflow"'
-  assert_output_contains "$out" '"reachability_evidence": "The public request contract reaches the handler."'
-  assert_output_contains "$out" '"actual_consequence": "The user cannot complete the workflow."'
-  assert_output_contains "$out" '"disposition": "residual"'
-  assert_output_contains "$out" '"owner_resolution": "approved"'
-  assert_output_contains "$out" '"owner_resolution": "declined"'
-  assert_output_contains "$out" '"current_job_evidence": "Repository callers do not use this changed branch."'
-  assert_output_contains "$out" '"present_cost": "The branch adds reading and regression-test cost."'
   printf '%s\n' "$out" | node -e '
     let input = "";
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => { input += chunk; });
     process.stdin.on("end", () => {
-      const finding = JSON.parse(input).findings_found.find((item) => item.decision_id === "D13");
-      if (finding?.disposition !== "accept") process.exit(1);
+      const closeout = JSON.parse(input);
+      const byId = new Map(closeout.findings_found.map((item) => [item.decision_id, item]));
+      const d8 = byId.get("D8");
+      if (d8?.finding_kind !== "runtime" || d8.likelihood !== "possible" || d8.impact !== "high" || d8.severity !== "p1" || d8.disposition !== "accept") process.exit(1);
+      if (d8.production_path !== "supported request -> handler -> blocked workflow" || d8.reachability_evidence !== "The public request contract reaches the handler." || d8.actual_consequence !== "The user cannot complete the workflow.") process.exit(1);
+      const d9 = byId.get("D9");
+      if (d9?.status !== "deferred" || d9.disposition !== "residual" || closeout.still_open.some((item) => item.decision_id === "D9")) process.exit(1);
+      if (byId.get("D11")?.owner_resolution !== "approved") process.exit(1);
+      if (byId.get("D12")?.owner_resolution !== "declined") process.exit(1);
+      const d13 = byId.get("D13");
+      if (d13?.disposition !== "accept" || d13.owner_resolution !== "declined") process.exit(1);
+      if (d13.current_job_evidence !== "Repository callers do not use this changed branch." || d13.present_cost !== "The branch adds reading and regression-test cost.") process.exit(1);
     });
   '
 
@@ -487,6 +512,41 @@ test_review_findings_schema_is_visible_and_enforced() {
   assert_output_contains "$out" "owner: approved"
   assert_output_contains "$out" "owner: declined"
   assert_output_contains "$out" "decision: Accept the retry requirement for this release."
+}
+
+test_review_findings_resolves_omitted_run_identity_before_lifecycle_checks() {
+  local tmp db out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
+    --target "PR #identity" --base main --decision-id D1 --status provisional \
+    --source review --fingerprint "provisional parser fix" \
+    --summary "A provisional parser fix awaits owner review." >/dev/null
+
+  if record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" \
+    --target "PR #identity" --decision-id D1 --status fixed \
+    --source review --fingerprint "provisional parser fix" \
+    --summary "A provisional parser fix awaits owner review." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "omitting run identity must not bypass provisional lifecycle checks"
+  fi
+  assert_contains "$tmp/stderr" "closing a provisional finding requires --owner-resolution and --decision"
+
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" \
+    --target "PR #identity" --decision-id D1 --status fixed \
+    --source review --fingerprint "provisional parser fix" \
+    --summary "A provisional parser fix awaits owner review." \
+    --owner-resolution approved --decision "The owner approved the provisional fix." >/dev/null
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --json \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
+    --target "PR #identity" --base main)"
+  assert_output_contains "$out" '"status": "fixed"'
+  assert_output_contains "$out" '"owner_resolution": "approved"'
 }
 
 test_review_findings_prunes_terminal_deferred_records() {
@@ -598,11 +658,11 @@ test_base_less_command_makes_its_run_current() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
     --target "target one" --base main --decision-id D1 --status fixed \
     --source review --fingerprint "target one" --summary "Target one finding." --text "one" >/dev/null
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch feature \
     --target "target two" --base main --decision-id D2 --status fixed \
     --source review --fingerprint "target two" --summary "Target two finding." --text "two" >/dev/null
@@ -623,7 +683,7 @@ test_review_findings_cli_generates_closeout_from_records() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
 
-  record_finding \
+  record_runtime_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -636,12 +696,16 @@ test_review_findings_cli_generates_closeout_from_records() {
     --fingerprint "src/refunds.ts createRefund pending guard" \
     --summary "Pending refunds can allow duplicate provider refunds." \
     --area data-correctness \
-    --material \
+    --likelihood likely \
+    --impact high \
+    --production-path "refund request -> active refund guard -> provider refund" \
+    --reachability-evidence "The supported refund path checks active provider refunds before creating another." \
+    --actual-consequence "A pending refund can be submitted to the provider twice." \
     --user-impact "Users could trigger duplicate provider refunds for the same payment." \
     --decision "Changed src/refunds.ts so pending refunds count as active." \
     --text "Review found the active refund guard ignored pending provider refunds." >/dev/null
 
-  record_finding \
+  record_runtime_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -654,12 +718,16 @@ test_review_findings_cli_generates_closeout_from_records() {
     --fingerprint "src/invoices.ts loadInvoice tenant filter" \
     --summary "Invoice lookup still needs tenant-boundary confirmation." \
     --area permissions \
-    --material \
+    --likelihood rare \
+    --impact high \
+    --production-path "invoice request -> invoice lookup -> tenant response" \
+    --reachability-evidence "The changed lookup is reachable from the tenant invoice request path." \
+    --actual-consequence "An invoice may be returned without confirmed tenant scoping." \
     --user-impact "A tenant-boundary gap could expose invoice data across workspaces." \
     --decision "Awaiting owner confirmation." \
     --text "Cold review could not prove the tenant filter from the changed diff alone." >/dev/null
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -675,7 +743,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --decision "Renamed the helper in the focused test only." \
     --text "Low-risk internal review cleanup." >/dev/null
 
-  record_finding \
+  record_runtime_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -688,7 +756,11 @@ test_review_findings_cli_generates_closeout_from_records() {
     --fingerprint "src/refunds.ts retry state owner feedback" \
     --summary "Refund retry state did not explain when another attempt was safe." \
     --area workflow \
-    --material \
+    --likelihood likely \
+    --impact medium \
+    --production-path "support retry action -> refund retry state -> provider refund" \
+    --reachability-evidence "Support staff use the changed retry state before submitting another attempt." \
+    --actual-consequence "A retry can be submitted before the provider state settles." \
     --user-impact "Support staff could retry a refund before the provider state was settled." \
     --decision "Made the retry state and safe next action explicit." \
     --text "Cold review found an unclear operator retry state." >/dev/null
@@ -715,7 +787,7 @@ test_review_findings_cli_generates_closeout_from_records() {
 
   assert_output_contains "$out" "Findings found"
   assert_output_contains "$out" "Material findings"
-  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness]"
+  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness, p1]"
   assert_output_contains "$out" "why it matters: Users could trigger duplicate provider refunds"
   assert_output_contains "$out" "Security, data, and permission changes"
   assert_output_contains "$out" "Lower-risk findings"
@@ -737,8 +809,8 @@ test_review_findings_cli_generates_closeout_from_records() {
     --target "PR #88")"
 
   assert_output_contains "$out" "Material findings"
-  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness]"
-  assert_output_contains "$out" "D2 [open] cold-review [permissions]"
+  assert_output_contains "$out" "D1 [fixed] native-review [data-correctness, p1]"
+  assert_output_contains "$out" "D2 [open] cold-review [permissions, p2]"
   assert_output_contains "$out" "Verification run"
   assert_output_not_contains "$out" "D3"
   assert_output_not_contains "$out" "Findings found"
@@ -757,6 +829,7 @@ test_review_findings_cli_generates_closeout_from_records() {
   assert_output_contains "$out" "Findings: 4 total; 3 material; 1 lower risk"
   assert_output_contains "$out" "Status: 3 fixed, 1 open"
   assert_output_contains "$out" "Sources: 2 cold review, 2 native review"
+  assert_output_contains "$out" "2 p2"
   assert_output_contains "$out" "Important resolved findings (1 of 2 shown)"
   assert_output_contains "$out" "Still open (1 of 1 shown)"
   assert_output_contains "$out" "D1 [fixed]"
@@ -778,7 +851,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
 
-  record_finding \
+  record_runtime_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -792,12 +865,16 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --fingerprint "apps/web/settings.tsx role gated audit toggle" \
     --summary "Settings exposed an audit-history toggle to the wrong role." \
     --area workflow \
-    --material \
+    --likelihood likely \
+    --impact high \
+    --production-path "settings request -> role gate -> audit-history toggle" \
+    --reachability-evidence "Admins reach the changed settings route through the supported application flow." \
+    --actual-consequence "A user outside the intended role can use the audit-history control." \
     --user-impact "Admins could see and use a workflow control outside the intended permission model." \
     --decision "Fix before closeout." \
     --text "Native review found a role gate mismatch in the changed settings workflow." >/dev/null
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -814,7 +891,7 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --decision "Collapsed the duplicate helper in the focused test." \
     --text "Low-risk internal cleanup found while reviewing the audit-history tests." >/dev/null
 
-  record_finding \
+  record_runtime_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -826,13 +903,18 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --status deferred \
     --source cold-review \
     --fingerprint "apps/api/audit-history.ts export contract timestamp cursor" \
-    --summary "Audit-history export cursor contract still needs owner confirmation." \
+    --summary "Audit-history export cursor ordering remains accepted residual risk." \
     --area api-contract \
+    --likelihood possible \
+    --impact medium \
+    --production-path "audit export request -> timestamp cursor -> next export page" \
+    --reachability-evidence "The supported export API accepts the changed timestamp cursor." \
+    --actual-consequence "Events with the same timestamp may be skipped between export pages." \
     --user-impact "Consumers may depend on timestamp cursor ordering when exporting audit events." \
-    --decision "Deferred pending owner confirmation." \
-    --text "Cold review could not prove the export cursor contract from the changed diff alone." >/dev/null
+    --decision "The owner accepts this residual risk outside the current review." \
+    --text "Cold review recorded an explicitly accepted export cursor risk." >/dev/null
 
-  record_finding \
+  record_runtime_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$tmp/sample-app" \
@@ -846,7 +928,11 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --fingerprint "apps/web/settings.tsx role gated audit toggle" \
     --summary "Settings exposed an audit-history toggle to the wrong role." \
     --area workflow \
-    --material \
+    --likelihood likely \
+    --impact high \
+    --production-path "settings request -> role gate -> audit-history toggle" \
+    --reachability-evidence "Admins reach the changed settings route through the supported application flow." \
+    --actual-consequence "A user outside the intended role can use the audit-history control." \
     --user-impact "Admins could see and use a workflow control outside the intended permission model." \
     --decision "Hid the audit-history toggle behind the owner role gate." \
     --text "The role-gated workflow was fixed and rechecked." >/dev/null
@@ -886,8 +972,8 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
     --base main \
     --target "audit-history feature")"
 
-  assert_output_contains "$out" "D1 [fixed] native-review [workflow]"
-  assert_output_contains "$out" "D3 [deferred] cold-review [api-contract]"
+  assert_output_contains "$out" "D1 [fixed] native-review [workflow, p1]"
+  assert_output_contains "$out" "D3 [deferred] cold-review [api-contract, p2]"
   assert_output_contains "$out" "why it matters: Consumers may depend on timestamp cursor ordering"
   assert_output_contains "$out" "pnpm test audit-history"
   assert_output_contains "$out" "Still open"
@@ -939,7 +1025,7 @@ db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, 
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint legacy \
     --summary "Legacy finding updated." --text "updated" >/dev/null
@@ -987,7 +1073,7 @@ test_review_findings_query_uses_latest_run_and_semantic_terms() {
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
   for base in old-base current-base; do
-    record_finding --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --base "$base" --decision-id D1 --status open --source review --fingerprint "invoice lookup" --summary "$base invoice regression" --text "$base invoice lookup failure" >/dev/null
+    record_maintenance_finding --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --base "$base" --decision-id D1 --status open --source review --fingerprint "invoice lookup" --summary "$base invoice regression" --text "$base invoice lookup failure" >/dev/null
   done
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #9" --json billing)"
   assert_output_contains "$out" "current-base invoice regression"
@@ -1034,7 +1120,7 @@ test_review_findings_shares_history_across_git_worktrees() {
   git -C "$repo" config user.email test@example.com
   git -C "$repo" commit --quiet --allow-empty --message initial
   git -C "$repo" worktree add --quiet -b linked "$linked"
-  record_finding --db "$db" --repo sample-app --repo-path "$repo" --branch shared --target "PR #10" --base main --decision-id D1 --status open --source review --fingerprint "shared history" --summary "Worktree history remains visible." --text "shared finding" >/dev/null
+  record_maintenance_finding --db "$db" --repo sample-app --repo-path "$repo" --branch shared --target "PR #10" --base main --decision-id D1 --status open --source review --fingerprint "shared history" --summary "Worktree history remains visible." --text "shared finding" >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$linked" --branch shared --target "PR #10" shared)"
   assert_output_contains "$out" "Worktree history remains visible."
 }
@@ -1048,12 +1134,12 @@ test_review_findings_preserves_decision_log_on_update() {
   mkdir -p "$repo"
   printf 'accepted decision\n' > "$decision_log"
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #11" --base main --decision-log "$decision_log" \
     --decision-id D1 --status open --source review --fingerprint "decision path" \
     --summary "Keep the durable decision path." --text "Initial finding." >/dev/null
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #11" --base main \
     --decision-id D1 --status fixed --source review --fingerprint "decision path" \
@@ -1076,7 +1162,7 @@ test_failed_scope_start_does_not_hide_existing_findings() {
   git -C "$repo" commit --quiet --allow-empty --message base
   git -C "$repo" switch --quiet --create feature
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #13" --base main --decision-id D1 --status fixed \
     --source review --fingerprint "existing finding" \
@@ -1380,7 +1466,7 @@ test_review_scope_budget_blocks_deterministically() {
   fi
   assert_contains "$tmp/stderr" "only valid after scope-check has blocked"
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" \
     --repo sample-app \
     --repo-path "$repo" \
@@ -1595,7 +1681,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Run the final clean review again." >/dev/null
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status open --source review --fingerprint "shared parser contract" \
@@ -1618,7 +1704,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
   fi
   assert_contains "$tmp/stderr" "CONSULT-001 [deferred]: Choose the shared parser contract."
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status deferred --source review --fingerprint "shared parser contract" \
@@ -1630,7 +1716,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --target "first review" --base main --reason "Both required review phases are clean.")"
   assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
 
-  record_finding \
+  record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status deferred --source review --fingerprint "shared parser contract" \
@@ -1638,7 +1724,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --owner-resolution declined \
     --text "The follow-up is explicitly deferred outside this review." >/dev/null
 
-  if record_finding \
+  if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id LATE-001 \
     --status open --source review --fingerprint "late finding" \
@@ -1657,6 +1743,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main)"
   assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+  assert_output_contains "$out" "Deferred work"
   assert_output_contains "$out" "CONSULT-001 [deferred]"
   assert_output_contains "$out" "pnpm test final"
   assert_output_not_contains "$out" "LATE-001"
@@ -1670,6 +1757,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     process.stdin.on("end", () => {
       const closeout = JSON.parse(input);
       if (closeout.still_open.some((item) => item.decision_id === "CONSULT-001")) process.exit(1);
+      if (!closeout.deferred_work.some((item) => item.decision_id === "CONSULT-001")) process.exit(1);
     });
   '
 
@@ -2797,6 +2885,7 @@ test_review_scope_budget_keeps_the_allowance_it_was_created_with
 test_review_scope_budget_uses_the_percentage_above_the_floor
 test_review_findings_runs_from_repo_launcher
 test_review_findings_schema_is_visible_and_enforced
+test_review_findings_resolves_omitted_run_identity_before_lifecycle_checks
 test_review_findings_prunes_terminal_deferred_records
 test_review_findings_record_command_without_base_requires_existing_run
 test_base_less_command_makes_its_run_current
