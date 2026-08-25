@@ -1,7 +1,15 @@
 # Uncertain findings
 
-Some findings are real enough to act on but uncertain: marked `PLAUSIBLE`,
-contested between passes, or a judgment call. Never silently fix or silently
+Use this workflow only after the findings CLI returned `accept`: from
+`finding-discipline`'s risk rating for a runtime candidate, or from maintenance
+and present-cost evidence for a maintenance candidate.
+It handles uncertainty about the repair, not uncertainty about whether the
+finding exists. A runtime candidate with unproven reachability or consequence
+remains
+`investigate` or `consult`; do not apply a provisional fix.
+
+Some accepted findings still have an uncertain repair: contested between
+passes or a judgment call about implementation. Never silently fix or silently
 reject one.
 
 Use the provisional-fix test. All four checks must hold:
@@ -26,9 +34,12 @@ When the test passes:
   database.
 - Ask the user in parallel; do not wait for the answer.
 - Continue the loop on the fixed tree so later passes review the actual state.
-- If the user keeps it, close the entry.
-- If the user rejects it, revert the commit or hunk, reset the streak, and
-  resume.
+- If the user keeps it, close the entry as `fixed` with
+  `--owner-resolution approved` and the user's decision text.
+- If the user rejects the repair, revert the commit or hunk, reset the streak,
+  and resume. Record the entry as `reopened` with the user's decision text and
+  omit `--owner-resolution`: the repair was declined, but the finding remains
+  active.
 
 ## Consult: class B
 

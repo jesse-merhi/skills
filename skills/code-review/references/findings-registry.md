@@ -18,7 +18,13 @@ skill instructions:
 
 ```sh
 review_findings_bin="<skill-dir>/scripts/review-findings"
+"$review_findings_bin" schema
 ```
+
+Run `schema` before the first finding record in every review. Its output is the
+authoritative, current contract for record fields, allowed values, and
+likelihood-impact consistency rules. If an example or remembered prompt
+disagrees with the CLI output, follow the CLI output.
 
 The launcher executes the checked-in Effect TypeScript implementation. The
 database stores records under:
@@ -111,20 +117,33 @@ For every finding, record:
 - decision ID
 - source: native review, cold review, named lens, review
   owner, or user
-- severity or priority when available
+- CLI-derived severity when available
 - scope class when useful: direct, induced, adjacent, or unrelated
 - status: `open`, `fixed`, `rejected`, `deferred`, `provisional`, or `reopened`
 - affected files or behavior
-- impact category: `ui`, `workflow`, `api-contract`, `permissions`, `privacy`,
+- area: `ui`, `workflow`, `api-contract`, `permissions`, `privacy`,
   `finance`, `data-correctness`, `audit`, `migration`, `schema`, or `internal`
 - whether the finding is material to the review owner: mark material when it
   changes visible behavior, workflow, who can see/do what, data correctness,
   audit history integrity, billing/payroll/finance, schema/migrations, or API
   contracts
 - user impact: one sentence explaining why a product/review owner should care
-- short decision, evidence, and validation result
+- finding kind: `runtime` for a claim about reachable product behavior or
+  `maintenance` for code-quality work without a runtime failure claim
+- fix scope: `local` when the owning boundary can be fixed directly, or
+  `systemic` when a local edit would be a Band-Aid and requires consultation
+- handling: `fix` for current in-scope work, `consult` for an owner decision,
+  `follow-up` for real nonblocking work outside this review, or `reject` when
+  proven runtime behavior is allowed by the current contract
+- risk rating for runtime candidates: production path, reachability evidence,
+  likelihood, impact, and actual consequence; the CLI derives severity and
+  disposition
+- short decision and validation result
+- explicit owner resolution when a consultation or provisional fix reaches a
+  terminal state
 
-Record each finding as soon as it is triaged:
+Record each finding as soon as it is triaged. Use a runtime record for reachable
+behavior:
 
 ```sh
 "$review_findings_bin" record \
@@ -135,17 +154,85 @@ Record each finding as soon as it is triaged:
   --base <base> \
   --head <head> \
   --decision-id D<N> \
+  --finding-kind runtime \
   --status <open|fixed|rejected|deferred|provisional|reopened> \
+  --fix-scope <local|systemic> \
+  --handling <fix|consult|follow-up|reject> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
-  --impact <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal> \
-  --priority <P0|P1|P2|P3|P4> \
+  --area <ui|workflow|api-contract|permissions|privacy|finance|data-correctness|audit|migration|schema|internal> \
   --material \
   --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
+  --production-path "<current producer -> transformations -> failing sink>" \
+  --reachability-evidence "<observed payload, current contract, or repository invariant>" \
+  --likelihood <likely|possible|rare|unknown|theoretical> \
+  --impact <critical|high|medium|low> \
+  --actual-consequence "<verified behavior and meaningful user/system impact>" \
   --decision "<owner or next action>" \
-  --text "<reason, evidence, impact, and validation notes>"
+  --text "<validation notes or other searchable context>"
 ```
+
+For `unknown` or `theoretical`, production-path, reachability, and consequence
+proof may be incomplete, but `--decision` must state the investigation or
+rejection rationale.
+
+Use a maintenance record for unnecessary changed code:
+
+```sh
+"$review_findings_bin" record \
+  --repo <repo-display-name> \
+  --repo-path <repo-root> \
+  --branch <branch-or-review-key> \
+  --target <PR-or-range> \
+  --base <base> \
+  --head <head> \
+  --decision-id D<N> \
+  --finding-kind maintenance \
+  --status <open|fixed|deferred|provisional|reopened> \
+  --fix-scope <local|systemic> \
+  --handling <fix|consult|follow-up> \
+  --source <native-review|cold-review|lens|user> \
+  --fingerprint "<file + code element + root cause>" \
+  --summary "<one-sentence finding>" \
+  --maintenance-evidence "<repository proof of unnecessary complexity, duplication, or code with no current job>" \
+  --present-cost "<current reading, change, test, or ownership cost>" \
+  --decision "<owner or next action>" \
+  --text "<validation notes or other searchable context>"
+```
+
+`--branch` and `--base` may be omitted when the repository and target identify
+exactly one existing run. If more than one run matches, the CLI rejects the
+record and requires both fields instead of guessing.
+
+Runtime records must omit the two maintenance evidence flags. Maintenance
+records must omit all five runtime risk flags. To reject an unsupported
+maintenance candidate, use `--status rejected`, omit both maintenance evidence
+flags, and record the rejection rationale in `--decision`.
+
+Do not pass priority, severity, or disposition. The CLI derives severity and
+disposition from the current likelihood-impact matrix, evidence, and required
+`--handling`. Handling routes proven work but cannot raise a rejected or
+unproven risk. `fix` is invalid for systemic findings. `consult` waits for an
+owner decision. `follow-up` requires deferred status plus an owner or next
+action, stays nonblocking, and appears under `Deferred work`. `reject` requires
+a rejected runtime record plus a decision naming the current contract that
+allows the behavior. An accepted local
+finding handled as `fix` and recorded as deferred becomes residual risk and
+requires `--decision` to explain why that risk is accepted.
+A consulted finding may be marked fixed or rejected only
+with `--owner-resolution approved|declined` and `--decision` containing the
+owner's decision. Use the same explicit resolution when the owner keeps a
+provisional fix. If the owner declines a provisional repair, revert it and
+record the accepted finding as `reopened` with `--decision`; omit
+`--owner-resolution` because the finding remains active. A consulted finding
+may be deferred only with
+`--owner-resolution declined` and the owner's decision; an unanswered consult
+stays open. An owner-resolved record is terminal and immutable. Repeating the
+exact record is harmless, including after scope completion; changing any field
+requires a new decision ID. Closeout lists follow-ups and owner-declined
+consults under `Deferred work`, accepted local risk under `Accepted residual
+risk`, and unresolved decisions under `Still open`.
 
 Query before dispatching subagents, resuming a review, or answering "what did
 review find?":
@@ -193,7 +280,7 @@ SQLite instead of chat history:
   --target <current-target>
 ```
 
-The summary reports totals, status, sources, impact areas, priorities, important
+The summary reports totals, status, sources, impact areas, severities, important
 findings, unresolved work, and verification counts. Retrieve the complete audit
 when writing or checking the summary:
 

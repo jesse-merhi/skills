@@ -11,11 +11,14 @@ Before finalizing a runtime finding, answer:
 5. Could this be a false positive because of an upstream guard or invariant?
 
 If answers 1-3 are hand-wavy, keep inspecting or drop the finding.
+Confirm that the finding record contains a complete risk rating. For a
+defensive-code finding, check capacity claims and delimiter claims
+independently; evidence for one does not prove the other.
 
 For a maintenance finding, answer instead:
 
-1. What exact changed code is unnecessary?
-2. What repository evidence proves it has no current job?
+1. What exact changed code is unnecessarily complex, duplicated, or unused?
+2. What repository evidence proves that present maintenance problem?
 3. What present reading, change, test, or ownership cost does it add?
 4. What smaller code preserves all current behavior?
 5. What boundary, domain concept, dependency direction, expected variability,

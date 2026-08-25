@@ -42,7 +42,14 @@ Repeat:
 3. Run the selected engine's bare review against the fixed target.
 4. Triage the findings:
    - reject only with recorded evidence
-   - uncertain findings -> provisional-fix test (review-guardrails):
+   - for a runtime candidate, run `finding-discipline`'s likelihood-impact risk
+     rating
+   - for a maintenance candidate, use `--maintenance-evidence` to prove current
+     unnecessary complexity, duplication, or code with no current job, and
+     `--present-cost` for its concrete reading, change, test, or ownership cost
+   - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
+   - apply `review-guardrails`' autonomous fix bar before accepting a patch
+   - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
        pass -> fix now, log Provisional, ask the user without waiting
        fail -> consult queue (Class B), ask the user without waiting
    - findings matching an open queue entry -> match note, no new entry

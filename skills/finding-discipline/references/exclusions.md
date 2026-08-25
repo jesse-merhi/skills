@@ -10,5 +10,6 @@ Do not report:
 - duplicate findings that share the same root cause
 - stale findings against code that is not part of the reviewed diff
 
-If something is worth mentioning but not actionable, put it in residual risk or
-notes, not findings.
+Use residual risk only for a proven trigger and consequence that the current
+change deliberately leaves unresolved. Reject unsupported possibilities rather
+than preserving them as notes.

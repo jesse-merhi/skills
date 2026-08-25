@@ -9,12 +9,48 @@ Before applying a review-driven fix, classify the finding against the frozen
 - `Stop-and-consult`: requires a new shared contract, migration, API shape,
   storage shape, product/security judgment, or different owner boundary.
 
-Patch only in-scope blockers. Record follow-ups as `deferred` findings and do
-not patch them in this PR. Add stop-and-consult findings to `consult_queue` with
-the scope reason, then record them in the findings database.
+Patch only in-scope blockers. Record adjacent work as `--handling follow-up`
+with `--status deferred` and its owner or next action; it stays visible without
+blocking this PR. Add stop-and-consult findings to `consult_queue` with the
+scope reason, then record them with `--handling consult`.
+
+## Autonomous Fix Bar
+
+Before patching an in-scope blocker, prove all of these:
+
+- A runtime finding contains `finding-discipline`'s risk rating, non-synthetic
+  reachability and consequence evidence, and the CLI-derived `accept`
+  disposition and severity.
+- A maintenance finding records repository proof of current unnecessary
+  complexity, duplication, or code with no current job in
+  `--maintenance-evidence`, plus a concrete current reading, change, test, or
+  ownership cost in `--present-cost`. It has the CLI-derived `accept`
+  disposition, but no runtime risk fields or severity.
+- The failure violates the current task contract, not a stricter contract
+  invented by the reviewer.
+- The fix uses an existing repository or dependency primitive when one owns the
+  behavior. Do not emulate a dependency's full semantics through accumulating
+  special cases.
+- The fix is proportional to the observed impact. Count permanent branches,
+  fallbacks, schema fields, migrations, helpers, and tests as cost even when
+  production changed-line growth stays under budget.
+- For a runtime finding, severity combines likelihood and impact. It does not substitute
+  for reachability, likelihood, or consequence evidence.
+
+Do not autonomously patch a P3 whose remedy only hardens hypothetical input. If
+the input is reachable and the current contract explicitly permits the
+behavior, record `--handling reject` with that contract evidence. If accepting
+it is instead a product tolerance decision, record `--handling consult` and do
+not edit.
+
+Reject observations that fail the reality or contract test. Record residual
+risk only when reachability and impact are proven but the current change
+deliberately leaves it unresolved. Use stop-and-consult for a fix that needs a
+new contract or user-owned trade-off.
 
 Stop patching and consult when:
 
+- `systemic-findings` shows that a local patch would leave a shared root cause
 - the fix would change what the PR is about
 - the fix would cross the owner boundary
 - the fix would exceed the diff-growth budget

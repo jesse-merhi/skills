@@ -11,7 +11,9 @@ PR author can fix.
 
 ## Workflow
 
-1. Check every candidate observation against the finding bar in
+1. Treat reviewer output as candidate observations. For each runtime candidate,
+   apply the likelihood-impact framework in
+   [risk-rating.md](references/risk-rating.md), then apply the finding bar in
    [finding-bar.md](references/finding-bar.md).
 2. Drop excluded observations using [exclusions.md](references/exclusions.md).
 3. Run the confirmation pass in [confirmation.md](references/confirmation.md).
@@ -21,8 +23,10 @@ PR author can fix.
 
 ## Required discipline
 
+- Optimize candidate generation for recall and finding acceptance for precision.
 - Prefer no finding over a weak finding.
-- Put non-actionable but useful context in residual risk or notes, not findings.
+- Put only proven, deliberately tolerated risk in residual risk. Reject
+  theoretical possibilities instead of preserving them as warnings.
 - Merge duplicates under one root cause.
 - Remove findings that depend on unproven assumptions.
 - Check each line reference still overlaps the reviewed change when possible.
@@ -30,6 +34,8 @@ PR author can fix.
 
 ## Context pointers
 
+- Use [risk-rating.md](references/risk-rating.md) for the required risk reality
+  check and CLI-derived likelihood-impact outcome.
 - Use [finding-bar.md](references/finding-bar.md) for the must-pass criteria.
 - Use [exclusions.md](references/exclusions.md) for observations to drop.
 - Use [confirmation.md](references/confirmation.md) before finalizing each
