@@ -1,6 +1,14 @@
 import { assert, describe, it } from "@effect/vitest"
 
-import { deriveRuntimeOutcome } from "./ReviewFindings.ts"
+import { allowedScopeGrowth, deriveRuntimeOutcome } from "./ReviewFindings.ts"
+
+describe("review scope growth", () => {
+  it("uses exactly 30 percent with no absolute floor", () => {
+    assert.strictEqual(allowedScopeGrowth(1, 30), 0)
+    assert.strictEqual(allowedScopeGrowth(40, 30), 12)
+    assert.strictEqual(allowedScopeGrowth(600, 30), 180)
+  })
+})
 
 describe("review finding risk outcomes", () => {
   it("derives every severity and disposition from likelihood and impact", () => {

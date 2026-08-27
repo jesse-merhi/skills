@@ -9,7 +9,8 @@ Before Phase 1, freeze the review scope:
 - intended behavior
 - owner boundary
 - changed files (text paths are informational; new binaries require approval)
-- non-test changed lines
+- human-authored changed lines (production plus tests; generated lockfiles are
+  excluded)
 
 Before patching a reviewer finding, classify it:
 

@@ -21,8 +21,8 @@ export interface ScopeMeasurement {
   readonly production: DiffCounts
   readonly tests: DiffCounts
   readonly generated: DiffCounts
-  readonly productionPaths: ReadonlyArray<string>
-  readonly productionBinaryPaths: ReadonlyArray<string>
+  readonly humanAuthoredPaths: ReadonlyArray<string>
+  readonly humanAuthoredBinaryPaths: ReadonlyArray<string>
 }
 
 interface NumstatEntry {
@@ -284,26 +284,27 @@ export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(functi
   const production = emptyCounts()
   const tests = emptyCounts()
   const generated = emptyCounts()
-  const productionPaths = new Set<string>()
-  const productionBinaryPaths = new Set<string>()
+  const humanAuthoredPaths = new Set<string>()
+  const humanAuthoredBinaryPaths = new Set<string>()
   for (const entry of entries) {
     const currentEntry = currentEntriesByPath.get(entry.path)
     const countedEntry = entry.binary && currentEntry !== undefined && !currentEntry.binary
       ? { ...currentEntry, path: entry.path, classificationPath: entry.classificationPath }
       : entry
-    if (isTestPath(entry.classificationPath)) addEntry(tests, countedEntry)
-    else if (isGeneratedPath(entry.classificationPath)) addEntry(generated, countedEntry)
-    else {
-      addEntry(production, countedEntry)
-      productionPaths.add(entry.path)
-      if (entry.binary && currentEntry?.binary === true) productionBinaryPaths.add(entry.path)
+    if (isGeneratedPath(entry.classificationPath)) {
+      addEntry(generated, countedEntry)
+      continue
     }
+    if (isTestPath(entry.classificationPath)) addEntry(tests, countedEntry)
+    else addEntry(production, countedEntry)
+    humanAuthoredPaths.add(entry.path)
+    if (entry.binary && currentEntry?.binary === true) humanAuthoredBinaryPaths.add(entry.path)
   }
   return {
     production,
     tests,
     generated,
-    productionPaths: [...productionPaths].sort(),
-    productionBinaryPaths: [...productionBinaryPaths].sort()
+    humanAuthoredPaths: [...humanAuthoredPaths].sort(),
+    humanAuthoredBinaryPaths: [...humanAuthoredBinaryPaths].sort()
   } satisfies ScopeMeasurement
 })
