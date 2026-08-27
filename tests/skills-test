@@ -407,6 +407,10 @@ test_codex_default_mode_questions_are_configured() {
 test_living_skills_turn_feedback_into_reusable_improvements() {
   assert_contains "$ROOT_DIR/AGENTS.md" "living record of how agents should work"
   assert_contains "$ROOT_DIR/AGENTS.md" "feedback exposes a reusable gap"
+  assert_contains "$ROOT_DIR/AGENTS.md" 'load `handoff`'
+  assert_contains "$ROOT_DIR/AGENTS.md" "fresh session rooted in this skills repository"
+  assert_contains "$ROOT_DIR/AGENTS.md" "output or evidence that exposed the gap"
+  assert_contains "$ROOT_DIR/AGENTS.md" "observable acceptance checks"
   assert_contains "$ROOT_DIR/AGENTS.md" "Distinguish a missing rule from a failure to follow an existing rule"
   assert_contains "$ROOT_DIR/AGENTS.md" "Keep one-off preferences in the current task"
   assert_contains "$ROOT_DIR/AGENTS.md" "Do not edit a skill unless the current request authorizes it"
