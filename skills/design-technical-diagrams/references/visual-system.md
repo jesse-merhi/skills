@@ -85,7 +85,7 @@ Use an 8 px base unit, then correct optically. Starting values:
 | subsystem/region inset | 20–28 px |
 | descriptive node padding | 16–20 px |
 | node gap | 16–24 px |
-| long connector gutter | 24–40 px |
+| visible connector gutter | 40–64 px |
 | icon optical size | 22–30 px |
 | icon-to-label gap | 8–10 px |
 
@@ -108,6 +108,11 @@ Sibling nodes should share dimensions only when they play the same role and
 carry comparable content. Align baselines, icons, and padding within a node
 family, but allow different families to have different shapes and sizes.
 
+Every chip, label, icon, and body block must stay inside the card or region that
+owns it with visible padding. When content does not fit, expand or reflow the
+container and rebalance its neighbours; do not hide the overflow or let a child
+borrow space outside its boundary.
+
 ## Connector routing
 
 Prefer simple orthogonal routes with clear arrowheads. A reader should see
@@ -123,6 +128,12 @@ unrelated boxes.
   borders.
 - Put route labels beside one open segment, not floating between several lines.
 - Keep arrowheads attached, correctly directed, and clear of nearby text.
+- Leave enough visible shaft before every arrowhead that the connector still
+  reads as movement rather than a triangle stuck to a box. After a bend, keep
+  a clear final straight segment so the arrival direction is unambiguous.
+- Size SVG markers deliberately. Prefer `markerUnits="userSpaceOnUse"` when the
+  head should stay independent of connector stroke width; the default marker
+  scaling can make a thick route produce an oversized head.
 - Scope connector CSS to the connector elements or classes. Never use a
   descendant `path` selector that can also restyle paths inside SVG markers.
   In the rendered export, confirm every arrowhead keeps its intended solid

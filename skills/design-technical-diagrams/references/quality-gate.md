@@ -123,6 +123,8 @@ than its 2× export dimensions.
 - Are icons recognizable and paired with text?
 - Are node padding, baselines, and icon alignment consistent within each
   family?
+- Does every chip, label, icon, and body block remain inside its owning card
+  with visible padding on every side?
 - Does the diagram feel calm and information-rich rather than sparse, cramped,
   or card-heavy?
 - Does the crop contain the diagram rather than unnecessary page furniture?
@@ -138,6 +140,8 @@ Inspect at roughly 2×:
 - accidental text-to-text or text-to-icon collisions;
 - one-pixel marker nubs, detached arrowheads, or arrowheads rendered as hollow
   chevrons because connector CSS leaked into the marker path;
+- arrowheads that consume most of a short route, or turns whose final segment
+  is too short to show the arrival direction;
 - double-stroked or visually merged parallel lines;
 - routes tracking box borders closely enough to look like the border;
 - crossings hidden beneath text or icons;

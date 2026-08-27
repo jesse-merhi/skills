@@ -206,8 +206,9 @@ After every material layout, routing, copy, font, icon, or sizing change:
 2. **Destination size:** inspect at the actual width where it will be read.
    Important text must be readable without zooming.
 3. **Magnified detail:** inspect around 2× for clipping, collisions, uneven
-   padding, broken icons, malformed or hollow arrowheads, marker nubs, doubled
-   lines, and off-by-a-few-pixels alignment.
+   padding, content escaping its card, broken icons, malformed or hollow
+   arrowheads, arrowheads that consume the route, marker nubs, doubled lines,
+   and off-by-a-few-pixels alignment.
 4. **Responsive/export:** inspect required narrow layouts and open the exported
    PNG, SVG, PDF, or slide by itself.
 
