@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Technical diagrams</title>
+  <style>
+    :root {
+      --ink: #172b4d;
+      --muted: #44546f;
+      --line: #8590a2;
+      --border: #dfe1e6;
+      --page: #f7f8f9;
+      --card: #ffffff;
+      --blue: #0c66e4;
+      --blue-soft: #e9f2ff;
+      --green: #1f845a;
+      --green-soft: #dffcf0;
+      --amber: #946f00;
+      --amber-line: #b38600;
+      --amber-soft: #fff7d6;
+      --red: #c9372c;
+      --red-soft: #ffeceb;
+      --stored: #f1f2f4;
+      --diagram-scale: 100%;
+      --sans: "Atlassian Sans", "Charlie Text", -apple-system,
+        BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --display: "Charlie Display", var(--sans);
+      --mono: "Atlassian Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font-family: var(--sans);
+      line-height: 1.45;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 64px;
+      padding: 12px max(24px, calc((100vw - 1280px) / 2));
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.96);
+    }
+    header::before {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--blue);
+      content: "";
+    }
+    h1 { margin: 0; font: 700 18px/1.2 var(--display); }
+    .lede { margin-left: 10px; color: var(--muted); font-size: 13px; }
+    .scale {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    input[type="range"] { accent-color: var(--blue); }
+    main { width: min(1280px, calc(100% - 32px)); margin: 28px auto 56px; }
+    .card {
+      overflow: hidden;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      box-shadow: 0 1px 2px rgba(9, 30, 66, 0.08);
+    }
+    .card-head { padding: 18px 22px; border-bottom: 1px solid var(--border); }
+    h2 { margin: 0; font: 700 16px/1.3 var(--display); }
+    .claim { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .claim strong { color: var(--ink); }
+    .diagram { padding: 26px; text-align: center; }
+    .diagram svg {
+      display: block;
+      width: var(--diagram-scale);
+      min-width: 0;
+      height: auto;
+      margin-inline: auto;
+      vertical-align: top;
+    }
+    .diagram svg.diagram-wide { max-width: min(100%, 1304px); }
+    .diagram svg.diagram-narrow { display: none; max-width: min(100%, 480px); }
+    .node-label { fill: var(--ink); font: 600 14px var(--sans); }
+    .small { fill: var(--muted); font: 12px var(--sans); }
+    .region-label { fill: var(--muted); font: 700 11px var(--sans); letter-spacing: 0.04em; }
+    .route-label { fill: var(--muted); font: 12px var(--sans); }
+    .legend { fill: var(--muted); font: 11px var(--sans); }
+    .route { fill: none; stroke: var(--line); stroke-width: 1.5; }
+    .route-blue { stroke: var(--blue); }
+    .route-red { stroke: var(--red); stroke-dasharray: 5 4; }
+
+    @media (max-width: 1180px) {
+      .diagram svg.diagram-wide { display: none; }
+      .diagram svg.diagram-narrow { display: block; }
+    }
+    @media (max-width: 680px) {
+      header { position: static; align-items: flex-start; flex-direction: column; }
+      .lede { display: block; margin: 4px 0 0; }
+      main { width: min(100% - 20px, 1280px); margin-top: 10px; }
+      .card-head, .diagram { padding: 16px; }
+      .diagram-narrow .node-label { font-size: 20px; }
+      .diagram-narrow .small { font-size: 16px; }
+      .diagram-narrow .region-label { font-size: 14px; }
+      .diagram-narrow .route-label { font-size: 17px; }
+      .diagram-narrow .legend { font-size: 15px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+    @media print {
+      body { background: #fff; }
+      header { position: static; padding-inline: 0; }
+      .scale { display: none; }
+      main { width: 100%; margin: 16px 0; }
+      .card { break-inside: avoid; box-shadow: none; }
+      .diagram svg { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>System diagram <span class="lede">One agreed claim.</span></h1>
+    </div>
+    <label class="scale">
+      Size
+      <input id="scale" type="range" min="70" max="100" value="100" step="5">
+      <output id="scale-value" for="scale">100%</output>
+    </label>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="card-head">
+        <h2>Boundary architecture</h2>
+        <p class="claim"><strong>Claim:</strong> untrusted work stays inside the runtime; protected access leaves through an external boundary.</p>
+      </div>
+      <div class="diagram">
+        <svg class="diagram-wide" data-diagram="true" data-diagram-id="boundary-architecture" data-layout="wide" viewBox="0 0 1304 560" role="img" aria-labelledby="diagram-1-title diagram-1-desc">
+          <title id="diagram-1-title">Boundary architecture</title>
+          <desc id="diagram-1-desc">A request enters an untrusted runtime, then crosses an external policy boundary before reaching a product.</desc>
+          <defs>
+            <marker id="diagram-1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8590a2"></path>
+            </marker>
+            <marker id="diagram-1-arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0c66e4"></path>
+            </marker>
+            <symbol id="diagram-1-person" viewBox="0 0 24 24">
+              <circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"></circle>
+              <path d="M4 22c0-5 3-8 8-8s8 3 8 8" fill="none" stroke="currentColor" stroke-width="2"></path>
+            </symbol>
+            <symbol id="diagram-1-shield" viewBox="0 0 24 24">
+              <path d="M12 2 20 5v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V5z" fill="none" stroke="currentColor" stroke-width="2"></path>
+              <path d="m8.5 12 2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="2"></path>
+            </symbol>
+            <symbol id="diagram-1-runtime" viewBox="0 0 24 24">
+              <rect x="4" y="5" width="16" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"></rect>
+              <path d="M8 10h8M8 14h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            </symbol>
+            <symbol id="diagram-1-product" viewBox="0 0 24 24">
+              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+            </symbol>
+          </defs>
+
+          <rect id="diagram-1-runtime-region" x="380" y="92" width="430" height="326" rx="10" fill="#fffcf2" stroke="#b38600" stroke-width="1.25"></rect>
+          <text class="region-label" x="404" y="120">INSIDE THE RUNTIME</text>
+          <rect id="diagram-1-external-region" x="980" y="92" width="274" height="326" rx="10" fill="#f4f9ff" stroke="#0c66e4" stroke-width="1.25"></rect>
+          <text class="region-label" x="1004" y="120">OUTSIDE THE RUNTIME</text>
+
+          <rect id="diagram-1-owner-node" data-node="true" x="48" y="194" width="164" height="64" rx="32" fill="#fff" stroke="#8590a2" stroke-width="1.25"></rect>
+          <use href="#diagram-1-person" x="70" y="212" width="28" height="28" color="#44546f"></use>
+          <text class="node-label" x="110" y="232">Owner</text>
+
+          <rect id="diagram-1-runtime-node" data-node="true" x="432" y="170" width="326" height="112" rx="8" fill="#fff7d6" stroke="#b38600" stroke-width="1.5"></rect>
+          <use href="#diagram-1-runtime" x="504" y="190" width="28" height="28" color="#946f00"></use>
+          <text class="node-label" x="544" y="211">Untrusted runtime</text>
+          <text class="small" text-anchor="middle" x="595" y="235">agent loop · tools · local effects</text>
+          <text class="small" text-anchor="middle" x="595" y="257">assume compromise is possible</text>
+
+          <rect id="diagram-1-policy-node" data-node="true" x="1016" y="170" width="202" height="112" rx="8" fill="#e9f2ff" stroke="#0c66e4" stroke-width="1.5"></rect>
+          <use href="#diagram-1-shield" x="1032" y="198" width="28" height="28" color="#0c66e4"></use>
+          <text class="node-label" x="1072" y="214">External policy</text>
+          <text class="small" x="1072" y="237">holds the credential</text>
+          <text class="small" x="1072" y="258">checks the destination</text>
+
+          <rect id="diagram-1-product-node" data-node="true" x="1016" y="326" width="202" height="58" rx="8" fill="#dffcf0" stroke="#1f845a" stroke-width="1.5"></rect>
+          <use href="#diagram-1-product" x="1050" y="343" width="24" height="24" color="#1f845a"></use>
+          <text class="node-label" x="1086" y="360">Product API</text>
+
+          <path id="diagram-1-owner-request" data-route="owner-request" data-from="diagram-1-owner-node" data-to="diagram-1-runtime-node" data-label="submits requested task" class="route" d="M 212 226 H 432" marker-end="url(#diagram-1-arrow)"></path>
+          <text class="route-label" data-label-for="owner-request" text-anchor="middle" x="296" y="214">submits requested task</text>
+          <path id="diagram-1-runtime-egress" data-route="runtime-egress" data-from="diagram-1-runtime-node" data-to="diagram-1-policy-node" data-label="requests product access without a credential" class="route route-blue" d="M 758 226 H 1016" marker-end="url(#diagram-1-arrow-blue)"></path>
+          <text class="route-label" data-label-for="runtime-egress" text-anchor="middle" x="895" y="202">requests product access</text>
+          <text class="route-label" data-label-for="runtime-egress" text-anchor="middle" x="895" y="217">without a credential</text>
+          <path id="diagram-1-product-route" data-route="product-route" data-from="diagram-1-policy-node" data-to="diagram-1-product-node" data-label="calls product using a scoped credential" class="route" d="M 1117 282 V 326" marker-end="url(#diagram-1-arrow)"></path>
+          <text class="route-label" data-label-for="product-route" x="1128" y="302">calls product using</text>
+          <text class="route-label" data-label-for="product-route" x="1128" y="317">a scoped credential</text>
+
+          <rect x="48" y="468" width="12" height="12" rx="2" fill="#fff7d6" stroke="#b38600"></rect>
+          <text class="legend" x="70" y="479">assumed compromiseable</text>
+          <rect x="350" y="468" width="12" height="12" rx="2" fill="#e9f2ff" stroke="#0c66e4"></rect>
+          <text class="legend" x="372" y="479">enforcement boundary</text>
+          <rect x="654" y="468" width="12" height="12" rx="2" fill="#dffcf0" stroke="#1f845a"></rect>
+          <text class="legend" x="676" y="479">reaches destination</text>
+          <rect x="980" y="468" width="12" height="12" rx="2" fill="#ffeceb" stroke="#c9372c"></rect>
+          <text class="legend" x="1002" y="479">stopped here</text>
+        </svg>
+
+        <svg class="diagram-narrow" data-diagram="true" data-diagram-id="boundary-architecture" data-layout="narrow" viewBox="0 0 480 1080" role="img" aria-labelledby="diagram-1-narrow-title diagram-1-narrow-desc">
+          <title id="diagram-1-narrow-title">Boundary architecture</title>
+          <desc id="diagram-1-narrow-desc">The same boundary architecture reflowed vertically for a narrow screen.</desc>
+          <defs>
+            <marker id="diagram-1-narrow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8590a2"></path>
+            </marker>
+            <marker id="diagram-1-narrow-arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0c66e4"></path>
+            </marker>
+            <symbol id="diagram-1-narrow-person" viewBox="0 0 24 24">
+              <circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"></circle>
+              <path d="M4 22c0-5 3-8 8-8s8 3 8 8" fill="none" stroke="currentColor" stroke-width="2"></path>
+            </symbol>
+            <symbol id="diagram-1-narrow-shield" viewBox="0 0 24 24">
+              <path d="M12 2 20 5v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V5z" fill="none" stroke="currentColor" stroke-width="2"></path>
+              <path d="m8.5 12 2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="2"></path>
+            </symbol>
+            <symbol id="diagram-1-narrow-runtime" viewBox="0 0 24 24">
+              <rect x="4" y="5" width="16" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"></rect>
+              <path d="M8 10h8M8 14h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            </symbol>
+            <symbol id="diagram-1-narrow-product" viewBox="0 0 24 24">
+              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+            </symbol>
+          </defs>
+
+          <rect id="diagram-1-narrow-owner-node" data-node="true" x="140" y="42" width="200" height="70" rx="35" fill="#fff" stroke="#8590a2" stroke-width="1.25"></rect>
+          <use href="#diagram-1-narrow-person" x="180" y="63" width="28" height="28" color="#44546f"></use>
+          <text class="node-label" x="220" y="84">Owner</text>
+
+          <rect id="diagram-1-narrow-runtime-region" x="40" y="218" width="400" height="298" rx="10" fill="#fffcf2" stroke="#b38600" stroke-width="1.25"></rect>
+          <text class="region-label" x="64" y="246">INSIDE THE RUNTIME</text>
+          <rect id="diagram-1-narrow-runtime-node" data-node="true" x="80" y="286" width="320" height="118" rx="8" fill="#fff7d6" stroke="#b38600" stroke-width="1.5"></rect>
+          <use href="#diagram-1-narrow-runtime" x="132" y="308" width="28" height="28" color="#946f00"></use>
+          <text class="node-label" x="172" y="330">Untrusted runtime</text>
+          <text class="small" text-anchor="middle" x="240" y="358">agent loop · tools · local effects</text>
+          <text class="small" text-anchor="middle" x="240" y="380">assume compromise is possible</text>
+
+          <rect id="diagram-1-narrow-external-region" x="40" y="624" width="400" height="342" rx="10" fill="#f4f9ff" stroke="#0c66e4" stroke-width="1.25"></rect>
+          <text class="region-label" x="54" y="652">OUTSIDE THE RUNTIME</text>
+          <rect id="diagram-1-narrow-policy-node" data-node="true" x="80" y="692" width="320" height="118" rx="8" fill="#e9f2ff" stroke="#0c66e4" stroke-width="1.5"></rect>
+          <use href="#diagram-1-narrow-shield" x="120" y="722" width="28" height="28" color="#0c66e4"></use>
+          <text class="node-label" x="160" y="738">External policy</text>
+          <text class="small" x="160" y="761">holds the credential</text>
+          <text class="small" x="160" y="782">checks the destination</text>
+          <rect id="diagram-1-narrow-product-node" data-node="true" x="140" y="890" width="200" height="58" rx="8" fill="#dffcf0" stroke="#1f845a" stroke-width="1.5"></rect>
+          <use href="#diagram-1-narrow-product" x="174" y="907" width="24" height="24" color="#1f845a"></use>
+          <text class="node-label" x="210" y="924">Product API</text>
+
+          <path id="diagram-1-narrow-owner-request" data-route="narrow-owner-request" data-from="diagram-1-narrow-owner-node" data-to="diagram-1-narrow-runtime-node" data-label="submits requested task" class="route" d="M 240 112 V 286" marker-end="url(#diagram-1-narrow-arrow)"></path>
+          <text class="route-label" data-label-for="narrow-owner-request" x="252" y="178">submits requested task</text>
+          <path id="diagram-1-narrow-runtime-egress" data-route="narrow-runtime-egress" data-from="diagram-1-narrow-runtime-node" data-to="diagram-1-narrow-policy-node" data-label="requests product access without a credential" class="route route-blue" d="M 240 404 V 692" marker-end="url(#diagram-1-narrow-arrow-blue)"></path>
+          <text class="route-label" data-label-for="narrow-runtime-egress" x="252" y="548">requests product access</text>
+          <text class="route-label" data-label-for="narrow-runtime-egress" x="252" y="570">without a credential</text>
+          <path id="diagram-1-narrow-product-route" data-route="narrow-product-route" data-from="diagram-1-narrow-policy-node" data-to="diagram-1-narrow-product-node" data-label="calls product using a scoped credential" class="route" d="M 240 810 V 890" marker-end="url(#diagram-1-narrow-arrow)"></path>
+          <text class="route-label" data-label-for="narrow-product-route" x="252" y="840">calls product using</text>
+          <text class="route-label" data-label-for="narrow-product-route" x="252" y="864">a scoped credential</text>
+
+          <rect x="40" y="1000" width="12" height="12" rx="2" fill="#fff7d6" stroke="#b38600"></rect>
+          <text class="legend" x="62" y="1011">assumed compromiseable</text>
+          <rect x="260" y="1000" width="12" height="12" rx="2" fill="#e9f2ff" stroke="#0c66e4"></rect>
+          <text class="legend" x="282" y="1011">enforcement boundary</text>
+          <rect x="40" y="1038" width="12" height="12" rx="2" fill="#dffcf0" stroke="#1f845a"></rect>
+          <text class="legend" x="62" y="1049">reaches destination</text>
+          <rect x="260" y="1038" width="12" height="12" rx="2" fill="#ffeceb" stroke="#c9372c"></rect>
+          <text class="legend" x="282" y="1049">stopped here</text>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const scale = document.querySelector('#scale');
+    const value = document.querySelector('#scale-value');
+    scale.addEventListener('input', () => {
+      document.documentElement.style.setProperty('--diagram-scale', `${scale.value}%`);
+      value.value = `${scale.value}%`;
+    });
+  </script>
+</body>
+</html>
