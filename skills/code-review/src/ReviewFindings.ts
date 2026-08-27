@@ -299,6 +299,7 @@ interface IssueIdRow {
 interface ScopeBudgetRow {
   readonly run_id: string
   readonly generation: number
+  readonly line_metric: string
   readonly base_ref: string
   readonly base_oid: string
   readonly pinned_head_oid: string
@@ -344,6 +345,7 @@ const isDeferredWork = (finding: Pick<CloseoutFinding, "status" | "disposition" 
 export interface ScopeBudgetStatus {
   readonly runId: string
   readonly generation: number
+  readonly lineMetric: ScopeLineMetric
   readonly baseRef: string
   readonly baseOid: string
   readonly pinnedHeadOid: string
@@ -367,35 +369,21 @@ export interface ScopeBudgetStatus {
 }
 
 export interface ScopeBudgetCheck extends ScopeBudgetStatus {
-  readonly maximumProductionLines: number
+  readonly maximumLines: number
   readonly completedFindings: ReadonlyArray<FixedFindingRow>
   readonly blocked: boolean
 }
 
 export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
+const PRODUCTION_ONLY_LINE_METRIC = "production-only"
+export const TOTAL_LOC_LINE_METRIC = "total-human-authored"
+const ScopeLineMetric = Schema.Literals([PRODUCTION_ONLY_LINE_METRIC, TOTAL_LOC_LINE_METRIC])
+type ScopeLineMetric = typeof ScopeLineMetric.Type
 
-/**
- * Absolute floor on allowed production growth, in changed lines.
- *
- * A percentage alone starves small reviews: a 40-line baseline yields a
- * 12-line allowance, too tight to absorb one honest fix. The floor gives such a
- * review a workable minimum, and the percentage governs again once it exceeds
- * the floor.
- */
-export const MINIMUM_SCOPE_GROWTH_LINES = 150
+const humanAuthoredLines = (productionLines: number, testLines: number): number => productionLines + testLines
 
-/**
- * A baseline with no production changes keeps a zero allowance, so it must ask
- * before touching production at all. This covers less than it sounds like:
- * `measureScopeDiff` counts everything that is not a test path or a recognized
- * lockfile as production, so only an empty, all-test or all-lockfile diff
- * reaches zero.
- */
-const scopeGrowthFloor = (baselineProductionLines: number): number =>
-  baselineProductionLines > 0 ? MINIMUM_SCOPE_GROWTH_LINES : 0
-
-export const allowedScopeGrowth = (baselineProductionLines: number, limitPercent: number): number =>
-  Math.max(scopeGrowthFloor(baselineProductionLines), Math.floor(baselineProductionLines * limitPercent / 100))
+export const allowedScopeGrowth = (baselineLines: number, limitPercent: number): number =>
+  Math.floor(baselineLines * limitPercent / 100)
 
 export class MissingScopeBudget extends Error {
   readonly _tag = "MissingScopeBudget"
@@ -538,9 +526,9 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
     `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
-    `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
+    `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
     `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
-    `create table if not exists review_scope_events (id integer primary key autoincrement, run_id text not null references review_runs(id) on delete cascade, event text not null, baseline_production_lines integer not null, current_production_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, reason text not null, scope_summary text not null, authorization text not null, created_at integer not null)`
+    `create table if not exists review_scope_events (id integer primary key autoincrement, run_id text not null references review_runs(id) on delete cascade, event text not null, line_metric text not null default 'total-human-authored', baseline_production_lines integer not null, baseline_test_lines integer not null default 0, current_production_lines integer not null, current_test_lines integer not null default 0, allowed_growth_lines integer not null, new_production_paths_json text not null, reason text not null, scope_summary text not null, authorization text not null, created_at integer not null)`
   ]
   yield* Effect.forEach(tables, (statement) => sql.unsafe(statement), { discard: true })
   const columns = [
@@ -553,7 +541,11 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     ["issues", "current_job_evidence", "text not null default ''"], ["issues", "maintenance_evidence", "text not null default ''"], ["issues", "present_cost", "text not null default ''"],
     ["issues", "disposition", "text not null default ''"], ["issues", "fix_scope", "text not null default ''"], ["issues", "handling", "text not null default ''"],
     ["issues", "owner_resolution", "text not null default ''"],
-    ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "pinned_head_oid", "text not null default ''"], ["review_scope_budgets", "baseline_binary_paths_json", "text not null default '[]'"], ["review_scope_budgets", "new_binary_production_paths_json", "text not null default '[]'"]
+    ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "line_metric", "text not null default 'production-only'"],
+    ["review_scope_budgets", "pinned_head_oid", "text not null default ''"], ["review_scope_budgets", "baseline_binary_paths_json", "text not null default '[]'"],
+    ["review_scope_budgets", "new_binary_production_paths_json", "text not null default '[]'"],
+    ["review_scope_events", "line_metric", "text not null default 'production-only'"], ["review_scope_events", "baseline_test_lines", "integer not null default 0"],
+    ["review_scope_events", "current_test_lines", "integer not null default 0"]
   ] as const
   let addedMaintenanceEvidence = false
   for (const [table, column, definition] of columns) {
@@ -561,6 +553,11 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     if (!existing.some((row) => row.name === column)) {
       yield* sql.unsafe(`alter table ${table} add column ${column} ${definition}`)
       if (table === "issues" && column === "maintenance_evidence") addedMaintenanceEvidence = true
+      if (table === "review_scope_budgets" && column === "line_metric") yield* sql.unsafe(`update review_scope_budgets
+        set status = 'rebaseline-required',
+            last_reason = 'Scope growth now uses total human-authored LOC; explicit rebaseline is required.' ||
+              case when trim(coalesce(last_reason, '')) = '' then '' else ' Previous state: ' || last_reason end
+        where status != 'complete'`)
       if (column === "baseline_binary_paths_json") yield* sql.unsafe(`update review_scope_budgets
         set status = 'rebaseline-required',
             last_reason = 'Binary baseline data was unavailable after upgrade; explicit rebaseline is required.' ||
@@ -708,11 +705,13 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
   if (row === undefined) return yield* Effect.fail(new MissingScopeBudget())
   const baselinePaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.baseline_paths_json)
   const baselineBinaryPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.baseline_binary_paths_json)
+  const lineMetric = yield* Schema.decodeUnknownEffect(ScopeLineMetric)(row.line_metric)
   const newProductionPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_production_paths_json)
   const newBinaryProductionPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_binary_production_paths_json)
   return {
     runId: row.run_id,
     generation: row.generation,
+    lineMetric,
     baseRef: row.base_ref,
     baseOid: row.base_oid,
     pinnedHeadOid: row.pinned_head_oid,
@@ -739,17 +738,20 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
 const writeScopeEvent = Effect.fn("ReviewFindings.writeScopeEvent")(function*(input: {
   readonly runId: string
   readonly event: string
+  readonly lineMetric: ScopeLineMetric
   readonly baselineProductionLines: number
+  readonly baselineTestLines: number
   readonly currentProductionLines: number
+  readonly currentTestLines: number
   readonly allowedGrowthLines: number
-  readonly newProductionPaths: ReadonlyArray<string>
+  readonly newPaths: ReadonlyArray<string>
   readonly reason: string
   readonly scopeSummary: string
   readonly authorization: string
 }) {
   const sql = yield* SqlClient.SqlClient
-  yield* sql`insert into review_scope_events (run_id, event, baseline_production_lines, current_production_lines, allowed_growth_lines, new_production_paths_json, reason, scope_summary, authorization, created_at)
-    values (${input.runId}, ${input.event}, ${input.baselineProductionLines}, ${input.currentProductionLines}, ${input.allowedGrowthLines}, ${JSON.stringify(input.newProductionPaths)}, ${input.reason}, ${input.scopeSummary}, ${input.authorization}, ${nowSeconds()})`
+  yield* sql`insert into review_scope_events (run_id, event, line_metric, baseline_production_lines, baseline_test_lines, current_production_lines, current_test_lines, allowed_growth_lines, new_production_paths_json, reason, scope_summary, authorization, created_at)
+    values (${input.runId}, ${input.event}, ${input.lineMetric}, ${input.baselineProductionLines}, ${input.baselineTestLines}, ${input.currentProductionLines}, ${input.currentTestLines}, ${input.allowedGrowthLines}, ${JSON.stringify(input.newPaths)}, ${input.reason}, ${input.scopeSummary}, ${input.authorization}, ${nowSeconds()})`
 })
 
 const validateLimit = (limitPercent: number) => Number.isInteger(limitPercent) && limitPercent >= 0 && limitPercent <= 1_000
@@ -776,7 +778,8 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const checkoutOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: run.repoPath })
   const pinnedHeadOid = targetOid === checkoutOid ? "" : targetOid
   const measurement = yield* measureScopeDiff(run.repoPath, baseOid, targetOid)
-  const allowedGrowthLines = allowedScopeGrowth(measurement.production.changedLines, input.limitPercent)
+  const baselineLines = humanAuthoredLines(measurement.production.changedLines, measurement.tests.changedLines)
+  const allowedGrowthLines = allowedScopeGrowth(baselineLines, input.limitPercent)
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = input.runId ?? (yield* (input.freshRun === true ? createScopeRun(run) : upsertRun(run)))
@@ -802,10 +805,10 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
     }
   }
   yield* sql`
-    insert into review_scope_budgets (run_id, generation, base_ref, base_oid, pinned_head_oid, limit_percent, scope_summary, authorization, baseline_production_lines, baseline_test_lines, baseline_generated_lines, baseline_paths_json, baseline_binary_paths_json, status, current_production_lines, current_test_lines, current_generated_lines, growth_lines, allowed_growth_lines, new_production_paths_json, new_binary_production_paths_json, last_reason, started_at, updated_at)
-    values (${runId}, 0, ${run.base}, ${baseOid}, ${pinnedHeadOid}, ${input.limitPercent}, ${input.scopeSummary}, ${input.authorization}, ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${JSON.stringify(measurement.productionPaths)}, ${JSON.stringify(measurement.productionBinaryPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, 0, ${allowedGrowthLines}, '[]', '[]', '', ${timestamp}, ${timestamp})
+    insert into review_scope_budgets (run_id, generation, line_metric, base_ref, base_oid, pinned_head_oid, limit_percent, scope_summary, authorization, baseline_production_lines, baseline_test_lines, baseline_generated_lines, baseline_paths_json, baseline_binary_paths_json, status, current_production_lines, current_test_lines, current_generated_lines, growth_lines, allowed_growth_lines, new_production_paths_json, new_binary_production_paths_json, last_reason, started_at, updated_at)
+    values (${runId}, 0, ${TOTAL_LOC_LINE_METRIC}, ${run.base}, ${baseOid}, ${pinnedHeadOid}, ${input.limitPercent}, ${input.scopeSummary}, ${input.authorization}, ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${JSON.stringify(measurement.humanAuthoredPaths)}, ${JSON.stringify(measurement.humanAuthoredBinaryPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, 0, ${allowedGrowthLines}, '[]', '[]', '', ${timestamp}, ${timestamp})
     on conflict(run_id) do update set
-      generation=review_scope_budgets.generation + 1, base_ref=excluded.base_ref, base_oid=excluded.base_oid, pinned_head_oid=excluded.pinned_head_oid, limit_percent=excluded.limit_percent, scope_summary=excluded.scope_summary,
+      generation=review_scope_budgets.generation + 1, line_metric=excluded.line_metric, base_ref=excluded.base_ref, base_oid=excluded.base_oid, pinned_head_oid=excluded.pinned_head_oid, limit_percent=excluded.limit_percent, scope_summary=excluded.scope_summary,
       authorization=excluded.authorization, baseline_production_lines=excluded.baseline_production_lines,
       baseline_test_lines=excluded.baseline_test_lines, baseline_generated_lines=excluded.baseline_generated_lines,
       baseline_paths_json=excluded.baseline_paths_json, baseline_binary_paths_json=excluded.baseline_binary_paths_json, status='ready', current_production_lines=excluded.current_production_lines,
@@ -815,10 +818,13 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   yield* writeScopeEvent({
     runId,
     event: input.event,
+    lineMetric: TOTAL_LOC_LINE_METRIC,
     baselineProductionLines: measurement.production.changedLines,
+    baselineTestLines: measurement.tests.changedLines,
     currentProductionLines: measurement.production.changedLines,
+    currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines,
-    newProductionPaths: [],
+    newPaths: [],
     reason: "",
     scopeSummary: input.scopeSummary,
     authorization: input.authorization
@@ -877,14 +883,17 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   const budget = yield* getScopeBudget(run)
   if (budget.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
   if (budget.status === "rebaseline-required") return yield* Effect.fail(new InvalidScopeBudget(budget.lastReason))
+  if (budget.lineMetric !== TOTAL_LOC_LINE_METRIC) return yield* Effect.fail(new InvalidScopeBudget("scope budget uses the retired production-only metric; explicit rebaseline is required"))
   const measurement: ScopeMeasurement = yield* measureScopeDiff(run.repoPath, budget.baseOid, budget.pinnedHeadOid.length === 0 ? "HEAD" : budget.pinnedHeadOid)
   const baselinePaths = new Set(budget.baselinePaths)
-  const newProductionPaths = measurement.productionPaths.filter((path) => !baselinePaths.has(path))
+  const newHumanAuthoredPaths = measurement.humanAuthoredPaths.filter((path) => !baselinePaths.has(path))
   const baselineBinaryPaths = new Set(budget.baselineBinaryPaths)
-  const newBinaryProductionPaths = measurement.productionBinaryPaths.filter((path) => !baselineBinaryPaths.has(path))
-  const growthLines = Math.max(0, measurement.production.changedLines - budget.baselineProductionLines)
-  const maximumProductionLines = budget.baselineProductionLines + budget.allowedGrowthLines
-  const blocked = measurement.production.changedLines > maximumProductionLines || newBinaryProductionPaths.length > 0
+  const newBinaryHumanAuthoredPaths = measurement.humanAuthoredBinaryPaths.filter((path) => !baselineBinaryPaths.has(path))
+  const baselineLines = humanAuthoredLines(budget.baselineProductionLines, budget.baselineTestLines)
+  const currentLines = humanAuthoredLines(measurement.production.changedLines, measurement.tests.changedLines)
+  const growthLines = Math.max(0, currentLines - baselineLines)
+  const maximumLines = baselineLines + budget.allowedGrowthLines
+  const blocked = currentLines > maximumLines || newBinaryHumanAuthoredPaths.length > 0
   const status = blocked ? "blocked" : "ok"
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
@@ -892,14 +901,17 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   if (current.generation !== budget.generation || current.status !== budget.status) {
     return yield* Effect.fail(new InvalidScopeBudget("scope budget changed while scope-check was measuring; rerun scope-check for the current state"))
   }
-  yield* sql`update review_scope_budgets set generation = generation + 1, status = ${status}, current_production_lines = ${measurement.production.changedLines}, current_test_lines = ${measurement.tests.changedLines}, current_generated_lines = ${measurement.generated.changedLines}, growth_lines = ${growthLines}, new_production_paths_json = ${JSON.stringify(newProductionPaths)}, new_binary_production_paths_json = ${JSON.stringify(newBinaryProductionPaths)}, last_reason = ${reason}, updated_at = ${timestamp} where run_id = ${budget.runId}`
+  yield* sql`update review_scope_budgets set generation = generation + 1, status = ${status}, current_production_lines = ${measurement.production.changedLines}, current_test_lines = ${measurement.tests.changedLines}, current_generated_lines = ${measurement.generated.changedLines}, growth_lines = ${growthLines}, new_production_paths_json = ${JSON.stringify(newHumanAuthoredPaths)}, new_binary_production_paths_json = ${JSON.stringify(newBinaryHumanAuthoredPaths)}, last_reason = ${reason}, updated_at = ${timestamp} where run_id = ${budget.runId}`
   yield* writeScopeEvent({
     runId: budget.runId,
     event: blocked ? "blocked" : "checked",
+    lineMetric: budget.lineMetric,
     baselineProductionLines: budget.baselineProductionLines,
+    baselineTestLines: budget.baselineTestLines,
     currentProductionLines: measurement.production.changedLines,
+    currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines: budget.allowedGrowthLines,
-    newProductionPaths,
+    newPaths: newHumanAuthoredPaths,
     reason,
     scopeSummary: budget.scopeSummary,
     authorization: budget.authorization
@@ -913,10 +925,10 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
     currentTestLines: measurement.tests.changedLines,
     currentGeneratedLines: measurement.generated.changedLines,
     growthLines,
-    newProductionPaths,
-    newBinaryProductionPaths,
+    newProductionPaths: newHumanAuthoredPaths,
+    newBinaryProductionPaths: newBinaryHumanAuthoredPaths,
     lastReason: reason,
-    maximumProductionLines,
+    maximumLines,
     completedFindings,
     blocked
   } satisfies ScopeBudgetCheck
@@ -947,10 +959,13 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
     yield* writeScopeEvent({
     runId: check.runId,
     event: "complete",
+    lineMetric: check.lineMetric,
     baselineProductionLines: check.baselineProductionLines,
+    baselineTestLines: check.baselineTestLines,
     currentProductionLines: check.currentProductionLines,
+    currentTestLines: check.currentTestLines,
     allowedGrowthLines: check.allowedGrowthLines,
-    newProductionPaths: [],
+    newPaths: [],
     reason,
     scopeSummary: check.scopeSummary,
     authorization: check.authorization
@@ -1323,25 +1338,41 @@ export const pruneFindings = Effect.fn("ReviewFindings.pruneFindings")(function*
 /**
  * Reports only the stored numbers, never the rule that produced them.
  *
- * The allowance is frozen when a budget is created, so any rule rendered at
- * print time is computed from whatever the current policy is and contradicts a
- * budget created under an older one. `allowed-growth` and `maximum` come from
- * the row and are always the bound actually enforced.
+ * The allowance and line metric are frozen when a budget is created. Completed
+ * production-only budgets retain their historical output, while unfinished
+ * legacy budgets require rebaseline before another check.
  */
 const scopeCountsLine = (scope: ScopeBudgetStatus): string => {
-  const maximum = scope.baselineProductionLines + scope.allowedGrowthLines
-  return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${scope.baselineProductionLines} current=${scope.currentProductionLines} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} excluded-tests=${scope.currentTestLines} excluded-generated=${scope.currentGeneratedLines}`
+  const totalMetric = scope.lineMetric === TOTAL_LOC_LINE_METRIC
+  const baseline = totalMetric
+    ? humanAuthoredLines(scope.baselineProductionLines, scope.baselineTestLines)
+    : scope.baselineProductionLines
+  const current = totalMetric
+    ? humanAuthoredLines(scope.currentProductionLines, scope.currentTestLines)
+    : scope.currentProductionLines
+  const maximum = baseline + scope.allowedGrowthLines
+  const breakdown = totalMetric
+    ? `production=${scope.currentProductionLines} tests=${scope.currentTestLines}`
+    : `excluded-tests=${scope.currentTestLines}`
+  return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${baseline} current=${current} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} ${breakdown} excluded-generated=${scope.currentGeneratedLines}`
 }
 
-const productionPathsAddedLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {
+const pathsAddedLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {
   const binaryPaths = new Set(scope.newBinaryProductionPaths)
   const paths = scope.newProductionPaths.filter((path) => !binaryPaths.has(path))
-  return paths.length === 0 ? [] : ["Production paths added since the baseline (informational):", ...paths.map((path) => `- ${path}`)]
+  const heading = scope.lineMetric === TOTAL_LOC_LINE_METRIC
+    ? "Human-authored paths added since the baseline (informational):"
+    : "Production paths added since the baseline (informational):"
+  return paths.length === 0 ? [] : [heading, ...paths.map((path) => `- ${path}`)]
 }
 
-const blockingBinaryPathsLines = (check: ScopeBudgetStatus): ReadonlyArray<string> => check.newBinaryProductionPaths.length === 0
-  ? []
-  : ["Binary production paths added since the baseline (require authorization because line growth cannot measure their size):", ...check.newBinaryProductionPaths.map((path) => `- ${path}`)]
+const blockingBinaryPathsLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {
+  if (scope.newBinaryProductionPaths.length === 0) return []
+  const heading = scope.lineMetric === TOTAL_LOC_LINE_METRIC
+    ? "Binary human-authored paths added since the baseline (require authorization because line growth cannot measure their size):"
+    : "Binary production paths added since the baseline (require authorization because line growth cannot measure their size):"
+  return [heading, ...scope.newBinaryProductionPaths.map((path) => `- ${path}`)]
+}
 
 export const formatReadyScopeBudget = (scope: ScopeBudgetStatus): string => [
   "SCOPE BUDGET READY",
@@ -1357,7 +1388,7 @@ export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
   `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`,
   ...(scope.lastReason.length === 0 ? [] : [`last-reason=${scope.lastReason}`]),
   ...blockingBinaryPathsLines(scope),
-  ...productionPathsAddedLines(scope)
+  ...pathsAddedLines(scope)
 ].join("\n")
 
 export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
@@ -1365,7 +1396,7 @@ export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
   scopeCountsLine(check),
   `scope=${check.scopeSummary}`,
   `next-work=${check.lastReason}`,
-  ...productionPathsAddedLines(check)
+  ...pathsAddedLines(check)
 ].join("\n")
 
 function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
@@ -1376,7 +1407,7 @@ function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
     "SCOPE BUDGET BLOCKED",
     scopeCountsLine(check),
     ...blockingBinaryPathsLines(check),
-    ...productionPathsAddedLines(check),
+    ...pathsAddedLines(check),
     "Completed review work:",
     ...completed,
     `Why more scope is requested: ${check.lastReason}`,
