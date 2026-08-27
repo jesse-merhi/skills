@@ -74,6 +74,14 @@ Use only the sections the change needs:
 
 <Two sentences: how this PR fixes it, then what happens now.>
 
+## How <the changed workflow> works
+
+<One sentence stating what the reviewer should learn from the diagram.>
+
+<One provider-hosted diagram for a new or materially changed system or workflow.>
+
+*What this explains: <the trigger-to-outcome relationship shown here>.*
+
 ## Proof
 
 **Before: direct base**
@@ -100,7 +108,10 @@ risk that materially changes how the PR should be reviewed or landed.>
 
 For a new feature without a meaningful baseline, say so in one sentence and
 show the new entry point and outcome. For a tiny change, the opening and one
-proof block may be enough.
+proof block may be enough. Omit the workflow section when the PR does not
+introduce or materially change a system or workflow. When it does, use a
+specific heading such as `How review publication works`, not the placeholder
+word `workflow`.
 
 ## Proof shape
 
@@ -136,6 +147,11 @@ published: false
 For matched visual proof, label the direct-base and PR evidence explicitly.
 Use one side-by-side image for a readable static comparison or two short
 recordings for an interaction. Never put media in a Markdown table.
+
+An explanatory workflow diagram belongs immediately before `## Proof`. Its
+nearby sentence says what the reviewer should learn, and its caption starts
+with `What this explains`. Do not label the diagram as proof or use it instead
+of the observed result.
 
 ## API and backend proof
 

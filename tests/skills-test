@@ -673,7 +673,9 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/plain-language.md" "Restore the missing premise"
   assert_contains "$skill/references/plain-language.md" "Prefer an active verb and the observable"
   assert_contains "$skill/references/plain-language.md" "Make each commit subject a small, readable claim"
-  assert_contains "$skill/references/proof-selection.md" 'Let `speak-fking-english` decide'
+  assert_contains "$skill/references/proof-selection.md" "include one diagram"
+  assert_contains "$skill/references/proof-selection.md" "recognizable trigger"
+  assert_contains "$skill/references/proof-selection.md" "Do not make several diagrams unless the user explicitly asks"
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
