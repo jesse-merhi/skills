@@ -114,7 +114,7 @@ const addEntry = (counts: ReturnType<typeof emptyCounts>, entry: NumstatEntry): 
   counts.additions += entry.additions
   counts.deletions += entry.deletions
   counts.binaryFiles += entry.binary ? 1 : 0
-  counts.changedLines += entry.additions + entry.deletions + (entry.binary ? 1 : 0)
+  counts.changedLines += entry.additions + entry.deletions
 }
 
 const splitNulBytes = (output: Uint8Array): ReadonlyArray<Uint8Array> => {

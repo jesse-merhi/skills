@@ -345,7 +345,7 @@ const isDeferredWork = (finding: Pick<CloseoutFinding, "status" | "disposition" 
 export interface ScopeBudgetStatus {
   readonly runId: string
   readonly generation: number
-  readonly lineMetric: string
+  readonly lineMetric: ScopeLineMetric
   readonly baseRef: string
   readonly baseOid: string
   readonly pinnedHeadOid: string
@@ -363,8 +363,8 @@ export interface ScopeBudgetStatus {
   readonly currentGeneratedLines: number
   readonly growthLines: number
   readonly allowedGrowthLines: number
-  readonly newHumanAuthoredPaths: ReadonlyArray<string>
-  readonly newBinaryHumanAuthoredPaths: ReadonlyArray<string>
+  readonly newProductionPaths: ReadonlyArray<string>
+  readonly newBinaryProductionPaths: ReadonlyArray<string>
   readonly lastReason: string
 }
 
@@ -375,7 +375,10 @@ export interface ScopeBudgetCheck extends ScopeBudgetStatus {
 }
 
 export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
+const PRODUCTION_ONLY_LINE_METRIC = "production-only"
 export const TOTAL_LOC_LINE_METRIC = "total-human-authored"
+const ScopeLineMetric = Schema.Literals([PRODUCTION_ONLY_LINE_METRIC, TOTAL_LOC_LINE_METRIC])
+type ScopeLineMetric = typeof ScopeLineMetric.Type
 
 const humanAuthoredLines = (productionLines: number, testLines: number): number => productionLines + testLines
 
@@ -702,12 +705,13 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
   if (row === undefined) return yield* Effect.fail(new MissingScopeBudget())
   const baselinePaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.baseline_paths_json)
   const baselineBinaryPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.baseline_binary_paths_json)
-  const newHumanAuthoredPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_production_paths_json)
-  const newBinaryHumanAuthoredPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_binary_production_paths_json)
+  const lineMetric = yield* Schema.decodeUnknownEffect(ScopeLineMetric)(row.line_metric)
+  const newProductionPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_production_paths_json)
+  const newBinaryProductionPaths = yield* Schema.decodeUnknownEffect(ScopePathsJson)(row.new_binary_production_paths_json)
   return {
     runId: row.run_id,
     generation: row.generation,
-    lineMetric: row.line_metric,
+    lineMetric,
     baseRef: row.base_ref,
     baseOid: row.base_oid,
     pinnedHeadOid: row.pinned_head_oid,
@@ -725,8 +729,8 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
     currentGeneratedLines: row.current_generated_lines,
     growthLines: row.growth_lines,
     allowedGrowthLines: row.allowed_growth_lines,
-    newHumanAuthoredPaths,
-    newBinaryHumanAuthoredPaths,
+    newProductionPaths,
+    newBinaryProductionPaths,
     lastReason: row.last_reason
   } satisfies ScopeBudgetStatus
 })
@@ -734,20 +738,20 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
 const writeScopeEvent = Effect.fn("ReviewFindings.writeScopeEvent")(function*(input: {
   readonly runId: string
   readonly event: string
-  readonly lineMetric: string
+  readonly lineMetric: ScopeLineMetric
   readonly baselineProductionLines: number
   readonly baselineTestLines: number
   readonly currentProductionLines: number
   readonly currentTestLines: number
   readonly allowedGrowthLines: number
-  readonly newHumanAuthoredPaths: ReadonlyArray<string>
+  readonly newPaths: ReadonlyArray<string>
   readonly reason: string
   readonly scopeSummary: string
   readonly authorization: string
 }) {
   const sql = yield* SqlClient.SqlClient
   yield* sql`insert into review_scope_events (run_id, event, line_metric, baseline_production_lines, baseline_test_lines, current_production_lines, current_test_lines, allowed_growth_lines, new_production_paths_json, reason, scope_summary, authorization, created_at)
-    values (${input.runId}, ${input.event}, ${input.lineMetric}, ${input.baselineProductionLines}, ${input.baselineTestLines}, ${input.currentProductionLines}, ${input.currentTestLines}, ${input.allowedGrowthLines}, ${JSON.stringify(input.newHumanAuthoredPaths)}, ${input.reason}, ${input.scopeSummary}, ${input.authorization}, ${nowSeconds()})`
+    values (${input.runId}, ${input.event}, ${input.lineMetric}, ${input.baselineProductionLines}, ${input.baselineTestLines}, ${input.currentProductionLines}, ${input.currentTestLines}, ${input.allowedGrowthLines}, ${JSON.stringify(input.newPaths)}, ${input.reason}, ${input.scopeSummary}, ${input.authorization}, ${nowSeconds()})`
 })
 
 const validateLimit = (limitPercent: number) => Number.isInteger(limitPercent) && limitPercent >= 0 && limitPercent <= 1_000
@@ -820,7 +824,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
     currentProductionLines: measurement.production.changedLines,
     currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines,
-    newHumanAuthoredPaths: [],
+    newPaths: [],
     reason: "",
     scopeSummary: input.scopeSummary,
     authorization: input.authorization
@@ -907,7 +911,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
     currentProductionLines: measurement.production.changedLines,
     currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines: budget.allowedGrowthLines,
-    newHumanAuthoredPaths,
+    newPaths: newHumanAuthoredPaths,
     reason,
     scopeSummary: budget.scopeSummary,
     authorization: budget.authorization
@@ -921,8 +925,8 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
     currentTestLines: measurement.tests.changedLines,
     currentGeneratedLines: measurement.generated.changedLines,
     growthLines,
-    newHumanAuthoredPaths,
-    newBinaryHumanAuthoredPaths,
+    newProductionPaths: newHumanAuthoredPaths,
+    newBinaryProductionPaths: newBinaryHumanAuthoredPaths,
     lastReason: reason,
     maximumLines,
     completedFindings,
@@ -961,7 +965,7 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
     currentProductionLines: check.currentProductionLines,
     currentTestLines: check.currentTestLines,
     allowedGrowthLines: check.allowedGrowthLines,
-    newHumanAuthoredPaths: [],
+    newPaths: [],
     reason,
     scopeSummary: check.scopeSummary,
     authorization: check.authorization
@@ -1353,15 +1357,22 @@ const scopeCountsLine = (scope: ScopeBudgetStatus): string => {
   return `base=${scope.baseRef}@${scope.baseOid.slice(0, 12)} baseline=${baseline} current=${current} growth=${scope.growthLines} allowed-growth=${scope.allowedGrowthLines} maximum=${maximum} ${breakdown} excluded-generated=${scope.currentGeneratedLines}`
 }
 
-const humanAuthoredPathsAddedLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {
-  const binaryPaths = new Set(scope.newBinaryHumanAuthoredPaths)
-  const paths = scope.newHumanAuthoredPaths.filter((path) => !binaryPaths.has(path))
-  return paths.length === 0 ? [] : ["Human-authored paths added since the baseline (informational):", ...paths.map((path) => `- ${path}`)]
+const pathsAddedLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {
+  const binaryPaths = new Set(scope.newBinaryProductionPaths)
+  const paths = scope.newProductionPaths.filter((path) => !binaryPaths.has(path))
+  const heading = scope.lineMetric === TOTAL_LOC_LINE_METRIC
+    ? "Human-authored paths added since the baseline (informational):"
+    : "Production paths added since the baseline (informational):"
+  return paths.length === 0 ? [] : [heading, ...paths.map((path) => `- ${path}`)]
 }
 
-const blockingBinaryPathsLines = (check: ScopeBudgetStatus): ReadonlyArray<string> => check.newBinaryHumanAuthoredPaths.length === 0
-  ? []
-  : ["Binary human-authored paths added since the baseline (require authorization because line growth cannot measure their size):", ...check.newBinaryHumanAuthoredPaths.map((path) => `- ${path}`)]
+const blockingBinaryPathsLines = (scope: ScopeBudgetStatus): ReadonlyArray<string> => {
+  if (scope.newBinaryProductionPaths.length === 0) return []
+  const heading = scope.lineMetric === TOTAL_LOC_LINE_METRIC
+    ? "Binary human-authored paths added since the baseline (require authorization because line growth cannot measure their size):"
+    : "Binary production paths added since the baseline (require authorization because line growth cannot measure their size):"
+  return [heading, ...scope.newBinaryProductionPaths.map((path) => `- ${path}`)]
+}
 
 export const formatReadyScopeBudget = (scope: ScopeBudgetStatus): string => [
   "SCOPE BUDGET READY",
@@ -1377,7 +1388,7 @@ export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
   `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`,
   ...(scope.lastReason.length === 0 ? [] : [`last-reason=${scope.lastReason}`]),
   ...blockingBinaryPathsLines(scope),
-  ...humanAuthoredPathsAddedLines(scope)
+  ...pathsAddedLines(scope)
 ].join("\n")
 
 export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
@@ -1385,7 +1396,7 @@ export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
   scopeCountsLine(check),
   `scope=${check.scopeSummary}`,
   `next-work=${check.lastReason}`,
-  ...humanAuthoredPathsAddedLines(check)
+  ...pathsAddedLines(check)
 ].join("\n")
 
 function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
@@ -1396,7 +1407,7 @@ function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
     "SCOPE BUDGET BLOCKED",
     scopeCountsLine(check),
     ...blockingBinaryPathsLines(check),
-    ...humanAuthoredPathsAddedLines(check),
+    ...pathsAddedLines(check),
     "Completed review work:",
     ...completed,
     `Why more scope is requested: ${check.lastReason}`,
