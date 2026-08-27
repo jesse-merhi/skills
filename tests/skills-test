@@ -135,6 +135,7 @@ behavior_checks = {
     root / "skills/grilling/SKILL.md": [
         "Ask the whole frontier",
         "dispatch a background subagent",
+        "horizontal rule between questions",
     ],
     root / "skills/grill-with-docs/SKILL.md": [
         "`Next Round`",
@@ -507,7 +508,8 @@ test_speak_fking_english_owns_repitch_guidance() {
   assert_contains "$skill/references/reader-reset.md" "Find the missing premise"
   assert_contains "$skill/references/reader-reset.md" "everyday language"
   assert_contains "$skill/references/reader-reset.md" "technical density to the reader's"
-  assert_contains "$skill/references/reader-reset.md" 'established terms from `CONTEXT.md`'
+  assert_contains "$skill/references/reader-reset.md" "established terms from the applicable"
+  assert_contains "$skill/references/reader-reset.md" '`CONTEXT-MAP.md`'
   assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$skill/references/upstream-licenses.md" "Copyright (c) 2026 Matt Pocock"
   assert_contains "$skill/references/upstream-licenses.md" "Copyright (c) 2026 Lauren Tan"
@@ -1019,10 +1021,77 @@ test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
   assert_contains "$ROOT_DIR/external.md" "tree/codex-skill-metadata/skills/productivity/teach"
-  assert_contains "$ROOT_DIR/external.md" "skills@1.5.20"
+  assert_contains "$ROOT_DIR/external.md" "skills@1.5.23"
   assert_contains "$ROOT_DIR/external.md" "agents/openai.yaml"
   assert_contains "$ROOT_DIR/external.md" " --agent codex --skill teach"
   assert_contains "$ROOT_DIR/external.md" "The installer owns the external skill files"
+}
+
+test_upstream_manifest_is_valid() {
+  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+from datetime import date
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+
+
+root = Path(os.environ["ROOT_DIR"])
+manifest_path = root / "upstreams.json"
+manifest = json.loads(manifest_path.read_text())
+
+if manifest.get("schemaVersion") != 1:
+    raise SystemExit("upstreams.json must use schemaVersion 1")
+
+try:
+    date.fromisoformat(manifest["reviewedAt"])
+except (KeyError, TypeError, ValueError) as exc:
+    raise SystemExit("upstreams.json reviewedAt must be an ISO date") from exc
+
+if "external.md" not in manifest.get("scope", ""):
+    raise SystemExit("upstreams.json must keep installer-owned pins in external.md")
+
+repositories = set()
+
+sources = manifest.get("sources")
+if not isinstance(sources, list) or not sources:
+    raise SystemExit("upstreams.json must track at least one source")
+
+for source in sources:
+    repository = source.get("repository", "")
+    if not repository.startswith("https://github.com/"):
+        raise SystemExit(f"invalid upstream repository: {repository!r}")
+    if repository in repositories:
+        raise SystemExit(f"duplicate upstream repository: {repository}")
+    repositories.add(repository)
+
+    commit = source.get("reviewedCommit", "")
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise SystemExit(f"invalid reviewed commit for {repository}: {commit!r}")
+
+    mappings = source.get("mappings")
+    if not isinstance(mappings, list) or not mappings:
+        raise SystemExit(f"missing skill mappings for {repository}")
+
+    for mapping in mappings:
+        local_skill = mapping.get("localSkill", "")
+        if not (root / "skills" / local_skill / "SKILL.md").is_file():
+            raise SystemExit(f"tracked local skill does not exist: {local_skill!r}")
+        if mapping.get("relationship") not in {"adapted", "inspired"}:
+            raise SystemExit(f"invalid relationship for {local_skill!r}")
+        upstream_paths = mapping.get("upstreamPaths")
+        if not isinstance(upstream_paths, list) or not upstream_paths:
+            raise SystemExit(f"missing upstream paths for {local_skill!r}")
+        for upstream_path in upstream_paths:
+            path = PurePosixPath(upstream_path)
+            if path.is_absolute() or ".." in path.parts:
+                raise SystemExit(
+                    f"invalid upstream path for {local_skill!r}: {upstream_path!r}"
+                )
+
+if "upstreams.json" not in (root / "README.md").read_text():
+    raise SystemExit("README.md must link to upstreams.json")
+PY
 }
 
 test_gh_stack_workflow_is_pinned_and_wired() {
@@ -1259,6 +1328,7 @@ PY
 }
 
 test_skill_frontmatter_is_valid
+test_upstream_manifest_is_valid
 test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
 test_retired_impeccable_cleanup_is_documented
