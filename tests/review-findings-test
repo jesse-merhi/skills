@@ -1935,7 +1935,7 @@ test_review_scope_budget_counts_tests_in_total_loc() {
   assert_contains "$tmp/stderr" "baseline=20 current=27 growth=7 allowed-growth=6 maximum=26"
   assert_contains "$tmp/stderr" "production=10 tests=17 excluded-generated=0"
 
-  sed -i '' '$d' "$repo/app.test.ts"
+  for number in {1..16}; do printf 'test %s\n' "$number"; done > "$repo/app.test.ts"
   printf '\0binary test fixture\n' > "$repo/fixture.test.bin"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
