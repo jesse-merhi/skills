@@ -1,4 +1,4 @@
 interface:
   display_name: "Speak Fking English"
-  short_description: "Clarify replies; deep-unslop when invoked"
-  default_prompt: "Use $speak-fking-english to run the full clarity and AI-tells pass on this draft."
+  short_description: "Make replies concise; deep-unslop when invoked"
+  default_prompt: "Use $speak-fking-english to make this draft concise and clear, then run the full AI-tells pass."

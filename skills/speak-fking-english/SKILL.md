@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: 'Run before every final response: clarify prose, cut AI tells, re-pitch confusion, and use visuals only when they help.'
+description: 'Run before every final response: make it concise and clear, cut AI tells, re-pitch confusion, and use visuals only when they help.'
 ---
 
 # Speak fking English
@@ -51,6 +51,13 @@ commands, and evidence. Every step below preserves them character for character.
 
    Done when the result is direct, concrete, easy to follow, and recognisably
    written by a person, with every fact and evidence claim unchanged.
+
+4. Apply the [brevity pass](references/brevity.md) last. Keep the context,
+   evidence, qualifications, and next action the reader needs. Cut everything
+   else.
+
+   Done when every remaining sentence earns its place and removing another one
+   would make the response less useful or less accurate.
 
 ## Deep catalogue pass
 
