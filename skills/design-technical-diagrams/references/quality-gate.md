@@ -136,7 +136,8 @@ Inspect at roughly 2×:
 
 - text touching borders or connector labels;
 - accidental text-to-text or text-to-icon collisions;
-- one-pixel marker nubs or detached arrowheads;
+- one-pixel marker nubs, detached arrowheads, or arrowheads rendered as hollow
+  chevrons because connector CSS leaked into the marker path;
 - double-stroked or visually merged parallel lines;
 - routes tracking box borders closely enough to look like the border;
 - crossings hidden beneath text or icons;

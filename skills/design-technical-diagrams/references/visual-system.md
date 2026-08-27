@@ -123,6 +123,10 @@ unrelated boxes.
   borders.
 - Put route labels beside one open segment, not floating between several lines.
 - Keep arrowheads attached, correctly directed, and clear of nearby text.
+- Scope connector CSS to the connector elements or classes. Never use a
+  descendant `path` selector that can also restyle paths inside SVG markers.
+  In the rendered export, confirm every arrowhead keeps its intended solid
+  fill and does not become a hollow chevron or inherit the connector stroke.
 
 Use a shared trunk only when the destinations genuinely share one source and
 meaning. Independent outcomes, updates, or decisions may need two complete
