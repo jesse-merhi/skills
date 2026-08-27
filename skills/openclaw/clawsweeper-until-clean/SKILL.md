@@ -1,6 +1,6 @@
 ---
 name: clawsweeper-until-clean
-description: 'Re-review Clawsweeper PRs in a fix-and-rerun loop until clean.'
+description: 'Re-review ClawSweeper PRs in a fix-and-rerun loop until three clean passes and a platinum-or-better readiness label.'
 ---
 
 # Clawsweeper until clean
@@ -9,8 +9,9 @@ Use this skill when the source of truth is the Clawsweeper bot acting on the
 GitHub PR, not a local review command. Trigger Clawsweeper, wait for the fresh
 review, fix actionable findings, push, and repeat.
 
-Only stop after **three consecutive Clawsweeper re-reviews** complete with
-**zero actionable findings**. Anything less is incomplete work.
+Only succeed after **three consecutive ClawSweeper re-reviews** complete with
+**zero actionable findings** on one head and the PR receives a
+**platinum-or-better** rating label. Anything less is incomplete work.
 
 Do not use this skill for a one-shot trigger. A single `/clawsweeper re-review`
 comment is enough for that. Use this skill when you want the loop run to
@@ -23,9 +24,11 @@ trigger: comment exactly `/clawsweeper re-review` on the PR via `gh pr comment`
 review_source: must be a clawsweeper review/comment posted AFTER your trigger comment
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 stop_condition: 3 consecutive clawsweeper re-reviews with zero actionable findings
+minimum_readiness: one of `rating: 🐚 platinum hermit`, `rating: 🦞 diamond lobster`, or `rating: 🦀 challenger crab` must be present after the clean streak
 counter_reset: any clawsweeper re-review that lists actionable findings resets the consecutive-clean counter to 0
 no_early_exit: do not stop on 1 or 2 clean re-reviews
 no_self_review: do not skip a re-trigger because you "already know it's clean"
+no_self_label: never add, edit, or preserve the readiness label on Clawsweeper's behalf
 ```
 
 ## Pre-flight
@@ -66,6 +69,10 @@ Repeat:
 8. If ambiguous, do not count it as clean. Re-trigger once; if ambiguity
    remains, stop and report.
 9. If a safety cap is hit, stop and report unresolved state honestly.
+10. After `3/3`, wait for ClawSweeper's label update and verify a
+    platinum-or-better label with
+    [polling-and-freshness.md](references/polling-and-freshness.md). If it is
+    absent at the wall-clock cap, stop incomplete. Do not apply it yourself.
 
 Between consecutive clean re-reviews, do not edit code or push commits. The
 streak is only meaningful when Clawsweeper agrees with itself three times on the
@@ -73,13 +80,16 @@ same tree.
 
 ## Completion criteria
 
-- Final stop reason is `3-consecutive-clean`, `safety-cap-hit`, or
-  `wall-clock-cap-hit`.
+- Final stop reason is `platinum-or-better-after-3-consecutive-clean`,
+  `safety-cap-hit`, or `wall-clock-cap-hit`.
 - Success requires three consecutive fresh Clawsweeper verdicts with zero
-  actionable findings on the same PR head SHA.
+  actionable findings on the same PR head SHA and one platinum-or-better
+  rating label after that streak.
 - Every actionable finding resets the clean counter, even on the third
   re-review.
 - Every counted response is fresh, finished, and from Clawsweeper.
+- The readiness label was observed rather than added by the agent, and no push
+  occurred after the final counted review.
 - The final report follows [reporting.md](references/reporting.md).
 
 ## Context pointers

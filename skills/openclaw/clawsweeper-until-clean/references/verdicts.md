@@ -20,3 +20,7 @@ Treat a Clawsweeper re-review as clean only when:
 
 When in doubt, treat the re-review as `has_findings` or `ambiguous`. False
 negatives defeat the skill.
+
+A clean response advances the streak; it does not complete the readiness gate
+by itself. After `3/3`, separately verify a platinum-or-better label on the
+unchanged head.

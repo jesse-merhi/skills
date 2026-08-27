@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenClaw PR Readiness"
+  short_description: "Prepare OpenClaw PRs for platinum+, aiming at diamond."
+  default_prompt: "Use $openclaw-pr-readiness to prepare this OpenClaw PR for honest ClawSweeper readiness, make one bounded attempt at diamond, and enforce the exact-head platinum-or-better gate."

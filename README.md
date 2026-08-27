@@ -84,9 +84,9 @@ Two ways one gets used:
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks eight skills as
+  "use `grilling` on this" in either harness. Codex marks nine skills as
   explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,
-  `prototype`, `to-spec`, `to-tickets`, `wayfinder`, and
+  `just-do-it`, `prototype`, `to-spec`, `to-tickets`, `wayfinder`, and
   `clawsweeper-until-clean`. They can review and fix code, operate desktop UI,
   write durable planning files, or run a long external loop, so Codex waits for
   you to name them.
@@ -149,6 +149,7 @@ code looks the way it does.
 
 | Skill | What it does |
 | --- | --- |
+| [`just-do-it`](skills/just-do-it/SKILL.md) | Takes one well-defined change from implementation through full review, proof, CI, and a non-draft PR ready for Jesse to inspect. |
 | [`code-review`](skills/code-review/SKILL.md) | Entry point: runs the native until-clean phase, then the cold until-clean phase, on one frozen target. |
 | [`review-until-clean`](skills/review-until-clean/SKILL.md) | Loops the harness-native review (`codex review`, Claude Code's built-in) and fixes findings until two consecutive passes are clean. |
 | [`cold-pr-review`](skills/cold-pr-review/SKILL.md) | One independent review pass by a subagent given only the target and a neutral checklist, so it cannot inherit the author's anchoring. |
@@ -229,8 +230,9 @@ else. They will only be useful to you if you work on those projects.
 | [`openclaw-local-test`](skills/openclaw/openclaw-local-test/SKILL.md) | Brings up an isolated local OpenClaw Gateway for manual browser testing using the current Codex or Claude login. |
 | [`openclaw-stg-test`](skills/openclaw/openclaw-stg-test/SKILL.md) | Publishes a temporary Control UI preview through a guarded Cloudflare Quick Tunnel without exposing an authenticated Gateway. |
 | [`openclaw-telegram-handoff`](skills/openclaw/openclaw-telegram-handoff/SKILL.md) | Sends one terminal update to an approved Telegram route when work is done or blocked, and relays the reply back to the source session. |
+| [`openclaw-pr-readiness`](skills/openclaw/openclaw-pr-readiness/SKILL.md) | Prepares an `openclaw/openclaw` PR for honest ClawSweeper scoring and enforces an exact-head platinum-or-better handoff gate. |
 | [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot, never production itself. |
-| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Loops the Clawsweeper PR bot through trigger, wait, fix, and push until three consecutive re-reviews come back clean. |
+| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Loops the ClawSweeper PR bot through trigger, wait, fix, and push until three consecutive re-reviews are clean and the PR receives a platinum-or-better readiness label. |
 
 ## External skills
 

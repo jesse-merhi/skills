@@ -15,9 +15,10 @@ iter 8: triggered re-review @ sha xyz999 -> clean (3/3)
 On termination, report:
 
 - final iteration count
-- whether the stop reason was `3-consecutive-clean`, `safety-cap-hit`, or
-  `wall-clock-cap-hit`
+- whether the stop reason was `platinum-or-better-after-3-consecutive-clean`,
+  `safety-cap-hit`, or `wall-clock-cap-hit`
 - the last Clawsweeper verdict, with a link to the comment/review
+- which platinum-or-better label was present on the unchanged final head
 - any findings that needed a repo-specific fix workflow rather than direct edits
 - the PR head SHA at the moment of the final clean re-review
 
@@ -27,7 +28,8 @@ On termination, report:
   `/clawsweeper re-review`.
 - Do not paraphrase, bundle other text, or mention humans in the trigger
   comment.
-- Never claim success at fewer than 3 consecutive clean re-reviews.
+- Never claim success at fewer than 3 consecutive clean re-reviews or without
+  a platinum-or-better label on that unchanged head.
 - Never edit or push between consecutive clean re-reviews. Pushes invalidate the
   streak.
 - Always reset the counter on any actionable finding, even on re-review 3.
@@ -37,6 +39,8 @@ On termination, report:
   alive. If Clawsweeper says it is actionable, it is actionable.
 - Do not impersonate Clawsweeper by writing your own "looks clean" comment. The
   verdict must come from the bot.
+- Never add or preserve a rating label yourself. Its value is that ClawSweeper
+  awarded it.
 
 ## Common mistakes
 
