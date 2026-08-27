@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, break down large changes by direct-base +LOC and -LOC, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
+description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, include one diagram for a new or materially changed system or workflow, break down large changes by direct-base +LOC and -LOC, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
 ---
 
 # PR proof pack
@@ -37,8 +37,9 @@ Classify proof as:
   reproduction steps, and appropriately formatted practical evidence still
   match the final pushed net diff;
 - `stale`: an important behavior, state, viewport, workflow, reproduction step,
-  evidence claim, or reader premise changed; required proof is missing; or the
-  evidence format makes the result harder to understand than a simpler form;
+  evidence claim, or reader premise changed; a required workflow diagram or
+  practical proof is missing; or the evidence format makes the result harder
+  to understand than a simpler form;
 - `blocked`: freshness or required practical evidence cannot be verified.
 
 Commit count, commit SHA, code churn, and a push by themselves do not make proof
@@ -54,13 +55,17 @@ output is stale when the same result would be clearer as short copyable text.
 - **Practical evidence:** Exercise the changed behavior working in practice.
   Automated validation remains supporting information and never replaces the
   observed before/after result.
+- **Workflow explanation:** When the PR introduces or materially changes a
+  system or workflow, include one diagram that explains the end-to-end flow to
+  a cold reviewer. The diagram explains the change; practical evidence still
+  proves that it works.
 - **Evidence fit:** Use copyable text for textual inputs, outputs, traces,
   requests, responses, and state. Use visual evidence only when text would lose
   an important fact about appearance, layout, motion, interaction, rendering,
   or playback.
-- **Provider-hosted attachments:** When visual evidence is selected on
-  `github.com`, upload it through the repository command, which uses the scoped
-  `gh` credential.
+- **Provider-hosted attachments:** When a diagram or visual evidence is selected
+  on `github.com`, upload it through the repository command, which uses the
+  scoped `gh` credential.
 - **Rendered proof:** Check the rendered result headlessly by default. Use an
   interactive browser only when client-side rendering, literal page appearance,
   or playback must be inspected.
@@ -110,10 +115,10 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 4. Make the freshness decision.
 
    Compare the final behavior, opening problem/fix context, reproduction steps,
-   important states, verification evidence, title, and existing attachments.
-   Check whether each evidence item uses the simplest form that preserves the
-   claim. Apply the freshness rule above. If proof is `current`, report why and
-   stop without any PR mutation.
+   important states, required workflow explanation, verification evidence,
+   title, and existing attachments. Check whether each evidence item uses the
+   simplest form that preserves the claim. Apply the freshness rule above. If
+   proof is `current`, report why and stop without any PR mutation.
 
    Done when the result is `current`, `stale`, or `blocked`, with the affected
    claim or evidence named.
@@ -121,7 +126,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 5. Pass the refresh preflight for stale proof.
 
    For a `github.com` PR, confirm
-   `gh auth status --active --hostname github.com`. The upload command in step 8
+   `gh auth status --active --hostname github.com`. The upload command in step 9
    resolves and validates the exact PR and repository. Identify whether
    practical capture needs a browser or device and whether the finished body
    requires client-side inspection, such as a Mermaid diagram. When attachment
@@ -150,7 +155,36 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    used only for visual claims, every selected visual has passed model inspection
    for content and presentation, and unchanged useful evidence is left alone.
 
-7. Draft the smallest accurate PR update.
+7. Explain a new or changed system or workflow.
+
+   When the final net diff introduces or materially changes a system or
+   workflow, load `design-technical-diagrams` and create exactly one diagram by
+   default. Treat the PR body as the destination and the direct-base net diff,
+   relevant repository context, and changed behavior as the brief. Define the
+   one question the diagram must answer before drawing it.
+
+   Start from an event or person the reviewer recognizes. Show the real actors
+   and systems, their atomic actions in order, important decisions, the
+   artifacts or state passed between them, and the final outcome or feedback
+   path. Number the primary steps when order matters. Use icons as orientation
+   anchors and labels that define necessary project terms in place. Do not turn
+   file names, functions, implementation buckets, or several actions hidden in
+   one box into the explanation.
+
+   Export a static image sized for the PR body. Follow the diagram skill's
+   required whole-frame, destination-size, magnified-detail, and exported-file
+   visual passes. A successful render or clean geometry check is not enough.
+   Read [references/mermaid.md](references/mermaid.md) if Mermaid is considered
+   for a small flow.
+   Skip this step when the PR does not introduce or materially change a system
+   or workflow.
+
+   Done when a cold reviewer can follow the new or changed workflow from
+   trigger to outcome without source-code context, the current rendered pixels
+   have passed every visual pass, and the diagram is clearly presented as an
+   explanation rather than runtime proof.
+
+8. Draft the smallest accurate PR update.
 
    Read [references/plain-language.md](references/plain-language.md) and
    [references/body-shape.md](references/body-shape.md). Keep current sections
@@ -166,21 +200,21 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    stays within the default size budget or justifies each exception, and the
    draft is self-contained.
 
-8. Confirm authority and upload provider-hosted evidence.
+9. Confirm authority and upload provider-hosted attachments.
 
    Reconfirm that the calling workflow authorizes the PR mutation. Follow
-   [references/screenshots.md](references/screenshots.md) when visual evidence
-   was selected. On `github.com`, run
+   [references/screenshots.md](references/screenshots.md) when a diagram or
+   visual evidence was selected. On `github.com`, run
    `<skill-dir>/scripts/github-upload-attachment --pr <number-or-URL-resolved-in-step-2> <path>`
-   for each selected image or video. Insert the URL printed only after the
-   command has verified the upload. Put media in the main PR body, never in a
-   detached comment or table. Text evidence needs no attachment.
+   for each selected diagram, image, or video. Insert the URL printed only
+   after the command has verified the upload. Put media in the main PR body,
+   never in a detached comment or table. Text evidence needs no attachment.
 
-   Done when every selected visual is provider-hosted and every text proof is
-   present in the main body, or the workflow has stopped before mutation
-   because authority is absent.
+   Done when every selected diagram and visual is provider-hosted and every
+   text proof is present in the main body, or the workflow has stopped before
+   mutation because authority is absent.
 
-9. Inspect the finished PR headlessly by default.
+10. Inspect the finished PR headlessly by default.
 
    Follow the rendered-verification path in
    [references/screenshots.md](references/screenshots.md). On GitHub, inspect
@@ -199,7 +233,7 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    with browser inspection completed for every case headless checks cannot
    prove.
 
-10. Hand the result back to the caller.
+11. Hand the result back to the caller.
 
     Return `current`, `refreshed`, or `blocked`, with the affected PRs. Before
     readiness, human sign-off, or merge, remind the caller to apply the Review
@@ -222,6 +256,11 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
   by reviewer-meaningful part, with every file counted once and totals reconciled.
 - Textual behavior uses copyable text. Visual behavior uses provider-hosted
   media verified headlessly or, where required, through an interactive browser.
+- Every required workflow diagram is provider-hosted and its local export and
+  fetched rendered asset both passed visual inspection.
 - Reproducible bug fixes show matched broken and fixed outcomes.
+- A PR that introduces or materially changes a system or workflow includes one
+  visually inspected diagram that explains its trigger, ordered actions,
+  ownership, handoffs, and outcome without pretending to prove runtime behavior.
 - The workflow did not infer publication authority from branch or PR state.
 - The caller knows proof does not satisfy the exact-head review gate.

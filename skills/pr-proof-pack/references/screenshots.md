@@ -102,9 +102,21 @@ video viewer. Inspect the fetched rendered asset again after upload. A file with
 real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
+## Explanation diagrams
+
+Use the same provider upload, rendered-asset verification, and presentation
+gate for an explanatory diagram. Inspect the exported diagram locally before
+upload and inspect the fetched rendered asset again afterward. Confirm that it
+is readable at the PR body's real width and still has clear hierarchy, useful
+icons, balanced spacing, correct routes, and no clipping or collisions.
+
+Introduce it with the one thing the reviewer should learn and caption it
+`What this explains`. The evidence contract below does not turn the diagram
+into proof; observed product behavior must still be shown separately.
+
 ## Evidence contract
 
-Every selected visual answers these questions in nearby text:
+Every visual evidence item answers these questions in nearby text:
 
 1. What current net-diff behavior does this visibly demonstrate?
 2. What starting state, input, action, transition, and outcome appear?
