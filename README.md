@@ -293,7 +293,8 @@ design-engineering work shaped the interaction, motion, and prototyping skills.
 Matt Pocock's `wait-what` and HumanLayer's `show-me` shaped the reader-reset and
 visual-selection passes now living inside `speak-fking-english`, and Lauren
 Tan's `unslop` supplied its AI-tells catalogue. Adapted material keeps its own MIT
-notices.
+notices. [`upstreams.json`](upstreams.json) records the source paths and exact
+commits used for the latest upstream review.
 
 I took the shape, bent it around my own setup, and kept the parts that paid
 rent.
