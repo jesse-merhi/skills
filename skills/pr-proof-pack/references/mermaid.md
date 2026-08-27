@@ -1,10 +1,16 @@
 # Understandable diagrams
 
-Use a diagram only when it is genuinely useful teaching material for a
+When a PR introduces or materially changes a system or workflow, load
+`design-technical-diagrams` and include one diagram. For other
+changes, use a diagram only when it is genuinely useful teaching material for a
 relationship, sequence, state transition, decision, spatial layout, comparison,
-integration boundary, lifecycle, or interaction among several actors.
-Having several steps or components is not enough. If a short paragraph or list
-is clearer, omit the diagram.
+integration boundary, lifecycle, or interaction among several actors. If a
+short paragraph or list is clearer, omit it.
+
+For a designed workflow diagram, prefer a static export sized for the PR body
+so the exact inspected pixels reach the reviewer. Use Mermaid only for a small,
+simple flow that remains clear within Mermaid's layout constraints. The
+diagram skill's visual passes still apply regardless of format.
 
 ## Make the idea land
 

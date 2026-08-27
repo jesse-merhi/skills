@@ -70,6 +70,25 @@ or impossible, state the constraint and show the closest honest boundary.
 ## Explanation is separate
 
 An explanation visual teaches how something works; practical evidence proves it
-ran. Let `speak-fking-english` decide whether the final explanation needs a
-diagram or other support. Do not use a diagram, diff, or screenshot of prose as
-proof of runtime behavior.
+ran. When a PR introduces or materially changes a system or workflow, load
+`design-technical-diagrams` and include one diagram.
+
+Treat the PR as introducing or materially changing a system or workflow when
+the product change adds or rewires a recognizable trigger, two or more actions
+or participants, an important handoff, decision, or state change, and an
+outcome. This includes a new service interaction, review or approval process,
+job lifecycle, data path, control loop, or failure and recovery path. An
+internal refactor with the same visible flow, a single configuration change, or
+one isolated input and output does not qualify by itself.
+
+The diagram should answer one reviewer question and show the workflow from a
+recognizable trigger to its outcome. Include the real actors or systems, keep
+each numbered primary step to one action or decision, and make important
+handoffs, state, branches, and feedback visible. Use plain-language labels and
+useful icons so a cold reviewer does not have to decode repository vocabulary.
+Do not make several diagrams unless the user explicitly asks for them.
+
+Place the diagram before the practical proof and introduce it with what the
+reviewer should learn. Caption it `What this explains`, never `What this proves`.
+Then provide separate observed evidence for the behavior. A diagram, diff, or
+screenshot of prose is not proof of runtime behavior.
