@@ -6,6 +6,8 @@ changes, use a diagram only when it is genuinely useful teaching material for a
 relationship, sequence, state transition, decision, spatial layout, comparison,
 integration boundary, lifecycle, or interaction among several actors. If a
 short paragraph or list is clearer, omit it.
+Having several steps or components is not enough by itself for these other
+changes.
 
 For a designed workflow diagram, prefer a static export sized for the PR body
 so the exact inspected pixels reach the reviewer. Use Mermaid only for a small,
