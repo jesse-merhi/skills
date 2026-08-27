@@ -109,9 +109,11 @@ carry comparable content. Align baselines, icons, and padding within a node
 family, but allow different families to have different shapes and sizes.
 
 Every chip, label, icon, and body block must stay inside the card or region that
-owns it with visible padding. When content does not fit, expand or reflow the
-container and rebalance its neighbours; do not hide the overflow or let a child
-borrow space outside its boundary.
+owns it with a real interior inset. Bottom padding should look comparable to the
+card's top and side padding, usually about 16–20 px for a descriptive node; a
+one-pixel or token sliver does not pass. When content does not fit, expand or
+reflow the container and rebalance its neighbours; do not hide the overflow or
+let a child borrow space outside its boundary.
 
 ## Connector routing
 

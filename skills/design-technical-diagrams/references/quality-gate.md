@@ -123,8 +123,9 @@ than its 2× export dimensions.
 - Are icons recognizable and paired with text?
 - Are node padding, baselines, and icon alignment consistent within each
   family?
-- Does every chip, label, icon, and body block remain inside its owning card
-  with visible padding on every side?
+- Does every chip, label, icon, and body block remain inside its owning card,
+  with a bottom inset that looks comparable to the top and side padding rather
+  than merely staying one pixel inside?
 - Does the diagram feel calm and information-rich rather than sparse, cramped,
   or card-heavy?
 - Does the crop contain the diagram rather than unnecessary page furniture?
