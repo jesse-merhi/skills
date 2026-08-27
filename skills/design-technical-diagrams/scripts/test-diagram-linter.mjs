@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import * as Schema from "effect/Schema";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -10,6 +11,19 @@ import { fileURLToPath } from "node:url";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const checker = path.join(scriptDirectory, "check-rendered-diagram.mjs");
 const directory = mkdtempSync(path.join(tmpdir(), "diagram-lint-test-"));
+const LintFinding = Schema.Struct({
+  category: Schema.String,
+  diagram: Schema.NullOr(Schema.String),
+  file: Schema.String,
+  message: Schema.String,
+  viewports: Schema.Array(Schema.String),
+});
+const LintReportJson = Schema.fromJsonString(Schema.Struct({
+  browserLaunches: Schema.Number,
+  contexts: Schema.Number,
+  files: Schema.Number,
+  findings: Schema.Array(LintFinding),
+}));
 
 const good = `<!doctype html><html><body style="margin:0">
 <svg width="0" height="0" style="position:absolute"><defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z"></path></marker></defs></svg>
@@ -60,7 +74,7 @@ try {
   const runtimeMs = performance.now() - started;
 
   assert.equal(result.status, 1, result.stderr || result.stdout);
-  const report = JSON.parse(result.stdout);
+  const report = Schema.decodeUnknownSync(LintReportJson)(result.stdout);
   assert.equal(report.browserLaunches, 1);
   assert.equal(report.contexts, 4);
   assert.equal(report.findings.some((finding) => finding.file === goodFile), false, JSON.stringify(report, null, 2));

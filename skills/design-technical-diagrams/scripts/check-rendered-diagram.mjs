@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import * as Schema from "effect/Schema";
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,6 +15,17 @@ const DEFAULT_VIEWPORTS = [
 ];
 
 const RESULT_ATTRIBUTE = "data-diagram-lint-result";
+const BrowserFinding = Schema.Struct({
+  category: Schema.String,
+  diagram: Schema.NullOr(Schema.String),
+  file: Schema.String,
+  message: Schema.String,
+  viewport: Schema.String,
+});
+const BrowserResultJson = Schema.fromJsonString(Schema.Struct({
+  contexts: Schema.Number,
+  findings: Schema.Array(BrowserFinding),
+}));
 
 function usage() {
   console.error(
@@ -518,7 +530,7 @@ function extractResult(dump) {
   if (!match || match[1] === "pending") {
     throw new Error("Chrome finished before the diagram audit returned a result");
   }
-  return JSON.parse(Buffer.from(match[1], "base64").toString("utf8"));
+  return Schema.decodeUnknownSync(BrowserResultJson)(Buffer.from(match[1], "base64").toString("utf8"));
 }
 
 function runChrome(chrome, arguments_, timeoutMs) {
