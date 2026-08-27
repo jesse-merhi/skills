@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Technical Diagrams"
+  short_description: "Create polished, precise technical diagrams"
+  default_prompt: "Use $design-technical-diagrams to turn one essential system story into a topology-led, icon-supported diagram whose labels make sense to a cold reader, then inspect and refine the rendered artifact at its real destination size."
