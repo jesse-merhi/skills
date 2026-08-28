@@ -58,9 +58,8 @@ Orchestrator specifics:
   fingerprint (file, code element, root cause). Review passes that re-raise a
   queued finding get a one-line match note on that finding instead of a new
   entry.
-- Generate tracked-finding notices for cold reviewers and the claude workflow
-  from the currently open consult entries at every dispatch, per
-  `review-guardrails`. Never reuse a previous pass's notice text.
+- Keep open consult entries hidden from fresh reviewers. Match returned
+  candidates against the queue only after each independent pass completes.
 - When open questions for the user reach `consult_cap` (default 5, counting open
   Class B entries plus unanswered provisional fixes), suspend the whole review
   as blocked-on-consult and present them in one batch before running more

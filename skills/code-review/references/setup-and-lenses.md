@@ -64,7 +64,7 @@ overlay changes.
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the
      change.
-   - `review-animations`: mandatory when the diff materially changes animation,
+   - `design` in motion-review mode: mandatory when the diff materially changes animation,
      transitions, gestures, springs, or interaction timing.
 
 5. Build a neutral risk checklist for `cold-pr-review-until-clean` from the

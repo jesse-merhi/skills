@@ -9,10 +9,11 @@ Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
 
 ## Workflow
 
-1. Inspect native runtime availability.
+1. Resolve `<skill-dir>` to this skill's directory and inspect native runtime
+   availability with the repository-owned helper.
 
    ```bash
-   openclaw-local-test --inspect
+   <skill-dir>/scripts/openclaw-local-test --inspect
    ```
 
    The report may name an auth type, route class, and model. It must not print
@@ -21,11 +22,12 @@ Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
 2. Start the intended OpenClaw checkout.
 
    ```bash
-   openclaw-local-test --repo ~/repos/openclaw --runtime auto
+   <skill-dir>/scripts/openclaw-local-test --repo ~/repos/openclaw --runtime auto
    ```
 
-   `auto` prefers a usable Codex login, then Claude. Use `--runtime codex`
-   or `--runtime claude` when the choice matters.
+   `--inspect` is read-only discovery. `--runtime` chooses which native client
+   owns the started Gateway: `auto` prefers a usable Codex login, then Claude;
+   use `codex` or `claude` when the choice matters.
 
    - Codex uses OpenClaw's native Codex app-server with
      `appServer.homeScope: "user"`. The app-server reads the operator's

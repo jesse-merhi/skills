@@ -108,7 +108,7 @@ function normalizeModel(model, provider, fallback) {
   if (slash !== -1 && value.slice(0, slash) !== provider) {
     throw new Error(`model ${value} does not belong to the ${provider} provider`);
   }
-  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(modelId)) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*(?:\[(?:[0-9]+[kKmM])\])?$/u.test(modelId)) {
     throw new Error(`model ${value} contains unsupported characters`);
   }
   return modelId;

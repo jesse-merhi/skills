@@ -18,7 +18,8 @@ const run = (command: string, args: ReadonlyArray<string>, cwd?: string) => chec
 const cli = Command.make("codex-handoff-tmux", {
   file: Flag.string("file"), focus: Flag.string("focus").pipe(Flag.withDefault("")), cwd: Flag.string("cd").pipe(Flag.withDefault(process.cwd())),
   mode: Flag.choice("mode", ["new", "fork-last"] as const).pipe(Flag.withDefault("new")), windowName: Flag.string("window-name").pipe(Flag.withDefault("handoff")),
-  pane: Flag.boolean("pane"), tmuxTarget: Flag.optional(Flag.string("tmux-target")), worktree: Flag.optional(Flag.string("worktree")), worktreeName: Flag.optional(Flag.string("worktree-name")),
+  relationship: Flag.choice("relationship", ["continuation", "aside"] as const).pipe(Flag.withDefault("continuation")),
+  tmuxTarget: Flag.optional(Flag.string("tmux-target")), worktree: Flag.optional(Flag.string("worktree")), worktreeName: Flag.optional(Flag.string("worktree-name")),
   branch: Flag.optional(Flag.string("branch")), base: Flag.string("base").pipe(Flag.withDefault("HEAD")), dryRun: Flag.boolean("dry-run"), runCodex: Flag.boolean("run-codex")
 }, Effect.fn("Handoff.handler")(function*(args) {
   const fs = yield* FileSystem.FileSystem
@@ -37,7 +38,7 @@ const cli = Command.make("codex-handoff-tmux", {
     const repoTop = yield* run("git", ["-C", args.cwd, "rev-parse", "--show-toplevel"])
     const worktreePath = Option.isSome(args.worktree) ? args.worktree.value : paths.join(paths.dirname(repoTop), Option.getOrThrow(args.worktreeName))
     const name = paths.basename(worktreePath)
-    const branch = Option.getOrElse(args.branch, () => `work/${name.toLowerCase().replace(/[^a-z0-9._-]+/gu, "-").replace(/^-+|-+$/gu, "")}`)
+    const branch = Option.getOrElse(args.branch, () => `handoff/${name.toLowerCase().replace(/[^a-z0-9._-]+/gu, "-").replace(/^-+|-+$/gu, "")}`)
     if (args.dryRun) {
       yield* Console.log(`Dry run: would prepare dedicated worktree before launching Codex: ${worktreePath}`)
       workdir = worktreePath
@@ -55,7 +56,7 @@ const cli = Command.make("codex-handoff-tmux", {
     }
   }
 
-  const prompt = [`Read the handoff document before acting:\n\n${args.file}\n`, ...(args.focus.length === 0 ? [] : [`Next session focus:\n\n${args.focus}\n`]), `Working directory:\n\n${workdir}\n`, ...(wantsWorktree ? ["This directory was prepared as this worker's dedicated git worktree. Do not use the coordinator worktree for implementation.\n"] : []), "Start by reading the handoff, then continue from it. Keep the final reply short and report what you did."].join("\n")
+  const prompt = [`Read the handoff document before acting:\n\n${args.file}\n`, ...(args.focus.length === 0 ? [] : [`Next session focus:\n\n${args.focus}\n`]), `Working directory:\n\n${workdir}\n`, ...(wantsWorktree ? ["This directory was prepared as this session's dedicated git worktree. Do not use the originating worktree for implementation.\n"] : []), "Start by reading the handoff, then continue from it as a full independent session. Keep the final reply short and report what you did."].join("\n")
   if (args.runCodex) {
     const codexArgs = args.mode === "fork-last" ? ["fork", "--last", "--cd", workdir, prompt] : ["--cd", workdir, prompt]
     yield* checkedInherit("codex", codexArgs, { cwd: workdir, displayCommand: "codex [handoff prompt]" })
@@ -68,16 +69,19 @@ const cli = Command.make("codex-handoff-tmux", {
   }
   const tmuxPane = yield* Config.option(Config.string("TMUX_PANE"))
   const target = Option.getOrElse(args.tmuxTarget, () => Option.getOrElse(tmuxPane, () => ""))
-  if (args.pane && target.length === 0) return yield* new HandoffError({ message: "Pane placement requires TMUX_PANE or --tmux-target." })
+  if (args.relationship === "continuation" && target.length === 0) return yield* new HandoffError({ message: "A continuation handoff requires TMUX_PANE or --tmux-target." })
   const helper = fileURLToPath(new URL("../scripts/codex-handoff-tmux", import.meta.url))
   const nested = [helper, "--run-codex", "--file", args.file, ...(args.focus.length === 0 ? [] : ["--focus", args.focus]), "--cd", workdir, "--mode", args.mode, ...(wantsWorktree ? ["--worktree", workdir] : [])].map(quote).join(" ")
-  const tmuxArgs = args.pane ? ["split-window", "-h", "-c", workdir, "-t", target, nested] : ["new-window", "-c", workdir, "-n", args.windowName, nested]
+  const tmuxArgs = args.relationship === "continuation"
+    ? ["split-window", "-h", "-c", workdir, "-t", target, nested]
+    : ["new-window", "-c", workdir, "-n", args.windowName, nested]
   if (args.dryRun) yield* Console.log(`tmux ${tmuxArgs.map(quote).join(" ")}`)
   else {
+    if (target.length > 0) yield* run("tmux", ["display-message", "-p", "-t", target, "#{session_name}:#{window_index}:#{pane_id}"])
     yield* run("tmux", tmuxArgs)
-    yield* Console.log(`Opened tmux ${args.pane ? "pane" : `window ${args.windowName}`} with Codex handoff: ${args.file}`)
+    yield* Console.log(`Opened tmux ${args.relationship === "continuation" ? "pane in the current task window" : `window ${args.windowName}`} with Codex handoff: ${args.file}`)
   }
-})).pipe(Command.withDescription("Open a tmux window or pane for a Codex handoff"))
+})).pipe(Command.withDescription("Open a full Codex handoff session in the related tmux pane or a separate tmux window"))
 
 cli.pipe(Command.run({ version: "2.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off

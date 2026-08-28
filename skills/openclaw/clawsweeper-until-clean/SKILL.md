@@ -21,7 +21,7 @@ convergence.
 ## Non-negotiables
 
 ```yaml
-trigger: comment exactly `/clawsweeper re-review` on the PR via `gh pr comment`
+trigger: comment exactly `/clawsweeper re-review` on an eligible PR via `gh pr comment`; no other comment text is authorized
 review_source: must be a clawsweeper review/comment posted AFTER your trigger comment
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 stop_condition: 3 consecutive clawsweeper re-reviews with zero actionable findings

@@ -54,11 +54,40 @@ ensure the newer binary is first on `PATH`.
 If it fails, stop and report its diagnostics. Do not extract or reuse browser
 credentials.
 
-Insert images with descriptive alt text. Insert videos as a bare URL on their
-own line; image Markdown such as `![](url)` does not produce a working MP4
-player. Keep every attachment in the main PR body, never in a table or detached
-comment. Do not commit proof media to the repository unless the project or user
-explicitly requests that storage model.
+Insert images with descriptive alt text and a deliberate percentage width:
+
+```html
+<img src="https://github.com/user-attachments/assets/example"
+     alt="Supplier results remain visible while the role search is filtered"
+     width="50%">
+```
+
+Choose the smallest width that keeps the relevant detail comfortably readable
+in the PR content area. Start narrow mobile or focused UI captures at `50%`,
+medium-width captures at `75%`, and use `100%` only when the content benefits
+from the full column. These are judgment defaults, not fixed categories. A
+device capture should not render at full width merely because its physical
+pixel dimensions are large. GitHub preserves percentage values in the `width`
+attribute but strips an inline CSS `width`, so use `width="50%"`, not
+`style="width: 50%"`.
+
+Use a Markdown table when it makes a small related group easier to compare,
+such as before/after, desktop/mobile, or two important states. Size each image
+to `100%` of its table cell so the table, rather than the source pixels,
+controls the grouping:
+
+```md
+| Before: direct base | After: PR |
+| --- | --- |
+| <img src="BEFORE_URL" alt="Before: results disappear" width="100%"> | <img src="AFTER_URL" alt="After: results remain visible" width="100%"> |
+```
+
+Keep a single image, a sequential interaction, or a comparison whose details
+become cramped outside a table. Insert videos as a bare URL on their own line;
+image Markdown such as `![](url)` does not produce a working MP4 player. Keep
+every attachment in the main PR body, never in a detached comment. Do not
+commit proof media to the repository unless the project or user explicitly
+requests that storage model.
 
 ## Rendered PR verification
 
@@ -142,6 +171,13 @@ review-ready.
   not context; provide route, fixture, environment, and viewport in nearby text.
 - Make the relevant state readable at normal GitHub width. Use a tighter crop or
   fewer rows rather than asking the reviewer to zoom into a full desktop.
+- Render each image at a percentage that suits what it depicts. A narrow mobile
+  screen should normally occupy less of the PR column than a desktop interface
+  or dense diagram. Treat full width as a deliberate presentation choice, not
+  the default produced by plain image Markdown.
+- Group a small set of directly comparable images in a table when the shared
+  headers and alignment reduce comparison work. Keep them separate when table
+  columns make the evidence harder to read.
 - Match crop, scale, viewport, theme, and data for before/after evidence. Label
   each side without covering the changed result.
 - Remove secrets, personal information, unrelated tabs, cursor clutter, debug
@@ -218,8 +254,10 @@ Example:
 
 ## Placement
 
-Put each selected image and recording directly in the main PR body, never in a
-table or detached comment. Place its explanation immediately below it:
+Put each selected image and recording in the main PR body, never in a detached
+comment. Use a table for a small related group when it improves scanning;
+otherwise place the media directly in the body. Put the shared explanation
+immediately below the item or table:
 
 ```md
 <uploaded interaction recording>

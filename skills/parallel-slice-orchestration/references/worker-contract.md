@@ -10,8 +10,8 @@ Each worker prompt must include:
 - files/modules they must avoid
 - required skills to load, especially `tdd` and the repo/domain
   skill
-- for rendered UI slices, required skills to load: `frontend-design` before
-  coding or visual refinement, `design-engineering` when motion or interaction
+- for rendered UI slices, required skill to load: `design` in production-UI
+  mode before coding or visual refinement, and interaction mode when motion or interaction
   craft is material, and `frontend-ui-validation` before reporting done
 - a reminder that they are not alone in the codebase and must not revert or
   overwrite others' edits
@@ -34,8 +34,8 @@ If the mode is HITL, stop at this checkpoint before continuing:
 <review point>. Report the evidence needed for user/product review and
 wait for the orchestrator or user to decide.
 
-If this slice changes rendered UI, load `frontend-design` before coding or
-visual refinement. Load `design-engineering` when motion or interaction craft
+If this slice changes rendered UI, load `design` in production-UI mode before
+coding or visual refinement. Use its interaction mode when motion or interaction craft
 is material. Run `frontend-ui-validation` before reporting done and include the
 viewport/state proof in your final report.
 

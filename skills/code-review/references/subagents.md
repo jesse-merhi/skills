@@ -26,22 +26,19 @@ Add other focused subagents with the relevant named skills when useful:
 - `improve-codebase-architecture`
 - `reducing-cognitive-load`
 - `frontend-ui-validation`
-- `review-animations`
+- `design` in motion-review mode
 
 Give subagents neutral prompts: target, base, changed-flow summary, and the
 checklist they own. State the frozen review boundary: inspect the changed diff
 and the runtime flows it directly changes; read unchanged files only to
 understand those flows. Every finding must identify the changed line or contract
-that causes, exposes, or worsens the problem. Tracked-finding notices for open
-Class B findings, generated fresh per `review-guardrails`, are the one allowed
-reference to prior findings. Do not leak desired conclusions or ask for a
-rubber stamp.
+that causes, exposes, or worsens the problem. Do not reveal prior findings,
+desired conclusions, or a requested verdict.
 
-Give cold-review subagents the target, neutral checklist, and tracked-finding
-notices generated from currently open consult entries. If an optional decision
-log exists, give them its path only with the guard above; after the verdict,
-they should append long-form rationale or return the entries if they cannot
-write.
+Give cold-review subagents only the target and neutral checklist. After the
+verdict, match candidates against the findings registry and open consult queue.
+If an optional decision log exists, give them its path only after the verdict
+for long-form rationale, or have them return the entries if they cannot write.
 
 If the harness cannot run subagents, say so, continue only as best effort,
 and do not call the review clean unless the user accepts that limitation.
@@ -54,6 +51,6 @@ non-terminal update or first timeout, wait again without listing agent status.
 Inspect only after two consecutive timeouts or an explicit error. Keep the
 parent turn active until every required reviewer reaches a terminal state.
 
-Run `monitoring-gh-actions` at the end, after both review phases and local
-validation are clean, when PR checks are pending and monitoring is in scope.
-That is coordinator work, not a review subagent.
+Use `wait-efficiently`'s GitHub Actions mode at the end, after both review phases
+and local validation are clean, when PR checks are pending and monitoring is in
+scope. That is coordinator work, not a review subagent.

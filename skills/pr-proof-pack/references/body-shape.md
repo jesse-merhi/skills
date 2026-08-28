@@ -19,11 +19,10 @@ context to understand.
 
 Good:
 
-> ClawSweeper could publish a review even when its runner had not proved it could
-> read the checkout. That made an apparently clean review untrustworthy because
-> the model may not have seen the code under review. This PR makes the runner
-> read a known file from the exact PR checkout before review begins. If that
-> check fails, ClawSweeper stops and records the reason instead of publishing.
+> The import endpoint accepted malformed rows and saved the valid rows from the
+> same file. That left operators with a partial import even though the request
+> reported failure. This PR validates every row before writing any records. An
+> invalid file now returns its row errors and leaves storage unchanged.
 
 Weak:
 
@@ -56,10 +55,10 @@ Binary files count as files but do not have textual LOC.
 
 | Part | Files | +LOC | -LOC |
 | --- | ---: | ---: | ---: |
-| Checkout admission | 5 | +312 | -41 |
-| Review result plumbing | 4 | +407 | -58 |
-| Tests and fixtures | 18 | +1,130 | -30 |
-| **Total** | **27** | **+1,849** | **-129** |
+| Import validation | 3 | +84 | -12 |
+| Storage transaction | 2 | +47 | -19 |
+| Tests and fixtures | 4 | +126 | -8 |
+| **Total** | **9** | **+257** | **-39** |
 ```
 
 Do not call a PR "large" or "huge" without this breakdown. Do not use file
@@ -125,28 +124,31 @@ Textual bug fix:
 ````md
 ## Proof
 
-Same pull request and restricted checkout in both runs:
+Same invalid import fixture and empty database in both runs:
 
 **Before: direct base**
 
 ```text
-review_status: complete
-checkout_read_verified: false
-published: true
+status: 422
+saved_rows: 2
+row_errors: 1
 ```
 
 **After: PR**
 
 ```text
-review_status: failed
-failure: runner could not read the selected checkout
-published: false
+status: 422
+saved_rows: 0
+row_errors: 1
 ```
 ````
 
 For matched visual proof, label the direct-base and PR evidence explicitly.
-Use one side-by-side image for a readable static comparison or two short
-recordings for an interaction. Never put media in a Markdown table.
+Use a two-column table for matched static images when both remain readable, or
+one side-by-side composite when it presents the comparison more clearly. Use
+two short recordings for an interaction. Size images to the PR content area as
+described in [screenshots.md](screenshots.md); do not let their source pixel
+dimensions decide how large they appear.
 
 An explanatory workflow diagram belongs immediately before `## Proof`. Its
 nearby sentence says what the reviewer should learn, and its caption starts
@@ -164,8 +166,11 @@ persisted or emitted result. Keep secrets and verbose output out.
 
 Use a table for the compact change breakdown above or when several cases need
 comparison across stable axes, such as input, previous outcome, new outcome,
-and side effect. Use adjacent code blocks for one before/after case. Do not use
-tables as a file inventory or a way to compress several paragraphs into cells.
+and side effect. Tables can also group a small set of directly comparable
+images, such as before/after or desktop/mobile, when the columns remain
+readable. Use adjacent code blocks for one textual before/after case. Do not
+use tables as a file inventory, for sequential media, or to compress several
+paragraphs into cells.
 
 ## What to leave out
 

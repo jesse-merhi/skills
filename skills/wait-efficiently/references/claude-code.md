@@ -1,7 +1,7 @@
 # Claude Code hold mechanisms
 
-Claude Code API. Replace this file when the API changes; the rules in
-`SKILL.md` do not change with it.
+Use capabilities exposed by the current Claude Code host; do not pin behavior
+to a historical release.
 
 Claude Code re-invokes the agent when harness-tracked work finishes, so the
 cheapest hold is usually no wait at all.
@@ -35,8 +35,9 @@ it at one hour.
 
 ## Blocking in the foreground
 
-Use `Bash` with `timeout`, whose ceiling is 600000 ms. Foreground `sleep` is
-blocked, so express a delay as a condition to wait on rather than a nap.
+Use the current foreground `Bash` ceiling when a completion notification is not
+available. Express work completion as a condition rather than a polling loop
+that returns to the model.
 
 ## Subagents
 

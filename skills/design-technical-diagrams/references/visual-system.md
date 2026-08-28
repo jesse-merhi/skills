@@ -1,248 +1,73 @@
 # Technical diagram visual system
 
-## Contents
+## Surface
 
-- Diagram surface
-- Topology and hierarchy
-- Numbering and grouping
-- Canvas use and density
-- Connector routing
-- Typography and labels
-- Colour and icons
-- Responsive layout and export
-
-## Diagram surface
-
-Design the diagram before designing a page around it. For an image embedded in
-a pull request, document, wiki, or slide, export only the workflow or map plus
-the minimum title or boundary labels needed to understand it.
-
-Do not add these by default:
-
-- a hero heading outside the diagram;
-- a claim banner;
-- an outer showcase card;
-- a legend for already labelled colours or icons;
-- a warning or takeaway strip that repeats a visible terminal state;
-- decorative gradients, blobs, shadows, or empty margins;
-- comparison or status badges.
-
-Those elements consume the same pixels needed for readable systems, routes,
-and labels. Add one only when the destination lacks that context and the
-element materially helps the reader.
+Design the diagram before the page around it. Embedded exports should contain
+the map or workflow plus only the title and boundary labels needed to read it.
+Do not add a hero, claim banner, outer showcase card, legend, warning strip, or
+decorative background by default.
 
 ## Topology and hierarchy
 
-Start with spatial relationships, not a list of steps.
+- Place the focal subsystem where it can own the composition.
+- Put inputs beside the boundary they enter and outputs beside the system that
+  produces them.
+- Group related operations inside their real subsystem, lane, or phase.
+- Place decisions, persistence, review, and terminal outcomes at the real
+  handoff point.
+- Draw feedback as geometry.
+- Vary node size and treatment by semantic role.
 
-- Put the focal subsystem where it can own the composition.
-- Put its inputs beside the boundary they enter, often as a quiet vertical
-  stack down one side.
-- Group related internal operations inside the subsystem. A compact 2×2 or 3×2
-  grid often explains parallel or paired work better than a long row.
-- Put review, persistence, policy updates, or terminal outcomes below or beside
-  the subsystem according to the actual handoff.
-- Draw feedback in the layout. Do not describe a loop that the geometry hides.
-- Let downstream stages widen across the available canvas when they no longer
-  belong to a narrow input or subsystem lane.
+At thumbnail size, the reader should see the focal system, start, major groups,
+feedback, and outcome. Repair the layout before adding copy or decoration when
+those are not visible.
 
-Vary size and treatment by role. A system boundary, a major durable artifact,
-a human decision, and a supporting input should not look like four identical
-cards. Equal boxes imply equal weight and the same semantic role.
+## Canvas and grouping
 
-At thumbnail size the reader should see the focal system, the start and end,
-major groups, and any feedback loop. If the picture looks like equally weighted
-boxes scattered on a canvas, repair the hierarchy before copy or decoration.
+Use a consistent spacing unit, then correct optically. Shared dimensions help
+nodes with the same role; they should not force unrelated content into equal
+cards. Let content determine height when fixed sizing creates empty space or
+overflow. Shorten copy, compact local groups, widen useful rows, or move
+support closer before adding decorative fill.
 
-## Numbering and grouping
+Number primary actions only when a stable sequence helps discussion. Inputs,
+stores, notes, and enclosing products do not become steps merely because they
+appear between actions.
 
-Number actions when a stable sequence helps the reader discuss the diagram.
-The sequence may cross regions and node families; all numbered items do not
-need equal dimensions or a single row.
+## Connectors
 
-Keep an action atomic when combining it would hide an actor change, an
-intermediate output, or a decision. Then group related atomic actions inside
-their real subsystem or phase instead of promoting each to a top-level panel.
+Prefer simple orthogonal routes and short local connections.
 
-Do not number:
+- Reserve routing gutters before placing nodes.
+- Attach each route to the correct source and destination.
+- Put labels beside one clear segment in the direction of travel.
+- Keep unrelated routes separate; share a trunk only for genuinely shared
+  meaning.
+- Cross at right angles in open space when crossing is unavoidable.
+- Leave enough straight shaft for the arrival direction and arrowhead to read.
+- Keep route CSS from leaking into marker or icon paths.
 
-- an input merely because it feeds a numbered process;
-- a store or ticket merely because the process writes it;
-- a legend, note, or region heading;
-- a product label that represents the boundary around several actions.
+Feedback usually needs two distinct directions. Do not describe a loop that the
+reader cannot trace.
 
-Numbered titles and branch labels should tell the main story without body copy.
-Use a short phase or action word beside a number when it helps orientation,
-such as `1 · Observe`, `6 · Record`, or `9 · Approve`.
+## Type, colour, and icons
 
-## Canvas use and density
-
-Use an 8 px base unit, then correct optically. Starting values:
-
-| Element | Starting value |
-|---|---:|
-| diagram outer inset | 16–24 px |
-| subsystem/region inset | 20–28 px |
-| descriptive node padding | 16–20 px |
-| node gap | 16–24 px |
-| visible connector gutter | 40–64 px |
-| icon optical size | 22–30 px |
-| icon-to-label gap | 8–10 px |
-
-Treat these as composition findings:
-
-- a large unused gutter beside dense content;
-- a boundary stretched by one unnecessarily tall input or description;
-- fixed equal heights that leave empty lower halves in sibling cards;
-- long bands containing only connector lines;
-- a narrow lower flow that could use the width above or beside it;
-- body text shrunk because surrounding chrome took the available space;
-- a card whose padding is more prominent than its content.
-
-Fix structure first. Shorten nonessential descriptions, allow content-driven
-height, compact a local grid, widen the useful row, move support closer to the
-stage it serves, or shorten connector bands. Do not hide poor space use by
-cropping tightly or adding decoration.
-
-Sibling nodes should share dimensions only when they play the same role and
-carry comparable content. Align baselines, icons, and padding within a node
-family, but allow different families to have different shapes and sizes.
-
-Every chip, label, icon, and body block must stay inside the card or region that
-owns it with a real interior inset. Bottom padding should look comparable to the
-card's top and side padding, usually about 16–20 px for a descriptive node; a
-one-pixel or token sliver does not pass. When content does not fit, expand or
-reflow the container and rebalance its neighbours; do not hide the overflow or
-let a child borrow space outside its boundary.
-
-## Connector routing
-
-Prefer simple orthogonal routes with clear arrowheads. A reader should see
-where a route begins, what it carries, and where it ends without tracing around
-unrelated boxes.
-
-- Reserve gutters before placing nodes and labels.
-- Route inputs directly into the subsystem they feed.
-- Drop a transition straight down or carry it straight across when the topology
-  permits; avoid ornamental bends.
-- Keep connector-only bands short.
-- Keep long parallel routes visually separate from one another and from box
-  borders.
-- Put route labels beside one open segment, not floating between several lines.
-- Keep arrowheads attached, correctly directed, and clear of nearby text.
-- Leave enough visible shaft before every arrowhead that the connector still
-  reads as movement rather than a triangle stuck to a box. After a bend, keep
-  a clear final straight segment so the arrival direction is unambiguous.
-- Size SVG markers deliberately. Prefer `markerUnits="userSpaceOnUse"` when the
-  head should stay independent of connector stroke width; the default marker
-  scaling can make a thick route produce an oversized head.
-- Scope connector CSS to the connector elements or classes. Never use a
-  descendant `path` selector that can also restyle paths inside SVG markers.
-  In the rendered export, confirm every arrowhead keeps its intended solid
-  fill and does not become a hollow chevron or inherit the connector stroke.
-
-Use a shared trunk only when the destinations genuinely share one source and
-meaning. Independent outcomes, updates, or decisions may need two complete
-lines. Do not merge them merely to reduce the path count.
-
-When several destinations do share one transition, branch once from a visible
-trunk rather than drawing coincident paths on top of each other. When a crossing
-is unavoidable, cross at 90 degrees in open space.
-
-Feedback needs both directions. For example, draw “sends feedback” from the
-reviewer to the proposal and “updates the review tickets” from the proposal
-back to the record. Keep them visually distinct and attach each label to its
-own route.
-
-## Typography and labels
-
-Use the product's installed typeface when available and licensed, with system
-fallbacks. Use sentence case and a clear hierarchy:
-
-- region or subsystem label;
-- numbered action title;
-- one short explanation when needed;
-- quiet detail or outcome tags.
-
-Write for the reader named in the contract, not for the implementation team.
-Concise jargon is still jargon. A visible role must name what the person is
-responsible for, an artifact must say what it contains or records, and a state
-must say what changed. Do not make body copy repair an ambiguous title.
-
-Prefer action titles such as “Identify apps from signing data” and “Create one
-review ticket per app.” Avoid umbrella labels such as “Processing,”
-“Governance,” or “AI role.”
-
-Repair insider shorthand with concrete scope:
-
-| Insider shorthand | Cold-reader label |
-|---|---|
-| Find the current manager | Find the person who owns or administers the skill |
-| Recheck authority | Check that the person still controls the skill |
-| Frozen baseline | Earlier traffic used for comparison |
-| Refresh review state | Update the staff review without undoing its decision |
-
-These examples show the test, not required wording. Preserve the real domain
-meaning while naming enough of it for this reader.
-
-Write transition labels in the direction of travel: “feeds the daily review,”
-“creates the review tickets,” “assigns app review,” or “publishes merged
-policy.” Repeat the concrete artifact name across adjacent routes instead of
-switching to `it`, `this`, or a vague state.
-
-Keep body copy short enough to scan. A card is not the place for every true
-field or caveat. Use bullets only when the list itself is the important output,
-such as the contents of an evidence-backed case.
-
-Run a heading-only cold read before final layout. The title, region headings,
-numbered titles, branch labels, route labels, and terminal outcomes must explain
-who acts on what and why the flow continues or stops. If a noun needs prior
-conversation to make sense, replace or define it.
-
-Never make important text tiny to preserve a chosen layout. Change the layout.
-
-## Colour and icons
+Use sentence case and a small hierarchy: region, primary action, short support,
+quiet detail. Prefer concrete verbs and objects over labels such as
+“Processing,” “Governance,” or “State.” Repeat an artifact's name when a pronoun
+would make a route ambiguous.
 
 Use a restrained semantic palette derived from the product when possible.
-Typical roles:
-
-- quiet neutral for context and inputs;
-- product or active colour for the focal automated system;
-- green for a permitted or human-approved outcome;
-- amber for a proposal, unresolved decision, or draft state;
-- red for a stopped or impossible path.
-
-Colour should organize regions and outcomes, not decorate every card. Pair it
-with labels, icons, borders, or line style. Skip a legend when the meaning is
-already written on the diagram.
-
-Use official marks for named products and one coherent semantic icon family
-for generic concepts. Icons should speed orientation at a glance: system,
-search, ticket, review, person, pull request, lock, or store. Pair every icon
-with text. Do not repeat a logo on arrows or use tiny icons as filler.
+Colour reinforces labels and grouping; it is never the only meaning. Use
+official marks for named products and one coherent icon family for generic
+concepts. Pair every icon with text.
 
 ## Responsive layout and export
 
-Preserve semantic reading order in the source. A narrow layout should stack the
-same diagram, not reveal a different story. Keep each branch immediately after
-its decision and each support node near the action it serves.
+Keep semantic reading order in the source. A narrow layout may stack or regroup
+the same story but must not change it. Keep branches next to decisions and
+support next to the action it serves.
 
-Inspect at the destination width first. Then test representative narrow,
-tablet, and desktop sizes when the deliverable is responsive. The primary story
-must not require horizontal panning unless the user explicitly requested a
-fixed wide technical canvas.
-
-Keep a durable source/output split:
-
-```text
-diagram-source/       # editable HTML, SVG, Mermaid, JSON, or YAML
-icons/                # local official assets when needed
-build script          # deterministic generation when useful
-index.html            # standalone render
-exports/              # diagram-only PNG/SVG/PDF attachments
-screenshots/          # reviewed viewport evidence
-```
-
-Open every exported attachment by itself. Confirm the crop contains the
-diagram rather than page chrome, all icons and arrows survive export, text is
-readable at the destination size, and the visible ink uses the frame well.
+Keep editable source separate from generated exports when the artifact will be
+maintained. Open each exported file independently and verify crop, fonts,
+icons, routes, labels, and readability at its destination size.

@@ -144,8 +144,8 @@ behavior_checks = {
     root / "skills/improve-codebase-architecture/SKILL.md": [
         "last 20 commit messages",
     ],
-    root / "skills/wayfinder/SKILL.md": [
-        "frontier in numbered rounds",
+    root / "skills/design/SKILL.md": [
+        "Choose the design mode",
     ],
     root / "skills/writing-for-agents/SKILL.md": [
         "name: writing-for-agents",
@@ -199,8 +199,8 @@ behavior_checks = {
         "Keep CLI terms, budget calculations, finding classes",
     ],
     root / "skills/wait-efficiently/SKILL.md": [
-        "15-minute timeout",
-        "two consecutive timeouts",
+        "There is no universal",
+        "resume the event wait",
     ],
     root / "skills/cold-pr-review/references/prompt-template.md": [
         "do not audit them as independent targets",
@@ -252,6 +252,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
+        --relationship aside \
         --dry-run
   )"
 
@@ -271,6 +272,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus $'one\ntwo' \
         --cd "$ROOT_DIR" \
+        --relationship aside \
         --dry-run
   )"
   assert_output_contains "$output" $'one\ntwo'
@@ -280,6 +282,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
       "$helper" \
         --file "$handoff" \
         --cd "$ROOT_DIR" \
+        --relationship aside \
         --dry-run
   )"
 
@@ -294,7 +297,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
-        --pane \
+        --relationship continuation \
         --dry-run
   )"
 
@@ -312,7 +315,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
-        --pane \
+        --relationship continuation \
         --tmux-target "0:9" \
         --dry-run
   )"
@@ -326,12 +329,13 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
-        --pane \
+        --relationship continuation \
         --dry-run >"$tmp/missing-target.out" 2>&1; then
     fail "pane placement should require TMUX_PANE or --tmux-target"
   fi
 
-  assert_contains "$tmp/missing-target.out" "Pane placement requires TMUX_PANE or --tmux-target"
+  assert_contains "$tmp/missing-target.out" "A continuation handoff requires TMUX_PANE or --tmux-target"
+  "$ROOT_DIR/skills/handoff/scripts/detect-handoff-surface.test.sh"
 
   output="$(
     env -u TMUX \
@@ -429,17 +433,13 @@ test_implementation_design_requires_user_decisions() {
 }
 
 test_prototypes_stay_isolated_from_production() {
-  local skill="$ROOT_DIR/skills/prototype/SKILL.md"
-  local promotion
+  local design="$ROOT_DIR/skills/design"
 
-  assert_contains "$skill" "Keep prototypes in isolated routes, pages, and modules"
-  assert_contains "$skill" "not import from prototype-only routes, pages, or modules"
-  assert_contains "$skill" "remove all"
-  assert_contains "$skill" "prototype-only routes, pages, and modules unless asked to keep them"
-  promotion="$(sed -n '/^### 6\. Promote$/,/^If the user asks for another round/p' "$skill")"
-  assert_output_contains "$promotion" "remove every prototype-only route, page, and module"
-  assert_output_contains "$promotion" "picker"
-  assert_output_contains "$promotion" "selected or unselected variant modules"
+  assert_contains "$design/SKILL.md" "Read [prototype.md]"
+  assert_contains "$design/references/prototype.md" "Keep prototype routes and modules isolated from production imports"
+  assert_contains "$design/references/prototype.md" "integrate only the winner"
+  assert_contains "$design/references/prototype.md" "prototype-only"
+  test ! -e "$ROOT_DIR/skills/prototype/SKILL.md" || fail "prototype must remain internal to the design router"
 }
 
 test_code_review_flags_unsupported_defense_and_proxy_helpers() {
@@ -491,13 +491,15 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
 }
 
-test_design_engineering_owns_motion_opportunity_audits() {
-  local skill="$ROOT_DIR/skills/design-engineering"
+test_design_router_owns_motion_opportunity_audits() {
+  local skill="$ROOT_DIR/skills/design"
 
-  assert_contains "$skill/SKILL.md" "read-only sweep"
-  assert_contains "$skill/SKILL.md" "opportunity-audit.md"
-  assert_contains "$skill/references/opportunity-audit.md" "deliberate rejections"
-  assert_contains "$skill/references/opportunity-audit.md" "Do not modify source"
+  assert_contains "$skill/SKILL.md" "Choose the design mode"
+  assert_contains "$skill/references/motion-opportunity-audit.md" "deliberate rejections"
+  assert_contains "$skill/references/motion-opportunity-audit.md" "Do not modify source"
+  test ! -e "$ROOT_DIR/skills/frontend-design/SKILL.md" || fail "frontend design must remain internal"
+  test ! -e "$ROOT_DIR/skills/design-engineering/SKILL.md" || fail "interaction design must remain internal"
+  test ! -e "$ROOT_DIR/skills/review-animations/SKILL.md" || fail "motion review must remain internal"
   test ! -e "$ROOT_DIR/skills/find-animation-opportunities/SKILL.md" || fail "expected motion discovery to be consolidated"
 }
 
@@ -578,7 +580,7 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[full AI-tells catalogue](references/ai-tells.md)"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
   assert_not_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "no catalogued AI tell"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "full clarity and AI-tells pass"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "make this draft concise and clear"
 
   explicit_route="$(sed -n '/^- When the user asks/,/^- For a "wait, what?"/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md")"
   assert_output_contains "$explicit_route" "run the shared pass, add the deep catalogue pass"
@@ -601,6 +603,20 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
     || fail "expected exact-text invariants before the reader reset"
   proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
   assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
+}
+
+test_speak_fking_english_makes_brevity_the_default() {
+  local skill="$ROOT_DIR/skills/speak-fking-english"
+  local brevity="$skill/references/brevity.md"
+
+  assert_contains "$skill/SKILL.md" "make it concise and clear"
+  assert_contains "$skill/SKILL.md" "[brevity pass](references/brevity.md) last"
+  assert_contains "$brevity" "Brevity is the default"
+  assert_contains "$brevity" "shortest form that fully answers the request"
+  assert_contains "$brevity" "one short paragraph"
+  assert_contains "$brevity" "offers to do more work"
+  assert_contains "$brevity" "Do not trade accuracy for shortness"
+  assert_contains "$brevity" "deleting another sentence would make the answer"
 }
 
 test_speak_fking_english_owns_the_visual_decision() {
@@ -883,11 +899,12 @@ test_code_review_has_a_local_review_and_owner_checked_closeout() {
 
   assert_contains "$ROOT_DIR/AGENTS.md" "Never push agent-authored"
   assert_contains "$ROOT_DIR/AGENTS.md" "request to fix or review authorizes local edits"
-  assert_contains "$ROOT_DIR/AGENTS.md" "Jesse explicitly asks to push after the fix"
+  assert_contains "$ROOT_DIR/AGENTS.md" "the user explicitly asks to push after the fix"
   assert_contains "$ROOT_DIR/AGENTS.md" "The reaction gates merge"
   assert_contains "$skill/references/review-phase-rules.md" "review and finding-fix loop local"
   assert_contains "$skill/references/review-phase-rules.md" "full local validation"
-  assert_contains "$skill/references/pr-closeout.md" 'author.login` is `jesse-merhi'
+  assert_contains "$skill/references/pr-closeout.md" 'authenticated_login="$(gh api user --jq .login)"'
+  assert_not_contains "$skill/references/pr-closeout.md" 'jesse-merhi'
   assert_contains "$skill/references/pr-closeout.md" "one normal final push"
   assert_contains "$skill/references/pr-closeout.md" "Do not force-push"
   assert_contains "$skill/references/pr-closeout.md" "Run CI last"
@@ -901,11 +918,11 @@ test_waits_hold_instead_of_polling() {
   local wait_dir="$ROOT_DIR/skills/wait-efficiently"
   local wait_skill="$wait_dir/SKILL.md"
 
-  # The durable rules live in SKILL.md and outlive any agent tool API. The floor is
-  # deliberately stated in AGENTS.md too, because the skill often is not loaded;
-  # keep the two lexically identical so a drifting copy is greppable.
-  assert_contains "$wait_skill" 'Hold a wait for its full expected duration, never under 300 seconds'
-  assert_contains "$ROOT_DIR/AGENTS.md" 'Hold a wait for its full expected duration, never under 300 seconds'
+  assert_contains "$wait_skill" 'There is no universal'
+  assert_contains "$wait_skill" 'minimum wait'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'there is no universal minimum'
+  assert_not_contains "$wait_skill" 'never under 300 seconds'
+  assert_not_contains "$ROOT_DIR/AGENTS.md" 'never under 300 seconds'
   assert_contains "$wait_skill" 'deadline is a ceiling, not a delay'
   assert_contains "$wait_skill" 'resume the same wait'
   assert_contains "$wait_skill" 'Unchanged progress is not a state change'
@@ -920,28 +937,25 @@ test_waits_hold_instead_of_polling() {
 test_harness_references_carry_the_api_surface() {
   local refs="$ROOT_DIR/skills/wait-efficiently/references"
 
-  assert_contains "$refs/codex.md" '"yield_time_ms": 900000'
-  assert_contains "$refs/codex.md" 'yield_time_ms: 300000'
+  assert_contains "$refs/codex.md" '"yield_time_ms": 30000'
+  assert_contains "$refs/codex.md" 'yield_time_ms: 30000'
   assert_contains "$refs/codex.md" 'const maxOutputTokens = 10000'
   assert_contains "$refs/codex.md" 'originalTokens += result.original_token_count'
-  assert_contains "$refs/codex.md" 'returns when the process exits'
+  assert_contains "$refs/codex.md" 'returns when it exits'
   assert_contains "$refs/codex.md" 'output.push(result.output)'
   assert_contains "$refs/codex.md" 'if (result.exit_code !== 0)'
   assert_contains "$refs/codex.md" 'command output exceeded the safe result budget'
   assert_contains "$refs/codex.md" 'persist its full artifact to a run-owned file'
-  assert_contains "$refs/codex.md" '`wait_agent` with `timeout_ms: 600000`'
+  assert_contains "$refs/codex.md" '`wait_agent` with a deadline sized to the task'
   assert_contains "$refs/codex.md" '`notify` is not a replacement'
   assert_contains "$refs/codex.md" 'Do not restart the'
   assert_contains "$refs/codex.md" 'single `Promise.all`'
-  # State the cost mechanic positively; naming the failing value makes it more
-  # available to the model that is about to choose one.
-  assert_contains "$refs/codex.md" 'Size both yields to the whole command'
-  assert_not_contains "$refs/codex.md" '30-second'
+  assert_contains "$refs/codex.md" 'values accepted by the current tool'
 
   assert_contains "$refs/claude-code.md" 'run_in_background: true'
   assert_contains "$refs/claude-code.md" '`Monitor`'
   assert_contains "$refs/claude-code.md" 'cover failure states as well as success'
-  assert_contains "$refs/claude-code.md" '600000 ms'
+  assert_contains "$refs/claude-code.md" 'current foreground `Bash` ceiling'
   assert_contains "$refs/claude-code.md" 'wasted round trip'
 }
 
@@ -952,9 +966,8 @@ test_agents_md_bounds_model_turns() {
   assert_contains "$agents" 'Batch independent calls into one turn'
   assert_contains "$agents" 'Promise.all'
   assert_contains "$agents" 'Keep dependent calls, writes, and approval-sensitive'
-  assert_contains "$agents" 'never under 300 seconds'
-  assert_contains "$agents" 'ceiling rather than a delay'
-  assert_contains "$agents" '`@exec` `yield_time_ms` directive'
+  assert_contains "$agents" 'there is no universal minimum'
+  assert_contains "$agents" 'deadline is a ceiling'
   assert_contains "$agents" 'Load `wait-efficiently`'
 }
 
@@ -970,7 +983,6 @@ test_review_waits_load_the_wait_skill() {
 test_openclaw_agent_discovery_paths() {
   local review_skill="$ROOT_DIR/skills/code-review"
   local staging_skill="$ROOT_DIR/skills/openclaw/openclaw-stg-test"
-  local handoff_skill="$ROOT_DIR/skills/openclaw/openclaw-telegram-handoff"
 
   assert_contains "$review_skill/references/codex-review-helper.md" 'helper resolves `codex` outside'
   assert_contains "$review_skill/references/codex-review-helper.md" 'creating an unrelated embedded-provider login'
@@ -988,26 +1000,10 @@ test_openclaw_agent_discovery_paths() {
   assert_contains "$staging_skill/SKILL.md" 'rejects persistent profile creation and deletion'
   assert_contains "$staging_skill/SKILL.md" 'nodeHost.browserProxy.allowProfiles'
   assert_contains "$staging_skill/agents/openai.yaml" 'fresh OpenClaw browser profile'
-  assert_contains "$staging_skill/SKILL.md" '`openclaw-telegram-handoff`'
   assert_contains "$staging_skill/SKILL.md" 'cleanup obligations on every exit path'
-  assert_contains "$staging_skill/agents/openai.yaml" '$openclaw-telegram-handoff'
-  assert_contains "$handoff_skill/SKILL.md" 'OPENCLAW_TELEGRAM_NOTIFY_TARGET'
-  assert_contains "$handoff_skill/SKILL.md" 'OPENCLAW_TELEGRAM_NOTIFY_ACCOUNT'
-  assert_contains "$handoff_skill/SKILL.md" '--account "$OPENCLAW_TELEGRAM_NOTIFY_ACCOUNT"'
-  assert_contains "$handoff_skill/SKILL.md" 'run-owned mode-`0600` file'
-  assert_contains "$handoff_skill/SKILL.md" '--message "$(command cat -- "$handoff_file")"'
-  assert_not_contains "$handoff_skill/SKILL.md" '--message "<terminal handoff>"'
-  assert_contains "$handoff_skill/SKILL.md" 'openclaw message send'
-  assert_contains "$handoff_skill/SKILL.md" '`sessions_send`'
-  assert_contains "$handoff_skill/SKILL.md" 'If the named source is the current calling session'
-  assert_contains "$handoff_skill/SKILL.md" "process the answer as"
-  assert_contains "$handoff_skill/SKILL.md" 'Do not invent watch or'
-  assert_contains "$handoff_skill/SKILL.md" 'raw route-bearing session key'
-  assert_contains "$handoff_skill/SKILL.md" 'Never invent an unbound opaque reference'
-  assert_contains "$handoff_skill/SKILL.md" 'If the current final reply already goes to the same Telegram route'
-  assert_contains "$handoff_skill/SKILL.md" 'do not scrape session history, pairing records'
-  assert_contains "$handoff_skill/agents/openai.yaml" 'terminal OpenClaw task updates'
-  assert_contains "$staging_skill/SKILL.md" 'Never invent a reference or put a raw route-bearing session key'
+  assert_contains "$staging_skill/SKILL.md" 'Return the result in the originating session'
+  assert_not_contains "$staging_skill/SKILL.md" 'Telegram'
+  test ! -e "$ROOT_DIR/skills/openclaw/openclaw-telegram-handoff/SKILL.md" || fail "Telegram handoff skill must be retired"
 }
 
 test_openclaw_local_test_helpers() {
@@ -1015,6 +1011,36 @@ test_openclaw_local_test_helpers() {
     "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/runtime-profile.test.mjs" \
     "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/shared-browser-proxy.test.mjs" \
     "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/openclaw-local-test.test.mjs"
+}
+
+test_review_neutrality_and_skill_ownership_are_explicit() {
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "do not reveal prior findings before"
+  assert_contains "$ROOT_DIR/skills/review-guardrails/SKILL.md" "Keep prior findings hidden"
+  assert_not_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" "tracked-finding notices"
+  test ! -e "$ROOT_DIR/skills/review-guardrails/references/tracked-finding-notices.md" || fail "tracked-finding notices must be retired"
+  assert_contains "$ROOT_DIR/external.md" "## Ownership model"
+  assert_contains "$ROOT_DIR/external.md" "Repo-owned fork"
+  assert_contains "$ROOT_DIR/skills/research/SKILL.md" "durable findings in Obsidian"
+  assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" "Red-green-refactor"
+  assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" "not mean knowingly temporary"
+}
+
+test_cross_harness_sessions_are_full_and_symmetric() {
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "This is not a subagent"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
+  assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
+  assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
+  assert_not_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "--model"
+  assert_not_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "--model"
+  test ! -e "$ROOT_DIR/skills/acpx-frontend-delegation/SKILL.md" || fail "one-way ACP delegation skill must be retired"
+}
+
+test_skill_cleaner_uses_current_model_configuration() {
+  local script="$ROOT_DIR/skills/skill-cleaner/scripts/skill-cleaner.ts"
+  assert_contains "$script" "codexModelName"
+  assert_contains "$script" 'path.join(home, ".codex/config.toml")'
+  assert_not_contains "$script" 'gpt-5.5'
+  assert_not_contains "$ROOT_DIR/skills/skill-cleaner/references/analyzer-notes.md" 'GPT-5.5'
 }
 
 test_external_teach_install_is_pinned() {
@@ -1148,10 +1174,10 @@ test_just_do_it_and_scoped_openclaw_readiness() {
   assert_not_contains "$skill/SKILL.md" "ClawSweeper"
 
   assert_contains "$ROOT_DIR/AGENTS.md" "user's review decision"
-  assert_contains "$ROOT_DIR/AGENTS.md" "exact machine-command comments"
+  assert_contains "$ROOT_DIR/AGENTS.md" '`/clawsweeper re-review` command'
+  assert_contains "$ROOT_DIR/AGENTS.md" "substantially contributed"
   assert_not_contains "$ROOT_DIR/AGENTS.md" "OpenClaw ClawSweeper gate:"
   assert_not_contains "$ROOT_DIR/AGENTS.md" 'rating: 🐚 platinum hermit'
-  assert_not_contains "$ROOT_DIR/AGENTS.md" "ClawSweeper"
 
   assert_contains "$readiness/SKILL.md" 'base repository is exactly `openclaw/openclaw`'
   assert_contains "$readiness/SKILL.md" 'Load `pr-proof-pack`'
@@ -1201,201 +1227,6 @@ PY
   assert_contains "$clawsweeper/references/polling-and-freshness.md" \
     'contain exactly one of these PR ratings'
 }
-
-test_wayfinder_obsidian_map_can_advance_its_frontier() {
-  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
-from pathlib import Path
-import os
-import re
-import tempfile
-
-
-root = Path(os.environ["ROOT_DIR"])
-skill = (root / "skills" / "wayfinder" / "SKILL.md").read_text()
-
-ticket_match = re.search(
-    r"### Tickets.*?```markdown\n(?P<template>.*?)\n```",
-    skill,
-    re.DOTALL,
-)
-if ticket_match is None:
-    raise SystemExit("Wayfinder ticket template is missing")
-
-ticket_template = ticket_match.group("template")
-required_fields = {
-    "Status",
-    "Type",
-    "Wayfinder",
-    "Mode",
-    "Kind",
-    "Claimed By",
-    "Blocked By",
-}
-template_fields = {}
-for line in ticket_template.splitlines():
-    if ":" in line and not line.startswith("#"):
-        key, value = line.split(":", 1)
-        template_fields[key] = value.strip()
-
-missing_fields = sorted(required_fields - template_fields.keys())
-if missing_fields:
-    raise SystemExit(
-        f"Wayfinder ticket template cannot represent its workflow: {missing_fields}"
-    )
-for relationship in ("Wayfinder", "Blocked By"):
-    if "|" not in template_fields[relationship]:
-        raise SystemExit(
-            f"Wayfinder {relationship} links must keep note identity and readable title"
-        )
-
-
-def write_ticket(
-    issues,
-    note_name,
-    title,
-    *,
-    wayfinder="2026-07-31-ship-the-migration",
-    wayfinder_title="Ship the migration",
-    status="Open",
-    claimed_by="None",
-    blocked_by="None",
-):
-    note = issues / f"{note_name}.md"
-    note.write_text(
-        "\n".join(
-            [
-                f"# Ticket: {title}",
-                "",
-                f"Status: {status}",
-                "Type: Ticket",
-                f"Wayfinder: [[{wayfinder}|{wayfinder_title}]]",
-                "Mode: AFK",
-                "Kind: research",
-                f"Claimed By: {claimed_by}",
-                f"Blocked By: {blocked_by}",
-                "",
-                "## Question",
-                f"What should {title} decide?",
-                "",
-            ]
-        )
-    )
-    return note
-
-
-def fields(note):
-    parsed = {}
-    for line in note.read_text().splitlines():
-        if ": " in line and not line.startswith("#"):
-            key, value = line.split(": ", 1)
-            parsed[key] = value
-    return parsed
-
-
-def wikilinks(value):
-    return [
-        link.split("|", 1)[0]
-        for link in re.findall(r"\[\[([^\]]+)\]\]", value)
-    ]
-
-
-def frontier(issues, map_name):
-    notes = {
-        note.stem: fields(note)
-        for note in issues.glob("*.md")
-        if fields(note).get("Type") == "Ticket"
-    }
-    ready = []
-    for name, ticket in notes.items():
-        if wikilinks(ticket["Wayfinder"]) != [map_name]:
-            continue
-        blockers_closed = all(
-            notes[blocker]["Status"] == "Closed"
-            for blocker in wikilinks(ticket["Blocked By"])
-        )
-        if (
-            ticket["Status"] == "Open"
-            and ticket["Claimed By"] == "None"
-            and blockers_closed
-        ):
-            ready.append(name)
-    return sorted(ready)
-
-
-with tempfile.TemporaryDirectory() as tmp:
-    issues = Path(tmp) / "Issues"
-    issues.mkdir()
-    map_note = issues / "2026-07-31-ship-the-migration.md"
-    map_note.write_text(
-        "\n".join(
-            [
-                "# Wayfinder: Ship the migration",
-                "",
-                "Status: Active",
-                "Type: Wayfinder Map",
-                "",
-                "## Decisions So Far",
-                "",
-            ]
-        )
-    )
-    research = write_ticket(
-        issues,
-        "2026-07-31-choose-source-format",
-        "Choose the source format",
-    )
-    write_ticket(
-        issues,
-        "2026-07-31-choose-import-contract",
-        "Choose the import contract",
-        blocked_by=(
-            "[[2026-07-31-choose-source-format|Choose the source format]]"
-        ),
-    )
-    write_ticket(
-        issues,
-        "2026-07-31-choose-rollout",
-        "Choose the rollout",
-        claimed_by="another-session",
-    )
-    write_ticket(
-        issues,
-        "2026-07-31-unrelated-decision",
-        "Unrelated decision",
-        wayfinder="2026-07-31-another-map",
-        wayfinder_title="Another map",
-    )
-
-    if frontier(issues, map_note.stem) != ["2026-07-31-choose-source-format"]:
-        raise SystemExit("Wayfinder frontier did not exclude blocked and claimed tickets")
-
-    research.write_text(
-        research.read_text()
-        .replace("Status: Open", "Status: Closed")
-        .replace(
-            "What should Choose the source format decide?\n",
-            "What should Choose the source format decide?\n\n"
-            "## Resolution\nUse newline-delimited JSON.\n",
-        )
-    )
-    map_note.write_text(
-        map_note.read_text()
-        + "- [[2026-07-31-choose-source-format|Choose the source format]]"
-        + " - Use newline-delimited JSON.\n"
-    )
-
-    if frontier(issues, map_note.stem) != ["2026-07-31-choose-import-contract"]:
-        raise SystemExit("Wayfinder frontier did not advance after a resolution")
-    if "## Resolution" not in research.read_text():
-        raise SystemExit("Resolved ticket did not retain its answer")
-    if (
-        "[[2026-07-31-choose-source-format|Choose the source format]]"
-        not in map_note.read_text()
-    ):
-        raise SystemExit("Wayfinder map did not index the resolved ticket by name")
-PY
-}
-
 test_skill_frontmatter_is_valid
 test_upstream_manifest_is_valid
 test_external_teach_install_is_pinned
@@ -1407,9 +1238,10 @@ test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
 test_prototypes_stay_isolated_from_production
 test_code_review_flags_unsupported_defense_and_proxy_helpers
-test_design_engineering_owns_motion_opportunity_audits
+test_design_router_owns_motion_opportunity_audits
 test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_ai_tells_catalogue
+test_speak_fking_english_makes_brevity_the_default
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate
@@ -1422,6 +1254,8 @@ test_agents_md_bounds_model_turns
 test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
+test_review_neutrality_and_skill_ownership_are_explicit
+test_cross_harness_sessions_are_full_and_symmetric
+test_skill_cleaner_uses_current_model_configuration
 test_handoff_tmux_helper_builds_tmux_window_command
-test_wayfinder_obsidian_map_can_advance_its_frontier
 printf 'ok - skills tests\n'

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Frontend Design"
-  short_description: "Shape production UI around product context"
-  default_prompt: "Use $frontend-design to design and implement this interface around the existing product system."

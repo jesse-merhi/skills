@@ -62,8 +62,8 @@ fields in its header.
    consult rules in [uncertain-findings.md](references/uncertain-findings.md).
    Do not use provisional code to resolve uncertainty about whether a risk
    exists.
-6. When consult entries are open, provide reviewer notices according to
-   [tracked-finding-notices.md](references/tracked-finding-notices.md).
+6. Keep prior findings hidden from a fresh reviewer. After its pass completes,
+   match candidates against the registry and open consult queue.
 7. Match repeated queue findings and stop at the fixed point using
    [queue-matching.md](references/queue-matching.md).
 8. Treat a non-zero `scope-check` as an immediate blocked-on-consult stop. Stop
@@ -97,7 +97,5 @@ fields in its header.
   may duplicate policy, accumulate special cases, or leave a shared root cause.
 - Use [uncertain-findings.md](references/uncertain-findings.md) for
   provisional fixes and consult-cap behavior.
-- Use [tracked-finding-notices.md](references/tracked-finding-notices.md) for
-  notices given to later reviewers.
 - Use [queue-matching.md](references/queue-matching.md) for re-raise matching,
   clean-except-queue passes, and fixed-point termination.

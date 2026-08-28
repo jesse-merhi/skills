@@ -93,7 +93,7 @@ const json = args.has("--json");
 const includeAll = args.has("--all");
 const rootOnly = args.has("--root-only");
 const noLive = args.has("--no-live") || rootOnly;
-const model = argValue("--model", "gpt-5.5");
+const modelOverride = argValue("--model", "");
 const budgetPercent = Number(argValue("--budget-percent", "2"));
 const contextTokensOverride = argValue("--context-tokens", "");
 const charsPerToken = Number(argValue("--chars-per-token", "4"));
@@ -152,6 +152,44 @@ function findModelRecord(value: Schema.Json, target: string): Schema.JsonObject 
   return null;
 }
 
+function firstModelName(value: Schema.Json): string | null {
+  if (isJsonArray(value)) {
+    for (const item of value) {
+      const found = firstModelName(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (value === null || typeof value !== "object") return null;
+  for (const key of ["slug", "id", "model", "name"] as const) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.length > 0) return candidate;
+  }
+  for (const item of Object.values(value)) {
+    const found = firstModelName(item);
+    if (found) return found;
+  }
+  return null;
+}
+
+function codexModelName(): string {
+  if (modelOverride) return modelOverride;
+
+  const config = path.join(home, ".codex/config.toml");
+  if (exists(config)) {
+    const match = /^\s*model\s*=\s*["']([^"']+)["']/m.exec(fs.readFileSync(config, "utf8"));
+    if (match?.[1]) return match[1];
+  }
+
+  const cache = path.join(home, ".codex/models_cache.json");
+  if (exists(cache)) {
+    const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
+    if (Option.isSome(decoded)) return firstModelName(decoded.value) ?? "current-configured-model";
+  }
+
+  return "current-configured-model";
+}
+
 function codexModelContext(modelName: string): {
   tokens: number;
   source: string;
@@ -177,7 +215,7 @@ function codexModelContext(modelName: string): {
     } catch {}
   }
 
-  return { tokens: 272_000, source: "fallback:gpt-5.5", effectivePercent: 95 };
+  return { tokens: 128_000, source: "fallback:conservative-context", effectivePercent: null };
 }
 
 function walkFiles(root: string, predicate: (file: string) => boolean, maxDepth = 8): string[] {
@@ -1011,6 +1049,7 @@ function codexBudgetedSkillCost(skills: Skill[], budgetTokens: number): {
 }
 
 function skillBudget(skills: Skill[], metadataOverheadTokens = 0): Budget {
+  const model = codexModelName();
   const context = codexModelContext(model);
   const tokenRatio = numberArg(String(charsPerToken), 4);
   const percent = numberArg(String(budgetPercent), 2);

@@ -18,10 +18,10 @@ Workflow({ name: "code-review", args: "<level> [target]" })
   - `<base>...HEAD` (for example `main...HEAD`) for branch-vs-base review;
   - a commit SHA for one commit;
   - a PR number for a checked-out PR.
-- Pass only the target, plus tracked-finding notices for open Class B findings,
-  generated fresh per `review-guardrails`. The workflow accepts free-form
-  instructions in the target string, but nothing else goes in: no checklists,
-  other prior findings, implementation rationale, or desired verdicts.
+- Pass only the target. The workflow accepts free-form instructions in the
+  target string, but nothing else goes in: no checklists, prior findings,
+  implementation rationale, or desired verdicts. Match returned candidates
+  against the findings registry only after the review completes.
 - The workflow runs in the background and its verified findings arrive as a task
   notification. Wait for that notification; do not edit the tree or start the
   next iteration while a review is in flight.
