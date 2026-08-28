@@ -1156,9 +1156,10 @@ test_just_do_it_and_scoped_openclaw_readiness() {
   assert_contains "$readiness/SKILL.md" 'base repository is exactly `openclaw/openclaw`'
   assert_contains "$readiness/SKILL.md" 'Load `pr-proof-pack`'
   assert_contains "$readiness/SKILL.md" 'Load `clawsweeper-until-clean`'
-  assert_contains "$readiness/SKILL.md" "Platinum is a successful result"
-  assert_contains "$readiness/SKILL.md" "preferred stretch goal"
-  assert_contains "$readiness/SKILL.md" "one bounded diamond pass"
+  assert_contains "$readiness/SKILL.md" "Do not start diamond work before this baseline exists"
+  assert_contains "$readiness/SKILL.md" "Try for diamond after clean"
+  assert_contains "$readiness/SKILL.md" "This is the final diamond attempt"
+  assert_contains "$readiness/SKILL.md" '`platinum-with-explanation`'
   assert_contains "$readiness/SKILL.md" "otherwise ready platinum PR"
   assert_contains "$readiness/SKILL.md" "not a rating lottery"
   assert_contains "$readiness/SKILL.md" "push invalidates"
@@ -1172,6 +1173,19 @@ test_just_do_it_and_scoped_openclaw_readiness() {
     'confidence at least 0.80: A / diamond'
   assert_contains "$readiness/references/rating-rubric.md" \
     'proof was usually NA because the author was a repository member'
+  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+from pathlib import Path
+import os
+
+readiness = (
+    Path(os.environ["ROOT_DIR"])
+    / "skills/openclaw/openclaw-pr-readiness/SKILL.md"
+).read_text()
+baseline = readiness.index("## Establish the clean baseline")
+diamond = readiness.index("## Try for diamond after clean")
+if baseline >= diamond:
+    raise SystemExit("OpenClaw readiness must get clean before trying for diamond")
+PY
 
   assert_contains "$clawsweeper/SKILL.md" 'minimum_readiness:'
   assert_contains "$clawsweeper/SKILL.md" 'rating: 🐚 platinum hermit'
