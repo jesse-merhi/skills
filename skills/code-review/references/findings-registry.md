@@ -316,3 +316,48 @@ issue cards. The structured SQLite rows remain the source for status, target,
 branch, decision ID, file, owner, and verification records. Older findings rank
 lower unless they are re-recorded or returned by searches often enough to raise
 their seen count. `prune` removes old low-use findings from the local index.
+
+## Changed-file coverage
+
+File coverage is a priority ledger, not a clean gate. The CLI deterministically
+builds the current changed-file manifest from the frozen base and current target.
+Each file identity includes its exact diff content, so an edit invalidates prior
+coverage without deleting its history.
+
+Before dispatching general review or discovery agents, query the current order:
+
+```sh
+"$review_findings_bin" coverage-status --json \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base>
+```
+
+The result ranks `stale` and `unreviewed` files first, then `reviewed-once`,
+then `reviewed-twice`. Use that order to assign work. Do not tell a cold reviewer
+that lower-priority files were approved; give it the assigned files or flows
+without prior verdicts or counts. Keep each assigned file's `changeId`; it binds
+the later attestation to the exact content the reviewer received.
+
+At the end of one general review invocation, record all substantively reviewed
+changed files in one command:
+
+```sh
+"$review_findings_bin" coverage-record \
+  --repo <repo> --repo-path <repo-root> --branch <branch> \
+  --target <target> --base <base> \
+  --review-id "<phase + iteration + agent/session ID>" \
+  --reviewer "<cold-review|discovery|general-review>" \
+  --file <path> [--file <path> ...] \
+  --change-id <observed-change-id> [--change-id <observed-change-id> ...]
+```
+
+Pass one `--change-id` for each `--file`, in the same order. The command rejects
+the whole batch if any file changed after the reviewer observed it.
+Coverage also stops explicitly for non-UTF-8 Git paths or dirty nested
+repositories because their content cannot be represented or identified exactly.
+One review ID counts at most once per file, including idempotent retries. Use a
+new review ID only for a genuinely independent review invocation. Record a file
+only when the reviewer assessed its changed behavior for actionable correctness
+or maintenance findings. Merely listing it, opening it for context, classifying
+it through a narrow lens, or seeing it in a whole-repository diff does not count.
+The CLI rejects paths outside the current changed-file manifest.

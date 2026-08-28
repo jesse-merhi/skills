@@ -57,6 +57,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    scope_baseline = <request, target, intended behavior, owner boundary>
    consult_queue = []
    findings_registry = <SQLite findings database>
+   file_coverage = <changed files ranked by current valid review count>
    ```
 
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
@@ -94,6 +95,11 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    Done when the review-findings helper path is resolved and every accepted,
    rejected, deferred, provisional, reopened, user, lens, native-review, and
    cold-review finding can be recorded instead of reconstructed from chat.
+   Query current file coverage before dispatching review agents, and give the
+   least-covered changed files priority without describing prior verdicts or
+   review counts to a cold reviewer. Every general, discovery, or cold reviewer
+   that can identify the files it substantively assessed must record them once,
+   in one batch, at the end of its review.
 
 6. Run Phase 1.
 
@@ -181,6 +187,11 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
+- General, discovery, and cold review agents record one batched changed-file
+  coverage attestation when they can identify the files they substantively
+  assessed. Current content identities determine whether an attestation still
+  counts; coverage prioritizes later review work but never replaces either
+  whole-target clean gate.
 - Every finding passes the current `review-findings schema`. Every accepted
   runtime finding has a recorded production path, reachability evidence,
   likelihood, impact, and actual consequence; the CLI derived severity and
@@ -224,3 +235,5 @@ consult queue is resolved.
 - pushing just to review;
 - pushing between findings, review phases, or targeted validation runs;
 - writing final closeout sections from chat history.
+- treating file coverage as a clean verdict or telling a cold reviewer that
+  lower-priority files were previously approved.

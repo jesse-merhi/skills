@@ -12,7 +12,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatScopeBudgetCheck, formatScopeBudgetStatus, getScopeBudget, initialize, InvalidFinding, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordReviewedFiles, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
@@ -172,7 +172,25 @@ const scopeComplete = Command.make("scope-complete", {
   yield* Console.log(formatScopeBudgetStatus(budget))
 }))).pipe(Command.withDescription("Close a clean scope budget so a later review can start"))
 
-const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, pathCommand]))
+const coverageRecord = Command.make("coverage-record", {
+  db, ...commonRun, reviewId: Flag.string("review-id"), reviewer: Flag.string("reviewer"), file: Flag.string("file").pipe(Flag.atLeast(1)), changeId: Flag.string("change-id").pipe(Flag.atLeast(1))
+}, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+  yield* initialize()
+  if (args.file.length !== args.changeId.length) return yield* Effect.fail(new InvalidReviewCoverage("coverage-record requires one --change-id for each --file, in the same order"))
+  const files = args.file.map((path, index) => ({ path, changeId: args.changeId[index] ?? "" }))
+  const result = yield* recordReviewedFiles(toRun(args), { reviewId: args.reviewId, reviewer: args.reviewer, files })
+  yield* Console.log(`recorded reviewed-files=${result.recordedFiles} review=${result.reviewId} run=${result.runId} db=${args.db}`)
+}))).pipe(Command.withDescription("Record one reviewer's changed-file coverage in a single batch"))
+
+const coverageStatus = Command.make("coverage-status", {
+  db, ...commonRun, json: Flag.boolean("json")
+}, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+  yield* initialize()
+  const coverage = yield* getReviewFileCoverage(toRun(args))
+  yield* Console.log(args.json ? JSON.stringify(coverage, null, 2) : formatReviewFileCoverage(coverage))
+}))).pipe(Command.withDescription("Rank current changed files by valid independent review count"))
+
+const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, pathCommand]))
 const Live = Layer.mergeAll(NodeServices.layer)
 const rootDb = process.argv[2]
 if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== undefined) {
@@ -180,9 +198,9 @@ if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== un
 } else if (rootDb?.startsWith("--db=") && process.argv[3] !== undefined) {
   process.argv.splice(2, 2, process.argv[3], rootDb)
 }
-command.pipe(Command.run({ version: "3.1.0" }),
+command.pipe(Command.run({ version: "3.2.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))
