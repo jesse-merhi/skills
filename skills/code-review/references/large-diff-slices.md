@@ -16,6 +16,8 @@ reviewed separately. File count alone is not a trigger.
   brief with the target, base, slice boundary, shared contracts, and neutral
   risk checklist.
 - Tell each reviewer to inspect its slice and directly shared contracts, then
+  record its substantively reviewed changed files and observed change IDs in
+  one coverage batch and
   return only actionable finding candidates with evidence.
 - Dispatch this batch once. Do not let slice reviewers spawn reviewers, run
   clean-until loops, fix code, or request cold reviews of their output.

@@ -9,6 +9,7 @@ import { createHash } from "node:crypto"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
+import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
@@ -20,6 +21,25 @@ export interface ReviewRun {
   readonly head: string
   readonly status: string
   readonly decisionLog: string
+}
+
+export const REVIEW_FILE_STATES = ["stale", "unreviewed", "reviewed-once", "reviewed-twice"] as const
+export type ReviewFileState = (typeof REVIEW_FILE_STATES)[number]
+
+export interface ReviewFileCoverage {
+  readonly path: string
+  readonly changeId: string
+  readonly reviews: number
+  readonly state: ReviewFileState
+}
+
+export interface ReviewedFilesInput {
+  readonly reviewId: string
+  readonly reviewer: string
+  readonly files: ReadonlyArray<{
+    readonly path: string
+    readonly changeId: string
+  }>
 }
 
 export const FINDING_SCHEMA_VERSION = 7
@@ -331,6 +351,12 @@ interface UnresolvedFindingRow {
 }
 interface ActiveScopeRow { readonly run_id: string; readonly target: string }
 interface ScopeStatusRow { readonly status: string }
+interface ReviewFileAttestationRow {
+  readonly review_id: string
+  readonly reviewer: string
+  readonly path: string
+  readonly change_id: string
+}
 
 const isFindingTerminal = (finding: Pick<CloseoutFinding, "status" | "disposition" | "owner_resolution">) => {
   if (finding.status === "fixed" || finding.status === "rejected") return true
@@ -408,6 +434,11 @@ export class ActiveScopeBudgetExists extends Error {
 
 export class InvalidScopeBudget extends Error {
   readonly _tag = "InvalidScopeBudget"
+  constructor(message: string) { super(message) }
+}
+
+export class InvalidReviewCoverage extends Error {
+  readonly _tag = "InvalidReviewCoverage"
   constructor(message: string) { super(message) }
 }
 
@@ -528,7 +559,8 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
     `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
     `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
-    `create table if not exists review_scope_events (id integer primary key autoincrement, run_id text not null references review_runs(id) on delete cascade, event text not null, line_metric text not null default 'total-human-authored', baseline_production_lines integer not null, baseline_test_lines integer not null default 0, current_production_lines integer not null, current_test_lines integer not null default 0, allowed_growth_lines integer not null, new_production_paths_json text not null, reason text not null, scope_summary text not null, authorization text not null, created_at integer not null)`
+    `create table if not exists review_scope_events (id integer primary key autoincrement, run_id text not null references review_runs(id) on delete cascade, event text not null, line_metric text not null default 'total-human-authored', baseline_production_lines integer not null, baseline_test_lines integer not null default 0, current_production_lines integer not null, current_test_lines integer not null default 0, allowed_growth_lines integer not null, new_production_paths_json text not null, reason text not null, scope_summary text not null, authorization text not null, created_at integer not null)`,
+    `create table if not exists review_file_attestations (id text primary key, run_id text not null references review_runs(id) on delete cascade, review_id text not null, reviewer text not null, path text not null, change_id text not null, reviewed_at integer not null, unique(run_id, review_id, path))`
   ]
   yield* Effect.forEach(tables, (statement) => sql.unsafe(statement), { discard: true })
   const columns = [
@@ -591,7 +623,8 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     `create index if not exists issues_run_idx on issues(run_id)`,
     `create index if not exists issues_status_idx on issues(status)`,
     `create index if not exists commands_run_idx on commands(run_id)`,
-    `create index if not exists review_scope_events_run_idx on review_scope_events(run_id)`
+    `create index if not exists review_scope_events_run_idx on review_scope_events(run_id)`,
+    `create index if not exists review_file_attestations_run_path_idx on review_file_attestations(run_id, path, change_id)`
   ]
   yield* Effect.forEach(indexes, (statement) => sql.unsafe(statement), { discard: true })
   }))
@@ -735,6 +768,87 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
   } satisfies ScopeBudgetStatus
 })
 
+const coverageTarget = Effect.fn("ReviewFindings.coverageTarget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
+  const verifiedRun = yield* verifyScopeRun(run)
+  const runId = yield* exactRunId(verifiedRun)
+  if (runId === undefined) return yield* Effect.fail(new InvalidReviewCoverage("review file coverage requires an existing scope run"))
+  const budget = yield* readScopeBudget(runId)
+  const manifest = yield* changedFileManifest(verifiedRun.repoPath, budget.baseOid, budget.pinnedHeadOid.length === 0 ? "HEAD" : budget.pinnedHeadOid, budget.pinnedHeadOid.length === 0)
+  return { runId, budget, manifest }
+})
+
+export const classifyReviewFileCoverage = (
+  manifest: ReadonlyArray<ReviewFileIdentity>,
+  attestations: ReadonlyArray<Pick<ReviewFileAttestationRow, "review_id" | "path" | "change_id">>
+): ReadonlyArray<ReviewFileCoverage> => {
+  const priority: Readonly<Record<ReviewFileState, number>> = { stale: 0, unreviewed: 0, "reviewed-once": 1, "reviewed-twice": 2 }
+  const attestationsByPath = new Map<string, Array<Pick<ReviewFileAttestationRow, "review_id" | "path" | "change_id">>>()
+  for (const attestation of attestations) {
+    const rows = attestationsByPath.get(attestation.path) ?? []
+    rows.push(attestation)
+    attestationsByPath.set(attestation.path, rows)
+  }
+  const coverage = manifest.map((file) => {
+    const forPath = attestationsByPath.get(file.path) ?? []
+    const reviews = new Set(forPath.filter((attestation) => attestation.change_id === file.changeId).map((attestation) => attestation.review_id)).size
+    const state: ReviewFileState = reviews >= 2
+      ? "reviewed-twice"
+      : reviews === 1
+      ? "reviewed-once"
+      : forPath.length > 0
+      ? "stale"
+      : "unreviewed"
+    return { ...file, reviews, state }
+  })
+  return coverage.sort((left, right) => priority[left.state] - priority[right.state] || (left.path < right.path ? -1 : left.path > right.path ? 1 : 0))
+}
+
+export const getReviewFileCoverage = Effect.fn("ReviewFindings.getReviewFileCoverage")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
+  const sql = yield* SqlClient.SqlClient
+  const coverage = yield* coverageTarget(run)
+  const attestations = yield* sql<ReviewFileAttestationRow>`select review_id, reviewer, path, change_id from review_file_attestations where run_id = ${coverage.runId}`
+  return classifyReviewFileCoverage(coverage.manifest, attestations)
+})
+
+export const recordReviewedFiles = Effect.fn("ReviewFindings.recordReviewedFiles")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, input: ReviewedFilesInput) {
+  if (input.reviewId.trim().length === 0) return yield* Effect.fail(new InvalidReviewCoverage("coverage-record requires a non-empty review ID"))
+  if (input.reviewer.trim().length === 0) return yield* Effect.fail(new InvalidReviewCoverage("coverage-record requires the reviewer or review source"))
+  const files = new Map<string, string>()
+  for (const file of input.files) {
+    if (file.changeId.trim().length === 0) return yield* Effect.fail(new InvalidReviewCoverage(`coverage-record requires an observed change ID for '${file.path}'`))
+    const previous = files.get(file.path)
+    if (previous !== undefined && previous !== file.changeId) return yield* Effect.fail(new InvalidReviewCoverage(`coverage-record received conflicting change IDs for '${file.path}'`))
+    files.set(file.path, file.changeId)
+  }
+  if (files.size === 0) return yield* Effect.fail(new InvalidReviewCoverage("coverage-record requires at least one reviewed file"))
+  const sql = yield* SqlClient.SqlClient
+  const coverage = yield* coverageTarget(run)
+  if (coverage.budget.status === "complete") return yield* Effect.fail(new InvalidReviewCoverage("review file coverage is complete and terminal; start a new review run before recording more files"))
+  const manifest = new Map(coverage.manifest.map((file) => [file.path, file]))
+  const invalid = [...files.keys()].filter((path) => !manifest.has(path))
+  if (invalid.length > 0) return yield* Effect.fail(new InvalidReviewCoverage(`coverage-record accepts only files in the current changed-file manifest; not changed: ${invalid.join(", ")}`))
+  const changed = [...files].filter(([path, changeId]) => manifest.get(path)?.changeId !== changeId).map(([path]) => path)
+  if (changed.length > 0) return yield* Effect.fail(new InvalidReviewCoverage(`coverage-record rejected files that changed after review: ${changed.join(", ")}; review their current identities before recording them`))
+  const existing = yield* sql<ReviewFileAttestationRow>`select review_id, reviewer, path, change_id from review_file_attestations where run_id = ${coverage.runId} and review_id = ${input.reviewId}`
+  const wrongReviewer = existing.find((attestation) => attestation.reviewer !== input.reviewer)
+  if (wrongReviewer !== undefined) return yield* Effect.fail(new InvalidReviewCoverage(`review ID '${input.reviewId}' already belongs to reviewer '${wrongReviewer.reviewer}'`))
+  for (const [path, changeId] of files) {
+    const current = manifest.get(path)
+    if (current === undefined) continue
+    const previous = existing.find((attestation) => attestation.path === path)
+    if (previous !== undefined && previous.change_id !== changeId) {
+      return yield* Effect.fail(new InvalidReviewCoverage(`review ID '${input.reviewId}' already recorded '${path}' at an older file identity; use a new review ID after reviewing the changed file`))
+    }
+  }
+  const timestamp = nowSeconds()
+  yield* sql.withTransaction(Effect.forEach([...files], ([path, changeId]) => {
+    const id = stableId([coverage.runId, input.reviewId, path])
+    return sql`insert or ignore into review_file_attestations (id, run_id, review_id, reviewer, path, change_id, reviewed_at)
+      values (${id}, ${coverage.runId}, ${input.reviewId}, ${input.reviewer}, ${path}, ${changeId}, ${timestamp})`
+  }, { discard: true }))
+  return { runId: coverage.runId, reviewId: input.reviewId, recordedFiles: files.size }
+})
+
 const writeScopeEvent = Effect.fn("ReviewFindings.writeScopeEvent")(function*(input: {
   readonly runId: string
   readonly event: string
@@ -777,7 +891,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const targetOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${requestedHead}^{commit}`], { cwd: run.repoPath })
   const checkoutOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: run.repoPath })
   const pinnedHeadOid = targetOid === checkoutOid ? "" : targetOid
-  const measurement = yield* measureScopeDiff(run.repoPath, baseOid, targetOid)
+  const measurement = yield* measureScopeDiff(run.repoPath, baseOid, targetOid, pinnedHeadOid.length === 0)
   const baselineLines = humanAuthoredLines(measurement.production.changedLines, measurement.tests.changedLines)
   const allowedGrowthLines = allowedScopeGrowth(baselineLines, input.limitPercent)
   const timestamp = nowSeconds()
@@ -884,7 +998,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   if (budget.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
   if (budget.status === "rebaseline-required") return yield* Effect.fail(new InvalidScopeBudget(budget.lastReason))
   if (budget.lineMetric !== TOTAL_LOC_LINE_METRIC) return yield* Effect.fail(new InvalidScopeBudget("scope budget uses the retired production-only metric; explicit rebaseline is required"))
-  const measurement: ScopeMeasurement = yield* measureScopeDiff(run.repoPath, budget.baseOid, budget.pinnedHeadOid.length === 0 ? "HEAD" : budget.pinnedHeadOid)
+  const measurement: ScopeMeasurement = yield* measureScopeDiff(run.repoPath, budget.baseOid, budget.pinnedHeadOid.length === 0 ? "HEAD" : budget.pinnedHeadOid, budget.pinnedHeadOid.length === 0)
   const baselinePaths = new Set(budget.baselinePaths)
   const newHumanAuthoredPaths = measurement.humanAuthoredPaths.filter((path) => !baselinePaths.has(path))
   const baselineBinaryPaths = new Set(budget.baselineBinaryPaths)
@@ -1398,6 +1512,16 @@ export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
   `next-work=${check.lastReason}`,
   ...pathsAddedLines(check)
 ].join("\n")
+
+export const formatReviewFileCoverage = (coverage: ReadonlyArray<ReviewFileCoverage>): string => {
+  const priority: Readonly<Record<ReviewFileState, number>> = { stale: 1, unreviewed: 1, "reviewed-once": 2, "reviewed-twice": 3 }
+  const lines = ["REVIEW FILE COVERAGE", `files=${coverage.length}`]
+  for (const state of REVIEW_FILE_STATES) {
+    const files = coverage.filter((file) => file.state === state)
+    lines.push(`${state} priority=${priority[state]} count=${files.length}`, ...files.map((file) => `- ${file.path} reviews=${file.reviews}`))
+  }
+  return lines.join("\n")
+}
 
 function formatBlockedScopeBudget(check: ScopeBudgetCheck): string {
   const completed = check.completedFindings.length === 0

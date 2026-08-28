@@ -35,6 +35,24 @@ understand those flows. Every finding must identify the changed line or contract
 that causes, exposes, or worsens the problem. Do not reveal prior findings,
 desired conclusions, or a requested verdict.
 
+Before assigning general, discovery, or cold-review work, run `coverage-status --json`
+with the active review identity. Assign stale and unreviewed files first, then
+files reviewed once, then files reviewed twice. Give the subagent its assigned
+files or flows, not the coverage counts or earlier verdicts. Coverage changes
+work order; it does not prohibit reading lower-priority files or shared
+contracts. Preserve each assigned file's observed `changeId` for the final
+attestation.
+
+At the end of a general, discovery, or cold review, the subagent must make one `coverage-record`
+call for changed files whose diff and relevant behavior it actually assessed.
+Use one stable review ID for that subagent invocation. Do not record files that
+were merely listed, opened for context, or checked only through a narrow lens.
+Pass the observed `changeId` paired with each file; if any file changed during
+review, the command rejects the batch instead of crediting unseen content.
+If the subagent cannot write the external review database, it must return the
+exact file list, observed change IDs, and review ID for the coordinator to
+record in one batch.
+
 Give cold-review subagents only the target and neutral checklist. After the
 verdict, match candidates against the findings registry and open consult queue.
 If an optional decision log exists, give them its path only after the verdict

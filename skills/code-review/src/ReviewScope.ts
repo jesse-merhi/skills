@@ -4,7 +4,7 @@ import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 
 import { checkedBytes, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
-import { trustedExecutable } from "./NativeReview.ts"
+import { ReviewSnapshotError, trustedExecutable } from "./NativeReview.ts"
 
 export class UnsupportedHistoricalGitVersion extends Schema.TaggedError<UnsupportedHistoricalGitVersion>()("UnsupportedHistoricalGitVersion", {
   message: Schema.String
@@ -21,6 +21,7 @@ export interface ScopeMeasurement {
   readonly production: DiffCounts
   readonly tests: DiffCounts
   readonly generated: DiffCounts
+  readonly changedPaths: ReadonlyArray<string>
   readonly humanAuthoredPaths: ReadonlyArray<string>
   readonly humanAuthoredBinaryPaths: ReadonlyArray<string>
 }
@@ -88,7 +89,11 @@ const decodeQuotedPath = (path: string): string => {
       bytes.push(escapes[escaped] ?? escaped.charCodeAt(0))
     }
   }
-  return new TextDecoder().decode(Uint8Array.from(bytes))
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes))
+  } catch {
+    throw new ReviewSnapshotError({ message: "changed-file coverage requires Git paths that are valid UTF-8 so the CLI can round-trip them exactly" })
+  }
 }
 
 const parseNumstat = (output: string): ReadonlyArray<NumstatEntry> => output.split("\n").flatMap((line) => {
@@ -148,13 +153,13 @@ const isAttributePath = (path: Uint8Array): boolean => {
   return attributeName.every((byte, index) => path[offset + index] === byte)
 }
 
-export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(function*(repoPath: string, baseRef: string, targetRef = "HEAD") {
+export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(function*(repoPath: string, baseRef: string, targetRef = "HEAD", workingTree?: boolean) {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const git = yield* trustedExecutable("git", repoPath)
   const targetOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${targetRef}^{commit}`], { cwd: repoPath })
   const checkoutOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: repoPath })
-  const includeWorkingTree = targetOid === checkoutOid
+  const includeWorkingTree = workingTree ?? targetOid === checkoutOid
   const version = yield* checkedTrimmedText(git, ["version"], { cwd: repoPath })
   const versionMatch = /^git version (\d+)\.(\d+)/u.exec(version)
   const majorVersion = Number(versionMatch?.[1] ?? 0)
@@ -284,9 +289,11 @@ export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(functi
   const production = emptyCounts()
   const tests = emptyCounts()
   const generated = emptyCounts()
+  const changedPaths = new Set<string>()
   const humanAuthoredPaths = new Set<string>()
   const humanAuthoredBinaryPaths = new Set<string>()
   for (const entry of entries) {
+    changedPaths.add(entry.classificationPath)
     const currentEntry = currentEntriesByPath.get(entry.path)
     const countedEntry = entry.binary && currentEntry !== undefined && !currentEntry.binary
       ? { ...currentEntry, path: entry.path, classificationPath: entry.classificationPath }
@@ -304,6 +311,7 @@ export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(functi
     production,
     tests,
     generated,
+    changedPaths: [...changedPaths].sort(),
     humanAuthoredPaths: [...humanAuthoredPaths].sort(),
     humanAuthoredBinaryPaths: [...humanAuthoredBinaryPaths].sort()
   } satisfies ScopeMeasurement
