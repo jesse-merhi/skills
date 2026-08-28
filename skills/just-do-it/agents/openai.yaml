@@ -1,0 +1,7 @@
+interface:
+  display_name: "Just Do It"
+  short_description: "Take a well-defined fix from code to ready PR."
+  default_prompt: "Use $just-do-it to implement this well-defined change, run the full review, publish the PR with proof, and leave it ready for my review."
+
+policy:
+  allow_implicit_invocation: false

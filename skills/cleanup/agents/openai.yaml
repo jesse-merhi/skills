@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cleanup"
+  short_description: "Remove all local artifacts from finished work"
+  default_prompt: "Use $cleanup to discover and remove every local artifact belonging to this finished or abandoned work, while preserving saved work and shared infrastructure."

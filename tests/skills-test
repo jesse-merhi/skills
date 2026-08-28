@@ -1159,10 +1159,84 @@ test_gh_stack_workflow_is_pinned_and_wired() {
     'Review gate and Sign-off gate from'
 }
 
+test_just_do_it_and_scoped_openclaw_readiness() {
+  local skill="$ROOT_DIR/skills/just-do-it"
+  local readiness="$ROOT_DIR/skills/openclaw/openclaw-pr-readiness"
+  local clawsweeper="$ROOT_DIR/skills/openclaw/clawsweeper-until-clean"
+
+  assert_contains "$skill/SKILL.md" "Use this workflow only when"
+  assert_contains "$skill/SKILL.md" "grants bounded authority"
+  assert_contains "$skill/SKILL.md" 'Load `code-review`'
+  assert_contains "$skill/SKILL.md" 'Load `pr-proof-pack`'
+  assert_contains "$skill/SKILL.md" "exact-head fixed point"
+  assert_contains "$skill/SKILL.md" "Do not merge"
+  assert_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_not_contains "$skill/SKILL.md" "ClawSweeper"
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "user's review decision"
+  assert_contains "$ROOT_DIR/AGENTS.md" '`/clawsweeper re-review` command'
+  assert_contains "$ROOT_DIR/AGENTS.md" "substantially contributed"
+  assert_not_contains "$ROOT_DIR/AGENTS.md" "OpenClaw ClawSweeper gate:"
+  assert_not_contains "$ROOT_DIR/AGENTS.md" 'rating: 🐚 platinum hermit'
+
+  assert_contains "$readiness/SKILL.md" 'base repository is exactly `openclaw/openclaw`'
+  assert_contains "$readiness/SKILL.md" 'Load `pr-proof-pack`'
+  assert_contains "$readiness/SKILL.md" 'Load `clawsweeper-until-clean`'
+  assert_contains "$readiness/SKILL.md" "Do not duplicate or reinterpret that rating workflow here"
+  assert_contains "$readiness/SKILL.md" '`diamond_attempts` state preserved'
+  assert_contains "$readiness/SKILL.md" '`platinum-with-explanation`'
+  assert_not_contains "$readiness/SKILL.md" "## Try for diamond after clean"
+  assert_not_contains "$readiness/SKILL.md" 'rating: 🐚 platinum hermit'
+  assert_not_contains "$readiness/agents/openai.yaml" "allow_implicit_invocation: false"
+
+  assert_contains "$clawsweeper/SKILL.md" 'minimum_readiness:'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempt_limit: 3'
+  assert_contains "$clawsweeper/SKILL.md" 'at most **4 phases**'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempts = <recovered integer from 0 through 3>'
+  assert_contains "$clawsweeper/SKILL.md" 'After clean: try for diamond'
+  assert_contains "$clawsweeper/SKILL.md" '`platinum-with-explanation`'
+  assert_contains "$clawsweeper/SKILL.md" "no_self_label:"
+  assert_contains "$clawsweeper/SKILL.md" '[rank-up.md](references/rank-up.md)'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'Run this decision only after three consecutive clean ClawSweeper reviews'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'Do not start a fourth rank-up cycle.'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'the newest review identifies a distinct improvement'
+  assert_not_contains "$clawsweeper/SKILL.md" 'diamond_attempted'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    '2129a78a502e4e6ed3dd0c521db5034743f1757a'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    'confidence at least 0.95: S / challenger'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    'confidence at least 0.80: A / diamond'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    'proof was usually NA because the author was a repository member'
+  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+from pathlib import Path
+import os
+
+clawsweeper = (
+    Path(os.environ["ROOT_DIR"])
+    / "skills/openclaw/clawsweeper-until-clean/SKILL.md"
+).read_text()
+clean_loop = clawsweeper.index("## Loop")
+diamond = clawsweeper.index("## After clean: try for diamond")
+if clean_loop >= diamond:
+    raise SystemExit("ClawSweeper must converge before trying for diamond")
+PY
+
+  assert_contains "$clawsweeper/SKILL.md" 'rating: 🐚 platinum hermit'
+  assert_contains "$clawsweeper/SKILL.md" 'rating: 🦞 diamond lobster'
+  assert_contains "$clawsweeper/SKILL.md" 'rating: 🦀 challenger crab'
+  assert_contains "$clawsweeper/references/polling-and-freshness.md" \
+    'contain exactly one of these PR ratings'
+}
 test_skill_frontmatter_is_valid
 test_upstream_manifest_is_valid
 test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
+test_just_do_it_and_scoped_openclaw_readiness
 test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
 test_bun_runtime_and_openclaw_install_are_documented

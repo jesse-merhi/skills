@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenClaw PR Readiness"
+  short_description: "Coordinate every OpenClaw PR readiness gate."
+  default_prompt: "Use $openclaw-pr-readiness to prepare this OpenClaw PR, delegate its clean and diamond workflow to $clawsweeper-until-clean, and converge every exact-head gate."

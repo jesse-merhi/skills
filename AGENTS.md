@@ -107,7 +107,9 @@ returns sets the cost of a task.
   stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
   review do not count. Tell the user and use the native structured question UI
   to ask whether to run `code-review` or proceed without it for this PR and
-  head. Do not start the expensive review automatically.
+  head. Do not start the expensive review automatically. An explicitly invoked
+  named workflow that requires `code-review` and grants that authority counts
+  as the user's review decision; record it and continue without asking again.
   An unanswered review decision blocks readiness and merge. Record an explicit
   waiver in closeout.
 - Sign-off gate: after the review decision, proof, validation, and CI pass,
