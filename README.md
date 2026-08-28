@@ -2,7 +2,7 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-This repo is my working set of agent skills: 43 Markdown workflows that coding
+This repo is my working set of agent skills: 39 Markdown workflows that coding
 agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
 [`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
@@ -66,7 +66,7 @@ harnesses plus a locally running OpenClaw Gateway. The skills themselves were
 written and exercised almost entirely on Codex and Claude Code, and several
 name those harnesses directly. `code-review` picks between `codex review` and
 Claude Code's built-in review, `session-recall` indexes Codex and Claude session
-logs, `acpx-frontend-delegation` drives Claude Code from Codex. On opencode, Pi,
+logs, and `ask-claude` / `ask-codex` open cross-harness ACP sessions. On opencode, Pi,
 and OpenClaw they will install; whether every one of them *works* is not
 something this repo proves.
 
@@ -86,7 +86,7 @@ Two ways one gets used:
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
   "use `grilling` on this" in either harness. Codex marks eight skills as
   explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,
-  `prototype`, `to-spec`, `to-tickets`, `wayfinder`, and
+  `to-spec`, `to-tickets`, and
   `clawsweeper-until-clean`. They can review and fix code, operate desktop UI,
   write durable planning files, or run a long external loop, so Codex waits for
   you to name them.
@@ -108,8 +108,7 @@ The skills are not a menu. They snap into the loop I actually run:
 3. **Make it grill me.** `grilling` until the undecided decisions are on the
    table with recommendations attached.
 4. **Freeze the plan.** `to-spec` writes the spec and the intended PR shape.
-   `to-tickets` when it needs to become blocker-aware slices. `wayfinder` when
-   the work is too foggy to fit in one session at all.
+   `to-tickets` when it needs to become blocker-aware slices.
 5. **Hand off and let it run.** `handoff` for a clean fresh thread,
    `parallel-slice-orchestration` when several isolated worktrees should move at
    once, external `gh-stack` when one story is really a dependency-ordered
@@ -119,8 +118,8 @@ The skills are not a menu. They snap into the loop I actually run:
 7. **Review it like I hate it.** `code-review` runs the native engine until
    clean, then an independent cold reviewer until clean. `pr-rubbish-audit`
    catches what the diff smuggled in.
-8. **Ship it.** `pr-proof-pack` for reviewer-visible evidence,
-   `monitoring-gh-actions` for CI.
+8. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
+   `wait-efficiently` for CI.
 9. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
@@ -156,7 +155,6 @@ code looks the way it does.
 | [`pr-rubbish-audit`](skills/pr-rubbish-audit/SKILL.md) | Hunts the diff for things the feature never asked for: stray refactors, dead comments, generated drift, unrelated deletions. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge, never on local commits. |
 | [`pr-review-checkout`](skills/pr-review-checkout/SKILL.md) | Opens a PR in its real worktree and reviews it through VS Code, with an answer-first orientation for a cold reader. |
-| [`monitoring-gh-actions`](skills/monitoring-gh-actions/SKILL.md) | Waits on GitHub Actions with history-derived intervals and reports state changes, instead of polling or triaging. |
 
 Internal review plumbing, loaded by the loops above and rarely called directly:
 
@@ -186,7 +184,6 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | [`research`](skills/research/SKILL.md) | Answers a question from primary sources such as official docs, source, and specs, with citations rather than blog posts. |
 | [`to-spec`](skills/to-spec/SKILL.md) | Turns a settled conversation into an Obsidian spec including testing seams and the intended PR delivery shape. |
 | [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
-| [`wayfinder`](skills/wayfinder/SKILL.md) | For work too foggy for one session: charts it as decision tickets in Obsidian and resolves them until the route is visible. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
 | [`parallel-slice-orchestration`](skills/parallel-slice-orchestration/SKILL.md) | Implements a spec across parallel agents with disjoint file ownership, then integrates and verifies. |
@@ -195,12 +192,11 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
-| [`frontend-design`](skills/frontend-design/SKILL.md) | Layout, hierarchy, typography, colour, and every state of the screen, implemented rather than sketched. |
-| [`design-engineering`](skills/design-engineering/SKILL.md) | Owns the interaction layer: transitions, gestures, springs, easing, and how it feels under the finger. |
-| [`review-animations`](skills/review-animations/SKILL.md) | Reviews existing motion code for purpose, timing, interruption, performance, and reduced-motion support. |
-| [`prototype`](skills/prototype/SKILL.md) | Builds 3–5 genuinely divergent UI variants behind a picker, isolated from production. Explicit request only. |
+| [`design`](skills/design/SKILL.md) | The single visible design router; it loads internal production-UI, interaction, motion-review, or explicit-prototype guidance as needed. |
+| [`design-technical-diagrams`](skills/design-technical-diagrams/SKILL.md) | Builds and visually validates architecture, lifecycle, sequence, trust-boundary, and decision diagrams. |
 | [`frontend-ui-validation`](skills/frontend-ui-validation/SKILL.md) | The visual gate: Playwright screenshots, overflow and clipping checks, responsive states, console errors. |
-| [`acpx-frontend-delegation`](skills/acpx-frontend-delegation/SKILL.md) | Lets Codex borrow Claude Code as a frontend specialist through `acpx` while keeping scope and validation. |
+| [`ask-claude`](skills/ask-claude/SKILL.md) | Opens a fresh full Claude session through ACP for independent advice or scoped implementation. |
+| [`ask-codex`](skills/ask-codex/SKILL.md) | Opens a fresh full Codex session through ACP from another harness. |
 
 ### Communication
 
@@ -228,16 +224,16 @@ else. They will only be useful to you if you work on those projects.
 | --- | --- |
 | [`openclaw-local-test`](skills/openclaw/openclaw-local-test/SKILL.md) | Brings up an isolated local OpenClaw Gateway for manual browser testing using the current Codex or Claude login. |
 | [`openclaw-stg-test`](skills/openclaw/openclaw-stg-test/SKILL.md) | Publishes a temporary Control UI preview through a guarded Cloudflare Quick Tunnel without exposing an authenticated Gateway. |
-| [`openclaw-telegram-handoff`](skills/openclaw/openclaw-telegram-handoff/SKILL.md) | Sends one terminal update to an approved Telegram route when work is done or blocked, and relays the reply back to the source session. |
 | [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot, never production itself. |
 | [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Loops the Clawsweeper PR bot through trigger, wait, fix, and push until three consecutive re-reviews come back clean. |
 
 ## External skills
 
-Some workflows are better owned by whoever maintains them.
-[`external.md`](external.md) pins those to a reviewed version and records the
-install command per harness; the installer runs them, and this repo never
-copies or symlinks their files.
+The ownership model is explicit: repo-owned skills are maintained here;
+repo-owned forks keep their upstream license and document intentional drift;
+external skills remain installed and updated by their upstream owner. See the
+ownership table and reviewed pins in [`external.md`](external.md). The installer
+runs external install commands; this repo never copies or symlinks those files.
 
 | Skill | Owner | Harnesses with a tested command |
 | --- | --- | --- |

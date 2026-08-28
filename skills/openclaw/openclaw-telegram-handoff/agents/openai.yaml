@@ -1,4 +1,0 @@
-interface:
-  display_name: "OpenClaw Telegram Handoff"
-  short_description: "Send terminal OpenClaw task updates to Telegram"
-  default_prompt: "Use $openclaw-telegram-handoff to notify the operator when this OpenClaw task finishes, blocks, stalls, or needs input, or to relay a Telegram answer back to its named source session."

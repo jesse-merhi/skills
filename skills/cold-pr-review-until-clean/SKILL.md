@@ -22,7 +22,7 @@ agent unless a repo-specific fix workflow applies.
 
 ```yaml
 review_tool: must invoke cold-pr-review through an independent subagent whenever the harness supports subagents
-review_context: subagent gets only the target, the neutral review checklist, and tracked-finding notices generated per review-guardrails; no other prior rationale or findings
+review_context: subagent gets only the target and neutral review checklist; no prior rationale or findings
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
 scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
@@ -58,9 +58,9 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
    Load `wait-efficiently`, then read
    [references/subagent-dispatch.md](references/subagent-dispatch.md). Done when
-   a fresh isolated reviewer receives only the target, neutral review checklist,
-   and tracked-finding notices generated per `review-guardrails`, and the
-   coordinator uses the native event-driven wait for its result.
+   a fresh isolated reviewer receives only the target and neutral review
+   checklist, and the coordinator uses the native event-driven wait for its
+   result. Match candidates against the findings registry only after the pass.
 
 4. Run the until-clean loop.
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-08-27",
+  "reviewedAt": "2026-08-28",
   "scope": "Repository-owned skills adapted from or materially influenced by upstream work. Installer-owned skills remain authoritative in external.md.",
   "sources": [
     {
@@ -58,11 +58,6 @@
           "upstreamPaths": ["skills/engineering/to-tickets"]
         },
         {
-          "localSkill": "wayfinder",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/engineering/wayfinder"]
-        },
-        {
           "localSkill": "writing-for-agents",
           "relationship": "adapted",
           "upstreamPaths": ["skills/productivity/writing-for-agents"]
@@ -74,24 +69,16 @@
       "reviewedCommit": "d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7",
       "mappings": [
         {
-          "localSkill": "design-engineering",
+          "localSkill": "design",
           "relationship": "adapted",
           "upstreamPaths": [
             "skills/emil-design-eng",
             "skills/find-animation-opportunities",
             "skills/apple-design",
-            "skills/animation-vocabulary"
+            "skills/animation-vocabulary",
+            "skills/prototype",
+            "skills/review-animations"
           ]
-        },
-        {
-          "localSkill": "prototype",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/prototype"]
-        },
-        {
-          "localSkill": "review-animations",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/review-animations"]
         }
       ]
     },

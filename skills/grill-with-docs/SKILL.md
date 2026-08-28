@@ -33,7 +33,8 @@ context before the questioning starts.
    fuzzy-language sharpening, concrete scenarios, code cross-checks, UI
    readiness, context updates, and ADR offers.
 7. If the work is too large or foggy for one session, point the user to
-   `wayfinder` instead of forcing the whole journey through one grill.
+   break it into explicit decisions or tickets instead of forcing the whole
+   journey through one grill.
 8. Continue until the plan is clear enough to execute and the user confirms the
    shared understanding.
 9. Return either a tightened plan with assumptions and first ticket made clear,

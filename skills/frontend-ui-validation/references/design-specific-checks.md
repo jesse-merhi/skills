@@ -27,5 +27,5 @@ placeholder copy, and motion that delays frequent actions. Treat these as
 contextual observations rather than automatic failures.
 
 When motion or interaction feel is material to the change, use
-`design-engineering` for implementation guidance or `review-animations` for a
+`design` in interaction mode for implementation guidance or motion-review mode for a
 focused motion review.

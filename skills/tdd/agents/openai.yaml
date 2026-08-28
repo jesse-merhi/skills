@@ -1,4 +1,4 @@
 interface:
   display_name: "TDD"
-  short_description: "Use red-green tests at agreed seams."
-  default_prompt: "Use $tdd: agree the public seam, write one failing test, then make the smallest change to pass it."
+  short_description: "Build through red-green-refactor cycles"
+  default_prompt: "Use $tdd to choose the behavioral seam, prove red, implement green, and refactor while the tests stay green."
