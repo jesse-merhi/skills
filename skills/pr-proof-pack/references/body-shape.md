@@ -145,8 +145,11 @@ published: false
 ````
 
 For matched visual proof, label the direct-base and PR evidence explicitly.
-Use one side-by-side image for a readable static comparison or two short
-recordings for an interaction. Never put media in a Markdown table.
+Use a two-column table for matched static images when both remain readable, or
+one side-by-side composite when it presents the comparison more clearly. Use
+two short recordings for an interaction. Size images to the PR content area as
+described in [screenshots.md](screenshots.md); do not let their source pixel
+dimensions decide how large they appear.
 
 An explanatory workflow diagram belongs immediately before `## Proof`. Its
 nearby sentence says what the reviewer should learn, and its caption starts
@@ -164,8 +167,11 @@ persisted or emitted result. Keep secrets and verbose output out.
 
 Use a table for the compact change breakdown above or when several cases need
 comparison across stable axes, such as input, previous outcome, new outcome,
-and side effect. Use adjacent code blocks for one before/after case. Do not use
-tables as a file inventory or a way to compress several paragraphs into cells.
+and side effect. Tables can also group a small set of directly comparable
+images, such as before/after or desktop/mobile, when the columns remain
+readable. Use adjacent code blocks for one textual before/after case. Do not
+use tables as a file inventory, for sequential media, or to compress several
+paragraphs into cells.
 
 ## What to leave out
 
