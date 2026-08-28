@@ -1,4 +1,4 @@
 interface:
   display_name: "OpenClaw PR Readiness"
-  short_description: "Clean OpenClaw PRs, then try once for diamond."
-  default_prompt: "Use $openclaw-pr-readiness to establish a clean platinum-or-better OpenClaw PR, then make one honest attempt at diamond and explain the ceiling if it stays platinum."
+  short_description: "Coordinate every OpenClaw PR readiness gate."
+  default_prompt: "Use $openclaw-pr-readiness to prepare this OpenClaw PR, delegate its clean and diamond workflow to $clawsweeper-until-clean, and converge every exact-head gate."

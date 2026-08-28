@@ -1,15 +1,14 @@
 ---
 name: openclaw-pr-readiness
-description: 'Prepare or assess openclaw/openclaw PRs for ClawSweeper, establish a clean platinum-or-better baseline, then make one bounded attempt at diamond when current in-scope evidence can justify it. Use when publishing, updating, or preparing an OpenClaw PR for review or merge.'
+description: 'Prepare or assess openclaw/openclaw PRs for exact-head proof, review, CI, and the scoped ClawSweeper gate. Use when publishing, updating, or preparing an OpenClaw PR for review or merge.'
 ---
 
 # OpenClaw PR readiness
 
-Make an `openclaw/openclaw` PR genuinely easy to merge. First converge on a
-clean, platinum-or-better ClawSweeper baseline. Only then inspect the completed
-review for a small, honest way to reach diamond. Platinum is a successful
-result. Diamond is a one-attempt stretch goal, and challenger is welcome when
-the evidence naturally earns it; neither is a second merge gate.
+Make an `openclaw/openclaw` PR genuinely easy to merge. Prepare the strongest
+honest review packet, delegate ClawSweeper convergence and rating improvement to
+`clawsweeper-until-clean`, and finish only when every required gate describes
+the same PR state.
 
 ## Scope and authority
 
@@ -52,84 +51,38 @@ approval, or Jesse's sign-off reaction.
    logs, or live output; a clean-looking screenshot cannot prove those claims.
    Tests, mocks, and CI support real-behavior proof but do not replace it.
 
-## Establish the clean baseline
+## Run the scoped ClawSweeper gate
 
-Load `clawsweeper-until-clean`. Its exact `/clawsweeper re-review` command is
-the sole PR comment authorized by this skill. Complete its three-clean streak
-on one unchanged head and require one of these ClawSweeper-owned labels:
+Load `clawsweeper-until-clean`. It owns the exact machine-command comment, the
+three-clean streak, the bot-owned platinum-or-better label, the single
+post-clean diamond attempt, and the concrete explanation when platinum remains.
+Do not duplicate or reinterpret that rating workflow here.
 
-- `rating: 🐚 platinum hermit`
-- `rating: 🦞 diamond lobster`
-- `rating: 🦀 challenger crab`
+ClawSweeper fixes or rank-up work can make earlier code review, proof, CI, and
+repository evidence stale. After `clawsweeper-until-clean` returns, rerun every
+gate its changes invalidated. If that work changes the head or reviewer-visible
+proof that ClawSweeper judged, re-enter `clawsweeper-until-clean` with its
+`diamond_attempted` state preserved. The resumed run may reconverge but may not
+start a second diamond attempt.
 
-Never add, remove, rename, or preserve a rating label on the bot's behalf. A
-push invalidates the clean streak and rating observation even when GitHub still
-shows an old label.
-
-If ClawSweeper finds something, make the narrow fix and return to the earliest
-invalidated gate. A code change or push normally makes earlier code-review,
-proof, CI, and ClawSweeper evidence stale. Re-run forward until one exact head
-simultaneously holds all required evidence.
-
-The three-clean loop proves consistency; it is not a rating lottery. Do not
-trigger extra reviews after the required streak solely in hope of a higher
-label when the patch and evidence have not changed.
-
-The baseline is complete only when one unchanged head has three consecutive
-clean reviews and a ClawSweeper-owned platinum, diamond, or challenger label.
-Do not start diamond work before this baseline exists.
-
-## Try for diamond after clean
-
-Read [rating-rubric.md](references/rating-rubric.md). Check the current
-ClawSweeper source if its main-branch SHA has moved beyond the pinned revision;
-the running bot and its current source outrank that snapshot.
-
-Inspect the newest completed ClawSweeper review from the clean baseline and
-record its overall rating, proof and patch tiers, `Rank-up moves`, requested
-live validation, remaining uncertainty, and exact PR head. Then choose one
-outcome:
-
-- **Already diamond or better:** keep the clean baseline and finish.
-- **One diamond attempt:** when the result is platinum and an author-controlled
-  improvement is safe, in scope, and likely to remove real uncertainty, apply
-  it once. Examples include completing missing exact-head validation, capturing
-  direct behavior proof, resolving a P3 finding, or recording an already-made
-  compatibility decision.
-- **Platinum with a ceiling:** when the remaining move needs a maintainer or
-  product decision, an unavailable environment, meaningful scope expansion, or
-  evidence the author cannot honestly obtain, preserve platinum and record the
-  concrete reason diamond was not attempted.
-
-Any patch, proof, or PR update made for the diamond attempt makes the earlier
-ClawSweeper streak stale. Re-run every gate that the update invalidated, then
-load `clawsweeper-until-clean` again and establish a new clean
-platinum-or-better result. This is the final diamond attempt. If the new result
-is still platinum, stop and report the specific confidence gap or decision in
-the newest ClawSweeper review that kept it from diamond.
-
-Do not add decorative media, invent a benchmark, weaken a test, suppress a
-finding, broaden the implementation solely for a badge, or run another rank-up
-cycle. Do not delay an otherwise ready platinum PR merely to chase diamond or
-challenger.
+Repeat only until one PR state simultaneously holds current code review, proof,
+required CI, repository gates, and the final ClawSweeper result. An unchanged
+rerun is not a reason to trigger the bot again.
 
 ## Completion
 
 Call the OpenClaw gate ready only when:
 
 - the base repository is `openclaw/openclaw`;
-- three consecutive fresh ClawSweeper reviews are clean on the current head;
-- ClawSweeper awarded platinum, diamond, or challenger to that same head;
+- `clawsweeper-until-clean` returned `already-diamond-or-better`,
+  `diamond-achieved`, or `platinum-with-explanation` for the current PR state;
 - no push followed the final review;
 - the separate code-review, proof, required CI, and repository gates are also
   current, or the caller explicitly records which of them still blocks overall
   PR readiness.
 
-Report the PR URL, exact head SHA, awarded label, proof and patch tiers, the
-rank-up move applied or declined, the final three-clean evidence, and one of
-`already-diamond-or-better`, `diamond-achieved`, or
-`platinum-with-explanation`. For the last outcome, state exactly why diamond
-was not reached and whether the limit was evidence, environment, scope,
-residual risk, or an owner decision. Distinguish "OpenClaw gate passed" from
-"PR is ready," and never describe a merely high-scoring PR as merged or
-approved.
+Report the PR URL, exact head SHA, delegated ClawSweeper outcome, awarded label,
+final three-clean evidence, review, proof, CI, repository gates, and anything
+still waiting on an owner. Include the ClawSweeper explanation when the result
+is platinum. Distinguish "OpenClaw gate passed" from "PR is ready," and never
+describe a merely high-scoring PR as merged or approved.

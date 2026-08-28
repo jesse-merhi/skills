@@ -1,7 +1,7 @@
 interface:
   display_name: "Clawsweeper Until Clean"
-  short_description: "Rerun ClawSweeper until clean and platinum+."
-  default_prompt: "Use $clawsweeper-until-clean to trigger ClawSweeper re-reviews, fix findings, and stop only after three consecutive clean verdicts and a platinum-or-better readiness label."
+  short_description: "Get ClawSweeper clean, then try once for diamond."
+  default_prompt: "Use $clawsweeper-until-clean to establish three clean ClawSweeper reviews and platinum+, then make one honest attempt at diamond and explain the ceiling if it stays platinum."
 
 policy:
   allow_implicit_invocation: false

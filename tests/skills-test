@@ -1156,42 +1156,48 @@ test_just_do_it_and_scoped_openclaw_readiness() {
   assert_contains "$readiness/SKILL.md" 'base repository is exactly `openclaw/openclaw`'
   assert_contains "$readiness/SKILL.md" 'Load `pr-proof-pack`'
   assert_contains "$readiness/SKILL.md" 'Load `clawsweeper-until-clean`'
-  assert_contains "$readiness/SKILL.md" "Do not start diamond work before this baseline exists"
-  assert_contains "$readiness/SKILL.md" "Try for diamond after clean"
-  assert_contains "$readiness/SKILL.md" "This is the final diamond attempt"
+  assert_contains "$readiness/SKILL.md" "Do not duplicate or reinterpret that rating workflow here"
+  assert_contains "$readiness/SKILL.md" '`diamond_attempted` state preserved'
   assert_contains "$readiness/SKILL.md" '`platinum-with-explanation`'
-  assert_contains "$readiness/SKILL.md" "otherwise ready platinum PR"
-  assert_contains "$readiness/SKILL.md" "not a rating lottery"
-  assert_contains "$readiness/SKILL.md" "push invalidates"
-  assert_contains "$readiness/SKILL.md" '[rating-rubric.md](references/rating-rubric.md)'
+  assert_not_contains "$readiness/SKILL.md" "## Try for diamond after clean"
+  assert_not_contains "$readiness/SKILL.md" 'rating: 🐚 platinum hermit'
   assert_not_contains "$readiness/agents/openai.yaml" "allow_implicit_invocation: false"
-  assert_contains "$readiness/references/rating-rubric.md" \
+
+  assert_contains "$clawsweeper/SKILL.md" 'minimum_readiness:'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempt_limit: 1'
+  assert_contains "$clawsweeper/SKILL.md" 'After clean: check diamond once'
+  assert_contains "$clawsweeper/SKILL.md" '`platinum-with-explanation`'
+  assert_contains "$clawsweeper/SKILL.md" "no_self_label:"
+  assert_contains "$clawsweeper/SKILL.md" '[rank-up.md](references/rank-up.md)'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'Run this decision only after three consecutive clean ClawSweeper reviews'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'Do not start another rank-up cycle.'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
     '2129a78a502e4e6ed3dd0c521db5034743f1757a'
-  assert_contains "$readiness/references/rating-rubric.md" \
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
     'confidence at least 0.95: S / challenger'
-  assert_contains "$readiness/references/rating-rubric.md" \
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
     'confidence at least 0.80: A / diamond'
-  assert_contains "$readiness/references/rating-rubric.md" \
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
     'proof was usually NA because the author was a repository member'
   ROOT_DIR="$ROOT_DIR" python3 <<'PY'
 from pathlib import Path
 import os
 
-readiness = (
+clawsweeper = (
     Path(os.environ["ROOT_DIR"])
-    / "skills/openclaw/openclaw-pr-readiness/SKILL.md"
+    / "skills/openclaw/clawsweeper-until-clean/SKILL.md"
 ).read_text()
-baseline = readiness.index("## Establish the clean baseline")
-diamond = readiness.index("## Try for diamond after clean")
-if baseline >= diamond:
-    raise SystemExit("OpenClaw readiness must get clean before trying for diamond")
+clean_loop = clawsweeper.index("## Loop")
+diamond = clawsweeper.index("## After clean: check diamond once")
+if clean_loop >= diamond:
+    raise SystemExit("ClawSweeper must converge before trying for diamond")
 PY
 
-  assert_contains "$clawsweeper/SKILL.md" 'minimum_readiness:'
   assert_contains "$clawsweeper/SKILL.md" 'rating: 🐚 platinum hermit'
   assert_contains "$clawsweeper/SKILL.md" 'rating: 🦞 diamond lobster'
   assert_contains "$clawsweeper/SKILL.md" 'rating: 🦀 challenger crab'
-  assert_contains "$clawsweeper/SKILL.md" "no_self_label:"
   assert_contains "$clawsweeper/references/polling-and-freshness.md" \
     'contain exactly one of these PR ratings'
 }
