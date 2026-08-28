@@ -20,7 +20,8 @@ On termination, report:
   `wall-clock-cap-hit`
 - the last Clawsweeper verdict, with a link to the comment/review
 - which platinum-or-better label was present on the unchanged final head
-- the one rank-up move applied, or the concrete reason it was declined
+- the rank-up attempt count and each distinct move applied, or the concrete
+  reason the workflow stopped before using all three
 - for `platinum-with-explanation`, the specific evidence, environment, scope,
   residual-risk, or owner-decision ceiling that kept the result from diamond
 - any findings that needed a repo-specific fix workflow rather than direct edits
@@ -46,7 +47,7 @@ On termination, report:
 - Never add or preserve a rating label yourself. Its value is that ClawSweeper
   awarded it.
 - Never start diamond work before the first clean platinum-or-better baseline,
-  and never run a second rank-up cycle after the one attempt.
+  and never run a fourth rank-up cycle after three attempts.
 
 ## Common mistakes
 

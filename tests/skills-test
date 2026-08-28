@@ -1183,22 +1183,27 @@ test_just_do_it_and_scoped_openclaw_readiness() {
   assert_contains "$readiness/SKILL.md" 'Load `pr-proof-pack`'
   assert_contains "$readiness/SKILL.md" 'Load `clawsweeper-until-clean`'
   assert_contains "$readiness/SKILL.md" "Do not duplicate or reinterpret that rating workflow here"
-  assert_contains "$readiness/SKILL.md" '`diamond_attempted` state preserved'
+  assert_contains "$readiness/SKILL.md" '`diamond_attempts` state preserved'
   assert_contains "$readiness/SKILL.md" '`platinum-with-explanation`'
   assert_not_contains "$readiness/SKILL.md" "## Try for diamond after clean"
   assert_not_contains "$readiness/SKILL.md" 'rating: 🐚 platinum hermit'
   assert_not_contains "$readiness/agents/openai.yaml" "allow_implicit_invocation: false"
 
   assert_contains "$clawsweeper/SKILL.md" 'minimum_readiness:'
-  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempt_limit: 1'
-  assert_contains "$clawsweeper/SKILL.md" 'After clean: check diamond once'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempt_limit: 3'
+  assert_contains "$clawsweeper/SKILL.md" 'at most **4 phases**'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempts = <recovered integer from 0 through 3>'
+  assert_contains "$clawsweeper/SKILL.md" 'After clean: try for diamond'
   assert_contains "$clawsweeper/SKILL.md" '`platinum-with-explanation`'
   assert_contains "$clawsweeper/SKILL.md" "no_self_label:"
   assert_contains "$clawsweeper/SKILL.md" '[rank-up.md](references/rank-up.md)'
   assert_contains "$clawsweeper/references/rank-up.md" \
     'Run this decision only after three consecutive clean ClawSweeper reviews'
   assert_contains "$clawsweeper/references/rank-up.md" \
-    'Do not start another rank-up cycle.'
+    'Do not start a fourth rank-up cycle.'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'the newest review identifies a distinct improvement'
+  assert_not_contains "$clawsweeper/SKILL.md" 'diamond_attempted'
   assert_contains "$clawsweeper/references/rating-rubric.md" \
     '2129a78a502e4e6ed3dd0c521db5034743f1757a'
   assert_contains "$clawsweeper/references/rating-rubric.md" \
@@ -1216,7 +1221,7 @@ clawsweeper = (
     / "skills/openclaw/clawsweeper-until-clean/SKILL.md"
 ).read_text()
 clean_loop = clawsweeper.index("## Loop")
-diamond = clawsweeper.index("## After clean: check diamond once")
+diamond = clawsweeper.index("## After clean: try for diamond")
 if clean_loop >= diamond:
     raise SystemExit("ClawSweeper must converge before trying for diamond")
 PY

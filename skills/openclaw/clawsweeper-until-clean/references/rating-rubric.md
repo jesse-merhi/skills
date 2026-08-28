@@ -103,11 +103,13 @@ Recent merged and open `jesse-merhi` PRs showed the recurring pattern:
 
 Use diamond as a stretch goal after ClawSweeper has established a clean
 platinum-or-better baseline, not as a second merge gate. Inspect the baseline
-review's rank-up moves and make at most one author-controlled attempt to remove
-uncertainty that is already within scope. Re-establish every invalidated gate
-after that attempt. If the remaining move needs a maintainer decision, a new
-environment, or broader work, preserve the honest platinum result and report
-that concrete ceiling instead of delaying the PR.
+review's rank-up moves and make at most three distinct author-controlled
+attempts to remove uncertainty that is already within scope. Re-establish every
+invalidated gate after each attempt and use the fresh review to choose the next
+move. Stop early when no safe, concrete move remains. If the remaining move
+needs a maintainer decision, a new environment, or broader work, preserve the
+honest platinum result and report that concrete ceiling instead of delaying the
+PR.
 
 Challenger is not a separate secret checklist. Under the pinned source, it
 requires the weaker applicable side to reach S. For a member PR with proof NA,

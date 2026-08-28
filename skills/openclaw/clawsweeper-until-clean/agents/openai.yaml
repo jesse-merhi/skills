@@ -1,7 +1,7 @@
 interface:
   display_name: "Clawsweeper Until Clean"
-  short_description: "Get ClawSweeper clean, then try once for diamond."
-  default_prompt: "Use $clawsweeper-until-clean to establish three clean ClawSweeper reviews and platinum+, then make one honest attempt at diamond and explain the ceiling if it stays platinum."
+  short_description: "Get ClawSweeper clean, then try up to three times for diamond."
+  default_prompt: "Use $clawsweeper-until-clean to establish three clean ClawSweeper reviews and platinum+, then make up to three honest attempts at diamond and explain the ceiling if it stays platinum."
 
 policy:
   allow_implicit_invocation: false

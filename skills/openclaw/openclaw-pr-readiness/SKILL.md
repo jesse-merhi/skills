@@ -54,16 +54,16 @@ approval, or Jesse's sign-off reaction.
 ## Run the scoped ClawSweeper gate
 
 Load `clawsweeper-until-clean`. It owns the exact machine-command comment, the
-three-clean streak, the bot-owned platinum-or-better label, the single
-post-clean diamond attempt, and the concrete explanation when platinum remains.
+three-clean streak, the bot-owned platinum-or-better label, the three-attempt
+diamond budget, and the concrete explanation when platinum remains.
 Do not duplicate or reinterpret that rating workflow here.
 
 ClawSweeper fixes or rank-up work can make earlier code review, proof, CI, and
 repository evidence stale. After `clawsweeper-until-clean` returns, rerun every
 gate its changes invalidated. If that work changes the head or reviewer-visible
 proof that ClawSweeper judged, re-enter `clawsweeper-until-clean` with its
-`diamond_attempted` state preserved. The resumed run may reconverge but may not
-start a second diamond attempt.
+`diamond_attempts` state preserved. The resumed run may reconverge and spend
+remaining attempts but may never exceed three across the complete workflow.
 
 Repeat only until one PR state simultaneously holds current code review, proof,
 required CI, repository gates, and the final ClawSweeper result. An unchanged

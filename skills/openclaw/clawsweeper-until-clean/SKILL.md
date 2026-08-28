@@ -1,6 +1,6 @@
 ---
 name: clawsweeper-until-clean
-description: 'Re-review ClawSweeper PRs until three clean passes and a platinum-or-better label, then make one bounded attempt at diamond and explain the ceiling when platinum remains.'
+description: 'Re-review ClawSweeper PRs until three clean passes and a platinum-or-better label, then make up to three bounded attempts at diamond and explain the ceiling when platinum remains.'
 ---
 
 # Clawsweeper until clean
@@ -11,8 +11,8 @@ review, fix actionable findings, push, and repeat.
 
 First establish **three consecutive ClawSweeper re-reviews** with **zero
 actionable findings** on one head and a **platinum-or-better** rating label.
-Then inspect the completed review once for an honest route to diamond. Platinum
-is successful; diamond is a one-attempt stretch goal, not a second gate.
+Then use the completed reviews to make up to three honest attempts at diamond.
+Platinum is successful; diamond is a bounded stretch goal, not a second gate.
 
 Do not use this skill for a one-shot trigger. A single `/clawsweeper re-review`
 comment is enough for that. Use this skill when you want the loop run to
@@ -27,7 +27,7 @@ fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow w
 stop_condition: 3 consecutive clawsweeper re-reviews with zero actionable findings
 minimum_readiness: one of `rating: 🐚 platinum hermit`, `rating: 🦞 diamond lobster`, or `rating: 🦀 challenger crab` must be present after the clean streak
 diamond_timing: inspect rank-up moves only after the clean platinum-or-better baseline
-diamond_attempt_limit: 1 across the entire workflow, including any resumed run
+diamond_attempt_limit: 3 across the entire workflow, including any resumed run
 platinum_result: success only with a concrete explanation of why diamond was not reached
 counter_reset: any clawsweeper re-review that lists actionable findings resets the consecutive-clean counter to 0
 no_early_exit: do not stop on 1 or 2 clean re-reviews
@@ -46,14 +46,14 @@ no_self_label: never add, edit, or preserve the readiness label on Clawsweeper's
    ask before commenting.
 3. Capture a baseline timestamp and head SHA using
    [polling-and-freshness.md](references/polling-and-freshness.md).
-4. Recover `diamond_attempted` from the current workflow state and PR history.
-   Treat it as `true` when a prior clean platinum baseline was followed by a
-   rank-up change. If the history is ambiguous, treat the attempt as already
-   spent instead of risking a second cycle.
+4. Recover `diamond_attempts` from the current workflow state and PR history.
+   Count each prior clean platinum baseline followed by an author-controlled
+   rank-up change. If the history is ambiguous, use the highest plausible count
+   instead of risking a fourth attempt.
 5. Decide a safety cap. Defaults: **6 re-review cycles per clean-convergence
-   phase**, at most **2 phases**, and **20 min wall-clock per wait** for any
-   single Clawsweeper response. The second phase exists only after the one
-   diamond attempt changes ClawSweeper's review input.
+   phase**, at most **4 phases**, and **20 min wall-clock per wait** for any
+   single Clawsweeper response. The first phase establishes the baseline; each
+   later phase exists only after one diamond attempt changes review input.
 6. Confirm the working tree is clean enough that fixes will land on the right
    branch. Note any untracked/local changes that might confuse targeted fixes.
 
@@ -65,7 +65,7 @@ Maintain across the whole session:
 consecutive_clean = 0
 phase_iterations = 0
 total_iterations = 0
-diamond_attempted = <recovered false or true>
+diamond_attempts = <recovered integer from 0 through 3>
 last_trigger_at  = <ISO timestamp of your most recent /clawsweeper re-review comment>
 last_head_sha    = <PR head SHA at trigger time>
 ```
@@ -88,21 +88,22 @@ Repeat:
     platinum-or-better label with
     [polling-and-freshness.md](references/polling-and-freshness.md). If it is
     absent at the wall-clock cap, stop incomplete. Do not apply it yourself.
-11. Continue to **After clean: check diamond once**. Do not report final success
+11. Continue to **After clean: try for diamond**. Do not report final success
     before that step returns a terminal outcome.
 
 Between consecutive clean re-reviews, do not edit code or push commits. The
 streak is only meaningful when Clawsweeper agrees with itself three times on the
 same tree.
 
-## After clean: check diamond once
+## After clean: try for diamond
 
 Read [rank-up.md](references/rank-up.md) and apply its post-clean decision. If
-it makes one author-controlled improvement, set `diamond_attempted = true`
+it selects an author-controlled improvement, increment `diamond_attempts`
 before the mutation, reset `consecutive_clean` and `phase_iterations`, and
-return to the loop for one final clean-convergence phase. Preserve
-`diamond_attempted = true` across any caller-driven resume so the workflow can
-never start a second rank-up cycle.
+return to the loop for another clean-convergence phase. After that phase, use
+the newest result to decide whether to stop or spend another attempt. Preserve
+`diamond_attempts` across any caller-driven resume so the workflow can never
+start a fourth rank-up cycle.
 
 This step finishes as `already-diamond-or-better`, `diamond-achieved`, or
 `platinum-with-explanation`. A platinum result must name the concrete evidence,
@@ -121,9 +122,9 @@ unchanged review merely in hope of a different rating.
 - Every counted response is fresh, finished, and from Clawsweeper.
 - The readiness label was observed rather than added by the agent, and no push
   occurred after the final counted review.
-- At most one post-clean diamond attempt occurred across the complete workflow,
-  and a final platinum result includes the specific reason it did not reach
-  diamond.
+- At most three post-clean diamond attempts occurred across the complete
+  workflow. Each attempted a distinct concrete improvement, and a final
+  platinum result includes the specific reason it did not reach diamond.
 - The final report follows [reporting.md](references/reporting.md).
 
 ## Context pointers
@@ -135,7 +136,7 @@ unchanged review merely in hope of a different rating.
   classification.
 - Use [fixing.md](references/fixing.md) for targeted fix and push rules.
 - Use [rank-up.md](references/rank-up.md) only after the first clean
-  platinum-or-better baseline, for the one diamond attempt and its stopping
-  explanation.
+  platinum-or-better baseline, for the bounded diamond attempts and their
+  stopping explanation.
 - Use [reporting.md](references/reporting.md) for iteration narration, final
   report fields, hard rules, and common mistakes.

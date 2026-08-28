@@ -227,7 +227,7 @@ else. They will only be useful to you if you work on those projects.
 | [`openclaw-stg-test`](skills/openclaw/openclaw-stg-test/SKILL.md) | Publishes a temporary Control UI preview through a guarded Cloudflare Quick Tunnel without exposing an authenticated Gateway. |
 | [`openclaw-pr-readiness`](skills/openclaw/openclaw-pr-readiness/SKILL.md) | Coordinates proof, review, CI, repository gates, and the scoped ClawSweeper result for an `openclaw/openclaw` PR. |
 | [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot, never production itself. |
-| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Gets three clean ClawSweeper reviews and platinum+, then makes one honest attempt at diamond and explains the ceiling if platinum remains. |
+| [`clawsweeper-until-clean`](skills/openclaw/clawsweeper-until-clean/SKILL.md) | Gets three clean ClawSweeper reviews and platinum+, then makes up to three honest attempts at diamond and explains the ceiling if platinum remains. |
 
 ## External skills
 
