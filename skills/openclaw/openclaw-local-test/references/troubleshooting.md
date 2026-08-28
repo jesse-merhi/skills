@@ -1,6 +1,6 @@
 # Troubleshooting
 
-- Run `openclaw-local-test --inspect` first. An unavailable Codex route needs a
+- Run `<skill-dir>/scripts/openclaw-local-test --inspect` first. An unavailable Codex route needs a
   successful `codex login status`; an unavailable Claude route needs a
   successful `claude auth status --json`.
 - Codex mode deliberately uses the native user Codex home. If the model requires
@@ -21,7 +21,7 @@
 - A wizard readiness collision means another client owns the singleton wizard.
   The helper stops its Gateway without cancelling an unknown session.
 - Let the helper wait when another startup owns the machine-wide lock.
-- Use `openclaw-local-test --status`, then `--stop`, when an expired instance
+- Use `<skill-dir>/scripts/openclaw-local-test --status`, then `--stop`, when an expired instance
   remains.
 - When channels were requested through an explicit base config, verify the run
   omitted `--no-channels` and inspect channel startup logs.

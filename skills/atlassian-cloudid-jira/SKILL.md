@@ -17,8 +17,8 @@ default Jira site.
 
    ```sh
    <skill-dir>/scripts/rovodev-atlassian \
-     --site https://product-fabric.atlassian.net \
-     "Search project RVCLW with JQL and summarize the five newest ideas"
+     --site https://<workspace>.atlassian.net \
+     "Search <project-key> with JQL and summarize the five newest issues"
    ```
 
 3. Use `acli rovodev legacy` directly only for an explicitly authorized write

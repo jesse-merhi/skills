@@ -1,4 +1,0 @@
-interface:
-  display_name: "Design Engineering"
-  short_description: "Audit or build intentional UI motion"
-  default_prompt: "Use $design-engineering to audit or implement intentional, responsive UI motion."

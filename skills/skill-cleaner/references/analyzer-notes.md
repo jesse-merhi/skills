@@ -7,8 +7,11 @@
 - It follows Codex `core-skills/src/render.rs`: 2% of raw `context_window`,
   token cost `ceil(utf8_bytes / 4)`, then full descriptions -> equal
   description truncation -> omitted minimum lines.
-- It reads `~/.codex/models_cache.json` for GPT-5.5 `context_window`; fallback
-  is 272,000 tokens and 2%.
+- It resolves the model from `--model`, then the current Codex config, then the
+  first currently advertised model in `~/.codex/models_cache.json`. It reads
+  that model's context window from the cache. If unavailable, it uses a
+  conservative generic context estimate; `--context-tokens` remains the exact
+  override.
 - It uses `codex debug prompt-input` for the live, model-visible inventory when
   available. `--no-live` forces the filesystem fallback.
 - It scans normal Codex/plugin/repo skill roots by default. Extra folders are

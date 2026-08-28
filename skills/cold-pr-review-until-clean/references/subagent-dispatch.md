@@ -69,10 +69,9 @@ give a merge verdict.
 ```
 
 You may add domain-specific checklist items, such as security-sensitive flows,
-UI states to inspect, migration safety, or concurrency concerns. You may also
-append tracked-finding notices for open Class B findings, generated fresh from
-the findings database per `review-guardrails`. That is the only prior-finding
-content allowed.
+UI states to inspect, migration safety, or concurrency concerns. Do not include
+prior findings. After the reviewer returns, the coordinator matches candidates
+against the findings database and open consult queue.
 
 Do not include:
 

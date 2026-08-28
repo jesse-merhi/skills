@@ -4,6 +4,19 @@ Keep externally owned skills out of this repository unless their license and
 update model are intentionally adopted. Prefer a small repo-owned adapter when
 only part of an external workflow earns a permanent place in the skill loop.
 
+## Ownership model
+
+| Category | Where the code lives | Who owns future behavior | Update rule |
+| --- | --- | --- | --- |
+| Repo-owned | This repository | This repository | Change and test here. |
+| Repo-owned fork | This repository, with an upstream notice | This repository | Preserve attribution; upstream changes are input, not automatic policy. |
+| External | Upstream installation | Upstream project | Pin and review upstream; do not copy it here. |
+
+Current repo-owned forks include `research`, `tdd`, `writing-for-agents`,
+`skill-cleaner`, `speak-fking-english`, and the internal references behind the
+`design` router. Their skill files name the source and the behavior that differs
+from upstream. Everything else is repo-owned unless its skill says otherwise.
+
 ## browser-use
 
 - **Source:** <https://github.com/browser-use/browser-use/tree/0.13.7>

@@ -19,7 +19,7 @@ convergence.
 ## Non-negotiables
 
 ```yaml
-trigger: comment exactly `/clawsweeper re-review` on the PR via `gh pr comment`
+trigger: comment exactly `/clawsweeper re-review` on an eligible PR via `gh pr comment`; no other comment text is authorized
 review_source: must be a clawsweeper review/comment posted AFTER your trigger comment
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 stop_condition: 3 consecutive clawsweeper re-reviews with zero actionable findings
@@ -32,8 +32,11 @@ no_self_review: do not skip a re-trigger because you "already know it's clean"
 
 1. Confirm the target PR number and repo. Pin those values; reuse them every
    iteration.
-2. Confirm `gh` is authenticated against the right account and `gh pr view <pr>`
-   returns the expected PR.
+2. Confirm `gh` is authenticated against the right account and `gh pr view <pr>
+   returns the expected PR. The command-comment exception applies only when the
+   authenticated user authored the PR or the task contains explicit evidence
+   that the user substantially contributed to it. If neither can be verified,
+   ask before commenting.
 3. Capture a baseline timestamp and head SHA using
    [polling-and-freshness.md](references/polling-and-freshness.md).
 4. Decide a safety cap. Defaults: **6 re-review cycles total**, **20 min

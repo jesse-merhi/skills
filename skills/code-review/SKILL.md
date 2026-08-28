@@ -60,7 +60,7 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    ```
 
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
-   for scope classification, budgets, consult queue, tracked-finding notices,
+   for scope classification, budgets, consult queue, queue matching,
    and blocked-on-consult behavior. For a new run, persist the baseline before
    any review fix:
 
@@ -109,8 +109,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
    Read [references/subagents.md](references/subagents.md), then run
    `cold-pr-review-until-clean` in a subagent until cold review is clean on the
-   same target. Give it the one-time setup summary, neutral risk checklist, and
-   any tracked-finding notices generated from currently open consult entries.
+   same target. Give it only the frozen target and neutral risk checklist.
+   After it returns candidates, compare them with the findings registry and
+   consult queue during coordinator triage; do not reveal prior findings before
+   the reviewer has independently completed its pass.
    Wait through `wait-efficiently` so completion wakes the active wait instead
    of being discovered by status polling.
 

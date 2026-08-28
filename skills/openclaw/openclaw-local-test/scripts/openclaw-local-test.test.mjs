@@ -80,7 +80,7 @@ async function findPortRange(start = 24_000) {
 }
 
 test("a fixed free proxy still allows searching for an automatic gateway", async () => {
-  const start = await findPortRange();
+  const start = await findPortRange(24_000);
   const fixedProxy = start + 21;
   const busyGateway = net.createServer();
   await new Promise((resolve, reject) => busyGateway.once("error", reject).listen(start, "127.0.0.1", resolve));
@@ -117,7 +117,7 @@ test("status does not create state or proxy directories", async () => {
 });
 
 test("an automatic gateway never collides with a fixed proxy", async () => {
-  const start = await findPortRange();
+  const start = await findPortRange(28_000);
   const fixedProxy = start + 10;
   const busyGateway = net.createServer();
   await new Promise((resolve, reject) => busyGateway.once("error", reject).listen(start, "127.0.0.1", resolve));
@@ -130,7 +130,7 @@ test("an automatic gateway never collides with a fixed proxy", async () => {
 });
 
 test("automatic ports skip live route reservations even when sockets are free", async () => {
-  const start = await findPortRange();
+  const start = await findPortRange(32_000);
   const selected = await Effect.runPromise(choosePorts(start, Option.none(), Option.none(), new Set([start + 1])));
   assert.notEqual(selected.gateway, start);
   assert.notEqual(selected.proxy, start + 1);
@@ -277,7 +277,7 @@ exec ${JSON.stringify(process.execPath)} "$@"
   const previousSessions = path.join(successfulState, "agents", "main", "sessions");
   await mkdir(previousSessions, { recursive: true });
   await writeFile(path.join(previousSessions, "previous.json"), "{}\n");
-  const firstPort = await findPortRange();
+  const firstPort = await findPortRange(36_000);
   const secondPort = await findPortRange(firstPort + 10);
   const thirdPort = await findPortRange(secondPort + 10);
   const fourthPort = await findPortRange(thirdPort + 10);

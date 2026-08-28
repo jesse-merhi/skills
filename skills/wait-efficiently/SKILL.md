@@ -17,11 +17,12 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
    Done when the expected duration is a number rather than "a while".
 
-2. Hold a wait for its full expected duration, never under 300 seconds.
+2. Choose one useful deadline for the mechanism and expected duration.
 
-   **The deadline is a ceiling, not a delay.** The hold returns the moment the
-   work finishes, so a longer deadline never costs waiting time. A short
-   deadline buys nothing and spends a round trip every time it expires.
+   **The deadline is a ceiling, not a delay.** Event-driven waits return when
+   the work finishes. External systems that cannot wake the harness should be
+   sampled at the next historically useful observation. There is no universal
+   minimum wait.
 
    Done when one hold spans the whole expected duration.
 
@@ -29,8 +30,8 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
    Codex: read [references/codex.md](references/codex.md).
    Claude Code: read [references/claude-code.md](references/claude-code.md).
-   Another harness: use its longest single blocking wait, and prefer a
-   completion callback over any wait at all.
+   Another harness: prefer a completion notification or callback. Otherwise,
+   use one blocking wait sized to the expected work and tool limit.
 
    Done when the work is running under exactly one pending call.
 
@@ -65,28 +66,24 @@ Done when one call spanned the whole requested delay.
 ## Subagents
 
 Use the harness's event-driven agent wait. In Codex, call `wait_agent` with a
-15-minute timeout. It returns immediately when the reviewer sends an update or
-finishes, so the timeout is a ceiling rather than a delay.
+timeout long enough for the expected task, up to the tool's limit. It returns
+when the reviewer sends an update or finishes.
 
-After a non-terminal update, start another 15-minute wait without a status-list
-call. If a wait times out, wait another 15 minutes. Inspect agent status only
-after two consecutive timeouts or an explicit error; do not follow ordinary
-waits with `list_agents`. Keep the coordinator active until it receives the
-result. Agent completion is delivered to its mailbox, but ending the
-coordinator's turn is not a documented automatic handoff.
+After a non-terminal update or timeout, resume the event wait without a
+status-list call. Inspect agent status only for an explicit error or repeated
+timeouts. Keep the coordinator active until it receives the result.
 
 ## GitHub Actions
 
 Read [references/github-actions.md](references/github-actions.md), then size the
-hold from completed runs of the same workflow:
+next observation from completed runs of the same workflow:
 
 ```sh
 <skill-dir>/scripts/estimate-gh-wait --run-id <run-id>
 ```
 
-Hold for the returned `suggested_wait_seconds`, then inspect the run once.
-Recalculate only after a meaningful state change. Fall back to 120 seconds when
-fewer than three comparable runs exist.
+Hold and inspect within one tool call. Recalculate only after a meaningful state
+change. The estimator supplies a conservative fallback when history is sparse.
 
 Done when every required check reached a conclusion and each inspection followed
 a state change.

@@ -1,6 +1,6 @@
 ---
 name: openclaw-stg-test
-description: 'Publish and inspect temporary OpenClaw Control UI previews through guarded Cloudflare Quick Tunnels, verify with a fresh OpenClaw browser profile, and send a terminal Telegram handoff.'
+description: 'Publish and inspect temporary OpenClaw Control UI previews through guarded Cloudflare Quick Tunnels and verify with a fresh OpenClaw browser profile.'
 ---
 
 # OpenClaw staging test
@@ -107,13 +107,9 @@ OpenClaw Gateway, browser proxy, or operator credentials.
    openclaw-stg-test --stop
    ```
 
-   Before the terminal reply, load `openclaw-telegram-handoff`. Send the
-   staging result to the approved Telegram route. If this workflow stops early,
-   becomes blocked, or needs a user decision, send that terminal state instead
-   with an existing, uniquely bound stable task label and one concrete next
-   action or question. If no such label exists, say automatic reply relay is
-   unavailable. Never invent a reference or put a raw route-bearing session key
-   in Telegram.
+   Return the result in the originating session. If the workflow stops early,
+   becomes blocked, or needs a user decision, report that state with one
+   concrete next action or question.
 
 ## Done means
 
@@ -125,8 +121,6 @@ OpenClaw Gateway, browser proxy, or operator credentials.
 - GitHub proof publication, when requested, uses the persistent managed
   `github` profile and is verified from a rendered signed-in page.
 - The handoff names the scenario, route, expiry, and stop command.
-- The operator receives one terminal Telegram handoff, or the originating
-  session reports that no approved Telegram route is configured.
 - No live Gateway, browser proxy, credentials, private data, or private
   endpoint values crossed the tunnel.
 

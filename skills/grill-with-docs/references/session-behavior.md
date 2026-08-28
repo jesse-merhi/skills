@@ -49,7 +49,7 @@ explicit before calling the plan ready:
 
 - Name the audience, product or brand register, mode, tone, structure, existing
   tokens, anti-references, interaction intent, and likely visual risk. Use
-  `frontend-design` or `design-engineering` when implementation guidance is
+  `design` in production-UI or interaction mode when implementation guidance is
   needed.
 - Ask which states and viewports must be proven: mobile, tablet, desktop,
   loading, empty, error, disabled, overflow, long text, and dense data states

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Monitor GitHub Actions"
-  short_description: "Watch GitHub Actions without noisy polling."
-  default_prompt: "Use $monitoring-gh-actions to watch these GitHub Actions checks with conservative polling and report state changes."

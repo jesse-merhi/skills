@@ -62,7 +62,7 @@ reviewer-facing outcome rather than the touched files.
 
 Good:
 
-- `Allow Browser Use to publish PR proof safely`
+- `Persist uploaded proof only after validation`
 - `Show real API outcomes as uploaded evidence`
 - `Record changed UI interactions at a deliberate pace`
 
@@ -83,10 +83,6 @@ Run `speak-fking-english` over the title, opening, captions, verification steps,
 and commit subjects. Do not load its full catalogue directly. The skill uses its
 compact natural-writing pass for an implicit call and adds the catalogue only
 when the user explicitly invoked it for this artifact.
-
-One consequence is worth naming here, because it changed a label the skills
-repository used to spell with a dash. Matched proof is labeled
-`Before: direct base` and `After: PR`.
 
 A PR body is reviewer-facing text, so it stays specific and candid without
 chatty asides. A reviewer checks these sentences against a diff, so every claim

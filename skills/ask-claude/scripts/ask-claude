@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-}"
+if [[ "$mode" != "read" && "$mode" != "write" ]]; then
+  echo "usage: ask-claude read|write <prompt>" >&2
+  exit 64
+fi
+shift
+if [[ $# -eq 0 ]]; then
+  echo "ask-claude: prompt is required" >&2
+  exit 64
+fi
+
+timeout_seconds="${ASK_AGENT_TIMEOUT_SECONDS:-1800}"
+permissions=(--approve-reads --non-interactive-permissions fail)
+if [[ "$mode" == "write" ]]; then
+  permissions=(--approve-all)
+fi
+
+exec npx --yes acpx@0.13.1 \
+  --cwd "$PWD" \
+  "${permissions[@]}" \
+  --timeout "$timeout_seconds" \
+  claude exec "$@"

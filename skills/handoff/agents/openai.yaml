@@ -1,4 +1,4 @@
 interface:
   display_name: "Handoff"
-  short_description: "Prepare a next-agent handoff."
-  default_prompt: "Use $handoff to write a compact next-agent handoff. Give edit/PR workers a dedicated worktree, make PR workers choose a single PR or logical gh-stack before implementation, and use tmux placement only when this session is already running under tmux."
+  short_description: "Transfer work to a fresh full session"
+  default_prompt: "Use $handoff to transfer this work to a fresh full session beside related work or in a separate window/task for an aside; never use a subagent."

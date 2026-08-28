@@ -1,20 +1,19 @@
 # Codex hold mechanisms
 
-Codex API, current as of Codex CLI 0.147. Replace this file when the
-API changes; the rules in `SKILL.md` do not change with it.
+Use the capabilities exposed by the current Codex host; do not pin behavior to
+a historical CLI version.
 
 ## Shell commands
 
-Keep the wait inside one code-mode cell so its internal waits never become model
-turns. Raise the cell's own budget with the `@exec` directive: an inner
-`yield_time_ms` cannot outlive the cell that holds it.
+Keep the command and every resume inside one code-mode cell. Set the cell and
+command yields to the expected duration, capped by the current tool schema.
 
 ```js
-// @exec: {"yield_time_ms": 900000, "max_output_tokens": 10000}
+// @exec: {"yield_time_ms": 30000, "max_output_tokens": 10000}
 const maxOutputTokens = 10000;
 let result = await tools.exec_command({
   cmd: "<command>",
-  yield_time_ms: 300000,
+  yield_time_ms: 30000,
   max_output_tokens: maxOutputTokens
 });
 const output = [result.output];
@@ -23,7 +22,7 @@ while (result.session_id) {
   result = await tools.write_stdin({
     session_id: result.session_id,
     chars: "",
-    yield_time_ms: 300000,
+    yield_time_ms: 30000,
     max_output_tokens: maxOutputTokens
   });
   output.push(result.output);
@@ -38,14 +37,9 @@ if (result.exit_code !== 0) {
 }
 ```
 
-An empty `write_stdin` returns when the process exits. Every `yield_time_ms`
-here is a ceiling on how long the call may block, so 300000 costs nothing when
-the command finishes in ten seconds.
-
-Each yield shorter than the work costs one `functions.wait` to resume the cell
-and one `write_stdin` to resume the process, so the round trips a command spends
-are its duration divided by the yield it was given.
-Size both yields to the whole command and it spends one.
+An empty `write_stdin` resumes the same process and returns when it exits or the
+ceiling is reached. Replace the illustrative 30-second values with the longest
+useful values accepted by the current tool and justified by the expected work.
 
 Accumulate each terminal result inside the cell so output received before the
 final wait is not lost. Make any command behind a review or validation gate
@@ -53,15 +47,15 @@ persist its full artifact to a run-owned file. When a terminal result reports
 more original tokens than its output budget, fail the gate and inspect that
 artifact rather than classifying truncated output.
 
-If the outer cell yields before the process finishes, resume that cell with one
-`functions.wait` call carrying the same 300000 floor. Do not restart the
-command, call `notify`, or use `yield_control` for unchanged progress.
+If the outer cell yields before the process finishes, resume that same cell with
+`functions.wait`. Do not restart the command, call `notify`, or use
+`yield_control` for unchanged progress.
 
 ## Subagents
 
 Finish useful independent work after dispatch. Once blocked on a result, call
-`wait_agent` with `timeout_ms: 600000`; it returns early when mailbox activity
-arrives. Read the completed result, and wait again only when the required agent
+`wait_agent` with a deadline sized to the task and capped by the tool schema; it
+returns when mailbox activity arrives. Wait again only when the required agent
 is still running after an unrelated event or the deadline.
 
 Keep the parent turn active until every required agent reaches a terminal state.

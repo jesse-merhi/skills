@@ -7,27 +7,28 @@ remote branch, PR, or GitHub Actions run while either review phase has findings.
 
 Invoking `code-review` grants authority for one normal final push to the
 existing PR branch after both review phases and full local validation are clean,
-but only when GitHub reports that every affected PR is authored by
-`jesse-merhi`.
+but only when GitHub reports that every affected PR is authored by the account
+currently authenticated in `gh`.
 
 Resolve the existing PR and inspect its author before preparing any remote
 mutation:
 
 ```sh
+authenticated_login="$(gh api user --jq .login)"
 gh pr view --json number,url,author,headRefName,baseRefName,isCrossRepository
 ```
 
-- If `author.login` is `jesse-merhi`, the workflow may make its final normal
-  push to that existing head branch.
+- If `author.login` equals `authenticated_login`, the workflow may make its
+  final normal push to that existing head branch.
 - For a stack, verify every affected PR author before submitting any layer.
 - If the author is different, missing, or cannot be verified, keep every fix
   local. Report the clean result, PR author, and local commits or diff, then ask
-  Jesse what to do.
+  the user what to do.
 - This workflow grant never authorizes force-push, a new destination branch, a
   different PR, or pushing directly to the default branch. Get explicit
   approval for those changes.
 
-An explicit instruction from Jesse to push after a fix, publish, ship, or update
+An explicit instruction from the user to push after a fix, publish, ship, or update
 the PR remains valid publication authority under `AGENTS.md`. The author check
 above still governs `code-review`'s automatic final push.
 
@@ -93,20 +94,21 @@ above still governs `code-review`'s automatic final push.
 
    First confirm the review closeout names the exact final head. A later
    branch change makes that review stale. If evidence is missing, stale, or
-   unverifiable, tell Jesse and ask whether to rerun `code-review` or explicitly
+   unverifiable, tell the user and ask whether to rerun `code-review` or explicitly
    waive it for this PR and head; do not start the expensive review
    automatically.
 
    Once that decision, proof, local validation, and CI pass, summarize the
-   review findings, fixes, verification, and anything still open, then ask
-   Jesse to add a thumbs-up (`+1`) reaction to every open PR in a stack,
-   bottom-to-top, and
-   verify each reaction belongs to `jesse-merhi`.
+   review findings, fixes, verification, and anything still open. Resolve the
+   expected sign-off login from task or project configuration; if none exists,
+   use `authenticated_login`. Ask that person to add a thumbs-up (`+1`)
+   reaction to every open PR in a stack, bottom-to-top, and verify each reaction
+   belongs to the resolved login.
    Never create or remove that reaction on the user's behalf. The reaction
    gates merge, not authorized branch updates or local repair.
 
    Done when every PR awaiting merge has an exact-head review or explicit
-   waiver and the required human reaction, or the response clearly asks Jesse
+   waiver and the required human reaction, or the response clearly asks the user
    for either decision.
 
 ## Local handoff
