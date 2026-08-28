@@ -33,10 +33,11 @@ Use two clearly labeled recordings (`Before: direct base` and `After: PR`) or
 one recording with explicit title cards between matched segments. Never make the
 reviewer infer which version is shown.
 
-For static comparison, create one labeled side-by-side image with matched crop,
-scale, data, and viewport. Use separate full-size images only when a composite
-would make the details unreadable. Do not add standalone screenshots that merely
-repeat the after-state already clear in the video.
+For static comparison, use a labeled two-column table when both matched images
+remain readable, or create one side-by-side image with matched crop, scale,
+data, and viewport. Use separate images when either grouped form would make the
+details unreadable. Do not add standalone screenshots that merely repeat the
+after-state already clear in the video.
 
 ## FFmpeg recipe
 
