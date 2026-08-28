@@ -578,7 +578,7 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[full AI-tells catalogue](references/ai-tells.md)"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
   assert_not_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "no catalogued AI tell"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "full clarity and AI-tells pass"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "make this draft concise and clear"
 
   explicit_route="$(sed -n '/^- When the user asks/,/^- For a "wait, what?"/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md")"
   assert_output_contains "$explicit_route" "run the shared pass, add the deep catalogue pass"
@@ -601,6 +601,20 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
     || fail "expected exact-text invariants before the reader reset"
   proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
   assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
+}
+
+test_speak_fking_english_makes_brevity_the_default() {
+  local skill="$ROOT_DIR/skills/speak-fking-english"
+  local brevity="$skill/references/brevity.md"
+
+  assert_contains "$skill/SKILL.md" "make it concise and clear"
+  assert_contains "$skill/SKILL.md" "[brevity pass](references/brevity.md) last"
+  assert_contains "$brevity" "Brevity is the default"
+  assert_contains "$brevity" "shortest form that fully answers the request"
+  assert_contains "$brevity" "one short paragraph"
+  assert_contains "$brevity" "offers to do more work"
+  assert_contains "$brevity" "Do not trade accuracy for shortness"
+  assert_contains "$brevity" "deleting another sentence would make the answer"
 }
 
 test_speak_fking_english_owns_the_visual_decision() {
@@ -1340,6 +1354,7 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_design_engineering_owns_motion_opportunity_audits
 test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_ai_tells_catalogue
+test_speak_fking_english_makes_brevity_the_default
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate
