@@ -4,7 +4,7 @@ import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 
 import { checkedBytes, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
-import { ReviewSnapshotError, trustedExecutable } from "./NativeReview.ts"
+import { trustedExecutable } from "./NativeReview.ts"
 
 export class UnsupportedHistoricalGitVersion extends Schema.TaggedError<UnsupportedHistoricalGitVersion>()("UnsupportedHistoricalGitVersion", {
   message: Schema.String
@@ -89,11 +89,7 @@ const decodeQuotedPath = (path: string): string => {
       bytes.push(escapes[escaped] ?? escaped.charCodeAt(0))
     }
   }
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes))
-  } catch {
-    throw new ReviewSnapshotError({ message: "changed-file coverage requires Git paths that are valid UTF-8 so the CLI can round-trip them exactly" })
-  }
+  return new TextDecoder().decode(Uint8Array.from(bytes))
 }
 
 const parseNumstat = (output: string): ReadonlyArray<NumstatEntry> => output.split("\n").flatMap((line) => {
