@@ -153,7 +153,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Done when every changed important behavior has concise reviewer-checkable
    evidence, reproducible bugs have matched broken/fixed outcomes, visuals are
    used only for visual claims, every selected visual has passed model inspection
-   for content and presentation, and unchanged useful evidence is left alone.
+   for content and presentation, each image has a deliberate rendered size,
+   related visuals are grouped when that makes comparison easier, and unchanged
+   useful evidence is left alone.
 
 7. Explain a new or changed system or workflow.
 
@@ -208,7 +210,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    `<skill-dir>/scripts/github-upload-attachment --pr <number-or-URL-resolved-in-step-2> <path>`
    for each selected diagram, image, or video. Insert the URL printed only
    after the command has verified the upload. Put media in the main PR body,
-   never in a detached comment or table. Text evidence needs no attachment.
+   never in a detached comment. Use a table when it makes a small related group
+   or comparison easier to scan. Text evidence needs no attachment.
 
    Done when every selected diagram and visual is provider-hosted and every
    text proof is present in the main body, or the workflow has stopped before
@@ -226,8 +229,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Require its status, content type, and non-empty byte checks for all assets,
    plus exact byte size for evidence uploaded during this refresh. Use an interactive browser when the body includes client-rendered
    content such as Mermaid or when the proof depends on literal page layout,
-   pixel appearance, or playback. Remove stale proof rather than accumulating
-   it.
+   pixel appearance, percentage image sizing, table composition, or playback.
+   Remove stale proof rather than accumulating it.
 
    Done when the rendered PR accurately describes the final pushed net diff,
    with browser inspection completed for every case headless checks cannot

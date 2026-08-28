@@ -15,10 +15,17 @@ you have not heard yet. Ask the whole frontier in one numbered round and give
 your recommended answer for every question. Then wait for the user's answers
 before continuing.
 
-Format every question as:
+Format each round with a horizontal rule between questions so the recommendations
+do not run together:
 
 ```markdown
 ❓ **Q1**. **<question title>**: <question body or choices>
+
+➡️ <recommended answer>
+
+---
+
+❓ **Q2**. **<question title>**: <question body or choices>
 
 ➡️ <recommended answer>
 ```

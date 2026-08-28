@@ -80,7 +80,7 @@ The installers own the external `gh-stack` skill and extension. Do not symlink
 - **Update model:** The source is pinned to commit
   `697d4ce9742da558fd1ba6697c8e9775e2e302dd`, which adds Teach's Codex
   `agents/openai.yaml` metadata to the otherwise unchanged `v1.0.1` files. The
-  installer remains pinned to `skills@1.5.20`. Review upstream changes before
+  installer is pinned to `skills@1.5.23`. Review upstream changes before
   deliberately updating either pin.
 
 ### Install
@@ -95,7 +95,7 @@ install if it moved.
 
 | Harness | Method |
 | --- | --- |
-| Codex | `test "$(git ls-remote https://github.com/mattpocock/skills.git refs/heads/codex-skill-metadata \| awk '{print $1}')" = "697d4ce9742da558fd1ba6697c8e9775e2e302dd" && (cd ~ && npx --yes skills@1.5.20 add 'https://github.com/mattpocock/skills/tree/codex-skill-metadata/skills/productivity/teach' --global --agent codex --skill teach --yes)` |
+| Codex | `test "$(git ls-remote https://github.com/mattpocock/skills.git refs/heads/codex-skill-metadata \| awk '{print $1}')" = "697d4ce9742da558fd1ba6697c8e9775e2e302dd" && (cd ~ && npx --yes skills@1.5.23 add 'https://github.com/mattpocock/skills/tree/codex-skill-metadata/skills/productivity/teach' --global --agent codex --skill teach --yes)` |
 
 The installer owns the external skill files. Do not symlink `teach` from this
 repo.
