@@ -1166,16 +1166,22 @@ test_just_do_it_and_scoped_openclaw_readiness() {
 
   assert_contains "$skill/SKILL.md" "Use this workflow only when"
   assert_contains "$skill/SKILL.md" "grants bounded authority"
-  assert_contains "$skill/SKILL.md" "resumable checkpoint chain"
-  assert_contains "$skill/SKILL.md" "Resume at the earliest incomplete or stale step"
-  assert_contains "$skill/SKILL.md" "do not reimplement an already-correct scoped change"
-  assert_contains "$skill/SKILL.md" "current exact-head closeout"
   assert_contains "$skill/SKILL.md" 'Load `code-review`'
   assert_contains "$skill/SKILL.md" 'Load `pr-proof-pack`'
-  assert_contains "$skill/SKILL.md" "exact-head fixed point"
   assert_contains "$skill/SKILL.md" "Do not merge"
   assert_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_not_contains "$skill/SKILL.md" "ClawSweeper"
+  python3 - "$skill/SKILL.md" "$skill/agents/openai.yaml" <<'PY'
+from pathlib import Path; import sys
+text, prompt = (" ".join(Path(path).read_text().split()) for path in sys.argv[1:])
+assert "Resume at the earliest incomplete or stale step. Preserve every current checkpoint: do not reimplement an already-correct scoped change" in text
+assert "Before any GitHub mutation, verify the active account is `jesse-merhi` and any existing PR is Jesse-authored." in text
+assert "Create one draft PR when none exists, or update the existing Jesse-authored PR" in text
+assert "only when its proof is stale or missing; otherwise preserve the current proof." in text
+assert "any code change, generated change, base update, or push makes earlier review, proof, CI, and repository-gate evidence stale" in text
+assert "Done when the non-draft PR's current head simultaneously has exact-head code-review evidence, current proof, passing required checks" in text
+assert "change its draft/ready state" in text and text.index("return an existing ready PR to draft") < text.index("make a normal push") and "earliest incomplete or stale checkpoint" in prompt
+PY
 
   assert_contains "$ROOT_DIR/AGENTS.md" "user's review decision"
   assert_contains "$ROOT_DIR/AGENTS.md" '`/clawsweeper re-review` command'
