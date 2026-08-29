@@ -1166,6 +1166,10 @@ test_just_do_it_and_scoped_openclaw_readiness() {
 
   assert_contains "$skill/SKILL.md" "Use this workflow only when"
   assert_contains "$skill/SKILL.md" "grants bounded authority"
+  assert_contains "$skill/SKILL.md" "resumable checkpoint chain"
+  assert_contains "$skill/SKILL.md" "Resume at the earliest incomplete or stale step"
+  assert_contains "$skill/SKILL.md" "do not reimplement an already-correct scoped change"
+  assert_contains "$skill/SKILL.md" "current exact-head closeout"
   assert_contains "$skill/SKILL.md" 'Load `code-review`'
   assert_contains "$skill/SKILL.md" 'Load `pr-proof-pack`'
   assert_contains "$skill/SKILL.md" "exact-head fixed point"
