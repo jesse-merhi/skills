@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or check concise reviewer-visible PR context and proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, include one diagram for a new or materially changed system or workflow, break down large changes by direct-base +LOC and -LOC, prefer copyable text for textual behavior, and use uploaded media only for claims that need visual evidence.
+description: Create or check concise reviewer-visible PR context and practical proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, use actual product screenshots for static UI changes and recordings for motion or manual interaction, keep technical diagrams as separate system explanations, break down large changes by direct-base +LOC and -LOC, and prefer copyable text for textual behavior.
 ---
 
 # PR proof pack
@@ -50,15 +50,34 @@ For a bug fix with reproducible direct-base behavior, proof is stale when the
 reviewer cannot compare the broken and fixed outcomes. A screenshot of textual
 output is stale when the same result would be clearer as short copyable text.
 
+For a UI change, proof is stale when it lacks actual product evidence for the
+changed visual behavior. Static appearance, layout, or rendered-state changes
+require actual screenshots, matched against the direct base when that baseline
+is meaningful and reproducible. Motion, timing, gesture, or manual interaction
+requires a concise recording. A change with both static and interactive claims
+requires both forms. An explanatory technical diagram never satisfies practical
+UI proof. When rendered diagram or export output is itself the changed product,
+capture that actual output as visual proof of its own pixels; it still does not
+prove that the system depicted by the diagram ran.
+
 ## Hard gates for a refresh
 
 - **Practical evidence:** Exercise the changed behavior working in practice.
   Automated validation remains supporting information and never replaces the
-  observed before/after result.
+  observed before/after result when the baseline is meaningful and reproducible.
+  Without one, show the actual entry point and PR outcome.
+- **UI proof:** For an appearance, layout, responsive, or rendered-state claim,
+  show actual product pixels. Use matched screenshots when the direct base is
+  meaningful and reproducible; otherwise state the constraint and show the
+  actual product entry point and outcome. Use a concise edited recording for
+  motion, timing, gesture, or manual interaction. Use both forms when both kinds
+  of claim changed. For labels, accessibility output, or textual state where
+  appearance is not the claim, use copyable text instead. If required capture
+  cannot be completed, classify the proof as `blocked`.
 - **Workflow explanation:** When the PR introduces or materially changes a
   system or workflow, include one diagram that explains the end-to-end flow to
-  a cold reviewer. The diagram explains the change; practical evidence still
-  proves that it works.
+  a cold reviewer. The diagram explains the change; it never replaces actual
+  product screenshots, recordings, or other observed practical evidence.
 - **Evidence fit:** Use copyable text for textual inputs, outputs, traces,
   requests, responses, and state. Use visual evidence only when text would lose
   an important fact about appearance, layout, motion, interaction, rendering,
@@ -117,8 +136,10 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Compare the final behavior, opening problem/fix context, reproduction steps,
    important states, required workflow explanation, verification evidence,
    title, and existing attachments. Check whether each evidence item uses the
-   simplest form that preserves the claim. Apply the freshness rule above. If
-   proof is `current`, report why and stop without any PR mutation.
+   required form for its claim, including actual screenshots for static UI and
+   a recording for motion or manual interaction. Do not count a technical
+   diagram as practical evidence. Apply the freshness rule above. If proof is
+   `current`, report why and stop without any PR mutation.
 
    Done when the result is `current`, `stale`, or `blocked`, with the affected
    claim or evidence named.
@@ -151,11 +172,14 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    evidence that remains useful.
 
    Done when every changed important behavior has concise reviewer-checkable
-   evidence, reproducible bugs have matched broken/fixed outcomes, visuals are
-   used only for visual claims, every selected visual has passed model inspection
-   for content and presentation, each image has a deliberate rendered size,
-   related visuals are grouped when that makes comparison easier, and unchanged
-   useful evidence is left alone.
+   evidence, reproducible bugs have matched broken/fixed outcomes, static UI
+   changes have actual screenshots matched to every meaningful reproducible
+   baseline, motion or manual interactions have concise recordings, changes
+   with both kinds of UI claim have both forms,
+   every selected visual has passed model inspection for content and
+   presentation, each image has a deliberate rendered size, related visuals
+   are grouped when that makes comparison easier, and unchanged useful evidence
+   is left alone.
 
 7. Explain a new or changed system or workflow.
 
@@ -163,7 +187,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    workflow, load `design-technical-diagrams` and create exactly one diagram by
    default. Treat the PR body as the destination and the direct-base net diff,
    relevant repository context, and changed behavior as the brief. Define the
-   one question the diagram must answer before drawing it.
+   one system-flow question the diagram must answer before drawing it. Keep the
+   diagram outside practical proof: it cannot occupy a before/after evidence
+   slot or replace actual product screenshots or recordings.
 
    Start from an event or person the reviewer recognizes. Show the real actors
    and systems, their atomic actions in order, important decisions, the
@@ -259,8 +285,13 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
   by reviewer-meaningful part, with every file counted once and totals reconciled.
 - Textual behavior uses copyable text. Visual behavior uses provider-hosted
   media verified headlessly or, where required, through an interactive browser.
+- Static UI changes use actual product screenshots, matched to the direct base
+  when that baseline is meaningful and reproducible. Motion, timing, gesture,
+  and manual interaction use concise edited recordings. Changes with both
+  static and interactive claims include both.
 - Every required workflow diagram is provider-hosted and its local export and
-  fetched rendered asset both passed visual inspection.
+  fetched rendered asset both passed visual inspection, but it is presented
+  only as explanation and never counted as practical evidence.
 - Reproducible bug fixes show matched broken and fixed outcomes.
 - A PR that introduces or materially changes a system or workflow includes one
   visually inspected diagram that explains its trigger, ordered actions,

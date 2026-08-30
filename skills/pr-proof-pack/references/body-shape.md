@@ -143,12 +143,19 @@ row_errors: 1
 ```
 ````
 
-For matched visual proof, label the direct-base and PR evidence explicitly.
-Use a two-column table for matched static images when both remain readable, or
-one side-by-side composite when it presents the comparison more clearly. Use
-two short recordings for an interaction. Size images to the PR content area as
-described in [screenshots.md](screenshots.md); do not let their source pixel
-dimensions decide how large they appear.
+For visual proof with a meaningful reproducible baseline, label the direct-base
+and PR evidence explicitly. Use a two-column table for matched static images
+when both remain readable, or one side-by-side composite when it presents the
+comparison more clearly. Use two short recordings for a matched interaction.
+When no meaningful baseline exists, state that constraint and show the actual
+product entry point and PR outcome. When a UI change has both a static visual
+claim and an interaction claim, include the required actual screenshots and
+recording. Size images to the PR content area as described in
+[screenshots.md](screenshots.md); do not let their source pixel dimensions
+decide how large they appear. Technical diagrams used solely to explain the
+surrounding system belong in the explanation section and never occupy these
+practical before/after slots. When rendered diagram or export output is itself
+the changed product, its actual output may occupy these slots as proof of itself.
 
 An explanatory workflow diagram belongs immediately before `## Proof`. Its
 nearby sentence says what the reviewer should learn, and its caption starts

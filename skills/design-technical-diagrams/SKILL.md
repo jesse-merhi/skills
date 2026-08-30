@@ -1,12 +1,23 @@
 ---
 name: design-technical-diagrams
-description: 'Create or refine architecture, lifecycle, sequence, trust-boundary, decision, threat-model, SVG, or HTML technical diagrams and visually validate the rendered result.'
+description: 'Create or refine architecture, lifecycle, sequence, trust-boundary, decision, threat-model, SVG, or HTML diagrams that explain system relationships. Do not use technical diagrams as product runtime or UI proof.'
 ---
 
 # Design technical diagrams
 
-Make one system relationship easier to understand as a picture. The rendered
-artifact is the proof; source validity and geometry checks only support it.
+Make one system relationship easier to understand as a picture. Inspect the
+rendered artifact to prove that the diagram itself communicates at its
+destination size; source validity and geometry checks only support that claim.
+
+## Evidence boundary
+
+A technical diagram explains actors, systems, decisions, handoffs, state, or
+sequence. It does not prove that the depicted system ran or that a user
+interface looks or behaves correctly. Never use a diagram, wireframe, or mockup
+in place of actual product screenshots, recordings, requests, responses, or
+observed runtime state. When a PR needs both a system explanation and practical
+proof, deliver them as separate artifacts and label the diagram as
+`What this explains`, never `What this proves`.
 
 ## Workflow
 
