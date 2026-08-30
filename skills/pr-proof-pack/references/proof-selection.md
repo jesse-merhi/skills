@@ -32,9 +32,11 @@ Read [screenshots.md](screenshots.md); for recordings, also read
 frames before upload; file metadata and successful rendering are not a quality
 review.
 
-A technical diagram is never practical evidence. It may explain a changed
-system or workflow, but it cannot replace actual product screenshots or
-recordings and does not show that the depicted behavior ran.
+An explanatory technical diagram is never practical evidence for the system or
+workflow it depicts. It cannot replace actual product screenshots or recordings
+and does not show that the depicted behavior ran. When rendered diagram or
+export output is itself the changed product, capture that actual output as
+visual proof of its own readability and export result.
 
 ## Show the break and fix
 
@@ -51,14 +53,16 @@ or impossible, state the constraint and show the closest honest boundary.
 
 ## Choose by change type
 
-- **UI or interaction:** use actual matched product screenshots for a static
-  appearance, layout, responsive, or rendered-state change. Use a concise
+- **UI or interaction:** use actual product screenshots for a static appearance,
+  layout, responsive, or rendered-state change. Match them to the direct base
+  when that baseline is meaningful and reproducible; otherwise state the
+  constraint and show the actual product entry point and outcome. Use a concise
   edited recording for motion, timing, gesture, or a manual interaction. When
-  both the interaction and a static state changed, include both. Do not
-  downgrade an interactive claim to screenshots or substitute a technical
-  diagram to avoid recording it. Use text for changed labels, accessibility
-  output, or textual state when appearance is not the claim. If required UI
-  capture is unavailable, return `blocked`.
+  both the interaction and a static state changed, include both.
+  Do not downgrade an interactive claim to screenshots or substitute a
+  technical diagram to avoid recording it. Use text for changed labels,
+  accessibility output, or textual state when appearance is not the claim.
+  If required UI capture is unavailable, return `blocked`.
 - **API or backend:** show the representative request, response, and persisted
   or rejected state as copyable text. Add a visual only when the response is
   itself rendered or spatial.

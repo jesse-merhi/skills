@@ -52,20 +52,27 @@ output is stale when the same result would be clearer as short copyable text.
 
 For a UI change, proof is stale when it lacks actual product evidence for the
 changed visual behavior. Static appearance, layout, or rendered-state changes
-require matched screenshots. Motion, timing, gesture, or manual interaction
+require actual screenshots, matched against the direct base when that baseline
+is meaningful and reproducible. Motion, timing, gesture, or manual interaction
 requires a concise recording. A change with both static and interactive claims
-requires both forms. A technical diagram never satisfies practical UI proof.
+requires both forms. An explanatory technical diagram never satisfies practical
+UI proof. When rendered diagram or export output is itself the changed product,
+capture that actual output as visual proof of its own pixels; it still does not
+prove that the system depicted by the diagram ran.
 
 ## Hard gates for a refresh
 
 - **Practical evidence:** Exercise the changed behavior working in practice.
   Automated validation remains supporting information and never replaces the
   observed before/after result.
-- **UI proof:** Show actual product pixels from the changed UI. Use matched
-  screenshots for static appearance, layout, or rendered states and a concise
-  edited recording for motion, timing, gesture, or manual interaction. Use both
-  when both kinds of claim changed. If required capture cannot be completed,
-  classify the proof as `blocked`.
+- **UI proof:** For an appearance, layout, responsive, or rendered-state claim,
+  show actual product pixels. Use matched screenshots when the direct base is
+  meaningful and reproducible; otherwise state the constraint and show the
+  actual product entry point and outcome. Use a concise edited recording for
+  motion, timing, gesture, or manual interaction. Use both forms when both kinds
+  of claim changed. For labels, accessibility output, or textual state where
+  appearance is not the claim, use copyable text instead. If required capture
+  cannot be completed, classify the proof as `blocked`.
 - **Workflow explanation:** When the PR introduces or materially changes a
   system or workflow, include one diagram that explains the end-to-end flow to
   a cold reviewer. The diagram explains the change; it never replaces actual
@@ -165,8 +172,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
    Done when every changed important behavior has concise reviewer-checkable
    evidence, reproducible bugs have matched broken/fixed outcomes, static UI
-   changes have actual matched screenshots, motion or manual interactions have
-   concise recordings, changes with both kinds of UI claim have both forms,
+   changes have actual screenshots matched to every meaningful reproducible
+   baseline, motion or manual interactions have concise recordings, changes
+   with both kinds of UI claim have both forms,
    every selected visual has passed model inspection for content and
    presentation, each image has a deliberate rendered size, related visuals
    are grouped when that makes comparison easier, and unchanged useful evidence
@@ -276,9 +284,10 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
   by reviewer-meaningful part, with every file counted once and totals reconciled.
 - Textual behavior uses copyable text. Visual behavior uses provider-hosted
   media verified headlessly or, where required, through an interactive browser.
-- Static UI changes use actual matched product screenshots. Motion, timing,
-  gesture, and manual interaction use concise edited recordings. Changes with
-  both static and interactive claims include both.
+- Static UI changes use actual product screenshots, matched to the direct base
+  when that baseline is meaningful and reproducible. Motion, timing, gesture,
+  and manual interaction use concise edited recordings. Changes with both
+  static and interactive claims include both.
 - Every required workflow diagram is provider-hosted and its local export and
   fetched rendered asset both passed visual inspection, but it is presented
   only as explanation and never counted as practical evidence.

@@ -656,7 +656,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   local diagram_skill="$ROOT_DIR/skills/design-technical-diagrams"
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local done_means freshness hard_gates rendered_help upload_help
+  local done_means freshness hard_gates rendered_help upload_help workflow
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -677,19 +677,37 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
 
   freshness="$(sed -n '/^## Freshness rule$/,/^## Hard gates for a refresh$/p' "$skill/SKILL.md")"
   assert_output_contains "$freshness" "Static appearance, layout, or rendered-state changes"
+  assert_output_contains "$freshness" "require actual screenshots"
+  assert_output_contains "$freshness" "is meaningful and reproducible"
   assert_output_contains "$freshness" "Motion, timing, gesture, or manual interaction"
-  assert_output_contains "$freshness" "A technical diagram never satisfies practical UI proof"
+  assert_output_contains "$freshness" "requires both forms"
+  assert_output_contains "$freshness" "An explanatory technical diagram never satisfies practical"
+  assert_output_contains "$freshness" "rendered diagram or export output is itself the changed product"
 
   hard_gates="$(sed -n '/^## Hard gates for a refresh$/,/^## Reviewer boundary$/p' "$skill/SKILL.md")"
-  assert_output_contains "$hard_gates" "Show actual product pixels from the changed UI"
-  assert_output_contains "$hard_gates" "both kinds of claim changed"
-  assert_output_contains "$hard_gates" 'classify the proof as `blocked`'
+  assert_output_contains "$hard_gates" "For an appearance, layout, responsive, or rendered-state claim"
+  assert_output_contains "$hard_gates" "show actual product pixels"
+  assert_output_contains "$hard_gates" "otherwise state the constraint and show"
+  assert_output_contains "$hard_gates" "Use both forms when both kinds"
+  assert_output_contains "$hard_gates" "appearance is not the claim, use copyable text instead"
+  assert_output_contains "$hard_gates" "classify the proof"
+  assert_output_contains "$hard_gates" '`blocked`'
+  assert_output_contains "$hard_gates" "it never replaces actual"
   assert_output_contains "$hard_gates" "product screenshots, recordings"
 
   done_means="$(sed -n '/^## Done means$/,$p' "$skill/SKILL.md")"
-  assert_output_contains "$done_means" "Static UI changes use actual matched product screenshots"
+  assert_output_contains "$done_means" "Static UI changes use actual product screenshots"
+  assert_output_contains "$done_means" "matched to the direct base"
   assert_output_contains "$done_means" "manual interaction use concise edited recordings"
+  assert_output_contains "$done_means" "static and interactive claims include both"
   assert_output_contains "$done_means" "never counted as practical evidence"
+
+  workflow="$(sed -n '/^## Workflow$/,/^## Done means$/p' "$skill/SKILL.md")"
+  assert_output_contains "$workflow" "required form for its claim"
+  assert_output_contains "$workflow" "Do not count a technical"
+  assert_output_contains "$workflow" "changes have actual screenshots matched to every meaningful reproducible"
+  assert_output_contains "$workflow" "system-flow question"
+  assert_output_contains "$workflow" "cannot occupy a before/after evidence"
 
   awk '
     /^## Workflow$/ { in_workflow = 1; next }
@@ -713,10 +731,16 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "Do not make several diagrams unless the user explicitly asks"
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
-  assert_contains "$skill/references/proof-selection.md" "A technical diagram is never practical evidence"
-  assert_contains "$skill/references/proof-selection.md" "include the required actual screenshots"
-  assert_contains "$skill/references/proof-selection.md" "downgrade an interactive claim"
+  assert_contains "$skill/references/proof-selection.md" "An explanatory technical diagram is never practical evidence"
+  assert_contains "$skill/references/proof-selection.md" "visual proof of its own readability and export result"
+  assert_contains "$skill/references/proof-selection.md" "include the required actual screenshots or"
+  assert_contains "$skill/references/proof-selection.md" "Do not downgrade an interactive claim"
   assert_contains "$skill/references/proof-selection.md" 'capture is unavailable, return `blocked`.'
+  assert_contains "$skill/references/body-shape.md" "both a static visual"
+  assert_contains "$skill/references/body-shape.md" "include the required actual screenshots and"
+  assert_contains "$skill/references/body-shape.md" "When no meaningful baseline exists"
+  assert_contains "$skill/references/body-shape.md" "Technical diagrams used solely to explain"
+  assert_contains "$skill/references/body-shape.md" "actual output may occupy these slots as proof of itself"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
@@ -739,8 +763,13 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "keeps signed URLs out of process arguments"
   assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or CDN host'
   assert_contains "$skill/references/screenshots.md" "Use an interactive browser for facts the server-rendered HTML cannot prove"
-  assert_contains "$skill/references/screenshots.md" "## Static UI proof"
   assert_contains "$skill/references/screenshots.md" "UI evidence must show the actual product"
+  assert_contains "$skill/references/screenshots.md" "rendered diagram or export output is itself"
+  assert_contains "$skill/references/screenshots.md" "proof of its own pixels and"
+  assert_contains "$skill/references/screenshots.md" "Use the same route, fixture, data, viewport, theme"
+  assert_contains "$skill/references/screenshots.md" '`Before: direct base` and `After: PR`'
+  assert_contains "$skill/references/screenshots.md" "For a new UI without a meaningful baseline"
+  assert_contains "$skill/references/screenshots.md" "show the actual entry"
   assert_contains "$skill/references/screenshots.md" "supplement the required recording; they do not replace it"
   assert_contains "$skill/references/screenshots.md" "Record every changed motion, timing, gesture, or manual flow"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
@@ -778,7 +807,6 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "Markdown table"
   assert_contains "$skill/references/body-shape.md" "Default to at most 300 words"
   assert_contains "$skill/references/body-shape.md" "what broke, why it mattered"
-  assert_contains "$skill/references/body-shape.md" "Technical diagrams belong in the explanation"
   assert_not_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
   assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
@@ -790,9 +818,11 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "provider-hosted media only for visual behavior"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Prove PR behavior with the right real evidence"
-  assert_contains "$skill/agents/openai.yaml" "prove static UI with actual matched screenshots"
-  assert_contains "$diagram_skill/SKILL.md" "## Evidence boundary"
+  assert_contains "$skill/agents/openai.yaml" "prove static UI with actual screenshots matched to meaningful reproducible"
+  assert_contains "$skill/agents/openai.yaml" "prove motion or manual interaction with recordings"
+  assert_contains "$skill/agents/openai.yaml" "keep technical diagrams separate as system explanations"
+  assert_contains "$skill/SKILL.md" "use actual product screenshots for static UI changes and recordings"
+  assert_contains "$diagram_skill/SKILL.md" "Do not use technical diagrams as product runtime or UI proof"
   assert_contains "$diagram_skill/SKILL.md" "It does not prove that the depicted system ran"
   assert_contains "$diagram_skill/SKILL.md" "Never use a diagram, wireframe, or mockup"
   assert_contains "$diagram_skill/agents/openai.yaml" "keep it separate from product runtime or UI proof"

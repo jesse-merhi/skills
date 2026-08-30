@@ -21,10 +21,11 @@ claim would lose information in text. This file owns how to capture and publish
 that selected visual evidence; `proof-selection.md` owns whether a visual
 qualifies.
 
-UI evidence must show the actual product. Technical diagrams, wireframes,
-mockups, screenshots of prose, and test-runner output cannot satisfy static or
-interactive UI proof. A diagram may explain the surrounding system in a
-separate section, but the proof must still show the changed interface running.
+UI evidence must show the actual product. Explanatory technical diagrams,
+wireframes, mockups, screenshots of prose, and test-runner output cannot satisfy
+static or interactive UI proof. When rendered diagram or export output is itself
+the changed product, capture that actual output as proof of its own pixels and
+result; it still does not prove that the system depicted by the diagram ran.
 
 If practical capture, screen recording, provider authentication, attachment
 upload, asset verification, or a required visual inspection fails,
@@ -227,8 +228,9 @@ pace. A reviewer should be able to follow without scrubbing frame by frame.
   easier to compare or preserves a state that is not legible in the video;
 - use realistic data and avoid secrets or personal information.
 
-A technical diagram, static screenshot, test runner video, replay of automated
-E2E output, or screenshot of textual output does not prove a visual interaction.
+An explanatory technical diagram, static screenshot, test runner video, replay
+of automated E2E output, or screenshot of textual output does not prove a visual
+interaction.
 
 ## Recording edit
 

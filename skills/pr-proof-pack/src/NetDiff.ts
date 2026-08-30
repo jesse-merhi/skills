@@ -102,13 +102,38 @@ export const changeBreakdownFromNumStat = (changes: ReadonlyArray<FileChange>): 
   }
 }
 
-const proofKind = (path: string) => {
+export const proofHintForPath = (path: string) => {
   const lower = path.toLowerCase()
-  if (["/routes/", "/components/", "/app/", "/pages/", "src/styles", ".css"].some((marker) => lower.includes(marker))) return "Practical UI proof required: show matched direct-base and PR outcomes. Use provider-hosted screenshots for appearance or layout and a tightly edited, natural-speed recording for motion or interaction; use copyable text when the changed UI fact is textual. Tests, builds, CI, and automated E2E output are supporting checks only."
+  const segments = lower.split("/")
+  const originalFilename = path.split("/").at(-1) ?? ""
+  const filename = segments.at(-1) ?? ""
+  const filenameTokens = originalFilename.replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().split(/[._-]+/)
+  const fileStem = filename.split(".", 1)[0] ?? filename
+  const hasDocumentationDirectory = ["docs", "specs"].some((marker) => segments.includes(marker))
+  const hasUiDirectory = ["components", "app", "pages"].some((marker) => segments.includes(marker))
+  const hasRenderableUiDirectory = hasUiDirectory || segments.includes("routes")
+  const isUiFile = [".tsx", ".jsx", ".vue", ".svelte", ".mdx", ".html", ".htm", ".astro"].some((extension) => filename.endsWith(extension))
+  const isRenderableUiFile = hasRenderableUiDirectory && isUiFile && fileStem !== "readme"
+  const isDocumentation = !isRenderableUiFile && (hasDocumentationDirectory || [".md", ".mdx"].some((extension) => filename.endsWith(extension)))
+  const isStyleFile = [".css", ".scss", ".sass", ".less", ".css.ts", ".css.js", ".style.ts", ".styles.ts", ".styled.ts", ".style.js", ".styles.js", ".styled.js"].some((extension) => filename.endsWith(extension))
+  const isUiSupportFile = hasUiDirectory && ((filenameTokens.includes("view") && filenameTokens.includes("model")) || (filenameTokens.includes("theme") && filenameTokens.includes("service")) || [".component.ts", ".component.js", ".directive.ts", ".directive.js", ".pipe.ts", ".pipe.js"].some((extension) => filename.endsWith(extension)) || ([".java", ".kt", ".kts", ".cs", ".swift", ".dart"].some((extension) => filename.endsWith(extension)) && ["view", "screen", "page", "activity", "fragment", "component", "window", "dialog", "widget"].some((token) => filenameTokens.includes(token))))
+  const isSvelteKitModule = segments.includes("routes") && ["+page.ts", "+page.js", "+layout.ts", "+layout.js"].includes(filename); const isBackendMarked = ["api", "apis", "server", "servers", "route", "routes", "handler", "handlers", "controller", "controllers"].some((marker) => segments.includes(marker) || filenameTokens.includes(marker))
+  const isUiPath = isRenderableUiFile || isUiSupportFile || isSvelteKitModule || (hasUiDirectory && (isStyleFile || [".routes.ts", ".routing.ts"].some((extension) => filename.endsWith(extension)))) || (hasRenderableUiDirectory && [".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".hbs", ".handlebars", ".ejs", ".pug", ".jade", ".slim", ".erb", ".xaml", ".storyboard", ".xib"].some((extension) => filename.endsWith(extension))) || (segments.includes("res") && segments.includes("layout") && filename.endsWith(".xml")) || (segments.includes("components") && [".ts", ".js", ".mjs", ".cjs"].some((extension) => filename.endsWith(extension)) && !isBackendMarked && !["cron", "queue", "job", "worker", "scheduler", "migration"].some((marker) => lower.includes(marker))) || lower.includes("src/styles/") || lower.includes("src/styles.") || isStyleFile
+  const isServerLanguage = [".rb", ".py", ".go", ".php"].some((extension) => filename.endsWith(extension))
+  const isRouteHandler = ["route.ts", "route.js", "route.mjs", "route.cjs"].includes(filename)
+  const pagesIndex = segments.indexOf("pages")
+  const isPagesApi = pagesIndex >= 0 && segments[pagesIndex + 1] === "api"
+  const isUiBackend = (segments.includes("app") && (isRouteHandler || (segments.includes("api") && !isUiFile && !isStyleFile))) || isPagesApi
+  const uiHint = "Practical UI proof required: for a visual appearance, layout, responsive, or rendered-state claim, show actual product pixels. Match direct-base and PR outcomes when the baseline is meaningful and reproducible; otherwise state the constraint and show the actual entry point and PR outcome. Use provider-hosted screenshots and a tightly edited, natural-speed recording for motion or interaction; include both when both kinds of UI claim changed. A technical diagram never replaces this evidence. For a label, accessibility output, or textual state where appearance is not the claim, use copyable text instead. Tests, builds, CI, and automated E2E output are supporting checks only."
+  const backendHint = "Practical backend proof required: show matched direct-base and PR requests, responses, and persisted state or side effects as copyable text. Use visual evidence only when rendering or spatial output is part of the claim. Contract-test output remains supporting validation."
+  if (isUiPath && !isUiBackend) return uiHint
+  if (isUiBackend) return backendHint
   if (["cron", "queue", "job", "worker", "scheduler", "migration"].some((marker) => lower.includes(marker))) return "Practical operator proof required: show the same input against the direct base and PR, including the failure point, reason, and resulting resource, record, delivery, cleanup, or rollback. Prefer copyable text for textual state and a trimmed recording only when the visible operator flow matters."
-  if (["api", "server", "route", "handler", "controller"].some((marker) => lower.includes(marker))) return "Practical backend proof required: show matched direct-base and PR requests, responses, and persisted state or side effects as copyable text. Use visual evidence only when rendering or spatial output is part of the claim. Contract-test output remains supporting validation."
-  if (["docs/", "specs/", ".md", ".mdx"].some((marker) => lower.includes(marker))) return "Practical documentation proof required: show the changed instruction and the result of following it. Use copyable text unless rendered layout or appearance is the claimed improvement; leave validators and link checks in the check run."
-  return "Practical behavior proof required: show matched broken and fixed outcomes in the simplest format that preserves the claim. Prefer copyable text for textual behavior and provider-hosted media only for visual behavior. Tests, builds, CI, validators, and green checks are supporting checks only."
+  if (segments.includes("app") && isServerLanguage) return backendHint
+  if (segments.includes("app") && ["action", "actions", "mailer", "mailers", "model", "models", "router", "routers"].some((marker) => segments.includes(marker))) return backendHint
+  if (isBackendMarked) return backendHint
+  if (isDocumentation) return "Practical documentation proof required: show the changed instruction and the result of following it. Use copyable text unless rendered layout or appearance is the claimed improvement; leave validators and link checks in the check run."
+  return "Practical behavior proof required: show matched broken and fixed outcomes in the simplest format that preserves the claim. Prefer copyable text for textual behavior. For a visual UI claim, show actual product pixels in provider-hosted screenshots; add a tightly edited, natural-speed recording for motion or interaction, and include both when both changed. A technical diagram never replaces this evidence. Tests, builds, CI, validators, and green checks are supporting checks only."
 }
 
 const resolveBase = Effect.gen(function*() {
@@ -156,10 +181,10 @@ export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: Readonly
       path: displayPath,
       status,
       branch_commits: output.split("\n").filter(Boolean),
-      proof_hint: status === "modified" ? proofKind(gitPath) : "Omit from PR proof unless needed for context."
+      proof_hint: status === "modified" ? proofHintForPath(gitPath) : "Omit from PR proof unless needed for context."
     } as const
   })), { concurrency: "unbounded" })
-  return { base, head, changedFiles, diffStat: stat, changeBreakdown: changeBreakdownFromNumStat(parseNumStat(numStat)), commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), fileDetails, proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofKind(path) })) } satisfies NetDiffReport
+  return { base, head, changedFiles, diffStat: stat, changeBreakdown: changeBreakdownFromNumStat(parseNumStat(numStat)), commits: log.split("\n").filter(Boolean), branchOnlyChurnNoNetDiff: touched.filter((path) => !net.has(path)), fileDetails, proofPlan: changedFiles.map(({ path }) => ({ path, hint: proofHintForPath(path) })) } satisfies NetDiffReport
 })
 
 export const renderMarkdown = (report: NetDiffReport, proofPlan: boolean) => {
