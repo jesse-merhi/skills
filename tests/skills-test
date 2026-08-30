@@ -185,7 +185,7 @@ behavior_checks = {
         "github-upload-attachment.ts",
     ],
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
-        "simplest format that preserves the claim",
+        "baseline is meaningful and reproducible; otherwise state the constraint",
         "copyable text for textual behavior",
         "## Change Breakdown",
     ],
@@ -685,6 +685,8 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_output_contains "$freshness" "rendered diagram or export output is itself the changed product"
 
   hard_gates="$(sed -n '/^## Hard gates for a refresh$/,/^## Reviewer boundary$/p' "$skill/SKILL.md")"
+  assert_output_contains "$hard_gates" "observed before/after result when the baseline is meaningful and reproducible"
+  assert_output_contains "$hard_gates" "Without one, show the actual entry point and PR outcome"
   assert_output_contains "$hard_gates" "For an appearance, layout, responsive, or rendered-state claim"
   assert_output_contains "$hard_gates" "show actual product pixels"
   assert_output_contains "$hard_gates" "otherwise state the constraint and show"
@@ -814,8 +816,8 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "copyable text for textual state"
-  assert_contains "$skill/src/NetDiff.ts" "matched broken and fixed outcomes"
-  assert_contains "$skill/src/NetDiff.ts" "provider-hosted media only for visual behavior"
+  assert_contains "$skill/src/NetDiff.ts" "Compare direct-base and PR outcomes when the baseline is meaningful and reproducible"
+  assert_contains "$skill/src/NetDiff.ts" "actual product pixels in provider-hosted screenshots"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
   assert_contains "$skill/agents/openai.yaml" "prove static UI with actual screenshots matched to meaningful reproducible"
@@ -1088,6 +1090,14 @@ test_review_neutrality_and_skill_ownership_are_explicit() {
 test_cross_harness_sessions_are_full_and_symmetric() {
   assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "This is not a subagent"
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "Mentioning,"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "Mentioning,"
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "close itself"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "archive itself"
+  assert_contains "$ROOT_DIR/skills/ask-claude/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$ROOT_DIR/skills/ask-codex/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`ask-codex` and `ask-claude` are user-invoked'
+  assert_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" 'invoking `ask-codex` or `ask-claude`'
   assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
   assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
   assert_not_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "--model"

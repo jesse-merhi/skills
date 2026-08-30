@@ -64,7 +64,8 @@ prove that the system depicted by the diagram ran.
 
 - **Practical evidence:** Exercise the changed behavior working in practice.
   Automated validation remains supporting information and never replaces the
-  observed before/after result.
+  observed before/after result when the baseline is meaningful and reproducible.
+  Without one, show the actual entry point and PR outcome.
 - **UI proof:** For an appearance, layout, responsive, or rendered-state claim,
   show actual product pixels. Use matched screenshots when the direct base is
   meaningful and reproducible; otherwise state the constraint and show the

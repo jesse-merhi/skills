@@ -104,6 +104,8 @@ Do not make several diagrams unless the user explicitly asks for them.
 
 Place the diagram before the practical proof and introduce it with what the
 reviewer should learn. Caption it `What this explains`, never `What this proves`.
-Then provide separate observed evidence for the behavior. A diagram, diff, or
-screenshot of prose is not proof of runtime behavior. Never place a diagram in
-a `Before: direct base` or `After: PR` practical-evidence slot.
+Then provide separate observed evidence for the behavior. An explanatory
+diagram, diff, or screenshot of prose is not proof of runtime behavior. Never
+place an explanatory diagram in a `Before: direct base` or `After: PR`
+practical-evidence slot. When rendered diagram output is itself the changed
+product, its actual pixels may prove that output but not the depicted system.
