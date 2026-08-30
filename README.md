@@ -148,7 +148,7 @@ code looks the way it does.
 
 | Skill | What it does |
 | --- | --- |
-| [`just-do-it`](skills/just-do-it/SKILL.md) | Takes one well-defined change from implementation through full review, proof, CI, and a non-draft PR ready for Jesse to inspect. |
+| [`just-do-it`](skills/just-do-it/SKILL.md) | Resumes one well-defined change from its current checkpoint through full review, proof, CI, and a non-draft PR ready for Jesse to inspect. |
 | [`code-review`](skills/code-review/SKILL.md) | Entry point: runs the native until-clean phase, then the cold until-clean phase, on one frozen target. |
 | [`review-until-clean`](skills/review-until-clean/SKILL.md) | Loops the harness-native review (`codex review`, Claude Code's built-in) and fixes findings until two consecutive passes are clean. |
 | [`cold-pr-review`](skills/cold-pr-review/SKILL.md) | One independent review pass by a subagent given only the target and a neutral checklist, so it cannot inherit the author's anchoring. |
