@@ -768,11 +768,14 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "UI evidence must show the actual product"
   assert_contains "$skill/references/screenshots.md" "rendered diagram or export output is itself"
   assert_contains "$skill/references/screenshots.md" "proof of its own pixels and"
-  assert_contains "$skill/references/screenshots.md" "Use the same route, fixture, data, viewport, theme"
-  assert_contains "$skill/references/screenshots.md" '`Before: direct base` and `After: PR`'
-  assert_contains "$skill/references/screenshots.md" "For a new UI without a meaningful baseline"
-  assert_contains "$skill/references/screenshots.md" "show the actual entry"
-  assert_contains "$skill/references/screenshots.md" "supplement the required recording; they do not replace it"
+  assert_contains "$skill/references/screenshots.md" "use the same route, fixture, data, viewport, theme"
+  assert_contains "$skill/references/screenshots.md" '`Before: direct base`'
+  assert_contains "$skill/references/screenshots.md" '`After: PR`'
+  assert_contains "$skill/references/screenshots.md" "When the baseline is meaningful and reproducible"
+  assert_contains "$skill/references/screenshots.md" "Otherwise state the constraint and show the actual product entry point and PR"
+  assert_contains "$skill/references/screenshots.md" "show the actual product entry point"
+  assert_contains "$skill/references/screenshots.md" "screenshots supplement"
+  assert_contains "$skill/references/screenshots.md" "required recording; they do not replace it"
   assert_contains "$skill/references/screenshots.md" "Record every changed motion, timing, gesture, or manual flow"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
@@ -1105,6 +1108,40 @@ test_cross_harness_sessions_are_full_and_symmetric() {
   test ! -e "$ROOT_DIR/skills/acpx-frontend-delegation/SKILL.md" || fail "one-way ACP delegation skill must be retired"
 }
 
+test_claude_fable_orchestration_is_repo_owned() {
+  local agents="$ROOT_DIR/claude/agents"
+  local orchestrator="$agents/fable-orchestrator.md"
+  local worker="$agents/opus-worker.md"
+  local reviewer="$agents/codex-reviewer.md"
+
+  assert_contains "$orchestrator" "name: fable-orchestrator"
+  assert_contains "$orchestrator" 'model: "claude-fable-5[1m]"'
+  assert_contains "$orchestrator" "Use \`opus-worker\` proactively"
+  assert_contains "$orchestrator" "Use \`codex-reviewer\` for an ad hoc code-centric review"
+  assert_contains "$orchestrator" "Keep high-level review here"
+  assert_contains "$orchestrator" "explicitly select Codex as its review engine"
+  assert_contains "$orchestrator" "Do not initiate the formal \`code-review\` workflow merely because implementation"
+
+  assert_contains "$worker" "name: opus-worker"
+  assert_contains "$worker" "model: claude-opus-5"
+  assert_contains "$worker" "effort: high"
+  assert_contains "$worker" "production UI"
+  assert_contains "$worker" "disallowedTools: Agent"
+
+  assert_contains "$reviewer" "name: codex-reviewer"
+  assert_contains "$reviewer" "model: haiku"
+  assert_contains "$reviewer" "codex exec review"
+  assert_contains "$reviewer" "-m gpt-5.6-sol"
+  assert_contains "$reviewer" 'model_reasoning_effort="high"'
+  assert_contains "$reviewer" "--ephemeral"
+  assert_contains "$reviewer" "do not edit the repository"
+
+  assert_contains "$ROOT_DIR/INSTALL.md" "## 3. Configure Claude orchestration"
+  assert_contains "$ROOT_DIR/INSTALL.md" 'Set `agent` to `fable-orchestrator`'
+  assert_contains "$ROOT_DIR/INSTALL.md" "claude plugin validate ~/.claude/agents"
+  assert_contains "$ROOT_DIR/README.md" "Fable orchestrator, Opus worker, Codex reviewer"
+}
+
 test_skill_cleaner_uses_current_model_configuration() {
   local script="$ROOT_DIR/skills/skill-cleaner/scripts/skill-cleaner.ts"
   assert_contains "$script" "codexModelName"
@@ -1341,6 +1378,7 @@ test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_review_neutrality_and_skill_ownership_are_explicit
 test_cross_harness_sessions_are_full_and_symmetric
+test_claude_fable_orchestration_is_repo_owned
 test_skill_cleaner_uses_current_model_configuration
 test_handoff_tmux_helper_builds_tmux_window_command
 printf 'ok - skills tests\n'

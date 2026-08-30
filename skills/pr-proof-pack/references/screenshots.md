@@ -201,14 +201,14 @@ caption rather than visible content.
 ## Static UI proof
 
 Capture actual product screenshots when appearance, layout, responsive behavior,
-or a rendered state changed. Use the same route, fixture, data, viewport, theme,
-and starting state against the direct base and PR branch. Label the matched
-images `Before: direct base` and `After: PR` and keep the changed pixels readable
-at normal GitHub width.
+or a rendered state changed. When the baseline is meaningful and reproducible,
+use the same route, fixture, data, viewport, theme, and starting state against
+the direct base and PR branch. Label the matched images `Before: direct base`
+and `After: PR` and keep the changed pixels readable at normal GitHub width.
 
-For a new UI without a meaningful baseline, say so and show the actual entry
-point and outcome. When a manual interaction also changed, these screenshots
-supplement the required recording; they do not replace it.
+Otherwise state the constraint and show the actual product entry point and PR
+outcome. When a manual interaction also changed, these screenshots supplement
+the required recording; they do not replace it.
 
 ## UI interaction proof
 
