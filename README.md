@@ -47,19 +47,24 @@ anything it did not put there.
 
 Where the skills land, per harness:
 
-| Harness | Skills directory | Global instructions |
-| --- | --- | --- |
-| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` |
-| Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` |
-| opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` |
-| Pi | `~/.pi/agent/skills` | not linked |
-| OpenClaw | `REPO/skills` via `skills.load.extraDirs` | not linked |
+| Harness | Skills directory | Global instructions | Personal agents |
+| --- | --- | --- | --- |
+| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | Fable orchestrator, Opus worker, Codex reviewer |
+| Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
+| opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
+| Pi | `~/.pi/agent/skills` | not linked | not linked |
+| OpenClaw | `REPO/skills` via `skills.load.extraDirs` | not linked | not linked |
 
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
 symlink inside it. OpenClaw watches `REPO/skills` directly instead. So you can
 pull, diff, and update this repo like any other, and nothing turns into a
 mystery tree. Hand-written local skills are never replaced without asking.
+
+Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
+Fable keeps product, architecture, design direction, integration, and high-level
+review; it delegates settled implementation and UI to Opus 5 and code-centric
+review to GPT-5.6 Sol High.
 
 **Honesty about harness coverage:** the installer handles four link-based
 harnesses plus a locally running OpenClaw Gateway. The skills themselves were
