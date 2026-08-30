@@ -146,9 +146,12 @@ row_errors: 1
 For matched visual proof, label the direct-base and PR evidence explicitly.
 Use a two-column table for matched static images when both remain readable, or
 one side-by-side composite when it presents the comparison more clearly. Use
-two short recordings for an interaction. Size images to the PR content area as
-described in [screenshots.md](screenshots.md); do not let their source pixel
-dimensions decide how large they appear.
+two short recordings for an interaction. When a UI change has both a static
+visual claim and an interaction claim, include the matched screenshots and the
+recordings. Size images to the PR content area as described in
+[screenshots.md](screenshots.md); do not let their source pixel dimensions
+decide how large they appear. Technical diagrams belong in the explanation
+section and never occupy these practical before/after slots.
 
 An explanatory workflow diagram belongs immediately before `## Proof`. Its
 nearby sentence says what the reviewer should learn, and its caption starts

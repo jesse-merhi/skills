@@ -7,6 +7,7 @@
 - [Rendered PR verification](#rendered-pr-verification)
 - [Evidence contract](#evidence-contract)
 - [Presentation gate](#presentation-gate)
+- [Static UI proof](#static-ui-proof)
 - [UI interaction proof](#ui-interaction-proof)
 - [Recording edit](#recording-edit)
 - [Backend and operator proof](#backend-and-operator-proof)
@@ -19,6 +20,11 @@ Read this file only after `proof-selection.md` determines that an important
 claim would lose information in text. This file owns how to capture and publish
 that selected visual evidence; `proof-selection.md` owns whether a visual
 qualifies.
+
+UI evidence must show the actual product. Technical diagrams, wireframes,
+mockups, screenshots of prose, and test-runner output cannot satisfy static or
+interactive UI proof. A diagram may explain the surrounding system in a
+separate section, but the proof must still show the changed interface running.
 
 If practical capture, screen recording, provider authentication, attachment
 upload, asset verification, or a required visual inspection fails,
@@ -141,7 +147,9 @@ icons, balanced spacing, correct routes, and no clipping or collisions.
 
 Introduce it with the one thing the reviewer should learn and caption it
 `What this explains`. The evidence contract below does not turn the diagram
-into proof; observed product behavior must still be shown separately.
+into proof; observed product behavior must still be shown separately with
+actual screenshots, recordings, or native text as required by
+`proof-selection.md`.
 
 ## Evidence contract
 
@@ -189,10 +197,22 @@ The model must be able to state what the visual proves, where the result appears
 and why the composition is sufficient. Recapture when any answer depends on the
 caption rather than visible content.
 
+## Static UI proof
+
+Capture actual product screenshots when appearance, layout, responsive behavior,
+or a rendered state changed. Use the same route, fixture, data, viewport, theme,
+and starting state against the direct base and PR branch. Label the matched
+images `Before: direct base` and `After: PR` and keep the changed pixels readable
+at normal GitHub width.
+
+For a new UI without a meaningful baseline, say so and show the actual entry
+point and outcome. When a manual interaction also changed, these screenshots
+supplement the required recording; they do not replace it.
+
 ## UI interaction proof
 
-Record the changed flow manually at a deliberate pace. A reviewer should be able
-to follow without scrubbing frame by frame.
+Record every changed motion, timing, gesture, or manual flow at a deliberate
+pace. A reviewer should be able to follow without scrubbing frame by frame.
 
 - begin before the first relevant action so the starting state is visible;
 - capture the page viewport or relevant product area rather than the
@@ -207,8 +227,8 @@ to follow without scrubbing frame by frame.
   easier to compare or preserves a state that is not legible in the video;
 - use realistic data and avoid secrets or personal information.
 
-A test runner video, a replay of automated E2E output, or a screenshot of
-textual output does not prove a visual interaction.
+A technical diagram, static screenshot, test runner video, replay of automated
+E2E output, or screenshot of textual output does not prove a visual interaction.
 
 ## Recording edit
 

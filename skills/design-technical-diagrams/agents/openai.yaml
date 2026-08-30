@@ -1,4 +1,4 @@
 interface:
   display_name: "Design Technical Diagrams"
-  short_description: "Create polished, precise technical diagrams"
-  default_prompt: "Use $design-technical-diagrams to turn one essential system story into a topology-led, icon-supported diagram whose labels make sense to a cold reader, then inspect and refine the rendered artifact at its real destination size."
+  short_description: "Explain system relationships with precise diagrams"
+  default_prompt: "Use $design-technical-diagrams to explain one essential system story in a topology-led, icon-supported diagram for a cold reader, validate it at its destination size, and keep it separate from product runtime or UI proof."

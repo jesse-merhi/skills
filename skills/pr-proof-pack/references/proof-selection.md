@@ -32,6 +32,10 @@ Read [screenshots.md](screenshots.md); for recordings, also read
 frames before upload; file metadata and successful rendering are not a quality
 review.
 
+A technical diagram is never practical evidence. It may explain a changed
+system or workflow, but it cannot replace actual product screenshots or
+recordings and does not show that the depicted behavior ran.
+
 ## Show the break and fix
 
 For a reproducible bug fix, use the same input and environment against the
@@ -47,10 +51,14 @@ or impossible, state the constraint and show the closest honest boundary.
 
 ## Choose by change type
 
-- **UI or interaction:** use matched screenshots for a static visual change and
-  a concise recording for motion or a manual interaction. Use text for changed
-  labels, accessibility output, or textual state when appearance is not the
-  claim.
+- **UI or interaction:** use actual matched product screenshots for a static
+  appearance, layout, responsive, or rendered-state change. Use a concise
+  edited recording for motion, timing, gesture, or a manual interaction. When
+  both the interaction and a static state changed, include both. Do not
+  downgrade an interactive claim to screenshots or substitute a technical
+  diagram to avoid recording it. Use text for changed labels, accessibility
+  output, or textual state when appearance is not the claim. If required UI
+  capture is unavailable, return `blocked`.
 - **API or backend:** show the representative request, response, and persisted
   or rejected state as copyable text. Add a visual only when the response is
   itself rendered or spatial.
@@ -70,8 +78,10 @@ or impossible, state the constraint and show the closest honest boundary.
 ## Explanation is separate
 
 An explanation visual teaches how something works; practical evidence proves it
-ran. When a PR introduces or materially changes a system or workflow, load
-`design-technical-diagrams` and include one diagram.
+ran. The two are independent requirements. When a PR introduces or materially
+changes a system or workflow, load `design-technical-diagrams` and include one diagram.
+When the same PR changes UI, include the required actual screenshots or
+recordings as well.
 
 Treat the PR as introducing or materially changing a system or workflow when
 the product change adds or rewires a recognizable trigger, two or more actions
@@ -91,4 +101,5 @@ Do not make several diagrams unless the user explicitly asks for them.
 Place the diagram before the practical proof and introduce it with what the
 reviewer should learn. Caption it `What this explains`, never `What this proves`.
 Then provide separate observed evidence for the behavior. A diagram, diff, or
-screenshot of prose is not proof of runtime behavior.
+screenshot of prose is not proof of runtime behavior. Never place a diagram in
+a `Before: direct base` or `After: PR` practical-evidence slot.

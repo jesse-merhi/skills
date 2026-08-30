@@ -654,8 +654,9 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 }
 
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
+  local diagram_skill="$ROOT_DIR/skills/design-technical-diagrams"
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local rendered_help upload_help
+  local done_means freshness hard_gates rendered_help upload_help
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -673,6 +674,22 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_not_contains "$skill/SKILL.md" 'Load `show-me`'
   assert_contains "$skill/SKILL.md" 'Load `speak-fking-english`'
   assert_contains "$skill/SKILL.md" "immediately before saving"
+
+  freshness="$(sed -n '/^## Freshness rule$/,/^## Hard gates for a refresh$/p' "$skill/SKILL.md")"
+  assert_output_contains "$freshness" "Static appearance, layout, or rendered-state changes"
+  assert_output_contains "$freshness" "Motion, timing, gesture, or manual interaction"
+  assert_output_contains "$freshness" "A technical diagram never satisfies practical UI proof"
+
+  hard_gates="$(sed -n '/^## Hard gates for a refresh$/,/^## Reviewer boundary$/p' "$skill/SKILL.md")"
+  assert_output_contains "$hard_gates" "Show actual product pixels from the changed UI"
+  assert_output_contains "$hard_gates" "both kinds of claim changed"
+  assert_output_contains "$hard_gates" 'classify the proof as `blocked`'
+  assert_output_contains "$hard_gates" "product screenshots, recordings"
+
+  done_means="$(sed -n '/^## Done means$/,$p' "$skill/SKILL.md")"
+  assert_output_contains "$done_means" "Static UI changes use actual matched product screenshots"
+  assert_output_contains "$done_means" "manual interaction use concise edited recordings"
+  assert_output_contains "$done_means" "never counted as practical evidence"
 
   awk '
     /^## Workflow$/ { in_workflow = 1; next }
@@ -696,6 +713,10 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "Do not make several diagrams unless the user explicitly asks"
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
+  assert_contains "$skill/references/proof-selection.md" "A technical diagram is never practical evidence"
+  assert_contains "$skill/references/proof-selection.md" "include the required actual screenshots"
+  assert_contains "$skill/references/proof-selection.md" "downgrade an interactive claim"
+  assert_contains "$skill/references/proof-selection.md" 'capture is unavailable, return `blocked`.'
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
@@ -718,7 +739,10 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "keeps signed URLs out of process arguments"
   assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or CDN host'
   assert_contains "$skill/references/screenshots.md" "Use an interactive browser for facts the server-rendered HTML cannot prove"
-  assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
+  assert_contains "$skill/references/screenshots.md" "## Static UI proof"
+  assert_contains "$skill/references/screenshots.md" "UI evidence must show the actual product"
+  assert_contains "$skill/references/screenshots.md" "supplement the required recording; they do not replace it"
+  assert_contains "$skill/references/screenshots.md" "Record every changed motion, timing, gesture, or manual flow"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "## Presentation gate"
@@ -754,6 +778,7 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "Markdown table"
   assert_contains "$skill/references/body-shape.md" "Default to at most 300 words"
   assert_contains "$skill/references/body-shape.md" "what broke, why it mattered"
+  assert_contains "$skill/references/body-shape.md" "Technical diagrams belong in the explanation"
   assert_not_contains "$skill/references/proof-selection.md" "standalone HTML explainer"
   assert_not_contains "$skill/references/body-shape.md" "routine test, build, and CI pass lists"
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
@@ -765,7 +790,12 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "provider-hosted media only for visual behavior"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Make PR context, scope, and proof concise and checkable."
+  assert_contains "$skill/agents/openai.yaml" "Prove PR behavior with the right real evidence"
+  assert_contains "$skill/agents/openai.yaml" "prove static UI with actual matched screenshots"
+  assert_contains "$diagram_skill/SKILL.md" "## Evidence boundary"
+  assert_contains "$diagram_skill/SKILL.md" "It does not prove that the depicted system ran"
+  assert_contains "$diagram_skill/SKILL.md" "Never use a diagram, wireframe, or mockup"
+  assert_contains "$diagram_skill/agents/openai.yaml" "keep it separate from product runtime or UI proof"
   assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
   assert_contains "$skill/references/video-editing.md" "Before: direct base"
   assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
