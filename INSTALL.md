@@ -49,7 +49,32 @@ does not load `~/.claude/AGENTS.md` by itself.
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
 
-## 3. Configure Codex interaction
+## 3. Configure Claude orchestration
+
+For Claude Code, this repo owns three user-level agents under
+`REPO/claude/agents/`:
+
+- `fable-orchestrator` is the default main agent;
+- `opus-worker` implements settled changes and production UI in Opus 5;
+- `codex-reviewer` relays code-centric review to GPT-5.6 Sol High.
+
+Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
+into that real directory. Replace a matching repo symlink or a dead symlink,
+but ask before replacing a real file or a symlink owned elsewhere. Preserve all
+unrelated agents.
+
+Set `agent` to `fable-orchestrator` in `~/.claude/settings.json`, preserving
+every other setting. If `agent` already names something else, ask before
+replacing it. Then validate the agent directory:
+
+```sh
+claude plugin validate ~/.claude/agents
+```
+
+The default main agent takes effect in the next Claude Code session. Skip this
+step for other harnesses.
+
+## 4. Configure Codex interaction
 
 For Codex, enable the native structured question UI in Default mode when the
 installed build supports it:
@@ -66,7 +91,7 @@ session exposes the question UI.
 
 Skip this step for other harnesses.
 
-## 4. Install repo runtime dependencies
+## 5. Install repo runtime dependencies
 
 Repo-owned TypeScript helpers require Node 24 or newer and the exact Bun
 version declared in `package.json`. From `REPO`, run:
@@ -79,7 +104,7 @@ bun ci
 Stop and report the missing prerequisite if either command is unavailable or
 fails. Do not substitute a global TypeScript, Effect, or package installation.
 
-## 5. Survey existing skills
+## 6. Survey existing skills
 
 For Claude Code, Codex, opencode, or Pi, inventory the target skills directory
 before touching anything:
@@ -101,9 +126,9 @@ Classify existing entries:
 5. Obvious junk: ask before deleting.
 
 Skip this step for OpenClaw; its existing skills are inspected after connecting
-the repo in step 7.
+the repo in step 8.
 
-## 6. Link skills
+## 7. Link skills
 
 For Claude Code, Codex, opencode, or Pi, always use per-skill symlinks. The
 target skills directory should remain a real directory; each repo skill gets
@@ -133,7 +158,7 @@ Procedure:
      ask when it contains user-authored changes
    - if `<target>/<name>` is a symlink elsewhere, stop and ask
 
-## 7. Connect a running OpenClaw Gateway
+## 8. Connect a running OpenClaw Gateway
 
 Only run this step when the user asked to install these skills into OpenClaw.
 OpenClaw discovers nested `SKILL.md` files from an extra skills directory, so
@@ -178,7 +203,7 @@ Gateway. Start a new OpenClaw session so it receives the updated skill set. If
 the CLI explicitly says a restart is required, follow that instruction; for a
 managed Gateway, use `openclaw gateway restart`.
 
-## 8. Reconcile third-party skills
+## 9. Reconcile third-party skills
 
 Read `external.md`. For each active or retired entry, run only the install or
 removal command for the current harness. Skip entries that do not list your
