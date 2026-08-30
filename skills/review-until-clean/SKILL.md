@@ -89,6 +89,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 ## Avoid
 
+- invoking `ask-codex` or `ask-claude` as a review engine or fallback unless
+  the current user explicitly requested that exact cross-harness session;
 - replacing the engine's review with `spawn_agent`, `cold-pr-review`, a
   repo-specific review command, or manual judgment;
 - switching engines mid-loop;

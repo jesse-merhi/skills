@@ -1,9 +1,12 @@
 # Subagents
 
-Always use subagents for code-review work. At minimum, every review needs a
-subagent using `cold-pr-review-until-clean`; do not use `cold-pr-review` for
-this skill. Give that subagent the target, base, changed-flow summary, and
-the risk checklist from the one-time setup.
+Use in-chat subagents for Phase 2 cold review and focused lenses. Never run
+Phase 1 native review as a subagent: it belongs in an external harness-native
+session whose task or session ID the coordinator records and archives after
+collecting the result. At minimum, every review needs a Phase 2 subagent using
+`cold-pr-review-until-clean`; do not use `cold-pr-review` for this skill. Give
+that subagent the target, base, changed-flow summary, and the risk checklist
+from the one-time setup.
 
 Every review subagent must start without coordinator conversation history. In
 Codex, set `fork_turns: "none"`; use the equivalent context-free option in
