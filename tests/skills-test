@@ -1028,6 +1028,14 @@ test_review_neutrality_and_skill_ownership_are_explicit() {
 test_cross_harness_sessions_are_full_and_symmetric() {
   assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "This is not a subagent"
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "Mentioning,"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "Mentioning,"
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "close itself"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "archive itself"
+  assert_contains "$ROOT_DIR/skills/ask-claude/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$ROOT_DIR/skills/ask-codex/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`ask-codex` and `ask-claude` are user-invoked'
+  assert_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" 'invoking `ask-codex` or `ask-claude`'
   assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
   assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
   assert_not_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "--model"

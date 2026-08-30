@@ -33,6 +33,10 @@ review task visible after its result has been incorporated.
 Keep separate unless explicitly requested: repo-specific review bots, security
 remediation workflows, OpenGrep, merge, and advisory writing.
 
+`ask-codex` and `ask-claude` are user-invoked cross-harness tools, not review
+engines or fallback reviewers. Never invoke either skill from this workflow
+unless the current user explicitly requests that exact cross-harness session.
+
 ## Workflow
 
 1. Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
@@ -239,6 +243,8 @@ consult queue is resolved.
 ## Avoid
 
 - switching or overriding the review model without user approval;
+- invoking `ask-codex` or `ask-claude` without the current user's explicit
+  request;
 - substituting self-review, ad hoc prompts, or one-off subagents for the two
   configured phases;
 - patching follow-up or out-of-scope findings into this PR;
