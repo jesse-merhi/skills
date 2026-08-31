@@ -50,8 +50,8 @@ Repeat:
    - apply `finding-discipline`'s reality, importance, and repair-quality gates;
      only actionable candidates may receive `--handling fix`
    - record contract evidence for every actionable runtime candidate, plus root
-     cause, recommended repair, and intervention justification for every
-     actionable candidate
+     cause and intervention justification for every actionable candidate;
+     require a recommended repair before patching, deferring, or approving one
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - apply `review-guardrails`' autonomous fix bar before accepting a patch
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):

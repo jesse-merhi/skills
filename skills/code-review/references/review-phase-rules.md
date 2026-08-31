@@ -54,9 +54,9 @@ with the blocker or residual risk.
 - Treat native and cold reviewer output as candidates. Before editing code,
   require `finding-discipline`'s recorded likelihood-impact risk rating for a
   runtime candidate, or its maintenance and present-cost evidence for a
-  maintenance candidate. Then require the shared actionability gate's contract
-  evidence for a runtime finding, plus root cause, recommended repair, and
-  intervention justification for either finding kind.
+  maintenance candidate. Then require contract evidence for a runtime finding,
+  plus root cause and intervention justification for either kind. Require a
+  recommended repair before a patch, deferral, or approved consultation.
   Require the CLI's derived disposition in either case;
   only runtime findings receive severity. Record `--handling fix` for current
   in-scope work, `consult` for an owner decision, `follow-up` for real work
