@@ -57,8 +57,8 @@ with the blocker or residual risk.
   maintenance candidate. Then require the shared actionability gate's contract
   evidence for a runtime finding, plus root cause, recommended repair, and
   intervention justification for either finding kind.
-  Require the CLI's derived disposition in either case; only runtime findings
-  receive severity. Record `--handling fix` for current
+  Require the CLI's derived disposition in either case;
+  only runtime findings receive severity. Record `--handling fix` for current
   in-scope work, `consult` for an owner decision, `follow-up` for real work
   outside this review, or `reject` when a candidate fails a named actionability
   gate.

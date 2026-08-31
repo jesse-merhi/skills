@@ -212,7 +212,7 @@ behavior_checks = {
     ],
     root / "skills/cold-pr-review/references/prompt-template.md": [
         "do not audit them as independent targets",
-        "Every finding must identify the changed line or",
+        "identify the changed line or contract",
     ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
