@@ -24,4 +24,6 @@ Use these labels when auditing tests or assertions:
   low-risk addition with no verified reachable future failure to catch.
 - `no-change-needed`: related tests exist, but they already cover the changed
   contract and do not need edits.
-- `dangerous-removal`: deleted coverage for behavior that still exists.
+- `dangerous-removal`: deletes the last executable owner of a promised
+  regression without an equivalent, inspected replacement at the required
+  cadence.
