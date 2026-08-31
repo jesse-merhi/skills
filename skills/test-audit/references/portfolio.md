@@ -18,13 +18,16 @@ test, record:
 Tests may cover the same feature at different levels only when they fail for
 different bugs. A broader test replaces a smaller test only when both drive the
 same branch with equivalent inputs, fail for the same regression, and assert
-the same public outcome. Incidental traversal is not coverage.
+the same public outcome at an equivalent required cadence. Incidental traversal
+is not coverage.
 
 ## Require a replacement owner
 
 Before deleting coverage, name and inspect the executable test that will fail
 for the same bug. Land and verify a required replacement before or in the same
-change. A planned refactor, future test, manual check, development-only
+change, and confirm it runs at an equivalent required cadence. Manually
+triggered or opt-in coverage does not replace routine automated coverage by
+itself. A planned refactor, future test, manual check, development-only
 assertion, type, or schema is not an executable owner.
 
 A test for unreachable or retired behavior needs no replacement when the

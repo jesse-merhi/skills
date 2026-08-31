@@ -79,7 +79,8 @@ There are three gates:
   an independent source of truth, not from re-running the implementation logic.
 - A broader test owns a smaller test's regression only when both drive the same
   branch with equivalent inputs, fail for the same bug, and assert the same
-  public outcome. Incidental traversal is not coverage.
+  public outcome at an equivalent required cadence. Incidental traversal is not
+  coverage.
 
 ## Context pointers
 
