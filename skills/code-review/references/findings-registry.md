@@ -139,10 +139,9 @@ For every finding, record:
   likelihood, impact, and actual consequence; the CLI derives severity and
   disposition
 - contract evidence for every actionable runtime finding
-- root cause, recommended repair, and intervention justification for every
-  actionable runtime or maintenance finding; the intervention justification
-  compares the recommendation with doing nothing after counting complexity and
-  new failure modes
+- root cause and intervention justification for every actionable runtime or
+  maintenance finding; patches and deferrals also require a recommended repair,
+  while consultation may instead record why no repair is yet supported
 - rejection gate for rejected candidates: `reality`, `importance`, `contract`,
   `repair`, or `duplicate`
 - short decision and validation result

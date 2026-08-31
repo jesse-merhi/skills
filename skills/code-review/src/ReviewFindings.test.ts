@@ -73,6 +73,14 @@ describe("review finding risk outcomes", () => {
       Effect.map((error) => assert.match(error.message, /actionable findings require --root-cause/u))
     ))
 
+  it.effect("consults on a material problem without inventing a repair", () =>
+    decodeFinding({ ...runtimeFinding, likelihood: "rare", impact: "high", handling: "consult", recommendedFix: "", decision: "The owning repair remains unresolved after checking the current queue primitives." }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.disposition, "consult")
+        assert.strictEqual(finding.recommendedFix, "")
+      })
+    ))
+
   it.effect("keeps optional repairs off rejected candidates", () =>
     decodeFinding({
       ...runtimeFinding,

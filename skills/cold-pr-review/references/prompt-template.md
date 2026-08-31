@@ -15,10 +15,13 @@ observation as a candidate and report it only after three independent checks:
 affected users, recovery, and current contract make intervention worthwhile,
 and (3) the recommended repair addresses the root cause at the owning boundary
 and is better than doing nothing after counting complexity and new failure
-modes. Omit candidates that fail any check; do not return them as suggestions or
-optional hardening. Every finding must identify the changed line or contract
-that causes, exposes, or worsens the problem, plus the root cause, recommended
-repair, and intervention justification. Exclude pre-existing improvements and
+modes. Omit candidates that fail reality or importance; do not return them as
+suggestions or optional hardening. If a proven material problem has no supported
+repair, report it for consultation without inventing a fix. Every finding must
+identify the changed line or contract that causes, exposes, or worsens the
+problem, plus the root cause and intervention justification. Include the
+recommended repair, or for consultation explain why it remains unresolved.
+Exclude pre-existing improvements and
 unrelated defects. Report every distinct actionable finding in this pass,
 ordered by severity. Before returning, sweep the changed flows again for
 distinct failure modes you may have missed, then give a merge verdict.

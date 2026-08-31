@@ -180,8 +180,13 @@ Optional finding metadata:
 
 Required for every actionable finding:
   --root-cause <underlying cause and owning boundary>
-  --recommended-fix <smallest durable repair at the owning boundary>
   --intervention-justification <why intervention beats doing nothing after full repair cost>
+
+Additionally required before patching or deferring:
+  --recommended-fix <smallest durable repair at the owning boundary>
+
+Required when consultation has no supported repair yet:
+  --decision <repair question, alternatives checked, and why no recommendation is justified>
 
 Additionally required for actionable runtime findings:
   --contract-evidence <current contract and evidence that the behavior violates it>
@@ -1256,8 +1261,12 @@ const findingActionabilityError = (finding: Finding) => {
     if (finding.findingKind === "runtime" && finding.contractEvidence.trim().length === 0) {
       return "actionable runtime findings require --contract-evidence"
     }
-    const missingRepair = repairFields.find(([, value]) => value.trim().length === 0)?.[0]
+    const requiredRepair = finding.disposition === "consult"
+      ? repairFields.filter(([flag]) => flag !== "--recommended-fix")
+      : repairFields
+    const missingRepair = requiredRepair.find(([, value]) => value.trim().length === 0)?.[0]
     if (missingRepair !== undefined) return `actionable findings require ${missingRepair}`
+    if (finding.disposition === "consult" && finding.recommendedFix.trim().length === 0 && finding.decision.trim().length === 0) return "consult findings without --recommended-fix require --decision with the unresolved repair rationale"
     if (finding.rejectionGate.length > 0) return "actionable findings must omit --rejection-gate"
     return undefined
   }
