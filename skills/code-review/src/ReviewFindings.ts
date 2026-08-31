@@ -349,13 +349,22 @@ const legacySeverityEquivalents: Readonly<Record<string, string>> = {
   low: "p3",
   p4: ""
 }
-const preservesLegacyClassification = (existing: string, current: string, equivalents: Readonly<Record<string, string>>) =>
-  preservesLegacyValue(existing, current) || equivalents[normalizeToken(existing)] === current
+const currentAreas = new Set<string>(FINDING_AREAS)
+const currentSeverities = new Set<string>(FINDING_SEVERITIES)
+const preservesLegacyArea = (existing: string, current: string) => {
+  const normalized = normalizeToken(existing)
+  return preservesLegacyValue(existing, current) || normalized === current || legacyAreaEquivalents[normalized] === current ||
+    (!currentAreas.has(normalized) && current === "internal")
+}
+const preservesLegacySeverity = (existing: string, current: string) => {
+  const normalized = normalizeToken(existing)
+  return preservesLegacyValue(existing, current) || normalized === current || legacySeverityEquivalents[normalized] === current ||
+    !currentSeverities.has(normalized)
+}
 const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding, material: boolean) => hasLegacyEvidence(existing) &&
   existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
   existing.summary === finding.summary && existing.material === (material ? 1 : 0) &&
-  preservesLegacyClassification(existing.area, finding.area, legacyAreaEquivalents) &&
-  preservesLegacyClassification(existing.severity, finding.severity, legacySeverityEquivalents) &&
+  preservesLegacyArea(existing.area, finding.area) && preservesLegacySeverity(existing.severity, finding.severity) &&
   preservesLegacyValue(existing.user_impact, finding.userImpact) && preservesLegacyValue(existing.decision, finding.decision) &&
   preservesLegacyValue(existing.finding_kind, finding.findingKind) && preservesLegacyValue(existing.production_path, finding.productionPath) &&
   preservesLegacyValue(existing.reachability_evidence, finding.reachabilityEvidence) && preservesLegacyValue(existing.likelihood, finding.likelihood) &&

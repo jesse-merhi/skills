@@ -1302,6 +1302,7 @@ db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("l
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-decisionless", "legacy-run", "LEGACY-DECISIONLESS", "deferred", "legacy", "legacy decisionless", "Legacy decisionless finding", "", "legacy decisionless text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-kind", "legacy-run", "LEGACY-KIND", "open", "legacy", "legacy kind", "Legacy runtime finding", "", "legacy runtime text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-labels", "legacy-run", "LEGACY-LABELS", "open", "legacy", "legacy labels", "Legacy labels finding", "", "legacy labels text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-custom", "legacy-run", "LEGACY-CUSTOM", "open", "legacy", "legacy custom", "Legacy custom labels finding", "", "legacy custom text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete-finding", "legacy-complete", "LEGACY-COMPLETE", "fixed", "legacy", "legacy complete", "Legacy completed finding", "", "legacy complete text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-terminal-finding", "legacy-terminal", "LEGACY-TERMINAL", "fixed", "legacy", "legacy terminal", "Legacy terminal finding", "", "legacy terminal text", "", 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", 0, "main", "base-oid", 30, "Legacy scope", "", 1, 0, 0, '["asset.bin"]', "ready", 1, 0, 0, 0, 0, "[]", "", 1, 1)
@@ -1313,6 +1314,7 @@ NODE
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("maintenance", "follow-up", "local", "follow-up", "LEGACY-DECISIONLESS")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("runtime", "accept", "local", "fix", "LEGACY-KIND")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set impact = ?, priority = ?, material = ?, finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("security", "P4", 1, "maintenance", "accept", "local", "fix", "LEGACY-LABELS")' "$db"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set impact = ?, priority = ?, material = ?, finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("performance", "blocker", 0, "maintenance", "accept", "local", "fix", "LEGACY-CUSTOM")' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id LEGACY-KIND --status open --source legacy --fingerprint "legacy kind" \
@@ -1327,6 +1329,11 @@ NODE
     --decision-id LEGACY-LABELS --status open --source legacy --fingerprint "legacy labels" \
     --summary "Legacy labels finding" --area permissions --text "canonical labels" >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select impact, priority, evidence_version from issues where decision_id = ?").get("LEGACY-LABELS"); if (row?.impact !== "permissions" || row.priority !== "" || row.evidence_version !== 8) process.exit(1)' "$db"
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id LEGACY-CUSTOM --status open --source legacy --fingerprint "legacy custom" \
+    --summary "Legacy custom labels finding" --area internal --text "canonical custom labels" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select impact, priority, evidence_version from issues where decision_id = ?").get("LEGACY-CUSTOM"); if (row?.impact !== "internal" || row.priority !== "" || row.evidence_version !== 8) process.exit(1)' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint "rewritten legacy identity" \
