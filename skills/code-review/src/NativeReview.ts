@@ -311,6 +311,15 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     const baseEntries = yield* listTreeEntries(base)
     const targetEntries = yield* listTreeEntries(targetTree)
     const baseEntryByPath = new Map(baseEntries.map((entry) => [entry.path, entry] as const))
+    const baseEntryByFoldedPath = new Map<string, typeof baseEntries[number]>()
+    for (const entry of baseEntries) {
+      const folded = entry.path.toLowerCase()
+      const existing = baseEntryByFoldedPath.get(folded)
+      if (existing !== undefined && existing.path !== entry.path) {
+        return yield* new ReviewSnapshotError({ message: `frozen review base contains case-colliding paths: ${existing.path}, ${entry.path}` })
+      }
+      baseEntryByFoldedPath.set(folded, entry)
+    }
     const baseControlPaths = new Set(baseEntries.filter((entry) => isControlFile(entry.path)).map((entry) => entry.path))
     const protectedPrefixes = new Set<string>()
     const pendingLinks = baseEntries.filter((entry) => entry.mode === "120000" && baseControlPaths.has(entry.path))
@@ -342,7 +351,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         const part = remaining.shift()
         if (part === undefined) continue
         const candidate = [...resolved, part].join("/")
-        const entry = baseEntryByPath.get(candidate)
+        const entry = baseEntryByPath.get(candidate) ?? baseEntryByFoldedPath.get(candidate.toLowerCase())
         if (entry?.mode !== "120000") {
           resolved.push(part)
           continue
@@ -369,17 +378,28 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       for (const prefix of yield* resolveControlLink(link)) {
         if (prefix.length === 0 || protectedPrefixes.has(prefix)) continue
         protectedPrefixes.add(prefix)
+        const foldedPrefix = prefix.toLowerCase()
         for (const entry of baseEntries) {
-          if (entry.path !== prefix && !entry.path.startsWith(`${prefix}/`)) continue
+          const foldedPath = entry.path.toLowerCase()
+          if (foldedPath !== foldedPrefix && !foldedPath.startsWith(`${foldedPrefix}/`)) continue
           const added = !baseControlPaths.has(entry.path)
           baseControlPaths.add(entry.path)
           if (added && entry.mode === "120000") pendingLinks.push(entry)
         }
       }
     }
-    const isEnvelopeControl = (file: string) => isControlFile(file) || [...protectedPrefixes].some((prefix) => file === prefix || file.startsWith(`${prefix}/`))
+    const foldedPrefixes = [...protectedPrefixes].map((prefix) => prefix.toLowerCase())
+    const isEnvelopeControl = (file: string) => {
+      const folded = file.toLowerCase()
+      return isControlFile(file) || foldedPrefixes.some((prefix) => folded === prefix || folded.startsWith(`${prefix}/`))
+    }
+    const isProtectedAncestor = (file: string) => {
+      const folded = file.toLowerCase()
+      return foldedPrefixes.some((prefix) => prefix.startsWith(`${folded}/`))
+    }
     const baseControls = baseEntries.filter((entry) => baseControlPaths.has(entry.path)).map((entry) => entry.path)
-    const targetControls = targetEntries.filter((entry) => isEnvelopeControl(entry.path)).map((entry) => entry.path)
+    const targetControls = targetEntries.filter((entry) => isEnvelopeControl(entry.path) || (entry.mode === "120000" && isProtectedAncestor(entry.path))).map((entry) => entry.path)
+    const targetControlPaths = new Set(targetControls)
     const diffControlPaths = [...new Set([...baseControls, ...targetControls])]
     const controlDiff = Effect.fn("NativeReview.controlDiff")(function*(range: ReadonlyArray<string>) {
       const chunks = new Array<string>()
@@ -400,7 +420,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     for (let index = 0; index < targetControls.length; index += 100) {
       yield* checkedInherit(gitTool, ["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", ...targetControls.slice(index, index + 100)], { cwd: snapshot })
     }
-    const restorableBaseControls = baseControls.filter((control) => !targetEntries.some((entry) => !isEnvelopeControl(entry.path) && control.startsWith(`${entry.path}/`)))
+    const restorableBaseControls = baseControls.filter((control) => !targetEntries.some((entry) => !targetControlPaths.has(entry.path) && control.toLowerCase().startsWith(`${entry.path.toLowerCase()}/`)))
     for (let index = 0; index < restorableBaseControls.length; index += 100) {
       yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...restorableBaseControls.slice(index, index + 100)], { cwd: snapshot })
     }
@@ -421,7 +441,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       for (const file of modified) {
         const mode = entryByPath.get(file)
         if (mode === undefined) return yield* new ReviewSnapshotError({ message: `could not resolve tracked review path: ${file}` })
-        if (isEnvelopeControl(file)) continue
+        if (isEnvelopeControl(file) || (mode === "120000" && isProtectedAncestor(file))) continue
         if (mode === "160000") {
           const dirty = yield* checkedText(gitTool, ["diff", "--raw", "--", file], { cwd: repo })
           if (dirty.length > 0) return yield* new ReviewSnapshotError({ message: `stage dirty submodule before review: ${file}` })
@@ -431,7 +451,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         const destination = paths.resolve(snapshot, file)
         if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy tracked path outside snapshot: ${file}` })
         yield* fs.remove(destination, { force: true, recursive: true })
-        if (!(yield* fs.exists(source))) continue
+        if (!(yield* fs.exists(source).pipe(Effect.orElseSucceed(() => false)))) continue
         yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
         const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
         if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
@@ -442,11 +462,20 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       ? yield* checkedText(gitTool, ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo })
       : ""
     const untrackedFiles = untracked.split("\0").filter(Boolean)
-    for (const file of untrackedFiles.filter((file) => !isEnvelopeControl(file))) {
+    const untrackedControls = new Array<string>()
+    const untrackedCode = new Array<string>()
+    for (const file of untrackedFiles) {
+      const source = paths.resolve(repo, file)
+      const redirectsProtectedPath = isProtectedAncestor(file) && Option.isSome(yield* fs.readLink(source).pipe(Effect.option))
+      if (isEnvelopeControl(file) || redirectsProtectedPath) untrackedControls.push(file)
+      else untrackedCode.push(file)
+    }
+    for (const file of untrackedCode) {
       if (file.toLowerCase() === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
       const source = paths.resolve(repo, file)
       const destination = paths.resolve(snapshot, file)
       if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${file}` })
+      yield* fs.remove(destination, { force: true, recursive: true })
       yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
       const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
       if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
@@ -454,7 +483,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     }
     const instructionPatches = controlPatch.length === 0 ? [] : [controlPatch]
     if (target.envelope.includeWorkingTree) {
-      for (const file of untrackedFiles.filter(isEnvelopeControl)) {
+      for (const file of untrackedControls) {
         const source = paths.resolve(repo, file)
         const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
         const content = Option.isSome(linkTarget)

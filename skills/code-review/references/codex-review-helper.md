@@ -36,11 +36,12 @@ target checkout is not equivalent to this helper.
 Repository paths reached through complete frozen-base instruction symlink
 chains are frozen as part of the same control surface. Absolute or
 repository-escaping control symlinks fail closed because the temporary worktree
-cannot safely redirect them to frozen content. Target-side control changes are
-captured as forced text independent of target attributes. If a target file
-replaces a base directory containing a scoped instruction file, the replacement
-remains in the review target; the now-inapplicable nested instruction is
-represented only as a control deletion.
+cannot safely redirect them to frozen content. Case-folded aliases and target
+symlinks that could redirect an ancestor of a protected destination are also
+quarantined. Target-side control changes are captured as forced text independent
+of target attributes. If a target file replaces a base directory containing a
+scoped instruction file, the replacement remains in the review target; the
+now-inapplicable nested instruction is represented only as a control deletion.
 
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
