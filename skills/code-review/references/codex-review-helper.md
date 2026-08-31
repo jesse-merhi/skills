@@ -57,7 +57,9 @@ materialization ignores sparse-checkout skip bits, then overlays only actual
 working-tree changes, so out-of-cone tracked context remains available. A
 tracked path changed into a directory is rebuilt from its individually filtered
 untracked children rather than recursively copied. Tracked symlink changes are
-copied as symlinks before any target-following filesystem checks. Dynamic Git
+copied as symlinks before any target-following filesystem checks. Working files
+and the control artifact enter the synthetic index through raw blob IDs, so
+clean filters and target attributes cannot rewrite their bytes. Dynamic Git
 paths use literal pathspecs, and every working-tree source parent must resolve
 inside the repository, so filenames and ancestor symlinks cannot alter snapshot
 commands or import host files. Target-controlled symlinks that point outside the

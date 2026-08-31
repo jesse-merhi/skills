@@ -632,6 +632,9 @@ esac
       await writeFile(join(directory, "base.txt"), "advanced base\n")
       await execFile("git", ["commit", "-am", "advance base"], { cwd: directory })
       await execFile("git", ["switch", "feature"], { cwd: directory })
+      await execFile("git", ["config", "filter.corrupt.clean", "sed 's/untrusted/CORRUPTED/'"], { cwd: directory })
+      await execFile("git", ["config", "filter.corrupt.smudge", "cat"], { cwd: directory })
+      await writeFile(join(directory, ".git", "info", "attributes"), ".codex-review-target-control.patch filter=corrupt\n")
       await writeFile(reviewer, `#!/bin/sh
 set -eu
 test "$1" = review
