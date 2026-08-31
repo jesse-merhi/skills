@@ -627,7 +627,7 @@ printf 'reviewed combined snapshot\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.strictEqual(output, "reviewed combined snapshot\n")
       } finally {
         process.chdir(previousCwd)
@@ -777,7 +777,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.strictEqual(output, "reviewed isolated instructions\n")
       } finally {
         process.chdir(previousCwd)
@@ -806,7 +806,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /reserves \.codex-review-target-control\.patch/u)
       } finally {
@@ -839,7 +839,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none() })))
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.strictEqual(output, "reviewed root commit\n")
       } finally {
         process.chdir(previousCwd)
@@ -864,7 +864,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /must be repository-relative/u)
       } finally {
@@ -889,7 +889,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /target is absent from the base tree/u)
       } finally {
@@ -922,7 +922,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /blocks a frozen review control symlink destination/u)
       } finally {
@@ -952,7 +952,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /blocks a frozen review control symlink destination/u)
       } finally {
@@ -981,7 +981,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /target symlink escapes the review repository/u)
       } finally {
@@ -1013,7 +1013,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.strictEqual(output, "reviewed sparse source\n")
       } finally {
         process.chdir(previousCwd)
@@ -1045,7 +1045,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(repo)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /resolves outside the repository/u)
       } finally {
@@ -1076,7 +1076,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(clone)
       try {
-        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none() })))
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /fetch or deepen repository history/u)
       } finally {
@@ -1113,7 +1113,7 @@ printf 'reviewed isolated instructions\n'
       const previousCwd = process.cwd()
       process.chdir(clone)
       try {
-        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "origin/main", "HEAD", false), testCommand: Option.none() })))
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "origin/main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
         assert.strictEqual(output, "reviewed partial clone\n")
       } finally {
         process.chdir(previousCwd)
@@ -1126,6 +1126,7 @@ printf 'reviewed isolated instructions\n'
   it("reviews staged, unstaged, and untracked files before the first commit", async () => {
     const directory = await mkdtemp(join(tmpdir(), "review-unborn-worktree-"))
     const reviewer = join(directory, "reviewer")
+    const codexHome = join(directory, "codex-home")
     try {
       await execFile("git", ["init", "-b", "main"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
@@ -1136,7 +1137,10 @@ printf 'reviewed isolated instructions\n'
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await writeFile(reviewer, "#!/bin/sh\nset -eu\ncase \"$1\" in\n  login) exit 0 ;;\n  doctor) printf '%s\\n' '{\"checks\":{\"auth.credentials\":{\"status\":\"ok\"}}}' ;;\n  exec) printf 'ok\\n' ;;\n  review) test \"$2\" = --commit; test ! -e tracked.txt; test \"$(git show \"$3:tracked.txt\")\" = unstaged; test \"$(git show \"$3:untracked.txt\")\" = untracked; printf 'reviewed unborn worktree\\n' ;;\n  *) exit 7 ;;\nesac\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
-      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "uncommitted", "--codex-bin", reviewer], { cwd: directory })
+      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "uncommitted", "--codex-bin", reviewer], {
+        cwd: directory,
+        env: { ...process.env, CODEX_HOME: codexHome, HOME: directory }
+      })
       assert.match(stdout, /reviewed unborn worktree/u)
     } finally {
       await rm(directory, { recursive: true, force: true })
@@ -1207,7 +1211,7 @@ esac
       const previousCwd = process.cwd()
       process.chdir(child)
       try {
-        await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.some('test "$(pwd)" = "$(git rev-parse --show-toplevel)"') })))
+        await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.some('test "$(pwd)" = "$(git rev-parse --show-toplevel)"'), sessionsRoot: join(directory, "sessions") })))
       } finally {
         process.chdir(previousCwd)
       }
