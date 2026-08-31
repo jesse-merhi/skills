@@ -1,16 +1,16 @@
 ---
 name: feedback-hardening
-description: "Corrections about agent work: delegate a systemic-fix recommendation, get Jesse's approval, then implement it."
+description: "Corrections about agent work: delegate a systemic-fix recommendation, get user approval, then implement it."
 ---
 
 # Feedback hardening
 
-Turn Jesse's correction of agent behavior into a separate durable repair while
+Turn a user's correction of agent behavior into a separate durable repair while
 the current conversation keeps moving.
 
 ## 1. Frame the intervention
 
-Use this workflow when Jesse corrects or criticizes how the agent worked,
+Use this workflow when the user corrects or criticizes how the agent worked,
 identifies a recurring failure, or expresses frustration that points to
 avoidable agent behavior. Infer the concrete behavior from the transcript
 before asking for clarification. Treat a changed objective, a factual
@@ -44,7 +44,7 @@ mechanism is the root fix.
 
 The first phase is recommendation-only. Tell the receiver to inspect and reason
 without editing files, creating or updating pull requests, posting externally,
-or making other stateful changes before Jesse approves a path. Prepare a
+or making other stateful changes before the user approves a path. Prepare a
 dedicated worktree before launch when the same session may later implement the
 approved repair.
 
@@ -72,28 +72,28 @@ boundaries, but keep one canonical owner. For each credible option, state the
 mechanism, affected owner and surfaces, recurrence it prevents, proof plan,
 implementation scope, material risks, and why stronger layers are unsuitable.
 Prefer an existing abstraction or skill over a parallel mechanism. Avoid
-hardcoding Jesse's wording, the reported example, or an insult.
+hardcoding the user's wording, the reported example, or an insult.
 
 When an already-used skill caused or failed to prevent the behavior, recommend
 inspecting and patching that skill through Skill Workshop instead of adding a
 competing skill. If only one credible option exists, still present it as a
 recommendation and request explicit approval.
 
-This step is complete when Jesse receives the ranked decision brief and can
+This step is complete when the user receives the ranked decision brief and can
 approve the recommendation, choose an alternative, or redirect the
 investigation.
 
 ## 4. Implement the approved path
 
-Treat Jesse's initial correction as authority to create the recommendation
+Treat the user's initial correction as authority to create the recommendation
 session and conduct read-only investigation. Begin implementation only after
-Jesse explicitly approves an option. That approval covers the selected
+the user explicitly approves an option. That approval covers the selected
 reversible local changes in the same workspace; it does not bypass existing
 gates for public or external writes, publication, merges, deployment,
 destructive actions, protected schema or protocol changes, spending, or access
 expansion.
 
-Use the same session to implement the approved path unless Jesse chooses
+Use the same session to implement the approved path unless the user chooses
 another owner. Follow the target repository's instructions and applicable
 skills. Reproduce confirmed defects before editing. Add automated proof at the
 owning boundary when credible, and verify instruction-only changes with a
@@ -116,5 +116,5 @@ Return the repair result to the source conversation. Report:
 - the independent session link or handoff location.
 
 Do not create a second repair for the same root cause unless new evidence
-invalidates the existing fix. This step is complete when Jesse can verify what
-changed and why the same intervention should no longer be necessary.
+invalidates the existing fix. This step is complete when the user can verify
+what changed and why the same intervention should no longer be necessary.
