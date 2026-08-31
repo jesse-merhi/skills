@@ -325,12 +325,18 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
   ]
   return stored.every((value, index) => value === replay[index])
 }
-const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding) => hasLegacyEvidence(existing) &&
+const preservesLegacyValue = (existing: string, current: string) => existing.length === 0 || existing === current
+const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding, material: boolean) => hasLegacyEvidence(existing) &&
   existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
-  (existing.decision.length === 0 || existing.decision === finding.decision) &&
-  (existing.disposition.length === 0 || existing.disposition === finding.disposition) &&
-  (existing.fix_scope.length === 0 || existing.fix_scope === finding.fixScope) &&
-  (existing.handling.length === 0 || existing.handling === finding.handling) && existing.owner_resolution === finding.ownerResolution
+  existing.summary === finding.summary && existing.material === (material ? 1 : 0) &&
+  preservesLegacyValue(existing.area, finding.area) && preservesLegacyValue(existing.severity, finding.severity) &&
+  preservesLegacyValue(existing.user_impact, finding.userImpact) && preservesLegacyValue(existing.decision, finding.decision) &&
+  preservesLegacyValue(existing.finding_kind, finding.findingKind) && preservesLegacyValue(existing.production_path, finding.productionPath) &&
+  preservesLegacyValue(existing.reachability_evidence, finding.reachabilityEvidence) && preservesLegacyValue(existing.likelihood, finding.likelihood) &&
+  preservesLegacyValue(existing.impact, finding.impact) && preservesLegacyValue(existing.actual_consequence, finding.actualConsequence) &&
+  preservesLegacyValue(existing.maintenance_evidence, finding.maintenanceEvidence) && preservesLegacyValue(existing.present_cost, finding.presentCost) &&
+  preservesLegacyValue(existing.disposition, finding.disposition) && preservesLegacyValue(existing.fix_scope, finding.fixScope) &&
+  preservesLegacyValue(existing.handling, finding.handling) && existing.owner_resolution === finding.ownerResolution
 interface CommandRow {
   readonly command: string
   readonly result: string
@@ -1362,20 +1368,20 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   if (existingRun?.status === "complete") {
     return yield* Effect.fail(new InvalidFinding("completed review runs are terminal; start a new user-authorized review before recording more findings"))
   }
-  if (existingIssue !== undefined && hasLegacyEvidence(existingIssue) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+  if (existingIssue !== undefined && hasLegacyEvidence(existingIssue) && !isLegacyEvidenceUpgrade(existingIssue, input, material)) {
     return yield* Effect.fail(new InvalidFinding("legacy evidence upgrades must preserve the finding identity and lifecycle; upgrade the evidence before changing the current record"))
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
     return yield* Effect.fail(new InvalidFinding("updating an owner-resolved finding requires --owner-resolution and --decision"))
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0) {
-    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input, material)) {
       return yield* Effect.fail(new InvalidFinding("owner-resolved findings are immutable; only an exact idempotent replay is allowed"))
     }
     if (!hasLegacyEvidence(existingIssue)) return { runId: existingRunId, issueId: existingIssue.id }
   }
   if (existingIssue?.disposition === "follow-up") {
-    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input, material)) {
       return yield* Effect.fail(new InvalidFinding("deferred follow-up findings are immutable; use a new decision ID for later work"))
     }
     if (!hasLegacyEvidence(existingIssue)) return { runId: existingRunId, issueId: existingIssue.id }
