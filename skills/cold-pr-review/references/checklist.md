@@ -20,4 +20,5 @@ rationale:
 - Apply `reducing-cognitive-load` for dense, clever, stringly typed, weakly
   typed, over-abstracted, or hard-to-maintain code.
 - Use `finding-discipline`: report only concrete actionable findings tied to
-  changed lines or contracts, not style nits or vague risks.
+  changed lines or contracts, not style nits or vague risks. Require its
+  reality, importance, and repair-quality gates before returning a finding.

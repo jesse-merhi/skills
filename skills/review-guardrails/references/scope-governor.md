@@ -18,6 +18,10 @@ scope reason, then record them with `--handling consult`.
 
 Before patching an in-scope blocker, prove all of these:
 
+- The candidate passed `finding-discipline`'s reality, importance, and repair
+  quality gates. The registry contains contract evidence for a runtime finding,
+  plus root cause, recommended repair, and intervention justification for
+  either finding kind.
 - A runtime finding contains `finding-discipline`'s risk rating, non-synthetic
   reachability and consequence evidence, and the CLI-derived `accept`
   disposition and severity.
@@ -31,7 +35,8 @@ Before patching an in-scope blocker, prove all of these:
 - The fix uses an existing repository or dependency primitive when one owns the
   behavior. Do not emulate a dependency's full semantics through accumulating
   special cases.
-- The fix is proportional to the observed impact. Count permanent branches,
+- The recommended repair is better than doing nothing and proportional to the
+  observed likelihood and impact. Count permanent branches,
   fallbacks, schema fields, migrations, helpers, and tests as cost even when
   production changed-line growth stays under budget.
 - For a runtime finding, severity combines likelihood and impact. It does not substitute
@@ -43,7 +48,8 @@ behavior, record `--handling reject` with that contract evidence. If accepting
 it is instead a product tolerance decision, record `--handling consult` and do
 not edit.
 
-Reject observations that fail the reality or contract test. Record residual
+Reject observations that fail the reality, importance, contract, or repair
+value test. Record residual
 risk only when reachability and impact are proven but the current change
 deliberately leaves it unresolved. Use stop-and-consult for a fix that needs a
 new contract or user-owned trade-off.

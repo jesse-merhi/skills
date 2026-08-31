@@ -8,11 +8,13 @@ finding exists. A runtime candidate with unproven reachability or consequence
 remains
 `investigate` or `consult`; do not apply a provisional fix.
 
-Some accepted findings still have an uncertain repair: contested between
-passes or a judgment call about implementation. Never silently fix or silently
-reject one.
+Some proven, important findings still have an uncertain repair: contested
+between passes or a judgment call about implementation. An accepted risk rating
+does not authorize a provisional patch. First apply `finding-discipline`'s
+repair-quality gate. Never silently fix or silently reject one.
 
-Use the provisional-fix test. All four checks must hold:
+Use the provisional-fix test only after a recommended direction passes the
+repair-quality gate. All four checks must hold:
 
 1. **Root cause**: the fix removes the failure mode, not the symptom or the
    reviewer's report of it. Suppressing an error path, papering a null check

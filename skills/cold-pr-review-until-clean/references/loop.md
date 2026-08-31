@@ -29,6 +29,11 @@ Repeat:
    - for a maintenance candidate, use `--maintenance-evidence` to prove current
      unnecessary complexity, duplication, or code with no current job, and
      `--present-cost` for its concrete reading, change, test, or ownership cost
+   - apply `finding-discipline`'s reality, importance, and repair-quality gates;
+     only actionable candidates may receive `--handling fix`
+   - record contract evidence for every actionable runtime candidate, plus root
+     cause, recommended repair, and intervention justification for every
+     actionable candidate
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
        pass -> fix now, log Provisional, ask the user without waiting
@@ -53,7 +58,8 @@ Repeat:
      Else -> go to step 1 without editing anything.
 7. If has_findings:
      consecutive_clean = 0
-     Fix the actionable findings with narrow edits.
+     Fix the actionable findings with the smallest durable edits at the owning
+     boundary.
      Run relevant verification for the fixes.
      Record each command, result, and reason with the findings CLI.
      Run `"$review_findings_bin" scope-check --reason <remaining work and why it may

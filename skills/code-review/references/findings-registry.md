@@ -133,11 +133,18 @@ For every finding, record:
 - fix scope: `local` when the owning boundary can be fixed directly, or
   `systemic` when a local edit would be a Band-Aid and requires consultation
 - handling: `fix` for current in-scope work, `consult` for an owner decision,
-  `follow-up` for real nonblocking work outside this review, or `reject` when
-  proven runtime behavior is allowed by the current contract
+  `follow-up` for real nonblocking work outside this review, or `reject` when a
+  candidate fails an actionability gate
 - risk rating for runtime candidates: production path, reachability evidence,
   likelihood, impact, and actual consequence; the CLI derives severity and
   disposition
+- contract evidence for every actionable runtime finding
+- root cause, recommended repair, and intervention justification for every
+  actionable runtime or maintenance finding; the intervention justification
+  compares the recommendation with doing nothing after counting complexity and
+  new failure modes
+- rejection gate for rejected candidates: `reality`, `importance`, `contract`,
+  `repair`, or `duplicate`
 - short decision and validation result
 - explicit owner resolution when a consultation or provisional fix reaches a
   terminal state
@@ -169,6 +176,10 @@ behavior:
   --likelihood <likely|possible|rare|unknown|theoretical> \
   --impact <critical|high|medium|low> \
   --actual-consequence "<verified behavior and meaningful user/system impact>" \
+  --contract-evidence "<current contract and evidence that the behavior violates it>" \
+  --root-cause "<underlying cause and owning boundary>" \
+  --recommended-fix "<smallest durable repair at the owning boundary>" \
+  --intervention-justification "<why this is better than doing nothing after full repair cost>" \
   --decision "<owner or next action>" \
   --text "<validation notes or other searchable context>"
 ```
@@ -197,6 +208,9 @@ Use a maintenance record for unnecessary changed code:
   --summary "<one-sentence finding>" \
   --maintenance-evidence "<repository proof of unnecessary complexity, duplication, or code with no current job>" \
   --present-cost "<current reading, change, test, or ownership cost>" \
+  --root-cause "<underlying cause and owning boundary>" \
+  --recommended-fix "<smallest durable repair at the owning boundary>" \
+  --intervention-justification "<why this is better than doing nothing after full repair cost>" \
   --decision "<owner or next action>" \
   --text "<validation notes or other searchable context>"
 ```
@@ -206,18 +220,22 @@ exactly one existing run. If more than one run matches, the CLI rejects the
 record and requires both fields instead of guessing.
 
 Runtime records must omit the two maintenance evidence flags. Maintenance
-records must omit all five runtime risk flags. To reject an unsupported
+records must omit all six runtime evidence and risk flags. To reject an unsupported
 maintenance candidate, use `--status rejected`, omit both maintenance evidence
-flags, and record the rejection rationale in `--decision`.
+flags, record `--rejection-gate`, and record the rejection rationale in
+`--decision`. Rejected runtime candidates use the same rejection-gate rule and
+omit repair fields.
 
 Do not pass priority, severity, or disposition. The CLI derives severity and
 disposition from the current likelihood-impact matrix, evidence, and required
 `--handling`. Handling routes proven work but cannot raise a rejected or
-unproven risk. `fix` is invalid for systemic findings. `consult` waits for an
+unproven risk. The CLI refuses any actionable record without its repair fields,
+and refuses repair fields on rejected or investigating candidates. `fix` is
+invalid for systemic findings. `consult` waits for an
 owner decision. `follow-up` requires deferred status plus an owner or next
 action, stays nonblocking, and appears under `Deferred work`. `reject` requires
-a rejected runtime record plus a decision naming the current contract that
-allows the behavior. An accepted local
+a rejected record, `--rejection-gate`, and a decision explaining why the
+candidate failed that gate. An accepted local
 finding handled as `fix` and recorded as deferred becomes residual risk and
 requires `--decision` to explain why that risk is accepted.
 A consulted finding may be marked fixed or rejected only
@@ -280,9 +298,11 @@ SQLite instead of chat history:
   --target <current-target>
 ```
 
-The summary reports totals, status, sources, impact areas, severities, important
-findings, unresolved work, and verification counts. Retrieve the complete audit
-when writing or checking the summary:
+The summary reports totals, status, sources, source-by-disposition outcomes,
+rejection gates, impact areas, severities, important findings, unresolved work,
+and verification counts. Use source outcomes and rejection gates to compare
+native and cold-review precision over time. Retrieve the complete audit when
+writing or checking the summary:
 
 ```sh
 "$review_findings_bin" closeout --json \

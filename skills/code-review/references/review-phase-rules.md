@@ -54,15 +54,19 @@ with the blocker or residual risk.
 - Treat native and cold reviewer output as candidates. Before editing code,
   require `finding-discipline`'s recorded likelihood-impact risk rating for a
   runtime candidate, or its maintenance and present-cost evidence for a
-  maintenance candidate. Require the CLI's derived disposition in either case;
-  only runtime findings receive severity. Record `--handling fix` for current
+  maintenance candidate. Then require the shared actionability gate's contract
+  evidence for a runtime finding, plus root cause, recommended repair, and
+  intervention justification for either finding kind.
+  Require the CLI's derived disposition in either case; only runtime findings
+  receive severity. Record `--handling fix` for current
   in-scope work, `consult` for an owner decision, `follow-up` for real work
-  outside this review, or `reject` for proven runtime behavior the current
-  contract allows.
+  outside this review, or `reject` when a candidate fails a named actionability
+  gate.
 - Before editing an accepted finding, apply `review-guardrails`' systemic-finding
   stop. Bring the user durable architecture options instead of applying a local
   Band-Aid.
-- Apply `review-guardrails`' autonomous fix bar after `finding-discipline` and
+- Apply `review-guardrails`' autonomous fix bar after all three
+  `finding-discipline` gates and
   before editing. A valid review observation is not automatically worth
   permanent production code, compatibility behavior, or tests.
 - Reapply `reducing-cognitive-load`'s plausibility and proxy tests to every
@@ -88,7 +92,11 @@ with the blocker or residual risk.
 - Reject unsupported edge cases. Record residual risk only when reachability and
   impact are proven and the current change deliberately leaves the risk
   unresolved.
-- Prefer small fixes at the right ownership boundary.
+- Prefer the smallest durable repair at the boundary that owns the problem.
+- Choose verification after the repair passes. Do not add a test merely because
+  a regression occurred; require a reachable stable contract at the lowest
+  practical layer. Prefer rendered UI proof for visual defects unless stable
+  behavior or state is worth automating.
 
 ## Hard stops
 

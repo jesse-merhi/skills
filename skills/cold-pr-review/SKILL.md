@@ -23,7 +23,9 @@ prevents questioning whether it was correct.
    and add domain-specific checklist items only when they are neutral and visible
    from the review target.
 6. Require `finding-discipline`: report only concrete actionable findings tied
-   to changed code or contracts, not style nits or vague risks.
+   to changed code or contracts, not style nits or vague risks. Omit candidates
+   that fail its reality, importance, or repair-quality gate instead of
+   returning suggestions or optional hardening.
 
 ## Required discipline
 

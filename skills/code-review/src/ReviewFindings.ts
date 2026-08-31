@@ -42,7 +42,7 @@ export interface ReviewedFilesInput {
   }>
 }
 
-export const FINDING_SCHEMA_VERSION = 7
+export const FINDING_SCHEMA_VERSION = 8
 export const FINDING_KINDS = ["runtime", "maintenance"] as const
 export const FINDING_STATUSES = ["open", "fixed", "rejected", "deferred", "provisional", "reopened"] as const
 export const FINDING_DISPOSITIONS = ["accept", "investigate", "consult", "follow-up", "residual", "reject"] as const
@@ -53,6 +53,7 @@ export const FINDING_IMPACTS = ["critical", "high", "medium", "low"] as const
 export const FINDING_SEVERITIES = ["", "p0", "p1", "p2", "p3"] as const
 export const FINDING_AREAS = ["", "ui", "workflow", "api-contract", "permissions", "privacy", "finance", "data-correctness", "audit", "migration", "schema", "internal"] as const
 export const FINDING_OWNER_RESOLUTIONS = ["approved", "declined"] as const
+export const FINDING_REJECTION_GATES = ["reality", "importance", "contract", "repair", "duplicate"] as const
 
 type FindingLikelihood = (typeof FINDING_LIKELIHOODS)[number]
 type FindingImpact = (typeof FINDING_IMPACTS)[number]
@@ -112,6 +113,11 @@ const FindingRecord = Schema.Struct({
   actualConsequence: Schema.String,
   maintenanceEvidence: Schema.String,
   presentCost: Schema.String,
+  contractEvidence: Schema.String,
+  rootCause: Schema.String,
+  recommendedFix: Schema.String,
+  interventionJustification: Schema.String,
+  rejectionGate: Schema.Union([Schema.Literals(FINDING_REJECTION_GATES), Schema.Literal("")]),
   fixScope: Schema.Literals(FINDING_FIX_SCOPES),
   handling: Schema.Literals(FINDING_HANDLINGS),
   ownerResolution: Schema.Union([Schema.Literals(FINDING_OWNER_RESOLUTIONS), Schema.Literal("")])
@@ -136,6 +142,11 @@ export interface FindingInput {
   readonly actualConsequence: string
   readonly maintenanceEvidence: string
   readonly presentCost: string
+  readonly contractEvidence: string
+  readonly rootCause: string
+  readonly recommendedFix: string
+  readonly interventionJustification: string
+  readonly rejectionGate: string
   readonly fixScope: string
   readonly handling: string
   readonly ownerResolution: string
@@ -166,6 +177,17 @@ Optional finding metadata:
   --area ${FINDING_AREAS.filter(Boolean).join("|")} --material
   --user-impact, --decision, --text
   --owner-resolution ${FINDING_OWNER_RESOLUTIONS.join("|")} for an explicit terminal decision about the finding
+
+Required for every actionable finding:
+  --root-cause <underlying cause and owning boundary>
+  --recommended-fix <smallest durable repair at the owning boundary>
+  --intervention-justification <why intervention beats doing nothing after full repair cost>
+
+Additionally required for actionable runtime findings:
+  --contract-evidence <current contract and evidence that the behavior violates it>
+
+Required for rejected candidates without an owner resolution:
+  --rejection-gate ${FINDING_REJECTION_GATES.join("|")}
 
 Required for runtime findings:
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
@@ -205,9 +227,12 @@ Consistency rules:
   residual -> deferred with required decision text and no patch
   deferred legacy record without disposition -> unresolved until re-recorded
   reject -> rejected and no patch
+  accept|consult|follow-up|residual -> required repair fields
+  rejected or investigating candidate -> omit repair fields
+  rejected candidate -> required rejection gate and decision rationale
   handling consult -> consult when the risk matrix does not reject or investigate
   handling follow-up -> follow-up when the risk matrix does not reject or investigate
-  handling reject -> reject proven runtime behavior allowed by the current contract; requires decision text
+  handling reject -> reject a candidate that fails an actionability gate; requires rejection gate and decision text
   systemic + handling fix -> rejected as inconsistent
   owner approved + decision text -> fixed accepted/consulted finding
   owner declined + decision text -> rejected accepted/consulted finding
@@ -218,7 +243,7 @@ Consistency rules:
   rejected unsupported maintenance candidate -> no evidence fields and required decision derive reject
   runtime -> omit both maintenance evidence fields
 
-Do not pass --priority or --disposition. The CLI derives both. --handling says whether proven work belongs in this fix, an owner consultation, a nonblocking follow-up, or rejection because the current contract allows the behavior; it never raises a rejected or unproven risk.
+Do not pass --priority or --disposition. The CLI derives both. --handling says whether proven work belongs in this fix, an owner consultation, a nonblocking follow-up, or rejection at a named actionability gate; it never raises a rejected or unproven risk.
 --area names the affected part of the product. --impact says how bad the consequence is.`
 
 export interface RecordedCommand {
@@ -254,6 +279,11 @@ export interface CloseoutFinding {
   readonly actual_consequence: string
   readonly maintenance_evidence: string
   readonly present_cost: string
+  readonly contract_evidence: string
+  readonly root_cause: string
+  readonly recommended_fix: string
+  readonly intervention_justification: string
+  readonly rejection_gate: string
   readonly disposition: string
   readonly fix_scope: string
   readonly handling: string
@@ -268,8 +298,10 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
     existing.decision, existing.text, existing.finding_kind,
     existing.production_path, existing.reachability_evidence, existing.likelihood,
     existing.impact, existing.actual_consequence, existing.maintenance_evidence,
-    existing.present_cost, existing.disposition, existing.fix_scope, existing.handling,
-    existing.owner_resolution
+    existing.present_cost, existing.contract_evidence, existing.root_cause,
+    existing.recommended_fix, existing.intervention_justification,
+    existing.rejection_gate, existing.disposition, existing.fix_scope,
+    existing.handling, existing.owner_resolution
   ]
   const replay: ReadonlyArray<string | number> = [
     finding.status, finding.source, finding.fingerprint, finding.summary,
@@ -277,6 +309,8 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
     finding.decision, text, finding.findingKind, finding.productionPath,
     finding.reachabilityEvidence, finding.likelihood, finding.impact,
     finding.actualConsequence, finding.maintenanceEvidence, finding.presentCost,
+    finding.contractEvidence, finding.rootCause, finding.recommendedFix,
+    finding.interventionJustification, finding.rejectionGate,
     finding.disposition, finding.fixScope, finding.handling, finding.ownerResolution
   ]
   return stored.every((value, index) => value === replay[index])
@@ -475,6 +509,8 @@ export interface CloseoutSummary {
   readonly lower_risk_findings: number
   readonly status_counts: ReadonlyArray<CloseoutCount>
   readonly source_counts: ReadonlyArray<CloseoutCount>
+  readonly source_disposition_counts: ReadonlyArray<CloseoutCount>
+  readonly rejection_gate_counts: ReadonlyArray<CloseoutCount>
   readonly area_counts: ReadonlyArray<CloseoutCount>
   readonly severity_counts: ReadonlyArray<CloseoutCount>
   readonly important_findings: ReadonlyArray<CloseoutFinding>
@@ -555,7 +591,7 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
-    `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
+    `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', contract_evidence text not null default '', root_cause text not null default '', recommended_fix text not null default '', intervention_justification text not null default '', rejection_gate text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
     `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
     `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
@@ -571,6 +607,9 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     ["issues", "reachability_evidence", "text not null default ''"], ["issues", "likelihood", "text not null default ''"],
     ["issues", "risk_impact", "text not null default ''"], ["issues", "actual_consequence", "text not null default ''"],
     ["issues", "current_job_evidence", "text not null default ''"], ["issues", "maintenance_evidence", "text not null default ''"], ["issues", "present_cost", "text not null default ''"],
+    ["issues", "contract_evidence", "text not null default ''"], ["issues", "root_cause", "text not null default ''"],
+    ["issues", "recommended_fix", "text not null default ''"], ["issues", "intervention_justification", "text not null default ''"],
+    ["issues", "rejection_gate", "text not null default ''"],
     ["issues", "disposition", "text not null default ''"], ["issues", "fix_scope", "text not null default ''"], ["issues", "handling", "text not null default ''"],
     ["issues", "owner_resolution", "text not null default ''"],
     ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "line_metric", "text not null default 'production-only'"],
@@ -1106,11 +1145,8 @@ const findingInputError = (finding: DecodedFinding) => {
   if (finding.fixScope === "systemic" && finding.handling === "fix") {
     return "systemic findings cannot use --handling fix"
   }
-  if (finding.handling === "reject" && finding.findingKind !== "runtime") {
-    return "--handling reject is only valid for runtime behavior allowed by the current contract"
-  }
   if (finding.handling === "reject" && finding.decision.trim().length === 0) {
-    return "--handling reject requires --decision naming the current contract that allows the behavior"
+    return "--handling reject requires --decision with the actionability rationale"
   }
 
   const runtimeEvidenceFields = [
@@ -1121,7 +1157,8 @@ const findingInputError = (finding: DecodedFinding) => {
   const runtimeFields = [
     ...runtimeEvidenceFields,
     ["--likelihood", finding.likelihood] as const,
-    ["--impact", finding.impact] as const
+    ["--impact", finding.impact] as const,
+    ["--contract-evidence", finding.contractEvidence] as const
   ]
   if (finding.findingKind === "runtime") {
     if (finding.likelihood.length === 0) return "runtime findings require --likelihood"
@@ -1170,6 +1207,7 @@ const deriveFindingOutcome = (finding: DecodedFinding): FindingOutcome | undefin
       : outcome
   }
   if (finding.maintenanceEvidence.length === 0) return { severity: "", disposition: "reject" }
+  if (finding.handling === "reject") return { severity: "", disposition: "reject" }
   if (finding.handling === "follow-up") return { severity: "", disposition: "follow-up" }
   if (finding.handling === "consult") return { severity: "", disposition: "consult" }
   if (finding.ownerResolution.length > 0) return { severity: "", disposition: "accept" }
@@ -1205,7 +1243,37 @@ const findingStatusError = (finding: Finding) => {
   return undefined
 }
 
-const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input: FindingInput) {
+const actionableDispositions = new Set<FindingDisposition>(["accept", "consult", "follow-up", "residual"])
+
+const findingActionabilityError = (finding: Finding) => {
+  const repairFields = [
+    ["--root-cause", finding.rootCause],
+    ["--recommended-fix", finding.recommendedFix],
+    ["--intervention-justification", finding.interventionJustification]
+  ] as const
+  const actionable = actionableDispositions.has(finding.disposition)
+  if (actionable) {
+    if (finding.findingKind === "runtime" && finding.contractEvidence.trim().length === 0) {
+      return "actionable runtime findings require --contract-evidence"
+    }
+    const missingRepair = repairFields.find(([, value]) => value.trim().length === 0)?.[0]
+    if (missingRepair !== undefined) return `actionable findings require ${missingRepair}`
+    if (finding.rejectionGate.length > 0) return "actionable findings must omit --rejection-gate"
+    return undefined
+  }
+
+  const unexpectedRepair = repairFields.find(([, value]) => value.trim().length > 0)?.[0]
+  if (unexpectedRepair !== undefined) return `${finding.disposition} candidates must omit repair field ${unexpectedRepair}`
+  if (finding.status === "rejected" && finding.ownerResolution.length === 0) {
+    if (finding.rejectionGate.length === 0) return "rejected candidates require --rejection-gate"
+    if (finding.decision.trim().length === 0) return "rejected candidates require --decision with the rejection rationale"
+  } else if (finding.rejectionGate.length > 0) {
+    return "--rejection-gate is only valid for rejected candidates without an owner resolution"
+  }
+  return undefined
+}
+
+export const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input: FindingInput) {
   const normalized = {
     ...input,
     status: normalizeStatus(input.status),
@@ -1215,6 +1283,11 @@ const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input:
     impact: normalizeToken(input.impact),
     maintenanceEvidence: input.maintenanceEvidence.trim(),
     presentCost: input.presentCost.trim(),
+    contractEvidence: input.contractEvidence.trim(),
+    rootCause: input.rootCause.trim(),
+    recommendedFix: input.recommendedFix.trim(),
+    interventionJustification: input.interventionJustification.trim(),
+    rejectionGate: normalizeToken(input.rejectionGate),
     fixScope: normalizeToken(input.fixScope),
     handling: normalizeToken(input.handling),
     ownerResolution: normalizeToken(input.ownerResolution)
@@ -1227,6 +1300,8 @@ const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input:
   const outcome = deriveFindingOutcome(finding)
   if (outcome === undefined) return yield* Effect.fail(new InvalidFinding("runtime findings require --likelihood and --impact"))
   const completeFinding = { ...finding, ...outcome } satisfies Finding
+  const actionabilityError = findingActionabilityError(completeFinding)
+  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError))
   const statusError = findingStatusError(completeFinding)
   if (statusError !== undefined) {
     return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`))
@@ -1241,10 +1316,10 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const run = yield* resolveRecordRun(rawRun)
   const existingRunId = yield* exactRunId(run)
   const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
-  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
+  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.contractEvidence, input.rootCause, input.recommendedFix, input.interventionJustification, input.rejectionGate, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
   const existingIssues = existingRunId === undefined
     ? []
-    : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
+    : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
   const existingIssue = existingIssues[0]
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
     return yield* Effect.fail(new InvalidFinding("updating an owner-resolved finding requires --owner-resolution and --decision"))
@@ -1282,8 +1357,8 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const issueId = existingIssue?.id ?? stableId([runId, input.decisionId])
   const timestamp = nowSeconds()
   yield* sql`
-    insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, impact, priority, material, user_impact, decision, text, finding_kind, production_path, reachability_evidence, likelihood, risk_impact, actual_consequence, maintenance_evidence, present_cost, disposition, fix_scope, handling, owner_resolution, decision_log_path, first_seen_at, last_seen_at, seen_count, updated_at)
-    values (${issueId}, ${runId}, ${input.decisionId}, ${input.status}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${input.area}, ${input.severity}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${input.findingKind}, ${input.productionPath}, ${input.reachabilityEvidence}, ${input.likelihood}, ${input.impact}, ${input.actualConsequence}, ${input.maintenanceEvidence}, ${input.presentCost}, ${input.disposition}, ${input.fixScope}, ${input.handling}, ${input.ownerResolution}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
+    insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, impact, priority, material, user_impact, decision, text, finding_kind, production_path, reachability_evidence, likelihood, risk_impact, actual_consequence, maintenance_evidence, present_cost, contract_evidence, root_cause, recommended_fix, intervention_justification, rejection_gate, disposition, fix_scope, handling, owner_resolution, decision_log_path, first_seen_at, last_seen_at, seen_count, updated_at)
+    values (${issueId}, ${runId}, ${input.decisionId}, ${input.status}, ${input.source}, ${input.fingerprint}, ${input.summary}, ${input.area}, ${input.severity}, ${material ? 1 : 0}, ${input.userImpact}, ${input.decision}, ${text}, ${input.findingKind}, ${input.productionPath}, ${input.reachabilityEvidence}, ${input.likelihood}, ${input.impact}, ${input.actualConsequence}, ${input.maintenanceEvidence}, ${input.presentCost}, ${input.contractEvidence}, ${input.rootCause}, ${input.recommendedFix}, ${input.interventionJustification}, ${input.rejectionGate}, ${input.disposition}, ${input.fixScope}, ${input.handling}, ${input.ownerResolution}, ${run.decisionLog}, ${timestamp}, ${timestamp}, 1, ${timestamp})
     on conflict(id) do update set
       run_id=excluded.run_id, decision_id=excluded.decision_id, status=excluded.status,
       source=excluded.source, fingerprint=excluded.fingerprint, summary=excluded.summary,
@@ -1293,6 +1368,10 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
       reachability_evidence=excluded.reachability_evidence, likelihood=excluded.likelihood,
       risk_impact=excluded.risk_impact, actual_consequence=excluded.actual_consequence,
       maintenance_evidence=excluded.maintenance_evidence, present_cost=excluded.present_cost,
+      contract_evidence=excluded.contract_evidence, root_cause=excluded.root_cause,
+      recommended_fix=excluded.recommended_fix,
+      intervention_justification=excluded.intervention_justification,
+      rejection_gate=excluded.rejection_gate,
       disposition=excluded.disposition, fix_scope=excluded.fix_scope, handling=excluded.handling,
       owner_resolution=excluded.owner_resolution,
       decision_log_path=coalesce(nullif(excluded.decision_log_path, ''), issues.decision_log_path, ''),
@@ -1341,7 +1420,7 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   if (filters.base !== undefined) { where.push("coalesce(base, '') = ?"); params.push(filters.base) }
   const runs = yield* sql.unsafe<RunRow>(`select id from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 1`, params)
   const runId = runs[0]?.id
-  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as area, case lower(coalesce(priority, '')) when 'p4' then '' else coalesce(priority, '') end as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution from issues where run_id = ${runId} order by decision_id`
+  const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as area, case lower(coalesce(priority, '')) when 'p4' then '' else coalesce(priority, '') end as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution from issues where run_id = ${runId} order by decision_id`
   const findings: ReadonlyArray<CloseoutFinding> = findingRows.map((finding) => ({ ...finding, material: finding.material !== 0 }))
   const commands = runId === undefined ? [] : yield* sql<CommandRow>`select command, result, reason, coalesce(decision_id, '') as decision_id from commands where run_id = ${runId} order by updated_at, command`
   const scopeBudget = runId === undefined ? Option.none() : yield* readScopeBudget(runId).pipe(Effect.option)
@@ -1555,6 +1634,11 @@ const findingLines = (title: string, findings: ReadonlyArray<CloseoutFinding>, s
       if (finding.present_cost.length > 0) lines.push(`  present cost: ${finding.present_cost}`)
     }
     if (showContext && finding.owner_resolution.length > 0) lines.push(`  owner: ${finding.owner_resolution}`)
+    if (showContext && finding.contract_evidence.length > 0) lines.push(`  contract: ${finding.contract_evidence}`)
+    if (showContext && finding.root_cause.length > 0) lines.push(`  root cause: ${finding.root_cause}`)
+    if (showContext && finding.recommended_fix.length > 0) lines.push(`  recommended repair: ${finding.recommended_fix}`)
+    if (showContext && finding.intervention_justification.length > 0) lines.push(`  intervention: ${finding.intervention_justification}`)
+    if (showContext && finding.rejection_gate.length > 0) lines.push(`  rejected at: ${finding.rejection_gate}`)
     if (showContext && finding.user_impact.length > 0) lines.push(`  why it matters: ${finding.user_impact}`)
     if (showContext && finding.status === "fixed" && finding.decision.length > 0) lines.push(`  change: ${finding.decision}`)
     if (finding.status === "deferred" && finding.decision.length > 0) lines.push(`  decision: ${finding.decision}`)
@@ -1592,6 +1676,8 @@ export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSu
     lower_risk_findings: closeout.lower_risk_findings.length,
     status_counts: countLabels(closeout.findings_found.map((finding) => finding.status)),
     source_counts: countLabels(closeout.findings_found.map((finding) => finding.source)),
+    source_disposition_counts: countLabels(closeout.findings_found.map((finding) => `${finding.source}:${finding.disposition}`)),
+    rejection_gate_counts: countLabels(closeout.findings_found.filter((finding) => finding.rejection_gate.length > 0).map((finding) => finding.rejection_gate)),
     area_counts: countLabels(closeout.findings_found.map((finding) => finding.area)),
     severity_counts: countLabels(closeout.findings_found.map((finding) => finding.severity)),
     important_findings: important.slice(0, limit),
@@ -1621,6 +1707,8 @@ const printSummary = (summary: CloseoutSummary) => {
     `- Findings: ${summary.total_findings} total; ${summary.material_findings} material; ${summary.lower_risk_findings} lower risk`,
     countLine("Status", summary.status_counts),
     countLine("Sources", summary.source_counts),
+    countLine("Source outcomes", summary.source_disposition_counts),
+    countLine("Rejection gates", summary.rejection_gate_counts),
     countLine("Areas", summary.area_counts),
     countLine("Severity", summary.severity_counts), "",
     ...limitedFindingLines("Important resolved findings", summary.important_findings, summary.important_findings_total), "",

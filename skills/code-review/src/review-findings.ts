@@ -82,6 +82,11 @@ const record = Command.make("record", {
   reachabilityEvidence: Flag.string("reachability-evidence").pipe(Flag.withDefault("")), likelihood: Flag.string("likelihood").pipe(Flag.withDefault("")),
   actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
   maintenanceEvidence: Flag.string("maintenance-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
+  contractEvidence: Flag.string("contract-evidence").pipe(Flag.withDefault("")),
+  rootCause: Flag.string("root-cause").pipe(Flag.withDefault("")),
+  recommendedFix: Flag.string("recommended-fix").pipe(Flag.withDefault("")),
+  interventionJustification: Flag.string("intervention-justification").pipe(Flag.withDefault("")),
+  rejectionGate: Flag.string("rejection-gate").pipe(Flag.withDefault("")),
   fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES),
   handling: Flag.choice("handling", FINDING_HANDLINGS),
   ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))

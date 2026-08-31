@@ -52,7 +52,9 @@ fields in its header.
    accepted fix.
 3. Require `finding-discipline`'s recorded risk rating for a runtime candidate,
    or its maintenance and present-cost evidence for a maintenance candidate.
-   Then classify accepted findings and apply the autonomous fix bar in
+   Require its reality, importance, and repair-quality gates before classifying
+   a candidate as actionable. Then classify accepted findings and apply the
+   autonomous fix bar in
    [scope-governor.md](references/scope-governor.md).
 4. Before patching, apply the systemic-finding stop in
    [systemic-findings.md](references/systemic-findings.md). Patch only

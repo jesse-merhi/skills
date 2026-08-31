@@ -146,6 +146,9 @@ unless the current user explicitly requests that exact cross-harness session.
      unnecessary complexity, duplication, or code with no current job, and
      `--present-cost` naming its current reading, change, test, or ownership
      cost; require the CLI to derive `accept` without a severity;
+   - require the shared actionability gate to record contract evidence for a
+     runtime finding, plus root cause, recommended repair, and intervention
+     justification for either finding kind;
    - stop and consult if `review-guardrails` classifies the fix as systemic;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
@@ -165,6 +168,9 @@ unless the current user explicitly requests that exact cross-harness session.
      unnecessary complexity, duplication, or code with no current job, and
      `--present-cost` naming its current reading, change, test, or ownership
      cost; require the CLI to derive `accept` without a severity;
+   - require the shared actionability gate to record contract evidence for a
+     runtime finding, plus root cause, recommended repair, and intervention
+     justification for either finding kind;
    - stop and consult if `review-guardrails` classifies the fix as systemic;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
@@ -213,8 +219,12 @@ unless the current user explicitly requests that exact cross-harness session.
   whole-target clean gate.
 - Every finding passes the current `review-findings schema`. Every accepted
   runtime finding has a recorded production path, reachability evidence,
-  likelihood, impact, and actual consequence; the CLI derived severity and
-  `accept` from the risk rating.
+  likelihood, impact, actual consequence, contract evidence, root cause,
+  recommended repair, and intervention justification; the CLI derived severity
+  and `accept` from the risk rating.
+- Every actionable maintenance finding has recorded root cause, recommended
+  repair, and intervention justification in addition to its current-cost
+  evidence.
 - Every autonomous fix names a current reachable contract and remains
   proportional to its impact.
 - `scope-start` persisted the original baseline, every accepted fix was followed

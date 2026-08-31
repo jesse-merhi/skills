@@ -47,6 +47,11 @@ Repeat:
    - for a maintenance candidate, use `--maintenance-evidence` to prove current
      unnecessary complexity, duplication, or code with no current job, and
      `--present-cost` for its concrete reading, change, test, or ownership cost
+   - apply `finding-discipline`'s reality, importance, and repair-quality gates;
+     only actionable candidates may receive `--handling fix`
+   - record contract evidence for every actionable runtime candidate, plus root
+     cause, recommended repair, and intervention justification for every
+     actionable candidate
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - apply `review-guardrails`' autonomous fix bar before accepting a patch
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
@@ -70,7 +75,8 @@ Repeat:
      Else -> go to step 1 without changing the reviewed tree.
 7. If has_findings:
      consecutive_clean = 0
-     Fix the actionable findings with narrow edits.
+     Fix the actionable findings with the smallest durable edits at the owning
+     boundary.
      If the target was an immutable commit SHA, update the reviewed target to
      the amended/new commit SHA, or switch to the base/uncommitted target before
      the next review. Do not re-review an old immutable commit after fixes.
