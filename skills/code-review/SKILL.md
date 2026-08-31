@@ -7,9 +7,10 @@ description: 'Run authorized native and independent fix-and-rerun reviews for a 
 
 Orchestrate two until-clean review phases for one target.
 
-1. Phase 1: run `review-until-clean` until the harness-native review is clean.
-2. Phase 2: run `cold-pr-review-until-clean` in a subagent until cold review is
-   clean.
+1. Phase 1: run `review-until-clean` in an external harness-native review
+   session until native review is clean. Never substitute an in-chat subagent.
+2. Phase 2: run `cold-pr-review-until-clean` in an in-chat subagent until cold
+   review is clean. Do not create a separate top-level task for this phase.
 
 Use `finding-discipline` and `review-guardrails`' autonomous fix bar throughout
 both phases. A finding can be real without deserving an autonomous fix. Phase 1
@@ -22,8 +23,19 @@ the built-in `code-review` workflow in Claude Code. If the user names an
 engine, that engine wins. `review-until-clean` owns engine selection and
 fallback rules.
 
+Treat every external native-review session as temporary. Capture its task or
+session ID when it is created, collect its result, then archive it in guaranteed
+cleanup on success, failure, cancellation, or early stop. In Codex Desktop use
+`set_thread_archived`; for standalone Codex sessions use `codex archive <id>`.
+Do not rely on the final response to remember cleanup, and do not leave the
+review task visible after its result has been incorporated.
+
 Keep separate unless explicitly requested: repo-specific review bots, security
 remediation workflows, OpenGrep, merge, and advisory writing.
+
+`ask-codex` and `ask-claude` are user-invoked cross-harness tools, not review
+engines or fallback reviewers. Never invoke either skill from this workflow
+unless the current user explicitly requests that exact cross-harness session.
 
 ## Workflow
 
@@ -57,10 +69,11 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    scope_baseline = <request, target, intended behavior, owner boundary>
    consult_queue = []
    findings_registry = <SQLite findings database>
+   file_coverage = <changed files ranked by current valid review count>
    ```
 
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
-   for scope classification, budgets, consult queue, tracked-finding notices,
+   for scope classification, budgets, consult queue, queue matching,
    and blocked-on-consult behavior. For a new run, persist the baseline before
    any review fix:
 
@@ -94,12 +107,21 @@ remediation workflows, OpenGrep, merge, and advisory writing.
    Done when the review-findings helper path is resolved and every accepted,
    rejected, deferred, provisional, reopened, user, lens, native-review, and
    cold-review finding can be recorded instead of reconstructed from chat.
+   Query current file coverage before dispatching review agents, and give the
+   least-covered changed files priority without describing prior verdicts or
+   review counts to a cold reviewer. Every general, discovery, or cold reviewer
+   that can identify the files it substantively assessed must record them once,
+   in one batch, at the end of its review.
 
 6. Run Phase 1.
 
    Load `review-until-clean` and `wait-efficiently`, then run the native review
-   until it is clean on the current target. Use `finding-discipline` and the
-   autonomous fix bar to triage findings before fixing. Read
+   externally until it is clean on the current target. Record every created
+   external task or session ID before waiting. After each invocation reaches a
+   terminal state and its output has been captured, archive it before starting
+   another invocation or leaving Phase 1. Run the same cleanup after errors,
+   cancellation, budget expiry, or an early stop. Use `finding-discipline` and
+   the autonomous fix bar to triage findings before fixing. Read
    [references/review-phase-rules.md](references/review-phase-rules.md) for
    whole-target review, validation, finding classification, and held-wait
    behavior. If Phase 1 uses the Codex engine,
@@ -109,8 +131,10 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
    Read [references/subagents.md](references/subagents.md), then run
    `cold-pr-review-until-clean` in a subagent until cold review is clean on the
-   same target. Give it the one-time setup summary, neutral risk checklist, and
-   any tracked-finding notices generated from currently open consult entries.
+   same target. Give it only the frozen target and neutral risk checklist.
+   After it returns candidates, compare them with the findings registry and
+   consult queue during coordinator triage; do not reveal prior findings before
+   the reviewer has independently completed its pass.
    Wait through `wait-efficiently` so completion wakes the active wait instead
    of being discovered by status polling.
 
@@ -171,6 +195,9 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 
 - The selected harness-native review engine started successfully with its
   configured model.
+- Every external native-review task or session created by Phase 1 was archived
+  after its result was captured, including failed, cancelled, and superseded
+  invocations.
 - `review-flow-map`, required lenses, applicable conditional lenses,
   `review-guardrails`, and `finding-discipline` were used.
 - Native review met its clean stop condition before Phase 2, and cold review
@@ -179,6 +206,11 @@ remediation workflows, OpenGrep, merge, and advisory writing.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
+- General, discovery, and cold review agents record one batched changed-file
+  coverage attestation when they can identify the files they substantively
+  assessed. Current content identities determine whether an attestation still
+  counts; coverage prioritizes later review work but never replaces either
+  whole-target clean gate.
 - Every finding passes the current `review-findings schema`. Every accepted
   runtime finding has a recorded production path, reachability evidence,
   likelihood, impact, and actual consequence; the CLI derived severity and
@@ -211,6 +243,8 @@ consult queue is resolved.
 ## Avoid
 
 - switching or overriding the review model without user approval;
+- invoking `ask-codex` or `ask-claude` without the current user's explicit
+  request;
 - substituting self-review, ad hoc prompts, or one-off subagents for the two
   configured phases;
 - patching follow-up or out-of-scope findings into this PR;
@@ -221,4 +255,8 @@ consult queue is resolved.
 - leaving accepted fixes in a temporary snapshot instead of the real checkout;
 - pushing just to review;
 - pushing between findings, review phases, or targeted validation runs;
-- writing final closeout sections from chat history.
+- writing final closeout sections from chat history;
+- leaving external native-review tasks or sessions unarchived after collecting
+  their output;
+- treating file coverage as a clean verdict or telling a cold reviewer that
+  lower-priority files were previously approved.

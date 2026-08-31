@@ -63,3 +63,28 @@ In that case:
 
 Never count a re-review as clean when its `last_head_sha` does not match the
 current PR head.
+
+## Platinum-or-better label
+
+After the third consecutive clean response, keep the same head pinned and wait
+for Clawsweeper's label update:
+
+```sh
+gh pr view <pr> --json headRefOid,labels \
+  --jq '{head: .headRefOid, labels: [.labels[].name]}'
+```
+
+Success requires the head to remain equal to `last_head_sha` and the labels to
+contain exactly one of these PR ratings:
+
+- `rating: 🐚 platinum hermit`
+- `rating: 🦞 diamond lobster`
+- `rating: 🦀 challenger crab`
+
+A similarly named issue rating does not count. Label updates can lag the
+review, so hold the wait within the workflow's wall-clock cap. Never add,
+remove, or rewrite a rating label.
+
+A later push invalidates the clean streak and rating observation even when
+GitHub has not removed the old label yet. Re-trigger the workflow for the new
+head.

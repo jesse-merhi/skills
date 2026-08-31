@@ -4,6 +4,19 @@ Keep externally owned skills out of this repository unless their license and
 update model are intentionally adopted. Prefer a small repo-owned adapter when
 only part of an external workflow earns a permanent place in the skill loop.
 
+## Ownership model
+
+| Category | Where the code lives | Who owns future behavior | Update rule |
+| --- | --- | --- | --- |
+| Repo-owned | This repository | This repository | Change and test here. |
+| Repo-owned fork | This repository, with an upstream notice | This repository | Preserve attribution; upstream changes are input, not automatic policy. |
+| External | Upstream installation | Upstream project | Pin and review upstream; do not copy it here. |
+
+Current repo-owned forks include `research`, `tdd`, `writing-for-agents`,
+`skill-cleaner`, `speak-fking-english`, and the internal references behind the
+`design` router. Their skill files name the source and the behavior that differs
+from upstream. Everything else is repo-owned unless its skill says otherwise.
+
 ## browser-use
 
 - **Source:** <https://github.com/browser-use/browser-use/tree/0.13.7>
@@ -80,7 +93,7 @@ The installers own the external `gh-stack` skill and extension. Do not symlink
 - **Update model:** The source is pinned to commit
   `697d4ce9742da558fd1ba6697c8e9775e2e302dd`, which adds Teach's Codex
   `agents/openai.yaml` metadata to the otherwise unchanged `v1.0.1` files. The
-  installer remains pinned to `skills@1.5.20`. Review upstream changes before
+  installer is pinned to `skills@1.5.23`. Review upstream changes before
   deliberately updating either pin.
 
 ### Install
@@ -95,7 +108,7 @@ install if it moved.
 
 | Harness | Method |
 | --- | --- |
-| Codex | `test "$(git ls-remote https://github.com/mattpocock/skills.git refs/heads/codex-skill-metadata \| awk '{print $1}')" = "697d4ce9742da558fd1ba6697c8e9775e2e302dd" && (cd ~ && npx --yes skills@1.5.20 add 'https://github.com/mattpocock/skills/tree/codex-skill-metadata/skills/productivity/teach' --global --agent codex --skill teach --yes)` |
+| Codex | `test "$(git ls-remote https://github.com/mattpocock/skills.git refs/heads/codex-skill-metadata \| awk '{print $1}')" = "697d4ce9742da558fd1ba6697c8e9775e2e302dd" && (cd ~ && npx --yes skills@1.5.23 add 'https://github.com/mattpocock/skills/tree/codex-skill-metadata/skills/productivity/teach' --global --agent codex --skill teach --yes)` |
 
 The installer owns the external skill files. Do not symlink `teach` from this
 repo.

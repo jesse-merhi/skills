@@ -14,10 +14,16 @@ iter 8: triggered re-review @ sha xyz999 -> clean (3/3)
 
 On termination, report:
 
-- final iteration count
-- whether the stop reason was `3-consecutive-clean`, `safety-cap-hit`, or
+- total iteration count and iterations in each clean-convergence phase
+- whether the stop reason was `already-diamond-or-better`,
+  `diamond-achieved`, `platinum-with-explanation`, `safety-cap-hit`, or
   `wall-clock-cap-hit`
 - the last Clawsweeper verdict, with a link to the comment/review
+- which platinum-or-better label was present on the unchanged final head
+- the rank-up attempt count and each distinct move applied, or the concrete
+  reason the workflow stopped before using all three
+- for `platinum-with-explanation`, the specific evidence, environment, scope,
+  residual-risk, or owner-decision ceiling that kept the result from diamond
 - any findings that needed a repo-specific fix workflow rather than direct edits
 - the PR head SHA at the moment of the final clean re-review
 
@@ -27,7 +33,8 @@ On termination, report:
   `/clawsweeper re-review`.
 - Do not paraphrase, bundle other text, or mention humans in the trigger
   comment.
-- Never claim success at fewer than 3 consecutive clean re-reviews.
+- Never claim success at fewer than 3 consecutive clean re-reviews or without
+  a platinum-or-better label on that unchanged head.
 - Never edit or push between consecutive clean re-reviews. Pushes invalidate the
   streak.
 - Always reset the counter on any actionable finding, even on re-review 3.
@@ -37,6 +44,10 @@ On termination, report:
   alive. If Clawsweeper says it is actionable, it is actionable.
 - Do not impersonate Clawsweeper by writing your own "looks clean" comment. The
   verdict must come from the bot.
+- Never add or preserve a rating label yourself. Its value is that ClawSweeper
+  awarded it.
+- Never start diamond work before the first clean platinum-or-better baseline,
+  and never run a fourth rank-up cycle after three attempts.
 
 ## Common mistakes
 

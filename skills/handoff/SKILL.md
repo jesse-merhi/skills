@@ -1,84 +1,74 @@
 ---
 name: handoff
-description: Compact a conversation into an agent handoff; prefer a fresh thread unless raw history is required.
+description: 'Transfer the current work to a fresh full agent session, placing related work beside the current session and unrelated asides separately.'
 ---
 
 # Handoff
 
-Write a handoff document summarizing the current conversation so a fresh agent
-can continue the work. Save it to the temporary directory of the user's OS, not
-the current workspace.
+A handoff always creates or prepares a full independent session. Never use a
+subagent, delegated in-chat worker, or background agent for any part of a
+handoff.
 
-Include a "suggested skills" section in the document with the skills the next
-agent should invoke.
+## Prepare context
 
-If the user passed arguments, treat them as a description of what the next
-session will focus on and tailor the document accordingly.
+Write one compact handoff document in the operating system's temporary
+directory. Include the objective, current state, evidence, files and commands
+already touched, blockers, validation, durable Obsidian research links,
+suggested skills, and next concrete actions. Link existing artifacts rather
+than copying them. Redact secrets and unnecessary personal data.
 
-## Workflow
+Classify the relationship:
 
-1. Write the handoff document first.
+- `continuation`: the new session advances the same objective, feature,
+  investigation, review, or implementation;
+- `aside`: the user introduced a separate objective during the conversation.
 
-   Include the objective, current state, files and commands already touched,
-   blockers, validation state, suggested skills, and next concrete steps.
-   Reference existing specs, plans, ADRs, issues, commits, diffs, or artifacts by
-   path or URL instead of duplicating them. Redact secrets and personally
-   identifiable information.
+Default to `continuation` when the handoff directly continues the current work.
+Do not classify work as an aside merely because it can run independently.
 
-2. Decide whether the next session needs isolation.
+## Detect the working surface
 
-   Read [references/worktree-isolation.md](references/worktree-isolation.md)
-   before launching any edit, repair, commit, PR, or parallel-worker handoff.
-   Done when the handoff says whether the worker is read-only or has a dedicated
-   worktree/branch.
+Run `scripts/detect-handoff-surface`. Read
+[session-routing.md](references/session-routing.md), then use the first verified
+route:
 
-3. Choose fresh session vs fork.
+1. the user's explicit destination;
+2. the current verified tmux pane;
+3. the current verified app session;
+4. a supported app already running;
+5. a fresh full terminal or ACPX session.
 
-   Default to a brand-new Codex session/thread. Read
-   [references/codex-session-choice.md](references/codex-session-choice.md)
-   before creating a Codex app thread or fork. Done when any fork has a written
-   reason that depends on raw inherited conversation history, not convenience.
+A tmux process elsewhere on the machine does not make the current session a
+tmux session. App and CLI detection uses current process ancestry and native
+session markers before global process discovery.
 
-4. If running under Codex CLI with tmux, choose placement deliberately.
+## Launch the full session
 
-   Read [references/tmux-placement.md](references/tmux-placement.md) before
-   running the bundled tmux helper. If `TMUX` is empty, do not run tmux commands.
+- In tmux, read [tmux-placement.md](references/tmux-placement.md). A
+  continuation opens a new pane in the current window. An aside opens a new
+  window in the current tmux session.
+- In the Codex app, create a fresh task in the same project for a continuation.
+  Use a projectless task or the matching different project for an aside. Use a
+  Codex worktree for editing when the repository requires isolation.
+- In Claude, use a fresh named Claude session or a tmux-launched interactive
+  Claude session. Do not use Claude background agents.
+- From another harness targeting Codex, prefer a verified Codex app task API
+  when available. Otherwise use a fresh named ACPX or interactive Codex
+  session and report that it is not an app task.
 
-5. For repair or PR workers, include the repair contract.
+Use a fork only when the new full session genuinely needs raw conversation
+history. A continuation does not automatically require a fork because the
+handoff document carries its working context.
 
-   Read [references/repair-pr-handoffs.md](references/repair-pr-handoffs.md).
-   Done when the worker is told how to prove the repair, create/update PR proof,
-   run review, and report residual risk.
+Read [worktree-isolation.md](references/worktree-isolation.md) before an edit,
+repair, commit, or PR handoff. Read
+[repair-pr-handoffs.md](references/repair-pr-handoffs.md) for repair and PR
+work.
 
-6. Launch only when the user requested a new task or worker. A document-only
-   handoff stops after saving and reporting the handoff path.
+## Completion
 
-   When creating a brand-new session outside tmux, seed it with only a concise
-   message that links to the handoff document, states the next focus, tells the
-   new agent to read the handoff before acting, and names any required
-   repo/worktree path. For forks, still link the handoff document.
-
-## Done means
-
-- The handoff document is saved outside the workspace.
-- The document is compact but self-contained enough for a fresh agent to act.
-- Suggested skills are named.
-- Edit/repair/PR/parallel work has a dedicated worktree unless the user
-  explicitly asked to share the checkout.
-- Read-only shared-checkout work is labeled read-only.
-- Fresh session is used by default; fork is used only for raw-history need.
-- tmux commands run only when `TMUX` is set.
-- Launch status is reported as started only when a real thread/session/worktree
-  is verified; queued setup is reported as pending.
-
-## Avoid
-
-- making parallel workers share the coordinator checkout or each other's
-  worktrees;
-- forking just because the current checkout has uncommitted changes;
-- treating `pendingWorktreeId` as proof that a worker is running;
-- pointing a repair agent at discovery artifacts as its implementation
-  workspace;
-- ending a repair handoff with only "fixed it" or a terse file list;
-- pasting secrets, raw environment files, credentials, or unnecessary personal
-  data into the handoff.
+Report the handoff document path, relationship, detected surface and evidence,
+session placement, isolation, and verified launch status. A queued worktree or
+requested launch is not a started session. If the selected app has no verified
+task-creation path, stop and report that exact limitation instead of silently
+substituting a subagent.

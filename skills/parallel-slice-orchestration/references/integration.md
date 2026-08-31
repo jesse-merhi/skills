@@ -5,8 +5,8 @@ Review each worker result before integrating:
 - changed files match ownership
 - `tdd` was followed, or the worker stated a valid
   docs/config/generated-code exception
-- rendered UI slices used `frontend-design` for visual direction,
-  `design-engineering` when interaction craft was material, and
+- rendered UI slices used `design` in production-UI mode for visual direction,
+  interaction mode when interaction craft was material, and
   `frontend-ui-validation` before reporting done
 - failing test was created before production work
 - focused test passes

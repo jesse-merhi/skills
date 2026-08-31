@@ -135,6 +135,7 @@ behavior_checks = {
     root / "skills/grilling/SKILL.md": [
         "Ask the whole frontier",
         "dispatch a background subagent",
+        "horizontal rule between questions",
     ],
     root / "skills/grill-with-docs/SKILL.md": [
         "`Next Round`",
@@ -143,8 +144,8 @@ behavior_checks = {
     root / "skills/improve-codebase-architecture/SKILL.md": [
         "last 20 commit messages",
     ],
-    root / "skills/wayfinder/SKILL.md": [
-        "frontier in numbered rounds",
+    root / "skills/design/SKILL.md": [
+        "Choose the design mode",
     ],
     root / "skills/writing-for-agents/SKILL.md": [
         "name: writing-for-agents",
@@ -192,7 +193,7 @@ behavior_checks = {
         "github-upload-attachment.ts",
     ],
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
-        "simplest format that preserves the claim",
+        "baseline is meaningful and reproducible; otherwise state the constraint",
         "copyable text for textual behavior",
         "## Change Breakdown",
     ],
@@ -206,8 +207,8 @@ behavior_checks = {
         "Keep CLI terms, budget calculations, finding classes",
     ],
     root / "skills/wait-efficiently/SKILL.md": [
-        "15-minute timeout",
-        "two consecutive timeouts",
+        "There is no universal",
+        "resume the event wait",
     ],
     root / "skills/cold-pr-review/references/prompt-template.md": [
         "do not audit them as independent targets",
@@ -259,6 +260,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
+        --relationship aside \
         --dry-run
   )"
 
@@ -278,6 +280,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus $'one\ntwo' \
         --cd "$ROOT_DIR" \
+        --relationship aside \
         --dry-run
   )"
   assert_output_contains "$output" $'one\ntwo'
@@ -287,6 +290,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
       "$helper" \
         --file "$handoff" \
         --cd "$ROOT_DIR" \
+        --relationship aside \
         --dry-run
   )"
 
@@ -301,7 +305,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
-        --pane \
+        --relationship continuation \
         --dry-run
   )"
 
@@ -319,7 +323,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
-        --pane \
+        --relationship continuation \
         --tmux-target "0:9" \
         --dry-run
   )"
@@ -333,12 +337,13 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --file "$handoff" \
         --focus "next thing" \
         --cd "$ROOT_DIR" \
-        --pane \
+        --relationship continuation \
         --dry-run >"$tmp/missing-target.out" 2>&1; then
     fail "pane placement should require TMUX_PANE or --tmux-target"
   fi
 
-  assert_contains "$tmp/missing-target.out" "Pane placement requires TMUX_PANE or --tmux-target"
+  assert_contains "$tmp/missing-target.out" "A continuation handoff requires TMUX_PANE or --tmux-target"
+  "$ROOT_DIR/skills/handoff/scripts/detect-handoff-surface.test.sh"
 
   output="$(
     env -u TMUX \
@@ -436,17 +441,13 @@ test_implementation_design_requires_user_decisions() {
 }
 
 test_prototypes_stay_isolated_from_production() {
-  local skill="$ROOT_DIR/skills/prototype/SKILL.md"
-  local promotion
+  local design="$ROOT_DIR/skills/design"
 
-  assert_contains "$skill" "Keep prototypes in isolated routes, pages, and modules"
-  assert_contains "$skill" "not import from prototype-only routes, pages, or modules"
-  assert_contains "$skill" "remove all"
-  assert_contains "$skill" "prototype-only routes, pages, and modules unless asked to keep them"
-  promotion="$(sed -n '/^### 6\. Promote$/,/^If the user asks for another round/p' "$skill")"
-  assert_output_contains "$promotion" "remove every prototype-only route, page, and module"
-  assert_output_contains "$promotion" "picker"
-  assert_output_contains "$promotion" "selected or unselected variant modules"
+  assert_contains "$design/SKILL.md" "Read [prototype.md]"
+  assert_contains "$design/references/prototype.md" "Keep prototype routes and modules isolated from production imports"
+  assert_contains "$design/references/prototype.md" "integrate only the winner"
+  assert_contains "$design/references/prototype.md" "prototype-only"
+  test ! -e "$ROOT_DIR/skills/prototype/SKILL.md" || fail "prototype must remain internal to the design router"
 }
 
 test_code_review_flags_unsupported_defense_and_proxy_helpers() {
@@ -498,13 +499,15 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
 }
 
-test_design_engineering_owns_motion_opportunity_audits() {
-  local skill="$ROOT_DIR/skills/design-engineering"
+test_design_router_owns_motion_opportunity_audits() {
+  local skill="$ROOT_DIR/skills/design"
 
-  assert_contains "$skill/SKILL.md" "read-only sweep"
-  assert_contains "$skill/SKILL.md" "opportunity-audit.md"
-  assert_contains "$skill/references/opportunity-audit.md" "deliberate rejections"
-  assert_contains "$skill/references/opportunity-audit.md" "Do not modify source"
+  assert_contains "$skill/SKILL.md" "Choose the design mode"
+  assert_contains "$skill/references/motion-opportunity-audit.md" "deliberate rejections"
+  assert_contains "$skill/references/motion-opportunity-audit.md" "Do not modify source"
+  test ! -e "$ROOT_DIR/skills/frontend-design/SKILL.md" || fail "frontend design must remain internal"
+  test ! -e "$ROOT_DIR/skills/design-engineering/SKILL.md" || fail "interaction design must remain internal"
+  test ! -e "$ROOT_DIR/skills/review-animations/SKILL.md" || fail "motion review must remain internal"
   test ! -e "$ROOT_DIR/skills/find-animation-opportunities/SKILL.md" || fail "expected motion discovery to be consolidated"
 }
 
@@ -515,7 +518,8 @@ test_speak_fking_english_owns_repitch_guidance() {
   assert_contains "$skill/references/reader-reset.md" "Find the missing premise"
   assert_contains "$skill/references/reader-reset.md" "everyday language"
   assert_contains "$skill/references/reader-reset.md" "technical density to the reader's"
-  assert_contains "$skill/references/reader-reset.md" 'established terms from `CONTEXT.md`'
+  assert_contains "$skill/references/reader-reset.md" "established terms from the applicable"
+  assert_contains "$skill/references/reader-reset.md" '`CONTEXT-MAP.md`'
   assert_not_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$skill/references/upstream-licenses.md" "Copyright (c) 2026 Matt Pocock"
   assert_contains "$skill/references/upstream-licenses.md" "Copyright (c) 2026 Lauren Tan"
@@ -584,7 +588,7 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[full AI-tells catalogue](references/ai-tells.md)"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
   assert_not_contains "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" "no catalogued AI tell"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "full clarity and AI-tells pass"
+  assert_contains "$ROOT_DIR/skills/speak-fking-english/agents/openai.yaml" "make this draft concise and clear"
 
   explicit_route="$(sed -n '/^- When the user asks/,/^- For a "wait, what?"/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md")"
   assert_output_contains "$explicit_route" "run the shared pass, add the deep catalogue pass"
@@ -607,6 +611,20 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
     || fail "expected exact-text invariants before the reader reset"
   proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
   assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
+}
+
+test_speak_fking_english_makes_brevity_the_default() {
+  local skill="$ROOT_DIR/skills/speak-fking-english"
+  local brevity="$skill/references/brevity.md"
+
+  assert_contains "$skill/SKILL.md" "make it concise and clear"
+  assert_contains "$skill/SKILL.md" "[brevity pass](references/brevity.md) last"
+  assert_contains "$brevity" "Brevity is the default"
+  assert_contains "$brevity" "shortest form that fully answers the request"
+  assert_contains "$brevity" "one short paragraph"
+  assert_contains "$brevity" "offers to do more work"
+  assert_contains "$brevity" "Do not trade accuracy for shortness"
+  assert_contains "$brevity" "deleting another sentence would make the answer"
 }
 
 test_speak_fking_english_owns_the_visual_decision() {
@@ -644,8 +662,9 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 }
 
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
+  local diagram_skill="$ROOT_DIR/skills/design-technical-diagrams"
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local rendered_help upload_help
+  local done_means freshness hard_gates rendered_help upload_help workflow
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -663,6 +682,42 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_not_contains "$skill/SKILL.md" 'Load `show-me`'
   assert_contains "$skill/SKILL.md" 'Load `speak-fking-english`'
   assert_contains "$skill/SKILL.md" "immediately before saving"
+
+  freshness="$(sed -n '/^## Freshness rule$/,/^## Hard gates for a refresh$/p' "$skill/SKILL.md")"
+  assert_output_contains "$freshness" "Static appearance, layout, or rendered-state changes"
+  assert_output_contains "$freshness" "require actual screenshots"
+  assert_output_contains "$freshness" "is meaningful and reproducible"
+  assert_output_contains "$freshness" "Motion, timing, gesture, or manual interaction"
+  assert_output_contains "$freshness" "requires both forms"
+  assert_output_contains "$freshness" "An explanatory technical diagram never satisfies practical"
+  assert_output_contains "$freshness" "rendered diagram or export output is itself the changed product"
+
+  hard_gates="$(sed -n '/^## Hard gates for a refresh$/,/^## Reviewer boundary$/p' "$skill/SKILL.md")"
+  assert_output_contains "$hard_gates" "observed before/after result when the baseline is meaningful and reproducible"
+  assert_output_contains "$hard_gates" "Without one, show the actual entry point and PR outcome"
+  assert_output_contains "$hard_gates" "For an appearance, layout, responsive, or rendered-state claim"
+  assert_output_contains "$hard_gates" "show actual product pixels"
+  assert_output_contains "$hard_gates" "otherwise state the constraint and show"
+  assert_output_contains "$hard_gates" "Use both forms when both kinds"
+  assert_output_contains "$hard_gates" "appearance is not the claim, use copyable text instead"
+  assert_output_contains "$hard_gates" "classify the proof"
+  assert_output_contains "$hard_gates" '`blocked`'
+  assert_output_contains "$hard_gates" "it never replaces actual"
+  assert_output_contains "$hard_gates" "product screenshots, recordings"
+
+  done_means="$(sed -n '/^## Done means$/,$p' "$skill/SKILL.md")"
+  assert_output_contains "$done_means" "Static UI changes use actual product screenshots"
+  assert_output_contains "$done_means" "matched to the direct base"
+  assert_output_contains "$done_means" "manual interaction use concise edited recordings"
+  assert_output_contains "$done_means" "static and interactive claims include both"
+  assert_output_contains "$done_means" "never counted as practical evidence"
+
+  workflow="$(sed -n '/^## Workflow$/,/^## Done means$/p' "$skill/SKILL.md")"
+  assert_output_contains "$workflow" "required form for its claim"
+  assert_output_contains "$workflow" "Do not count a technical"
+  assert_output_contains "$workflow" "changes have actual screenshots matched to every meaningful reproducible"
+  assert_output_contains "$workflow" "system-flow question"
+  assert_output_contains "$workflow" "cannot occupy a before/after evidence"
 
   awk '
     /^## Workflow$/ { in_workflow = 1; next }
@@ -686,6 +741,16 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/proof-selection.md" "Do not make several diagrams unless the user explicitly asks"
   assert_not_contains "$skill/references/proof-selection.md" "component tree"
   assert_contains "$skill/references/proof-selection.md" "An explanation visual teaches how something works"
+  assert_contains "$skill/references/proof-selection.md" "An explanatory technical diagram is never practical evidence"
+  assert_contains "$skill/references/proof-selection.md" "visual proof of its own readability and export result"
+  assert_contains "$skill/references/proof-selection.md" "include the required actual screenshots or"
+  assert_contains "$skill/references/proof-selection.md" "Do not downgrade an interactive claim"
+  assert_contains "$skill/references/proof-selection.md" 'capture is unavailable, return `blocked`.'
+  assert_contains "$skill/references/body-shape.md" "both a static visual"
+  assert_contains "$skill/references/body-shape.md" "include the required actual screenshots and"
+  assert_contains "$skill/references/body-shape.md" "When no meaningful baseline exists"
+  assert_contains "$skill/references/body-shape.md" "Technical diagrams used solely to explain"
+  assert_contains "$skill/references/body-shape.md" "actual output may occupy these slots as proof of itself"
   assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
@@ -713,7 +778,18 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "keeps signed URLs out of process arguments"
   assert_contains "$skill/references/screenshots.md" 'Never forward the `gh` token to a resolved asset, Camo, or CDN host'
   assert_contains "$skill/references/screenshots.md" "Use an interactive browser for facts the server-rendered HTML cannot prove"
-  assert_contains "$skill/references/screenshots.md" "Record the changed flow manually at a deliberate pace"
+  assert_contains "$skill/references/screenshots.md" "UI evidence must show the actual product"
+  assert_contains "$skill/references/screenshots.md" "rendered diagram or export output is itself"
+  assert_contains "$skill/references/screenshots.md" "proof of its own pixels and"
+  assert_contains "$skill/references/screenshots.md" "use the same route, fixture, data, viewport, theme"
+  assert_contains "$skill/references/screenshots.md" '`Before: direct base`'
+  assert_contains "$skill/references/screenshots.md" '`After: PR`'
+  assert_contains "$skill/references/screenshots.md" "When the baseline is meaningful and reproducible"
+  assert_contains "$skill/references/screenshots.md" "Otherwise state the constraint and show the actual product entry point and PR"
+  assert_contains "$skill/references/screenshots.md" "show the actual product entry point"
+  assert_contains "$skill/references/screenshots.md" "screenshots supplement"
+  assert_contains "$skill/references/screenshots.md" "required recording; they do not replace it"
+  assert_contains "$skill/references/screenshots.md" "Record every changed motion, timing, gesture, or manual flow"
   assert_contains "$skill/references/screenshots.md" "Play the finished video once at 1× speed"
   assert_contains "$skill/references/screenshots.md" "owns how to capture and publish"
   assert_contains "$skill/references/screenshots.md" "## Presentation gate"
@@ -764,11 +840,18 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "copyable text for textual state"
-  assert_contains "$skill/src/NetDiff.ts" "matched broken and fixed outcomes"
-  assert_contains "$skill/src/NetDiff.ts" "provider-hosted media only for visual behavior"
+  assert_contains "$skill/src/NetDiff.ts" "Compare direct-base and PR outcomes when the baseline is meaningful and reproducible"
+  assert_contains "$skill/src/NetDiff.ts" "actual product pixels in provider-hosted screenshots"
   assert_not_contains "$skill/src/NetDiff.ts" "with the selected interactive browser"
   assert_not_contains "$skill/src/NetDiff.ts" "No screenshot by default"
-  assert_contains "$skill/agents/openai.yaml" "Make PR context, scope, and proof concise and checkable."
+  assert_contains "$skill/agents/openai.yaml" "prove static UI with actual screenshots matched to meaningful reproducible"
+  assert_contains "$skill/agents/openai.yaml" "prove motion or manual interaction with recordings"
+  assert_contains "$skill/agents/openai.yaml" "keep technical diagrams separate as system explanations"
+  assert_contains "$skill/SKILL.md" "use actual product screenshots for static UI changes and recordings"
+  assert_contains "$diagram_skill/SKILL.md" "Do not use technical diagrams as product runtime or UI proof"
+  assert_contains "$diagram_skill/SKILL.md" "It does not prove that the depicted system ran"
+  assert_contains "$diagram_skill/SKILL.md" "Never use a diagram, wireframe, or mockup"
+  assert_contains "$diagram_skill/agents/openai.yaml" "keep it separate from product runtime or UI proof"
   assert_contains "$skill/references/video-editing.md" "The result should remain calm, not become a speed run."
   assert_contains "$skill/references/video-editing.md" "Before: direct base"
   assert_contains "$skill/references/video-editing.md" "ffmpeg -i raw.mov"
@@ -902,11 +985,12 @@ test_code_review_has_a_local_review_and_owner_checked_closeout() {
 
   assert_contains "$ROOT_DIR/AGENTS.md" "Never push agent-authored"
   assert_contains "$ROOT_DIR/AGENTS.md" "request to fix or review authorizes local edits"
-  assert_contains "$ROOT_DIR/AGENTS.md" "Jesse explicitly asks to push after the fix"
+  assert_contains "$ROOT_DIR/AGENTS.md" "the user explicitly asks to push after the fix"
   assert_contains "$ROOT_DIR/AGENTS.md" "The reaction gates merge"
   assert_contains "$skill/references/review-phase-rules.md" "review and finding-fix loop local"
   assert_contains "$skill/references/review-phase-rules.md" "full local validation"
-  assert_contains "$skill/references/pr-closeout.md" 'author.login` is `jesse-merhi'
+  assert_contains "$skill/references/pr-closeout.md" 'authenticated_login="$(gh api user --jq .login)"'
+  assert_not_contains "$skill/references/pr-closeout.md" 'jesse-merhi'
   assert_contains "$skill/references/pr-closeout.md" "one normal final push"
   assert_contains "$skill/references/pr-closeout.md" "Do not force-push"
   assert_contains "$skill/references/pr-closeout.md" "Run CI last"
@@ -920,11 +1004,11 @@ test_waits_hold_instead_of_polling() {
   local wait_dir="$ROOT_DIR/skills/wait-efficiently"
   local wait_skill="$wait_dir/SKILL.md"
 
-  # The durable rules live in SKILL.md and outlive any agent tool API. The floor is
-  # deliberately stated in AGENTS.md too, because the skill often is not loaded;
-  # keep the two lexically identical so a drifting copy is greppable.
-  assert_contains "$wait_skill" 'Hold a wait for its full expected duration, never under 300 seconds'
-  assert_contains "$ROOT_DIR/AGENTS.md" 'Hold a wait for its full expected duration, never under 300 seconds'
+  assert_contains "$wait_skill" 'There is no universal'
+  assert_contains "$wait_skill" 'minimum wait'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'there is no universal minimum'
+  assert_not_contains "$wait_skill" 'never under 300 seconds'
+  assert_not_contains "$ROOT_DIR/AGENTS.md" 'never under 300 seconds'
   assert_contains "$wait_skill" 'deadline is a ceiling, not a delay'
   assert_contains "$wait_skill" 'resume the same wait'
   assert_contains "$wait_skill" 'Unchanged progress is not a state change'
@@ -939,28 +1023,25 @@ test_waits_hold_instead_of_polling() {
 test_harness_references_carry_the_api_surface() {
   local refs="$ROOT_DIR/skills/wait-efficiently/references"
 
-  assert_contains "$refs/codex.md" '"yield_time_ms": 900000'
-  assert_contains "$refs/codex.md" 'yield_time_ms: 300000'
+  assert_contains "$refs/codex.md" '"yield_time_ms": 30000'
+  assert_contains "$refs/codex.md" 'yield_time_ms: 30000'
   assert_contains "$refs/codex.md" 'const maxOutputTokens = 10000'
   assert_contains "$refs/codex.md" 'originalTokens += result.original_token_count'
-  assert_contains "$refs/codex.md" 'returns when the process exits'
+  assert_contains "$refs/codex.md" 'returns when it exits'
   assert_contains "$refs/codex.md" 'output.push(result.output)'
   assert_contains "$refs/codex.md" 'if (result.exit_code !== 0)'
   assert_contains "$refs/codex.md" 'command output exceeded the safe result budget'
   assert_contains "$refs/codex.md" 'persist its full artifact to a run-owned file'
-  assert_contains "$refs/codex.md" '`wait_agent` with `timeout_ms: 600000`'
+  assert_contains "$refs/codex.md" '`wait_agent` with a deadline sized to the task'
   assert_contains "$refs/codex.md" '`notify` is not a replacement'
   assert_contains "$refs/codex.md" 'Do not restart the'
   assert_contains "$refs/codex.md" 'single `Promise.all`'
-  # State the cost mechanic positively; naming the failing value makes it more
-  # available to the model that is about to choose one.
-  assert_contains "$refs/codex.md" 'Size both yields to the whole command'
-  assert_not_contains "$refs/codex.md" '30-second'
+  assert_contains "$refs/codex.md" 'values accepted by the current tool'
 
   assert_contains "$refs/claude-code.md" 'run_in_background: true'
   assert_contains "$refs/claude-code.md" '`Monitor`'
   assert_contains "$refs/claude-code.md" 'cover failure states as well as success'
-  assert_contains "$refs/claude-code.md" '600000 ms'
+  assert_contains "$refs/claude-code.md" 'current foreground `Bash` ceiling'
   assert_contains "$refs/claude-code.md" 'wasted round trip'
 }
 
@@ -971,9 +1052,8 @@ test_agents_md_bounds_model_turns() {
   assert_contains "$agents" 'Batch independent calls into one turn'
   assert_contains "$agents" 'Promise.all'
   assert_contains "$agents" 'Keep dependent calls, writes, and approval-sensitive'
-  assert_contains "$agents" 'never under 300 seconds'
-  assert_contains "$agents" 'ceiling rather than a delay'
-  assert_contains "$agents" '`@exec` `yield_time_ms` directive'
+  assert_contains "$agents" 'there is no universal minimum'
+  assert_contains "$agents" 'deadline is a ceiling'
   assert_contains "$agents" 'Load `wait-efficiently`'
 }
 
@@ -989,7 +1069,6 @@ test_review_waits_load_the_wait_skill() {
 test_openclaw_agent_discovery_paths() {
   local review_skill="$ROOT_DIR/skills/code-review"
   local staging_skill="$ROOT_DIR/skills/openclaw/openclaw-stg-test"
-  local handoff_skill="$ROOT_DIR/skills/openclaw/openclaw-telegram-handoff"
 
   assert_contains "$review_skill/references/codex-review-helper.md" 'helper resolves `codex` outside'
   assert_contains "$review_skill/references/codex-review-helper.md" 'creating an unrelated embedded-provider login'
@@ -1007,26 +1086,10 @@ test_openclaw_agent_discovery_paths() {
   assert_contains "$staging_skill/SKILL.md" 'rejects persistent profile creation and deletion'
   assert_contains "$staging_skill/SKILL.md" 'nodeHost.browserProxy.allowProfiles'
   assert_contains "$staging_skill/agents/openai.yaml" 'fresh OpenClaw browser profile'
-  assert_contains "$staging_skill/SKILL.md" '`openclaw-telegram-handoff`'
   assert_contains "$staging_skill/SKILL.md" 'cleanup obligations on every exit path'
-  assert_contains "$staging_skill/agents/openai.yaml" '$openclaw-telegram-handoff'
-  assert_contains "$handoff_skill/SKILL.md" 'OPENCLAW_TELEGRAM_NOTIFY_TARGET'
-  assert_contains "$handoff_skill/SKILL.md" 'OPENCLAW_TELEGRAM_NOTIFY_ACCOUNT'
-  assert_contains "$handoff_skill/SKILL.md" '--account "$OPENCLAW_TELEGRAM_NOTIFY_ACCOUNT"'
-  assert_contains "$handoff_skill/SKILL.md" 'run-owned mode-`0600` file'
-  assert_contains "$handoff_skill/SKILL.md" '--message "$(command cat -- "$handoff_file")"'
-  assert_not_contains "$handoff_skill/SKILL.md" '--message "<terminal handoff>"'
-  assert_contains "$handoff_skill/SKILL.md" 'openclaw message send'
-  assert_contains "$handoff_skill/SKILL.md" '`sessions_send`'
-  assert_contains "$handoff_skill/SKILL.md" 'If the named source is the current calling session'
-  assert_contains "$handoff_skill/SKILL.md" "process the answer as"
-  assert_contains "$handoff_skill/SKILL.md" 'Do not invent watch or'
-  assert_contains "$handoff_skill/SKILL.md" 'raw route-bearing session key'
-  assert_contains "$handoff_skill/SKILL.md" 'Never invent an unbound opaque reference'
-  assert_contains "$handoff_skill/SKILL.md" 'If the current final reply already goes to the same Telegram route'
-  assert_contains "$handoff_skill/SKILL.md" 'do not scrape session history, pairing records'
-  assert_contains "$handoff_skill/agents/openai.yaml" 'terminal OpenClaw task updates'
-  assert_contains "$staging_skill/SKILL.md" 'Never invent a reference or put a raw route-bearing session key'
+  assert_contains "$staging_skill/SKILL.md" 'Return the result in the originating session'
+  assert_not_contains "$staging_skill/SKILL.md" 'Telegram'
+  test ! -e "$ROOT_DIR/skills/openclaw/openclaw-telegram-handoff/SKILL.md" || fail "Telegram handoff skill must be retired"
 }
 
 test_openclaw_local_test_helpers() {
@@ -1036,14 +1099,153 @@ test_openclaw_local_test_helpers() {
     "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/openclaw-local-test.test.mjs"
 }
 
+test_review_neutrality_and_skill_ownership_are_explicit() {
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "do not reveal prior findings before"
+  assert_contains "$ROOT_DIR/skills/review-guardrails/SKILL.md" "Keep prior findings hidden"
+  assert_not_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" "tracked-finding notices"
+  test ! -e "$ROOT_DIR/skills/review-guardrails/references/tracked-finding-notices.md" || fail "tracked-finding notices must be retired"
+  assert_contains "$ROOT_DIR/external.md" "## Ownership model"
+  assert_contains "$ROOT_DIR/external.md" "Repo-owned fork"
+  assert_contains "$ROOT_DIR/skills/research/SKILL.md" "durable findings in Obsidian"
+  assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" "Red-green-refactor"
+  assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" "not mean knowingly temporary"
+}
+
+test_cross_harness_sessions_are_full_and_symmetric() {
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "This is not a subagent"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "Mentioning,"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "Mentioning,"
+  assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "close itself"
+  assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "archive itself"
+  assert_contains "$ROOT_DIR/skills/ask-claude/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$ROOT_DIR/skills/ask-codex/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`ask-codex` and `ask-claude` are user-invoked'
+  assert_contains "$ROOT_DIR/skills/review-until-clean/SKILL.md" 'invoking `ask-codex` or `ask-claude`'
+  assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
+  assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
+  assert_not_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "--model"
+  assert_not_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "--model"
+  test ! -e "$ROOT_DIR/skills/acpx-frontend-delegation/SKILL.md" || fail "one-way ACP delegation skill must be retired"
+}
+
+test_claude_fable_orchestration_is_repo_owned() {
+  local agents="$ROOT_DIR/claude/agents"
+  local orchestrator="$agents/fable-orchestrator.md"
+  local worker="$agents/opus-worker.md"
+  local reviewer="$agents/codex-reviewer.md"
+
+  assert_contains "$orchestrator" "name: fable-orchestrator"
+  assert_contains "$orchestrator" 'model: "claude-fable-5[1m]"'
+  assert_contains "$orchestrator" "Use \`opus-worker\` proactively"
+  assert_contains "$orchestrator" "Use \`codex-reviewer\` for an ad hoc code-centric review"
+  assert_contains "$orchestrator" "Keep high-level review here"
+  assert_contains "$orchestrator" "explicitly select Codex as its review engine"
+  assert_contains "$orchestrator" "Do not initiate the formal \`code-review\` workflow merely because implementation"
+
+  assert_contains "$worker" "name: opus-worker"
+  assert_contains "$worker" "model: claude-opus-5"
+  assert_contains "$worker" "effort: high"
+  assert_contains "$worker" "production UI"
+  assert_contains "$worker" "disallowedTools: Agent"
+
+  assert_contains "$reviewer" "name: codex-reviewer"
+  assert_contains "$reviewer" "model: haiku"
+  assert_contains "$reviewer" "codex exec review"
+  assert_contains "$reviewer" "-m gpt-5.6-sol"
+  assert_contains "$reviewer" 'model_reasoning_effort="high"'
+  assert_contains "$reviewer" "--ephemeral"
+  assert_contains "$reviewer" "do not edit the repository"
+
+  assert_contains "$ROOT_DIR/INSTALL.md" "## 3. Configure Claude orchestration"
+  assert_contains "$ROOT_DIR/INSTALL.md" 'Set `agent` to `fable-orchestrator`'
+  assert_contains "$ROOT_DIR/INSTALL.md" "claude plugin validate ~/.claude/agents"
+  assert_contains "$ROOT_DIR/README.md" "Fable orchestrator, Opus worker, Codex reviewer"
+}
+
+test_skill_cleaner_uses_current_model_configuration() {
+  local script="$ROOT_DIR/skills/skill-cleaner/scripts/skill-cleaner.ts"
+  assert_contains "$script" "codexModelName"
+  assert_contains "$script" 'path.join(home, ".codex/config.toml")'
+  assert_not_contains "$script" 'gpt-5.5'
+  assert_not_contains "$ROOT_DIR/skills/skill-cleaner/references/analyzer-notes.md" 'GPT-5.5'
+}
+
 test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
   assert_contains "$ROOT_DIR/external.md" "tree/codex-skill-metadata/skills/productivity/teach"
-  assert_contains "$ROOT_DIR/external.md" "skills@1.5.20"
+  assert_contains "$ROOT_DIR/external.md" "skills@1.5.23"
   assert_contains "$ROOT_DIR/external.md" "agents/openai.yaml"
   assert_contains "$ROOT_DIR/external.md" " --agent codex --skill teach"
   assert_contains "$ROOT_DIR/external.md" "The installer owns the external skill files"
+}
+
+test_upstream_manifest_is_valid() {
+  ROOT_DIR="$ROOT_DIR" python3 <<'PY'
+from datetime import date
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+
+
+root = Path(os.environ["ROOT_DIR"])
+manifest_path = root / "upstreams.json"
+manifest = json.loads(manifest_path.read_text())
+
+if manifest.get("schemaVersion") != 1:
+    raise SystemExit("upstreams.json must use schemaVersion 1")
+
+try:
+    date.fromisoformat(manifest["reviewedAt"])
+except (KeyError, TypeError, ValueError) as exc:
+    raise SystemExit("upstreams.json reviewedAt must be an ISO date") from exc
+
+if "external.md" not in manifest.get("scope", ""):
+    raise SystemExit("upstreams.json must keep installer-owned pins in external.md")
+
+repositories = set()
+
+sources = manifest.get("sources")
+if not isinstance(sources, list) or not sources:
+    raise SystemExit("upstreams.json must track at least one source")
+
+for source in sources:
+    repository = source.get("repository", "")
+    if not repository.startswith("https://github.com/"):
+        raise SystemExit(f"invalid upstream repository: {repository!r}")
+    if repository in repositories:
+        raise SystemExit(f"duplicate upstream repository: {repository}")
+    repositories.add(repository)
+
+    commit = source.get("reviewedCommit", "")
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise SystemExit(f"invalid reviewed commit for {repository}: {commit!r}")
+
+    mappings = source.get("mappings")
+    if not isinstance(mappings, list) or not mappings:
+        raise SystemExit(f"missing skill mappings for {repository}")
+
+    for mapping in mappings:
+        local_skill = mapping.get("localSkill", "")
+        if not (root / "skills" / local_skill / "SKILL.md").is_file():
+            raise SystemExit(f"tracked local skill does not exist: {local_skill!r}")
+        if mapping.get("relationship") not in {"adapted", "inspired"}:
+            raise SystemExit(f"invalid relationship for {local_skill!r}")
+        upstream_paths = mapping.get("upstreamPaths")
+        if not isinstance(upstream_paths, list) or not upstream_paths:
+            raise SystemExit(f"missing upstream paths for {local_skill!r}")
+        for upstream_path in upstream_paths:
+            path = PurePosixPath(upstream_path)
+            if path.is_absolute() or ".." in path.parts:
+                raise SystemExit(
+                    f"invalid upstream path for {local_skill!r}: {upstream_path!r}"
+                )
+
+if "upstreams.json" not in (root / "README.md").read_text():
+    raise SystemExit("README.md must link to upstreams.json")
+PY
 }
 
 test_gh_stack_workflow_is_pinned_and_wired() {
@@ -1085,212 +1287,104 @@ test_gh_stack_workflow_is_pinned_and_wired() {
     'Review gate and Sign-off gate from'
 }
 
-test_wayfinder_obsidian_map_can_advance_its_frontier() {
+test_just_do_it_and_scoped_openclaw_readiness() {
+  local skill="$ROOT_DIR/skills/just-do-it"
+  local readiness="$ROOT_DIR/skills/openclaw/openclaw-pr-readiness"
+  local clawsweeper="$ROOT_DIR/skills/openclaw/clawsweeper-until-clean"
+
+  assert_contains "$skill/SKILL.md" "Use this workflow only when"
+  assert_contains "$skill/SKILL.md" "grants bounded authority"
+  assert_contains "$skill/SKILL.md" 'Load `code-review`'
+  assert_contains "$skill/SKILL.md" 'Load `pr-proof-pack`'
+  assert_contains "$skill/SKILL.md" "Do not merge"
+  assert_contains "$skill/agents/openai.yaml" "allow_implicit_invocation: false"
+  assert_not_contains "$skill/SKILL.md" "ClawSweeper"
+  python3 - "$skill/SKILL.md" "$skill/agents/openai.yaml" <<'PY'
+from pathlib import Path; import sys
+text, prompt = (" ".join(Path(path).read_text().split()) for path in sys.argv[1:])
+assert "Resume at the earliest incomplete or stale step. Preserve every current checkpoint: do not reimplement an already-correct scoped change" in text
+assert "Before any GitHub mutation, verify the active account is `jesse-merhi` and any existing PR is Jesse-authored." in text
+assert "Create one draft PR when none exists, or update the existing Jesse-authored PR" in text
+assert "only when its proof is stale or missing; otherwise preserve the current proof." in text
+assert "any code change, generated change, base update, or push makes earlier review, proof, CI, and repository-gate evidence stale" in text
+assert "Done when the non-draft PR's current head simultaneously has exact-head code-review evidence, current proof, passing required checks" in text
+assert "change its draft/ready state" in text and text.index("return an existing ready PR to draft") < text.index("make a normal push") and "earliest incomplete or stale checkpoint" in prompt
+PY
+
+  assert_contains "$ROOT_DIR/AGENTS.md" "user's review decision"
+  assert_contains "$ROOT_DIR/AGENTS.md" '`/clawsweeper re-review` command'
+  assert_contains "$ROOT_DIR/AGENTS.md" "substantially contributed"
+  assert_not_contains "$ROOT_DIR/AGENTS.md" "OpenClaw ClawSweeper gate:"
+  assert_not_contains "$ROOT_DIR/AGENTS.md" 'rating: 🐚 platinum hermit'
+
+  assert_contains "$readiness/SKILL.md" 'base repository is exactly `openclaw/openclaw`'
+  assert_contains "$readiness/SKILL.md" 'Load `pr-proof-pack`'
+  assert_contains "$readiness/SKILL.md" 'Load `clawsweeper-until-clean`'
+  assert_contains "$readiness/SKILL.md" "Do not duplicate or reinterpret that rating workflow here"
+  assert_contains "$readiness/SKILL.md" '`diamond_attempts` state preserved'
+  assert_contains "$readiness/SKILL.md" '`platinum-with-explanation`'
+  assert_not_contains "$readiness/SKILL.md" "## Try for diamond after clean"
+  assert_not_contains "$readiness/SKILL.md" 'rating: 🐚 platinum hermit'
+  assert_not_contains "$readiness/agents/openai.yaml" "allow_implicit_invocation: false"
+
+  assert_contains "$clawsweeper/SKILL.md" 'minimum_readiness:'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempt_limit: 3'
+  assert_contains "$clawsweeper/SKILL.md" 'at most **4 phases**'
+  assert_contains "$clawsweeper/SKILL.md" 'diamond_attempts = <recovered integer from 0 through 3>'
+  assert_contains "$clawsweeper/SKILL.md" 'After clean: try for diamond'
+  assert_contains "$clawsweeper/SKILL.md" '`platinum-with-explanation`'
+  assert_contains "$clawsweeper/SKILL.md" "no_self_label:"
+  assert_contains "$clawsweeper/SKILL.md" '[rank-up.md](references/rank-up.md)'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'Run this decision only after three consecutive clean ClawSweeper reviews'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'Do not start a fourth rank-up cycle.'
+  assert_contains "$clawsweeper/references/rank-up.md" \
+    'the newest review identifies a distinct improvement'
+  assert_not_contains "$clawsweeper/SKILL.md" 'diamond_attempted'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    '2129a78a502e4e6ed3dd0c521db5034743f1757a'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    'confidence at least 0.95: S / challenger'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    'confidence at least 0.80: A / diamond'
+  assert_contains "$clawsweeper/references/rating-rubric.md" \
+    'proof was usually NA because the author was a repository member'
   ROOT_DIR="$ROOT_DIR" python3 <<'PY'
 from pathlib import Path
 import os
-import re
-import tempfile
 
-
-root = Path(os.environ["ROOT_DIR"])
-skill = (root / "skills" / "wayfinder" / "SKILL.md").read_text()
-
-ticket_match = re.search(
-    r"### Tickets.*?```markdown\n(?P<template>.*?)\n```",
-    skill,
-    re.DOTALL,
-)
-if ticket_match is None:
-    raise SystemExit("Wayfinder ticket template is missing")
-
-ticket_template = ticket_match.group("template")
-required_fields = {
-    "Status",
-    "Type",
-    "Wayfinder",
-    "Mode",
-    "Kind",
-    "Claimed By",
-    "Blocked By",
-}
-template_fields = {}
-for line in ticket_template.splitlines():
-    if ":" in line and not line.startswith("#"):
-        key, value = line.split(":", 1)
-        template_fields[key] = value.strip()
-
-missing_fields = sorted(required_fields - template_fields.keys())
-if missing_fields:
-    raise SystemExit(
-        f"Wayfinder ticket template cannot represent its workflow: {missing_fields}"
-    )
-for relationship in ("Wayfinder", "Blocked By"):
-    if "|" not in template_fields[relationship]:
-        raise SystemExit(
-            f"Wayfinder {relationship} links must keep note identity and readable title"
-        )
-
-
-def write_ticket(
-    issues,
-    note_name,
-    title,
-    *,
-    wayfinder="2026-07-31-ship-the-migration",
-    wayfinder_title="Ship the migration",
-    status="Open",
-    claimed_by="None",
-    blocked_by="None",
-):
-    note = issues / f"{note_name}.md"
-    note.write_text(
-        "\n".join(
-            [
-                f"# Ticket: {title}",
-                "",
-                f"Status: {status}",
-                "Type: Ticket",
-                f"Wayfinder: [[{wayfinder}|{wayfinder_title}]]",
-                "Mode: AFK",
-                "Kind: research",
-                f"Claimed By: {claimed_by}",
-                f"Blocked By: {blocked_by}",
-                "",
-                "## Question",
-                f"What should {title} decide?",
-                "",
-            ]
-        )
-    )
-    return note
-
-
-def fields(note):
-    parsed = {}
-    for line in note.read_text().splitlines():
-        if ": " in line and not line.startswith("#"):
-            key, value = line.split(": ", 1)
-            parsed[key] = value
-    return parsed
-
-
-def wikilinks(value):
-    return [
-        link.split("|", 1)[0]
-        for link in re.findall(r"\[\[([^\]]+)\]\]", value)
-    ]
-
-
-def frontier(issues, map_name):
-    notes = {
-        note.stem: fields(note)
-        for note in issues.glob("*.md")
-        if fields(note).get("Type") == "Ticket"
-    }
-    ready = []
-    for name, ticket in notes.items():
-        if wikilinks(ticket["Wayfinder"]) != [map_name]:
-            continue
-        blockers_closed = all(
-            notes[blocker]["Status"] == "Closed"
-            for blocker in wikilinks(ticket["Blocked By"])
-        )
-        if (
-            ticket["Status"] == "Open"
-            and ticket["Claimed By"] == "None"
-            and blockers_closed
-        ):
-            ready.append(name)
-    return sorted(ready)
-
-
-with tempfile.TemporaryDirectory() as tmp:
-    issues = Path(tmp) / "Issues"
-    issues.mkdir()
-    map_note = issues / "2026-07-31-ship-the-migration.md"
-    map_note.write_text(
-        "\n".join(
-            [
-                "# Wayfinder: Ship the migration",
-                "",
-                "Status: Active",
-                "Type: Wayfinder Map",
-                "",
-                "## Decisions So Far",
-                "",
-            ]
-        )
-    )
-    research = write_ticket(
-        issues,
-        "2026-07-31-choose-source-format",
-        "Choose the source format",
-    )
-    write_ticket(
-        issues,
-        "2026-07-31-choose-import-contract",
-        "Choose the import contract",
-        blocked_by=(
-            "[[2026-07-31-choose-source-format|Choose the source format]]"
-        ),
-    )
-    write_ticket(
-        issues,
-        "2026-07-31-choose-rollout",
-        "Choose the rollout",
-        claimed_by="another-session",
-    )
-    write_ticket(
-        issues,
-        "2026-07-31-unrelated-decision",
-        "Unrelated decision",
-        wayfinder="2026-07-31-another-map",
-        wayfinder_title="Another map",
-    )
-
-    if frontier(issues, map_note.stem) != ["2026-07-31-choose-source-format"]:
-        raise SystemExit("Wayfinder frontier did not exclude blocked and claimed tickets")
-
-    research.write_text(
-        research.read_text()
-        .replace("Status: Open", "Status: Closed")
-        .replace(
-            "What should Choose the source format decide?\n",
-            "What should Choose the source format decide?\n\n"
-            "## Resolution\nUse newline-delimited JSON.\n",
-        )
-    )
-    map_note.write_text(
-        map_note.read_text()
-        + "- [[2026-07-31-choose-source-format|Choose the source format]]"
-        + " - Use newline-delimited JSON.\n"
-    )
-
-    if frontier(issues, map_note.stem) != ["2026-07-31-choose-import-contract"]:
-        raise SystemExit("Wayfinder frontier did not advance after a resolution")
-    if "## Resolution" not in research.read_text():
-        raise SystemExit("Resolved ticket did not retain its answer")
-    if (
-        "[[2026-07-31-choose-source-format|Choose the source format]]"
-        not in map_note.read_text()
-    ):
-        raise SystemExit("Wayfinder map did not index the resolved ticket by name")
+clawsweeper = (
+    Path(os.environ["ROOT_DIR"])
+    / "skills/openclaw/clawsweeper-until-clean/SKILL.md"
+).read_text()
+clean_loop = clawsweeper.index("## Loop")
+diamond = clawsweeper.index("## After clean: try for diamond")
+if clean_loop >= diamond:
+    raise SystemExit("ClawSweeper must converge before trying for diamond")
 PY
-}
 
+  assert_contains "$clawsweeper/SKILL.md" 'rating: 🐚 platinum hermit'
+  assert_contains "$clawsweeper/SKILL.md" 'rating: 🦞 diamond lobster'
+  assert_contains "$clawsweeper/SKILL.md" 'rating: 🦀 challenger crab'
+  assert_contains "$clawsweeper/references/polling-and-freshness.md" \
+    'contain exactly one of these PR ratings'
+}
 test_skill_frontmatter_is_valid
+test_upstream_manifest_is_valid
 test_external_teach_install_is_pinned
 test_gh_stack_workflow_is_pinned_and_wired
+test_just_do_it_and_scoped_openclaw_readiness
 test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
 test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
 test_prototypes_stay_isolated_from_production
 test_code_review_flags_unsupported_defense_and_proxy_helpers
-test_design_engineering_owns_motion_opportunity_audits
+test_design_router_owns_motion_opportunity_audits
 test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_ai_tells_catalogue
+test_speak_fking_english_makes_brevity_the_default
 test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate
@@ -1303,6 +1397,9 @@ test_agents_md_bounds_model_turns
 test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
+test_review_neutrality_and_skill_ownership_are_explicit
+test_cross_harness_sessions_are_full_and_symmetric
+test_claude_fable_orchestration_is_repo_owned
+test_skill_cleaner_uses_current_model_configuration
 test_handoff_tmux_helper_builds_tmux_window_command
-test_wayfinder_obsidian_map_can_advance_its_frontier
 printf 'ok - skills tests\n'

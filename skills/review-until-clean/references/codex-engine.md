@@ -49,3 +49,19 @@ is not clean.
 Run the command through the `wait-efficiently` Codex shell-wait pattern. Resume
 a yielded cell instead of polling from separate model turns or restarting a
 quiet review.
+
+## Session lifecycle
+
+Run native Codex review outside the coordinator session, never as an in-chat
+subagent. If the dispatch mechanism creates a saved Codex task or session,
+record its ID immediately. Once the review output has been captured, archive
+that exact task in guaranteed cleanup, including when the review fails, is
+cancelled, becomes stale, or the loop stops early. Use `set_thread_archived` in
+Codex Desktop or `codex archive <id>` for a standalone session. Archival is part
+of completing each invocation; perform it before dispatching the next native
+review.
+
+The `code-review` helper archives the rollout sessions created by its own bare
+`codex review` command. That does not cover a separate task created through ACP
+or an app-level task API; the coordinator still owns cleanup of that external
+task.

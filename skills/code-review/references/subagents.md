@@ -1,9 +1,12 @@
 # Subagents
 
-Always use subagents for code-review work. At minimum, every review needs a
-subagent using `cold-pr-review-until-clean`; do not use `cold-pr-review` for
-this skill. Give that subagent the target, base, changed-flow summary, and
-the risk checklist from the one-time setup.
+Use in-chat subagents for Phase 2 cold review and focused lenses. Never run
+Phase 1 native review as a subagent: it belongs in an external harness-native
+session whose task or session ID the coordinator records and archives after
+collecting the result. At minimum, every review needs a Phase 2 subagent using
+`cold-pr-review-until-clean`; do not use `cold-pr-review` for this skill. Give
+that subagent the target, base, changed-flow summary, and the risk checklist
+from the one-time setup.
 
 Every review subagent must start without coordinator conversation history. In
 Codex, set `fork_turns: "none"`; use the equivalent context-free option in
@@ -26,22 +29,37 @@ Add other focused subagents with the relevant named skills when useful:
 - `improve-codebase-architecture`
 - `reducing-cognitive-load`
 - `frontend-ui-validation`
-- `review-animations`
+- `design` in motion-review mode
 
 Give subagents neutral prompts: target, base, changed-flow summary, and the
 checklist they own. State the frozen review boundary: inspect the changed diff
 and the runtime flows it directly changes; read unchanged files only to
 understand those flows. Every finding must identify the changed line or contract
-that causes, exposes, or worsens the problem. Tracked-finding notices for open
-Class B findings, generated fresh per `review-guardrails`, are the one allowed
-reference to prior findings. Do not leak desired conclusions or ask for a
-rubber stamp.
+that causes, exposes, or worsens the problem. Do not reveal prior findings,
+desired conclusions, or a requested verdict.
 
-Give cold-review subagents the target, neutral checklist, and tracked-finding
-notices generated from currently open consult entries. If an optional decision
-log exists, give them its path only with the guard above; after the verdict,
-they should append long-form rationale or return the entries if they cannot
-write.
+Before assigning general, discovery, or cold-review work, run `coverage-status --json`
+with the active review identity. Assign stale and unreviewed files first, then
+files reviewed once, then files reviewed twice. Give the subagent its assigned
+files or flows, not the coverage counts or earlier verdicts. Coverage changes
+work order; it does not prohibit reading lower-priority files or shared
+contracts. Preserve each assigned file's observed `changeId` for the final
+attestation.
+
+At the end of a general, discovery, or cold review, the subagent must make one `coverage-record`
+call for changed files whose diff and relevant behavior it actually assessed.
+Use one stable review ID for that subagent invocation. Do not record files that
+were merely listed, opened for context, or checked only through a narrow lens.
+Pass the observed `changeId` paired with each file; if any file changed during
+review, the command rejects the batch instead of crediting unseen content.
+If the subagent cannot write the external review database, it must return the
+exact file list, observed change IDs, and review ID for the coordinator to
+record in one batch.
+
+Give cold-review subagents only the target and neutral checklist. After the
+verdict, match candidates against the findings registry and open consult queue.
+If an optional decision log exists, give them its path only after the verdict
+for long-form rationale, or have them return the entries if they cannot write.
 
 If the harness cannot run subagents, say so, continue only as best effort,
 and do not call the review clean unless the user accepts that limitation.
@@ -54,6 +72,6 @@ non-terminal update or first timeout, wait again without listing agent status.
 Inspect only after two consecutive timeouts or an explicit error. Keep the
 parent turn active until every required reviewer reaches a terminal state.
 
-Run `monitoring-gh-actions` at the end, after both review phases and local
-validation are clean, when PR checks are pending and monitoring is in scope.
-That is coordinator work, not a review subagent.
+Use `wait-efficiently`'s GitHub Actions mode at the end, after both review phases
+and local validation are clean, when PR checks are pending and monitoring is in
+scope. That is coordinator work, not a review subagent.

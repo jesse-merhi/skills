@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ask Claude"
+  short_description: "Open a full Claude session through ACP"
+  default_prompt: "Use $ask-claude to ask a full Claude ACP session for an independent answer or scoped implementation."
+policy:
+  allow_implicit_invocation: false

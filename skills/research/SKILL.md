@@ -1,49 +1,53 @@
 ---
 name: research
-description: 'Research primary sources for docs, APIs, standards, source behavior, or implementation context.'
+description: 'Investigate technical or product questions against primary sources, preserve substantive discoveries in the project Obsidian notes, and return cited conclusions.'
 ---
 
 # Research
 
-Investigate a question against primary sources. Write a cited Markdown note
-only when the user asks for durable research; otherwise return the cited answer
-in chat without creating an artifact.
+Research questions whose answer depends on documentation, source code,
+standards, first-party APIs, release behavior, or other evidence outside the
+current conversation. Do the work in the current session. A research request
+does not create a subagent.
 
-Primary sources include official docs, source code, specs, standards, release
-notes, first-party APIs, and repository-owned notes. Prefer them over blog
-posts, summaries, forum answers, or search snippets.
+## Evidence
 
-## Workflow
+Prefer the source that owns the claim: official documentation, specifications,
+repository source, release notes, first-party APIs, and project-owned notes.
+Use secondary material only to find a primary source or to present a clearly
+labelled outside interpretation.
 
-1. Restate the research question and the decision or task it should support.
-2. Identify where this repo keeps research notes. If there is no convention,
-   use a sensible local path and report it before writing when the location is
-   ambiguous.
-3. Gather evidence from primary sources. For library, framework, SDK, API, CLI,
-   or cloud-service docs, use current official documentation.
-4. Write one Markdown note with:
-   - the question;
-   - short answer;
-   - cited findings with links or source paths;
-   - uncertainty, version limits, or stale-risk notes;
-   - recommended next step.
-5. Return the note path and the key conclusion. Do not keep important findings
-   only in chat.
+Record versions and dates when behavior can change. Separate sourced facts,
+inferences, and unresolved questions.
 
-## Output shape
+## Obsidian notes
 
-```md
-# Research: <question>
+Preserve substantive discoveries in the user's Obsidian-backed project notes
+so a later session can recover the evidence. Update one topic or task note
+rather than creating a file for every lookup.
 
-## Short answer
-<answer>
+A useful note contains:
 
-## Findings
-- <claim> Source: <URL or file path>
+- the question and the decision it supports;
+- the short answer;
+- cited findings with URLs or source paths;
+- version, date, uncertainty, and stale-risk notes;
+- the effect on the current plan or implementation;
+- open questions worth carrying forward.
 
-## Caveats
-- <version, date, uncertainty, or open question>
+Follow the vault's existing project folder and naming convention. When an
+Obsidian connector or known vault is unavailable, keep the findings in chat and
+report that they were not persisted. Do not fall back to a repository Markdown
+file or an arbitrary local note. Never store credentials, raw environment
+files, personal data, or large copied source passages.
 
-## Next step
-- <how this should feed grilling, planning, implementation, or review>
-```
+## Return
+
+Lead with the conclusion, cite the evidence near each claim, and link or name
+the Obsidian note when one was updated. A later handoff should include that note
+as durable context.
+
+This skill is a repository-owned fork of Matt Pocock's MIT-licensed `research`
+workflow. The local fork performs research in the current session and stores
+durable findings in Obsidian instead of spawning a background agent or writing
+notes into the repository.

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-08-28",
+  "scope": "Repository-owned skills adapted from or materially influenced by upstream work. Installer-owned skills remain authoritative in external.md.",
+  "sources": [
+    {
+      "repository": "https://github.com/mattpocock/skills",
+      "reviewedCommit": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "mappings": [
+        {
+          "localSkill": "grill-with-docs",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/engineering/grill-with-docs"]
+        },
+        {
+          "localSkill": "grilling",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/productivity/grilling"]
+        },
+        {
+          "localSkill": "handoff",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/productivity/handoff"]
+        },
+        {
+          "localSkill": "improve-codebase-architecture",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/engineering/improve-codebase-architecture"]
+        },
+        {
+          "localSkill": "parallel-slice-orchestration",
+          "relationship": "inspired",
+          "upstreamPaths": ["skills/engineering/to-tickets"]
+        },
+        {
+          "localSkill": "research",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/engineering/research"]
+        },
+        {
+          "localSkill": "speak-fking-english",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/productivity/wait-what"]
+        },
+        {
+          "localSkill": "tdd",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/engineering/tdd"]
+        },
+        {
+          "localSkill": "to-spec",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/engineering/to-spec"]
+        },
+        {
+          "localSkill": "to-tickets",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/engineering/to-tickets"]
+        },
+        {
+          "localSkill": "writing-for-agents",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/productivity/writing-for-agents"]
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/emilkowalski/skills",
+      "reviewedCommit": "d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7",
+      "mappings": [
+        {
+          "localSkill": "design",
+          "relationship": "adapted",
+          "upstreamPaths": [
+            "skills/emil-design-eng",
+            "skills/find-animation-opportunities",
+            "skills/apple-design",
+            "skills/animation-vocabulary",
+            "skills/prototype",
+            "skills/review-animations"
+          ]
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/steipete/agent-scripts",
+      "reviewedCommit": "168f22313cecc5c173421d1b3a8c1911812c0d2a",
+      "mappings": [
+        {
+          "localSkill": "skill-cleaner",
+          "relationship": "adapted",
+          "upstreamPaths": ["skills/skill-cleaner"]
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/humanlayer/skills",
+      "reviewedCommit": "3c2629142c5d437428269b1b722b08c0b87f574d",
+      "mappings": [
+        {
+          "localSkill": "speak-fking-english",
+          "relationship": "adapted",
+          "upstreamPaths": ["plugins/show-me/skills/show-me"]
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/cursor/plugins",
+      "reviewedCommit": "799151d91b6e12ee7dbd09f708eec108d7de9b3b",
+      "mappings": [
+        {
+          "localSkill": "speak-fking-english",
+          "relationship": "adapted",
+          "upstreamPaths": ["pstack/skills/unslop"]
+        }
+      ]
+    }
+  ]
+}

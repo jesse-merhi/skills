@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+process_chain=""
+pid="$$"
+count=0
+while [[ "$pid" =~ ^[0-9]+$ ]] && (( pid > 1 )) && (( count < 16 )); do
+  row="$(ps -p "$pid" -o pid=,ppid=,comm= 2>/dev/null || true)"
+  [[ -n "$row" ]] || break
+  process_chain+="$row"$'\n'
+  pid="$(awk '{print $2}' <<<"$row")"
+  count=$((count + 1))
+done
+
+if [[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] && tmux display-message -p -t "$TMUX_PANE" '#{session_name}:#{window_index}:#{pane_id}' >/dev/null 2>&1; then
+  printf 'surface=tmux\n'
+  printf 'evidence=TMUX and TMUX_PANE identify the current pane\n'
+elif [[ -n "${CODEX_THREAD_ID:-}" ]] && grep -Eq '/Applications/(ChatGPT|Codex)\.app/|/Contents/Resources/codex' <<<"$process_chain"; then
+  printf 'surface=codex-app\n'
+  printf 'evidence=CODEX_THREAD_ID and current process ancestry identify the Codex app\n'
+elif grep -Eq '/Applications/Claude\.app/' <<<"$process_chain"; then
+  printf 'surface=claude-app\n'
+  printf 'evidence=current process ancestry identifies Claude.app\n'
+elif pgrep -f '/Applications/(ChatGPT|Codex)\.app/' >/dev/null 2>&1; then
+  printf 'surface=codex-app-open\n'
+  printf 'evidence=a Codex-capable app is running outside the current process ancestry\n'
+elif pgrep -f '/Applications/Claude\.app/' >/dev/null 2>&1; then
+  printf 'surface=claude-app-open\n'
+  printf 'evidence=Claude.app is running outside the current process ancestry\n'
+elif grep -Eq '(^|/)(claude)( |$)' <<<"$process_chain"; then
+  printf 'surface=claude-cli\n'
+  printf 'evidence=current process ancestry identifies Claude Code\n'
+elif grep -Eq '(^|/)(codex)( |$)' <<<"$process_chain"; then
+  printf 'surface=codex-cli\n'
+  printf 'evidence=current process ancestry identifies Codex CLI\n'
+else
+  printf 'surface=terminal\n'
+  printf 'evidence=no supported tmux or app ancestry was detected\n'
+fi

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Review Animations"
-  short_description: "Review motion against interaction standards"
-  default_prompt: "Use $review-animations to review this motion implementation and report actionable findings."

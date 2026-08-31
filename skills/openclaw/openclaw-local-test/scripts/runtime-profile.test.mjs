@@ -50,7 +50,7 @@ test("inspects native logins without returning credentials or endpoint values", 
   await writeFile(
     path.join(claudeHome, "settings.json"),
     JSON.stringify({
-      model: "claude-test",
+      model: "opus[1m]",
       env: {
         ANTHROPIC_BASE_URL: "https://private.example.invalid",
         ANTHROPIC_AUTH_TOKEN: "never-return-this-token",
@@ -87,8 +87,8 @@ test("inspects native logins without returning credentials or endpoint values", 
       usable: true,
       auth: "claude-subscription",
       route: "custom-endpoint",
-      model: "claude-test",
-      modelRef: "anthropic/claude-test",
+      model: "opus[1m]",
+      modelRef: "anthropic/opus[1m]",
       runtimeId: "claude-cli",
       pluginId: "anthropic",
     });

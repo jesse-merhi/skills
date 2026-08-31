@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ask Codex"
+  short_description: "Open a full Codex session through ACP"
+  default_prompt: "Use $ask-codex to ask a full Codex ACP session for an independent answer or scoped implementation."
+policy:
+  allow_implicit_invocation: false

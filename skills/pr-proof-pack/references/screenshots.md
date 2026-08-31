@@ -8,6 +8,7 @@
 - [Rendered PR verification](#rendered-pr-verification)
 - [Evidence contract](#evidence-contract)
 - [Presentation gate](#presentation-gate)
+- [Static UI proof](#static-ui-proof)
 - [UI interaction proof](#ui-interaction-proof)
 - [Recording edit](#recording-edit)
 - [Backend and operator proof](#backend-and-operator-proof)
@@ -20,6 +21,12 @@ Read this file only after `proof-selection.md` determines that an important
 claim would lose information in text. This file owns how to capture and publish
 that selected visual evidence; `proof-selection.md` owns whether a visual
 qualifies.
+
+UI evidence must show the actual product. Explanatory technical diagrams,
+wireframes, mockups, screenshots of prose, and test-runner output cannot satisfy
+static or interactive UI proof. When rendered diagram or export output is itself
+the changed product, capture that actual output as proof of its own pixels and
+result; it still does not prove that the system depicted by the diagram ran.
 
 If practical capture, screen recording, provider authentication, attachment
 upload, asset verification, or a required visual inspection fails,
@@ -55,11 +62,40 @@ ensure the newer binary is first on `PATH`.
 If it fails, stop and report its diagnostics. Do not extract or reuse browser
 credentials.
 
-Insert images with descriptive alt text. Insert videos as a bare URL on their
-own line; image Markdown such as `![](url)` does not produce a working MP4
-player. Keep every attachment in the main PR body, never in a table or detached
-comment. Do not commit proof media to the repository unless the project or user
-explicitly requests that storage model.
+Insert images with descriptive alt text and a deliberate percentage width:
+
+```html
+<img src="https://github.com/user-attachments/assets/example"
+     alt="Supplier results remain visible while the role search is filtered"
+     width="50%">
+```
+
+Choose the smallest width that keeps the relevant detail comfortably readable
+in the PR content area. Start narrow mobile or focused UI captures at `50%`,
+medium-width captures at `75%`, and use `100%` only when the content benefits
+from the full column. These are judgment defaults, not fixed categories. A
+device capture should not render at full width merely because its physical
+pixel dimensions are large. GitHub preserves percentage values in the `width`
+attribute but strips an inline CSS `width`, so use `width="50%"`, not
+`style="width: 50%"`.
+
+Use a Markdown table when it makes a small related group easier to compare,
+such as before/after, desktop/mobile, or two important states. Size each image
+to `100%` of its table cell so the table, rather than the source pixels,
+controls the grouping:
+
+```md
+| Before: direct base | After: PR |
+| --- | --- |
+| <img src="BEFORE_URL" alt="Before: results disappear" width="100%"> | <img src="AFTER_URL" alt="After: results remain visible" width="100%"> |
+```
+
+Keep a single image, a sequential interaction, or a comparison whose details
+become cramped outside a table. Insert videos as a bare URL on their own line;
+image Markdown such as `![](url)` does not produce a working MP4 player. Keep
+every attachment in the main PR body, never in a detached comment. Do not
+commit proof media to the repository unless the project or user explicitly
+requests that storage model.
 
 ## Bitbucket image upload
 
@@ -129,7 +165,9 @@ icons, balanced spacing, correct routes, and no clipping or collisions.
 
 Introduce it with the one thing the reviewer should learn and caption it
 `What this explains`. The evidence contract below does not turn the diagram
-into proof; observed product behavior must still be shown separately.
+into proof; observed product behavior must still be shown separately with
+actual screenshots, recordings, or native text as required by
+`proof-selection.md`.
 
 ## Evidence contract
 
@@ -159,6 +197,13 @@ review-ready.
   not context; provide route, fixture, environment, and viewport in nearby text.
 - Make the relevant state readable at normal PR-body width. Use a tighter crop or
   fewer rows rather than asking the reviewer to zoom into a full desktop.
+- Render each image at a percentage that suits what it depicts. A narrow mobile
+  screen should normally occupy less of the PR column than a desktop interface
+  or dense diagram. Treat full width as a deliberate presentation choice, not
+  the default produced by plain image Markdown.
+- Group a small set of directly comparable images in a table when the shared
+  headers and alignment reduce comparison work. Keep them separate when table
+  columns make the evidence harder to read.
 - Match crop, scale, viewport, theme, and data for before/after evidence. Label
   each side without covering the changed result.
 - Remove secrets, personal information, unrelated tabs, cursor clutter, debug
@@ -170,10 +215,22 @@ The model must be able to state what the visual proves, where the result appears
 and why the composition is sufficient. Recapture when any answer depends on the
 caption rather than visible content.
 
+## Static UI proof
+
+Capture actual product screenshots when appearance, layout, responsive behavior,
+or a rendered state changed. When the baseline is meaningful and reproducible,
+use the same route, fixture, data, viewport, theme, and starting state against
+the direct base and PR branch. Label the matched images `Before: direct base`
+and `After: PR` and keep the changed pixels readable at normal GitHub width.
+
+Otherwise state the constraint and show the actual product entry point and PR
+outcome. When a manual interaction also changed, these screenshots supplement
+the required recording; they do not replace it.
+
 ## UI interaction proof
 
-Record the changed flow manually at a deliberate pace. A reviewer should be able
-to follow without scrubbing frame by frame.
+Record every changed motion, timing, gesture, or manual flow at a deliberate
+pace. A reviewer should be able to follow without scrubbing frame by frame.
 
 - begin before the first relevant action so the starting state is visible;
 - capture the page viewport or relevant product area rather than the
@@ -188,8 +245,9 @@ to follow without scrubbing frame by frame.
   easier to compare or preserves a state that is not legible in the video;
 - use realistic data and avoid secrets or personal information.
 
-A test runner video, a replay of automated E2E output, or a screenshot of
-textual output does not prove a visual interaction.
+An explanatory technical diagram, static screenshot, test runner video, replay
+of automated E2E output, or screenshot of textual output does not prove a visual
+interaction.
 
 ## Recording edit
 
@@ -235,8 +293,10 @@ Example:
 
 ## Placement
 
-Put each selected image and recording directly in the main PR body, never in a
-table or detached comment. Place its explanation immediately below it:
+Put each selected image and recording in the main PR body, never in a detached
+comment. Use a table for a small related group when it improves scanning;
+otherwise place the media directly in the body. Put the shared explanation
+immediately below the item or table:
 
 ```md
 <uploaded interaction recording>

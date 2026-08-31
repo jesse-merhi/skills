@@ -61,9 +61,6 @@ Repeat:
 6. If clean or clean-except-queue:
      consecutive_clean += 1
      Track the run verdict and clean count.
-     If clean-except-queue and the engine cannot send tracked-finding
-     notices (codex) -> SUSPEND as blocked-on-consult now; without
-     notices, repeat passes on a tree with a known finding are degraded.
      If consecutive_clean >= required_clean:
        If the consult queue is empty -> record stop reason `clean-pass-met`,
                then STOP and report success.

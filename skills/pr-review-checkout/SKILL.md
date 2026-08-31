@@ -51,10 +51,11 @@ the active PR review view.
 
 ## Worktree setup
 
-Run the helper from anywhere inside the repository:
+Resolve `<skill-dir>` to this skill's directory, then run the repository-owned
+helper from anywhere inside the repository:
 
 ```bash
-~/.claude/skills/pr-review-checkout/scripts/pr-review <pr-number>
+<skill-dir>/scripts/pr-review <pr-number>
 ```
 
 It resolves the PR branch and base, reuses the branch's existing worktree when

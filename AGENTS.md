@@ -79,12 +79,11 @@ returns sets the cost of a task.
   Codex code-mode cell, or several tool calls in one response where the harness
   runs them natively. Keep dependent calls, writes, and approval-sensitive
   actions serial.
-- Hold a wait for its full expected duration, never under 300 seconds. A wait
-  deadline is a ceiling rather than a delay, so it returns the moment the work
-  finishes and a short one only buys another round trip. In Codex code mode,
-  raise the cell's own budget with the `@exec` `yield_time_ms` directive too: an
-  inner wait cannot outlive the cell holding it. Load `wait-efficiently` for
-  anything longer or more involved than a single command.
+- Start one event-driven wait sized to the mechanism and expected completion
+  time, then resume that same wait or process if the harness yields. A wait
+  deadline is a ceiling, not a required delay; there is no universal minimum.
+  Load `wait-efficiently` for anything longer or more involved than a single
+  command.
 
 ## Working rules
 
@@ -93,7 +92,7 @@ returns sets the cost of a task.
   authorized, push the work to its feature branch and deliver it through a PR.
 - Treat publication as a separate authority from local implementation. A
   request to fix or review authorizes local edits and validation. Push when
-  Jesse explicitly asks to push after the fix, publish, ship, or update the PR,
+  the user explicitly asks to push after the fix, publish, ship, or update the PR,
   or when a named workflow explicitly grants final-push authority. Otherwise,
   stop at a local checkpoint and show the result.
 - Choose the PR delivery shape before implementation. Keep one cohesive change
@@ -108,13 +107,17 @@ returns sets the cost of a task.
   stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
   review do not count. Tell the user and use the native structured question UI
   to ask whether to run `code-review` or proceed without it for this PR and
-  head. Do not start the expensive review automatically.
+  head. Do not start the expensive review automatically. An explicitly invoked
+  named workflow that requires `code-review` and grants that authority counts
+  as the user's review decision; record it and continue without asking again.
   An unanswered review decision blocks readiness and merge. Record an explicit
   waiver in closeout.
 - Sign-off gate: after the review decision, proof, validation, and CI pass,
   summarize the review findings and fixes or the explicit waiver, then ask the
-  user for a thumbs-up (`+1`) reaction. For a stack, apply both gates and require
-  a separate `jesse-merhi` reaction on every open PR, not only the top PR.
+  user for a thumbs-up (`+1`) reaction. Resolve the expected human login from
+  task or project configuration; otherwise use the authenticated GitHub login
+  reported by `gh api user --jq .login`. For a stack, apply both gates and
+  require that person's separate reaction on every open PR, not only the top PR.
   Never add, remove, or modify that reaction on the user's behalf; only read
   GitHub reactions and proceed after the expected reaction exists. This is an
   agent workflow gate, not a GitHub approval or branch-protection rule.
@@ -123,8 +126,8 @@ returns sets the cost of a task.
 - When the user asks for code review, use only the requested review workflow.
   Do not substitute or add other review skills or review bots, including
   `autoreview`, unless the user explicitly asks for them.
-- Jesse opts out of OpenClaw `$autoreview` by default. Never run it, even when
-  repository instructions call it a mandatory gate, unless Jesse explicitly
+- The user opts out of OpenClaw `$autoreview` by default. Never run it, even when
+  repository instructions call it a mandatory gate, unless the user explicitly
   opts in for the current task.
 - During code review, compare new custom infrastructure logic with repository,
   runtime, framework, and installed-dependency features. Treat duplicated
@@ -132,8 +135,13 @@ returns sets the cost of a task.
   drift, or missed edge cases.
 - Stop on the first test error. Diagnose before rerunning; never rerun to see
   if it passes the second time.
-- Never post PR or issue comments on the user's behalf. Report findings in
-  chat only.
+- Do not post prose PR or issue comments on the user's behalf. A named workflow
+  may post its exact machine command only when that workflow explicitly requires
+  it and the PR is authored by, or has been substantially contributed to by,
+  the user. `clawsweeper-until-clean` may post only its documented
+  `/clawsweeper re-review` command under this exception. Otherwise, report in
+  chat or ask for explicit authorization; never generalize the exception to
+  findings, summaries, or conversational comments.
 - Never use `as any` in TypeScript. Provide proper types or adapter
   functions.
 - No decorative comment separators (`=====`, `-----`) in code.

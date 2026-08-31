@@ -25,7 +25,7 @@ without editing unless the user explicitly asks for the until-clean loop or
 
 ```yaml
 review_tool: must invoke the selected engine's bare built-in review; do not substitute a self-review or ad hoc subagent
-prompt_policy: pass only the review target plus tracked-finding notices generated per review-guardrails; no other prompt, checklist, desired verdict, or rationale
+prompt_policy: pass only the review target; never reveal prior findings, checklists, desired verdicts, or rationale before the engine returns
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
 scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
@@ -89,6 +89,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 ## Avoid
 
+- invoking `ask-codex` or `ask-claude` as a review engine or fallback unless
+  the current user explicitly requested that exact cross-harness session;
 - replacing the engine's review with `spawn_agent`, `cold-pr-review`, a
   repo-specific review command, or manual judgment;
 - switching engines mid-loop;

@@ -2,8 +2,8 @@
 
 Read the report in this order:
 
-- `Skill Budget`: GPT-5.5 context size, 2% skills budget, Codex-budgeted usage,
-  and pre-budget full-list pressure.
+- `Skill Budget`: current configured model context size, 2% skills budget,
+  Codex-budgeted usage, and pre-budget full-list pressure.
 - `Description candidates`: long descriptions where relaxed grammar saves
   prompt budget.
 - `Duplicates`: same skill name or near-identical description/body across Codex,
