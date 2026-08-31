@@ -1202,6 +1202,21 @@ test_review_neutrality_and_skill_ownership_are_explicit() {
   assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" "not mean knowingly temporary"
 }
 
+test_test_audit_owns_portfolio_policy() {
+  local audit="$ROOT_DIR/skills/test-audit"
+  local review="$ROOT_DIR/skills/code-review"
+
+  assert_contains "$audit/SKILL.md" "before creating, changing, or removing tests"
+  assert_contains "$audit/SKILL.md" '[portfolio.md](references/portfolio.md)'
+  assert_contains "$audit/references/portfolio.md" "Assign one executable owner to each distinct regression"
+  assert_contains "$audit/references/portfolio.md" "Incidental traversal is not coverage"
+  assert_contains "$audit/references/portfolio.md" "Land and verify a required replacement"
+  assert_contains "$audit/references/portfolio.md" "before-and-after test file counts"
+  assert_contains "$review/references/setup-and-lenses.md" "portfolio audit must also challenge"
+  assert_contains "$review/references/subagents.md" "portfolio ownership, proof-level"
+  assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" 'load `test-audit` and apply its test-portfolio policy'
+}
+
 test_cross_harness_sessions_are_full_and_symmetric() {
   assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "This is not a subagent"
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
@@ -1489,6 +1504,7 @@ test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_review_neutrality_and_skill_ownership_are_explicit
+test_test_audit_owns_portfolio_policy
 test_cross_harness_sessions_are_full_and_symmetric
 test_claude_fable_orchestration_is_repo_owned
 test_skill_cleaner_uses_current_model_configuration

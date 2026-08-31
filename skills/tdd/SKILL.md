@@ -14,9 +14,13 @@ A seam is the stable boundary through which a caller experiences behavior: a
 CLI command, HTTP request, exported function, component interaction, adapter,
 or another durable interface.
 
-Before the first test, state the proposed seam, observable outcome, and external
-dependencies. Prefer an existing public boundary. Ask the user only when the
-choice would materially change architecture, testing cost, or product behavior.
+Before the first test, load `test-audit` and apply its test-portfolio policy.
+State the proposed seam, observable outcome, external dependencies, distinct
+reachable regression, and nearest existing coverage. Prefer an existing public
+boundary. Done when the proposed test has the narrowest useful proof level, an
+independent expected result, and no equivalent existing owner. Ask the user only
+when the choice would materially change architecture, testing cost, or product
+behavior.
 
 Prefer tests at stable behavioral boundaries. Focused tests of internal pure
 logic are appropriate when that logic has a durable contract and exercising it

@@ -3,6 +3,8 @@
 For a review, report:
 
 - `Keep`: tests that protect real behavior.
+- `Consolidate`: equivalent cases or tests that should have one owner.
+- `Move`: real risks proved at the wrong level.
 - `Rewrite`: tests that target a real risk but assert it poorly.
 - `Delete`: tests/assertions that do not earn their keep.
 - `Changed but useless`: changed tests that pass but should not exist.
@@ -11,10 +13,14 @@ For a review, report:
   catch a verified reachable future bug.
 - `No change needed`: related tests inspected and why they still fit.
 - `Dangerous removals`: deleted tests that still protect promised behavior.
-- `Validation`: commands run and result.
+- `Ownership`: the named executable replacement for each deletion and why
+  adjacent coverage misses each keeper's regression.
+- `Validation`: commands run and result. For a portfolio-reduction audit, add
+  before-and-after file counts, expanded test counts, and measured runtime when
+  reliable.
 
-For each `Rewrite`, `Delete`, `Missing`, or `Dangerous removal`, include the
-smallest useful reason:
+For each `Consolidate`, `Move`, `Rewrite`, `Delete`, `Missing`, or `Dangerous
+removal`, include the smallest useful reason:
 
 ```md
 `path/to/test.ts`: delete the `systemAlerts` absence assertion. The API no

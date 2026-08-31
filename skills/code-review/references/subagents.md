@@ -16,7 +16,8 @@ allowed and expected; inherited turns are not.
 
 Always add a focused `test-audit` subagent when the PR touches code with nearby
 or related tests, or when the PR changes, adds, or deletes tests. Ask it to
-check both coverage drift and changed-test usefulness.
+check coverage drift, changed-test usefulness, portfolio ownership, proof-level
+placement, and deletion safety.
 
 Always add a focused `typescript-discipline` subagent when the changed code
 includes TypeScript production code, shared domain types, schemas,

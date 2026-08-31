@@ -57,9 +57,9 @@ overlay changes.
 
    - `test-audit`: mandatory when the PR touches code with nearby or related
      tests, or when the PR changes, adds, or deletes tests. Check both whether
-     related tests should change and whether changed tests earn their keep,
-     especially around removed APIs, impossible states, implementation details,
-     or branch-local history.
+     related tests should change and whether changed tests earn their keep. Its
+     portfolio audit must also challenge duplicate ownership, proof-level
+     placement, replacement owners, and orphaned test infrastructure.
    - `frontend-ui-validation`: mandatory when the diff changes visible UI,
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the
