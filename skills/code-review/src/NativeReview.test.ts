@@ -517,9 +517,10 @@ esac
       await writeFile(join(directory, "base.txt"), "base\n")
       await writeFile(join(directory, "case.txt"), "case\n")
       await writeFile(join(directory, "converted"), "tracked file\n")
+      await writeFile(join(directory, "link-change"), "tracked file\n")
       await mkdir(join(directory, "replacement"))
       await writeFile(join(directory, "replacement", "tracked.txt"), "tracked directory\n")
-      await execFile("git", ["add", "base.txt", "case.txt", "converted", "replacement/tracked.txt"], { cwd: directory })
+      await execFile("git", ["add", "base.txt", "case.txt", "converted", "link-change", "replacement/tracked.txt"], { cwd: directory })
       await execFile("git", ["commit", "-m", "base"], { cwd: directory })
       await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
       await writeFile(join(directory, "committed.txt"), "committed\n")
@@ -533,11 +534,13 @@ esac
       await mkdir(join(directory, "converted"))
       await writeFile(join(directory, "converted", "AGENTS.md"), "untracked active instructions\n")
       await writeFile(join(directory, "converted", "code.txt"), "untracked code\n")
+      await rm(join(directory, "link-change"))
+      await symlink("missing-target", join(directory, "link-change"))
       await rm(join(directory, "replacement"), { recursive: true, force: true })
       await writeFile(join(directory, "replacement"), "untracked file replacement\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await symlink("untracked.txt", join(directory, "untracked-link"))
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat base.txt)\" = unstaged\ntest \"$(cat replacement)\" = 'untracked file replacement'\ntest \"$(cat converted/code.txt)\" = 'untracked code'\ntest ! -e converted/AGENTS.md\ngrep -q 'untracked active instructions' .codex-review-target-control.patch\ntest -f committed.txt\ntest -f staged.txt\ntest -f untracked.txt\ntest -f CASE.txt\ngit ls-files | grep -qx CASE.txt\n! git ls-files | grep -qx case.txt\ntest \"$(readlink untracked-link)\" = untracked.txt\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat base.txt)\" = unstaged\ntest \"$(cat replacement)\" = 'untracked file replacement'\ntest \"$(cat converted/code.txt)\" = 'untracked code'\ntest \"$(readlink link-change)\" = missing-target\ntest ! -e converted/AGENTS.md\ngrep -q 'untracked active instructions' .codex-review-target-control.patch\ntest -f committed.txt\ntest -f staged.txt\ntest -f untracked.txt\ntest -f CASE.txt\ngit ls-files | grep -qx CASE.txt\n! git ls-files | grep -qx case.txt\ntest \"$(readlink untracked-link)\" = untracked.txt\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
       assert.match(dryRun, /snapshot: frozen-base review envelope with target diff as uncommitted data/u)
@@ -672,6 +675,31 @@ esac
         const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /must be repository-relative/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a frozen-control symlink whose target is absent from the base tree", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-missing-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await symlink("missing-rules.md", join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /target is absent from the base tree/u)
       } finally {
         process.chdir(previousCwd)
       }

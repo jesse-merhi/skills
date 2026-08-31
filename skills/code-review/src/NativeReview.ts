@@ -353,6 +353,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         if (part === undefined) continue
         const candidate = [...resolved, part].join("/")
         const entry = baseEntryByPath.get(candidate) ?? baseEntryByFoldedPath.get(candidate.toLowerCase())
+        if (entry?.mode === "160000") return yield* new ReviewSnapshotError({ message: `frozen review control symlink traverses a gitlink: ${candidate}` })
         if (entry?.mode !== "120000") {
           resolved.push(part)
           continue
@@ -369,7 +370,14 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         ])
         resolved = []
       }
-      dependencies.push(resolved.join("/"))
+      const resolvedPath = resolved.join("/")
+      const foldedResolvedPath = resolvedPath.toLowerCase()
+      const materialized = baseEntries.some((entry) => {
+        const folded = entry.path.toLowerCase()
+        return folded === foldedResolvedPath || folded.startsWith(`${foldedResolvedPath}/`)
+      })
+      if (!materialized) return yield* new ReviewSnapshotError({ message: `frozen review control symlink target is absent from the base tree: ${resolvedPath}` })
+      dependencies.push(resolvedPath)
       return dependencies
     })
     while (pendingLinks.length > 0) {
@@ -457,12 +465,16 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         const destination = paths.resolve(snapshot, file)
         if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy tracked path outside snapshot: ${file}` })
         yield* fs.remove(destination, { force: true, recursive: true })
+        if (Option.isSome(linkTarget)) {
+          yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
+          yield* fs.symlink(linkTarget.value, destination)
+          continue
+        }
         if (!(yield* fs.exists(source).pipe(Effect.orElseSucceed(() => false)))) continue
         const sourceInfo = yield* fs.stat(source).pipe(Effect.option)
         if (Option.isSome(sourceInfo) && sourceInfo.value.type === "Directory") continue
         yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
-        if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
-        else yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
+        yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
       }
     }
     const untracked = target.envelope.includeWorkingTree

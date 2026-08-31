@@ -36,8 +36,9 @@ target checkout is not equivalent to this helper.
 Repository paths reached through complete frozen-base instruction symlink
 chains are frozen as part of the same control surface. Absolute or
 repository-escaping control symlinks fail closed because the temporary worktree
-cannot safely redirect them to frozen content. Case-folded aliases and target
-symlinks that could redirect an ancestor of a protected destination are also
+cannot safely redirect them to frozen content. Missing targets and targets
+inside unmaterialized gitlinks also fail closed. Case-folded aliases and target
+symlinks that could redirect an ancestor of a protected destination are
 quarantined. Target-side control changes are captured as forced text independent
 of target attributes. If a target file replaces a base directory containing a
 scoped instruction file, the replacement remains in the review target; the
@@ -49,10 +50,11 @@ renames therefore remain part of the uncommitted review target. Snapshot
 materialization ignores sparse-checkout skip bits, then overlays only actual
 working-tree changes, so out-of-cone tracked context remains available. A
 tracked path changed into a directory is rebuilt from its individually filtered
-untracked children rather than recursively copied. Dynamic Git paths use literal
-pathspecs, so target filenames cannot alter snapshot commands. Commit mode
-rejects an unavailable shallow parent instead of misclassifying the target as a
-root commit; fetch or deepen that history before retrying.
+untracked children rather than recursively copied. Tracked symlink changes are
+copied as symlinks before any target-following filesystem checks. Dynamic Git
+paths use literal pathspecs, so target filenames cannot alter snapshot commands.
+Commit mode rejects an unavailable shallow parent instead of misclassifying the
+target as a root commit; fetch or deepen that history before retrying.
 
 A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
