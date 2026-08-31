@@ -22,3 +22,5 @@ rationale:
 - Use `finding-discipline`: report only concrete actionable findings tied to
   changed lines or contracts, not style nits or vague risks. Require its
   reality, importance, and repair-quality gates before returning a finding.
+- Return failed candidates only under `Rejected candidates`, with a stable
+  fingerprint, failed gate, and one-sentence evidence rationale for the audit.

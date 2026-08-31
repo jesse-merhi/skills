@@ -112,7 +112,8 @@ test_review_findings_schema_is_visible_and_enforced() {
   assert_output_contains "$out" "--rejection-gate reality|importance|contract|repair|duplicate"
   assert_output_contains "$out" "--owner-resolution approved|declined for an explicit terminal decision about the finding"
   assert_output_contains "$out" "declined provisional repair + decision text -> reopened accepted finding; omit owner resolution because the finding remains open"
-  assert_output_contains "$out" "owner-resolved record -> terminal and immutable; exact replay is a no-op even after scope completion"
+  assert_output_contains "$out" "current-evidence owner-resolved record -> terminal and immutable; exact replay is a no-op even after scope completion"
+  assert_output_contains "$out" "active legacy evidence -> remains open until re-recorded; completed history stays terminal and is labelled legacy"
   assert_output_contains "$out" "--maintenance-evidence <repository evidence of unnecessary complexity, duplication, or code with no current job>"
   assert_output_contains "$out" "--present-cost <current reading, change, test, or ownership cost>"
   assert_output_contains "$out" "Required when likelihood is unknown or theoretical:"
@@ -248,16 +249,12 @@ test_review_findings_schema_is_visible_and_enforced() {
   fi
   assert_contains "$tmp/stderr" "maintenance+no impact derives no severity/consult; disposition consult cannot use status fixed"
 
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
-    --decision-id D4B --status open --source review --fingerprint "systemic autonomous route" \
-    --summary "A systemic finding cannot request autonomous handling." \
+    --decision-id D4B --status fixed --source review --fingerprint "contained systemic repair" \
+    --summary "A contained systemic finding can use autonomous handling." \
     --finding-kind maintenance --fix-scope systemic --handling fix \
-    "${MAINTENANCE_EVIDENCE[@]}" \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "systemic findings must not use fix handling"
-  fi
-  assert_contains "$tmp/stderr" "systemic findings cannot use --handling fix"
+    "${MAINTENANCE_EVIDENCE[@]}" "${REPAIR_EVIDENCE[@]}" >/dev/null
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
@@ -369,6 +366,21 @@ test_review_findings_schema_is_visible_and_enforced() {
     --actual-consequence "The user sees the documented fallback." \
     --decision "Reject: the public request contract explicitly permits this fallback." >/dev/null
 
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D8B --status open --source review --fingerprint "local product tolerance" \
+    --summary "A local product tolerance needs the owner's decision." \
+    --finding-kind runtime --fix-scope local --handling consult \
+    --production-path "supported request -> local tolerance -> visible fallback" \
+    --reachability-evidence "The supported request reaches the documented fallback." \
+    --likelihood likely --impact medium \
+    "${RUNTIME_ACTIONABILITY[@]}" \
+    --actual-consequence "The user sees behavior that requires a product choice." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "open consultations must require the owner's question"
+  fi
+  assert_contains "$tmp/stderr" "unresolved consult findings require --decision with the owner's question"
+
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D8B --status open --source review --fingerprint "local product tolerance" \
@@ -378,7 +390,8 @@ test_review_findings_schema_is_visible_and_enforced() {
     --reachability-evidence "The supported request reaches the documented fallback." \
     --likelihood likely --impact medium \
     "${RUNTIME_ACTIONABILITY[@]}" \
-    --actual-consequence "The user sees behavior that requires a product choice." >/dev/null
+    --actual-consequence "The user sees behavior that requires a product choice." \
+    --decision "Should the owner approve the local behavior change?" >/dev/null
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D8B --status fixed --source review --fingerprint "local product tolerance" \
@@ -506,7 +519,8 @@ test_review_findings_schema_is_visible_and_enforced() {
     --reachability-evidence "A supported request reaches the shared policy." \
     --likelihood possible --impact high \
     "${RUNTIME_ACTIONABILITY[@]}" \
-    --actual-consequence "The core workflow is blocked." >/dev/null
+    --actual-consequence "The core workflow is blocked." \
+    --decision "Should the owner approve the systemic runtime repair?" >/dev/null
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D11 --status fixed --source review --fingerprint "approved systemic runtime fix" \
@@ -592,7 +606,8 @@ test_review_findings_schema_is_visible_and_enforced() {
     --decision-id D16 --status open --source review --fingerprint "systemic consult reclassification" \
     --summary "A systemic maintenance finding awaits owner review." \
     --finding-kind maintenance --fix-scope systemic --handling consult \
-    "${MAINTENANCE_EVIDENCE[@]}" "${REPAIR_EVIDENCE[@]}" >/dev/null
+    "${MAINTENANCE_EVIDENCE[@]}" "${REPAIR_EVIDENCE[@]}" \
+    --decision "Should the owner approve this systemic maintenance repair?" >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
     --decision-id D16 --status fixed --source review --fingerprint "systemic consult reclassification" \
@@ -676,7 +691,8 @@ test_review_findings_schema_is_visible_and_enforced() {
     --reachability-evidence "The supported rotation path overlaps active verification." \
     --likelihood rare --impact critical \
     "${RUNTIME_ACTIONABILITY[@]}" \
-    --actual-consequence "A token can be verified against a retired key." >/dev/null
+    --actual-consequence "A token can be verified against a retired key." \
+    --decision "Should the owner approve the key-rotation repair?" >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --json \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main)"
   printf '%s\n' "$out" | node -e '
@@ -690,6 +706,8 @@ test_review_findings_schema_is_visible_and_enforced() {
       if (d8?.finding_kind !== "runtime" || d8.likelihood !== "possible" || d8.impact !== "high" || d8.severity !== "p1" || d8.disposition !== "accept" || d8.handling !== "fix") process.exit(1);
       if (d8.production_path !== "supported request -> handler -> blocked workflow" || d8.reachability_evidence !== "The public request contract reaches the handler." || d8.actual_consequence !== "The user cannot complete the workflow.") process.exit(1);
       if (d8.contract_evidence !== "The supported workflow promises this behavior." || d8.root_cause !== "The owning module does not enforce the current contract." || d8.recommended_fix !== "Repair the contract in the owning module." || d8.intervention_justification !== "The supported path is broken, and the owning repair is smaller than tolerating repeated failures.") process.exit(1);
+      const d4b = byId.get("D4B");
+      if (d4b?.fix_scope !== "systemic" || d4b.handling !== "fix" || d4b.disposition !== "accept" || d4b.status !== "fixed") process.exit(1);
       const d8b = byId.get("D8B");
       if (d8b?.handling !== "consult" || d8b.disposition !== "consult" || d8b.owner_resolution !== "approved") process.exit(1);
       const d8r = byId.get("D8R");
@@ -1276,9 +1294,11 @@ db.exec(`
 `)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "active", "", 1, 1)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", "sample-app", process.argv[2], "PR #2", "main", "old-head", "active", "", 1, 1)
-db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", "sample-app", process.argv[2], "PR #3", "main", "old-head", "complete", "", 1, 1)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", "sample-app", process.argv[2], "PR #3", "main", "old-head", "active", "", 1, 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-issue", "legacy-run", "D0", "open", "legacy", "legacy", "Legacy finding", "", "legacy text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-deferred", "legacy-run", "LEGACY-DEFERRED", "deferred", "legacy", "legacy deferred", "Legacy deferred finding", "", "legacy deferred text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-fixed", "legacy-run", "LEGACY-FIXED", "fixed", "legacy", "legacy fixed", "Legacy active finding", "", "legacy fixed text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete-finding", "legacy-complete", "LEGACY-COMPLETE", "fixed", "legacy", "legacy complete", "Legacy completed finding", "", "legacy complete text", "", 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", 0, "main", "base-oid", 30, "Legacy scope", "", 1, 0, 0, '["asset.bin"]', "ready", 1, 0, 0, 0, 0, "[]", "", 1, 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", 0, "main", "base-oid", 30, "Over budget", "", 1, 0, 0, '["app.ts"]', "blocked", 2, 0, 0, 1, 0, "[]", "Existing line overage requires authorization.", 1, 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", 0, "main", "base-oid", 30, "Complete", "", 1, 0, 0, '["done.ts"]', "complete", 1, 0, 0, 0, 0, '["done-extra.ts"]', "", 1, 1)
@@ -1298,10 +1318,10 @@ const over = new DatabaseSync(process.argv[2]).prepare("select line_metric, stat
 if (over?.line_metric !== "production-only" || over.status !== "rebaseline-required" || !over.last_reason.includes("explicit rebaseline") || !over.last_reason.includes("total human-authored LOC") || !over.last_reason.includes("Existing line overage requires authorization.")) process.exit(1)
 const complete = new DatabaseSync(process.argv[2]).prepare("select line_metric, status from review_scope_budgets where run_id = 'legacy-complete'").get()
 if (complete?.line_metric !== "production-only" || complete.status !== "complete") process.exit(1)
-const upgraded = new DatabaseSync(process.argv[2]).prepare("select contract_evidence, root_cause, recommended_fix, intervention_justification, rejection_gate from issues where run_id = 'legacy-run' and decision_id = 'D0'").get()
-if (upgraded?.contract_evidence !== "" || upgraded.root_cause !== "The owning module does not enforce the current contract." || upgraded.recommended_fix !== "Repair the contract in the owning module." || upgraded.intervention_justification !== "The supported path is broken, and the owning repair is smaller than tolerating repeated failures." || upgraded.rejection_gate !== "") process.exit(1)
-const untouched = new DatabaseSync(process.argv[2]).prepare("select contract_evidence, root_cause, recommended_fix, intervention_justification, rejection_gate from issues where run_id = 'legacy-run' and decision_id = 'LEGACY-DEFERRED'").get()
-if (untouched?.contract_evidence !== "" || untouched.root_cause !== "" || untouched.recommended_fix !== "" || untouched.intervention_justification !== "" || untouched.rejection_gate !== "") process.exit(1)
+const upgraded = new DatabaseSync(process.argv[2]).prepare("select contract_evidence, root_cause, recommended_fix, intervention_justification, rejection_gate, evidence_version from issues where run_id = 'legacy-run' and decision_id = 'D0'").get()
+if (upgraded?.contract_evidence !== "" || upgraded.root_cause !== "The owning module does not enforce the current contract." || upgraded.recommended_fix !== "Repair the contract in the owning module." || upgraded.intervention_justification !== "The supported path is broken, and the owning repair is smaller than tolerating repeated failures." || upgraded.rejection_gate !== "" || upgraded.evidence_version !== 8) process.exit(1)
+const untouched = new DatabaseSync(process.argv[2]).prepare("select contract_evidence, root_cause, recommended_fix, intervention_justification, rejection_gate, evidence_version from issues where run_id = 'legacy-run' and decision_id = 'LEGACY-DEFERRED'").get()
+if (untouched?.contract_evidence !== "" || untouched.root_cause !== "" || untouched.recommended_fix !== "" || untouched.intervention_justification !== "" || untouched.rejection_gate !== "" || untouched.evidence_version !== 7) process.exit(1)
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #3" --base main)"
@@ -1310,11 +1330,13 @@ NODE
   assert_output_contains "$out" "Production paths added since the baseline (informational):"
   assert_output_not_contains "$out" "Human-authored paths added since the baseline (informational):"
   assert_output_contains "$out" "- done-extra.ts"
+  assert_output_contains "$out" "[legacy evidence]"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #3" --base main --json)"
   assert_output_contains "$out" '"newProductionPaths"'
   assert_output_contains "$out" '"newBinaryProductionPaths"'
   assert_output_not_contains "$out" '"newPaths"'
+  assert_output_contains "$out" '"evidence_version": 7'
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main)"
   assert_output_contains "$out" "D0 [fixed]"
@@ -1328,9 +1350,17 @@ NODE
     process.stdin.on("end", () => {
       const closeout = JSON.parse(input);
       if (!closeout.still_open.some((item) => item.decision_id === "LEGACY-DEFERRED")) process.exit(1);
+      if (!closeout.still_open.some((item) => item.decision_id === "LEGACY-FIXED" && item.evidence_version === 7)) process.exit(1);
       if (closeout.findings_found.find((item) => item.decision_id === "D0")?.severity !== "") process.exit(1);
     });
   '
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set decision = ?, disposition = ?, fix_scope = ?, handling = ?, owner_resolution = ? where decision_id = ?").run("Approved existing repair.", "accept", "local", "fix", "approved", "LEGACY-FIXED")' "$db"
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id LEGACY-FIXED --status fixed --source legacy --fingerprint "legacy fixed" \
+    --summary "Legacy active finding re-recorded." --text "current evidence" \
+    --decision "Approved existing repair." --owner-resolution approved >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select evidence_version, root_cause from issues where decision_id = ?").get("LEGACY-FIXED"); if (row?.evidence_version !== 8 || row.root_cause === "") process.exit(1)' "$db"
 }
 
 test_review_findings_migrates_v5_handling_and_maintenance_evidence() {
@@ -2061,7 +2091,8 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status open --source review --fingerprint "shared parser contract" \
-    --summary "Choose the shared parser contract." --text "User decision is still required." >/dev/null
+    --summary "Choose the shared parser contract." --decision "Which shared parser contract should the owner approve?" \
+    --text "User decision is still required." >/dev/null
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Unresolved consult remains." \

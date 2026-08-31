@@ -13,14 +13,19 @@ Apply security and UI lenses when the diff touches those areas. Treat every
 observation as a candidate and report it only after three independent checks:
 (1) a current supported path reaches the behavior, (2) its likelihood, impact,
 affected users, recovery, and current contract make intervention worthwhile,
-and (3) the recommended repair addresses the root cause at the owning boundary
-and is better than doing nothing after counting complexity and new failure
-modes. Omit candidates that fail reality or importance; do not return them as
-suggestions or optional hardening. If a proven material problem has no supported
-repair, report it for consultation without inventing a fix. Every finding must
+and (3) either a recommended repair addresses the root cause at the owning
+boundary and is better than doing nothing after counting complexity and new
+failure modes, or a proven material problem has a concrete unresolved repair
+decision worth bringing to the owner. Do not return candidates that fail a gate
+as findings, suggestions, or optional hardening. Put them only in a compact
+`Rejected candidates` audit section with a stable fingerprint, failed gate, and
+one-sentence evidence rationale. A
+consultation is actionable as an owner decision but never authorizes a patch;
+report it without inventing a fix. Every finding must
 identify the changed line or contract that causes, exposes, or worsens the
 problem, plus the root cause and intervention justification. Include the
-recommended repair, or for consultation explain why it remains unresolved.
+recommended repair, or for consultation name the repair question, directions
+checked, and why no recommendation is yet supported.
 Exclude pre-existing improvements and
 unrelated defects. Report every distinct actionable finding in this pass,
 ordered by severity. Before returning, sweep the changed flows again for

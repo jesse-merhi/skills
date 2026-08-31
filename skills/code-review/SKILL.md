@@ -149,7 +149,8 @@ unless the current user explicitly requests that exact cross-harness session.
    - require contract evidence for a runtime finding, plus root cause and
      intervention justification for either kind; require a recommended repair
      before a patch, deferral, or approved consultation;
-   - stop and consult if `review-guardrails` classifies the fix as systemic;
+   - apply a contained systemic repair at its owning boundary, but stop and
+     consult if `review-guardrails` classifies the durable repair as material;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
    - update the finding with the fix in the findings database;
@@ -171,7 +172,8 @@ unless the current user explicitly requests that exact cross-harness session.
    - require contract evidence for a runtime finding, plus root cause and
      intervention justification for either kind; require a recommended repair
      before a patch, deferral, or approved consultation;
-   - stop and consult if `review-guardrails` classifies the fix as systemic;
+   - apply a contained systemic repair at its owning boundary, but stop and
+     consult if `review-guardrails` classifies the durable repair as material;
    - confirm the finding passes `review-guardrails`' autonomous fix bar;
    - apply the fix in the real checkout;
    - update the finding with the fix in the findings database;

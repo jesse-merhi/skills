@@ -63,8 +63,9 @@ with the blocker or residual risk.
   outside this review, or `reject` when a candidate fails a named actionability
   gate.
 - Before editing an accepted finding, apply `review-guardrails`' systemic-finding
-  stop. Bring the user durable architecture options instead of applying a local
-  Band-Aid.
+  boundary. Apply a contained systemic repair at the owning layer instead of a
+  local Band-Aid; bring the user durable architecture options before a material
+  systemic repair.
 - Apply `review-guardrails`' autonomous fix bar after all three
   `finding-discipline` gates and
   before editing. A valid review observation is not automatically worth

@@ -55,7 +55,8 @@ reflects likelihood and impact together; worst-case impact alone cannot raise a
 finding. Supply `--handling fix|consult|follow-up|reject` separately: it routes a
 proven finding without changing severity or turning a rejected or unproven risk
 into work. Use `reject` with the failed actionability gate and rationale when a
-candidate does not deserve intervention. Systemic findings cannot use `fix`. When the owner deliberately
+candidate does not deserve intervention. A contained systemic repair may use
+`fix`; a material systemic repair uses `consult` before editing. When the owner deliberately
 defers an accepted local finding, the CLI records it as residual risk without
 changing its severity. The owner may reject a consulted finding without turning
 it into an autonomous patch; the terminal update records that separate decision

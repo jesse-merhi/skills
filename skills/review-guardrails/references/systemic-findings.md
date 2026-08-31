@@ -21,10 +21,40 @@ these:
 Do not infer a redesign from one awkward line. Prove the repeated pressure or
 misplaced ownership in current code.
 
-## Stop And Consult
+## Choose autonomy or consultation
 
-Do not apply the local Band-Aid. Load `improve-codebase-architecture`, inspect
-the relevant code and tests, and present:
+`Systemic` identifies the layer that owns the repair; it does not by itself
+make the repair autonomous or require consultation. Do not use a fixed line or
+file count as the boundary. Judge whether the durable repair stays inside the
+user-authorized contract and whether it introduces a material decision for the
+user.
+
+### Contained systemic repair
+
+Apply the durable repair without stopping when all of these hold:
+
+- it stays inside the frozen task contract and owner boundary
+- it follows one clear repository or dependency-owned direction
+- it does not introduce a new product, security, public-contract, migration,
+  dependency, or compatibility decision
+- it fits the review scope and diff-growth budget
+- its affected flows can be validated within the current review
+
+Do not apply a local Band-Aid merely because the systemic repair is slightly
+larger. Record why the shared boundary owns the fix and why the contained
+change is preferable to both the local patch and doing nothing.
+
+### Material systemic repair
+
+Consult the user before editing when the durable repair changes what the PR is
+about, crosses an owner boundary, requires a new shared contract or migration,
+adds or replaces a dependency, presents materially different architecture
+options, needs separate delivery or operational coordination, exceeds the
+authorized scope budget, or is difficult to validate or reverse within the
+current review.
+
+Load `improve-codebase-architecture`, inspect the relevant code and tests, and
+present:
 
 ```text
 What I found: <concrete symptom and affected flows>

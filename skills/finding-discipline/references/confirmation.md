@@ -14,8 +14,9 @@ Before finalizing a runtime finding, answer:
    complexity, tests, and new failure modes?
 
 If answers 1-3 are hand-wavy, keep inspecting or drop the finding. If answers
-4-6 do not justify a repair, do not patch; reject a low-value candidate or
-investigate or consult on a proven material problem.
+4-6 do not justify a repair, do not patch. Consult only when the proven problem
+is important enough for an owner decision and the finding names the repair
+question and directions already checked; otherwise investigate or reject it.
 Confirm that the finding record contains a complete risk rating. For a
 defensive-code finding, check capacity claims and delimiter claims
 independently; evidence for one does not prove the other.

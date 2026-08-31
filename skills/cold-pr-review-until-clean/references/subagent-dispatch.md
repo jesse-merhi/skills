@@ -44,7 +44,10 @@ and UI lenses when the diff touches those areas. Report only concrete
 actionable findings. Every finding must identify the changed line or contract
 that causes, exposes, or worsens the problem. Exclude pre-existing improvements
 and unrelated defects. Report every distinct actionable finding in this pass,
-ordered by severity. Before returning, sweep the changed flows again for
+ordered by severity. Return failed candidates separately under `Rejected
+candidates`, with a stable fingerprint, failed gate, and one-sentence evidence
+rationale; they are audit records, not findings or suggestions. Before
+returning, sweep the changed flows again for
 distinct failure modes you may have missed, then give a merge verdict.
 ```
 
@@ -63,7 +66,10 @@ TypeScript changed. Apply security and UI lenses when the diff touches those
 areas. Report only concrete actionable findings. Every finding must identify
 the changed line or contract that causes, exposes, or worsens the problem.
 Exclude pre-existing improvements and unrelated defects. Report every distinct
-actionable finding in this pass, ordered by severity. Before returning, sweep
+actionable finding in this pass, ordered by severity. Return failed candidates
+separately under `Rejected candidates`, with a stable fingerprint, failed gate,
+and one-sentence evidence rationale; they are audit records, not findings or
+suggestions. Before returning, sweep
 the changed flows again for distinct failure modes you may have missed, then
 give a merge verdict.
 ```

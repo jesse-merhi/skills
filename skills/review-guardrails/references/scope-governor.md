@@ -56,7 +56,7 @@ new contract or user-owned trade-off.
 
 Stop patching and consult when:
 
-- `systemic-findings` shows that a local patch would leave a shared root cause
+- the durable repair crosses `systemic-findings`' material consultation boundary
 - the fix would change what the PR is about
 - the fix would cross the owner boundary
 - the fix would exceed the diff-growth budget

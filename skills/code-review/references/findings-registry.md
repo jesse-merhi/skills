@@ -131,7 +131,8 @@ For every finding, record:
 - finding kind: `runtime` for a claim about reachable product behavior or
   `maintenance` for code-quality work without a runtime failure claim
 - fix scope: `local` when the owning boundary can be fixed directly, or
-  `systemic` when a local edit would be a Band-Aid and requires consultation
+  `systemic` when a local edit would be a Band-Aid; contained systemic repairs
+  may use `fix`, while material systemic repairs use `consult`
 - handling: `fix` for current in-scope work, `consult` for an owner decision,
   `follow-up` for real nonblocking work outside this review, or `reject` when a
   candidate fails an actionability gate
@@ -148,8 +149,8 @@ For every finding, record:
 - explicit owner resolution when a consultation or provisional fix reaches a
   terminal state
 
-Record each finding as soon as it is triaged. Use a runtime record for reachable
-behavior:
+Record each finding as soon as it is triaged. Use this runtime template only
+after the candidate derives an actionable finding:
 
 ```sh
 "$review_findings_bin" record \
@@ -161,9 +162,9 @@ behavior:
   --head <head> \
   --decision-id D<N> \
   --finding-kind runtime \
-  --status <open|fixed|rejected|deferred|provisional|reopened> \
+  --status <open|fixed|deferred|provisional|reopened> \
   --fix-scope <local|systemic> \
-  --handling <fix|consult|follow-up|reject> \
+  --handling <fix|consult|follow-up> \
   --source <native-review|cold-review|lens|user> \
   --fingerprint "<file + code element + root cause>" \
   --summary "<one-sentence finding>" \
@@ -172,7 +173,7 @@ behavior:
   --user-impact "<why product/review owners should care, or empty for low-risk internal findings>" \
   --production-path "<current producer -> transformations -> failing sink>" \
   --reachability-evidence "<observed payload, current contract, or repository invariant>" \
-  --likelihood <likely|possible|rare|unknown|theoretical> \
+  --likelihood <likely|possible|rare> \
   --impact <critical|high|medium|low> \
   --actual-consequence "<verified behavior and meaningful user/system impact>" \
   --contract-evidence "<current contract and evidence that the behavior violates it>" \
@@ -183,9 +184,64 @@ behavior:
   --text "<validation notes or other searchable context>"
 ```
 
-For `unknown` or `theoretical`, production-path, reachability, and consequence
-proof may be incomplete, but `--decision` must state the investigation or
-rejection rationale.
+Record an `unknown` runtime candidate as an investigation without inventing
+repair fields:
+
+```sh
+"$review_findings_bin" record \
+  --repo <repo-display-name> --repo-path <repo-root> \
+  --branch <branch-or-review-key> --target <PR-or-range> --base <base> \
+  --head <head> --decision-id D<N> \
+  --finding-kind runtime --status open --fix-scope <local|systemic> \
+  --handling <fix|consult|follow-up> --source <native-review|cold-review|lens|user> \
+  --fingerprint "<file + code element + unproven risk>" \
+  --summary "<candidate that still needs proof>" \
+  --likelihood unknown --impact <critical|high|medium|low> \
+  --decision "<specific evidence to obtain and who owns it>" \
+  --text "<current evidence and missing proof>"
+```
+
+Record an unreachable runtime candidate without repair fields:
+
+```sh
+"$review_findings_bin" record \
+  --repo <repo-display-name> --repo-path <repo-root> \
+  --branch <branch-or-review-key> --target <PR-or-range> --base <base> \
+  --head <head> --decision-id D<N> \
+  --finding-kind runtime --status rejected --fix-scope <local|systemic> \
+  --handling reject --source <native-review|cold-review|lens|user> \
+  --fingerprint "<file + code element + unreachable risk>" \
+  --summary "<candidate that no supported producer can reach>" \
+  --likelihood theoretical \
+  --impact <critical|high|medium|low> \
+  --rejection-gate reality \
+  --decision "<why no supported producer can reach the candidate>" \
+  --text "<supporting evidence>"
+```
+
+For a reachable candidate rejected at a later gate, include the runtime evidence
+but omit repair fields:
+
+```sh
+"$review_findings_bin" record \
+  --repo <repo-display-name> --repo-path <repo-root> \
+  --branch <branch-or-review-key> --target <PR-or-range> --base <base> \
+  --head <head> --decision-id D<N> \
+  --finding-kind runtime --status rejected --fix-scope <local|systemic> \
+  --handling reject --source <native-review|cold-review|lens|user> \
+  --fingerprint "<file + code element + rejected risk>" \
+  --summary "<reachable candidate that failed a later gate>" \
+  --production-path "<current producer -> transformations -> observed sink>" \
+  --reachability-evidence "<current contract, payload, or repository invariant>" \
+  --likelihood <likely|possible|rare> --impact <critical|high|medium|low> \
+  --actual-consequence "<verified behavior and affected party>" \
+  --rejection-gate <importance|contract|repair|duplicate> \
+  --decision "<why the candidate failed that gate>" \
+  --text "<supporting evidence>"
+```
+
+`unknown` always derives an open investigation. `theoretical` is the rejection
+state when no supported producer can reach the candidate.
 
 Use a maintenance record for unnecessary changed code:
 
@@ -228,9 +284,13 @@ omit repair fields.
 Do not pass priority, severity, or disposition. The CLI derives severity and
 disposition from the current likelihood-impact matrix, evidence, and required
 `--handling`. Handling routes proven work but cannot raise a rejected or
-unproven risk. The CLI refuses any actionable record without its repair fields,
-and refuses repair fields on rejected or investigating candidates. `fix` is
-invalid for systemic findings. `consult` waits for an
+unproven risk. Actionable records require root cause and intervention
+justification. A patch, deferral, or approved consultation also requires a
+recommended repair; an unresolved consultation instead records the repair
+question, directions checked, and why no recommendation is supported. Rejected
+and investigating candidates must omit repair fields. A systemic
+finding may use `fix` only after `review-guardrails` classifies its durable
+repair as contained; material systemic repairs use `consult` and wait for an
 owner decision. `follow-up` requires deferred status plus an owner or next
 action, stays nonblocking, and appears under `Deferred work`. `reject` requires
 a rejected record, `--rejection-gate`, and a decision explaining why the
@@ -245,9 +305,13 @@ record the accepted finding as `reopened` with `--decision`; omit
 `--owner-resolution` because the finding remains active. A consulted finding
 may be deferred only with
 `--owner-resolution declined` and the owner's decision; an unanswered consult
-stays open. An owner-resolved record is terminal and immutable. Repeating the
-exact record is harmless, including after scope completion; changing any field
-requires a new decision ID. Closeout lists follow-ups and owner-declined
+stays open. An owner-resolved current-schema record is terminal and immutable.
+Repeating the exact record is harmless, including after scope completion;
+changing any field requires a new decision ID. Active legacy findings remain
+open until re-recorded with current evidence; an evidence-only upgrade must
+preserve the status, source identity, owner decision, disposition, fix scope,
+and handling. Completed legacy history stays terminal and is labelled legacy.
+Closeout lists follow-ups and owner-declined
 consults under `Deferred work`, accepted local risk under `Accepted residual
 risk`, and unresolved decisions under `Still open`.
 

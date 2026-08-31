@@ -29,8 +29,10 @@ PR author can fix.
 
 - Optimize candidate generation for recall and finding acceptance for precision.
 - Prefer no finding over a weak finding.
-- Require reality, importance, and repair quality to pass independently. An
-  accepted observation is not automatic authorization for a patch or test.
+- Require reality, importance, and repair quality to pass independently.
+  Repair quality may authorize either a supported repair or an owner
+  consultation when the problem is proven but the repair is not. Neither path
+  automatically authorizes a patch or test.
 - Put only proven, deliberately tolerated risk in residual risk. Reject
   theoretical possibilities instead of preserving them as warnings.
 - Merge duplicates under one root cause.

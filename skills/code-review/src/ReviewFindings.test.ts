@@ -67,6 +67,15 @@ describe("review finding risk outcomes", () => {
       })
     ))
 
+  it.effect("accepts a contained systemic repair", () =>
+    decodeFinding({ ...runtimeFinding, fixScope: "systemic" }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.fixScope, "systemic")
+        assert.strictEqual(finding.handling, "fix")
+        assert.strictEqual(finding.disposition, "accept")
+      })
+    ))
+
   it.effect("rejects an actionable finding without root-cause repair evidence", () =>
     decodeFinding({ ...runtimeFinding, rootCause: "" }).pipe(
       Effect.flip,
@@ -79,6 +88,12 @@ describe("review finding risk outcomes", () => {
         assert.strictEqual(finding.disposition, "consult")
         assert.strictEqual(finding.recommendedFix, "")
       })
+    ))
+
+  it.effect("requires an owner question for every unresolved consult", () =>
+    decodeFinding({ ...runtimeFinding, likelihood: "rare", impact: "high", handling: "consult", decision: "" }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /unresolved consult findings require --decision/u))
     ))
 
   it.effect("requires the repair when an owner closes a consult", () =>

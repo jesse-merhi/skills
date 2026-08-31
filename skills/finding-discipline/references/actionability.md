@@ -5,6 +5,9 @@ Run them in order. A candidate that fails a gate may be recorded as rejected for
 the audit trail, but it is not a finding, does not trigger code, and does not
 trigger a regression test.
 
+Actionable means the proven problem justifies either a supported repair or an
+owner decision. It does not by itself authorize code.
+
 ## 1. Reality
 
 Prove the failure or present maintenance cost exists in the reviewed system:
@@ -52,10 +55,19 @@ Evaluate the proposed repair separately from the problem:
 A small patch is not preferred when it hides a symptom or leaves the same cause
 elsewhere. A specific patch is not automatically a justified patch.
 
-Done when the recommended repair addresses the root cause at the correct
-boundary and its benefit justifies its full cost. If a proven material problem
-has no sufficiently supported repair, investigate or consult without patching.
-If the problem itself is too low-value to justify a durable repair, reject it.
+This gate passes in either of two ways:
+
+- **Repair:** the recommended repair addresses the root cause at the correct
+  boundary and its benefit justifies its full cost.
+- **Consultation:** the problem is proven and important, but no repair direction
+  is sufficiently supported; the unresolved owner decision and the repair
+  directions already checked are concrete enough to ask without inventing a
+  recommendation.
+
+A consultation is an actionable finding because the problem merits an owner
+decision, but it never authorizes a patch. If evidence about the problem is
+still missing, investigate. If the problem is too low-value to justify either a
+durable repair or an owner decision, reject it.
 
 ## Verification
 
@@ -69,10 +81,12 @@ UI proof unless there is stable behavior or state worth automating.
 An actionable runtime finding records contract evidence, root cause, and
 intervention justification in addition to its risk rating. An actionable
 maintenance finding records root cause and intervention justification in
-addition to maintenance evidence and present cost. A patch or deferral also requires a recommended repair. A
-unresolved or declined consultation may omit it only when its decision records why no
-repair is yet supported.
+addition to maintenance evidence and present cost. A patch or deferral also
+requires a recommended repair. An unresolved or declined consultation may omit
+it only when its decision records the repair question, directions checked, and
+why no recommendation is yet supported.
 
-The intervention justification explains why the recommendation is better than
-doing nothing after considering complexity and new failure modes. It is the
-final patch authorization gate, not a summary of the proposed code.
+For a repair, the intervention justification explains why the recommendation is
+better than doing nothing after considering complexity and new failure modes.
+For a consultation, it explains why an owner decision is worth requesting now.
+Only the repair path can authorize a patch.

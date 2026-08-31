@@ -56,10 +56,11 @@ fields in its header.
    a candidate as actionable. Then classify accepted findings and apply the
    autonomous fix bar in
    [scope-governor.md](references/scope-governor.md).
-4. Before patching, apply the systemic-finding stop in
-   [systemic-findings.md](references/systemic-findings.md). Patch only
-   non-systemic blockers within the task and diff budget. Allow new text paths,
-   but require authorization for new binaries.
+4. Before patching, apply the systemic-finding boundary in
+   [systemic-findings.md](references/systemic-findings.md). Apply a contained
+   systemic repair at the owning boundary; consult before a material systemic
+   repair or any local Band-Aid. Allow new text paths, but require authorization
+   for new binaries.
 5. For accepted findings with an uncertain repair, use the provisional-fix or
    consult rules in [uncertain-findings.md](references/uncertain-findings.md).
    Do not use provisional code to resolve uncertainty about whether a risk
