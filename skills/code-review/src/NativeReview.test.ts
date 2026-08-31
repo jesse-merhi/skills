@@ -129,10 +129,13 @@ esac
   it("reviews a dirty branch and its local overlay", () => {
     const plan = planReview("auto", "origin/main", "HEAD", true)
     assert.strictEqual(plan.label, "current branch against origin/main, including uncommitted changes")
-    assert.deepStrictEqual(plan.targets.map((target) => ({ args: target.args, snapshot: target.snapshot })), [{ args: ["--base", "origin/main"], snapshot: true }])
+    assert.deepStrictEqual(plan.targets.map((target) => ({ args: target.args, envelope: target.envelope })), [{
+      args: ["--base", "origin/main"],
+      envelope: { base: "origin/main", head: "HEAD", comparison: "merge-base", includeWorkingTree: true, allowEmptyBase: false }
+    }])
   })
 
-  it("uses the native commit protocol without preparing a synthetic tree", () => {
+  it("preserves the requested commit identity for the frozen envelope", () => {
     assert.deepStrictEqual(planReview("commit", "origin/main", "abc123", false).targets[0]?.args, ["--commit", "abc123"])
   })
 
@@ -195,6 +198,38 @@ esac
         const before = await Effect.runPromise(live(reviewIdentity()))
         await rm(join(directory, "link"))
         await symlink("missing-two", join(directory, "link"))
+        const after = await Effect.runPromise(live(reviewIdentity()))
+        assert.notStrictEqual(before, after)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("tracks an untracked embedded repository by its HEAD", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-identity-embedded-"))
+    const embedded = join(directory, "embedded")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "tracked.txt"), "tracked\n")
+      await execFile("git", ["add", "tracked.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["init", "--quiet", embedded], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: embedded })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: embedded })
+      await writeFile(join(embedded, "file.txt"), "one\n")
+      await execFile("git", ["add", "file.txt"], { cwd: embedded })
+      await execFile("git", ["commit", "--quiet", "-m", "one"], { cwd: embedded })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const before = await Effect.runPromise(live(reviewIdentity()))
+        await writeFile(join(embedded, "file.txt"), "two\n")
+        await execFile("git", ["commit", "-am", "two"], { cwd: embedded })
         const after = await Effect.runPromise(live(reviewIdentity()))
         assert.notStrictEqual(before, after)
       } finally {
@@ -504,8 +539,435 @@ esac
     }
   })
 
-  it("reviews whole-mode committed and local changes in one clean snapshot", async () => {
+  it("reviews whole-mode committed and local changes as one frozen-base envelope", async () => {
     const directory = await mkdtemp(join(tmpdir(), "whole-review-snapshot-"))
+    const reviewer = join(directory, "reviewer")
+    const reviewedCommit = join(directory, "reviewed-commit")
+    const nestedRepository = join(directory, "reviewer-nested-repository")
+    const embeddedRepository = join(directory, "embedded")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "base.txt"), "base\n")
+      await writeFile(join(directory, "case.txt"), "case\n")
+      await writeFile(join(directory, "converted"), "tracked file\n")
+      await writeFile(join(directory, "link-change"), "tracked file\n")
+      await mkdir(join(directory, "scoped"))
+      await writeFile(join(directory, "scoped", "AGENTS.md"), "scoped instructions\n")
+      await mkdir(join(directory, "replacement"))
+      await writeFile(join(directory, "replacement", "tracked.txt"), "tracked directory\n")
+      await execFile("git", ["add", "base.txt", "case.txt", "converted", "link-change", "replacement/tracked.txt", "scoped/AGENTS.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await writeFile(join(directory, "committed.txt"), "committed\n")
+      await execFile("git", ["mv", "-f", "case.txt", "CASE.txt"], { cwd: directory })
+      await execFile("git", ["add", "committed.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
+      await writeFile(join(directory, "staged.txt"), "staged\n")
+      await execFile("git", ["add", "staged.txt"], { cwd: directory })
+      await writeFile(join(directory, "base.txt"), "unstaged\n")
+      await rm(join(directory, "converted"))
+      await mkdir(join(directory, "converted"))
+      await writeFile(join(directory, "converted", "AGENTS.md"), "untracked active instructions\n")
+      await writeFile(join(directory, "converted", "code.txt"), "untracked code\n")
+      await rm(join(directory, "link-change"))
+      await symlink("missing-target", join(directory, "link-change"))
+      await rm(join(directory, "replacement"), { recursive: true, force: true })
+      await writeFile(join(directory, "replacement"), "untracked file replacement\n")
+      await rm(join(directory, "scoped"), { recursive: true, force: true })
+      await writeFile(join(directory, "scoped"), "working scoped-directory replacement\n")
+      await writeFile(join(directory, "untracked.txt"), "untracked\n")
+      await symlink("untracked.txt", join(directory, "untracked-link"))
+      await mkdir(join(directory, "untracked-directory"))
+      await writeFile(join(directory, "untracked-directory", "file.txt"), "directory content\n")
+      await symlink("untracked-directory", join(directory, "untracked-directory-link"))
+      await execFile("git", ["init", "--quiet", embeddedRepository], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: embeddedRepository })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: embeddedRepository })
+      await writeFile(join(embeddedRepository, "embedded.txt"), "embedded\n")
+      await execFile("git", ["add", "embedded.txt"], { cwd: embeddedRepository })
+      await execFile("git", ["commit", "--quiet", "-m", "embedded"], { cwd: embeddedRepository })
+      const embeddedHead = (await execFile("git", ["rev-parse", "HEAD"], { cwd: embeddedRepository })).stdout.trim()
+      await mkdir(join(directory, "node_modules", "effect"), { recursive: true })
+      await writeFile(join(directory, "node_modules", "effect", "AGENTS.md"), "installed dependency guidance\n")
+      await writeFile(reviewer, `#!/bin/sh
+set -eu
+test "$1" = review
+test "$2" = --commit
+target=$3
+printf '%s\n' "$target" > "${reviewedCommit}"
+test "$(cat base.txt)" = base
+test "$(git show "$target:base.txt")" = unstaged
+test "$(git show "$target:replacement")" = 'untracked file replacement'
+test "$(git show "$target:scoped")" = 'working scoped-directory replacement'
+test "$(git show "$target:converted/code.txt")" = 'untracked code'
+test "$(git show "$target:link-change")" = missing-target
+! git cat-file -e "$target:converted/AGENTS.md"
+git show "$target:.codex-review-target-control.patch" | grep -q 'untracked active instructions'
+git cat-file -e "$target:committed.txt"
+git cat-file -e "$target:staged.txt"
+git cat-file -e "$target:untracked.txt"
+git cat-file -e "$target:CASE.txt"
+git ls-tree -r --name-only "$target" | grep -qx CASE.txt
+! git ls-tree -r --name-only "$target" | grep -qx case.txt
+test "$(git show "$target:untracked-link")" = untracked.txt
+test "$(git show "$target:untracked-directory-link")" = untracked-directory
+git ls-tree "$target" untracked-directory-link | grep -q '^120000 blob '
+git ls-tree "$target" embedded | grep -q "^160000 commit ${embeddedHead}"
+test "$(cat node_modules/effect/AGENTS.md)" = 'installed dependency guidance'
+git init --quiet "${nestedRepository}"
+git -C "${nestedRepository}" config user.email test@example.com
+git -C "${nestedRepository}" config user.name Test
+printf 'nested\n' > "${join(nestedRepository, "nested.txt")}"
+git -C "${nestedRepository}" add nested.txt
+git -C "${nestedRepository}" commit --quiet -m nested
+printf 'reviewed combined snapshot\n'
+`, { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\nnode_modules/\n")
+      const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
+      assert.match(dryRun, /snapshot: untouched frozen-base checkout with target diff as a synthetic commit/u)
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.strictEqual(output, "reviewed combined snapshot\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+      const { stdout } = await execFile("git", ["worktree", "list", "--porcelain"], { cwd: directory })
+      assert.strictEqual(stdout.split("\n").filter((line) => line.startsWith("worktree ")).length, 1)
+      const syntheticCommit = (await readFile(reviewedCommit, "utf8")).trim()
+      let retainedSyntheticCommit = true
+      try {
+        await execFile("git", ["cat-file", "-e", syntheticCommit], { cwd: directory })
+      } catch {
+        retainedSyntheticCommit = false
+      }
+      assert.isFalse(retainedSyntheticCommit)
+      await execFile("git", ["cat-file", "-e", "HEAD:nested.txt"], { cwd: nestedRepository })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  }, 30_000)
+
+  it("keeps base instructions active and exposes target instructions only as review data", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-instruction-envelope-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "--object-format=sha256", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await mkdir(join(directory, "docs", "real"), { recursive: true })
+      await writeFile(join(directory, "docs", "real", "rules.md"), "frozen base rules\n")
+      await symlink("real", join(directory, "docs", "link"))
+      await symlink("docs/link/rules.md", join(directory, "AGENTS.md"))
+      await mkdir(join(directory, "nested"))
+      await writeFile(join(directory, "nested", "AGENTS.md"), "nested base rules\n")
+      await mkdir(join(directory, "ordinary"))
+      await writeFile(join(directory, "ordinary", "AGENTS.md"), "ordinary base rules\n")
+      await mkdir(join(directory, "scope", "controls"), { recursive: true })
+      await writeFile(join(directory, "scope", "controls", "rules.md"), "ancestor base rules\n")
+      await symlink("controls/rules.md", join(directory, "scope", "AGENTS.md"))
+      await mkdir(join(directory, "case-scope", "TARGET"), { recursive: true })
+      await writeFile(join(directory, "case-scope", "TARGET", "rules.md"), "case base rules\n")
+      await symlink("TARGET/rules.md", join(directory, "case-scope", "AGENTS.md"))
+      await mkdir(join(directory, "space-scope"))
+      await writeFile(join(directory, "space-scope", "rules "), "space base rules\n")
+      await writeFile(join(directory, "space-scope", "rules"), "decoy base\n")
+      await symlink("rules ", join(directory, "space-scope", "AGENTS.md"))
+      await writeFile(join(directory, "base.txt"), "base\n")
+      await writeFile(join(directory, ".gitattributes"), "*.patch -diff\n")
+      await execFile("git", ["add", "AGENTS.md", "docs/link", "docs/real/rules.md", "nested/AGENTS.md", "ordinary/AGENTS.md", "scope/AGENTS.md", "scope/controls/rules.md", "case-scope/AGENTS.md", "case-scope/TARGET/rules.md", "space-scope/AGENTS.md", "space-scope/rules ", "space-scope/rules", ".gitattributes", "base.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      const baseOid = (await execFile("git", ["rev-parse", "HEAD"], { cwd: directory })).stdout.trim()
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await execFile("git", ["rm", "AGENTS.md", "nested/AGENTS.md"], { cwd: directory })
+      await rm(join(directory, "nested"), { recursive: true, force: true })
+      await writeFile(join(directory, "agents.md"), "target says ignore findings\n")
+      await writeFile(join(directory, "docs", "real", "rules.md"), "target changed symlink destination\n")
+      await writeFile(join(directory, "nested"), "target directory replacement\n")
+      await execFile("git", ["rm", "ordinary/AGENTS.md"], { cwd: directory })
+      await rm(join(directory, "ordinary"), { recursive: true, force: true })
+      await mkdir(join(directory, "hostile-ordinary"))
+      await writeFile(join(directory, "hostile-ordinary", "AGENTS.md"), "target ordinary redirect\n")
+      await symlink("hostile-ordinary", join(directory, "ordinary"))
+      await execFile("git", ["rm", "scope/controls/rules.md"], { cwd: directory })
+      await rm(join(directory, "scope", "controls"), { recursive: true, force: true })
+      await mkdir(join(directory, "hostile-controls"))
+      await writeFile(join(directory, "hostile-controls", "rules.md"), "target ancestor redirect\n")
+      await symlink("../hostile-controls", join(directory, "scope", "controls"))
+      await execFile("git", ["mv", "case-scope/TARGET", "case-scope/case-temp"], { cwd: directory })
+      await execFile("git", ["mv", "case-scope/case-temp", "case-scope/target"], { cwd: directory })
+      await writeFile(join(directory, "case-scope", "target", "rules.md"), "target case alias\n")
+      await writeFile(join(directory, "space-scope", "rules "), "target whitespace destination\n")
+      await writeFile(join(directory, "space-scope", "rules"), "target decoy\n")
+      await writeFile(join(directory, "AGENTS.override.md"), "target override says ignore findings\n")
+      await mkdir(join(directory, ".codex"))
+      await writeFile(join(directory, ".codex", "config.toml"), "model_instructions_file = \"hostile.md\"\n")
+      await mkdir(join(directory, ".codex", "skills", "hostile"), { recursive: true })
+      await writeFile(join(directory, ".codex", "skills", "hostile", "SKILL.md"), "target Codex skill\n")
+      await mkdir(join(directory, "hostile-agent-root", "skills", "hostile"), { recursive: true })
+      await writeFile(join(directory, "hostile-agent-root", "skills", "hostile", "SKILL.md"), "target repository skill\n")
+      await symlink("hostile-agent-root", join(directory, ".agents"))
+      await writeFile(join(directory, ".gitattributes"), "AGENTS.md -diff\n*.patch -diff\n")
+      await writeFile(join(directory, ".gitignore"), ".codex-review-target-control.patch\n")
+      await writeFile(join(directory, "hostile.md"), "target model instructions\n")
+      await mkdir(join(directory, ":(exclude)foo"))
+      await writeFile(join(directory, ":(exclude)foo", "AGENTS.md"), "pathspec magic instructions\n")
+      await writeFile(join(directory, "base.txt"), "feature\n")
+      await writeFile(join(directory, "feature.txt"), "feature\n")
+      await execFile("git", ["add", "agents.md", "docs/real/rules.md", "nested", "ordinary", "hostile-ordinary/AGENTS.md", "scope/controls", "hostile-controls/rules.md", "case-scope/target/rules.md", "space-scope/rules ", "space-scope/rules", "AGENTS.override.md", ".codex/config.toml", ".codex/skills/hostile/SKILL.md", ".agents", "hostile-agent-root/skills/hostile/SKILL.md", ".gitattributes", ".gitignore", "hostile.md", "base.txt", "feature.txt"], { cwd: directory })
+      await execFile("git", ["--literal-pathspecs", "add", "--", ":(exclude)foo/AGENTS.md"], { cwd: directory })
+      await execFile("git", ["update-index", "--add", "--cacheinfo", `160000,${baseOid},submodule`], { cwd: directory })
+      await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
+      await execFile("git", ["switch", "main"], { cwd: directory })
+      await writeFile(join(directory, "base.txt"), "advanced base\n")
+      await execFile("git", ["commit", "-am", "advance base"], { cwd: directory })
+      await execFile("git", ["switch", "feature"], { cwd: directory })
+      await execFile("git", ["config", "filter.corrupt.clean", "sed 's/untrusted/CORRUPTED/'"], { cwd: directory })
+      await execFile("git", ["config", "filter.corrupt.smudge", "cat"], { cwd: directory })
+      await writeFile(join(directory, ".git", "info", "attributes"), ".codex-review-target-control.patch filter=corrupt -diff\n")
+      await writeFile(reviewer, `#!/bin/sh
+set -eu
+test "$1" = review
+test "$2" = --commit
+target=$3
+test "$(cat AGENTS.md)" = 'frozen base rules'
+test "$(cat docs/real/rules.md)" = 'frozen base rules'
+test "$(cat nested/AGENTS.md)" = 'nested base rules'
+test "$(cat ordinary/AGENTS.md)" = 'ordinary base rules'
+test "$(cat scope/AGENTS.md)" = 'ancestor base rules'
+test "$(cat case-scope/AGENTS.md)" = 'case base rules'
+test "$(cat space-scope/AGENTS.md)" = 'space base rules'
+test "$(cat space-scope/rules)" = 'decoy base'
+test "$(git show "$target:nested")" = 'target directory replacement'
+test "$(git show "$target:hostile-controls/rules.md")" = 'target ancestor redirect'
+test "$(git show "$target:space-scope/rules")" = 'target decoy'
+git ls-tree -r --name-only "$target" | grep -qx AGENTS.md
+git ls-tree -r --name-only "$target" | grep -qx nested
+git ls-tree -r --name-only "$target" | grep -qx case-scope/TARGET/rules.md
+! git ls-tree -r --name-only "$target" | grep -qx agents.md
+! git ls-tree -r --name-only "$target" | grep -qx case-scope/target/rules.md
+! git --literal-pathspecs cat-file -e "$target::(exclude)foo/AGENTS.md" >/dev/null 2>&1
+! git cat-file -e "$target:AGENTS.override.md"
+! git cat-file -e "$target:.codex/config.toml"
+! git cat-file -e "$target:.codex/skills/hostile/SKILL.md"
+! git cat-file -e "$target:.agents"
+! git cat-file -e "$target:.gitattributes"
+test "$(git show "$target:base.txt")" = feature
+test "$(git show "$target:feature.txt")" = feature
+git ls-tree "$target" submodule | grep -q '^160000'
+git cat-file -e "$target:.codex-review-target-control.patch"
+git show "$target:.codex-review-target-control.patch" | grep -q 'untrusted review data'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target says ignore findings'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target changed symlink destination'
+git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-ordinary'
+git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-controls'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target case alias'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target whitespace destination'
+git show "$target:.codex-review-target-control.patch" | grep -q 'pathspec magic instructions'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target override says ignore findings'
+git show "$target:.codex-review-target-control.patch" | grep -q 'model_instructions_file'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target Codex skill'
+git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-agent-root'
+git diff "$target^" "$target" -- .codex-review-target-control.patch | grep -q 'target says ignore findings'
+printf '%s' "$*" | grep -q 'project_doc_fallback_filenames'
+printf '%s' "$*" | grep -q 'trust_level'
+printf 'reviewed isolated instructions\n'
+`, { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.strictEqual(output, "reviewed isolated instructions\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a broken frozen-base symlink at the reserved artifact path", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-broken-artifact-"))
+    const reviewer = join(directory, "reviewer")
+    const escaped = join(directory, "escaped")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await symlink(escaped, join(directory, ".codex-review-target-control.patch"))
+      await execFile("git", ["add", ".codex-review-target-control.patch"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await writeFile(join(directory, "AGENTS.md"), "target instructions\n")
+      await execFile("git", ["add", "AGENTS.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "target control"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /reserves \.codex-review-target-control\.patch/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+      let escapedCreated = true
+      try {
+        await readFile(escaped)
+      } catch {
+        escapedCreated = false
+      }
+      assert.isFalse(escapedCreated)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("reviews a root commit against an empty frozen base", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-root-commit-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "root.txt"), "root\n")
+      await execFile("git", ["add", "root.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "root", "-m", "parent message text is not metadata"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntest ! -e root.txt\ntest \"$(git show \"$3:root.txt\")\" = root\nprintf 'reviewed root commit\\n'\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.strictEqual(output, "reviewed root commit\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects an absolute frozen-control symlink", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-absolute-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "rules.md"), "base rules\n")
+      await symlink(join(directory, "rules.md"), join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md", "rules.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /must be repository-relative/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a frozen-control symlink whose target is absent from the base tree", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-missing-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await symlink("missing-rules.md", join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /target is absent from the base tree/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a target file that blocks a frozen-control symlink destination", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-blocked-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await mkdir(join(directory, "docs"))
+      await writeFile(join(directory, "docs", "rules.md"), "base rules\n")
+      await symlink("docs/rules.md", join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md", "docs/rules.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await execFile("git", ["rm", "docs/rules.md"], { cwd: directory })
+      await rm(join(directory, "docs"), { recursive: true, force: true })
+      await writeFile(join(directory, "docs"), "target replacement\n")
+      await execFile("git", ["add", "docs"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "replace destination ancestor"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /blocks a frozen review control symlink destination/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects an untracked file that blocks a frozen-control symlink destination", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-dirty-blocked-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await mkdir(join(directory, "docs"))
+      await writeFile(join(directory, "docs", "rules.md"), "base rules\n")
+      await symlink("docs/rules.md", join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md", "docs/rules.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await rm(join(directory, "docs"), { recursive: true, force: true })
+      await writeFile(join(directory, "docs"), "working replacement\n")
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /blocks a frozen review control symlink destination/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a target-controlled symlink that escapes the review repository", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-escaping-target-link-"))
     const reviewer = join(directory, "reviewer")
     try {
       await execFile("git", ["init", "-b", "main"], { cwd: directory })
@@ -515,28 +977,222 @@ esac
       await execFile("git", ["add", "base.txt"], { cwd: directory })
       await execFile("git", ["commit", "-m", "base"], { cwd: directory })
       await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
-      await writeFile(join(directory, "committed.txt"), "committed\n")
-      await execFile("git", ["add", "committed.txt"], { cwd: directory })
-      await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
-      await writeFile(join(directory, "staged.txt"), "staged\n")
-      await execFile("git", ["add", "staged.txt"], { cwd: directory })
-      await writeFile(join(directory, "base.txt"), "unstaged\n")
-      await writeFile(join(directory, "untracked.txt"), "untracked\n")
-      await symlink("untracked.txt", join(directory, "untracked-link"))
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest -z \"$(git status --porcelain)\"\ntest \"$(readlink untracked-link)\" = untracked.txt\nprintf '%s\\n' base.txt committed.txt staged.txt untracked-link untracked.txt > expected\ngit diff --name-only main...HEAD | sort > actual\ndiff -u expected actual\nrm expected actual\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
-      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
-      const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
-      assert.match(dryRun, /snapshot: temporary worktree with local overlay/u)
+      await symlink("/etc/passwd", join(directory, "leak"))
+      await execFile("git", ["add", "leak"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "add escaping symlink"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
-        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
-        assert.strictEqual(output, "reviewed combined snapshot\n")
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /target symlink escapes the review repository/u)
       } finally {
         process.chdir(previousCwd)
       }
-      const { stdout } = await execFile("git", ["worktree", "list", "--porcelain"], { cwd: directory })
-      assert.strictEqual(stdout.split("\n").filter((line) => line.startsWith("worktree ")).length, 1)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("materializes out-of-cone files from a sparse source checkout", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-sparse-checkout-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await mkdir(join(directory, "keep"))
+      await mkdir(join(directory, "omit"))
+      await writeFile(join(directory, "keep", "a.txt"), "base\n")
+      await writeFile(join(directory, "omit", "b.txt"), "out of cone\n")
+      await execFile("git", ["add", "keep/a.txt", "omit/b.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["sparse-checkout", "init", "--cone"], { cwd: directory })
+      await execFile("git", ["sparse-checkout", "set", "keep"], { cwd: directory })
+      await writeFile(join(directory, "keep", "a.txt"), "working\n")
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntest \"$(cat keep/a.txt)\" = base\ntest \"$(cat omit/b.txt)\" = 'out of cone'\ntest \"$(git show \"$3:keep/a.txt\")\" = working\ntest \"$(git show \"$3:omit/b.txt\")\" = 'out of cone'\nprintf 'reviewed sparse source\\n'\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.strictEqual(output, "reviewed sparse source\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a tracked source redirected outside the repository", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-external-source-"))
+    const repo = join(directory, "repo")
+    const external = join(directory, "external")
+    const reviewer = join(directory, "reviewer")
+    try {
+      await mkdir(repo)
+      await mkdir(external)
+      await execFile("git", ["init", "-b", "main"], { cwd: repo })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: repo })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: repo })
+      await mkdir(join(repo, "dir"))
+      await writeFile(join(repo, "dir", "secret.txt"), "repository value\n")
+      await execFile("git", ["add", "dir/secret.txt"], { cwd: repo })
+      await execFile("git", ["commit", "-m", "base"], { cwd: repo })
+      await writeFile(join(external, "secret.txt"), "host secret\n")
+      await rm(join(repo, "dir"), { recursive: true, force: true })
+      await symlink(external, join(repo, "dir"))
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(repo)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /resolves outside the repository/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a missing shallow parent instead of reviewing an empty base", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-shallow-parent-"))
+    const source = join(directory, "source")
+    const clone = join(directory, "clone")
+    const reviewer = join(directory, "reviewer")
+    try {
+      await mkdir(source)
+      await execFile("git", ["init", "-b", "main"], { cwd: source })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: source })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: source })
+      await writeFile(join(source, "file.txt"), "one\n")
+      await execFile("git", ["add", "file.txt"], { cwd: source })
+      await execFile("git", ["commit", "-m", "one"], { cwd: source })
+      await writeFile(join(source, "file.txt"), "two\n")
+      await execFile("git", ["commit", "-am", "two"], { cwd: source })
+      await execFile("git", ["clone", "--depth", "1", `file://${source}`, clone], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(clone)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /fetch or deepen repository history/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("materializes frozen-base objects through a partial clone before isolation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-partial-clone-"))
+    const source = join(directory, "source")
+    const clone = join(directory, "clone")
+    const reviewer = join(directory, "reviewer")
+    try {
+      await mkdir(source)
+      await execFile("git", ["init", "-b", "main"], { cwd: source })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: source })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: source })
+      await execFile("git", ["config", "uploadpack.allowFilter", "true"], { cwd: source })
+      await writeFile(join(source, "base-only.txt"), "base-only content\n")
+      await execFile("git", ["add", "base-only.txt"], { cwd: source })
+      await execFile("git", ["commit", "-m", "base"], { cwd: source })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: source })
+      await execFile("git", ["rm", "base-only.txt"], { cwd: source })
+      await writeFile(join(source, "feature.txt"), "feature\n")
+      await execFile("git", ["add", "feature.txt"], { cwd: source })
+      await execFile("git", ["commit", "-m", "feature"], { cwd: source })
+      await execFile("git", ["clone", "--filter=blob:none", "--no-local", "--no-single-branch", "--branch", "feature", `file://${source}`, clone], { cwd: directory })
+      const { stdout: missingBefore } = await execFile("git", ["rev-list", "--objects", "--all", "--missing=print"], { cwd: clone })
+      assert.match(missingBefore, /^\?/mu)
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntest \"$(cat base-only.txt)\" = 'base-only content'\ntest \"$(git show \"$3:feature.txt\")\" = feature\nprintf 'reviewed partial clone\\n'\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(clone)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "origin/main", "HEAD", false), testCommand: Option.none(), sessionsRoot: join(directory, "sessions") })))
+        assert.strictEqual(output, "reviewed partial clone\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("reviews staged, unstaged, and untracked files before the first commit", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-unborn-worktree-"))
+    const reviewer = join(directory, "reviewer")
+    const codexHome = join(directory, "codex-home")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "tracked.txt"), "staged\n")
+      await execFile("git", ["add", "tracked.txt"], { cwd: directory })
+      await writeFile(join(directory, "tracked.txt"), "unstaged\n")
+      await writeFile(join(directory, "untracked.txt"), "untracked\n")
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ncase \"$1\" in\n  login) exit 0 ;;\n  doctor) printf '%s\\n' '{\"checks\":{\"auth.credentials\":{\"status\":\"ok\"}}}' ;;\n  exec) printf 'ok\\n' ;;\n  review) test \"$2\" = --commit; test ! -e tracked.txt; test \"$(git show \"$3:tracked.txt\")\" = unstaged; test \"$(git show \"$3:untracked.txt\")\" = untracked; printf 'reviewed unborn worktree\\n' ;;\n  *) exit 7 ;;\nesac\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "uncommitted", "--codex-bin", reviewer], {
+        cwd: directory,
+        env: { ...process.env, CODEX_HOME: codexHome, HOME: directory }
+      })
+      assert.match(stdout, /reviewed unborn worktree/u)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("archives a failed native review session", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-failed-session-"))
+    const reviewer = join(directory, "reviewer")
+    const sessionsRoot = join(directory, "sessions")
+    const calls = join(directory, "calls")
+    const day = join(...new Date().toISOString().slice(0, 10).split("-"))
+    const dayDirectory = join(sessionsRoot, day)
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "file.txt"), "base\n")
+      await execFile("git", ["add", "file.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await mkdir(dayDirectory, { recursive: true })
+      await writeFile(reviewer, `#!/bin/sh
+set -eu
+case "$1" in
+  review)
+    printf '{"type":"session_meta","payload":{"id":"uuid-failed","cwd":"%s"}}\\n{"type":"entered_review_mode"}\\n' "$(pwd)" > "${join(dayDirectory, "rollout-failed.jsonl")}"
+    exit 9
+    ;;
+  archive)
+    printf '%s\\n' "$*" >> "${calls}"
+    ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({
+          codexBin: reviewer,
+          plan: planReview("branch", "main", "HEAD", false),
+          sessionsRoot,
+          testCommand: Option.none()
+        })))
+        assert.isTrue(Exit.isFailure(result))
+      } finally {
+        process.chdir(previousCwd)
+      }
+      assert.strictEqual(await readFile(calls, "utf8"), "archive uuid-failed\n")
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
@@ -558,7 +1214,7 @@ esac
       const previousCwd = process.cwd()
       process.chdir(child)
       try {
-        await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.some('test "$(pwd)" = "$(git rev-parse --show-toplevel)"') })))
+        await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.some('test "$(pwd)" = "$(git rev-parse --show-toplevel)"'), sessionsRoot: join(directory, "sessions") })))
       } finally {
         process.chdir(previousCwd)
       }

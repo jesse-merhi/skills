@@ -16,12 +16,77 @@ scripts/codex-review --dry-run
 
 The helper resolves a concrete Git target, delegates review to the native
 command, prints its output unchanged, and propagates process or parallel-test
-failures. In auto or whole mode, a dirty branch is copied into a temporary
-detached worktree with staged, unstaged, and untracked changes committed as one
-ephemeral snapshot. One base review therefore covers committed and local
-changes together, and the snapshot is removed afterward.
+failures. Every mode runs in a temporary isolated repository checked out at the branch's
+frozen merge base, the reviewed commit's parent, or an empty base for a root
+commit or unborn repository. The helper assembles the target's committed,
+staged, unstaged, and untracked code into a synthetic child commit, resets the
+working tree to the untouched frozen base, and delegates that commit to native
+`codex review --commit`. Base instructions and every ordinary file they may
+reference therefore stay frozen while the full target remains available through
+Git's commit diff. The repository, envelope, and synthetic commit are removed after review.
+Synthetic blobs, trees, and commits live in that repository's scoped temporary object database
+that reads the source repository through Git alternates; cleanup removes those
+objects rather than leaving reviewed untracked bytes in the source repository.
+The temporary repository uses the source repository's object format. Before it
+checks out the frozen base, the source clone materializes required commit, tree,
+blob, and index objects, so filtered clones can satisfy the local alternate.
+The alternate is configured inside the temporary repository instead of exported
+to the reviewer process, leaving nested Git repositories used by tests and tools
+on their own object databases.
 
-A clean checkout uses `--base`. Without it, the helper discovers the current
+Case-insensitive variants of `AGENTS.md` and `AGENTS.override.md`, the `.agents`
+instruction root including `.agents/skills/**`, `.codex/config.toml`,
+`.codex/skills/**`, and target `.gitattributes` changes
+are never applied to the synthetic commit's control-shaped paths. The helper
+writes them to `.codex-review-target-control.patch` as untrusted review data with
+an explicit warning to inspect, not follow, them, and force-adds that artifact
+so a target `.gitignore` cannot hide it from review. It marks the temporary project
+untrusted and disables configured fallback instruction filenames for the
+native session, so target-controlled skills, project configuration, or fallback
+files cannot become active. This is why invoking bare `codex review` from the
+target checkout is not equivalent to this helper.
+
+Repository paths reached through complete frozen-base instruction symlink
+chains are frozen as part of the same control surface, using the exact symlink
+blob without trimming path whitespace. Absolute or
+repository-escaping control symlinks fail closed because the temporary checkout
+cannot safely redirect them to frozen content. Missing targets and targets
+inside unmaterialized gitlinks also fail closed, as does a target file or gitlink
+that blocks an active frozen symlink destination. Case-folded aliases and target
+symlinks that could redirect an ancestor of a protected destination are
+quarantined. Target-side control changes are captured as forced text independent
+of target attributes. If a target file replaces a base directory containing an
+ordinary scoped instruction file, the replacement remains in the review target;
+the now-inapplicable nested instruction is represented only as a control deletion.
+Case-collision checks apply only to the frozen control paths being activated, so
+unrelated case-distinct source paths remain reviewable on filesystems that
+support them.
+The isolated repository also overrides attributes for the quarantine artifact,
+so frozen or source-local attributes cannot collapse its only visible copy to a
+binary-diff notice.
+
+Tracked target state is materialized through Git's index and tree operations,
+not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
+renames therefore remain part of the synthetic review commit. Snapshot
+construction also recognizes an untracked embedded repository with a committed
+HEAD and records it as the gitlink Git would add; an unborn embedded repository
+fails explicitly because it has no stable object to reference. Snapshot
+materialization ignores sparse-checkout skip bits, then overlays only actual
+working-tree changes, so out-of-cone tracked context remains available. A
+tracked path changed into a directory is rebuilt from its individually filtered
+untracked children rather than recursively copied. Tracked symlink changes are
+copied as symlinks before any target-following filesystem checks. Working files
+and the control artifact enter the synthetic index through raw blob IDs, so
+clean filters and target attributes cannot rewrite their bytes. Dynamic Git
+paths use literal pathspecs, and every working-tree source parent must resolve
+inside the repository, so filenames and ancestor symlinks cannot alter snapshot
+commands or import host files. Target-controlled symlinks that point outside the
+repository fail closed in committed, staged, unstaged, and untracked state.
+Commit mode reads parent metadata only from the commit header and rejects an
+unavailable shallow parent instead of misclassifying the target as a root
+commit; fetch or deepen that history before retrying.
+
+A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
 in that order.
 

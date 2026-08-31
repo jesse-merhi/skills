@@ -13,8 +13,10 @@ same reviewed tree. This gives the native review loop one confirmation pass
 after the first clean result without returning to the old unbounded streak.
 
 This skill is separate from `cold-pr-review-until-clean`: the source of truth is
-the harness's native review mode, not a custom prompt, `cold-pr-review`, a
-repo-specific review command, or an ad hoc subagent.
+the harness's native review mode, not a custom prompt, `cold-pr-review`, or an
+ad hoc subagent. A controlling workflow may require a skill-owned transport that
+invokes the native engine from a frozen review envelope; that transport is part
+of the engine invocation, not a substitute reviewer.
 
 Do not use this skill for a one-off read-only review. A plain `codex review`,
 `/review`, or `/code-review`-style request should run once and report findings
@@ -24,7 +26,7 @@ without editing unless the user explicitly asks for the until-clean loop or
 ## Non-negotiables
 
 ```yaml
-review_tool: must invoke the selected engine's bare built-in review; do not substitute a self-review or ad hoc subagent
+review_tool: invoke the selected engine's bare built-in review unless the controlling workflow requires a named frozen-envelope transport; never substitute a self-review or ad hoc subagent
 prompt_policy: pass only the review target; never reveal prior findings, checklists, desired verdicts, or rationale before the engine returns
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
@@ -48,6 +50,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
    the selected engine is Codex, also read
    [references/codex-engine.md](references/codex-engine.md). If it is Claude,
    read [references/claude-engine.md](references/claude-engine.md).
+   When `code-review` invokes this skill in Codex, inherit its required
+   `scripts/codex-review` transport; do not downgrade it to bare `codex review`.
 
 2. Pre-flight the target.
 
@@ -62,8 +66,9 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
    Load `wait-efficiently`, then read [references/loop.md](references/loop.md).
    Maintain `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the
-   selected engine's bare review, triage with `finding-discipline`, fix
-   actionable findings, record state in the findings CLI, and rerun until the
+   selected engine through the selected transport, triage with
+   `finding-discipline`, fix actionable findings, record state in the findings
+   CLI, and rerun until the
    clean target or an honest stop condition is reached.
 
 4. Fix and verify findings.
@@ -75,7 +80,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 ## Done means
 
-- The selected engine's bare built-in review ran for each iteration.
+- The selected engine's built-in review ran through the selected transport for
+  each iteration.
 - No custom prompt, output-format prompt, desired verdict, or prior rationale
   was passed to the engine.
 - The required clean passes were met on the reviewed tree, or the loop stopped
@@ -91,8 +97,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 - invoking `ask-codex` or `ask-claude` as a review engine or fallback unless
   the current user explicitly requested that exact cross-harness session;
-- replacing the engine's review with `spawn_agent`, `cold-pr-review`, a
-  repo-specific review command, or manual judgment;
+- replacing the engine's review with `spawn_agent`, `cold-pr-review`, an
+  unrelated repo-specific review command, or manual judgment;
 - switching engines mid-loop;
 - re-reviewing an old immutable commit after fixes;
 - counting your own rejection of a finding as a clean pass;
