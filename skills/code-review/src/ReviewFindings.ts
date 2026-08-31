@@ -492,6 +492,7 @@ export class ScopeBudgetBlocked extends Error {
 }
 
 export interface Closeout {
+  readonly review_candidates: ReadonlyArray<CloseoutFinding>
   readonly material_findings: ReadonlyArray<CloseoutFinding>
   readonly user_visible_or_workflow_changes: ReadonlyArray<CloseoutFinding>
   readonly security_data_permission_changes: ReadonlyArray<CloseoutFinding>
@@ -1435,17 +1436,19 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   const runId = runs[0]?.id
   const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as area, case lower(coalesce(priority, '')) when 'p4' then '' else coalesce(priority, '') end as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution from issues where run_id = ${runId} order by decision_id`
   const findings: ReadonlyArray<CloseoutFinding> = findingRows.map((finding) => ({ ...finding, material: finding.material !== 0 }))
+  const actionableFindings = findings.filter((finding) => !["reject", "investigate"].includes(finding.disposition))
   const commands = runId === undefined ? [] : yield* sql<CommandRow>`select command, result, reason, coalesce(decision_id, '') as decision_id from commands where run_id = ${runId} order by updated_at, command`
   const scopeBudget = runId === undefined ? Option.none() : yield* readScopeBudget(runId).pipe(Effect.option)
   return {
-    material_findings: findings.filter(isMaterial),
-    user_visible_or_workflow_changes: findings.filter((finding) => isUserVisible(finding.area)),
-    security_data_permission_changes: findings.filter((finding) => isSensitive(finding.area)),
-    lower_risk_findings: findings.filter((finding) => !isMaterial(finding)),
-    findings_found: findings,
-    changes_made_while_reviewing: findings.filter((finding) => finding.status === "fixed"),
+    review_candidates: findings,
+    material_findings: actionableFindings.filter(isMaterial),
+    user_visible_or_workflow_changes: actionableFindings.filter((finding) => isUserVisible(finding.area)),
+    security_data_permission_changes: actionableFindings.filter((finding) => isSensitive(finding.area)),
+    lower_risk_findings: actionableFindings.filter((finding) => !isMaterial(finding)),
+    findings_found: actionableFindings,
+    changes_made_while_reviewing: actionableFindings.filter((finding) => finding.status === "fixed"),
     verification_run: commands,
-    deferred_work: findings.filter(isDeferredWork),
+    deferred_work: actionableFindings.filter(isDeferredWork),
     still_open: findings.filter((finding) => !isFindingTerminal(finding)),
     ...(Option.isSome(scopeBudget) ? { scope_budget: scopeBudget.value } : {})
   } satisfies Closeout
@@ -1689,8 +1692,8 @@ export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSu
     lower_risk_findings: closeout.lower_risk_findings.length,
     status_counts: countLabels(closeout.findings_found.map((finding) => finding.status)),
     source_counts: countLabels(closeout.findings_found.map((finding) => finding.source)),
-    source_disposition_counts: countLabels(closeout.findings_found.map((finding) => `${finding.source}:${finding.disposition}`)),
-    rejection_gate_counts: countLabels(closeout.findings_found.filter((finding) => finding.rejection_gate.length > 0).map((finding) => finding.rejection_gate)),
+    source_disposition_counts: countLabels(closeout.review_candidates.map((finding) => `${finding.source}:${finding.disposition}`)),
+    rejection_gate_counts: countLabels(closeout.review_candidates.filter((finding) => finding.rejection_gate.length > 0).map((finding) => finding.rejection_gate)),
     area_counts: countLabels(closeout.findings_found.map((finding) => finding.area)),
     severity_counts: countLabels(closeout.findings_found.map((finding) => finding.severity)),
     important_findings: important.slice(0, limit),
@@ -1755,9 +1758,9 @@ export const printCloseout = (closeout: Closeout, json: boolean, view: CloseoutV
   ]
   if (view === "full") {
     lines.push(...findingLines("Lower-risk findings", closeout.lower_risk_findings, false), "")
-    lines.push("Findings found", ...(closeout.findings_found.length === 0
+    lines.push("Candidates reviewed", ...(closeout.review_candidates.length === 0
       ? ["- none recorded"]
-      : closeout.findings_found.map((finding) => `- ${finding.decision_id} [${finding.status}] ${finding.source}: ${finding.summary}`)), "")
+      : closeout.review_candidates.map((finding) => `- ${finding.decision_id} [${finding.status}] ${finding.source}: ${finding.summary}`)), "")
     lines.push("Changes made while reviewing", ...(closeout.changes_made_while_reviewing.length === 0
       ? ["- none recorded"]
       : closeout.changes_made_while_reviewing.map((finding) => `- ${finding.decision_id}: ${finding.decision}`)), "")

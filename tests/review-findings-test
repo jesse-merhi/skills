@@ -13,16 +13,8 @@ MAINTENANCE_EVIDENCE=(
   --present-cost "The branch adds reading and regression-test cost."
 )
 
-REPAIR_EVIDENCE=(
-  --root-cause "The owning module does not enforce the current contract."
-  --recommended-fix "Repair the contract in the owning module."
-  --intervention-justification "The supported path is broken, and the owning repair is smaller than tolerating repeated failures."
-)
-
-RUNTIME_ACTIONABILITY=(
-  --contract-evidence "The supported workflow promises this behavior."
-  "${REPAIR_EVIDENCE[@]}"
-)
+REPAIR_EVIDENCE=(--root-cause "The owning module does not enforce the current contract." --recommended-fix "Repair the contract in the owning module." --intervention-justification "The supported path is broken, and the owning repair is smaller than tolerating repeated failures.")
+RUNTIME_ACTIONABILITY=(--contract-evidence "The supported workflow promises this behavior." "${REPAIR_EVIDENCE[@]}")
 
 fail() {
   printf 'not ok - %s\n' "$1" >&2
@@ -693,7 +685,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     process.stdin.on("data", (chunk) => { input += chunk; });
     process.stdin.on("end", () => {
       const closeout = JSON.parse(input);
-      const byId = new Map(closeout.findings_found.map((item) => [item.decision_id, item]));
+      const byId = new Map(closeout.review_candidates.map((item) => [item.decision_id, item]));
       const d8 = byId.get("D8");
       if (d8?.finding_kind !== "runtime" || d8.likelihood !== "possible" || d8.impact !== "high" || d8.severity !== "p1" || d8.disposition !== "accept" || d8.handling !== "fix") process.exit(1);
       if (d8.production_path !== "supported request -> handler -> blocked workflow" || d8.reachability_evidence !== "The public request contract reaches the handler." || d8.actual_consequence !== "The user cannot complete the workflow.") process.exit(1);
@@ -702,6 +694,7 @@ test_review_findings_schema_is_visible_and_enforced() {
       if (d8b?.handling !== "consult" || d8b.disposition !== "consult" || d8b.owner_resolution !== "approved") process.exit(1);
       const d8r = byId.get("D8R");
       if (d8r?.handling !== "reject" || d8r.disposition !== "reject" || d8r.severity !== "p2" || d8r.status !== "rejected" || d8r.rejection_gate !== "contract") process.exit(1);
+      if (closeout.findings_found.some((item) => ["reject", "investigate"].includes(item.disposition)) || !closeout.review_candidates.some((item) => item.decision_id === "D8R")) process.exit(1);
       const d6d = byId.get("D6D");
       if (d6d?.handling !== "consult" || d6d.disposition !== "reject" || d6d.severity !== "") process.exit(1);
       const d6e = byId.get("D6E");
@@ -1052,7 +1045,7 @@ test_review_findings_cli_generates_closeout_from_records() {
     --base main \
     --target "PR #88")"
 
-  assert_output_contains "$out" "Findings found"
+  assert_output_contains "$out" "Candidates reviewed"
   assert_output_contains "$out" "Material findings"
   assert_output_contains "$out" "D1 [fixed] native-review [data-correctness, p1]"
   assert_output_contains "$out" "why it matters: Users could trigger duplicate provider refunds"
@@ -1080,7 +1073,7 @@ test_review_findings_cli_generates_closeout_from_records() {
   assert_output_contains "$out" "D2 [open] cold-review [permissions, p2]"
   assert_output_contains "$out" "Verification run"
   assert_output_not_contains "$out" "D3"
-  assert_output_not_contains "$out" "Findings found"
+  assert_output_not_contains "$out" "Candidates reviewed"
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
     --summary \
