@@ -16,15 +16,18 @@ scripts/codex-review --dry-run
 
 The helper resolves a concrete Git target, delegates review to the native
 command, prints its output unchanged, and propagates process or parallel-test
-failures. Every mode runs in a temporary worktree checked out at the frozen
-base. The target's committed, staged, unstaged, and untracked code is applied as
-one uncommitted review diff, then the envelope is removed.
+failures. Every mode runs in a temporary worktree checked out at the branch's
+frozen merge base, the reviewed commit's parent, or an empty base for a root
+commit. The target's committed, staged, unstaged, and untracked code is applied
+as one uncommitted review diff, then the envelope is removed.
 
-`AGENTS.md` changes are never applied to the envelope's active instruction
-chain. The helper writes them to `.codex-review-target-instructions.patch` as
-untrusted review data with an explicit warning to inspect, not follow, them.
-This is why invoking bare `codex review` from the target checkout is not
-equivalent to this helper.
+`AGENTS.md` and `AGENTS.override.md` changes are never applied to the envelope's
+active instruction chain. The helper writes them to
+`.codex-review-target-instructions.patch` as untrusted review data with an
+explicit warning to inspect, not follow, them. It also disables configured
+fallback instruction filenames for the native session, so a target-controlled
+fallback cannot become active. This is why invoking bare `codex review` from
+the target checkout is not equivalent to this helper.
 
 A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`

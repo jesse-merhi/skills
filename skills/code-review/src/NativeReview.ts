@@ -18,6 +18,7 @@ export interface ReviewTarget {
     readonly head: string
     readonly comparison: "merge-base" | "direct"
     readonly includeWorkingTree: boolean
+    readonly allowEmptyBase: boolean
   }
 }
 
@@ -78,7 +79,7 @@ const optionalCapture = (executable: string, args: ReadonlyArray<string>) => cap
 const branchTarget = (base: string, dirty: boolean, mode: "whole" | "branch" = "branch") => ({
   label: `${mode} against ${base}`,
   args: ["--base", base],
-  envelope: { base, head: "HEAD", comparison: "merge-base", includeWorkingTree: dirty }
+  envelope: { base, head: "HEAD", comparison: "merge-base", includeWorkingTree: dirty, allowEmptyBase: false }
 }) satisfies ReviewTarget
 
 export const planReview = (mode: ReviewMode, base: string, commit: string, dirty: boolean): ReviewPlan => {
@@ -87,7 +88,7 @@ export const planReview = (mode: ReviewMode, base: string, commit: string, dirty
     targets: [{
       label: `commit ${commit}`,
       args: ["--commit", commit],
-      envelope: { base: `${commit}^`, head: commit, comparison: "direct", includeWorkingTree: false }
+      envelope: { base: `${commit}^`, head: commit, comparison: "direct", includeWorkingTree: false, allowEmptyBase: true }
     }]
   }
   if (mode === "uncommitted" || mode === "local") return {
@@ -95,7 +96,7 @@ export const planReview = (mode: ReviewMode, base: string, commit: string, dirty
     targets: [{
       label: mode,
       args: ["--uncommitted"],
-      envelope: { base: "HEAD", head: "HEAD", comparison: "direct", includeWorkingTree: true }
+      envelope: { base: "HEAD", head: "HEAD", comparison: "direct", includeWorkingTree: true, allowEmptyBase: false }
     }]
   }
   const branch = branchTarget(base, dirty, mode === "whole" ? "whole" : "branch")
@@ -222,9 +223,14 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
 })
 
 const instructionArtifact = ".codex-review-target-instructions.patch"
-const instructionPathspec = ["AGENTS.md", ":(glob)**/AGENTS.md"]
-const codePathspec = [".", ":(exclude)AGENTS.md", ":(exclude,glob)**/AGENTS.md", `:(exclude)${instructionArtifact}`]
-const isInstructionFile = (file: string) => file === "AGENTS.md" || file.endsWith("/AGENTS.md")
+const instructionNames = ["AGENTS.md", "AGENTS.override.md"]
+const instructionPathspec = instructionNames.flatMap((name) => [name, `:(glob)**/${name}`])
+const codePathspec = [
+  ".",
+  ...instructionNames.flatMap((name) => [`:(exclude)${name}`, `:(exclude,glob)**/${name}`]),
+  `:(exclude)${instructionArtifact}`
+]
+const isInstructionFile = (file: string) => instructionNames.some((name) => file === name || file.endsWith(`/${name}`))
 
 const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -235,13 +241,32 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
   const snapshot = paths.join(root, "worktree")
   const cleanup = checkedInherit(gitTool, ["worktree", "remove", "--force", snapshot], { cwd: repo }).pipe(Effect.ignore)
   const lifecycle = Effect.gen(function*() {
-    yield* checkedInherit(gitTool, ["worktree", "add", "--detach", snapshot, target.envelope.base], { cwd: repo })
+    const head = yield* checkedTrimmedText(gitTool, ["rev-parse", "--verify", `${target.envelope.head}^{commit}`], { cwd: repo })
+    const resolvedBase = target.envelope.comparison === "merge-base"
+      ? yield* checkedTrimmedText(gitTool, ["merge-base", target.envelope.base, head], { cwd: repo })
+      : yield* checkedTrimmedText(gitTool, ["rev-parse", "--verify", `${target.envelope.base}^{commit}`], { cwd: repo }).pipe(Effect.option)
+    let base: string
+    if (typeof resolvedBase === "string") base = resolvedBase
+    else if (Option.isSome(resolvedBase)) base = resolvedBase.value
+    else {
+      const parents = (yield* checkedTrimmedText(gitTool, ["rev-list", "--parents", "-n", "1", head], { cwd: repo })).split(/\s+/u)
+      if (!target.envelope.allowEmptyBase || parents.length !== 1) {
+        return yield* new ReviewSnapshotError({ message: `could not resolve review base ${target.envelope.base}` })
+      }
+      const emptyTree = yield* checkedTrimmedText(gitTool, ["mktree"], { cwd: repo, stdin: "" })
+      base = yield* checkedTrimmedText(gitTool, [
+        "-c", "user.name=Review Snapshot",
+        "-c", "user.email=review-snapshot@example.invalid",
+        "commit-tree", emptyTree,
+        "-m", "review root base"
+      ], { cwd: repo })
+    }
+    yield* checkedInherit(gitTool, ["worktree", "add", "--detach", snapshot, base], { cwd: repo })
     if (yield* fs.exists(paths.join(snapshot, instructionArtifact))) {
       return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
     }
-    const separator = target.envelope.comparison === "merge-base" ? "..." : ".."
-    const committedRange = `${target.envelope.base}${separator}${target.envelope.head}`
-    const targetDiffs: Array<ReadonlyArray<string>> = target.envelope.base === target.envelope.head
+    const committedRange = `${base}..${head}`
+    const targetDiffs: Array<ReadonlyArray<string>> = base === head
       ? []
       : [["diff", "--binary", "--no-renames", committedRange]]
     if (target.envelope.includeWorkingTree) {
@@ -428,7 +453,7 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   const reviewTarget = Effect.fn("NativeReview.reviewTarget")(function*(target: ReviewTarget) {
     const startedAt = yield* DateTime.now
     return yield* withReviewSnapshot(target, Effect.fn("NativeReview.reviewEnvelope")(function*(runCwd) {
-      const output = yield* checkedText(reviewer, ["review", "--uncommitted"], { cwd: runCwd })
+      const output = yield* checkedText(reviewer, ["review", "--uncommitted", "-c", "project_doc_fallback_filenames=[]"], { cwd: runCwd })
       yield* archiveReviewSessions({
         reviewer,
         reviewCwds: [runCwd],
