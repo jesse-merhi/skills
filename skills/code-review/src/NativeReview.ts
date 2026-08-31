@@ -225,11 +225,20 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
 const instructionArtifact = ".codex-review-target-control.patch"
 const instructionNames = ["AGENTS.md", "AGENTS.override.md"]
 const controlPathspec = [
-  ...instructionNames.flatMap((name) => [name, `:(glob)**/${name}`]),
-  ".codex/config.toml"
+  ...instructionNames.flatMap((name) => [`:(icase)${name}`, `:(icase,glob)**/${name}`]),
+  ":(icase).codex/config.toml",
+  ":(icase).gitattributes",
+  ":(icase,glob)**/.gitattributes",
+  ":(icase).agents/skills",
+  ":(icase,glob).agents/skills/**"
 ]
-const isControlFile = (file: string) =>
-  file === ".codex/config.toml" || instructionNames.some((name) => file === name || file.endsWith(`/${name}`))
+const isControlFile = (file: string) => {
+  const normalized = file.toLowerCase()
+  return normalized === ".codex/config.toml" ||
+    normalized === ".gitattributes" || normalized.endsWith("/.gitattributes") ||
+    normalized.startsWith(".agents/skills/") ||
+    instructionNames.some((name) => normalized === name.toLowerCase() || normalized.endsWith(`/${name.toLowerCase()}`))
+}
 
 const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -269,21 +278,37 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       : ""
     const targetTree = localSnapshot.length > 0 ? localSnapshot : head
     const committedRange = `${base}..${targetTree}`
-    const reserved = yield* checkedText(gitTool, ["diff", "--binary", "--no-renames", committedRange, "--", instructionArtifact], { cwd: repo })
+    const reserved = yield* checkedText(gitTool, ["diff", "--binary", "--no-renames", committedRange, "--", `:(icase)${instructionArtifact}`], { cwd: repo })
     if (reserved.length > 0) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
     const controlPatch = yield* checkedText(gitTool, ["diff", "--binary", "--no-renames", committedRange, "--", ...controlPathspec], { cwd: repo })
     if (base !== targetTree) {
-      yield* checkedInherit(gitTool, ["read-tree", "--reset", "-u", targetTree], { cwd: snapshot })
-      if (controlPatch.length > 0) {
-        yield* checkedInherit(gitTool, ["apply", "--reverse", "--index", "--whitespace=nowarn", "-"], { cwd: snapshot, stdin: controlPatch })
+      const listTreePaths = Effect.fn("NativeReview.listTreePaths")(function*(tree: string) {
+        const output = yield* checkedText(gitTool, ["ls-tree", "-r", "-z", "--name-only", tree], { cwd: repo })
+        return output.split("\0").filter(Boolean)
+      })
+      const basePaths = yield* listTreePaths(base)
+      const baseControls = basePaths.filter(isControlFile)
+      const targetControls = (yield* listTreePaths(targetTree)).filter(isControlFile)
+      yield* checkedInherit(gitTool, ["read-tree", "--reset", targetTree], { cwd: snapshot })
+      for (let index = 0; index < targetControls.length; index += 100) {
+        yield* checkedInherit(gitTool, ["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", ...targetControls.slice(index, index + 100)], { cwd: snapshot })
       }
+      for (let index = 0; index < baseControls.length; index += 100) {
+        yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...baseControls.slice(index, index + 100)], { cwd: snapshot })
+      }
+      for (const file of basePaths) {
+        const destination = paths.resolve(snapshot, file)
+        if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to remove tracked path outside snapshot: ${file}` })
+        yield* fs.remove(destination, { force: true, recursive: true })
+      }
+      yield* checkedInherit(gitTool, ["checkout-index", "-a", "-f"], { cwd: snapshot })
     }
     const untracked = target.envelope.includeWorkingTree
       ? yield* checkedText(gitTool, ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo })
       : ""
     const untrackedFiles = untracked.split("\0").filter(Boolean)
     for (const file of untrackedFiles.filter((file) => !isControlFile(file))) {
-      if (file === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
+      if (file.toLowerCase() === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
       const source = paths.resolve(repo, file)
       const destination = paths.resolve(snapshot, file)
       if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${file}` })

@@ -21,14 +21,15 @@ frozen merge base, the reviewed commit's parent, or an empty base for a root
 commit. The target's committed, staged, unstaged, and untracked code is applied
 as one uncommitted review diff, then the envelope is removed.
 
-`AGENTS.md`, `AGENTS.override.md`, and `.codex/config.toml` changes are never
-applied to the envelope's active control surface. The helper writes them to
-`.codex-review-target-control.patch` as untrusted review data with an explicit
-warning to inspect, not follow, them. It marks the temporary project untrusted
-and disables configured fallback instruction filenames for the native session,
-so target-controlled project configuration or fallback files cannot become
-active. This is why invoking bare `codex review` from the target checkout is not
-equivalent to this helper.
+Case-insensitive variants of `AGENTS.md` and `AGENTS.override.md`,
+`.agents/skills/**`, `.codex/config.toml`, and target `.gitattributes` changes
+are never applied to the envelope's active control surface. The helper writes
+them to `.codex-review-target-control.patch` as untrusted review data with an
+explicit warning to inspect, not follow, them. It marks the temporary project
+untrusted and disables configured fallback instruction filenames for the native
+session, so target-controlled skills, project configuration, or fallback files
+cannot become active. This is why invoking bare `codex review` from the target
+checkout is not equivalent to this helper.
 
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
