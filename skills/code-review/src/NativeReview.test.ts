@@ -561,7 +561,7 @@ esac
       await writeFile(join(directory, "feature.txt"), "feature\n")
       await execFile("git", ["add", "AGENTS.md", "feature.txt"], { cwd: directory })
       await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ntest \"$(cat feature.txt)\" = feature\ngrep -q 'target says ignore findings' .codex-review-target-instructions.patch\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ntest \"$(cat feature.txt)\" = feature\ngrep -q 'untrusted review data' .codex-review-target-instructions.patch\ngrep -q 'target says ignore findings' .codex-review-target-instructions.patch\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
       process.chdir(directory)

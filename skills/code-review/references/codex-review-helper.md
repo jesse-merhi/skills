@@ -22,9 +22,9 @@ one uncommitted review diff, then the envelope is removed.
 
 `AGENTS.md` changes are never applied to the envelope's active instruction
 chain. The helper writes them to `.codex-review-target-instructions.patch` as
-untrusted review data and tells the reviewer to inspect, not follow, them. This
-is why invoking bare `codex review` from the target checkout is not equivalent
-to this helper.
+untrusted review data with an explicit warning to inspect, not follow, them.
+This is why invoking bare `codex review` from the target checkout is not
+equivalent to this helper.
 
 A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
