@@ -13,10 +13,10 @@ For a review, report:
   catch a verified reachable future bug.
 - `No change needed`: related tests inspected and why they still fit.
 - `Dangerous removals`: deleted tests that still protect promised behavior.
-- `Ownership`: the named executable replacement for each deletion of
-  still-promised behavior, or why retired or unreachable behavior needs no
-  replacement; also state why adjacent coverage misses each keeper's
-  regression.
+- `Ownership`: the named executable replacement for each deleted test that owns
+  a still-promised regression, or why the deleted test owns no current
+  regression and needs no replacement; also state why adjacent coverage misses
+  each keeper's regression.
 - `Validation`: commands run and result. For a portfolio-reduction audit, add
   before-and-after file counts, expanded test counts, and measured runtime when
   reliable.
