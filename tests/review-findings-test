@@ -398,6 +398,13 @@ test_review_findings_schema_is_visible_and_enforced() {
     "${RUNTIME_ACTIONABILITY[@]}" \
     --actual-consequence "The user sees behavior that requires a product choice." \
     --owner-resolution approved --decision "The owner approved the local behavior change." >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const row = db.prepare("select text from issues where decision_id = ?").get("D8B"); const removed = ["The supported workflow promises this behavior.", "The owning module does not enforce the current contract.", "Repair the contract in the owning module.", "The supported path is broken, and the owning repair is smaller than tolerating repeated failures."]; db.prepare("update issues set contract_evidence = ?, root_cause = ?, recommended_fix = ?, intervention_justification = ?, text = ? where decision_id = ?").run("", "", "", "", removed.reduce((text, value) => text.replace(`${value} `, ""), row.text), "D8B")' "$db"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D8B --status fixed --source review --fingerprint "local product tolerance" \
+    --summary "A local product tolerance needs the owner's decision." --finding-kind runtime --fix-scope local --handling consult \
+    --production-path "supported request -> local tolerance -> visible fallback" --reachability-evidence "The supported request reaches the documented fallback." \
+    --likelihood likely --impact medium --actual-consequence "The user sees behavior that requires a product choice." --owner-resolution approved --decision "The owner approved the local behavior change." >/dev/null
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \

@@ -1284,7 +1284,7 @@ const findingActionabilityError = (finding: Finding) => {
   return undefined
 }
 
-export const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input: FindingInput) {
+export const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*(input: FindingInput, skipActionability = false) {
   const normalized = {
     ...input,
     status: normalizeStatus(input.status),
@@ -1312,7 +1312,7 @@ export const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*
   if (outcome === undefined) return yield* Effect.fail(new InvalidFinding("runtime findings require --likelihood and --impact"))
   const completeFinding = { ...finding, ...outcome } satisfies Finding
   const actionabilityError = findingActionabilityError(completeFinding)
-  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError))
+  if (actionabilityError !== undefined && !skipActionability) return yield* Effect.fail(new InvalidFinding(actionabilityError))
   const statusError = findingStatusError(completeFinding)
   if (statusError !== undefined) {
     return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`))
@@ -1321,7 +1321,7 @@ export const decodeFinding = Effect.fn("ReviewFindings.decodeFinding")(function*
 })
 
 export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput) {
-  const input = yield* decodeFinding(rawInput)
+  const input = yield* decodeFinding(rawInput, true)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const run = yield* resolveRecordRun(rawRun)
@@ -1347,6 +1347,8 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     }
     return { runId: existingRunId, issueId: existingIssue.id }
   }
+  const actionabilityError = findingActionabilityError(input)
+  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError))
   const runId = yield* upsertRun(run)
   const scope = yield* sql<ScopeStatusRow>`select status from review_scope_budgets where run_id = ${runId}`
   if (scope[0]?.status === "complete") {
