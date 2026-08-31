@@ -220,10 +220,15 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
   const paths = untracked.length === 0 ? [] : untracked.split("\0").filter((path) => path.length > 0)
   const fs = yield* FileSystem.FileSystem
   const pathService = yield* Path.Path
-  const hashes = yield* Effect.forEach(paths, (path) => fs.readLink(pathService.resolve(repo, path)).pipe(
-    Effect.map((target) => `symlink:${target}`),
-    Effect.catch(() => fromRoot(["hash-object", "--", path]))
-  ))
+  const hashes = yield* Effect.forEach(paths, (path) => Effect.gen(function*() {
+    const source = pathService.resolve(repo, path)
+    const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
+    if (Option.isSome(linkTarget)) return `symlink:${linkTarget.value}`
+    const info = yield* fs.stat(source)
+    if (info.type !== "Directory") return yield* fromRoot(["hash-object", "--", path])
+    const head = yield* fromRoot(["-C", source, "rev-parse", "--verify", "HEAD^{commit}"]).pipe(Effect.orElseSucceed(() => "unborn"))
+    return `embedded:${head}`
+  }))
   const resolveRefs = (refs: ReadonlyArray<string>) => Effect.forEach(refs, (ref) => fromRoot(["rev-parse", "--verify", `${ref}^{commit}`]).pipe(Effect.map((oid) => [ref, oid] as const)))
   const bases = yield* resolveRefs(options.baseRefs ?? [])
   const commits = yield* resolveRefs(options.commitRefs ?? [])
@@ -627,6 +632,15 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
       const source = paths.resolve(repo, normalizedFile)
       const destination = paths.resolve(snapshot, normalizedFile)
       if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${normalizedFile}` })
+      const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
+      if (Option.isSome(linkTarget)) {
+        yield* fs.remove(destination, { force: true, recursive: true })
+        yield* removeSnapshotPath(normalizedFile)
+        yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
+        yield* fs.symlink(linkTarget.value, destination)
+        yield* stageSnapshotPath(normalizedFile)
+        continue
+      }
       const sourceInfo = yield* fs.stat(source)
       if (sourceInfo.type === "Directory") {
         const embeddedHead = yield* sourceTrimmedText(["rev-parse", "--verify", "HEAD^{commit}"], { cwd: source }).pipe(Effect.option)
@@ -638,9 +652,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
       yield* fs.remove(destination, { force: true, recursive: true })
       yield* removeSnapshotPath(normalizedFile)
       yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
-      const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
-      if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
-      else yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
+      yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
       yield* stageSnapshotPath(normalizedFile)
     }
     const instructionPatches = [controlPatch, ...workingControlOverlays].filter((patch) => patch.length > 0)

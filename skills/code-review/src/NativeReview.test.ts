@@ -208,6 +208,38 @@ esac
     }
   })
 
+  it("tracks an untracked embedded repository by its HEAD", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-identity-embedded-"))
+    const embedded = join(directory, "embedded")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "tracked.txt"), "tracked\n")
+      await execFile("git", ["add", "tracked.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["init", "--quiet", embedded], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: embedded })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: embedded })
+      await writeFile(join(embedded, "file.txt"), "one\n")
+      await execFile("git", ["add", "file.txt"], { cwd: embedded })
+      await execFile("git", ["commit", "--quiet", "-m", "one"], { cwd: embedded })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const before = await Effect.runPromise(live(reviewIdentity()))
+        await writeFile(join(embedded, "file.txt"), "two\n")
+        await execFile("git", ["commit", "-am", "two"], { cwd: embedded })
+        const after = await Effect.runPromise(live(reviewIdentity()))
+        assert.notStrictEqual(before, after)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it("discovers a master base and writes the environment output path", async () => {
     const directory = await mkdtemp(join(tmpdir(), "codex-review-output-"))
     const bin = join(directory, "bin")
@@ -547,6 +579,9 @@ esac
       await writeFile(join(directory, "scoped"), "working scoped-directory replacement\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await symlink("untracked.txt", join(directory, "untracked-link"))
+      await mkdir(join(directory, "untracked-directory"))
+      await writeFile(join(directory, "untracked-directory", "file.txt"), "directory content\n")
+      await symlink("untracked-directory", join(directory, "untracked-directory-link"))
       await execFile("git", ["init", "--quiet", embeddedRepository], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: embeddedRepository })
       await execFile("git", ["config", "user.name", "Test"], { cwd: embeddedRepository })
@@ -575,6 +610,8 @@ git cat-file -e "$target:CASE.txt"
 git ls-tree -r --name-only "$target" | grep -qx CASE.txt
 ! git ls-tree -r --name-only "$target" | grep -qx case.txt
 test "$(git show "$target:untracked-link")" = untracked.txt
+test "$(git show "$target:untracked-directory-link")" = untracked-directory
+git ls-tree "$target" untracked-directory-link | grep -q '^120000 blob '
 git ls-tree "$target" embedded | grep -q "^160000 commit ${embeddedHead}"
 git init --quiet "${nestedRepository}"
 git -C "${nestedRepository}" config user.email test@example.com
