@@ -47,9 +47,12 @@ Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
 renames therefore remain part of the uncommitted review target. Snapshot
 materialization ignores sparse-checkout skip bits, then overlays only actual
-working-tree changes, so out-of-cone tracked context remains available. Commit
-mode rejects an unavailable shallow parent instead of misclassifying the target
-as a root commit; fetch or deepen that history before retrying.
+working-tree changes, so out-of-cone tracked context remains available. A
+tracked path changed into a directory is rebuilt from its individually filtered
+untracked children rather than recursively copied. Dynamic Git paths use literal
+pathspecs, so target filenames cannot alter snapshot commands. Commit mode
+rejects an unavailable shallow parent instead of misclassifying the target as a
+root commit; fetch or deepen that history before retrying.
 
 A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`

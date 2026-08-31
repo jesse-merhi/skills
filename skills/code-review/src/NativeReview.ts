@@ -232,6 +232,7 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
 
 const instructionArtifact = ".codex-review-target-control.patch"
 const instructionNames = ["AGENTS.md", "AGENTS.override.md"]
+const literalPathspec = (file: string) => `:(literal)${file}`
 const isControlFile = (file: string) => {
   const normalized = file.toLowerCase()
   return normalized === ".codex/config.toml" ||
@@ -408,7 +409,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
           "diff", "--binary", "--text", "--no-ext-diff", "--no-textconv", "--no-renames",
           ...range,
           "--",
-          ...diffControlPaths.slice(index, index + 100).map((file) => `:(literal)${file}`)
+          ...diffControlPaths.slice(index, index + 100).map(literalPathspec)
         ], { cwd: repo }))
       }
       return chunks.filter((chunk) => chunk.length > 0).join("\n")
@@ -418,11 +419,11 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     const controlPatch = [committedControlPatch, workingControlPatch].filter((patch) => patch.length > 0).join("\n")
     yield* checkedInherit(gitTool, ["read-tree", "--reset", targetTree], { cwd: snapshot })
     for (let index = 0; index < targetControls.length; index += 100) {
-      yield* checkedInherit(gitTool, ["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", ...targetControls.slice(index, index + 100)], { cwd: snapshot })
+      yield* checkedInherit(gitTool, ["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", ...targetControls.slice(index, index + 100).map(literalPathspec)], { cwd: snapshot })
     }
     const restorableBaseControls = baseControls.filter((control) => !targetEntries.some((entry) => !targetControlPaths.has(entry.path) && control.toLowerCase().startsWith(`${entry.path.toLowerCase()}/`)))
     for (let index = 0; index < restorableBaseControls.length; index += 100) {
-      yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...restorableBaseControls.slice(index, index + 100)], { cwd: snapshot })
+      yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...restorableBaseControls.slice(index, index + 100).map(literalPathspec)], { cwd: snapshot })
     }
     for (const { path: file } of baseEntries) {
       const destination = paths.resolve(snapshot, file)
@@ -430,6 +431,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       yield* fs.remove(destination, { force: true, recursive: true })
     }
     yield* checkedInherit(gitTool, ["checkout-index", "-a", "-f", "--ignore-skip-worktree-bits"], { cwd: snapshot })
+    const workingControlOverlays = new Array<string>()
     if (target.envelope.includeWorkingTree) {
       const entries = (yield* checkedText(gitTool, ["ls-files", "-s", "-z"], { cwd: repo })).split("\0").filter(Boolean)
       const entryByPath = new Map(entries.map((entry) => {
@@ -441,19 +443,24 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       for (const file of modified) {
         const mode = entryByPath.get(file)
         if (mode === undefined) return yield* new ReviewSnapshotError({ message: `could not resolve tracked review path: ${file}` })
-        if (isEnvelopeControl(file) || (mode === "120000" && isProtectedAncestor(file))) continue
         if (mode === "160000") {
-          const dirty = yield* checkedText(gitTool, ["diff", "--raw", "--", file], { cwd: repo })
+          const dirty = yield* checkedText(gitTool, ["diff", "--raw", "--", literalPathspec(file)], { cwd: repo })
           if (dirty.length > 0) return yield* new ReviewSnapshotError({ message: `stage dirty submodule before review: ${file}` })
           continue
         }
         const source = paths.resolve(repo, file)
+        const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
+        if (isEnvelopeControl(file) || (isProtectedAncestor(file) && Option.isSome(linkTarget))) {
+          if (Option.isSome(linkTarget) && !isEnvelopeControl(file)) workingControlOverlays.push(`\n# Working target review-control path: ${file}\nsymlink -> ${linkTarget.value}`)
+          continue
+        }
         const destination = paths.resolve(snapshot, file)
         if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy tracked path outside snapshot: ${file}` })
         yield* fs.remove(destination, { force: true, recursive: true })
         if (!(yield* fs.exists(source).pipe(Effect.orElseSucceed(() => false)))) continue
+        const sourceInfo = yield* fs.stat(source).pipe(Effect.option)
+        if (Option.isSome(sourceInfo) && sourceInfo.value.type === "Directory") continue
         yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
-        const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
         if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
         else yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
       }
@@ -481,7 +488,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
       else yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
     }
-    const instructionPatches = controlPatch.length === 0 ? [] : [controlPatch]
+    const instructionPatches = [controlPatch, ...workingControlOverlays].filter((patch) => patch.length > 0)
     if (target.envelope.includeWorkingTree) {
       for (const file of untrackedControls) {
         const source = paths.resolve(repo, file)
