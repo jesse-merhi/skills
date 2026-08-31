@@ -1,112 +1,138 @@
 # Bitbucket Cloud through TWG
 
-## When this file applies
-
-Read this file only for a Bitbucket Cloud PR. TWG is the provider CLI used by
-this branch. This public proof-pack works without a separate TWG skill. An
-available TWG or Atlassian skill may provide current guidance. Load it when
-useful; the CLI path here still works without it.
-
-TWG is not limited to media upload. Use it for the Bitbucket reads and
-authorized PR mutations this workflow needs. Its availability does not grant
-permission for unrelated provider actions.
-
-Use the live binary's help as the source of truth. The examples below use the
-long command names for clarity; do not assume an older TWG release supports
-the same flags.
+Read this only for a Bitbucket Cloud PR. This public proof-pack works without a
+separate TWG or Atlassian skill, though one may provide useful current provider
+guidance. Use TWG for the reads and authorized PR metadata mutation below. Use
+Bitbucket Cloud's public repository Downloads API for image storage. Live TWG
+help and authenticated public API responses are the command contracts.
 
 ## Resolve and inspect the PR
 
-Resolve the Bitbucket workspace slug, repository slug, and PR ID from the exact
-PR URL or repository remote. Pass all three explicitly rather than relying on
-working-directory detection:
+Resolve the workspace slug, repository slug, and PR ID from the exact PR URL or
+repository remote. Pass the workspace and repository explicitly rather than
+relying on working-directory detection:
 
 ```sh
-twg bb pull-requests get <pr-id> \
-  --full \
-  --workspace <workspace-slug> \
-  --repo <repository-slug> \
-  -o json
+twg bb --workspace <workspace-slug> --repo <repository-slug> \
+  prs get <pr-id> --full -o json
 ```
 
-Record the PR URL, title, description, source branch, destination branch, and
-source commit hash. Resolve the direct base locally from the destination branch
-using the normal proof-pack net-diff workflow.
+Record the PR URL, title, description, branches, and both commit hashes. Fetch
+missing commits from the appropriate provider remotes. Verify both with
+`git cat-file -e '<commit-hash>^{commit}'` without changing the checkout.
+
+```sh
+<skill-dir>/scripts/pr-net-diff --base <destination-commit-hash> \
+  --head <source-commit-hash> --markdown
+```
+
+Require the reported selected base and head SHA to match those commits. The
+comparison base remains their merge base.
 
 ## Preflight a refresh
 
-First inspect the exact mutation command without changing provider state:
+Run `twg --version`, `twg bb prs get --help`, and
+`twg bb prs update --help`. Require the update command to take the PR ID as its
+positional argument and expose `--description`; require `--title` only when the
+title is stale. Run the full read above to prove authentication and repository
+access.
 
-```sh
-twg bb pull-requests update --help
+For an image refresh, also require a credential-aware HTTPS client for the
+public Bitbucket API. TWG reads its Bitbucket token from `TWG_BBC_TOKEN` or the
+`bbc-token` entry in `~/.twg/auth.conf`, but it does not expose a raw REST
+command. Supply `Authorization: Bearer ...` to the HTTPS client through
+protected standard input or another non-argument secret channel. Keep the token
+out of command arguments, command traces, logs, temporary output, PR text, and
+generated asset URLs. Do not copy browser cookies or private Atlassian Media
+tokens into automation.
+
+Stop before mutation if a preflight fails. Report the detected binary or API
+failure without credential values. Ask the human to repair TWG Bitbucket login
+with `twg login --product bitbucket` or restore the required HTTPS client.
+
+## Upload images to repository Downloads
+
+Finish and inspect every image, choose a descriptive repository-unique filename
+made only from letters, digits, dots, underscores, and hyphens, and calculate
+its byte count, MIME type, and SHA-256 digest. After publication authority is
+confirmed and the PR head is rechecked, upload it with this public request:
+
+```text
+POST https://api.bitbucket.org/2.0/repositories/{workspace}/{repo}/downloads
+Authorization: Bearer <supplied outside process arguments and logs>
+multipart field: files=@<image-path>;filename=<repository-unique-filename>
 ```
 
-Require `--pull-request` and `--description-file` for every refresh. When an
-image or diagram was selected, also require `--image`. Then run the read-only
-`get` command above with explicit workspace and repository values to prove that
-authentication and repository access work.
-
-If TWG is missing, its live help lacks a required flag, or the read fails, stop
-before mutation. Report the detected binary and failure. Ask the human to put a
-current TWG binary first on `PATH` or repair Bitbucket authentication, such as
-with `twg setup bitbucket`.
-
-## Refresh the description and images
-
-Write the complete intended PR description to a temporary Markdown file. For
-each image, put TWG's placeholder on its own line at the intended body location:
+Require HTTP `201`. Then insert the stable repository Downloads URL at the
+intended position in the complete Markdown body:
 
 ```md
-{{image}}
+![descriptive alt text](https://bitbucket.org/{workspace}/{repo}/downloads/{filename})
 ```
 
-Use `{{image}}` for the first image. For multiple images, pass the files in body
-order and use `{{image:2}}`, `{{image:3}}`, and so on for later images. Keep
-nearby alt text, captions, and evidence context in the Markdown because the
-placeholder itself carries none.
+Use the smallest rendered width that keeps the image comfortably readable.
+Treat `50%` as the starting point for focused visuals and use the full column
+only when the content genuinely benefits from it. Bitbucket Cloud escapes raw
+HTML such as `<img width="50%">` and strips Markdown attribute-list sizing such
+as `{: width="50%"}`, so neither controls the rendered width.
 
-After publication authority is confirmed, update the body and upload all
-selected images in one operation:
+For a focused visual that would otherwise render too wide, use the tested
+two-column Markdown-table fallback: put the image in one cell and its short,
+verified result in the other.
+
+```md
+| Evidence | Verified result |
+| --- | --- |
+| ![Descriptive alt text](https://bitbucket.org/{workspace}/{repo}/downloads/{filename}) | **Observed result:** <short copyable value or state> |
+```
+
+On proof PR #58 this presented the image at roughly half the PR column. Treat
+that as a provider-specific layout fallback, not a fixed percentage guarantee:
+table content affects column width, so inspect the rendered destination before
+accepting it.
+
+Upload only images referenced by the finished body, and do not commit proof
+media to the repository. This workflow is proven for images, not video. Return
+`blocked` when still images would lose an essential motion or playback claim.
+If an upload succeeds but the later PR update fails, stop and report the orphan
+filename; do not retry under another name or delete it without authorization.
+
+## Apply the complete description
+
+Recheck that the source hash still matches the final head. Then apply the full
+Markdown body, not a partial patch. Read a prepared file into the shell variable
+if needed; do not invent a `--description-file` flag.
 
 ```sh
-twg bb pull-requests update \
-  --pull-request <pr-id> \
-  --description-file <draft-markdown-path> \
-  --image <first-image-path> \
-  --workspace <workspace-slug> \
-  --repo <repository-slug> \
-  -o json
+PR_DESCRIPTION="$(<draft-markdown-path>)"
+twg bb --workspace <workspace-slug> --repo <repository-slug> \
+  prs update <pr-id> --description "$PR_DESCRIPTION"
+unset PR_DESCRIPTION
 ```
 
-If the title is stale and live help exposes `--title`, include the corrected
-title in the same update.
-
-Repeat `--image` in placeholder order for additional images. Follow the live
-help's current file-type and size limits. TWG uploads the images to Bitbucket's
-provider-hosted storage and embeds them while applying the description. Do not
-upload detached evidence in a comment or commit proof media to the repository.
-
-This path supports images, not video. Use one or more still images only when
-they preserve the claim. If motion or playback is essential evidence, classify
-the refresh as `blocked` and explain that the Bitbucket/TWG attachment path
-cannot publish the required format.
-
-For a text-only refresh, omit `--image` and do not add image placeholders.
+Include `--title <title>` in that update only when the title is stale. A
+text-only refresh skips the Downloads upload and applies the complete Markdown
+through the same TWG command.
 
 ## Verify the finished PR
 
-Run the full read-only `get` command again. Require the source commit hash to
-match the final head captured before mutation. Check the title and complete
-description, confirm every intended section is present, and confirm that no
-literal `{{image...}}` placeholder remains.
+Run the full TWG read again. Require its source hash to match the final head and
+check the title and complete stored description. For every new image, read the
+PR through
+`GET https://api.bitbucket.org/2.0/repositories/{workspace}/{repo}/pullrequests/{pr-id}`
+and require
+`rendered.description.html` to contain the expected image node. Fetch the file
+through
+`GET https://api.bitbucket.org/2.0/repositories/{workspace}/{repo}/downloads/{filename}`
+and require HTTP success, the expected MIME type, exact byte count, and the same
+SHA-256 digest as the local source. Keep credentials on the same protected
+channel used for upload; normal cross-host redirects must not receive the
+Authorization header.
 
-For a text-only refresh, this provider readback is sufficient when the stored
-Markdown contains every expected claim and reproduction step. For every image
-or diagram, open the exact PR in an authenticated interactive browser. Confirm
-that each embed loads in the intended body position, then inspect its rendered
-pixels at the PR body's real width. TWG readback verifies stored PR data; it
-does not prove that Bitbucket rendered usable media. There is no repository-owned
-headless Bitbucket rendered-media verifier.
-
-If the final head changed, an embed is missing, a placeholder remains, or the
-rendered pixels cannot be inspected, stop and report the exact failed check.
+An HTML image node and matching downloaded bytes do not prove that a private
+repository's PR page loaded or presented the image correctly. In particular,
+`rendered.description.html` proving that an `<img>` exists does not prove its
+literal placement or rendered width. Open the exact PR in an authenticated
+interactive browser, confirm each embed appears in its intended body position,
+and inspect its pixels at real PR-body width. Stop on a changed head, missing
+node, byte or digest mismatch, missing embed, or unavailable pixel inspection.

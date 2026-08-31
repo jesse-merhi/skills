@@ -84,8 +84,9 @@ prove that the system depicted by the diagram ran.
   or playback.
 - **Provider-hosted attachments:** Upload selected media through the provider's
   supported path. On `github.com`, use the repository command and scoped `gh`
-  credential. On Bitbucket Cloud, use TWG's coupled PR-body and image update;
-  a separate TWG or Atlassian skill is optional, not required.
+  credential. On Bitbucket Cloud, upload images through the public repository
+  Downloads API, then embed their stable Downloads URLs in the complete body
+  applied through TWG. A separate TWG or Atlassian skill is optional.
 - **Rendered proof:** Check the rendered result headlessly by default. Use an
   interactive browser only when client-side rendering, literal page appearance,
   or playback must be inspected.
@@ -129,6 +130,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    consideration. When the PR spans multiple meaningful parts, keep the
    generated `+LOC` and `-LOC` breakdown. Split implementation into clearer
    product areas only when the paths support exact, non-overlapping totals.
+   For Bitbucket Cloud, pass the destination and source commit hashes resolved
+   in [references/bitbucket.md](references/bitbucket.md) as `--base` and
+   `--head`; do not let local checkout state choose either side of the diff.
 
    Done when the final behavior and existing reviewer-visible claims can be
    compared, and any claim that the PR is large has a direct-base breakdown
@@ -248,11 +252,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    for each selected diagram, image, or video. Insert the URL printed only
    after the command has verified the upload. Put media in the main PR body,
    never in a detached comment. Use a table when it makes a small related group
-   or comparison easier to scan. On Bitbucket Cloud, follow the single
-   `twg bb pull-requests update` operation in
-   [references/bitbucket.md](references/bitbucket.md): pass the complete draft
-   with `--description-file` and each selected image with `--image`. TWG images
-   are supported; video is not. Text evidence needs no attachment.
+   or comparison easier to scan. On Bitbucket Cloud, follow
+   [references/bitbucket.md](references/bitbucket.md): upload each image through
+   the public Downloads API, put its stable repository Downloads URL in the
+   complete Markdown body, then apply that body with
+   `twg bb prs update <pr-id> --description <complete-markdown>`. This path is
+   proven for images, not video. Text evidence needs no attachment.
 
    Done when every selected diagram and visual is provider-hosted and every
    text proof is present in the main body, or the workflow has stopped before
