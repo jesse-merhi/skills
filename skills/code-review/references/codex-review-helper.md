@@ -24,6 +24,9 @@ working tree to the untouched frozen base, and delegates that commit to native
 `codex review --commit`. Base instructions and every ordinary file they may
 reference therefore stay frozen while the full target remains available through
 Git's commit diff. The envelope and synthetic commit are removed after review.
+Synthetic blobs, trees, and commits live in a scoped temporary object database
+that reads the source repository through Git alternates; cleanup removes those
+objects rather than leaving reviewed untracked bytes in the source repository.
 
 Case-insensitive variants of `AGENTS.md` and `AGENTS.override.md`, the `.agents`
 instruction root including `.agents/skills/**`, `.codex/config.toml`,
@@ -49,6 +52,9 @@ quarantined. Target-side control changes are captured as forced text independent
 of target attributes. If a target file replaces a base directory containing an
 ordinary scoped instruction file, the replacement remains in the review target;
 the now-inapplicable nested instruction is represented only as a control deletion.
+Case-collision checks apply only to the frozen control paths being activated, so
+unrelated case-distinct source paths remain reviewable on filesystems that
+support them.
 
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing

@@ -510,6 +510,7 @@ esac
   it("reviews whole-mode committed and local changes as one frozen-base envelope", async () => {
     const directory = await mkdtemp(join(tmpdir(), "whole-review-snapshot-"))
     const reviewer = join(directory, "reviewer")
+    const reviewedCommit = join(directory, "reviewed-commit")
     try {
       await execFile("git", ["init", "-b", "main"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
@@ -540,7 +541,28 @@ esac
       await writeFile(join(directory, "replacement"), "untracked file replacement\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await symlink("untracked.txt", join(directory, "untracked-link"))
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntarget=$3\ntest \"$(cat base.txt)\" = base\ntest \"$(git show \"$target:base.txt\")\" = unstaged\ntest \"$(git show \"$target:replacement\")\" = 'untracked file replacement'\ntest \"$(git show \"$target:converted/code.txt\")\" = 'untracked code'\ntest \"$(git show \"$target:link-change\")\" = missing-target\n! git cat-file -e \"$target:converted/AGENTS.md\"\ngit show \"$target:.codex-review-target-control.patch\" | grep -q 'untracked active instructions'\ngit cat-file -e \"$target:committed.txt\"\ngit cat-file -e \"$target:staged.txt\"\ngit cat-file -e \"$target:untracked.txt\"\ngit cat-file -e \"$target:CASE.txt\"\ngit ls-tree -r --name-only \"$target\" | grep -qx CASE.txt\n! git ls-tree -r --name-only \"$target\" | grep -qx case.txt\ntest \"$(git show \"$target:untracked-link\")\" = untracked.txt\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, `#!/bin/sh
+set -eu
+test "$1" = review
+test "$2" = --commit
+target=$3
+printf '%s\n' "$target" > "${reviewedCommit}"
+test "$(cat base.txt)" = base
+test "$(git show "$target:base.txt")" = unstaged
+test "$(git show "$target:replacement")" = 'untracked file replacement'
+test "$(git show "$target:converted/code.txt")" = 'untracked code'
+test "$(git show "$target:link-change")" = missing-target
+! git cat-file -e "$target:converted/AGENTS.md"
+git show "$target:.codex-review-target-control.patch" | grep -q 'untracked active instructions'
+git cat-file -e "$target:committed.txt"
+git cat-file -e "$target:staged.txt"
+git cat-file -e "$target:untracked.txt"
+git cat-file -e "$target:CASE.txt"
+git ls-tree -r --name-only "$target" | grep -qx CASE.txt
+! git ls-tree -r --name-only "$target" | grep -qx case.txt
+test "$(git show "$target:untracked-link")" = untracked.txt
+printf 'reviewed combined snapshot\n'
+`, { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
       assert.match(dryRun, /snapshot: untouched frozen-base checkout with target diff as a synthetic commit/u)
@@ -554,6 +576,14 @@ esac
       }
       const { stdout } = await execFile("git", ["worktree", "list", "--porcelain"], { cwd: directory })
       assert.strictEqual(stdout.split("\n").filter((line) => line.startsWith("worktree ")).length, 1)
+      const syntheticCommit = (await readFile(reviewedCommit, "utf8")).trim()
+      let retainedSyntheticCommit = true
+      try {
+        await execFile("git", ["cat-file", "-e", syntheticCommit], { cwd: directory })
+      } catch {
+        retainedSyntheticCommit = false
+      }
+      assert.isFalse(retainedSyntheticCommit)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
