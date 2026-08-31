@@ -4,8 +4,9 @@ Use these labels when auditing tests or assertions:
 
 - `keeper`: is the executable owner of a distinct reachable regression in
   promised behavior.
-- `consolidate`: duplicates the same branch, inputs, failure, and public outcome
-  as another test and should share one table, setup, or owner.
+- `consolidate`: duplicates the same branch, equivalent input class, failure,
+  and public outcome as another test and should share one table, setup, or
+  owner.
 - `move`: owns a real risk at a broader or less realistic level than the
   narrowest boundary that can prove it.
 - `rewrite`: points at the right risk but asserts the wrong level, stale API

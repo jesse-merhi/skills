@@ -68,7 +68,8 @@ separate when their failure modes or required side effects differ.
 Remove tests or assertions that own no current regression, including:
 
 - branch history and retired or unreachable behavior;
-- presentation, styling, geometry, token, or broad snapshot assertions;
+- incidental or unpromised presentation, styling, geometry, token, or broad
+  snapshot assertions;
 - incidental wording, waits, callbacks, mock counts, mock order, or helper
   wiring;
 - source or configuration mirrors that re-assert declarative files line by
@@ -79,10 +80,11 @@ Remove tests or assertions that own no current regression, including:
 - orphaned test-only routes, fixtures, environment switches, helpers, harnesses,
   or duration metadata with no executable caller.
 
-Keep exact wording, timing, geometry, lifecycle calls, or presentation when it
-is itself the promised legal, accessibility, safety, domain, or protocol
-contract. For authorization rejection, assert the denial and absence of any
-forbidden side effect when one is possible.
+Keep appearance or layout coverage when it is an explicit stable product or
+design contract. Keep exact wording, timing, geometry, lifecycle calls, or
+presentation when it is itself a promised legal, accessibility, safety, domain,
+or protocol contract. For authorization rejection, assert the denial and
+absence of any forbidden side effect when one is possible.
 
 ## Audit adversarially
 
