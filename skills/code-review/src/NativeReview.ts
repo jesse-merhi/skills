@@ -338,7 +338,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     })
     const resolveControlLink = Effect.fn("NativeReview.resolveControlLink")(function*(link: typeof baseEntries[number]) {
       const dependencies = new Array<string>()
-      const firstTarget = yield* checkedTrimmedText(gitTool, ["cat-file", "blob", link.oid], { cwd: repo })
+      const firstTarget = yield* checkedText(gitTool, ["cat-file", "blob", link.oid], { cwd: repo })
       if (paths.isAbsolute(firstTarget)) return yield* new ReviewSnapshotError({ message: `frozen review control symlink must be repository-relative: ${link.path}` })
       const targetSuffix = link.path.toLowerCase() === ".agents" ? ["skills"] : []
       let remaining = yield* normalizeRepoParts([
@@ -361,7 +361,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         if (followed.has(candidate)) return yield* new ReviewSnapshotError({ message: `frozen review control symlink cycle: ${candidate}` })
         followed.add(candidate)
         dependencies.push(candidate)
-        const target = yield* checkedTrimmedText(gitTool, ["cat-file", "blob", entry.oid], { cwd: repo })
+        const target = yield* checkedText(gitTool, ["cat-file", "blob", entry.oid], { cwd: repo })
         if (paths.isAbsolute(target)) return yield* new ReviewSnapshotError({ message: `frozen review control symlink must be repository-relative: ${candidate}` })
         remaining = yield* normalizeRepoParts([
           ...resolved,

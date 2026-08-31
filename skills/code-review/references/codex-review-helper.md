@@ -34,7 +34,8 @@ files cannot become active. This is why invoking bare `codex review` from the
 target checkout is not equivalent to this helper.
 
 Repository paths reached through complete frozen-base instruction symlink
-chains are frozen as part of the same control surface. Absolute or
+chains are frozen as part of the same control surface, using the exact symlink
+blob without trimming path whitespace. Absolute or
 repository-escaping control symlinks fail closed because the temporary worktree
 cannot safely redirect them to frozen content. Missing targets and targets
 inside unmaterialized gitlinks also fail closed. Case-folded aliases and target
