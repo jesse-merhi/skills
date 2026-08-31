@@ -129,6 +129,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    consideration. When the PR spans multiple meaningful parts, keep the
    generated `+LOC` and `-LOC` breakdown. Split implementation into clearer
    product areas only when the paths support exact, non-overlapping totals.
+   For Bitbucket Cloud, pass the destination and source commit hashes resolved
+   in [references/bitbucket.md](references/bitbucket.md) as `--base` and
+   `--head`; do not let local checkout state choose either side of the diff.
 
    Done when the final behavior and existing reviewer-visible claims can be
    compared, and any claim that the PR is large has a direct-base breakdown
@@ -251,8 +254,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    or comparison easier to scan. On Bitbucket Cloud, follow the single
    `twg bb pull-requests update` operation in
    [references/bitbucket.md](references/bitbucket.md): pass the complete draft
-   with `--description-file` and each selected image with `--image`. TWG images
-   are supported; video is not. Text evidence needs no attachment.
+   with `--description-file`, each selected image with `--image`, and a paired
+   descriptive `--image-name`. TWG images are supported; video is not. Text
+   evidence needs no attachment.
 
    Done when every selected diagram and visual is provider-hosted and every
    text proof is present in the main body, or the workflow has stopped before

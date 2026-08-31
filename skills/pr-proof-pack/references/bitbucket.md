@@ -29,9 +29,18 @@ twg bb pull-requests get <pr-id> \
   -o json
 ```
 
-Record the PR URL, title, description, source branch, destination branch, and
-source commit hash. Resolve the direct base locally from the destination branch
-using the normal proof-pack net-diff workflow.
+Record the PR URL, title, description, source branch, destination branch,
+source commit hash, and destination commit hash. Fetch missing commits from the
+appropriate provider remotes, verify both with
+`git cat-file -e '<commit-hash>^{commit}'`, then run:
+
+```sh
+<skill-dir>/scripts/pr-net-diff --base <destination-commit-hash> \
+  --head <source-commit-hash> --markdown
+```
+
+Require the reported selected base and head SHA to match those commits. The
+comparison base remains their merge base.
 
 ## Preflight a refresh
 
@@ -42,9 +51,9 @@ twg bb pull-requests update --help
 ```
 
 Require `--pull-request` and `--description-file` for every refresh. When an
-image or diagram was selected, also require `--image`. Then run the read-only
-`get` command above with explicit workspace and repository values to prove that
-authentication and repository access work.
+image or diagram was selected, also require `--image` and `--image-name`. Then
+run the read-only `get` command above with explicit workspace and repository
+values to prove that authentication and repository access work.
 
 If TWG is missing, its live help lacks a required flag, or the read fails, stop
 before mutation. Report the detected binary and failure. Ask the human to put a
@@ -65,14 +74,19 @@ order and use `{{image:2}}`, `{{image:3}}`, and so on for later images. Keep
 nearby alt text, captions, and evidence context in the Markdown because the
 placeholder itself carries none.
 
-After publication authority is confirmed, update the body and upload all
-selected images in one operation:
+After publication authority is confirmed, run the full read-only `get` again.
+Require the source hash, destination hash, title, and description to match the
+snapshot used to prepare the draft. If any changed, stop, recompute the net
+diff, and reconcile the new provider state; never overwrite a concurrent human
+edit or publish stale proof. Then update the body and upload all selected images
+in one operation:
 
 ```sh
 twg bb pull-requests update \
   --pull-request <pr-id> \
   --description-file <draft-markdown-path> \
   --image <first-image-path> \
+  --image-name <pr-id>-<run-unique-suffix>-<first-descriptive-name.png> \
   --workspace <workspace-slug> \
   --repo <repository-slug> \
   -o json
@@ -81,24 +95,31 @@ twg bb pull-requests update \
 If the title is stale and live help exposes `--title`, include the corrected
 title in the same update.
 
-Repeat `--image` in placeholder order for additional images. Follow the live
-help's current file-type and size limits. TWG uploads the images to Bitbucket's
-provider-hosted storage and embeds them while applying the description. Do not
-upload detached evidence in a comment or commit proof media to the repository.
+Repeat `--image` and its paired descriptive `--image-name` in placeholder order
+for additional images. Bitbucket download names are repository-wide keys, and
+uploading an existing name replaces that artifact. Include the PR ID and a
+run-unique timestamp or nonce in every name so a later proof refresh cannot
+change an older PR's images.
+
+The name must have an extension matching the detected image type. Follow the
+live help's current file-type and size limits.
+TWG uploads the images to Bitbucket's provider-hosted storage and embeds them
+while applying the description. Do not upload detached evidence in a comment
+or commit proof media to the repository.
 
 This path supports images, not video. Use one or more still images only when
 they preserve the claim. If motion or playback is essential evidence, classify
 the refresh as `blocked` and explain that the Bitbucket/TWG attachment path
 cannot publish the required format.
 
-For a text-only refresh, omit `--image` and do not add image placeholders.
+For a text-only refresh, omit `--image`, `--image-name`, and image placeholders.
 
 ## Verify the finished PR
 
-Run the full read-only `get` command again. Require the source commit hash to
-match the final head captured before mutation. Check the title and complete
-description, confirm every intended section is present, and confirm that no
-literal `{{image...}}` placeholder remains.
+Run the full read-only `get` command again. Require the source and destination
+commit hashes to match the final heads captured before mutation. Check the title
+and complete description, confirm every intended section is present, and
+confirm that no literal `{{image...}}` placeholder remains.
 
 For a text-only refresh, this provider readback is sufficient when the stored
 Markdown contains every expected claim and reproduction step. For every image

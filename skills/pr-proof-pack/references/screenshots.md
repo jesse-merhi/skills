@@ -101,9 +101,10 @@ requests that storage model.
 
 For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). TWG applies the
 complete description and provider-hosted images together with
-`twg bb pull-requests update`, `--description-file`, repeated `--image` flags,
-and body placeholders such as `{{image}}`. A separate TWG or Atlassian skill is
-optional; use it when available and useful.
+`twg bb pull-requests update`, `--description-file`, repeated `--image` and
+paired descriptive `--image-name` flags, and body placeholders such as
+`{{image}}`. A separate TWG or Atlassian skill is optional; use it when
+available and useful.
 
 The TWG path supports images, not video. If still images would lose an essential
 motion or playback claim, stop with `blocked` evidence instead of publishing a
@@ -221,7 +222,7 @@ Capture actual product screenshots when appearance, layout, responsive behavior,
 or a rendered state changed. When the baseline is meaningful and reproducible,
 use the same route, fixture, data, viewport, theme, and starting state against
 the direct base and PR branch. Label the matched images `Before: direct base`
-and `After: PR` and keep the changed pixels readable at normal GitHub width.
+and `After: PR` and keep the changed pixels readable at normal PR-body width.
 
 Otherwise state the constraint and show the actual product entry point and PR
 outcome. When a manual interaction also changed, these screenshots supplement

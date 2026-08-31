@@ -664,7 +664,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   local diagram_skill="$ROOT_DIR/skills/design-technical-diagrams"
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local done_means freshness hard_gates rendered_help upload_help workflow
+  local base_sha bitbucket_preflight bitbucket_resolve bitbucket_update bitbucket_verify destination_sha done_means explicit_markdown explicit_net_diff fake_gh_dir freshness hard_gates invalid_stdout net_diff_fixture observer_sha rendered_help requested_net_diff selected_sha unrelated_sha unrelated_tree upload_help wizard_output workflow
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -801,10 +801,45 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/bitbucket.md" 'available TWG or Atlassian skill may provide current guidance'
   assert_contains "$skill/references/bitbucket.md" 'TWG is not limited to media upload'
   assert_contains "$skill/references/bitbucket.md" 'twg bb pull-requests get <pr-id>'
-  assert_contains "$skill/references/bitbucket.md" 'twg bb pull-requests update --help'
-  assert_contains "$skill/references/bitbucket.md" '`--description-file`'
   assert_contains "$skill/references/bitbucket.md" '`{{image}}`'
   assert_contains "$skill/references/bitbucket.md" 'There is no repository-owned'
+  assert_contains "$skill/references/bitbucket.md" '--base <destination-commit-hash>'
+  assert_contains "$skill/references/bitbucket.md" '--head <source-commit-hash>'
+  bitbucket_resolve="$(sed -n '/^## Resolve and inspect the PR$/,/^## Preflight a refresh$/p' "$skill/references/bitbucket.md")"
+  assert_output_contains "$bitbucket_resolve" 'twg bb pull-requests get <pr-id>'
+  assert_output_contains "$bitbucket_resolve" '  --full \'
+  assert_output_contains "$bitbucket_resolve" '  --workspace <workspace-slug> \'
+  assert_output_contains "$bitbucket_resolve" '  --repo <repository-slug> \'
+  assert_output_contains "$bitbucket_resolve" '  -o json'
+  bitbucket_preflight="$(sed -n '/^## Preflight a refresh$/,/^## Refresh the description and images$/p' "$skill/references/bitbucket.md")"
+  assert_output_contains "$bitbucket_preflight" 'twg bb pull-requests update --help'
+  assert_output_contains "$bitbucket_preflight" 'run the read-only'
+  assert_output_contains "$bitbucket_preflight" 'explicit workspace and repository'
+  assert_output_contains "$bitbucket_preflight" 'before mutation'
+  bitbucket_update="$(sed -n '/^## Refresh the description and images$/,/^## Verify the finished PR$/p' "$skill/references/bitbucket.md")"
+  assert_output_contains "$bitbucket_update" 'publication authority is confirmed'
+  assert_output_contains "$bitbucket_update" 'source hash, destination hash, title, and description to match'
+  assert_output_contains "$bitbucket_update" 'concurrent human'
+  assert_output_contains "$bitbucket_update" 'publish stale proof'
+  assert_output_contains "$bitbucket_update" 'twg bb pull-requests update \'
+  assert_output_contains "$bitbucket_update" '  --pull-request <pr-id> \'
+  assert_output_contains "$bitbucket_update" '  --description-file <draft-markdown-path> \'
+  assert_output_contains "$bitbucket_update" '  --image <first-image-path> \'
+  assert_output_contains "$bitbucket_update" '  --image-name <pr-id>-<run-unique-suffix>-<first-descriptive-name.png> \'
+  assert_output_contains "$bitbucket_update" '  --workspace <workspace-slug> \'
+  assert_output_contains "$bitbucket_update" '  --repo <repository-slug> \'
+  assert_output_contains "$bitbucket_update" '  -o json'
+  assert_output_contains "$bitbucket_update" 'extension matching the detected'
+  assert_output_contains "$bitbucket_update" 'Bitbucket download names are repository-wide keys'
+  assert_output_contains "$bitbucket_update" 'run-unique timestamp or nonce in every name'
+  bitbucket_verify="$(sed -n '/^## Verify the finished PR$/,$p' "$skill/references/bitbucket.md")"
+  assert_output_contains "$bitbucket_verify" 'full read-only `get` command again'
+  assert_output_contains "$bitbucket_verify" 'source and destination'
+  assert_output_contains "$bitbucket_verify" 'commit hashes to match the final heads'
+  assert_output_contains "$bitbucket_verify" 'complete description'
+  assert_output_contains "$bitbucket_verify" 'every intended section'
+  assert_output_contains "$bitbucket_verify" 'no literal `{{image...}}` placeholder'
+  assert_output_contains "$bitbucket_verify" 'rendered pixels'
   assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
@@ -838,6 +873,100 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
+  net_diff_help="$("$skill/scripts/pr-net-diff" --help)"
+  assert_output_contains "$net_diff_help" "--base"
+  assert_output_contains "$net_diff_help" "--head"
+  wizard_output="$("$skill/scripts/pr-net-diff" --json --wizard </dev/null)"
+  assert_output_contains "$wizard_output" 'Command wizard'
+  assert_output_contains "$wizard_output" 'Current command'
+  assert_output_not_contains "$wizard_output" '"base": {'
+  net_diff_fixture="$(mktemp -d)"
+  git -C "$net_diff_fixture" init -q -b main
+  git -C "$net_diff_fixture" config user.name "Skills Test"
+  git -C "$net_diff_fixture" config user.email "skills-test@example.com"
+  printf 'base\n' > "$net_diff_fixture/base.txt"
+  git -C "$net_diff_fixture" add base.txt && git -C "$net_diff_fixture" commit -qm "Add base"
+  base_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  printf 'destination\n' > "$net_diff_fixture/destination.txt"
+  git -C "$net_diff_fixture" add destination.txt && git -C "$net_diff_fixture" commit -qm "Advance destination"
+  destination_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  git -C "$net_diff_fixture" checkout -qb source "$base_sha"
+  printf 'selected\n' > "$net_diff_fixture/feature.txt"
+  git -C "$net_diff_fixture" add feature.txt && git -C "$net_diff_fixture" commit -qm "Add selected change"
+  printf 'transient\n' > "$net_diff_fixture/transient.txt"
+  git -C "$net_diff_fixture" add transient.txt && git -C "$net_diff_fixture" commit -qm "Add transient change"
+  git -C "$net_diff_fixture" rm -q transient.txt && git -C "$net_diff_fixture" commit -qm "Revert transient change"
+  selected_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  git -C "$net_diff_fixture" checkout -qb observer "$base_sha"
+  printf 'observer\n' > "$net_diff_fixture/observer.txt"
+  git -C "$net_diff_fixture" add observer.txt && git -C "$net_diff_fixture" commit -qm "Advance observer"
+  observer_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  explicit_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$destination_sha" --head "$selected_sha" --json)"
+  assert_output_contains "$explicit_net_diff" '"source": "explicit"'
+  assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
+  assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
+  assert_output_contains "$explicit_net_diff" '"path": "feature.txt"'
+  assert_output_not_contains "$explicit_net_diff" '"path": "destination.txt"'
+  assert_output_not_contains "$explicit_net_diff" '"path": "observer.txt"'
+  assert_output_contains "$explicit_net_diff" 'Add selected change'
+  assert_output_contains "$explicit_net_diff" '"transient.txt"'
+  assert_output_not_contains "$explicit_net_diff" 'Advance observer'
+  requested_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$destination_sha" --head "$selected_sha" --json feature.txt observer.txt)"
+  assert_output_contains "$requested_net_diff" '"path": "feature.txt"'
+  assert_output_contains "$requested_net_diff" '"status": "modified"'
+  assert_output_contains "$requested_net_diff" '"path": "observer.txt"'
+  assert_output_contains "$requested_net_diff" '"status": "not touched in branch"'
+  explicit_markdown="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$destination_sha" --head "$selected_sha" --markdown)"
+  assert_output_contains "$explicit_markdown" "Selected base: $destination_sha ${destination_sha:0:12}"
+  assert_output_contains "$explicit_markdown" "Comparison base: ${base_sha:0:12}"
+  assert_output_contains "$explicit_markdown" "Head: ${selected_sha:0:12}"
+  assert_output_contains "$explicit_markdown" "transient.txt"
+  fake_gh_dir="$net_diff_fixture/fake-bin"
+  mkdir "$fake_gh_dir"
+  printf '%s\n' '#!/usr/bin/env bash' '[[ "$#" -eq 4 && "$1" == "pr" && "$2" == "view" && "$3" == "--json" && "$4" == "baseRefName,baseRefOid" ]] || exit 64' "printf '%s\\n' '{\"baseRefName\":\"not-local\",\"baseRefOid\":\"$destination_sha\"}'" > "$fake_gh_dir/gh"
+  chmod +x "$fake_gh_dir/gh"
+  explicit_net_diff="$(cd "$net_diff_fixture" && PATH="$fake_gh_dir:$PATH" "$skill/scripts/pr-net-diff" --json)"
+  assert_output_contains "$explicit_net_diff" '"source": "gh pr view"'
+  assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
+  assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$observer_sha\""
+  assert_output_contains "$explicit_net_diff" '"path": "observer.txt"'
+  explicit_net_diff="$(cd "$net_diff_fixture" && PATH="$fake_gh_dir:$PATH" "$skill/scripts/pr-net-diff" --head "$selected_sha" --json)"
+  assert_output_contains "$explicit_net_diff" '"source": "gh pr view"'
+  assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
+  assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
+  assert_output_contains "$explicit_net_diff" '"path": "feature.txt"'
+  assert_output_not_contains "$explicit_net_diff" '"path": "observer.txt"'
+  git -C "$net_diff_fixture" update-ref refs/tags/--destination "$destination_sha"
+  git -C "$net_diff_fixture" update-ref refs/tags/--source "$selected_sha"
+  explicit_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base=--destination --head=--source --json)"
+  assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
+  git -C "$net_diff_fixture" branch shared "$destination_sha"
+  git -C "$net_diff_fixture" update-ref refs/tags/shared "$selected_sha"
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base shared --json 2>ambiguous-base.err)"; then fail "expected ambiguous base to fail"; fi
+  [[ -z "$invalid_stdout" ]] || fail "ambiguous base must not emit stdout"
+  assert_contains "$net_diff_fixture/ambiguous-base.err" 'Invalid base ref "shared"'
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --head shared --json 2>ambiguous-head.err)"; then fail "expected ambiguous head to fail"; fi
+  [[ -z "$invalid_stdout" ]] || fail "ambiguous head must not emit stdout"
+  assert_contains "$net_diff_fixture/ambiguous-head.err" 'Invalid head ref "shared"'
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base missing-ref --json 2>invalid-base.err)"; then fail "expected invalid base to fail"; fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/invalid-base.err" ]] || fail "invalid base must report only on stderr"
+  assert_contains "$net_diff_fixture/invalid-base.err" 'Invalid base ref "missing-ref"'
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --head missing-ref --json 2>invalid-head.err)"; then fail "expected invalid head to fail"; fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/invalid-head.err" ]] || fail "invalid head must report only on stderr"
+  assert_contains "$net_diff_fixture/invalid-head.err" 'Invalid head ref "missing-ref"'
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --json --base 2>missing-value.err)"; then fail "expected missing flag value to fail"; fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/missing-value.err" ]] || fail "parse failures must report only on stderr"
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --json --unknown 2>unknown-flag.err)"; then fail "expected unknown flag to fail"; fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/unknown-flag.err" ]] || fail "unknown flags must report only on stderr"
+  unrelated_tree="$(printf '' | git -C "$net_diff_fixture" mktree)"
+  unrelated_sha="$(printf 'Unrelated\n' | git -C "$net_diff_fixture" commit-tree "$unrelated_tree")"
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$base_sha" --head "$unrelated_sha" --json 2>unrelated.err)"; then fail "expected unrelated refs to fail"; fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/unrelated.err" ]] || fail "unrelated refs must report only on stderr"
+  rm -rf "$net_diff_fixture"
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "copyable text for textual state"
   assert_contains "$skill/src/NetDiff.ts" "Compare direct-base and PR outcomes when the baseline is meaningful and reproducible"
