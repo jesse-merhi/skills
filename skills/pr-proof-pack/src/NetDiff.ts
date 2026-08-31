@@ -1,12 +1,25 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 
-import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { CheckedProcessError, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 
 const PullRequestBase = Schema.Struct({ baseRefName: Schema.String, baseRefOid: Schema.String })
 const capture = checkedTrimmedText
 const git = (args: ReadonlyArray<string>) => capture("git", args)
 const optionalGit = (args: ReadonlyArray<string>) => git(args).pipe(Effect.option)
+const resolveCommit = Effect.fn("NetDiff.resolveCommit")(function*(kind: "base" | "head", ref: string) {
+  const revision = `${ref}^{commit}`
+  const contextualize = (error: CheckedProcessError) => new CheckedProcessError({
+    command: error.command, exitCode: error.exitCode, stderr: error.stderr,
+    message: `Invalid ${kind} ref ${JSON.stringify(ref)}: ${error.message}`, cause: error
+  })
+  const knownRefs = new Set((yield* git(["for-each-ref", "--format=%(refname)"])).split("\n"))
+  const candidates = (ref.startsWith("refs/") ? [ref] : [`refs/${ref}`, `refs/tags/${ref}`, `refs/heads/${ref}`, `refs/remotes/${ref}`, `refs/remotes/${ref}/HEAD`]).filter((candidate) => knownRefs.has(candidate))
+  if (candidates.length > 1) {
+    return yield* new CheckedProcessError({ command: "git rev-parse", exitCode: 128, stderr: "", message: `Invalid ${kind} ref ${JSON.stringify(ref)}: ambiguous ref matches ${candidates.join(", ")}` })
+  }
+  return yield* git(["rev-parse", "--verify", "--end-of-options", revision]).pipe(Effect.mapError(contextualize))
+})
 
 export interface NetDiffReport {
   readonly base: { readonly source: string; readonly ref: string; readonly sha: string; readonly comparisonBase: string }
@@ -146,7 +159,7 @@ export const proofHintForPath = (path: string) => {
 
 const resolveBase = Effect.fn("NetDiff.resolveBase")(function*(head: string, explicitBase?: string) {
   if (explicitBase !== undefined) {
-    const sha = yield* git(["rev-parse", "--verify", `${explicitBase}^{commit}`])
+    const sha = yield* resolveCommit("base", explicitBase)
     const comparisonBase = yield* git(["merge-base", sha, head])
     return { source: "explicit", ref: explicitBase, sha, comparisonBase }
   }
@@ -176,7 +189,7 @@ const resolveBase = Effect.fn("NetDiff.resolveBase")(function*(head: string, exp
 })
 
 export const buildNetDiff = Effect.fn("NetDiff.build")(function*(paths: ReadonlyArray<string>, target: NetDiffTarget = {}) {
-  const head = yield* git(["rev-parse", "--verify", `${target.head ?? "HEAD"}^{commit}`])
+  const head = yield* resolveCommit("head", target.head ?? "HEAD")
   const base = yield* resolveBase(head, target.base)
   const requestedPaths = paths.map((path) => path.replace(/^(?:\.\/)+/u, ""))
   const pathspec = requestedPaths.length === 0 ? [] : ["--", ...requestedPaths]
