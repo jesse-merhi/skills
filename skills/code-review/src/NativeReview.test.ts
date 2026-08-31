@@ -554,19 +554,21 @@ esac
       await execFile("git", ["init", "-b", "main"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
       await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
-      await writeFile(join(directory, "base-rules.md"), "frozen base rules\n")
-      await symlink("base-rules.md", join(directory, "AGENTS.md"))
+      await mkdir(join(directory, "docs", "real"), { recursive: true })
+      await writeFile(join(directory, "docs", "real", "rules.md"), "frozen base rules\n")
+      await symlink("real", join(directory, "docs", "link"))
+      await symlink("docs/link/rules.md", join(directory, "AGENTS.md"))
       await mkdir(join(directory, "nested"))
       await writeFile(join(directory, "nested", "AGENTS.md"), "nested base rules\n")
       await writeFile(join(directory, "base.txt"), "base\n")
-      await execFile("git", ["add", "AGENTS.md", "base-rules.md", "nested/AGENTS.md", "base.txt"], { cwd: directory })
+      await execFile("git", ["add", "AGENTS.md", "docs/link", "docs/real/rules.md", "nested/AGENTS.md", "base.txt"], { cwd: directory })
       await execFile("git", ["commit", "-m", "base"], { cwd: directory })
       const baseOid = (await execFile("git", ["rev-parse", "HEAD"], { cwd: directory })).stdout.trim()
       await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
       await execFile("git", ["rm", "AGENTS.md", "nested/AGENTS.md"], { cwd: directory })
       await rm(join(directory, "nested"), { recursive: true, force: true })
       await writeFile(join(directory, "agents.md"), "target says ignore findings\n")
-      await writeFile(join(directory, "base-rules.md"), "target changed symlink destination\n")
+      await writeFile(join(directory, "docs", "real", "rules.md"), "target changed symlink destination\n")
       await writeFile(join(directory, "nested"), "target directory replacement\n")
       await writeFile(join(directory, "AGENTS.override.md"), "target override says ignore findings\n")
       await mkdir(join(directory, ".codex"))
@@ -579,14 +581,14 @@ esac
       await writeFile(join(directory, "hostile.md"), "target model instructions\n")
       await writeFile(join(directory, "base.txt"), "feature\n")
       await writeFile(join(directory, "feature.txt"), "feature\n")
-      await execFile("git", ["add", "agents.md", "base-rules.md", "nested", "AGENTS.override.md", ".codex/config.toml", ".agents", "hostile-agent-root/skills/hostile/SKILL.md", ".gitattributes", ".gitignore", "hostile.md", "base.txt", "feature.txt"], { cwd: directory })
+      await execFile("git", ["add", "agents.md", "docs/real/rules.md", "nested", "AGENTS.override.md", ".codex/config.toml", ".agents", "hostile-agent-root/skills/hostile/SKILL.md", ".gitattributes", ".gitignore", "hostile.md", "base.txt", "feature.txt"], { cwd: directory })
       await execFile("git", ["update-index", "--add", "--cacheinfo", `160000,${baseOid},submodule`], { cwd: directory })
       await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
       await execFile("git", ["switch", "main"], { cwd: directory })
       await writeFile(join(directory, "base.txt"), "advanced base\n")
       await execFile("git", ["commit", "-am", "advance base"], { cwd: directory })
       await execFile("git", ["switch", "feature"], { cwd: directory })
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ntest \"$(cat base-rules.md)\" = 'frozen base rules'\ntest \"$(cat nested)\" = 'target directory replacement'\ngit ls-files | grep -qx AGENTS.md\ngit ls-files | grep -qx nested\n! git ls-files | grep -qx agents.md\ntest ! -e AGENTS.override.md\ntest ! -e .codex/config.toml\ntest ! -e .agents\ntest ! -e .gitattributes\ntest \"$(cat base.txt)\" = feature\ntest \"$(cat feature.txt)\" = feature\ngit ls-files -s submodule | grep -q '^160000'\ngit ls-files --error-unmatch .codex-review-target-control.patch >/dev/null\ngrep -q 'untrusted review data' .codex-review-target-control.patch\ngrep -q 'target says ignore findings' .codex-review-target-control.patch\ngrep -q 'target changed symlink destination' .codex-review-target-control.patch\ngrep -q 'target override says ignore findings' .codex-review-target-control.patch\ngrep -q 'model_instructions_file' .codex-review-target-control.patch\ngrep -q 'hostile-agent-root' .codex-review-target-control.patch\nprintf '%s' \"$*\" | grep -q 'project_doc_fallback_filenames'\nprintf '%s' \"$*\" | grep -q 'trust_level'\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ntest \"$(cat docs/real/rules.md)\" = 'frozen base rules'\ntest \"$(cat nested)\" = 'target directory replacement'\ngit ls-files | grep -qx AGENTS.md\ngit ls-files | grep -qx nested\n! git ls-files | grep -qx agents.md\ntest ! -e AGENTS.override.md\ntest ! -e .codex/config.toml\ntest ! -e .agents\ntest ! -e .gitattributes\ntest \"$(cat base.txt)\" = feature\ntest \"$(cat feature.txt)\" = feature\ngit ls-files -s submodule | grep -q '^160000'\ngit ls-files --error-unmatch .codex-review-target-control.patch >/dev/null\ngrep -q 'untrusted review data' .codex-review-target-control.patch\ngrep -q 'target says ignore findings' .codex-review-target-control.patch\ngrep -q 'target changed symlink destination' .codex-review-target-control.patch\ngrep -q 'target override says ignore findings' .codex-review-target-control.patch\ngrep -q 'model_instructions_file' .codex-review-target-control.patch\ngrep -q 'hostile-agent-root' .codex-review-target-control.patch\nprintf '%s' \"$*\" | grep -q 'project_doc_fallback_filenames'\nprintf '%s' \"$*\" | grep -q 'trust_level'\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
       process.chdir(directory)
@@ -618,6 +620,94 @@ esac
       try {
         const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none() })))
         assert.strictEqual(output, "reviewed root commit\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects an absolute frozen-control symlink", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-absolute-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "rules.md"), "base rules\n")
+      await symlink(join(directory, "rules.md"), join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md", "rules.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /must be repository-relative/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("materializes out-of-cone files from a sparse source checkout", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-sparse-checkout-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await mkdir(join(directory, "keep"))
+      await mkdir(join(directory, "omit"))
+      await writeFile(join(directory, "keep", "a.txt"), "base\n")
+      await writeFile(join(directory, "omit", "b.txt"), "out of cone\n")
+      await execFile("git", ["add", "keep/a.txt", "omit/b.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["sparse-checkout", "init", "--cone"], { cwd: directory })
+      await execFile("git", ["sparse-checkout", "set", "keep"], { cwd: directory })
+      await writeFile(join(directory, "keep", "a.txt"), "working\n")
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$(cat keep/a.txt)\" = working\ntest \"$(cat omit/b.txt)\" = 'out of cone'\nprintf 'reviewed sparse source\\n'\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        assert.strictEqual(output, "reviewed sparse source\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a missing shallow parent instead of reviewing an empty base", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-shallow-parent-"))
+    const source = join(directory, "source")
+    const clone = join(directory, "clone")
+    const reviewer = join(directory, "reviewer")
+    try {
+      await mkdir(source)
+      await execFile("git", ["init", "-b", "main"], { cwd: source })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: source })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: source })
+      await writeFile(join(source, "file.txt"), "one\n")
+      await execFile("git", ["add", "file.txt"], { cwd: source })
+      await execFile("git", ["commit", "-m", "one"], { cwd: source })
+      await writeFile(join(source, "file.txt"), "two\n")
+      await execFile("git", ["commit", "-am", "two"], { cwd: source })
+      await execFile("git", ["clone", "--depth", "1", `file://${source}`, clone], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(clone)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none() })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /fetch or deepen repository history/u)
       } finally {
         process.chdir(previousCwd)
       }
