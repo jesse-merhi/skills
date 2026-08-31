@@ -20,10 +20,11 @@ must satisfy the native clean stop condition before Phase 2 begins. Phase 2 must
 then stay in the cold-review loop until cold review is clean on the final target
 after the last accepted cold-review fix and affected validation.
 
-Phase 1 uses the harness-native review engine: bare `codex review` in Codex,
-the built-in `code-review` workflow in Claude Code. If the user names an
-engine, that engine wins. `review-until-clean` owns engine selection and
-fallback rules.
+Phase 1 uses the harness-native review engine through this skill's transport:
+`scripts/codex-review` in Codex, or the built-in `code-review` workflow in
+Claude Code. If the user names an engine, that engine wins.
+`review-until-clean` owns engine selection and fallback rules. Never replace the
+Codex helper with bare `codex review`; it does not enforce the frozen envelope.
 
 Treat every external native-review session as temporary. Capture its task or
 session ID when it is created, collect its result, then archive it in guaranteed

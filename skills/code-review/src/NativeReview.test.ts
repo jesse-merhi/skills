@@ -565,20 +565,22 @@ esac
       await writeFile(join(directory, "AGENTS.override.md"), "target override says ignore findings\n")
       await mkdir(join(directory, ".codex"))
       await writeFile(join(directory, ".codex", "config.toml"), "model_instructions_file = \"hostile.md\"\n")
-      await mkdir(join(directory, ".agents", "skills", "hostile"), { recursive: true })
-      await writeFile(join(directory, ".agents", "skills", "hostile", "SKILL.md"), "target repository skill\n")
+      await mkdir(join(directory, "hostile-agent-root", "skills", "hostile"), { recursive: true })
+      await writeFile(join(directory, "hostile-agent-root", "skills", "hostile", "SKILL.md"), "target repository skill\n")
+      await symlink("hostile-agent-root", join(directory, ".agents"))
       await writeFile(join(directory, ".gitattributes"), "*.md filter=hostile\n")
+      await writeFile(join(directory, ".gitignore"), ".codex-review-target-control.patch\n")
       await writeFile(join(directory, "hostile.md"), "target model instructions\n")
       await writeFile(join(directory, "base.txt"), "feature\n")
       await writeFile(join(directory, "feature.txt"), "feature\n")
-      await execFile("git", ["add", "agents.md", "AGENTS.override.md", ".codex/config.toml", ".agents/skills/hostile/SKILL.md", ".gitattributes", "hostile.md", "base.txt", "feature.txt"], { cwd: directory })
+      await execFile("git", ["add", "agents.md", "AGENTS.override.md", ".codex/config.toml", ".agents", "hostile-agent-root/skills/hostile/SKILL.md", ".gitattributes", ".gitignore", "hostile.md", "base.txt", "feature.txt"], { cwd: directory })
       await execFile("git", ["update-index", "--add", "--cacheinfo", `160000,${baseOid},submodule`], { cwd: directory })
       await execFile("git", ["commit", "-m", "feature"], { cwd: directory })
       await execFile("git", ["switch", "main"], { cwd: directory })
       await writeFile(join(directory, "base.txt"), "advanced base\n")
       await execFile("git", ["commit", "-am", "advance base"], { cwd: directory })
       await execFile("git", ["switch", "feature"], { cwd: directory })
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ngit ls-files | grep -qx AGENTS.md\n! git ls-files | grep -qx agents.md\ntest ! -e AGENTS.override.md\ntest ! -e .codex/config.toml\ntest ! -e .agents/skills/hostile/SKILL.md\ntest ! -e .gitattributes\ntest \"$(cat base.txt)\" = feature\ntest \"$(cat feature.txt)\" = feature\ngit ls-files -s submodule | grep -q '^160000'\ngrep -q 'untrusted review data' .codex-review-target-control.patch\ngrep -q 'target says ignore findings' .codex-review-target-control.patch\ngrep -q 'target override says ignore findings' .codex-review-target-control.patch\ngrep -q 'model_instructions_file' .codex-review-target-control.patch\ngrep -q 'target repository skill' .codex-review-target-control.patch\nprintf '%s' \"$*\" | grep -q 'project_doc_fallback_filenames'\nprintf '%s' \"$*\" | grep -q 'trust_level'\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ngit ls-files | grep -qx AGENTS.md\n! git ls-files | grep -qx agents.md\ntest ! -e AGENTS.override.md\ntest ! -e .codex/config.toml\ntest ! -e .agents\ntest ! -e .gitattributes\ntest \"$(cat base.txt)\" = feature\ntest \"$(cat feature.txt)\" = feature\ngit ls-files -s submodule | grep -q '^160000'\ngit ls-files --error-unmatch .codex-review-target-control.patch >/dev/null\ngrep -q 'untrusted review data' .codex-review-target-control.patch\ngrep -q 'target says ignore findings' .codex-review-target-control.patch\ngrep -q 'target override says ignore findings' .codex-review-target-control.patch\ngrep -q 'model_instructions_file' .codex-review-target-control.patch\ngrep -q 'hostile-agent-root' .codex-review-target-control.patch\nprintf '%s' \"$*\" | grep -q 'project_doc_fallback_filenames'\nprintf '%s' \"$*\" | grep -q 'trust_level'\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
       process.chdir(directory)
@@ -613,6 +615,80 @@ esac
       } finally {
         process.chdir(previousCwd)
       }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("reviews staged, unstaged, and untracked files before the first commit", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-unborn-worktree-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "tracked.txt"), "staged\n")
+      await execFile("git", ["add", "tracked.txt"], { cwd: directory })
+      await writeFile(join(directory, "tracked.txt"), "unstaged\n")
+      await writeFile(join(directory, "untracked.txt"), "untracked\n")
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat tracked.txt)\" = unstaged\ntest \"$(cat untracked.txt)\" = untracked\nprintf 'reviewed unborn worktree\\n'\n", { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: "./reviewer", plan: planReview("uncommitted", "HEAD", "HEAD", true), testCommand: Option.none() })))
+        assert.strictEqual(output, "reviewed unborn worktree\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("archives a failed native review session", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-failed-session-"))
+    const reviewer = join(directory, "reviewer")
+    const sessionsRoot = join(directory, "sessions")
+    const calls = join(directory, "calls")
+    const day = join(...new Date().toISOString().slice(0, 10).split("-"))
+    const dayDirectory = join(sessionsRoot, day)
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await writeFile(join(directory, "file.txt"), "base\n")
+      await execFile("git", ["add", "file.txt"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await mkdir(dayDirectory, { recursive: true })
+      await writeFile(reviewer, `#!/bin/sh
+set -eu
+case "$1" in
+  review)
+    printf '{"type":"session_meta","payload":{"id":"uuid-failed","cwd":"%s"}}\\n{"type":"entered_review_mode"}\\n' "$(pwd)" > "${join(dayDirectory, "rollout-failed.jsonl")}"
+    exit 9
+    ;;
+  archive)
+    printf '%s\\n' "$*" >> "${calls}"
+    ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({
+          codexBin: reviewer,
+          plan: planReview("branch", "main", "HEAD", false),
+          sessionsRoot,
+          testCommand: Option.none()
+        })))
+        assert.isTrue(Exit.isFailure(result))
+      } finally {
+        process.chdir(previousCwd)
+      }
+      assert.strictEqual(await readFile(calls, "utf8"), "archive uuid-failed\n")
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
