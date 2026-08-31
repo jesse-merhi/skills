@@ -260,10 +260,12 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
   yield* fs.makeDirectory(snapshot)
   yield* checkedInherit(gitTool, ["init", "--quiet", `--object-format=${objectFormat}`], { cwd: snapshot })
   const objectDirectory = paths.join(snapshot, ".git", "objects")
+  const sourceObjectAlias = paths.join(root, "source-objects")
+  yield* fs.symlink(sourceObjectDirectory, sourceObjectAlias)
   yield* fs.makeDirectory(paths.join(objectDirectory, "info"), { recursive: true })
-  yield* fs.writeFileString(paths.join(objectDirectory, "info", "alternates"), `${sourceObjectDirectory}\n`)
+  yield* fs.writeFileString(paths.join(objectDirectory, "info", "alternates"), `${sourceObjectAlias}\n`)
   const gitEnvironment = {
-    GIT_ALTERNATE_OBJECT_DIRECTORIES: sourceObjectDirectory,
+    GIT_ALTERNATE_OBJECT_DIRECTORIES: sourceObjectAlias,
     GIT_OBJECT_DIRECTORY: objectDirectory
   }
   const processOptions = (options?: CheckedProcessOptions): CheckedProcessOptions => ({
@@ -414,6 +416,10 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
       baseEntriesByFoldedPath.set(folded, entries)
     }
     const baseControlPaths = new Set(baseEntries.filter((entry) => isControlFile(entry.path)).map((entry) => entry.path))
+    const controlGitlink = baseEntries.find((entry) => entry.mode === "160000" && baseControlPaths.has(entry.path))
+    if (controlGitlink !== undefined) {
+      return yield* new ReviewSnapshotError({ message: `frozen review control path cannot be a gitlink: ${controlGitlink.path}` })
+    }
     const protectedPrefixes = new Set<string>()
     const pendingLinks = baseEntries.filter((entry) => entry.mode === "120000" && baseControlPaths.has(entry.path))
     const processedLinks = new Set<string>()
@@ -678,6 +684,11 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
     const reviewCommit = yield* createCommit(reviewTree, "review target", base)
     yield* gitInherit(["reset", "--hard", base], { cwd: snapshot })
     yield* gitInherit(["checkout-index", "-a", "-f", "--ignore-skip-worktree-bits"], { cwd: snapshot })
+    const sourceDependencies = paths.join(repo, "node_modules")
+    const snapshotDependencies = paths.join(snapshot, "node_modules")
+    if ((yield* fs.exists(sourceDependencies)) && !(yield* fs.exists(snapshotDependencies))) {
+      yield* fs.symlink(sourceDependencies, snapshotDependencies)
+    }
     return yield* use(snapshot, reviewCommit)
   })
   return yield* lifecycle

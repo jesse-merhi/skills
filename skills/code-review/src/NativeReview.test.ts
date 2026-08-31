@@ -589,6 +589,8 @@ esac
       await execFile("git", ["add", "embedded.txt"], { cwd: embeddedRepository })
       await execFile("git", ["commit", "--quiet", "-m", "embedded"], { cwd: embeddedRepository })
       const embeddedHead = (await execFile("git", ["rev-parse", "HEAD"], { cwd: embeddedRepository })).stdout.trim()
+      await mkdir(join(directory, "node_modules", "effect"), { recursive: true })
+      await writeFile(join(directory, "node_modules", "effect", "AGENTS.md"), "installed dependency guidance\n")
       await writeFile(reviewer, `#!/bin/sh
 set -eu
 test "$1" = review
@@ -613,6 +615,7 @@ test "$(git show "$target:untracked-link")" = untracked.txt
 test "$(git show "$target:untracked-directory-link")" = untracked-directory
 git ls-tree "$target" untracked-directory-link | grep -q '^120000 blob '
 git ls-tree "$target" embedded | grep -q "^160000 commit ${embeddedHead}"
+test "$(cat node_modules/effect/AGENTS.md)" = 'installed dependency guidance'
 git init --quiet "${nestedRepository}"
 git -C "${nestedRepository}" config user.email test@example.com
 git -C "${nestedRepository}" config user.name Test
@@ -621,7 +624,7 @@ git -C "${nestedRepository}" add nested.txt
 git -C "${nestedRepository}" commit --quiet -m nested
 printf 'reviewed combined snapshot\n'
 `, { mode: 0o700 })
-      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
+      await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\nnode_modules/\n")
       const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
       assert.match(dryRun, /snapshot: untouched frozen-base checkout with target diff as a synthetic commit/u)
       const previousCwd = process.cwd()
@@ -646,7 +649,7 @@ printf 'reviewed combined snapshot\n'
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  })
+  }, 30_000)
 
   it("keeps base instructions active and exposes target instructions only as review data", async () => {
     const directory = await mkdtemp(join(tmpdir(), "review-instruction-envelope-"))
