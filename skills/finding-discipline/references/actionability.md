@@ -68,8 +68,8 @@ UI proof unless there is stable behavior or state worth automating.
 
 An actionable runtime finding records contract evidence, root cause, and
 intervention justification in addition to its risk rating. An actionable
-maintenance finding records the same fields in addition to maintenance evidence
-and present cost. A patch or deferral also requires a recommended repair. A
+maintenance finding records root cause and intervention justification in
+addition to maintenance evidence and present cost. A patch or deferral also requires a recommended repair. A
 unresolved consultation may omit it only when its decision records why no
 repair is yet supported.
 

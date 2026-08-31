@@ -232,7 +232,8 @@ Consistency rules:
   residual -> deferred with required decision text and no patch
   deferred legacy record without disposition -> unresolved until re-recorded
   reject -> rejected and no patch
-  accept|consult|follow-up|residual -> required repair fields
+  accept|follow-up|residual and resolved consult -> required repair fields
+  unresolved consult -> may omit recommended fix with decision rationale
   rejected or investigating candidate -> omit repair fields
   rejected candidate -> required rejection gate and decision rationale
   handling consult -> consult when the risk matrix does not reject or investigate
