@@ -654,7 +654,7 @@ esac
       await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
       await writeFile(join(directory, "root.txt"), "root\n")
       await execFile("git", ["add", "root.txt"], { cwd: directory })
-      await execFile("git", ["commit", "-m", "root"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "root", "-m", "parent message text is not metadata"], { cwd: directory })
       await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat root.txt)\" = root\nprintf 'reviewed root commit\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
@@ -777,6 +777,39 @@ esac
       try {
         const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
         assert.strictEqual(output, "reviewed sparse source\n")
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a tracked source redirected outside the repository", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-external-source-"))
+    const repo = join(directory, "repo")
+    const external = join(directory, "external")
+    const reviewer = join(directory, "reviewer")
+    try {
+      await mkdir(repo)
+      await mkdir(external)
+      await execFile("git", ["init", "-b", "main"], { cwd: repo })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: repo })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: repo })
+      await mkdir(join(repo, "dir"))
+      await writeFile(join(repo, "dir", "secret.txt"), "repository value\n")
+      await execFile("git", ["add", "dir/secret.txt"], { cwd: repo })
+      await execFile("git", ["commit", "-m", "base"], { cwd: repo })
+      await writeFile(join(external, "secret.txt"), "host secret\n")
+      await rm(join(repo, "dir"), { recursive: true, force: true })
+      await symlink(external, join(repo, "dir"))
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(repo)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("whole", "main", "HEAD", true), testCommand: Option.none() })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /resolves outside the repository/u)
       } finally {
         process.chdir(previousCwd)
       }

@@ -245,11 +245,20 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const repo = yield* git(["rev-parse", "--show-toplevel"])
+  const realRepo = yield* fs.realPath(repo)
   const gitTool = yield* trustedExecutable("git")
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "review-snapshot." })
   const snapshot = paths.join(root, "worktree")
   const cleanup = checkedText(gitTool, ["worktree", "remove", "--force", snapshot], { cwd: repo }).pipe(Effect.ignore)
   const lifecycle = Effect.gen(function*() {
+    const assertSourceInsideRepo = Effect.fn("NativeReview.assertSourceInsideRepo")(function*(file: string) {
+      const source = paths.resolve(repo, file)
+      const realParent = yield* fs.realPath(paths.dirname(source))
+      const relative = paths.relative(realRepo, realParent)
+      if (paths.isAbsolute(relative) || relative === ".." || relative.startsWith(`..${paths.sep}`)) {
+        return yield* new ReviewSnapshotError({ message: `working review path resolves outside the repository: ${file}` })
+      }
+    })
     const createCommit = Effect.fn("NativeReview.createCommit")(function*(tree: string, message: string, parent?: string) {
       return yield* checkedTrimmedText(gitTool, [
         "-c", "user.name=Review Snapshot",
@@ -279,9 +288,10 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     if (typeof resolvedBase === "string") base = resolvedBase
     else if (Option.isSome(resolvedBase)) base = resolvedBase.value
     else {
-      const parentLines = unborn
-        ? []
-        : (yield* checkedText(gitTool, ["cat-file", "-p", head], { cwd: repo })).split("\n").filter((line) => line.startsWith("parent "))
+      const commitHeaders = unborn
+        ? ""
+        : (yield* checkedText(gitTool, ["cat-file", "-p", head], { cwd: repo })).split("\n\n", 1)[0] ?? ""
+      const parentLines = commitHeaders.split("\n").filter((line) => line.startsWith("parent "))
       if (!target.envelope.allowEmptyBase || parentLines.length > 0) {
         const hint = parentLines.length > 0 ? "; fetch or deepen repository history" : ""
         return yield* new ReviewSnapshotError({ message: `could not resolve review base ${target.envelope.base}${hint}` })
@@ -471,12 +481,14 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         const destination = paths.resolve(snapshot, file)
         if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy tracked path outside snapshot: ${file}` })
         yield* fs.remove(destination, { force: true, recursive: true })
+        const sourceExists = Option.isSome(linkTarget) || (yield* fs.exists(source).pipe(Effect.orElseSucceed(() => false)))
+        if (!sourceExists) continue
+        yield* assertSourceInsideRepo(file)
         if (Option.isSome(linkTarget)) {
           yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
           yield* fs.symlink(linkTarget.value, destination)
           continue
         }
-        if (!(yield* fs.exists(source).pipe(Effect.orElseSucceed(() => false)))) continue
         const sourceInfo = yield* fs.stat(source).pipe(Effect.option)
         if (Option.isSome(sourceInfo) && sourceInfo.value.type === "Directory") continue
         yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
@@ -490,6 +502,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     const untrackedControls = new Array<string>()
     const untrackedCode = new Array<string>()
     for (const file of untrackedFiles) {
+      yield* assertSourceInsideRepo(file)
       const source = paths.resolve(repo, file)
       const redirectsProtectedPath = isProtectedAncestor(file) && Option.isSome(yield* fs.readLink(source).pipe(Effect.option))
       if (isEnvelopeControl(file) || redirectsProtectedPath) untrackedControls.push(file)

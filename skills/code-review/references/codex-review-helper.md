@@ -54,9 +54,12 @@ working-tree changes, so out-of-cone tracked context remains available. A
 tracked path changed into a directory is rebuilt from its individually filtered
 untracked children rather than recursively copied. Tracked symlink changes are
 copied as symlinks before any target-following filesystem checks. Dynamic Git
-paths use literal pathspecs, so target filenames cannot alter snapshot commands.
-Commit mode rejects an unavailable shallow parent instead of misclassifying the
-target as a root commit; fetch or deepen that history before retrying.
+paths use literal pathspecs, and every working-tree source parent must resolve
+inside the repository, so filenames and ancestor symlinks cannot alter snapshot
+commands or import host files. Commit mode reads parent metadata only from the
+commit header and rejects an unavailable shallow parent instead of
+misclassifying the target as a root commit; fetch or deepen that history before
+retrying.
 
 A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
