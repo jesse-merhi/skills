@@ -27,6 +27,12 @@ Git's commit diff. The repository, envelope, and synthetic commit are removed af
 Synthetic blobs, trees, and commits live in that repository's scoped temporary object database
 that reads the source repository through Git alternates; cleanup removes those
 objects rather than leaving reviewed untracked bytes in the source repository.
+The temporary repository uses the source repository's object format. Before it
+checks out the frozen base, the source clone materializes required commit, tree,
+blob, and index objects, so filtered clones can satisfy the local alternate.
+The alternate is configured inside the temporary repository instead of exported
+to the reviewer process, leaving nested Git repositories used by tests and tools
+on their own object databases.
 
 Case-insensitive variants of `AGENTS.md` and `AGENTS.override.md`, the `.agents`
 instruction root including `.agents/skills/**`, `.codex/config.toml`,

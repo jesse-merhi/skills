@@ -242,11 +242,7 @@ const isControlFile = (file: string) => {
     instructionNames.some((name) => normalized === name.toLowerCase() || normalized.endsWith(`/${name.toLowerCase()}`))
 }
 
-const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
-  cwd: string,
-  commit: string,
-  environment: Record<string, string>
-) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
+const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, commit: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const repo = yield* git(["rev-parse", "--show-toplevel"])
@@ -254,9 +250,13 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
   const gitTool = yield* trustedExecutable("git")
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "review-snapshot." })
   const snapshot = paths.join(root, "worktree")
-  const objectDirectory = paths.join(root, "objects")
   const sourceObjectDirectory = yield* checkedTrimmedText(gitTool, ["rev-parse", "--path-format=absolute", "--git-path", "objects"], { cwd: repo })
-  yield* fs.makeDirectory(objectDirectory, { recursive: true })
+  const objectFormat = yield* checkedTrimmedText(gitTool, ["rev-parse", "--show-object-format"], { cwd: repo })
+  yield* fs.makeDirectory(snapshot)
+  yield* checkedInherit(gitTool, ["init", "--quiet", `--object-format=${objectFormat}`], { cwd: snapshot })
+  const objectDirectory = paths.join(snapshot, ".git", "objects")
+  yield* fs.makeDirectory(paths.join(objectDirectory, "info"), { recursive: true })
+  yield* fs.writeFileString(paths.join(objectDirectory, "info", "alternates"), `${sourceObjectDirectory}\n`)
   const gitEnvironment = {
     GIT_ALTERNATE_OBJECT_DIRECTORIES: sourceObjectDirectory,
     GIT_OBJECT_DIRECTORY: objectDirectory
@@ -269,6 +269,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
   const gitText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedText(gitTool, args, processOptions(options))
   const gitTrimmedText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedTrimmedText(gitTool, args, processOptions(options))
   const gitInherit = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedInherit(gitTool, args, processOptions(options))
+  const sourceText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedText(gitTool, args, options)
   const lifecycle = Effect.gen(function*() {
     const assertSourceInsideRepo = Effect.fn("NativeReview.assertSourceInsideRepo")(function*(file: string) {
       const source = paths.resolve(repo, file)
@@ -311,7 +312,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
         "commit-tree", tree,
         ...(parent === undefined ? [] : ["-p", parent]),
         "-m", message
-      ], { cwd: repo })
+      ], { cwd: snapshot })
     })
     let emptyCommit: string | undefined
     const resolveEmptyCommit = Effect.fn("NativeReview.resolveEmptyCommit")(function*() {
@@ -330,9 +331,14 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       ? yield* gitTrimmedText(["merge-base", target.envelope.base, head], { cwd: repo })
       : yield* gitTrimmedText(["rev-parse", "--verify", `${target.envelope.base}^{commit}`], { cwd: repo }).pipe(Effect.option)
     let base: string
-    if (typeof resolvedBase === "string") base = resolvedBase
-    else if (Option.isSome(resolvedBase)) base = resolvedBase.value
-    else {
+    let sourceBase: string | undefined
+    if (typeof resolvedBase === "string") {
+      base = resolvedBase
+      sourceBase = resolvedBase
+    } else if (Option.isSome(resolvedBase)) {
+      base = resolvedBase.value
+      sourceBase = resolvedBase.value
+    } else {
       const commitHeaders = unborn
         ? ""
         : (yield* gitText(["cat-file", "-p", head], { cwd: repo })).split("\n\n", 1)[0] ?? ""
@@ -343,8 +349,30 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       }
       base = yield* resolveEmptyCommit()
     }
-    yield* fs.makeDirectory(snapshot)
-    yield* gitInherit(["init", "--quiet"], { cwd: snapshot })
+    const materializeSourceObjects = Effect.fn("NativeReview.materializeSourceObjects")(function*(refs: ReadonlyArray<string>) {
+      const objectIds = new Set(refs)
+      for (const ref of refs) {
+        const entries = yield* sourceText(["ls-tree", "-r", "-t", "-z", ref], { cwd: repo })
+        for (const line of entries.split("\0").filter(Boolean)) {
+          const match = /^(\d{6}) [^ ]+ ([0-9a-f]+)\t/u.exec(line)
+          if (match?.[1] !== "160000" && match?.[2] !== undefined) objectIds.add(match[2])
+        }
+      }
+      if (target.envelope.includeWorkingTree) {
+        const entries = yield* sourceText(["ls-files", "-s", "-z"], { cwd: repo })
+        for (const line of entries.split("\0").filter(Boolean)) {
+          const match = /^(\d{6}) ([0-9a-f]+) /u.exec(line)
+          if (match?.[1] !== "160000" && match?.[2] !== undefined) objectIds.add(match[2])
+        }
+      }
+      if (objectIds.size > 0) {
+        yield* sourceText(["cat-file", "--batch-check=%(objectname)"], { cwd: repo, stdin: `${[...objectIds].join("\n")}\n` })
+      }
+    })
+    yield* materializeSourceObjects([
+      ...(Option.isSome(resolvedHead) ? [resolvedHead.value] : []),
+      ...(sourceBase === undefined ? [] : [sourceBase])
+    ])
     yield* gitInherit(["checkout", "--quiet", "--detach", base], { cwd: snapshot })
     const artifactPath = paths.join(snapshot, instructionArtifact)
     const artifactLink = yield* fs.readLink(artifactPath).pipe(Effect.option)
@@ -628,7 +656,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
     const reviewCommit = yield* createCommit(reviewTree, "review target", base)
     yield* gitInherit(["reset", "--hard", base], { cwd: snapshot })
     yield* gitInherit(["checkout-index", "-a", "-f", "--ignore-skip-worktree-bits"], { cwd: snapshot })
-    return yield* use(snapshot, reviewCommit, gitEnvironment)
+    return yield* use(snapshot, reviewCommit)
   })
   return yield* lifecycle
 }))
@@ -768,13 +796,13 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   // so archive it to keep the resume picker and session search lean.
   const reviewTarget = Effect.fn("NativeReview.reviewTarget")(function*(target: ReviewTarget) {
     const startedAt = yield* DateTime.now
-    return yield* withReviewSnapshot(target, Effect.fn("NativeReview.reviewEnvelope")(function*(runCwd, reviewCommit, gitEnvironment) {
+    return yield* withReviewSnapshot(target, Effect.fn("NativeReview.reviewEnvelope")(function*(runCwd, reviewCommit) {
       const trustOverride = `projects.${JSON.stringify(runCwd)}.trust_level="untrusted"`
       const review = checkedText(reviewer, [
         "review", "--commit", reviewCommit,
         "-c", "project_doc_fallback_filenames=[]",
         "-c", trustOverride
-      ], { cwd: runCwd, env: gitEnvironment, extendEnv: true })
+      ], { cwd: runCwd })
       const archive = archiveReviewSessions({
         reviewer,
         reviewCwds: [runCwd],

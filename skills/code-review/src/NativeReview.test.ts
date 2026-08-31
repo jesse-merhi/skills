@@ -511,6 +511,7 @@ esac
     const directory = await mkdtemp(join(tmpdir(), "whole-review-snapshot-"))
     const reviewer = join(directory, "reviewer")
     const reviewedCommit = join(directory, "reviewed-commit")
+    const nestedRepository = join(directory, "reviewer-nested-repository")
     try {
       await execFile("git", ["init", "-b", "main"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
@@ -566,6 +567,12 @@ git cat-file -e "$target:CASE.txt"
 git ls-tree -r --name-only "$target" | grep -qx CASE.txt
 ! git ls-tree -r --name-only "$target" | grep -qx case.txt
 test "$(git show "$target:untracked-link")" = untracked.txt
+git init --quiet "${nestedRepository}"
+git -C "${nestedRepository}" config user.email test@example.com
+git -C "${nestedRepository}" config user.name Test
+printf 'nested\n' > "${join(nestedRepository, "nested.txt")}"
+git -C "${nestedRepository}" add nested.txt
+git -C "${nestedRepository}" commit --quiet -m nested
 printf 'reviewed combined snapshot\n'
 `, { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
@@ -589,6 +596,7 @@ printf 'reviewed combined snapshot\n'
         retainedSyntheticCommit = false
       }
       assert.isFalse(retainedSyntheticCommit)
+      await execFile("git", ["cat-file", "-e", "HEAD:nested.txt"], { cwd: nestedRepository })
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
@@ -598,7 +606,7 @@ printf 'reviewed combined snapshot\n'
     const directory = await mkdtemp(join(tmpdir(), "review-instruction-envelope-"))
     const reviewer = join(directory, "reviewer")
     try {
-      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["init", "--object-format=sha256", "-b", "main"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
       await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
       await mkdir(join(directory, "docs", "real"), { recursive: true })
@@ -1025,6 +1033,42 @@ printf 'reviewed isolated instructions\n'
         const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("commit", "main", "HEAD", false), testCommand: Option.none() })))
         assert.isTrue(Exit.isFailure(result))
         if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /fetch or deepen repository history/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("materializes frozen-base objects through a partial clone before isolation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-partial-clone-"))
+    const source = join(directory, "source")
+    const clone = join(directory, "clone")
+    const reviewer = join(directory, "reviewer")
+    try {
+      await mkdir(source)
+      await execFile("git", ["init", "-b", "main"], { cwd: source })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: source })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: source })
+      await execFile("git", ["config", "uploadpack.allowFilter", "true"], { cwd: source })
+      await writeFile(join(source, "base-only.txt"), "base-only content\n")
+      await execFile("git", ["add", "base-only.txt"], { cwd: source })
+      await execFile("git", ["commit", "-m", "base"], { cwd: source })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: source })
+      await execFile("git", ["rm", "base-only.txt"], { cwd: source })
+      await writeFile(join(source, "feature.txt"), "feature\n")
+      await execFile("git", ["add", "feature.txt"], { cwd: source })
+      await execFile("git", ["commit", "-m", "feature"], { cwd: source })
+      await execFile("git", ["clone", "--filter=blob:none", "--no-local", "--no-single-branch", "--branch", "feature", `file://${source}`, clone], { cwd: directory })
+      const { stdout: missingBefore } = await execFile("git", ["rev-list", "--objects", "--all", "--missing=print"], { cwd: clone })
+      assert.match(missingBefore, /^\?/mu)
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntest \"$(cat base-only.txt)\" = 'base-only content'\ntest \"$(git show \"$3:feature.txt\")\" = feature\nprintf 'reviewed partial clone\\n'\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(clone)
+      try {
+        const output = await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "origin/main", "HEAD", false), testCommand: Option.none() })))
+        assert.strictEqual(output, "reviewed partial clone\n")
       } finally {
         process.chdir(previousCwd)
       }
