@@ -259,6 +259,13 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         return yield* new ReviewSnapshotError({ message: `working review path resolves outside the repository: ${file}` })
       }
     })
+    const assertSymlinkInsideRepo = Effect.fn("NativeReview.assertSymlinkInsideRepo")(function*(file: string, target: string) {
+      if (paths.isAbsolute(target)) return yield* new ReviewSnapshotError({ message: `target symlink escapes the review repository: ${file}` })
+      const resolved = paths.normalize(paths.join(paths.dirname(file), target))
+      if (resolved === ".." || resolved.startsWith(`..${paths.sep}`)) {
+        return yield* new ReviewSnapshotError({ message: `target symlink escapes the review repository: ${file}` })
+      }
+    })
     const createCommit = Effect.fn("NativeReview.createCommit")(function*(tree: string, message: string, parent?: string) {
       return yield* checkedTrimmedText(gitTool, [
         "-c", "user.name=Review Snapshot",
@@ -421,6 +428,13 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     const baseControls = baseEntries.filter((entry) => baseControlPaths.has(entry.path)).map((entry) => entry.path)
     const targetControls = targetEntries.filter((entry) => isEnvelopeControl(entry.path) || (entry.mode === "120000" && isProtectedAncestor(entry.path))).map((entry) => entry.path)
     const targetControlPaths = new Set(targetControls)
+    for (const entry of targetEntries) {
+      if (entry.mode !== "120000" || targetControlPaths.has(entry.path)) continue
+      const baseEntry = baseEntryByPath.get(entry.path)
+      if (baseEntry?.mode === entry.mode && baseEntry.oid === entry.oid) continue
+      const target = yield* checkedText(gitTool, ["cat-file", "blob", entry.oid], { cwd: repo })
+      yield* assertSymlinkInsideRepo(entry.path, target)
+    }
     const diffControlPaths = [...new Set([...baseControls, ...targetControls])]
     const controlDiff = Effect.fn("NativeReview.controlDiff")(function*(range: ReadonlyArray<string>) {
       const chunks = new Array<string>()
@@ -478,6 +492,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
           if (Option.isSome(linkTarget) && !isEnvelopeControl(file)) workingControlOverlays.push(`\n# Working target review-control path: ${file}\nsymlink -> ${linkTarget.value}`)
           continue
         }
+        if (Option.isSome(linkTarget)) yield* assertSymlinkInsideRepo(file, linkTarget.value)
         const destination = paths.resolve(snapshot, file)
         if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy tracked path outside snapshot: ${file}` })
         yield* fs.remove(destination, { force: true, recursive: true })
@@ -504,9 +519,15 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     for (const file of untrackedFiles) {
       yield* assertSourceInsideRepo(file)
       const source = paths.resolve(repo, file)
-      const redirectsProtectedPath = isProtectedAncestor(file) && Option.isSome(yield* fs.readLink(source).pipe(Effect.option))
-      if (isEnvelopeControl(file) || redirectsProtectedPath) untrackedControls.push(file)
-      else untrackedCode.push(file)
+      const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
+      if (isEnvelopeControl(file)) untrackedControls.push(file)
+      else if (isProtectedAncestor(file)) {
+        if (Option.isSome(linkTarget)) untrackedControls.push(file)
+        else return yield* new ReviewSnapshotError({ message: `working path blocks a frozen review control symlink destination: ${file}` })
+      } else {
+        if (Option.isSome(linkTarget)) yield* assertSymlinkInsideRepo(file, linkTarget.value)
+        untrackedCode.push(file)
+      }
     }
     for (const file of untrackedCode) {
       if (file.toLowerCase() === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })

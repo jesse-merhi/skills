@@ -56,10 +56,11 @@ untracked children rather than recursively copied. Tracked symlink changes are
 copied as symlinks before any target-following filesystem checks. Dynamic Git
 paths use literal pathspecs, and every working-tree source parent must resolve
 inside the repository, so filenames and ancestor symlinks cannot alter snapshot
-commands or import host files. Commit mode reads parent metadata only from the
-commit header and rejects an unavailable shallow parent instead of
-misclassifying the target as a root commit; fetch or deepen that history before
-retrying.
+commands or import host files. Target-controlled symlinks that point outside the
+repository fail closed in committed, staged, unstaged, and untracked state.
+Commit mode reads parent metadata only from the commit header and rejects an
+unavailable shallow parent instead of misclassifying the target as a root
+commit; fetch or deepen that history before retrying.
 
 A clean checkout resolves from `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
