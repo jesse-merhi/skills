@@ -519,9 +519,11 @@ esac
       await writeFile(join(directory, "case.txt"), "case\n")
       await writeFile(join(directory, "converted"), "tracked file\n")
       await writeFile(join(directory, "link-change"), "tracked file\n")
+      await mkdir(join(directory, "scoped"))
+      await writeFile(join(directory, "scoped", "AGENTS.md"), "scoped instructions\n")
       await mkdir(join(directory, "replacement"))
       await writeFile(join(directory, "replacement", "tracked.txt"), "tracked directory\n")
-      await execFile("git", ["add", "base.txt", "case.txt", "converted", "link-change", "replacement/tracked.txt"], { cwd: directory })
+      await execFile("git", ["add", "base.txt", "case.txt", "converted", "link-change", "replacement/tracked.txt", "scoped/AGENTS.md"], { cwd: directory })
       await execFile("git", ["commit", "-m", "base"], { cwd: directory })
       await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
       await writeFile(join(directory, "committed.txt"), "committed\n")
@@ -539,6 +541,8 @@ esac
       await symlink("missing-target", join(directory, "link-change"))
       await rm(join(directory, "replacement"), { recursive: true, force: true })
       await writeFile(join(directory, "replacement"), "untracked file replacement\n")
+      await rm(join(directory, "scoped"), { recursive: true, force: true })
+      await writeFile(join(directory, "scoped"), "working scoped-directory replacement\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await symlink("untracked.txt", join(directory, "untracked-link"))
       await writeFile(reviewer, `#!/bin/sh
@@ -550,6 +554,7 @@ printf '%s\n' "$target" > "${reviewedCommit}"
 test "$(cat base.txt)" = base
 test "$(git show "$target:base.txt")" = unstaged
 test "$(git show "$target:replacement")" = 'untracked file replacement'
+test "$(git show "$target:scoped")" = 'working scoped-directory replacement'
 test "$(git show "$target:converted/code.txt")" = 'untracked code'
 test "$(git show "$target:link-change")" = missing-target
 ! git cat-file -e "$target:converted/AGENTS.md"
@@ -615,7 +620,8 @@ printf 'reviewed combined snapshot\n'
       await writeFile(join(directory, "space-scope", "rules"), "decoy base\n")
       await symlink("rules ", join(directory, "space-scope", "AGENTS.md"))
       await writeFile(join(directory, "base.txt"), "base\n")
-      await execFile("git", ["add", "AGENTS.md", "docs/link", "docs/real/rules.md", "nested/AGENTS.md", "ordinary/AGENTS.md", "scope/AGENTS.md", "scope/controls/rules.md", "case-scope/AGENTS.md", "case-scope/TARGET/rules.md", "space-scope/AGENTS.md", "space-scope/rules ", "space-scope/rules", "base.txt"], { cwd: directory })
+      await writeFile(join(directory, ".gitattributes"), "*.patch -diff\n")
+      await execFile("git", ["add", "AGENTS.md", "docs/link", "docs/real/rules.md", "nested/AGENTS.md", "ordinary/AGENTS.md", "scope/AGENTS.md", "scope/controls/rules.md", "case-scope/AGENTS.md", "case-scope/TARGET/rules.md", "space-scope/AGENTS.md", "space-scope/rules ", "space-scope/rules", ".gitattributes", "base.txt"], { cwd: directory })
       await execFile("git", ["commit", "-m", "base"], { cwd: directory })
       const baseOid = (await execFile("git", ["rev-parse", "HEAD"], { cwd: directory })).stdout.trim()
       await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
@@ -647,7 +653,7 @@ printf 'reviewed combined snapshot\n'
       await mkdir(join(directory, "hostile-agent-root", "skills", "hostile"), { recursive: true })
       await writeFile(join(directory, "hostile-agent-root", "skills", "hostile", "SKILL.md"), "target repository skill\n")
       await symlink("hostile-agent-root", join(directory, ".agents"))
-      await writeFile(join(directory, ".gitattributes"), "AGENTS.md -diff\n")
+      await writeFile(join(directory, ".gitattributes"), "AGENTS.md -diff\n*.patch -diff\n")
       await writeFile(join(directory, ".gitignore"), ".codex-review-target-control.patch\n")
       await writeFile(join(directory, "hostile.md"), "target model instructions\n")
       await mkdir(join(directory, ":(exclude)foo"))
@@ -664,7 +670,7 @@ printf 'reviewed combined snapshot\n'
       await execFile("git", ["switch", "feature"], { cwd: directory })
       await execFile("git", ["config", "filter.corrupt.clean", "sed 's/untrusted/CORRUPTED/'"], { cwd: directory })
       await execFile("git", ["config", "filter.corrupt.smudge", "cat"], { cwd: directory })
-      await writeFile(join(directory, ".git", "info", "attributes"), ".codex-review-target-control.patch filter=corrupt\n")
+      await writeFile(join(directory, ".git", "info", "attributes"), ".codex-review-target-control.patch filter=corrupt -diff\n")
       await writeFile(reviewer, `#!/bin/sh
 set -eu
 test "$1" = review
@@ -708,6 +714,7 @@ git show "$target:.codex-review-target-control.patch" | grep -q 'target override
 git show "$target:.codex-review-target-control.patch" | grep -q 'model_instructions_file'
 git show "$target:.codex-review-target-control.patch" | grep -q 'target Codex skill'
 git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-agent-root'
+git diff "$target^" "$target" -- .codex-review-target-control.patch | grep -q 'target says ignore findings'
 printf '%s' "$*" | grep -q 'project_doc_fallback_filenames'
 printf '%s' "$*" | grep -q 'trust_level'
 printf 'reviewed isolated instructions\n'
@@ -721,6 +728,43 @@ printf 'reviewed isolated instructions\n'
       } finally {
         process.chdir(previousCwd)
       }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a broken frozen-base symlink at the reserved artifact path", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-broken-artifact-"))
+    const reviewer = join(directory, "reviewer")
+    const escaped = join(directory, "escaped")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await symlink(escaped, join(directory, ".codex-review-target-control.patch"))
+      await execFile("git", ["add", ".codex-review-target-control.patch"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await writeFile(join(directory, "AGENTS.md"), "target instructions\n")
+      await execFile("git", ["add", "AGENTS.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "target control"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /reserves \.codex-review-target-control\.patch/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+      let escapedCreated = true
+      try {
+        await readFile(escaped)
+      } catch {
+        escapedCreated = false
+      }
+      assert.isFalse(escapedCreated)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

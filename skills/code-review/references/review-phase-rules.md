@@ -19,8 +19,8 @@ with the blocker or residual risk.
   finds a real bug from snapshot content, apply the accepted fix in the real
   checkout, run affected validation there, then rerun review. The next
   whole-target review must rebuild a fresh snapshot from the real checkout. Do
-  not leave accepted fixes only inside the temporary worktree; the helper
-  removes that worktree after review.
+  not leave accepted fixes only inside the temporary review repository; the
+  helper removes that repository after review.
 - Use local mode only when the requested target is the local patch by itself.
   Use branch mode only when the requested target is the committed branch by
   itself.

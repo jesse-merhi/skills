@@ -269,7 +269,6 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
   const gitText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedText(gitTool, args, processOptions(options))
   const gitTrimmedText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedTrimmedText(gitTool, args, processOptions(options))
   const gitInherit = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedInherit(gitTool, args, processOptions(options))
-  const cleanup = gitText(["worktree", "remove", "--force", snapshot], { cwd: repo }).pipe(Effect.ignore)
   const lifecycle = Effect.gen(function*() {
     const assertSourceInsideRepo = Effect.fn("NativeReview.assertSourceInsideRepo")(function*(file: string) {
       const source = paths.resolve(repo, file)
@@ -287,7 +286,10 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       }
     })
     const removeSnapshotPath = Effect.fn("NativeReview.removeSnapshotPath")(function*(file: string) {
-      yield* gitInherit(["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", literalPathspec(file)], { cwd: snapshot })
+      const indexed = (yield* gitText(["ls-files", "-z"], { cwd: snapshot })).split("\0").filter((entry) => entry === file || entry.startsWith(`${file}/`))
+      for (let index = 0; index < indexed.length; index += 100) {
+        yield* gitInherit(["rm", "-q", "--cached", "-r", "-f", "--", ...indexed.slice(index, index + 100).map(literalPathspec)], { cwd: snapshot })
+      }
     })
     const stageSnapshotPath = Effect.fn("NativeReview.stageSnapshotPath")(function*(file: string) {
       const destination = paths.resolve(snapshot, file)
@@ -341,10 +343,15 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       }
       base = yield* resolveEmptyCommit()
     }
-    yield* gitInherit(["worktree", "add", "--detach", snapshot, base], { cwd: repo })
-    if (yield* fs.exists(paths.join(snapshot, instructionArtifact))) {
+    yield* fs.makeDirectory(snapshot)
+    yield* gitInherit(["init", "--quiet"], { cwd: snapshot })
+    yield* gitInherit(["checkout", "--quiet", "--detach", base], { cwd: snapshot })
+    const artifactPath = paths.join(snapshot, instructionArtifact)
+    const artifactLink = yield* fs.readLink(artifactPath).pipe(Effect.option)
+    if (Option.isSome(artifactLink) || (yield* fs.exists(artifactPath))) {
       return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
     }
+    yield* fs.writeFileString(paths.join(snapshot, ".git", "info", "attributes"), `/${instructionArtifact} diff\n`)
     const indexTree = target.envelope.includeWorkingTree
       ? yield* gitTrimmedText(["write-tree"], { cwd: repo })
       : undefined
@@ -473,6 +480,10 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       const folded = file.toLowerCase()
       return foldedProtectedPaths.some((path) => path.startsWith(`${folded}/`))
     }
+    const isProtectedDestinationAncestor = (file: string) => {
+      const folded = file.toLowerCase()
+      return foldedPrefixes.some((path) => path.startsWith(`${folded}/`))
+    }
     const baseControls = baseEntries.filter((entry) => baseControlPaths.has(entry.path)).map((entry) => entry.path)
     const targetControls = targetEntries.filter((entry) => isEnvelopeControl(entry.path) || (entry.mode === "120000" && isProtectedAncestor(entry.path))).map((entry) => entry.path)
     const targetControlPaths = new Set(targetControls)
@@ -574,7 +585,8 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       if (isEnvelopeControl(file)) untrackedControls.push(file)
       else if (isProtectedAncestor(file)) {
         if (Option.isSome(linkTarget)) untrackedControls.push(file)
-        else return yield* new ReviewSnapshotError({ message: `working path blocks a frozen review control symlink destination: ${file}` })
+        else if (isProtectedDestinationAncestor(file)) return yield* new ReviewSnapshotError({ message: `working path blocks a frozen review control symlink destination: ${file}` })
+        else untrackedCode.push(file)
       } else {
         if (Option.isSome(linkTarget)) yield* assertSymlinkInsideRepo(file, linkTarget.value)
         untrackedCode.push(file)
@@ -586,6 +598,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
       const destination = paths.resolve(snapshot, file)
       if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${file}` })
       yield* fs.remove(destination, { force: true, recursive: true })
+      yield* removeSnapshotPath(file)
       yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
       const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
       if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
@@ -617,7 +630,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (
     yield* gitInherit(["checkout-index", "-a", "-f", "--ignore-skip-worktree-bits"], { cwd: snapshot })
     return yield* use(snapshot, reviewCommit, gitEnvironment)
   })
-  return yield* lifecycle.pipe(Effect.ensuring(cleanup))
+  return yield* lifecycle
 }))
 
 const SessionMetaLine = Schema.fromJsonString(Schema.Struct({

@@ -16,15 +16,15 @@ scripts/codex-review --dry-run
 
 The helper resolves a concrete Git target, delegates review to the native
 command, prints its output unchanged, and propagates process or parallel-test
-failures. Every mode runs in a temporary worktree checked out at the branch's
+failures. Every mode runs in a temporary isolated repository checked out at the branch's
 frozen merge base, the reviewed commit's parent, or an empty base for a root
 commit or unborn repository. The helper assembles the target's committed,
 staged, unstaged, and untracked code into a synthetic child commit, resets the
 working tree to the untouched frozen base, and delegates that commit to native
 `codex review --commit`. Base instructions and every ordinary file they may
 reference therefore stay frozen while the full target remains available through
-Git's commit diff. The envelope and synthetic commit are removed after review.
-Synthetic blobs, trees, and commits live in a scoped temporary object database
+Git's commit diff. The repository, envelope, and synthetic commit are removed after review.
+Synthetic blobs, trees, and commits live in that repository's scoped temporary object database
 that reads the source repository through Git alternates; cleanup removes those
 objects rather than leaving reviewed untracked bytes in the source repository.
 
@@ -43,7 +43,7 @@ target checkout is not equivalent to this helper.
 Repository paths reached through complete frozen-base instruction symlink
 chains are frozen as part of the same control surface, using the exact symlink
 blob without trimming path whitespace. Absolute or
-repository-escaping control symlinks fail closed because the temporary worktree
+repository-escaping control symlinks fail closed because the temporary checkout
 cannot safely redirect them to frozen content. Missing targets and targets
 inside unmaterialized gitlinks also fail closed, as does a target file or gitlink
 that blocks an active frozen symlink destination. Case-folded aliases and target
@@ -55,6 +55,9 @@ the now-inapplicable nested instruction is represented only as a control deletio
 Case-collision checks apply only to the frozen control paths being activated, so
 unrelated case-distinct source paths remain reviewable on filesystems that
 support them.
+The isolated repository also overrides attributes for the quarantine artifact,
+so frozen or source-local attributes cannot collapse its only visible copy to a
+binary-diff notice.
 
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
