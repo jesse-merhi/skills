@@ -326,10 +326,36 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
   return stored.every((value, index) => value === replay[index])
 }
 const preservesLegacyValue = (existing: string, current: string) => existing.length === 0 || existing === current
+const legacyAreaEquivalents: Readonly<Record<string, string>> = {
+  ux: "ui",
+  "user-workflow": "workflow",
+  behavior: "workflow",
+  "route-behavior": "workflow",
+  product: "workflow",
+  contract: "api-contract",
+  permission: "permissions",
+  auth: "permissions",
+  authorization: "permissions",
+  security: "permissions",
+  billing: "finance",
+  payroll: "finance",
+  data: "data-correctness",
+  history: "audit"
+}
+const legacySeverityEquivalents: Readonly<Record<string, string>> = {
+  critical: "p0",
+  high: "p1",
+  medium: "p2",
+  low: "p3",
+  p4: ""
+}
+const preservesLegacyClassification = (existing: string, current: string, equivalents: Readonly<Record<string, string>>) =>
+  preservesLegacyValue(existing, current) || equivalents[normalizeToken(existing)] === current
 const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding, material: boolean) => hasLegacyEvidence(existing) &&
   existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
   existing.summary === finding.summary && existing.material === (material ? 1 : 0) &&
-  preservesLegacyValue(existing.area, finding.area) && preservesLegacyValue(existing.severity, finding.severity) &&
+  preservesLegacyClassification(existing.area, finding.area, legacyAreaEquivalents) &&
+  preservesLegacyClassification(existing.severity, finding.severity, legacySeverityEquivalents) &&
   preservesLegacyValue(existing.user_impact, finding.userImpact) && preservesLegacyValue(existing.decision, finding.decision) &&
   preservesLegacyValue(existing.finding_kind, finding.findingKind) && preservesLegacyValue(existing.production_path, finding.productionPath) &&
   preservesLegacyValue(existing.reachability_evidence, finding.reachabilityEvidence) && preservesLegacyValue(existing.likelihood, finding.likelihood) &&
