@@ -49,8 +49,9 @@ There are three gates:
    [usefulness-bar.md](references/usefulness-bar.md).
 6. Defend proposed keepers and deletions adversarially.
    - A keeper must catch a distinct bug that adjacent coverage would miss.
-   - A deletion must name an inspected executable replacement owner, unless
-     the behavior is unreachable or no longer promised.
+   - A deletion of a test that owns a promised regression must name an
+     inspected executable replacement owner. Otherwise, name why the test owns
+     no current regression and needs no replacement.
 7. Recommend focused changes:
    - Remove or rewrite tests that only prove old fields are gone, old callbacks
      are absent, mocks were called in a specific order, tautological expected
