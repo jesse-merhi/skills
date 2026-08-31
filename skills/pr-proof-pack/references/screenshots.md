@@ -4,6 +4,7 @@
 
 - [When this file applies](#when-this-file-applies)
 - [GitHub attachment upload](#github-attachment-upload)
+- [Bitbucket image upload](#bitbucket-image-upload)
 - [Rendered PR verification](#rendered-pr-verification)
 - [Evidence contract](#evidence-contract)
 - [Presentation gate](#presentation-gate)
@@ -96,6 +97,26 @@ every attachment in the main PR body, never in a detached comment. Do not
 commit proof media to the repository unless the project or user explicitly
 requests that storage model.
 
+## Bitbucket image upload
+
+For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). Upload images
+through the public repository Downloads API, embed their stable Downloads URLs
+in the complete Markdown description, and apply that description with
+`twg bb prs update <pr-id> --description <complete-markdown>`. A separate TWG
+or Atlassian skill is optional; use it when available and useful.
+
+This path is proven for images, not video. If still images would lose an
+essential motion or playback claim, stop with `blocked` evidence instead of
+publishing weaker proof.
+
+Apply the same sizing rule used above: choose the smallest width that remains
+comfortably readable, treat `50%` as the starting point for focused visuals,
+and make full width deliberate. Bitbucket escapes raw HTML image sizing and
+strips Markdown attribute-list sizing. Its tested fallback is a two-column Markdown
+table with the image in one cell and its verified result in the other. Follow
+[bitbucket.md](bitbucket.md) for the exact shape and the required authenticated
+destination-size inspection.
+
 ## Rendered PR verification
 
 On GitHub, inspect the final title and Markdown body, then verify the
@@ -138,6 +159,11 @@ video viewer. Inspect the fetched rendered asset again after upload. A file with
 real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
+For Bitbucket Cloud, API and TWG readback prove the stored description and
+uploaded bytes but not literal placement, size, or rendered pixels. Follow
+[bitbucket.md](bitbucket.md) and inspect every finished image or diagram on the
+rendered PR in an authenticated interactive browser.
+
 ## Explanation diagrams
 
 Use the same provider upload, rendered-asset verification, and presentation
@@ -178,7 +204,7 @@ review-ready.
   docks, notifications, unrelated windows, and empty space.
 - Keep only interface controls that are part of the behavior. A browser frame is
   not context; provide route, fixture, environment, and viewport in nearby text.
-- Make the relevant state readable at normal GitHub width. Use a tighter crop or
+- Make the relevant state readable at normal PR-body width. Use a tighter crop or
   fewer rows rather than asking the reviewer to zoom into a full desktop.
 - Render each image at a percentage that suits what it depicts. A narrow mobile
   screen should normally occupy less of the PR column than a desktop interface
@@ -204,7 +230,7 @@ Capture actual product screenshots when appearance, layout, responsive behavior,
 or a rendered state changed. When the baseline is meaningful and reproducible,
 use the same route, fixture, data, viewport, theme, and starting state against
 the direct base and PR branch. Label the matched images `Before: direct base`
-and `After: PR` and keep the changed pixels readable at normal GitHub width.
+and `After: PR` and keep the changed pixels readable at normal PR-body width.
 
 Otherwise state the constraint and show the actual product entry point and PR
 outcome. When a manual interaction also changed, these screenshots supplement
@@ -291,5 +317,5 @@ phone-number error, and keeps the entered values available for correction.
 recorded at deliberate pace on the current PR branch.
 ```
 
-Use descriptive alt text and labels. Keep reproduction steps copyable. Let
-GitHub's checks report routine automated validation.
+Use descriptive alt text and labels. Keep reproduction steps copyable. Let the
+provider's checks report routine automated validation.

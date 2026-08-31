@@ -82,9 +82,11 @@ prove that the system depicted by the diagram ran.
   requests, responses, and state. Use visual evidence only when text would lose
   an important fact about appearance, layout, motion, interaction, rendering,
   or playback.
-- **Provider-hosted attachments:** When a diagram or visual evidence is selected
-  on `github.com`, upload it through the repository command, which uses the
-  scoped `gh` credential.
+- **Provider-hosted attachments:** Upload selected media through the provider's
+  supported path. On `github.com`, use the repository command and scoped `gh`
+  credential. On Bitbucket Cloud, upload images through the public repository
+  Downloads API, then embed their stable Downloads URLs in the complete body
+  applied through TWG. A separate TWG or Atlassian skill is optional.
 - **Rendered proof:** Check the rendered result headlessly by default. Use an
   interactive browser only when client-side rendering, literal page appearance,
   or playback must be inspected.
@@ -113,7 +115,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Use read-only provider metadata. On GitHub, inspect
    `gh pr view --json number,url,body,title,baseRefName,headRefName,headRefOid`. For a stack,
    load `gh-stack`, inspect `gh stack view --json`, and record the current
-   layer's position and adjacent dependencies.
+   layer's position and adjacent dependencies. On Bitbucket Cloud, read
+   [references/bitbucket.md](references/bitbucket.md), resolve the workspace,
+   repository, and PR ID explicitly, and use its read-only TWG inspection path.
 
    Done when the exact PR, provider hostname, final head, direct base, and
    existing proof are known.
@@ -126,6 +130,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    consideration. When the PR spans multiple meaningful parts, keep the
    generated `+LOC` and `-LOC` breakdown. Split implementation into clearer
    product areas only when the paths support exact, non-overlapping totals.
+   For Bitbucket Cloud, pass the destination and source commit hashes resolved
+   in [references/bitbucket.md](references/bitbucket.md) as `--base` and
+   `--head`; do not let local checkout state choose either side of the diff.
 
    Done when the final behavior and existing reviewer-visible claims can be
    compared, and any claim that the PR is large has a direct-base breakdown
@@ -157,6 +164,14 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    not make an interactive browser a prerequisite for `github.com` upload or
    ordinary rendered-body checks, and do not require attachment or browser
    capabilities for text-only proof.
+
+   For Bitbucket Cloud, follow the preflight in
+   [references/bitbucket.md](references/bitbucket.md). Treat live TWG help as
+   the final command contract. When a TWG or Atlassian skill is already
+   available, load it if it improves current provider or authentication
+   guidance. Keep it optional so this public skill still works with the CLI
+   alone. A visual refresh also requires an interactive browser for the
+   finished rendered-media check; a text-only refresh does not.
 
    Done when provider authentication and repository access work and every
    browser or device capability genuinely needed later in the refresh is
@@ -237,7 +252,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    for each selected diagram, image, or video. Insert the URL printed only
    after the command has verified the upload. Put media in the main PR body,
    never in a detached comment. Use a table when it makes a small related group
-   or comparison easier to scan. Text evidence needs no attachment.
+   or comparison easier to scan. On Bitbucket Cloud, follow
+   [references/bitbucket.md](references/bitbucket.md): upload each image through
+   the public Downloads API, put its stable repository Downloads URL in the
+   complete Markdown body, then apply that body with
+   `twg bb prs update <pr-id> --description <complete-markdown>`. This path is
+   proven for images, not video. Text evidence needs no attachment.
 
    Done when every selected diagram and visual is provider-hosted and every
    text proof is present in the main body, or the workflow has stopped before
@@ -257,6 +277,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    content such as Mermaid or when the proof depends on literal page layout,
    pixel appearance, percentage image sizing, table composition, or playback.
    Remove stale proof rather than accumulating it.
+
+   On Bitbucket Cloud, follow the readback and verification contract in
+   [references/bitbucket.md](references/bitbucket.md). Re-read the full PR with
+   TWG and confirm the expected head, title, body, and embeds. For a diagram or
+   image, inspect the rendered PR interactively and inspect the rendered pixels;
+   TWG readback alone does not prove that Bitbucket rendered the media.
 
    Done when the rendered PR accurately describes the final pushed net diff,
    with browser inspection completed for every case headless checks cannot

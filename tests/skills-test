@@ -167,6 +167,8 @@ behavior_checks = {
     root / "skills/pr-proof-pack/SKILL.md": [
         "scripts/github-upload-attachment",
         "repository command",
+        "public Downloads API",
+        "twg bb prs update",
         "`body_html`",
         "direct-base `+LOC` and `-LOC`",
     ],
@@ -656,7 +658,7 @@ test_speak_fking_english_owns_the_final_response_checkpoint() {
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   local diagram_skill="$ROOT_DIR/skills/design-technical-diagrams"
   local skill="$ROOT_DIR/skills/pr-proof-pack"
-  local done_means freshness hard_gates rendered_help upload_help workflow
+  local base_sha done_means explicit_markdown explicit_net_diff fake_gh_dir freshness hard_gates invalid_stdout latest_sha net_diff_fixture rendered_help selected_sha unrelated_sha unrelated_tree upload_help workflow
 
   assert_contains "$skill/SKILL.md" "Creating, publishing, reopening"
   assert_contains "$skill/SKILL.md" "local branch change is not reviewer-visible"
@@ -747,6 +749,9 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
+  assert_contains "$skill/SKILL.md" '`twg bb prs update <pr-id> --description <complete-markdown>`'
+  assert_contains "$skill/SKILL.md" 'public Downloads API'
+  assert_contains "$skill/SKILL.md" 'A separate TWG or Atlassian skill is optional'
   assert_contains "$skill/references/screenshots.md" "## GitHub attachment upload"
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/references/screenshots.md" 'The command supports `github.com` PRs only'
@@ -757,6 +762,12 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_not_contains "$skill/references/screenshots.md" 'browser upload'
   assert_contains "$skill/references/screenshots.md" "If it fails, stop and report its diagnostics"
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
+  assert_contains "$skill/references/screenshots.md" "## Bitbucket image upload"
+  assert_contains "$skill/references/screenshots.md" '`twg bb prs update <pr-id> --description <complete-markdown>`'
+  assert_contains "$skill/references/screenshots.md" 'smallest width that remains'
+  assert_contains "$skill/references/screenshots.md" 'two-column Markdown'
+  assert_contains "$skill/references/screenshots.md" 'verified result in the other'
+  assert_contains "$skill/references/screenshots.md" 'not literal placement, size, or rendered pixels'
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-verify-rendered-proof'
   assert_contains "$skill/references/screenshots.md" "--jq '{title, body}'"
   assert_contains "$skill/references/screenshots.md" '`body_html` without printing it'
@@ -782,8 +793,51 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "## Presentation gate"
   assert_contains "$skill/references/screenshots.md" "Inspect the actual image at full readable detail"
   assert_contains "$skill/references/screenshots.md" "Exclude browser tabs"
-  assert_contains "$skill/references/screenshots.md" "normal GitHub width"
+  assert_contains "$skill/references/screenshots.md" "normal PR-body width"
   assert_contains "$skill/references/screenshots.md" "The model must be able to state what the visual proves"
+  assert_contains "$skill/references/bitbucket.md" 'works without a'
+  assert_contains "$skill/references/bitbucket.md" 'separate TWG or Atlassian skill'
+  assert_contains "$skill/references/bitbucket.md" 'Use TWG for the reads and authorized PR metadata mutation'
+  assert_contains "$skill/references/bitbucket.md" 'prs get <pr-id> --full -o json'
+  assert_contains "$skill/references/bitbucket.md" 'twg bb prs update --help'
+  assert_contains "$skill/references/bitbucket.md" 'POST https://api.bitbucket.org/2.0/repositories/{workspace}/{repo}/downloads'
+  assert_contains "$skill/references/bitbucket.md" 'multipart field: files=@<image-path>;filename=<repository-unique-filename>'
+  assert_contains "$skill/references/bitbucket.md" 'https://bitbucket.org/{workspace}/{repo}/downloads/{filename}'
+  assert_contains "$skill/references/bitbucket.md" 'prs update <pr-id> --description "$PR_DESCRIPTION"'
+  assert_contains "$skill/references/bitbucket.md" 'rendered.description.html'
+  assert_contains "$skill/references/bitbucket.md" 'pullrequests/{pr-id}'
+  assert_contains "$skill/references/bitbucket.md" 'downloads/{filename}'
+  assert_contains "$skill/references/bitbucket.md" 'SHA-256 digest as the local source'
+  assert_contains "$skill/references/bitbucket.md" 'out of command arguments, command traces, logs'
+  assert_contains "$skill/references/bitbucket.md" 'do not invent a `--description-file` flag'
+  assert_contains "$skill/references/bitbucket.md" 'smallest rendered width that keeps the image comfortably readable'
+  assert_contains "$skill/references/bitbucket.md" 'Treat `50%` as the starting point for focused visuals'
+  assert_contains "$skill/references/bitbucket.md" '<img width="50%">'
+  assert_contains "$skill/references/bitbucket.md" '{: width="50%"}'
+  assert_contains "$skill/references/bitbucket.md" 'two-column Markdown-table fallback'
+  assert_contains "$skill/references/bitbucket.md" '| Evidence | Verified result |'
+  assert_contains "$skill/references/bitbucket.md" 'proof PR #58'
+  assert_contains "$skill/references/bitbucket.md" 'not a fixed percentage guarantee'
+  assert_contains "$skill/references/bitbucket.md" 'does not prove its'
+  assert_contains "$skill/references/bitbucket.md" 'literal placement or rendered width'
+  assert_not_contains "$skill/references/bitbucket.md" '--pull-request'
+  assert_not_contains "$skill/references/bitbucket.md" '--image-name'
+  assert_not_contains "$skill/references/bitbucket.md" '{{image'
+  assert_contains "$skill/references/bitbucket.md" '--base <destination-commit-hash>'
+  assert_contains "$skill/references/bitbucket.md" '--head <source-commit-hash>'
+  assert_contains "$skill/references/bitbucket.md" 'Read this only for a Bitbucket Cloud PR'
+  assert_contains "$skill/references/bitbucket.md" 'before mutation'
+  assert_contains "$skill/references/bitbucket.md" 'source hash still matches the final head'
+  assert_contains "$skill/references/bitbucket.md" 'inspect its pixels at real PR-body width'
+  python3 - "$skill/references/bitbucket.md" <<'PY'
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text()
+sections = ["## Preflight a refresh", "## Upload images to repository Downloads", "## Apply the complete description", "## Verify the finished PR"]
+if [text.index(section) for section in sections] != sorted(text.index(section) for section in sections):
+    raise SystemExit("Bitbucket preflight, upload, mutation, and verification sections are out of order")
+PY
   assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
@@ -817,6 +871,64 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/mermaid.md" "use short, everyday labels"
   assert_contains "$skill/references/mermaid.md" "Having several steps or components is not enough"
   assert_contains "$skill/src/NetDiff.ts" "Practical UI proof required"
+  net_diff_help="$("$skill/scripts/pr-net-diff" --help)"
+  assert_output_contains "$net_diff_help" "--base"
+  assert_output_contains "$net_diff_help" "--head"
+  net_diff_fixture="$(mktemp -d)"
+  git -C "$net_diff_fixture" init -q -b main
+  git -C "$net_diff_fixture" config user.name "Skills Test"
+  git -C "$net_diff_fixture" config user.email "skills-test@example.com"
+  printf 'base\n' > "$net_diff_fixture/base.txt"
+  git -C "$net_diff_fixture" add base.txt
+  git -C "$net_diff_fixture" commit -qm "Add base"
+  base_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  printf 'selected\n' > "$net_diff_fixture/feature.txt"
+  git -C "$net_diff_fixture" add feature.txt
+  git -C "$net_diff_fixture" commit -qm "Add selected change"
+  selected_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  printf 'latest\n' > "$net_diff_fixture/latest.txt"
+  git -C "$net_diff_fixture" add latest.txt
+  git -C "$net_diff_fixture" commit -qm "Add later change"
+  latest_sha="$(git -C "$net_diff_fixture" rev-parse HEAD)"
+  explicit_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$base_sha" --head "$selected_sha" --json)"
+  assert_output_contains "$explicit_net_diff" '"source": "explicit"'
+  assert_output_contains "$explicit_net_diff" '"sha": '"\"$base_sha\""
+  assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
+  assert_output_contains "$explicit_net_diff" '"path": "feature.txt"'
+  assert_output_not_contains "$explicit_net_diff" '"path": "latest.txt"'
+  explicit_markdown="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$base_sha" --head "$selected_sha" --markdown)"
+  assert_output_contains "$explicit_markdown" "Selected base: $base_sha ${base_sha:0:12}"
+  assert_output_contains "$explicit_markdown" "Comparison base: ${base_sha:0:12}"
+  fake_gh_dir="$net_diff_fixture/fake-bin"
+  mkdir "$fake_gh_dir"
+  printf '%s\n' '#!/usr/bin/env bash' '[[ "$#" -eq 4 && "$1" == "pr" && "$2" == "view" && "$3" == "--json" && "$4" == "baseRefName,baseRefOid" ]] || exit 64' "printf '%s\\n' '{\"baseRefName\":\"not-a-local-ref\",\"baseRefOid\":\"$base_sha\"}'" > "$fake_gh_dir/gh"
+  chmod +x "$fake_gh_dir/gh"
+  explicit_net_diff="$(cd "$net_diff_fixture" && PATH="$fake_gh_dir:$PATH" "$skill/scripts/pr-net-diff" --json)"
+  assert_output_contains "$explicit_net_diff" '"source": "gh pr view"'
+  assert_output_contains "$explicit_net_diff" '"sha": '"\"$base_sha\""
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$latest_sha\""
+  assert_output_contains "$explicit_net_diff" '"path": "latest.txt"'
+  explicit_net_diff="$(cd "$net_diff_fixture" && PATH="$fake_gh_dir:$PATH" "$skill/scripts/pr-net-diff" --head "$selected_sha" --json)"
+  assert_output_contains "$explicit_net_diff" '"source": "gh pr view"'
+  assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
+  assert_output_contains "$explicit_net_diff" '"path": "feature.txt"'
+  assert_output_not_contains "$explicit_net_diff" '"path": "latest.txt"'
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base missing-ref --json 2>invalid-base.err)"; then
+    fail "expected invalid explicit base to fail"
+  fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/invalid-base.err" ]] || fail "invalid explicit base must report only on stderr"
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --head missing-ref --json 2>invalid-head.err)"; then
+    fail "expected invalid explicit head to fail"
+  fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/invalid-head.err" ]] || fail "invalid explicit head must report only on stderr"
+  unrelated_tree="$(printf '' | git -C "$net_diff_fixture" mktree)"
+  unrelated_sha="$(printf 'Unrelated\n' | git -C "$net_diff_fixture" commit-tree "$unrelated_tree")"
+  if invalid_stdout="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$base_sha" --head "$unrelated_sha" --json 2>unrelated.err)"; then
+    fail "expected unrelated explicit refs to fail"
+  fi
+  [[ -z "$invalid_stdout" && -s "$net_diff_fixture/unrelated.err" ]] || fail "unrelated explicit refs must report only on stderr"
+  rm -rf "$net_diff_fixture"
   assert_contains "$skill/src/NetDiff.ts" "tightly edited, natural-speed"
   assert_contains "$skill/src/NetDiff.ts" "copyable text for textual state"
   assert_contains "$skill/src/NetDiff.ts" "Compare direct-base and PR outcomes when the baseline is meaningful and reproducible"
