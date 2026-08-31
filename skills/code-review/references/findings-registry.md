@@ -141,7 +141,7 @@ For every finding, record:
 - contract evidence for every actionable runtime finding
 - root cause and intervention justification for every actionable runtime or
   maintenance finding; patches and deferrals also require a recommended repair,
-  while unresolved consultation may instead record why no repair is yet supported
+  while unresolved or declined consultation may record why no repair is supported
 - rejection gate for rejected candidates: `reality`, `importance`, `contract`,
   `repair`, or `duplicate`
 - short decision and validation result

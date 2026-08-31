@@ -232,8 +232,8 @@ Consistency rules:
   residual -> deferred with required decision text and no patch
   deferred legacy record without disposition -> unresolved until re-recorded
   reject -> rejected and no patch
-  accept|follow-up|residual and resolved consult -> required repair fields
-  unresolved consult -> may omit recommended fix with decision rationale
+  accept|follow-up|residual and approved consult -> required repair fields
+  unresolved or declined consult -> may omit recommended fix with decision rationale
   rejected or investigating candidate -> omit repair fields
   rejected candidate -> required rejection gate and decision rationale
   handling consult -> consult when the risk matrix does not reject or investigate
@@ -1263,13 +1263,13 @@ const findingActionabilityError = (finding: Finding) => {
     if (finding.findingKind === "runtime" && finding.contractEvidence.trim().length === 0) {
       return "actionable runtime findings require --contract-evidence"
     }
-    const unresolvedConsult = finding.disposition === "consult" && finding.ownerResolution.length === 0 && ["open", "reopened"].includes(finding.status)
-    const requiredRepair = unresolvedConsult
+    const repairlessConsult = finding.disposition === "consult" && finding.ownerResolution !== "approved"
+    const requiredRepair = repairlessConsult
       ? repairFields.filter(([flag]) => flag !== "--recommended-fix")
       : repairFields
     const missingRepair = requiredRepair.find(([, value]) => value.trim().length === 0)?.[0]
     if (missingRepair !== undefined) return `actionable findings require ${missingRepair}`
-    if (unresolvedConsult && finding.recommendedFix.trim().length === 0 && finding.decision.trim().length === 0) return "consult findings without --recommended-fix require --decision with the unresolved repair rationale"
+    if (repairlessConsult && finding.recommendedFix.trim().length === 0 && finding.decision.trim().length === 0) return "consult findings without --recommended-fix require --decision with the unresolved repair rationale"
     if (finding.rejectionGate.length > 0) return "actionable findings must omit --rejection-gate"
     return undefined
   }
