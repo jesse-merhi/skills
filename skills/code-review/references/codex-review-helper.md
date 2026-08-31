@@ -68,6 +68,9 @@ binary-diff notice.
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
 renames therefore remain part of the synthetic review commit. Snapshot
+construction also recognizes an untracked embedded repository with a committed
+HEAD and records it as the gitlink Git would add; an unborn embedded repository
+fails explicitly because it has no stable object to reference. Snapshot
 materialization ignores sparse-checkout skip bits, then overlays only actual
 working-tree changes, so out-of-cone tracked context remains available. A
 tracked path changed into a directory is rebuilt from its individually filtered

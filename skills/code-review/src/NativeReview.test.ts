@@ -512,6 +512,7 @@ esac
     const reviewer = join(directory, "reviewer")
     const reviewedCommit = join(directory, "reviewed-commit")
     const nestedRepository = join(directory, "reviewer-nested-repository")
+    const embeddedRepository = join(directory, "embedded")
     try {
       await execFile("git", ["init", "-b", "main"], { cwd: directory })
       await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
@@ -546,6 +547,13 @@ esac
       await writeFile(join(directory, "scoped"), "working scoped-directory replacement\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await symlink("untracked.txt", join(directory, "untracked-link"))
+      await execFile("git", ["init", "--quiet", embeddedRepository], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: embeddedRepository })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: embeddedRepository })
+      await writeFile(join(embeddedRepository, "embedded.txt"), "embedded\n")
+      await execFile("git", ["add", "embedded.txt"], { cwd: embeddedRepository })
+      await execFile("git", ["commit", "--quiet", "-m", "embedded"], { cwd: embeddedRepository })
+      const embeddedHead = (await execFile("git", ["rev-parse", "HEAD"], { cwd: embeddedRepository })).stdout.trim()
       await writeFile(reviewer, `#!/bin/sh
 set -eu
 test "$1" = review
@@ -567,6 +575,7 @@ git cat-file -e "$target:CASE.txt"
 git ls-tree -r --name-only "$target" | grep -qx CASE.txt
 ! git ls-tree -r --name-only "$target" | grep -qx case.txt
 test "$(git show "$target:untracked-link")" = untracked.txt
+git ls-tree "$target" embedded | grep -q "^160000 commit ${embeddedHead}"
 git init --quiet "${nestedRepository}"
 git -C "${nestedRepository}" config user.email test@example.com
 git -C "${nestedRepository}" config user.name Test

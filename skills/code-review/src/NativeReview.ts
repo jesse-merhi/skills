@@ -270,6 +270,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
   const gitTrimmedText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedTrimmedText(gitTool, args, processOptions(options))
   const gitInherit = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedInherit(gitTool, args, processOptions(options))
   const sourceText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedText(gitTool, args, options)
+  const sourceTrimmedText = (args: ReadonlyArray<string>, options?: CheckedProcessOptions) => checkedTrimmedText(gitTool, args, options)
   const lifecycle = Effect.gen(function*() {
     const assertSourceInsideRepo = Effect.fn("NativeReview.assertSourceInsideRepo")(function*(file: string) {
       const source = paths.resolve(repo, file)
@@ -621,17 +622,26 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, co
       }
     }
     for (const file of untrackedCode) {
-      if (file.toLowerCase() === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
-      const source = paths.resolve(repo, file)
-      const destination = paths.resolve(snapshot, file)
-      if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${file}` })
+      const normalizedFile = file.replace(/\/+$/u, "")
+      if (normalizedFile.toLowerCase() === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
+      const source = paths.resolve(repo, normalizedFile)
+      const destination = paths.resolve(snapshot, normalizedFile)
+      if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to copy untracked path outside snapshot: ${normalizedFile}` })
+      const sourceInfo = yield* fs.stat(source)
+      if (sourceInfo.type === "Directory") {
+        const embeddedHead = yield* sourceTrimmedText(["rev-parse", "--verify", "HEAD^{commit}"], { cwd: source }).pipe(Effect.option)
+        if (Option.isNone(embeddedHead)) return yield* new ReviewSnapshotError({ message: `untracked embedded repository has no commit: ${normalizedFile}` })
+        yield* removeSnapshotPath(normalizedFile)
+        yield* gitInherit(["update-index", "--add", "--cacheinfo", `160000,${embeddedHead.value},${normalizedFile}`], { cwd: snapshot })
+        continue
+      }
       yield* fs.remove(destination, { force: true, recursive: true })
-      yield* removeSnapshotPath(file)
+      yield* removeSnapshotPath(normalizedFile)
       yield* fs.makeDirectory(paths.dirname(destination), { recursive: true })
       const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
       if (Option.isSome(linkTarget)) yield* fs.symlink(linkTarget.value, destination)
       else yield* fs.copy(source, destination, { overwrite: true, preserveTimestamps: true })
-      yield* stageSnapshotPath(file)
+      yield* stageSnapshotPath(normalizedFile)
     }
     const instructionPatches = [controlPatch, ...workingControlOverlays].filter((patch) => patch.length > 0)
     if (target.envelope.includeWorkingTree) {
