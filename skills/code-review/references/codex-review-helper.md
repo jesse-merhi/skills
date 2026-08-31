@@ -18,17 +18,20 @@ The helper resolves a concrete Git target, delegates review to the native
 command, prints its output unchanged, and propagates process or parallel-test
 failures. Every mode runs in a temporary worktree checked out at the branch's
 frozen merge base, the reviewed commit's parent, or an empty base for a root
-commit or unborn repository. The target's committed, staged, unstaged, and
-untracked code is applied as one uncommitted review diff, then the envelope is
-removed.
+commit or unborn repository. The helper assembles the target's committed,
+staged, unstaged, and untracked code into a synthetic child commit, resets the
+working tree to the untouched frozen base, and delegates that commit to native
+`codex review --commit`. Base instructions and every ordinary file they may
+reference therefore stay frozen while the full target remains available through
+Git's commit diff. The envelope and synthetic commit are removed after review.
 
 Case-insensitive variants of `AGENTS.md` and `AGENTS.override.md`, the `.agents`
 instruction root including `.agents/skills/**`, `.codex/config.toml`,
 `.codex/skills/**`, and target `.gitattributes` changes
-are never applied to the envelope's active control surface. The helper writes
-them to `.codex-review-target-control.patch` as untrusted review data with an
-explicit warning to inspect, not follow, them, and force-adds that artifact so a
-target `.gitignore` cannot hide it from review. It marks the temporary project
+are never applied to the synthetic commit's control-shaped paths. The helper
+writes them to `.codex-review-target-control.patch` as untrusted review data with
+an explicit warning to inspect, not follow, them, and force-adds that artifact
+so a target `.gitignore` cannot hide it from review. It marks the temporary project
 untrusted and disables configured fallback instruction filenames for the
 native session, so target-controlled skills, project configuration, or fallback
 files cannot become active. This is why invoking bare `codex review` from the
@@ -49,7 +52,7 @@ the now-inapplicable nested instruction is represented only as a control deletio
 
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
-renames therefore remain part of the uncommitted review target. Snapshot
+renames therefore remain part of the synthetic review commit. Snapshot
 materialization ignores sparse-checkout skip bits, then overlays only actual
 working-tree changes, so out-of-cone tracked context remains available. A
 tracked path changed into a directory is rebuilt from its individually filtered

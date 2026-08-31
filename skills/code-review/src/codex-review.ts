@@ -28,8 +28,8 @@ const review = Command.make("codex-review", {
   if (!args.dryRun && Option.isSome(outputPath)) yield* fileSystem.remove(outputPath.value, { force: true })
   const plan = yield* selectReviewPlan(args.mode, args.base, args.commit, !args.dryRun)
   yield* Console.log(`codex-review target: ${plan.label}`)
-  yield* Console.log("snapshot: frozen-base review envelope with target diff as uncommitted data")
-  for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review --uncommitted (frozen envelope for ${target.args.join(" ")})`)
+  yield* Console.log("snapshot: untouched frozen-base checkout with target diff as a synthetic commit")
+  for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review --commit <synthetic-target> (frozen envelope for ${target.args.join(" ")})`)
   if (args.dryRun) return
   yield* preflightCodexAuthentication(args.codexBin)
   const currentIdentity = selectReviewPlan(args.mode, args.base, args.commit).pipe(Effect.flatMap((currentPlan) => {

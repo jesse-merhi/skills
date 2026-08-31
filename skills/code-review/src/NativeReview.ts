@@ -242,7 +242,7 @@ const isControlFile = (file: string) => {
     instructionNames.some((name) => normalized === name.toLowerCase() || normalized.endsWith(`/${name.toLowerCase()}`))
 }
 
-const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
+const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string, commit: string) => Effect.Effect<A, E, R>) => Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
   const repo = yield* git(["rev-parse", "--show-toplevel"])
@@ -560,7 +560,12 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       )
       yield* checkedInherit(gitTool, ["add", "-f", "--", instructionArtifact], { cwd: snapshot })
     }
-    return yield* use(snapshot)
+    yield* checkedInherit(gitTool, ["add", "-f", "--all"], { cwd: snapshot })
+    const reviewTree = yield* checkedTrimmedText(gitTool, ["write-tree"], { cwd: snapshot })
+    const reviewCommit = yield* createCommit(reviewTree, "review target", base)
+    yield* checkedInherit(gitTool, ["reset", "--hard", base], { cwd: snapshot })
+    yield* checkedInherit(gitTool, ["checkout-index", "-a", "-f", "--ignore-skip-worktree-bits"], { cwd: snapshot })
+    return yield* use(snapshot, reviewCommit)
   })
   return yield* lifecycle.pipe(Effect.ensuring(cleanup))
 }))
@@ -700,10 +705,10 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   // so archive it to keep the resume picker and session search lean.
   const reviewTarget = Effect.fn("NativeReview.reviewTarget")(function*(target: ReviewTarget) {
     const startedAt = yield* DateTime.now
-    return yield* withReviewSnapshot(target, Effect.fn("NativeReview.reviewEnvelope")(function*(runCwd) {
+    return yield* withReviewSnapshot(target, Effect.fn("NativeReview.reviewEnvelope")(function*(runCwd, reviewCommit) {
       const trustOverride = `projects.${JSON.stringify(runCwd)}.trust_level="untrusted"`
       const review = checkedText(reviewer, [
-        "review", "--uncommitted",
+        "review", "--commit", reviewCommit,
         "-c", "project_doc_fallback_filenames=[]",
         "-c", trustOverride
       ], { cwd: runCwd })

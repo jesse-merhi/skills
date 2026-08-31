@@ -540,10 +540,10 @@ esac
       await writeFile(join(directory, "replacement"), "untracked file replacement\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
       await symlink("untracked.txt", join(directory, "untracked-link"))
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat base.txt)\" = unstaged\ntest \"$(cat replacement)\" = 'untracked file replacement'\ntest \"$(cat converted/code.txt)\" = 'untracked code'\ntest \"$(readlink link-change)\" = missing-target\ntest ! -e converted/AGENTS.md\ngrep -q 'untracked active instructions' .codex-review-target-control.patch\ntest -f committed.txt\ntest -f staged.txt\ntest -f untracked.txt\ntest -f CASE.txt\ngit ls-files | grep -qx CASE.txt\n! git ls-files | grep -qx case.txt\ntest \"$(readlink untracked-link)\" = untracked.txt\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntarget=$3\ntest \"$(cat base.txt)\" = base\ntest \"$(git show \"$target:base.txt\")\" = unstaged\ntest \"$(git show \"$target:replacement\")\" = 'untracked file replacement'\ntest \"$(git show \"$target:converted/code.txt\")\" = 'untracked code'\ntest \"$(git show \"$target:link-change\")\" = missing-target\n! git cat-file -e \"$target:converted/AGENTS.md\"\ngit show \"$target:.codex-review-target-control.patch\" | grep -q 'untracked active instructions'\ngit cat-file -e \"$target:committed.txt\"\ngit cat-file -e \"$target:staged.txt\"\ngit cat-file -e \"$target:untracked.txt\"\ngit cat-file -e \"$target:CASE.txt\"\ngit ls-tree -r --name-only \"$target\" | grep -qx CASE.txt\n! git ls-tree -r --name-only \"$target\" | grep -qx case.txt\ntest \"$(git show \"$target:untracked-link\")\" = untracked.txt\nprintf 'reviewed combined snapshot\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const { stdout: dryRun } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "whole", "--base", "main", "--dry-run"], { cwd: directory })
-      assert.match(dryRun, /snapshot: frozen-base review envelope with target diff as uncommitted data/u)
+      assert.match(dryRun, /snapshot: untouched frozen-base checkout with target diff as a synthetic commit/u)
       const previousCwd = process.cwd()
       process.chdir(directory)
       try {
@@ -632,7 +632,53 @@ esac
       await writeFile(join(directory, "base.txt"), "advanced base\n")
       await execFile("git", ["commit", "-am", "advance base"], { cwd: directory })
       await execFile("git", ["switch", "feature"], { cwd: directory })
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat AGENTS.md)\" = 'frozen base rules'\ntest \"$(cat docs/real/rules.md)\" = 'frozen base rules'\ntest \"$(cat nested)\" = 'target directory replacement'\ntest \"$(cat ordinary/AGENTS.md)\" = 'ordinary base rules'\ntest \"$(cat scope/AGENTS.md)\" = 'ancestor base rules'\ntest \"$(cat case-scope/AGENTS.md)\" = 'case base rules'\ntest \"$(cat space-scope/AGENTS.md)\" = 'space base rules'\ntest \"$(cat space-scope/rules)\" = 'target decoy'\ntest \"$(cat hostile-controls/rules.md)\" = 'target ancestor redirect'\ngit ls-files | grep -qx AGENTS.md\ngit ls-files | grep -qx nested\ngit ls-files | grep -qx case-scope/TARGET/rules.md\n! git ls-files | grep -qx agents.md\n! git ls-files | grep -qx case-scope/target/rules.md\n! git --literal-pathspecs ls-files --error-unmatch -- ':(exclude)foo/AGENTS.md' >/dev/null 2>&1\ntest ! -L ordinary\ntest ! -L scope/controls\ntest ! -e AGENTS.override.md\ntest ! -e .codex/config.toml\ntest ! -e .codex/skills/hostile/SKILL.md\ntest ! -e .agents\ntest ! -e .gitattributes\ntest \"$(cat base.txt)\" = feature\ntest \"$(cat feature.txt)\" = feature\ngit ls-files -s submodule | grep -q '^160000'\ngit ls-files --error-unmatch .codex-review-target-control.patch >/dev/null\ngrep -q 'untrusted review data' .codex-review-target-control.patch\ngrep -q 'target says ignore findings' .codex-review-target-control.patch\ngrep -q 'target changed symlink destination' .codex-review-target-control.patch\ngrep -q 'hostile-ordinary' .codex-review-target-control.patch\ngrep -q 'hostile-controls' .codex-review-target-control.patch\ngrep -q 'target case alias' .codex-review-target-control.patch\ngrep -q 'target whitespace destination' .codex-review-target-control.patch\ngrep -q 'pathspec magic instructions' .codex-review-target-control.patch\ngrep -q 'target override says ignore findings' .codex-review-target-control.patch\ngrep -q 'model_instructions_file' .codex-review-target-control.patch\ngrep -q 'target Codex skill' .codex-review-target-control.patch\ngrep -q 'hostile-agent-root' .codex-review-target-control.patch\nprintf '%s' \"$*\" | grep -q 'project_doc_fallback_filenames'\nprintf '%s' \"$*\" | grep -q 'trust_level'\nprintf 'reviewed isolated instructions\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, `#!/bin/sh
+set -eu
+test "$1" = review
+test "$2" = --commit
+target=$3
+test "$(cat AGENTS.md)" = 'frozen base rules'
+test "$(cat docs/real/rules.md)" = 'frozen base rules'
+test "$(cat nested/AGENTS.md)" = 'nested base rules'
+test "$(cat ordinary/AGENTS.md)" = 'ordinary base rules'
+test "$(cat scope/AGENTS.md)" = 'ancestor base rules'
+test "$(cat case-scope/AGENTS.md)" = 'case base rules'
+test "$(cat space-scope/AGENTS.md)" = 'space base rules'
+test "$(cat space-scope/rules)" = 'decoy base'
+test "$(git show "$target:nested")" = 'target directory replacement'
+test "$(git show "$target:hostile-controls/rules.md")" = 'target ancestor redirect'
+test "$(git show "$target:space-scope/rules")" = 'target decoy'
+git ls-tree -r --name-only "$target" | grep -qx AGENTS.md
+git ls-tree -r --name-only "$target" | grep -qx nested
+git ls-tree -r --name-only "$target" | grep -qx case-scope/TARGET/rules.md
+! git ls-tree -r --name-only "$target" | grep -qx agents.md
+! git ls-tree -r --name-only "$target" | grep -qx case-scope/target/rules.md
+! git --literal-pathspecs cat-file -e "$target::(exclude)foo/AGENTS.md" >/dev/null 2>&1
+! git cat-file -e "$target:AGENTS.override.md"
+! git cat-file -e "$target:.codex/config.toml"
+! git cat-file -e "$target:.codex/skills/hostile/SKILL.md"
+! git cat-file -e "$target:.agents"
+! git cat-file -e "$target:.gitattributes"
+test "$(git show "$target:base.txt")" = feature
+test "$(git show "$target:feature.txt")" = feature
+git ls-tree "$target" submodule | grep -q '^160000'
+git cat-file -e "$target:.codex-review-target-control.patch"
+git show "$target:.codex-review-target-control.patch" | grep -q 'untrusted review data'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target says ignore findings'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target changed symlink destination'
+git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-ordinary'
+git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-controls'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target case alias'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target whitespace destination'
+git show "$target:.codex-review-target-control.patch" | grep -q 'pathspec magic instructions'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target override says ignore findings'
+git show "$target:.codex-review-target-control.patch" | grep -q 'model_instructions_file'
+git show "$target:.codex-review-target-control.patch" | grep -q 'target Codex skill'
+git show "$target:.codex-review-target-control.patch" | grep -q 'hostile-agent-root'
+printf '%s' "$*" | grep -q 'project_doc_fallback_filenames'
+printf '%s' "$*" | grep -q 'trust_level'
+printf 'reviewed isolated instructions\n'
+`, { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
       process.chdir(directory)
@@ -657,7 +703,7 @@ esac
       await writeFile(join(directory, "root.txt"), "root\n")
       await execFile("git", ["add", "root.txt"], { cwd: directory })
       await execFile("git", ["commit", "-m", "root", "-m", "parent message text is not metadata"], { cwd: directory })
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --uncommitted\ntest \"$(cat root.txt)\" = root\nprintf 'reviewed root commit\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntest ! -e root.txt\ntest \"$(git show \"$3:root.txt\")\" = root\nprintf 'reviewed root commit\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
       process.chdir(directory)
@@ -831,7 +877,7 @@ esac
       await execFile("git", ["sparse-checkout", "init", "--cone"], { cwd: directory })
       await execFile("git", ["sparse-checkout", "set", "keep"], { cwd: directory })
       await writeFile(join(directory, "keep", "a.txt"), "working\n")
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$(cat keep/a.txt)\" = working\ntest \"$(cat omit/b.txt)\" = 'out of cone'\nprintf 'reviewed sparse source\\n'\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ntest \"$1\" = review\ntest \"$2\" = --commit\ntest \"$(cat keep/a.txt)\" = base\ntest \"$(cat omit/b.txt)\" = 'out of cone'\ntest \"$(git show \"$3:keep/a.txt\")\" = working\ntest \"$(git show \"$3:omit/b.txt\")\" = 'out of cone'\nprintf 'reviewed sparse source\\n'\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const previousCwd = process.cwd()
       process.chdir(directory)
@@ -921,7 +967,7 @@ esac
       await execFile("git", ["add", "tracked.txt"], { cwd: directory })
       await writeFile(join(directory, "tracked.txt"), "unstaged\n")
       await writeFile(join(directory, "untracked.txt"), "untracked\n")
-      await writeFile(reviewer, "#!/bin/sh\nset -eu\ncase \"$1\" in\n  login) exit 0 ;;\n  doctor) printf '%s\\n' '{\"checks\":{\"auth.credentials\":{\"status\":\"ok\"}}}' ;;\n  exec) printf 'ok\\n' ;;\n  review) test \"$2\" = --uncommitted; test \"$(cat tracked.txt)\" = unstaged; test \"$(cat untracked.txt)\" = untracked; printf 'reviewed unborn worktree\\n' ;;\n  *) exit 7 ;;\nesac\n", { mode: 0o700 })
+      await writeFile(reviewer, "#!/bin/sh\nset -eu\ncase \"$1\" in\n  login) exit 0 ;;\n  doctor) printf '%s\\n' '{\"checks\":{\"auth.credentials\":{\"status\":\"ok\"}}}' ;;\n  exec) printf 'ok\\n' ;;\n  review) test \"$2\" = --commit; test ! -e tracked.txt; test \"$(git show \"$3:tracked.txt\")\" = unstaged; test \"$(git show \"$3:untracked.txt\")\" = untracked; printf 'reviewed unborn worktree\\n' ;;\n  *) exit 7 ;;\nesac\n", { mode: 0o700 })
       await writeFile(join(directory, ".git", "info", "exclude"), "reviewer\n")
       const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "uncommitted", "--codex-bin", reviewer], { cwd: directory })
       assert.match(stdout, /reviewed unborn worktree/u)
