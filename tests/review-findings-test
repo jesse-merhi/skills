@@ -1295,21 +1295,45 @@ db.exec(`
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "active", "", 1, 1)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", "sample-app", process.argv[2], "PR #2", "main", "old-head", "active", "", 1, 1)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", "sample-app", process.argv[2], "PR #3", "main", "old-head", "active", "", 1, 1)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-terminal", "sample-app", process.argv[2], "PR #4", "main", "old-head", "complete", "", 1, 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-issue", "legacy-run", "D0", "open", "legacy", "legacy", "Legacy finding", "", "legacy text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-deferred", "legacy-run", "LEGACY-DEFERRED", "deferred", "legacy", "legacy deferred", "Legacy deferred finding", "", "legacy deferred text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-fixed", "legacy-run", "LEGACY-FIXED", "fixed", "legacy", "legacy fixed", "Legacy active finding", "", "legacy fixed text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete-finding", "legacy-complete", "LEGACY-COMPLETE", "fixed", "legacy", "legacy complete", "Legacy completed finding", "", "legacy complete text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-terminal-finding", "legacy-terminal", "LEGACY-TERMINAL", "fixed", "legacy", "legacy terminal", "Legacy terminal finding", "", "legacy terminal text", "", 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", 0, "main", "base-oid", 30, "Legacy scope", "", 1, 0, 0, '["asset.bin"]', "ready", 1, 0, 0, 0, 0, "[]", "", 1, 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", 0, "main", "base-oid", 30, "Over budget", "", 1, 0, 0, '["app.ts"]', "blocked", 2, 0, 0, 1, 0, "[]", "Existing line overage requires authorization.", 1, 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", 0, "main", "base-oid", 30, "Complete", "", 1, 0, 0, '["done.ts"]', "complete", 1, 0, 0, 0, 0, '["done-extra.ts"]', "", 1, 1)
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
+  if record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id D0 --status fixed --source review --fingerprint "rewritten legacy identity" \
+    --summary "Legacy finding rewritten during migration." --text "rewritten" \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "legacy evidence upgrades must not rewrite finding identity or lifecycle"
+  fi
+  assert_contains "$tmp/stderr" "legacy evidence upgrades must preserve the finding identity and lifecycle"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status, source, fingerprint, evidence_version from issues where decision_id = ?").get("D0"); if (row?.status !== "open" || row.source !== "legacy" || row.fingerprint !== "legacy" || row.evidence_version !== 7) process.exit(1)' "$db"
   record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
-    --decision-id D0 --status fixed --source review --fingerprint legacy \
+    --decision-id D0 --status open --source legacy --fingerprint legacy \
+    --summary "Legacy finding updated." --text "updated" >/dev/null
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id D0 --status fixed --source legacy --fingerprint legacy \
     --summary "Legacy finding updated." --text "updated" >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set priority = ? where decision_id = ?").run("P4", "D0")' "$db"
+  if record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main \
+    --decision-id LEGACY-TERMINAL --status fixed --source legacy --fingerprint "legacy terminal" \
+    --summary "Legacy terminal finding updated." --text "updated" \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "completed legacy runs must reject finding writes"
+  fi
+  assert_contains "$tmp/stderr" "completed review runs are terminal"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const run = db.prepare("select status from review_runs where id = ?").get("legacy-terminal"); const issue = db.prepare("select evidence_version from issues where decision_id = ?").get("LEGACY-TERMINAL"); if (run?.status !== "complete" || issue?.evidence_version !== 7) process.exit(1)' "$db"
   node --input-type=module - "$db" <<'NODE'
 import { DatabaseSync } from "node:sqlite"
 const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json, new_binary_production_paths_json, line_metric, status, last_reason from review_scope_budgets where run_id = 'legacy-run'").get()

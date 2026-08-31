@@ -327,8 +327,9 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
 }
 const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding) => hasLegacyEvidence(existing) &&
   existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
-  existing.decision === finding.decision && existing.disposition === finding.disposition && existing.fix_scope === finding.fixScope &&
-  existing.handling === finding.handling && existing.owner_resolution === finding.ownerResolution
+  existing.decision === finding.decision && (existing.disposition.length === 0 || existing.disposition === finding.disposition) &&
+  (existing.fix_scope.length === 0 || existing.fix_scope === finding.fixScope) &&
+  (existing.handling.length === 0 || existing.handling === finding.handling) && existing.owner_resolution === finding.ownerResolution
 interface CommandRow {
   readonly command: string
   readonly result: string
@@ -1351,6 +1352,17 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     ? []
     : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
   const existingIssue = existingIssues[0]
+  const existingRun = existingRunId === undefined
+    ? undefined
+    : (yield* sql<CloseoutRunRow>`select id, status from review_runs where id = ${existingRunId} limit 1`)[0]
+  const exactCurrentTerminalReplay = existingIssue !== undefined && !hasLegacyEvidence(existingIssue) &&
+    isFindingTerminal(existingIssue) && isExactResolvedReplay(existingIssue, input, material, text)
+  if (existingRun?.status === "complete" && !exactCurrentTerminalReplay) {
+    return yield* Effect.fail(new InvalidFinding("completed review runs are terminal; start a new user-authorized review before recording more findings"))
+  }
+  if (existingIssue !== undefined && hasLegacyEvidence(existingIssue) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    return yield* Effect.fail(new InvalidFinding("legacy evidence upgrades must preserve the finding identity and lifecycle; upgrade the evidence before changing the current record"))
+  }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
     return yield* Effect.fail(new InvalidFinding("updating an owner-resolved finding requires --owner-resolution and --decision"))
   }
