@@ -431,6 +431,10 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     for (let index = 0; index < targetControls.length; index += 100) {
       yield* checkedInherit(gitTool, ["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", ...targetControls.slice(index, index + 100).map(literalPathspec)], { cwd: snapshot })
     }
+    const blockedDependency = targetEntries.find((entry) => !targetControlPaths.has(entry.path) && foldedPrefixes.some((prefix) => prefix.startsWith(`${entry.path.toLowerCase()}/`)))
+    if (blockedDependency !== undefined) {
+      return yield* new ReviewSnapshotError({ message: `target path blocks a frozen review control symlink destination: ${blockedDependency.path}` })
+    }
     const restorableBaseControls = baseControls.filter((control) => !targetEntries.some((entry) => !targetControlPaths.has(entry.path) && control.toLowerCase().startsWith(`${entry.path.toLowerCase()}/`)))
     for (let index = 0; index < restorableBaseControls.length; index += 100) {
       yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...restorableBaseControls.slice(index, index + 100).map(literalPathspec)], { cwd: snapshot })

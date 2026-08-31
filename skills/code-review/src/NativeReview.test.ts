@@ -721,6 +721,39 @@ esac
     }
   })
 
+  it("rejects a target file that blocks a frozen-control symlink destination", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "review-blocked-control-"))
+    const reviewer = join(directory, "reviewer")
+    try {
+      await execFile("git", ["init", "-b", "main"], { cwd: directory })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: directory })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: directory })
+      await mkdir(join(directory, "docs"))
+      await writeFile(join(directory, "docs", "rules.md"), "base rules\n")
+      await symlink("docs/rules.md", join(directory, "AGENTS.md"))
+      await execFile("git", ["add", "AGENTS.md", "docs/rules.md"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "base"], { cwd: directory })
+      await execFile("git", ["switch", "-c", "feature"], { cwd: directory })
+      await execFile("git", ["rm", "docs/rules.md"], { cwd: directory })
+      await rm(join(directory, "docs"), { recursive: true, force: true })
+      await writeFile(join(directory, "docs"), "target replacement\n")
+      await execFile("git", ["add", "docs"], { cwd: directory })
+      await execFile("git", ["commit", "-m", "replace destination ancestor"], { cwd: directory })
+      await writeFile(reviewer, "#!/bin/sh\nprintf 'must not review\\n'\nexit 7\n", { mode: 0o700 })
+      const previousCwd = process.cwd()
+      process.chdir(directory)
+      try {
+        const result = await Effect.runPromiseExit(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD", false), testCommand: Option.none() })))
+        assert.isTrue(Exit.isFailure(result))
+        if (Exit.isFailure(result)) assert.match(String(Cause.squash(result.cause)), /blocks a frozen review control symlink destination/u)
+      } finally {
+        process.chdir(previousCwd)
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it("materializes out-of-cone files from a sparse source checkout", async () => {
     const directory = await mkdtemp(join(tmpdir(), "review-sparse-checkout-"))
     const reviewer = join(directory, "reviewer")

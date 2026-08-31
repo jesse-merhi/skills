@@ -38,12 +38,13 @@ chains are frozen as part of the same control surface, using the exact symlink
 blob without trimming path whitespace. Absolute or
 repository-escaping control symlinks fail closed because the temporary worktree
 cannot safely redirect them to frozen content. Missing targets and targets
-inside unmaterialized gitlinks also fail closed. Case-folded aliases and target
+inside unmaterialized gitlinks also fail closed, as does a target file or gitlink
+that blocks an active frozen symlink destination. Case-folded aliases and target
 symlinks that could redirect an ancestor of a protected destination are
 quarantined. Target-side control changes are captured as forced text independent
-of target attributes. If a target file replaces a base directory containing a
-scoped instruction file, the replacement remains in the review target; the
-now-inapplicable nested instruction is represented only as a control deletion.
+of target attributes. If a target file replaces a base directory containing an
+ordinary scoped instruction file, the replacement remains in the review target;
+the now-inapplicable nested instruction is represented only as a control deletion.
 
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
