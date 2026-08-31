@@ -23,6 +23,7 @@ agent unless a repo-specific fix workflow applies.
 ```yaml
 review_tool: must invoke cold-pr-review through an independent subagent whenever the harness supports subagents
 review_context: subagent gets only the target and neutral review checklist; no prior rationale or findings
+review_workspace: instruction discovery must start in a frozen-base checkout; expose the target through an immutable commit, diff, or separate data path
 fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
 state_store: keep findings, commands, open queue, and stop reason in the findings CLI
 scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
@@ -44,7 +45,9 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
    working tree, load `review-guardrails`, and identify required verification
    commands. If running inside `code-review`, inherit the orchestrator's
    persisted scope budget, consult queue, and queue-matching rules. Confirm it
-   with `scope-status` before fixing anything.
+   with `scope-status` before fixing anything. Resolve a frozen-base checkout
+   before dispatch. Do not start the reviewer in the target checkout and ask it
+   to switch later; instruction discovery has already occurred by then.
 
 2. Build neutral reviewer context.
 
@@ -59,8 +62,10 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
    Load `wait-efficiently`, then read
    [references/subagent-dispatch.md](references/subagent-dispatch.md). Done when
    a fresh isolated reviewer receives only the target and neutral review
-   checklist, and the coordinator uses the native event-driven wait for its
-   result. Match candidates against the findings registry only after the pass.
+   checklist, starts from the frozen base, and receives the target as a separate
+   immutable commit, diff, or data path. The coordinator uses the native
+   event-driven wait for its result. Match candidates against the findings
+   registry only after the pass.
 
 4. Run the until-clean loop.
 
@@ -80,6 +85,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 - Every review pass used a fresh isolated reviewer whenever the harness
   supported one.
+- Every reviewer discovered instructions from the frozen base rather than the
+  target checkout.
 - The reviewer did not receive prior findings, fixes already attempted, design
   rationale, CI confidence signals, desired verdicts, or earlier `code-review`
   results.
@@ -97,6 +104,8 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 - substituting the implementer's judgment for a cold review;
 - leaking prior findings or implementation rationale into reviewer prompts;
+- starting a reviewer in the target checkout, even if the prompt later asks it
+  to switch to the base;
 - stopping without a fresh clean cold-review pass;
 - silently fixing or rejecting consult-worthy findings;
 - running more reviews on an unchanged tree beyond the clean target.

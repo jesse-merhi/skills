@@ -1,6 +1,10 @@
 # Codex engine
 
-Invoke `codex review` with the target flag only. Do not append a prompt.
+Invoke the native `codex review` engine without a custom prompt. When this skill
+runs standalone, use the bare forms below. When `code-review` delegates Phase 1,
+use its required `scripts/codex-review` transport instead; that helper invokes
+native review from an untouched frozen-base checkout and must not be replaced by
+a bare target-checkout command.
 
 Use these forms:
 
@@ -17,10 +21,25 @@ codex review --commit <sha>
 
 For GitHub PRs, check out the PR branch locally first, then use
 `codex review --base <base-branch>`. `codex review` does not take a PR number in
-the tested CLI.
+the tested CLI. This target-checkout instruction applies only to standalone
+`review-until-clean`, never to a `code-review` phase that requires the frozen
+helper.
 
-Prefer `--base <branch>` or `--uncommitted` for review-until-clean loops where
-you expect to edit fixes. A commit SHA is immutable. After fixing findings from
+For delegated `code-review` Phase 1, use equivalent helper forms:
+
+```sh
+scripts/codex-review --mode whole --base <base-branch>
+scripts/codex-review --mode branch --base <base-branch>
+scripts/codex-review --mode uncommitted
+scripts/codex-review --mode commit --commit <sha>
+```
+
+The helper resolves the requested target, creates a synthetic commit, and
+invokes native `codex review --commit` from the untouched frozen base. Do not
+append a prompt or invoke bare `codex review` from the target checkout.
+
+For standalone loops, prefer `--base <branch>` or `--uncommitted` where you
+expect to edit fixes. A commit SHA is immutable. After fixing findings from
 `codex review --commit <sha>`, do **not** keep reviewing the old SHA. Either
 amend/create the fix commit and retarget the command to the new SHA, or switch
 the loop target to `codex review --base <branch>` or
@@ -61,7 +80,7 @@ Codex Desktop or `codex archive <id>` for a standalone session. Archival is part
 of completing each invocation; perform it before dispatching the next native
 review.
 
-The `code-review` helper archives the rollout sessions created by its own bare
+The `code-review` helper archives the rollout sessions created by its own native
 `codex review` command. That does not cover a separate task created through ACP
 or an app-level task API; the coordinator still owns cleanup of that external
 task.
