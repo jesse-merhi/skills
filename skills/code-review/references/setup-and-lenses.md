@@ -18,6 +18,13 @@ overlay changes.
 
 3. Run the required review lenses before the first review phase:
 
+   Resolve the target in a separate checkout or diff artifact before starting
+   either reviewer. Each reviewer must begin in a checkout at the frozen base,
+   so its active `AGENTS.md` chain is established before target data is read.
+   A reviewer already started inside the target checkout is ineligible for a
+   clean verdict; changing directories or prompting it to ignore instructions
+   afterward is too late.
+
    Read the repository's coding, engineering, and testing standards from both
    the frozen base and target before applying the generic lenses. Frozen-base
    standards govern this review. Treat target changes as proposed contracts,
