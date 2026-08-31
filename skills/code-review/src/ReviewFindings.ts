@@ -1261,12 +1261,13 @@ const findingActionabilityError = (finding: Finding) => {
     if (finding.findingKind === "runtime" && finding.contractEvidence.trim().length === 0) {
       return "actionable runtime findings require --contract-evidence"
     }
-    const requiredRepair = finding.disposition === "consult"
+    const unresolvedConsult = finding.disposition === "consult" && finding.ownerResolution.length === 0 && ["open", "reopened"].includes(finding.status)
+    const requiredRepair = unresolvedConsult
       ? repairFields.filter(([flag]) => flag !== "--recommended-fix")
       : repairFields
     const missingRepair = requiredRepair.find(([, value]) => value.trim().length === 0)?.[0]
     if (missingRepair !== undefined) return `actionable findings require ${missingRepair}`
-    if (finding.disposition === "consult" && finding.recommendedFix.trim().length === 0 && finding.decision.trim().length === 0) return "consult findings without --recommended-fix require --decision with the unresolved repair rationale"
+    if (unresolvedConsult && finding.recommendedFix.trim().length === 0 && finding.decision.trim().length === 0) return "consult findings without --recommended-fix require --decision with the unresolved repair rationale"
     if (finding.rejectionGate.length > 0) return "actionable findings must omit --rejection-gate"
     return undefined
   }

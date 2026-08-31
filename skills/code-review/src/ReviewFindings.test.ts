@@ -81,6 +81,12 @@ describe("review finding risk outcomes", () => {
       })
     ))
 
+  it.effect("requires the repair when an owner closes a consult", () =>
+    decodeFinding({ ...runtimeFinding, status: "fixed", likelihood: "rare", impact: "high", handling: "consult", recommendedFix: "", ownerResolution: "approved" }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /actionable findings require --recommended-fix/u))
+    ))
+
   it.effect("keeps optional repairs off rejected candidates", () =>
     decodeFinding({
       ...runtimeFinding,
