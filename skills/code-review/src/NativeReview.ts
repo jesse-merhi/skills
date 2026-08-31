@@ -205,9 +205,17 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
   const includeHead = options.includeHead ?? true
   const includeWorkingTree = options.includeWorkingTree ?? true
   const branch = includeHead ? yield* fromRoot(["symbolic-ref", "--quiet", "--short", "HEAD"]).pipe(Effect.orElseSucceed(() => "HEAD")) : undefined
-  const head = includeHead ? yield* fromRoot(["rev-parse", "HEAD"]) : undefined
+  const resolvedHead = includeHead ? yield* fromRoot(["rev-parse", "--verify", "HEAD^{commit}"]).pipe(Effect.option) : Option.none<string>()
+  const head = Option.getOrUndefined(resolvedHead)
   const status = includeWorkingTree ? yield* fromRoot(["status", "--porcelain=v1", "-z"]) : ""
-  const diff = includeWorkingTree ? yield* fromRoot(["diff", "--binary", "HEAD"]) : ""
+  const diff = !includeWorkingTree
+    ? ""
+    : Option.isSome(resolvedHead)
+    ? yield* fromRoot(["diff", "--binary", resolvedHead.value])
+    : [
+      yield* fromRoot(["diff", "--binary", "--cached"]),
+      yield* fromRoot(["diff", "--binary"])
+    ].join("\n")
   const untracked = includeWorkingTree ? yield* fromRoot(["ls-files", "--others", "--exclude-standard", "-z"]) : ""
   const paths = untracked.length === 0 ? [] : untracked.split("\0").filter((path) => path.length > 0)
   const fs = yield* FileSystem.FileSystem
@@ -224,15 +232,6 @@ export const reviewIdentity = Effect.fn("NativeReview.reviewIdentity")(function*
 
 const instructionArtifact = ".codex-review-target-control.patch"
 const instructionNames = ["AGENTS.md", "AGENTS.override.md"]
-const controlPathspec = [
-  ...instructionNames.flatMap((name) => [`:(icase)${name}`, `:(icase,glob)**/${name}`]),
-  ":(icase).codex/config.toml",
-  ":(icase).gitattributes",
-  ":(icase,glob)**/.gitattributes",
-  ":(icase).agents",
-  ":(icase).agents/skills",
-  ":(icase,glob).agents/skills/**"
-]
 const isControlFile = (file: string) => {
   const normalized = file.toLowerCase()
   return normalized === ".codex/config.toml" ||
@@ -296,27 +295,67 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     const committedRange = `${base}..${targetTree}`
     const reserved = yield* checkedText(gitTool, ["diff", "--binary", "--no-renames", committedRange, "--", `:(icase)${instructionArtifact}`], { cwd: repo })
     if (reserved.length > 0) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
-    const committedControlPatch = yield* checkedText(gitTool, ["diff", "--binary", "--no-renames", committedRange, "--", ...controlPathspec], { cwd: repo })
-    const workingControlPatch = target.envelope.includeWorkingTree
-      ? yield* checkedText(gitTool, ["diff", "--binary", "--no-renames", "--", ...controlPathspec], { cwd: repo })
-      : ""
+    const listTreeEntries = Effect.fn("NativeReview.listTreeEntries")(function*(tree: string) {
+      const output = yield* checkedText(gitTool, ["ls-tree", "-r", "-z", tree], { cwd: repo })
+      return yield* Effect.forEach(output.split("\0").filter(Boolean), (line) => Effect.gen(function*() {
+        const match = /^(\d{6}) [^ ]+ ([0-9a-f]+)\t([\s\S]+)$/u.exec(line)
+        if (match === null || match[1] === undefined || match[2] === undefined || match[3] === undefined) {
+          return yield* new ReviewSnapshotError({ message: "could not parse review tree entry" })
+        }
+        return { mode: match[1], oid: match[2], path: match[3] }
+      }))
+    })
+    const baseEntries = yield* listTreeEntries(base)
+    const targetEntries = yield* listTreeEntries(targetTree)
+    const baseControlPaths = new Set(baseEntries.filter((entry) => isControlFile(entry.path)).map((entry) => entry.path))
+    const protectedPrefixes = new Set<string>()
+    const pendingLinks = baseEntries.filter((entry) => entry.mode === "120000" && baseControlPaths.has(entry.path))
+    while (pendingLinks.length > 0) {
+      const link = pendingLinks.shift()
+      if (link === undefined) continue
+      const target = yield* checkedTrimmedText(gitTool, ["cat-file", "blob", link.oid], { cwd: repo })
+      if (paths.isAbsolute(target)) continue
+      const resolved = paths.normalize(paths.join(paths.dirname(link.path), target))
+      if (resolved === ".." || resolved.startsWith(`..${paths.sep}`)) continue
+      const prefix = link.path.toLowerCase() === ".agents" ? paths.join(resolved, "skills") : resolved
+      if (protectedPrefixes.has(prefix)) continue
+      protectedPrefixes.add(prefix)
+      for (const entry of baseEntries) {
+        if (entry.path !== prefix && !entry.path.startsWith(`${prefix}/`)) continue
+        const added = !baseControlPaths.has(entry.path)
+        baseControlPaths.add(entry.path)
+        if (added && entry.mode === "120000") pendingLinks.push(entry)
+      }
+    }
+    const isEnvelopeControl = (file: string) => isControlFile(file) || [...protectedPrefixes].some((prefix) => file === prefix || file.startsWith(`${prefix}/`))
+    const baseControls = baseEntries.filter((entry) => baseControlPaths.has(entry.path)).map((entry) => entry.path)
+    const targetControls = targetEntries.filter((entry) => isEnvelopeControl(entry.path)).map((entry) => entry.path)
+    const diffControlPaths = [...new Set([...baseControls, ...targetControls])]
+    const controlDiff = Effect.fn("NativeReview.controlDiff")(function*(range: ReadonlyArray<string>) {
+      const chunks = new Array<string>()
+      for (let index = 0; index < diffControlPaths.length; index += 100) {
+        chunks.push(yield* checkedText(gitTool, [
+          "diff", "--binary", "--text", "--no-ext-diff", "--no-textconv", "--no-renames",
+          ...range,
+          "--",
+          ...diffControlPaths.slice(index, index + 100).map((file) => `:(literal)${file}`)
+        ], { cwd: repo }))
+      }
+      return chunks.filter((chunk) => chunk.length > 0).join("\n")
+    })
+    const committedControlPatch = yield* controlDiff([committedRange])
+    const workingControlPatch = target.envelope.includeWorkingTree ? yield* controlDiff([]) : ""
     const controlPatch = [committedControlPatch, workingControlPatch].filter((patch) => patch.length > 0).join("\n")
     if (base !== targetTree) {
-      const listTreePaths = Effect.fn("NativeReview.listTreePaths")(function*(tree: string) {
-        const output = yield* checkedText(gitTool, ["ls-tree", "-r", "-z", "--name-only", tree], { cwd: repo })
-        return output.split("\0").filter(Boolean)
-      })
-      const basePaths = yield* listTreePaths(base)
-      const baseControls = basePaths.filter(isControlFile)
-      const targetControls = (yield* listTreePaths(targetTree)).filter(isControlFile)
       yield* checkedInherit(gitTool, ["read-tree", "--reset", targetTree], { cwd: snapshot })
       for (let index = 0; index < targetControls.length; index += 100) {
         yield* checkedInherit(gitTool, ["rm", "-q", "--cached", "-r", "-f", "--ignore-unmatch", "--", ...targetControls.slice(index, index + 100)], { cwd: snapshot })
       }
-      for (let index = 0; index < baseControls.length; index += 100) {
-        yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...baseControls.slice(index, index + 100)], { cwd: snapshot })
+      const restorableBaseControls = baseControls.filter((control) => !targetEntries.some((entry) => !isEnvelopeControl(entry.path) && control.startsWith(`${entry.path}/`)))
+      for (let index = 0; index < restorableBaseControls.length; index += 100) {
+        yield* checkedInherit(gitTool, ["restore", `--source=${base}`, "--staged", "--", ...restorableBaseControls.slice(index, index + 100)], { cwd: snapshot })
       }
-      for (const file of basePaths) {
+      for (const { path: file } of baseEntries) {
         const destination = paths.resolve(snapshot, file)
         if (!destination.startsWith(`${snapshot}${paths.sep}`)) return yield* new ReviewSnapshotError({ message: `refusing to remove tracked path outside snapshot: ${file}` })
         yield* fs.remove(destination, { force: true, recursive: true })
@@ -331,7 +370,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
         const mode = match[1]
         const file = match[2]
         if (mode === undefined || file === undefined) return yield* new ReviewSnapshotError({ message: "could not parse tracked review path" })
-        if (isControlFile(file)) continue
+        if (isEnvelopeControl(file)) continue
         if (mode === "160000") {
           const dirty = yield* checkedText(gitTool, ["diff", "--raw", "--", file], { cwd: repo })
           if (dirty.length > 0) return yield* new ReviewSnapshotError({ message: `stage dirty submodule before review: ${file}` })
@@ -352,7 +391,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       ? yield* checkedText(gitTool, ["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repo })
       : ""
     const untrackedFiles = untracked.split("\0").filter(Boolean)
-    for (const file of untrackedFiles.filter((file) => !isControlFile(file))) {
+    for (const file of untrackedFiles.filter((file) => !isEnvelopeControl(file))) {
       if (file.toLowerCase() === instructionArtifact) return yield* new ReviewSnapshotError({ message: `review target reserves ${instructionArtifact}` })
       const source = paths.resolve(repo, file)
       const destination = paths.resolve(snapshot, file)
@@ -364,7 +403,7 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
     }
     const instructionPatches = controlPatch.length === 0 ? [] : [controlPatch]
     if (target.envelope.includeWorkingTree) {
-      for (const file of untrackedFiles.filter(isControlFile)) {
+      for (const file of untrackedFiles.filter(isEnvelopeControl)) {
         const source = paths.resolve(repo, file)
         const linkTarget = yield* fs.readLink(source).pipe(Effect.option)
         const content = Option.isSome(linkTarget)

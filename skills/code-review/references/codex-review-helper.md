@@ -33,6 +33,13 @@ native session, so target-controlled skills, project configuration, or fallback
 files cannot become active. This is why invoking bare `codex review` from the
 target checkout is not equivalent to this helper.
 
+Repository paths reached through frozen-base instruction symlinks are frozen as
+part of the same control surface. Their target-side changes are captured as
+forced text independent of target attributes. If a target file replaces a base
+directory containing a scoped instruction file, the replacement remains in the
+review target; the now-inapplicable nested instruction is represented only as a
+control deletion.
+
 Tracked target state is materialized through Git's index and tree operations,
 not a textual patch. Gitlinks, file modes, deletions, and case-normalizing
 renames therefore remain part of the uncommitted review target.
