@@ -4,6 +4,7 @@
 
 - [When this file applies](#when-this-file-applies)
 - [GitHub attachment upload](#github-attachment-upload)
+- [Bitbucket image upload](#bitbucket-image-upload)
 - [Rendered PR verification](#rendered-pr-verification)
 - [Evidence contract](#evidence-contract)
 - [Presentation gate](#presentation-gate)
@@ -60,6 +61,18 @@ player. Keep every attachment in the main PR body, never in a table or detached
 comment. Do not commit proof media to the repository unless the project or user
 explicitly requests that storage model.
 
+## Bitbucket image upload
+
+For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). TWG applies the
+complete description and provider-hosted images together with
+`twg bb pull-requests update`, `--description-file`, repeated `--image` flags,
+and body placeholders such as `{{image}}`. A separate TWG or Atlassian skill is
+optional; use it when available and useful.
+
+The TWG path supports images, not video. If still images would lose an essential
+motion or playback claim, stop with `blocked` evidence instead of publishing a
+weaker proof.
+
 ## Rendered PR verification
 
 On GitHub, inspect the final title and Markdown body, then verify the
@@ -102,6 +115,10 @@ video viewer. Inspect the fetched rendered asset again after upload. A file with
 real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
+For Bitbucket Cloud, TWG readback proves the stored PR description but not the
+rendered image. Follow [bitbucket.md](bitbucket.md) and inspect every finished
+image or diagram on the rendered PR in an authenticated interactive browser.
+
 ## Explanation diagrams
 
 Use the same provider upload, rendered-asset verification, and presentation
@@ -140,7 +157,7 @@ review-ready.
   docks, notifications, unrelated windows, and empty space.
 - Keep only interface controls that are part of the behavior. A browser frame is
   not context; provide route, fixture, environment, and viewport in nearby text.
-- Make the relevant state readable at normal GitHub width. Use a tighter crop or
+- Make the relevant state readable at normal PR-body width. Use a tighter crop or
   fewer rows rather than asking the reviewer to zoom into a full desktop.
 - Match crop, scale, viewport, theme, and data for before/after evidence. Label
   each side without covering the changed result.
@@ -231,5 +248,5 @@ phone-number error, and keeps the entered values available for correction.
 recorded at deliberate pace on the current PR branch.
 ```
 
-Use descriptive alt text and labels. Keep reproduction steps copyable. Let
-GitHub's checks report routine automated validation.
+Use descriptive alt text and labels. Keep reproduction steps copyable. Let the
+provider's checks report routine automated validation.

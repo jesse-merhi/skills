@@ -166,6 +166,7 @@ behavior_checks = {
     root / "skills/pr-proof-pack/SKILL.md": [
         "scripts/github-upload-attachment",
         "repository command",
+        "twg bb pull-requests update",
         "`body_html`",
         "direct-base `+LOC` and `-LOC`",
     ],
@@ -174,6 +175,13 @@ behavior_checks = {
         "scripts/github-upload-attachment",
         "requires a `201` response",
         "server-rendered body without opening a browser",
+    ],
+    root / "skills/pr-proof-pack/references/bitbucket.md": [
+        "provider CLI",
+        "twg bb pull-requests update",
+        "--description-file",
+        "{{image}}",
+        "headless Bitbucket rendered-media verifier",
     ],
     root / "skills/pr-proof-pack/src/GitHubAttachment.ts": [
         "https://uploads.github.com/user-attachments/assets",
@@ -682,6 +690,9 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
+  assert_contains "$skill/SKILL.md" '`twg bb pull-requests update`'
+  assert_contains "$skill/SKILL.md" '`--description-file`'
+  assert_contains "$skill/SKILL.md" 'a separate TWG or Atlassian skill is optional, not required'
   assert_contains "$skill/references/screenshots.md" "## GitHub attachment upload"
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/references/screenshots.md" 'The command supports `github.com` PRs only'
@@ -692,6 +703,8 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_not_contains "$skill/references/screenshots.md" 'browser upload'
   assert_contains "$skill/references/screenshots.md" "If it fails, stop and report its diagnostics"
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
+  assert_contains "$skill/references/screenshots.md" "## Bitbucket image upload"
+  assert_contains "$skill/references/screenshots.md" '`twg bb pull-requests update`'
   assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-verify-rendered-proof'
   assert_contains "$skill/references/screenshots.md" "--jq '{title, body}'"
   assert_contains "$skill/references/screenshots.md" '`body_html` without printing it'
@@ -706,8 +719,16 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/screenshots.md" "## Presentation gate"
   assert_contains "$skill/references/screenshots.md" "Inspect the actual image at full readable detail"
   assert_contains "$skill/references/screenshots.md" "Exclude browser tabs"
-  assert_contains "$skill/references/screenshots.md" "normal GitHub width"
+  assert_contains "$skill/references/screenshots.md" "normal PR-body width"
   assert_contains "$skill/references/screenshots.md" "The model must be able to state what the visual proves"
+  assert_contains "$skill/references/bitbucket.md" 'works without a separate TWG skill'
+  assert_contains "$skill/references/bitbucket.md" 'available TWG or Atlassian skill may provide current guidance'
+  assert_contains "$skill/references/bitbucket.md" 'TWG is not limited to media upload'
+  assert_contains "$skill/references/bitbucket.md" 'twg bb pull-requests get <pr-id>'
+  assert_contains "$skill/references/bitbucket.md" 'twg bb pull-requests update --help'
+  assert_contains "$skill/references/bitbucket.md" '`--description-file`'
+  assert_contains "$skill/references/bitbucket.md" '`{{image}}`'
+  assert_contains "$skill/references/bitbucket.md" 'There is no repository-owned'
   assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
   assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
   assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'

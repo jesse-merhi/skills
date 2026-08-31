@@ -63,9 +63,10 @@ output is stale when the same result would be clearer as short copyable text.
   requests, responses, and state. Use visual evidence only when text would lose
   an important fact about appearance, layout, motion, interaction, rendering,
   or playback.
-- **Provider-hosted attachments:** When a diagram or visual evidence is selected
-  on `github.com`, upload it through the repository command, which uses the
-  scoped `gh` credential.
+- **Provider-hosted attachments:** Upload selected media through the provider's
+  supported path. On `github.com`, use the repository command and scoped `gh`
+  credential. On Bitbucket Cloud, use TWG's coupled PR-body and image update;
+  a separate TWG or Atlassian skill is optional, not required.
 - **Rendered proof:** Check the rendered result headlessly by default. Use an
   interactive browser only when client-side rendering, literal page appearance,
   or playback must be inspected.
@@ -94,7 +95,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    Use read-only provider metadata. On GitHub, inspect
    `gh pr view --json number,url,body,title,baseRefName,headRefName,headRefOid`. For a stack,
    load `gh-stack`, inspect `gh stack view --json`, and record the current
-   layer's position and adjacent dependencies.
+   layer's position and adjacent dependencies. On Bitbucket Cloud, read
+   [references/bitbucket.md](references/bitbucket.md), resolve the workspace,
+   repository, and PR ID explicitly, and use its read-only TWG inspection path.
 
    Done when the exact PR, provider hostname, final head, direct base, and
    existing proof are known.
@@ -136,6 +139,14 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    not make an interactive browser a prerequisite for `github.com` upload or
    ordinary rendered-body checks, and do not require attachment or browser
    capabilities for text-only proof.
+
+   For Bitbucket Cloud, follow the preflight in
+   [references/bitbucket.md](references/bitbucket.md). Treat live TWG help as
+   the final command contract. When a TWG or Atlassian skill is already
+   available, load it if it improves current provider or authentication
+   guidance. Keep it optional so this public skill still works with the CLI
+   alone. A visual refresh also requires an interactive browser for the
+   finished rendered-media check; a text-only refresh does not.
 
    Done when provider authentication and repository access work and every
    browser or device capability genuinely needed later in the refresh is
@@ -208,7 +219,11 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    `<skill-dir>/scripts/github-upload-attachment --pr <number-or-URL-resolved-in-step-2> <path>`
    for each selected diagram, image, or video. Insert the URL printed only
    after the command has verified the upload. Put media in the main PR body,
-   never in a detached comment or table. Text evidence needs no attachment.
+   never in a detached comment or table. On Bitbucket Cloud, follow the single
+   `twg bb pull-requests update` operation in
+   [references/bitbucket.md](references/bitbucket.md): pass the complete draft
+   with `--description-file` and each selected image with `--image`. TWG images
+   are supported; video is not. Text evidence needs no attachment.
 
    Done when every selected diagram and visual is provider-hosted and every
    text proof is present in the main body, or the workflow has stopped before
@@ -228,6 +243,12 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    content such as Mermaid or when the proof depends on literal page layout,
    pixel appearance, or playback. Remove stale proof rather than accumulating
    it.
+
+   On Bitbucket Cloud, follow the readback and verification contract in
+   [references/bitbucket.md](references/bitbucket.md). Re-read the full PR with
+   TWG and confirm the expected head, title, body, and embeds. For a diagram or
+   image, inspect the rendered PR interactively and inspect the rendered pixels;
+   TWG readback alone does not prove that Bitbucket rendered the media.
 
    Done when the rendered PR accurately describes the final pushed net diff,
    with browser inspection completed for every case headless checks cannot

@@ -1,0 +1,112 @@
+# Bitbucket Cloud through TWG
+
+## When this file applies
+
+Read this file only for a Bitbucket Cloud PR. TWG is the provider CLI used by
+this branch. This public proof-pack works without a separate TWG skill. An
+available TWG or Atlassian skill may provide current guidance. Load it when
+useful; the CLI path here still works without it.
+
+TWG is not limited to media upload. Use it for the Bitbucket reads and
+authorized PR mutations this workflow needs. Its availability does not grant
+permission for unrelated provider actions.
+
+Use the live binary's help as the source of truth. The examples below use the
+long command names for clarity; do not assume an older TWG release supports
+the same flags.
+
+## Resolve and inspect the PR
+
+Resolve the Bitbucket workspace slug, repository slug, and PR ID from the exact
+PR URL or repository remote. Pass all three explicitly rather than relying on
+working-directory detection:
+
+```sh
+twg bb pull-requests get <pr-id> \
+  --full \
+  --workspace <workspace-slug> \
+  --repo <repository-slug> \
+  -o json
+```
+
+Record the PR URL, title, description, source branch, destination branch, and
+source commit hash. Resolve the direct base locally from the destination branch
+using the normal proof-pack net-diff workflow.
+
+## Preflight a refresh
+
+First inspect the exact mutation command without changing provider state:
+
+```sh
+twg bb pull-requests update --help
+```
+
+Require `--pull-request` and `--description-file` for every refresh. When an
+image or diagram was selected, also require `--image`. Then run the read-only
+`get` command above with explicit workspace and repository values to prove that
+authentication and repository access work.
+
+If TWG is missing, its live help lacks a required flag, or the read fails, stop
+before mutation. Report the detected binary and failure. Ask the human to put a
+current TWG binary first on `PATH` or repair Bitbucket authentication, such as
+with `twg setup bitbucket`.
+
+## Refresh the description and images
+
+Write the complete intended PR description to a temporary Markdown file. For
+each image, put TWG's placeholder on its own line at the intended body location:
+
+```md
+{{image}}
+```
+
+Use `{{image}}` for the first image. For multiple images, pass the files in body
+order and use `{{image:2}}`, `{{image:3}}`, and so on for later images. Keep
+nearby alt text, captions, and evidence context in the Markdown because the
+placeholder itself carries none.
+
+After publication authority is confirmed, update the body and upload all
+selected images in one operation:
+
+```sh
+twg bb pull-requests update \
+  --pull-request <pr-id> \
+  --description-file <draft-markdown-path> \
+  --image <first-image-path> \
+  --workspace <workspace-slug> \
+  --repo <repository-slug> \
+  -o json
+```
+
+If the title is stale and live help exposes `--title`, include the corrected
+title in the same update.
+
+Repeat `--image` in placeholder order for additional images. Follow the live
+help's current file-type and size limits. TWG uploads the images to Bitbucket's
+provider-hosted storage and embeds them while applying the description. Do not
+upload detached evidence in a comment or commit proof media to the repository.
+
+This path supports images, not video. Use one or more still images only when
+they preserve the claim. If motion or playback is essential evidence, classify
+the refresh as `blocked` and explain that the Bitbucket/TWG attachment path
+cannot publish the required format.
+
+For a text-only refresh, omit `--image` and do not add image placeholders.
+
+## Verify the finished PR
+
+Run the full read-only `get` command again. Require the source commit hash to
+match the final head captured before mutation. Check the title and complete
+description, confirm every intended section is present, and confirm that no
+literal `{{image...}}` placeholder remains.
+
+For a text-only refresh, this provider readback is sufficient when the stored
+Markdown contains every expected claim and reproduction step. For every image
+or diagram, open the exact PR in an authenticated interactive browser. Confirm
+that each embed loads in the intended body position, then inspect its rendered
+pixels at the PR body's real width. TWG readback verifies stored PR data; it
+does not prove that Bitbucket rendered usable media. There is no repository-owned
+headless Bitbucket rendered-media verifier.
+
+If the final head changed, an embed is missing, a placeholder remains, or the
+rendered pixels cannot be inspected, stop and report the exact failed check.
