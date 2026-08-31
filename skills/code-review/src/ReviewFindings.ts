@@ -327,7 +327,8 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
 }
 const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding) => hasLegacyEvidence(existing) &&
   existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
-  existing.decision === finding.decision && (existing.disposition.length === 0 || existing.disposition === finding.disposition) &&
+  (existing.decision.length === 0 || existing.decision === finding.decision) &&
+  (existing.disposition.length === 0 || existing.disposition === finding.disposition) &&
   (existing.fix_scope.length === 0 || existing.fix_scope === finding.fixScope) &&
   (existing.handling.length === 0 || existing.handling === finding.handling) && existing.owner_resolution === finding.ownerResolution
 interface CommandRow {
@@ -1357,7 +1358,8 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     : (yield* sql<CloseoutRunRow>`select id, status from review_runs where id = ${existingRunId} limit 1`)[0]
   const exactCurrentTerminalReplay = existingIssue !== undefined && !hasLegacyEvidence(existingIssue) &&
     isFindingTerminal(existingIssue) && isExactResolvedReplay(existingIssue, input, material, text)
-  if (existingRun?.status === "complete" && !exactCurrentTerminalReplay) {
+  if (exactCurrentTerminalReplay) return { runId: existingRunId, issueId: existingIssue.id }
+  if (existingRun?.status === "complete") {
     return yield* Effect.fail(new InvalidFinding("completed review runs are terminal; start a new user-authorized review before recording more findings"))
   }
   if (existingIssue !== undefined && hasLegacyEvidence(existingIssue) && !isLegacyEvidenceUpgrade(existingIssue, input)) {

@@ -1299,6 +1299,7 @@ db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-issue", "legacy-run", "D0", "open", "legacy", "legacy", "Legacy finding", "", "legacy text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-deferred", "legacy-run", "LEGACY-DEFERRED", "deferred", "legacy", "legacy deferred", "Legacy deferred finding", "", "legacy deferred text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-fixed", "legacy-run", "LEGACY-FIXED", "fixed", "legacy", "legacy fixed", "Legacy active finding", "", "legacy fixed text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-decisionless", "legacy-run", "LEGACY-DECISIONLESS", "deferred", "legacy", "legacy decisionless", "Legacy decisionless finding", "", "legacy decisionless text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete-finding", "legacy-complete", "LEGACY-COMPLETE", "fixed", "legacy", "legacy complete", "Legacy completed finding", "", "legacy complete text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-terminal-finding", "legacy-terminal", "LEGACY-TERMINAL", "fixed", "legacy", "legacy terminal", "Legacy terminal finding", "", "legacy terminal text", "", 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", 0, "main", "base-oid", 30, "Legacy scope", "", 1, 0, 0, '["asset.bin"]', "ready", 1, 0, 0, 0, 0, "[]", "", 1, 1)
@@ -1307,6 +1308,7 @@ db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, 
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("maintenance", "follow-up", "local", "follow-up", "LEGACY-DECISIONLESS")' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint "rewritten legacy identity" \
@@ -1324,6 +1326,14 @@ NODE
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source legacy --fingerprint legacy \
     --summary "Legacy finding updated." --text "updated" >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --finding-kind maintenance --fix-scope local --handling follow-up \
+    "${MAINTENANCE_EVIDENCE[@]}" "${REPAIR_EVIDENCE[@]}" \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id LEGACY-DECISIONLESS --status deferred --source legacy --fingerprint "legacy decisionless" \
+    --summary "Legacy decisionless finding updated." --text "updated" \
+    --decision "Assign the deferred work to its owning review." >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status, decision, disposition, evidence_version from issues where decision_id = ?").get("LEGACY-DECISIONLESS"); if (row?.status !== "deferred" || row.decision !== "Assign the deferred work to its owning review." || row.disposition !== "follow-up" || row.evidence_version !== 8) process.exit(1)' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set priority = ? where decision_id = ?").run("P4", "D0")' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main \
@@ -1334,6 +1344,16 @@ NODE
   fi
   assert_contains "$tmp/stderr" "completed review runs are terminal"
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const run = db.prepare("select status from review_runs where id = ?").get("legacy-terminal"); const issue = db.prepare("select evidence_version from issues where decision_id = ?").get("LEGACY-TERMINAL"); if (run?.status !== "complete" || issue?.evidence_version !== 7) process.exit(1)' "$db"
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #5" --base main \
+    --decision-id CURRENT-TERMINAL --status fixed --source review --fingerprint "current terminal" \
+    --summary "Current terminal finding." --text "current" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update review_runs set status = ? where target = ?").run("complete", "PR #5")' "$db"
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #5" --base main \
+    --decision-id CURRENT-TERMINAL --status fixed --source review --fingerprint "current terminal" \
+    --summary "Current terminal finding." --text "current" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const run = db.prepare("select status from review_runs where target = ?").get("PR #5"); const issue = db.prepare("select seen_count from issues where decision_id = ?").get("CURRENT-TERMINAL"); if (run?.status !== "complete" || issue?.seen_count !== 1) process.exit(1)' "$db"
   node --input-type=module - "$db" <<'NODE'
 import { DatabaseSync } from "node:sqlite"
 const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json, new_binary_production_paths_json, line_metric, status, last_reason from review_scope_budgets where run_id = 'legacy-run'").get()
