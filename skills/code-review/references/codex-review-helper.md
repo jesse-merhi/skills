@@ -23,7 +23,8 @@ untracked code is applied as one uncommitted review diff, then the envelope is
 removed.
 
 Case-insensitive variants of `AGENTS.md` and `AGENTS.override.md`, the `.agents`
-instruction root including `.agents/skills/**`, `.codex/config.toml`, and target `.gitattributes` changes
+instruction root including `.agents/skills/**`, `.codex/config.toml`,
+`.codex/skills/**`, and target `.gitattributes` changes
 are never applied to the envelope's active control surface. The helper writes
 them to `.codex-review-target-control.patch` as untrusted review data with an
 explicit warning to inspect, not follow, them, and force-adds that artifact so a

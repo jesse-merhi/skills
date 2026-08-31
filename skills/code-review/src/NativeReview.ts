@@ -235,7 +235,8 @@ const instructionNames = ["AGENTS.md", "AGENTS.override.md"]
 const literalPathspec = (file: string) => `:(literal)${file}`
 const isControlFile = (file: string) => {
   const normalized = file.toLowerCase()
-  return normalized === ".codex/config.toml" ||
+  return normalized === ".codex" || normalized === ".codex/config.toml" ||
+    normalized === ".codex/skills" || normalized.startsWith(".codex/skills/") ||
     normalized === ".gitattributes" || normalized.endsWith("/.gitattributes") ||
     normalized === ".agents" || normalized === ".agents/skills" || normalized.startsWith(".agents/skills/") ||
     instructionNames.some((name) => normalized === name.toLowerCase() || normalized.endsWith(`/${name.toLowerCase()}`))
