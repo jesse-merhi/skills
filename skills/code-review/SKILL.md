@@ -96,8 +96,10 @@ unless the current user explicitly requests that exact cross-harness session.
    Read [references/setup-and-lenses.md](references/setup-and-lenses.md). Done
    when the changed flows are mapped, required lenses have run, conditional
    lenses have run or been marked not applicable, the Fowler smell baseline has
-   been considered on the Standards path, the neutral cold-review risk checklist
-   exists, and validation targets are known.
+   been considered on the Standards path, repository coding and testing
+   standards have been applied, changed tests have passed the stable-contract
+   value gate, the neutral cold-review risk checklist exists, and validation
+   targets are known.
 
 5. Prepare the findings registry.
 
@@ -217,6 +219,9 @@ unless the current user explicitly requests that exact cross-harness session.
   `accept` from the risk rating.
 - Every autonomous fix names a current reachable contract and remains
   proportional to its impact.
+- Every changed test protects a stable product contract or executable test
+  boundary; presentation-only, duplicated, retired, and branch-history tests
+  are removed without inventing replacement coverage.
 - `scope-start` persisted the original baseline, every accepted fix was followed
   by `scope-check`, and the final check passed before `scope-complete`. Any
   authorized reset records the user's words through `scope-authorize`.

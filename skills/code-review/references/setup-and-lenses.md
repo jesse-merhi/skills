@@ -18,6 +18,10 @@ overlay changes.
 
 3. Run the required review lenses before the first review phase:
 
+   Read the repository's coding, engineering, and testing standards before
+   applying the generic lenses. Treat them as the target's binding contract;
+   report any conflict instead of silently substituting this skill's defaults.
+
    - `pr-rubbish-audit`: classify every changed file and flag unrelated churn,
      dangerous removals, generated drift, stale branch-history comments,
      accidental deletions, or unneeded refactors.
@@ -59,7 +63,17 @@ overlay changes.
      tests, or when the PR changes, adds, or deletes tests. Check both whether
      related tests should change and whether changed tests earn their keep,
      especially around removed APIs, impossible states, implementation details,
-     or branch-local history.
+     or branch-local history. For every retained or proposed test, name the
+     realistic regression, stable product or executable boundary, and why
+     nearby coverage would not fail for the same bug. Remove presentation-only,
+     duplicated, retired, impossible-state, and branch-history tests. Do not
+     invent replacement Jest, component, Playwright, or Maestro coverage when a
+     deletion removes only copy, layout, styling, geometry, animation, timing,
+     skeleton/loading/empty-state presentation, mock calls, or wiring. Use
+     rendered proof for deliberate visual changes and let normal journeys own
+     the final usable state. Accessibility or user visibility alone does not
+     rescue a test: it must protect a stable capability that would still be
+     wrong after an intentional visual redesign.
    - `frontend-ui-validation`: mandatory when the diff changes visible UI,
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the
