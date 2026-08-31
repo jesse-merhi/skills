@@ -398,13 +398,15 @@ const withReviewSnapshot = <A, E, R>(target: ReviewTarget, use: (cwd: string) =>
       }
     }
     const foldedPrefixes = [...protectedPrefixes].map((prefix) => prefix.toLowerCase())
+    const foldedControlPaths = [...baseControlPaths].map((path) => path.toLowerCase())
+    const foldedProtectedPaths = [...new Set([...foldedPrefixes, ...foldedControlPaths])]
     const isEnvelopeControl = (file: string) => {
       const folded = file.toLowerCase()
       return isControlFile(file) || foldedPrefixes.some((prefix) => folded === prefix || folded.startsWith(`${prefix}/`))
     }
     const isProtectedAncestor = (file: string) => {
       const folded = file.toLowerCase()
-      return foldedPrefixes.some((prefix) => prefix.startsWith(`${folded}/`))
+      return foldedProtectedPaths.some((path) => path.startsWith(`${folded}/`))
     }
     const baseControls = baseEntries.filter((entry) => baseControlPaths.has(entry.path)).map((entry) => entry.path)
     const targetControls = targetEntries.filter((entry) => isEnvelopeControl(entry.path) || (entry.mode === "120000" && isProtectedAncestor(entry.path))).map((entry) => entry.path)
