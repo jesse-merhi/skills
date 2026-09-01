@@ -1321,6 +1321,8 @@ MAPPINGS
   assert_contains "$review/references/setup-and-lenses.md" '- `test-audit`: mandatory'
   assert_contains "$review/references/subagents.md" 'Always add a focused `test-audit` subagent'
   assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" 'load `test-audit`'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'Before creating, changing, or removing tests, load `test-audit`'
+  assert_contains "$ROOT_DIR/AGENTS.md" 'During code review, load `reducing-cognitive-load`'
 }
 
 test_cross_harness_sessions_are_full_and_symmetric() {

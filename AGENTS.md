@@ -69,6 +69,19 @@ Apply this especially to routing, parsing, validation, serialization, retries,
 queues, caching, middleware, request context, telemetry, date and time handling,
 resource lifecycle, and graceful shutdown.
 
+## Test and review design
+
+- Before creating, changing, or removing tests, load `test-audit` and apply its
+  portfolio policy. During code review, load it whenever changed code has
+  nearby or related tests or the diff changes tests. Keep one executable owner
+  for each distinct reachable regression at the narrowest useful proof level;
+  consolidate or remove coverage that owns no promised behavior.
+- During code review, load `reducing-cognitive-load` while assessing the initial
+  diff and every proposed fix. Prefer removing unnecessary code, tests,
+  abstractions, indirection, and defensive branches when the promised behavior
+  remains owned. Perform that reduction inside the review loop instead of
+  deferring it to a later cleanup pass.
+
 ## Model turns
 
 Every return to the model re-sends the whole conversation, so the count of
