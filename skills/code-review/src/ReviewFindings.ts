@@ -363,7 +363,7 @@ const preservesLegacySeverity = (existing: string, current: string) => {
 }
 const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding, material: boolean) => hasLegacyEvidence(existing) &&
   existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
-  existing.summary === finding.summary && existing.material === (material ? 1 : 0) &&
+  existing.summary === finding.summary && existing.material <= (material ? 1 : 0) &&
   preservesLegacyArea(existing.area, finding.area) && preservesLegacySeverity(existing.severity, finding.severity) &&
   preservesLegacyValue(existing.user_impact, finding.userImpact) && preservesLegacyValue(existing.decision, finding.decision) &&
   preservesLegacyValue(existing.finding_kind, finding.findingKind) && preservesLegacyValue(existing.production_path, finding.productionPath) &&
@@ -748,7 +748,7 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
       repo_name=excluded.repo_name, repo_key=excluded.repo_key, repo_path=excluded.repo_path,
       branch=excluded.branch, target=excluded.target, base=excluded.base,
       head=case when excluded.head != '' then excluded.head else review_runs.head end,
-      status=excluded.status,
+      status=case when review_runs.status = 'complete' then 'complete' else excluded.status end,
       decision_log_path=case when excluded.decision_log_path != '' then excluded.decision_log_path else review_runs.decision_log_path end,
       update_seq=excluded.update_seq, updated_at=excluded.updated_at`
   return runId
