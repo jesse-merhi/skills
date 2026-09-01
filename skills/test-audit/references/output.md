@@ -3,7 +3,8 @@
 For a review, report:
 
 - `Keep`: tests that protect real behavior.
-- `Consolidate`: equivalent cases or tests that should have one owner.
+- `Consolidate`: distinct regression owners that should retain separate cases
+  while sharing one table or setup.
 - `Move`: real risks proved at the wrong level.
 - `Rewrite`: tests that target a real risk but assert it poorly.
 - `Delete`: tests/assertions that do not earn their keep.
@@ -12,11 +13,13 @@ For a review, report:
 - `No test needed`: changed behavior inspected where new coverage would not
   catch a verified reachable future bug.
 - `No change needed`: related tests inspected and why they still fit.
-- `Dangerous removals`: deleted tests that still protect promised behavior.
-- `Ownership`: the named executable replacement for each deleted test that owns
-  a still-promised regression, or why the deleted test owns no current
-  regression and needs no replacement; also state why adjacent coverage misses
-  each keeper's regression.
+- `Dangerous removals`: removed tests or assertions that were the last
+  executable owner of promised behavior and have no equivalent, inspected
+  replacement at the required cadence.
+- `Ownership`: the named executable replacement for each removed test or
+  assertion that owned a still-promised regression, or why the removed coverage
+  owned no current regression and needs no replacement; also state why adjacent
+  coverage misses each keeper's or consolidated case's distinct regression.
 - `Validation`: commands run and result. For a portfolio-reduction audit, add
   before-and-after file counts, expanded test counts, and measured runtime when
   reliable.

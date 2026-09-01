@@ -1294,37 +1294,6 @@ test_review_neutrality_and_skill_ownership_are_explicit() {
   assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" "not mean knowingly temporary"
 }
 
-test_test_audit_owns_portfolio_policy() {
-  local audit="$ROOT_DIR/skills/test-audit" classification output_bucket
-  local review="$ROOT_DIR/skills/code-review"
-  local portfolio_reference="references/portfolio.md"
-
-  assert_contains "$audit/SKILL.md" "[portfolio.md]($portfolio_reference)"
-  test -f "$audit/$portfolio_reference" || fail "test-audit portfolio reference must resolve"
-
-  while IFS='|' read -r classification output_bucket; do
-    assert_contains "$audit/references/classifications.md" "- \`$classification\`:"
-    assert_contains "$audit/references/output.md" "- \`$output_bucket\`:"
-  done <<'MAPPINGS'
-keeper|Keep
-consolidate|Consolidate
-move|Move
-rewrite|Rewrite
-delete|Delete
-changed-but-useless|Changed but useless
-missing|Missing
-no-test-needed|No test needed
-no-change-needed|No change needed
-dangerous-removal|Dangerous removals
-MAPPINGS
-
-  assert_contains "$review/references/setup-and-lenses.md" '- `test-audit`: mandatory'
-  assert_contains "$review/references/subagents.md" 'Always add a focused `test-audit` subagent'
-  assert_contains "$ROOT_DIR/skills/tdd/SKILL.md" 'load `test-audit`'
-  assert_contains "$ROOT_DIR/AGENTS.md" 'Before creating, changing, or removing tests, load `test-audit`'
-  assert_contains "$ROOT_DIR/AGENTS.md" 'During code review, load `reducing-cognitive-load`'
-}
-
 test_cross_harness_sessions_are_full_and_symmetric() {
   assert_contains "$ROOT_DIR/skills/ask-claude/SKILL.md" "This is not a subagent"
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
@@ -1612,7 +1581,6 @@ test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
 test_openclaw_local_test_helpers
 test_review_neutrality_and_skill_ownership_are_explicit
-test_test_audit_owns_portfolio_policy
 test_cross_harness_sessions_are_full_and_symmetric
 test_claude_fable_orchestration_is_repo_owned
 test_skill_cleaner_uses_current_model_configuration

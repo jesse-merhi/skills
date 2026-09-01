@@ -1,13 +1,14 @@
 ---
 name: test-audit
-description: "Plan and audit test portfolios before creating, changing, or removing tests; challenge missing, duplicate, brittle, wrongly placed, ownerless, and dangerous coverage."
+description: "Plan and audit test portfolios before creating, changing, or removing tests or test infrastructure; challenge missing, duplicate, brittle, wrongly placed, ownerless, and dangerous coverage."
 ---
 
 # Test audit
 
 Audit tests as a product-risk portfolio. Run this before creating tests, for
-every PR that changes tests, and for any PR that touches code with nearby or
-related tests.
+every PR that changes tests or test infrastructure, and for every PR that
+changes production behavior. Test infrastructure includes fixtures, test-only
+routes, helpers, configuration, and harnesses.
 
 The goal is tests that catch verified reachable future bugs and document
 behavior the product still promises. The default answer is not "add a test"; the
@@ -32,17 +33,23 @@ There are three gates:
    - If an API or UI contract is intentionally replaced, treat the old shape as
      obsolete unless the code still promises compatibility.
 2. Inventory changed test files and related unmodified tests.
-   - Use `git diff --name-status <base>...HEAD` and inspect test hunks.
+   - Use `git diff --name-status <base>...HEAD` for the committed range. When
+     local changes belong to the target, also inspect `git diff --name-status`,
+     `git diff --cached --name-status`, and
+     `git ls-files --others --exclude-standard`; deduplicate the resulting
+     paths before inspecting test hunks.
    - Search around each changed route, component, hook, service, schema, helper,
      package, or user flow.
-   - Include deleted tests.
+   - Include deleted tests and changed test infrastructure even when no test
+     file changed.
 3. Map test ownership with
    [portfolio.md](references/portfolio.md).
-   - For every retained test, name the reachable bug, the public or domain
-     boundary, why adjacent coverage misses it, and an independent expected
-     result.
-   - Inspect overlapping tests at other levels and any test-only fixtures,
-     routes, helpers, configuration, or harnesses the changed tests own.
+   - For each changed, deleted, or proposed test, and each nearby test used as
+     a replacement or overlap comparison, determine whether it owns a reachable
+     bug and at which boundary. For a retained or proposed owner, also name why
+     adjacent coverage misses it and derive the expected result independently.
+   - Inspect overlapping tests at other levels and any test infrastructure the
+     changed tests own.
 4. Classify each test or assertion using
    [classifications.md](references/classifications.md).
 5. Apply the usefulness bar and signal lists in
@@ -57,7 +64,7 @@ There are three gates:
      are absent, mocks were called in a specific order, tautological expected
      values are recomputed from the same logic as the implementation, or
      impossible data is ignored.
-   - Add tests only for verified reachable risks introduced by the PR.
+   - Add tests only for verified reachable change-relevant risks.
    - Prefer one test that exercises the user/API contract over several tests
      that assert internals.
 8. Edit tests only when implementation is authorized. After edits:
@@ -70,6 +77,8 @@ There are three gates:
 
 - A real future bug means a failure path you can show from current code,
   contracts, data, permissions, or user flows.
+- A risk is change-relevant when the current work introduces, exposes, fixes,
+  or directly exercises it.
 - Some feature work, cleanup, and intentional removals should leave no new tests
   behind.
 - Do not assume a changed test is useful just because it passes.
@@ -78,10 +87,6 @@ There are three gates:
 - If tests changed, audit every changed assertion.
 - A tautological assertion gives no confidence: expected values must come from
   an independent source of truth, not from re-running the implementation logic.
-- A broader test owns a smaller test's regression only when both drive the same
-  branch with equivalent inputs, fail for the same bug, and assert the same
-  public outcome at an equivalent required cadence. Incidental traversal is not
-  coverage.
 
 ## Context pointers
 

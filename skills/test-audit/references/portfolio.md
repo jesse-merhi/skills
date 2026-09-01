@@ -23,9 +23,10 @@ is not coverage.
 
 ## Require a replacement owner
 
-Before deleting coverage, name and inspect the executable test that will fail
-for the same bug. Land and verify a required replacement before or in the same
-change, and confirm it runs at an equivalent required cadence. Manually
+Before deleting a test that owns a still-promised regression, name and inspect
+the executable test that will fail for the same bug. Land and verify a required
+replacement before or in the same change, and confirm it runs at an equivalent
+required cadence. Manually
 triggered or opt-in coverage does not replace routine automated coverage by
 itself. A planned refactor, future test, manual check, development-only
 assertion, type, or schema is not an executable owner.
@@ -60,10 +61,11 @@ risks that journey cannot isolate.
 
 ## Consolidate or remove
 
-Consolidate cases that differ only by equivalent roles, statuses, invalid
-inputs, filters, wording, or repeated workflow setup. Use a named object-shaped
-table when the cases drive the same branch and assertion shape. Keep cases
-separate when their failure modes or required side effects differ.
+Consolidate distinct regression owners that repeat workflow setup or assertion
+shape. Use a named object-shaped table while keeping one row for each distinct
+failure mode or required side effect. Remove cases that differ only by
+equivalent roles, statuses, invalid inputs, filters, or wording and drive the
+same branch and public outcome.
 
 Remove tests or assertions that own no current regression, including:
 
@@ -88,11 +90,10 @@ absence of any forbidden side effect when one is possible.
 
 ## Audit adversarially
 
-For each proposed keeper, challenge whether the bug is reachable, distinct,
-placed at the right level, and backed by an independent expectation. For each
-deletion, challenge whether the named replacement really drives the same
-branch and outcome. Recheck every affected high-risk boundary after the
-challenge.
+Apply the five-question [usefulness bar](usefulness-bar.md) to each proposed
+keeper. For each deletion, challenge whether the named replacement really
+drives the same branch and outcome. Recheck every affected high-risk boundary
+after the challenge.
 
 For a portfolio-reduction audit, report before-and-after test file counts,
 expanded test counts, and measured runtime when the environment can measure it
