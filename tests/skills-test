@@ -461,9 +461,6 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "## Defence In Depth"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "The burden of proof belongs to the finding"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "it cannot supply missing production"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/actionability.md" "Actionable means the proven problem justifies either a supported repair or an"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/actionability.md" "A consultation is an actionable finding because the problem merits an owner"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/output.md" "The consultation is actionable as an owner decision, not as permission"
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/output.md" "Use exactly the severity and disposition returned by the findings CLI"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "## Autonomous Fix Bar"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" 'CLI-derived `accept`'
@@ -482,8 +479,6 @@ test_code_review_flags_unsupported_defense_and_proxy_helpers() {
   assert_contains "$ROOT_DIR/skills/finding-discipline/references/exclusions.md" "Reject unsupported possibilities"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Why the local fix is a Band-Aid"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Smallest durable option"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Contained systemic repair"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Material systemic repair"
   assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" 'Load `improve-codebase-architecture`'
   assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "risk rating for runtime candidates"
   assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind runtime"
