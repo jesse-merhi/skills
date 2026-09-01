@@ -1524,7 +1524,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   }
   const exactCurrentTerminalReplay = existingIssue !== undefined && !hasLegacyEvidence(existingIssue) &&
     isFindingTerminal(existingIssue) && isExactResolvedReplay(existingIssue, input, material, text)
-  if (exactCurrentTerminalReplay) return { runId: existingRunId, issueId: existingIssue.id }
+  if (exactCurrentTerminalReplay && (runComplete || run.status !== "complete")) return { runId: existingRunId, issueId: existingIssue.id }
   if (runComplete) {
     if (existingRun.scope_status === "complete") {
       return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review before recording more findings"))
