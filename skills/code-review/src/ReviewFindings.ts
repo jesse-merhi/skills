@@ -262,6 +262,7 @@ export interface RecordedCommand {
 }
 
 interface RunRow { readonly id: string }
+interface RunStateRow extends RunRow { readonly status: string; readonly head: string }
 interface CloseoutRunRow extends RunRow { readonly status: string }
 interface RunIdentityRow extends RunRow { readonly branch: string; readonly base: string }
 interface IdRow { readonly id: string }
@@ -739,7 +740,7 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
     on conflict(id) do update set
       repo_name=excluded.repo_name, repo_key=excluded.repo_key, repo_path=excluded.repo_path,
       branch=excluded.branch, target=excluded.target, base=excluded.base,
-      head=case when excluded.head != '' then excluded.head else review_runs.head end,
+      head=case when review_runs.status = 'complete' then review_runs.head when excluded.head != '' then excluded.head else review_runs.head end,
       status=case when review_runs.status = 'complete' then 'complete' else excluded.status end,
       decision_log_path=case when excluded.decision_log_path != '' then excluded.decision_log_path else review_runs.decision_log_path end,
       update_seq=excluded.update_seq, updated_at=excluded.updated_at`
@@ -749,12 +750,16 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
 const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
-  const matching = yield* sql.unsafe<RunRow>(
-    "select review_runs.id from review_runs where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
+  const matching = yield* sql.unsafe<RunStateRow>(
+    "select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head from review_runs where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
     [repoKey, run.branch, run.target, run.base]
   )
+  const matchedRun = matching[0]
+  if (matchedRun?.status === "complete" && run.head.length > 0 && run.head !== matchedRun.head) {
+    return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+  }
   const updateSequence = yield* nextSequence()
-  const runId = matching[0]?.id ?? stableId([repoKey, run.branch, run.target, run.base])
+  const runId = matchedRun?.id ?? stableId([repoKey, run.branch, run.target, run.base])
   return yield* persistRun(run, runId, updateSequence)
 })
 

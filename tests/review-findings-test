@@ -1363,6 +1363,15 @@ NODE
     --command "pnpm test legacy-terminal" --result passed \
     --reason "Record validation without reopening completed legacy history." >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status from review_runs where id = ?").get("legacy-terminal"); if (row?.status !== "complete") process.exit(1)' "$db"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main --head new-head \
+    --command "pnpm test new-head" --result passed \
+    --reason "A different head must start a new review." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "completed runs must reject validation recorded for a different head"
+  fi
+  assert_contains "$tmp/stderr" "completed review runs are bound to their reviewed head"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const run = db.prepare("select status, head from review_runs where id = ?").get("legacy-terminal"); const commands = db.prepare("select count(*) as count from commands where run_id = ?").get("legacy-terminal"); if (run?.status !== "complete" || run.head !== "old-head" || commands?.count !== 1) process.exit(1)' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint "rewritten legacy identity" \
