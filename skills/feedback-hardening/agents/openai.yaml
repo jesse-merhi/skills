@@ -1,4 +1,4 @@
 interface:
   display_name: "Feedback Hardening"
-  short_description: "Turn agent corrections into systemic fixes"
-  default_prompt: "Use $feedback-hardening to turn this correction into a ranked systemic-fix recommendation, then wait for user approval before implementation."
+  short_description: "Harden corrected or self-detected agent failures"
+  default_prompt: "Use $feedback-hardening to turn this user correction or self-detected reusable agent failure into one ranked systemic-fix recommendation, then wait for explicit user approval before implementation."

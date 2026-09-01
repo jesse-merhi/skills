@@ -1,24 +1,32 @@
 ---
 name: feedback-hardening
-description: "Corrections about agent work: delegate a systemic-fix recommendation, get user approval, then implement it."
+description: "User corrections or self-detected recurring agent mistakes: delegate one systemic-fix recommendation, get approval, then implement the approved repair."
 ---
 
 # Feedback hardening
 
-Turn a user's correction of agent behavior into a separate durable repair while
-the current conversation keeps moving.
+Turn a user correction or an agent's self-detected mistake that reveals a
+reusable failure into one separate durable repair while the current
+conversation keeps moving.
 
 ## 1. Frame the intervention
 
-Use this workflow when the user corrects or criticizes how the agent worked,
-identifies a recurring failure, or expresses frustration that points to
-avoidable agent behavior. Infer the concrete behavior from the transcript
-before asking for clarification. Treat a changed objective, a factual
-clarification, or a one-deliverable preference as part of the current task
-unless it exposes a reusable invariant.
+Use this workflow for either trigger:
 
-Acknowledge the correction briefly, repair the immediate user-facing result
-when authorized, and capture:
+- The user corrects or criticizes how the agent worked, identifies a recurring
+  failure, or expresses frustration that points to avoidable agent behavior.
+- The agent independently recognizes that its own action violated a reusable
+  invariant or is likely to recur across tasks, sessions, repositories, or
+  users.
+
+A self-detected mistake qualifies only when concrete evidence shows a missing
+reusable guard or a failure likely to recur beyond the immediate occurrence.
+Handle a trivial typo, expected review finding, ordinary debugging discovery,
+changed objective, factual clarification, or one-deliverable preference in the
+current task unless it exposes that reusable invariant.
+
+Acknowledge a user correction briefly. For either trigger, repair the immediate
+user-facing result only when existing task authority allows it, and capture:
 
 - the observed agent behavior;
 - the desired invariant;
@@ -31,16 +39,21 @@ invariant rather than as an insult, example, or proposed fix.
 
 ## 2. Assign a fresh recommendation owner
 
-Check for an existing repair session that owns the same invariant. Send new
-evidence to that owner when one exists.
+Before creating a handoff, check the current conversation and available session
+records for an active or completed repair that owns the same invariant. Send
+new evidence to that owner; do not create another session.
 
-Otherwise, use the `handoff` skill to start a fresh full agent session for the
-hardening work. Classify it as an aside when the current user task can continue
-independently; classify it as a continuation when the repair is required to
-complete that task. Give the receiver the feedback, evidence, desired
-invariant, affected systems, current permissions, and read-only context. Ask it
-to investigate independently rather than assuming the user's suggested
-mechanism is the root fix.
+Inside a hardening session, route a genuinely distinct qualifying invariant to
+the source conversation instead of launching a nested hardening session. This
+skill never hands off to itself recursively.
+
+Otherwise, start one cold native subagent or equivalent independent agent
+session with no conversation fork. Classify it as an aside when the current
+user task can continue independently; classify it as a continuation when the
+repair is required to complete that task. Give the receiver the triggering
+correction or self-detected mistake, evidence, desired invariant, affected
+systems, current permissions, and read-only context. Ask it to investigate
+independently rather than assuming the suggested mechanism is the root fix.
 
 The first phase is recommendation-only. Tell the receiver to inspect and reason
 without editing files, creating or updating pull requests, posting externally,
@@ -85,13 +98,13 @@ investigation.
 
 ## 4. Implement the approved path
 
-Treat the user's initial correction as authority to create the recommendation
-session and conduct read-only investigation. Begin implementation only after
-the user explicitly approves an option. That approval covers the selected
-reversible local changes in the same workspace; it does not bypass existing
-gates for public or external writes, publication, merges, deployment,
-destructive actions, protected schema or protocol changes, spending, or access
-expansion.
+A qualifying trigger authorizes one read-only recommendation phase; it does not
+authorize systemic implementation. Existing task authority governs any
+immediate correction. Begin implementation only after the user explicitly
+approves a named option. That approval covers the selected reversible local
+changes in the same workspace; it does not bypass existing gates for public or
+external writes, publication, merges, deployment, destructive actions,
+protected schema or protocol changes, spending, or access expansion.
 
 Use the same session to implement the approved path unless the user chooses
 another owner. Follow the target repository's instructions and applicable
