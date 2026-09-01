@@ -2273,6 +2273,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Both required review phases are clean.")"
   assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const run = new DatabaseSync(process.argv[1]).prepare("select head from review_runs where target = ?").get("first review"); if (run?.head !== process.argv[2]) process.exit(1)' "$db" "$(git -C "$repo" rev-parse HEAD)"
 
   record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
@@ -3401,7 +3402,7 @@ NODE
   git -C "$tmp/repo" commit --quiet --message later
   if record_runtime_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
-    --target "completed review" --base main --head HEAD --run-status complete \
+    --target "completed review" --base refs/heads/main --head HEAD --run-status complete \
     --decision-id COMPLETE-FIXED --status fixed --source review \
     --fingerprint "completed run with fixed finding" \
     --summary "A completed run may contain resolved work." \

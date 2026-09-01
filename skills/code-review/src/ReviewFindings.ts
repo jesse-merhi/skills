@@ -776,13 +776,11 @@ const resolvedCompletionHead = Effect.fn("ReviewFindings.resolvedCompletionHead"
 const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
-  const matching = yield* sql.unsafe<RunBoundaryRow>(
-    "select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
-    [repoKey, run.branch, run.target, run.base]
-  )
+  const matchingRunId = yield* exactRunId(run)
+  const matching = matchingRunId === undefined ? [] : yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${matchingRunId}`
   const matchedRun = matching[0]
   if (matchedRun !== undefined && (matchedRun.status === "complete" || matchedRun.scope_status === "complete")) {
-    const writeHead = yield* completedWriteHead(run)
+    const writeHead = fullGitOid.test(matchedRun.head) ? yield* resolvedCompletionHead(run) : yield* completedWriteHead(run)
     if (writeHead !== matchedRun.head) {
       return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
     }
@@ -810,7 +808,7 @@ const touchRun = Effect.fn("ReviewFindings.touchRun")(function*(runId: string, r
   const boundary = (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId} limit 1`)[0]
   const complete = boundary !== undefined && (boundary.status === "complete" || boundary.scope_status === "complete")
   if (complete) {
-    const writeHead = yield* completedWriteHead(run)
+    const writeHead = fullGitOid.test(boundary.head) ? yield* resolvedCompletionHead(run) : yield* completedWriteHead(run)
     if (writeHead !== boundary.head) {
       return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
     }
@@ -841,7 +839,20 @@ const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<Re
     "select id from review_runs where repo_key = ? and coalesce(branch, '') = ? and target = ? and coalesce(base, '') = ? order by update_seq desc, updated_at desc, rowid desc limit 1",
     [repoKey, run.branch, run.target, run.base]
   )
-  return rows[0]?.id
+  if (rows[0] !== undefined) return rows[0].id
+  const git = yield* trustedExecutable("git", run.repoPath).pipe(Effect.option)
+  if (Option.isNone(git)) return undefined
+  const requestedBase = yield* checkedTrimmedText(git.value, ["rev-parse", "--verify", `${run.base}^{commit}`], { cwd: run.repoPath }).pipe(Effect.option)
+  if (Option.isNone(requestedBase)) return undefined
+  const candidates = yield* sql.unsafe<RunIdentityRow>(
+    "select id, coalesce(branch, '') as branch, coalesce(base, '') as base from review_runs where repo_key = ? and coalesce(branch, '') = ? and target = ? order by update_seq desc, updated_at desc, rowid desc",
+    [repoKey, run.branch, run.target]
+  )
+  for (const candidate of candidates) {
+    const candidateBase = yield* checkedTrimmedText(git.value, ["rev-parse", "--verify", `${candidate.base}^{commit}`], { cwd: run.repoPath }).pipe(Effect.option)
+    if (Option.isSome(candidateBase) && candidateBase.value === requestedBase.value) return candidate.id
+  }
+  return undefined
 })
 
 const resolveRecordRun = Effect.fn("ReviewFindings.resolveRecordRun")(function*(run: ReviewRun) {
@@ -1254,6 +1265,11 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
       const findings = unresolved.map((finding) => `${finding.decision_id} [${finding.status}]: ${finding.summary}`).join("\n")
       return yield* Effect.fail(new InvalidScopeBudget(`scope-complete requires every finding to be fixed, rejected, or explicitly deferred; resolve these findings first:\n${findings}`))
     }
+    const git = yield* trustedExecutable("git", run.repoPath)
+    const completedHead = current.pinnedHeadOid.length > 0
+      ? current.pinnedHeadOid
+      : yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: run.repoPath })
+    yield* sql`update review_runs set head = ${completedHead} where id = ${check.runId}`
     yield* sql`update review_scope_budgets set generation = generation + 1, status = 'complete', last_reason = ${reason}, updated_at = ${nowSeconds()} where run_id = ${check.runId}`
     yield* sql`delete from review_scope_locks where run_id = ${check.runId}`
     yield* writeScopeEvent({
