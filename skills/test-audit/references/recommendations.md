@@ -7,7 +7,7 @@ Recommend focused changes:
   from the same logic as the implementation, or impossible data is ignored.
 - Do not keep a test just because it guards against "the old design coming back"
   when the old design is no longer reachable through current product contracts.
-- Add tests only for verified reachable risks introduced by the PR.
+- Add tests only for verified reachable change-relevant risks.
 - Do not add tests for intentionally removed features, fields, callbacks,
   routes, screens, or modes unless the current product contract promises that
   absence for compatibility, privacy, migration, or security reasons.
