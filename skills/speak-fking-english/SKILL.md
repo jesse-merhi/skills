@@ -12,8 +12,9 @@ saving it.
 
 - When the user asks you to use `speak-fking-english`, invokes it with the
   harness's skill syntax, or asks for the full unslop, de-slop, or AI-tells
-  pass, run the shared pass, add the deep catalogue pass, and then return the
-  result. Merely discussing the skill does not select this explicit route.
+  pass, run the shared pass, add the deep catalogue pass, apply the final
+  brevity pass, and then return the result.
+  Merely discussing the skill does not select this explicit route.
 - For a "wait, what?" or re-pitch request that does not explicitly invoke this
   skill, run only the reader reset.
 - For a "show me" or visual-support request that does not explicitly invoke
@@ -24,7 +25,8 @@ saving it.
   invoked this skill for that artifact.
 - For every other model-selected call, including a task that matches the skill
   description or the final-response checkpoint, run the shared pass below,
-  skip the deep catalogue pass, and return. This is the implicit route.
+  skip the deep catalogue pass, apply the final brevity pass, and return. This
+  is the implicit route.
 
 ## Shared pass
 
@@ -52,13 +54,6 @@ commands, and evidence. Every step below preserves them character for character.
    Done when the result is direct, concrete, easy to follow, and recognisably
    written by a person, with every fact and evidence claim unchanged.
 
-4. Apply the [brevity pass](references/brevity.md) last. Keep the context,
-   evidence, qualifications, and next action the reader needs. Cut everything
-   else.
-
-   Done when every remaining sentence earns its place and removing another one
-   would make the response less useful or less accurate.
-
 ## Deep catalogue pass
 
 Run this only on the explicit route. Apply the
@@ -68,6 +63,17 @@ evidence unchanged.
 
 Done when no catalogued pattern survives and the draft still says exactly what
 it needs to say.
+
+## Final brevity pass
+
+Apply the [brevity pass](references/brevity.md) last, after every other selected
+pass. On the implicit route, it follows the shared pass. On the explicit route,
+it follows the deep catalogue pass. Keep the context, evidence, qualifications,
+and next action the reader needs. Cut everything else. Do not run another
+rewriting pass after it.
+
+Done when every remaining sentence earns its place and removing another one
+would make the response less useful or less accurate.
 
 ## Return
 
