@@ -47,7 +47,8 @@ ticket equals one PR or that every ticket blocker becomes a PR base.
 5. Use standalone PRs or separate stacks for independent or forked paths. Never
    serialize independent groups merely to fit GitHub's linear stack model.
 6. Before readiness or merge, apply the Review gate and Sign-off gate from
-   `AGENTS.md` to every PR and exact head.
+   `AGENTS.md` to every PR. The Review gate must cover the exact head; Sign-off
+   persists for the PR across later heads.
 
 Every review group must name the outcome a reviewer can accept independently.
 If grouping tickets would make the PR too broad, or a group cannot stay green

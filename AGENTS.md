@@ -126,11 +126,15 @@ returns sets the cost of a task.
   An unanswered review decision blocks readiness and merge. Record an explicit
   waiver in closeout.
 - Sign-off gate: after the review decision, proof, validation, and CI pass,
-  summarize the review findings and fixes or the explicit waiver, then ask the
-  user for a thumbs-up (`+1`) reaction. Resolve the expected human login from
-  task or project configuration; otherwise use the authenticated GitHub login
-  reported by `gh api user --jq .login`. For a stack, apply both gates and
-  require that person's separate reaction on every open PR, not only the top PR.
+  summarize the review findings and fixes or the explicit waiver, then check
+  for a thumbs-up (`+1`) reaction. Resolve the expected human login from task or
+  project configuration; otherwise use the authenticated GitHub login reported
+  by `gh api user --jq .login`. Treat that person's existing `+1` as blanket
+  sign-off for the PR regardless of when it was added. It remains valid across
+  later commits, review fixes, validation, and CI; do not require a fresh
+  reaction for the final head. Ask for a `+1` only when no reaction from that
+  person exists. For a stack, apply both gates and require that person's
+  separate reaction on every open PR, not only the top PR.
   Never add, remove, or modify that reaction on the user's behalf; only read
   GitHub reactions and proceed after the expected reaction exists. This is an
   agent workflow gate, not a GitHub approval or branch-protection rule.

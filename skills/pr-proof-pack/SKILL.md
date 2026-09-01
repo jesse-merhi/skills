@@ -291,7 +291,8 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
     Return `current`, `refreshed`, or `blocked`, with the affected PRs. Before
     readiness, human sign-off, or merge, remind the caller to apply the Review
-    gate and Sign-off gate from `AGENTS.md` to every PR and exact head.
+    gate and Sign-off gate from `AGENTS.md` to every PR. The Review gate must
+    cover the exact head; Sign-off persists for the PR across later heads.
     Proof-pack does not count as review.
 
     Done when the caller knows whether proof changed and which PRs still need

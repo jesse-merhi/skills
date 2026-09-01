@@ -101,9 +101,12 @@ above still governs `code-review`'s automatic final push.
    Once that decision, proof, local validation, and CI pass, summarize the
    review findings, fixes, verification, and anything still open. Resolve the
    expected sign-off login from task or project configuration; if none exists,
-   use `authenticated_login`. Ask that person to add a thumbs-up (`+1`)
-   reaction to every open PR in a stack, bottom-to-top, and verify each reaction
-   belongs to the resolved login.
+   use `authenticated_login`. Check every open PR in a stack, bottom-to-top,
+   for a thumbs-up (`+1`) reaction from that person. Treat an existing `+1` as
+   blanket sign-off for its PR regardless of when it was added. It remains
+   valid across later commits, review fixes, validation, and CI; do not require
+   a fresh reaction for the final head. Ask for a `+1` only on PRs without one
+   from that person, and verify each reaction belongs to the resolved login.
    Never create or remove that reaction on the user's behalf. The reaction
    gates merge, not authorized branch updates or local repair.
 

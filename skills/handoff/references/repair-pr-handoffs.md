@@ -26,8 +26,9 @@ When the next session is expected to fix code:
   calling the PR ready
 - tell it to keep the PR draft/not-ready when proof-pack, review, validation,
   model, tooling, budget, or consult blockers remain
-- tell it to summarize each review decision before human sign-off and require
-  it never to create or remove the user's reaction
+- tell it to summarize each review decision before checking the Sign-off gate,
+  preserve an existing reaction as valid regardless of timing, and require it
+  never to create or remove the user's reaction
 - require the final report to explain the original bug, root cause, changed
   files, verification commands, proof artifacts, the ordered PR/stack map with
   every URL and status, `code-review` results, and any residual risk or

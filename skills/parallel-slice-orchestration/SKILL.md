@@ -44,7 +44,8 @@ same slice plan sequentially and say that parallel execution was not available.
     keep foundation at the bottom, dependent behavior above it, and run the
     `pr-proof-pack` freshness check separately for every PR layer.
 13. Before readiness or merge, apply the Review gate and Sign-off gate from
-    `AGENTS.md` to every PR layer and exact head.
+    `AGENTS.md` to every PR layer. The Review gate must cover the exact head;
+    Sign-off persists for the PR across later heads.
 
 ## Slice rules
 

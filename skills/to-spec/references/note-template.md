@@ -46,7 +46,8 @@ Excluded:
 - Boundary rule: <why these changes belong together or need separate review>
 - Keep independent groups out of a linear stack; do not turn every acceptance criterion into its own PR.
 - PR gates: before readiness or merge, apply the Review gate and Sign-off gate
-  from `AGENTS.md` to each PR and exact head.
+  from `AGENTS.md` to each PR. The Review gate must cover the exact head;
+  Sign-off persists for the PR across later heads.
 
 ## Open Questions
 - <decision still needed>
