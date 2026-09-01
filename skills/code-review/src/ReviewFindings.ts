@@ -1556,6 +1556,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     : run
   const runId = yield* upsertRun(persistedRun)
   const scope = yield* sql<ScopeStatusRow>`select status from review_scope_budgets where run_id = ${runId}`
+  if (run.status === "complete" && scope[0] !== undefined && scope[0].status !== "complete") return yield* Effect.fail(new InvalidScopeBudget("active scope budgets complete through scope-complete, not record --run-status complete"))
   if (scope[0]?.status === "complete") {
     return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review before recording more findings"))
   }
