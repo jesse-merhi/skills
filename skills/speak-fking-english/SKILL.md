@@ -8,6 +8,10 @@ description: 'Run before every final response: make it concise and clear, cut AI
 Run this over the complete draft as the last editing pass before returning or
 saving it.
 
+Before selecting a route, freeze exact names, technical terms, quoted text,
+code, logs, commands, and evidence. Every selected pass preserves them character
+for character.
+
 ## Route the pass
 
 - When the user asks you to use `speak-fking-english`, invokes it with the
@@ -16,9 +20,9 @@ saving it.
   brevity pass, and then return the result.
   Merely discussing the skill does not select this explicit route.
 - For a "wait, what?" or re-pitch request that does not explicitly invoke this
-  skill, run only the reader reset.
+  skill, run the reader reset, apply the final brevity pass, and return.
 - For a "show me" or visual-support request that does not explicitly invoke
-  this skill, run only the visual filter.
+  this skill, run the visual filter, apply the final brevity pass, and return.
 - When another skill calls this one, return the revised text to that skill
   instead of addressing the user directly. Preserve the audience chosen by the
   calling workflow. Treat the call as implicit unless the user explicitly
@@ -29,9 +33,6 @@ saving it.
   is the implicit route.
 
 ## Shared pass
-
-Before editing, freeze exact names, technical terms, quoted text, code, logs,
-commands, and evidence. Every step below preserves them character for character.
 
 1. Apply the [reader reset](references/reader-reset.md) to the complete draft
    without changing its facts, scope, or requested action.
@@ -68,7 +69,8 @@ it needs to say.
 
 Apply the [brevity pass](references/brevity.md) last, after every other selected
 pass. On the implicit route, it follows the shared pass. On the explicit route,
-it follows the deep catalogue pass. Keep the context, evidence, qualifications,
+it follows the deep catalogue pass. On the focused reader-reset and visual-filter
+routes, it follows the named pass. Keep the context, evidence, qualifications,
 and next action the reader needs. Cut everything else. Do not run another
 rewriting pass after it.
 

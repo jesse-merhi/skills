@@ -19,26 +19,21 @@ make.
    answer to meet a limit. For a saved or reviewer-facing artifact, preserve its
    required structure instead of forcing it into a chat limit.
 
-2. Run the compact anti-slop check.
+2. Run the compact anti-slop and sentence check.
 
    Cut process narration that does not help the reader verify the result,
    repeated outcomes or conclusions, unnecessary headings or lists, filler and
-   stacked hedges, and generic endings or offers to do more work.
+   stacked hedges, and generic endings or offers to do more work. Keep a
+   sentence only when it supplies an outcome, necessary context, evidence, a
+   material qualification or tradeoff, or an action the reader must take.
 
-3. Make every sentence earn its place.
-
-   Keep a sentence only when it supplies an outcome, necessary context,
-   evidence, a material qualification or tradeoff, or an action the reader must
-   take. Cut process narration, throat-clearing, recaps, generic conclusions,
-   repeated facts, obvious transitions, and offers to do more work.
-
-4. Compress the presentation.
+3. Compress the presentation.
 
    Prefer prose for one or two points. Use a list only when its shape makes the
    content faster to scan. Remove headings that merely label a short answer and
    examples that repeat an already clear explanation.
 
-5. Protect what matters.
+4. Protect what matters.
 
    Do not trade accuracy for shortness. Keep the premise needed to understand
    the answer, evidence that supports a claim, material uncertainty, safety or
