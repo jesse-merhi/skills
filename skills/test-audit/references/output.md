@@ -3,6 +3,9 @@
 For a review, report:
 
 - `Keep`: tests that protect real behavior.
+- `Consolidate`: distinct regression owners that should retain separate cases
+  while sharing one table or setup.
+- `Move`: real risks proved at the wrong level.
 - `Rewrite`: tests that target a real risk but assert it poorly.
 - `Delete`: tests/assertions that do not earn their keep.
 - `Changed but useless`: changed tests that pass but should not exist.
@@ -10,11 +13,19 @@ For a review, report:
 - `No test needed`: changed behavior inspected where new coverage would not
   catch a verified reachable future bug.
 - `No change needed`: related tests inspected and why they still fit.
-- `Dangerous removals`: deleted tests that still protect promised behavior.
-- `Validation`: commands run and result.
+- `Dangerous removals`: removed tests or assertions that were the last
+  executable owner of promised behavior and have no equivalent, inspected
+  replacement at the required cadence.
+- `Ownership`: the named executable replacement for each removed test or
+  assertion that owned a still-promised regression, or why the removed coverage
+  owned no current regression and needs no replacement; also state why adjacent
+  coverage misses each keeper's or consolidated case's distinct regression.
+- `Validation`: commands run and result. For a portfolio-reduction audit, add
+  before-and-after file counts, expanded test counts, and measured runtime when
+  reliable.
 
-For each `Rewrite`, `Delete`, `Missing`, or `Dangerous removal`, include the
-smallest useful reason:
+For each `Consolidate`, `Move`, `Rewrite`, `Delete`, `Missing`, or `Dangerous
+removal`, include the smallest useful reason:
 
 ```md
 `path/to/test.ts`: delete the `systemAlerts` absence assertion. The API no

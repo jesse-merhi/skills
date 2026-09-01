@@ -55,11 +55,11 @@ overlay changes.
 
 4. Add conditional review lenses only when their trigger is present:
 
-   - `test-audit`: mandatory when the PR touches code with nearby or related
-     tests, or when the PR changes, adds, or deletes tests. Check both whether
-     related tests should change and whether changed tests earn their keep,
-     especially around removed APIs, impossible states, implementation details,
-     or branch-local history.
+   - `test-audit`: mandatory when the PR changes production behavior or creates,
+     changes, or deletes tests or test infrastructure. Check both whether
+     coverage is missing and whether changed tests earn their keep. Its
+     portfolio audit must also challenge duplicate ownership, proof-level
+     placement, replacement owners, and orphaned test infrastructure.
    - `frontend-ui-validation`: mandatory when the diff changes visible UI,
      layout, styling, routes/screens, interaction states, loading/error/empty
      states, responsive behavior, or screenshots would materially prove the

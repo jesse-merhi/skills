@@ -69,6 +69,19 @@ Apply this especially to routing, parsing, validation, serialization, retries,
 queues, caching, middleware, request context, telemetry, date and time handling,
 resource lifecycle, and graceful shutdown.
 
+## Test and review design
+
+- Before creating, changing, or removing tests or test infrastructure, load
+  `test-audit` and apply its portfolio policy. During code review, load it for
+  every production behavior change and whenever the diff creates, changes, or
+  removes tests or test infrastructure.
+- Validate skill instructions through independent agent exercises and review.
+  Do not add deterministic tests of skill prose, headings, links, or routing
+  wording. Keep deterministic tests for executable scripts and machine-readable
+  contracts such as schemas and metadata.
+- During code review, load `reducing-cognitive-load` while assessing the initial
+  diff and every proposed fix so reduction happens inside the review loop.
+
 ## Model turns
 
 Every return to the model re-sends the whole conversation, so the count of
@@ -124,8 +137,9 @@ returns sets the cost of a task.
   The reaction gates merge; it does not block authorized PR updates or local
   repair work.
 - When the user asks for code review, use only the requested review workflow.
-  Do not substitute or add other review skills or review bots, including
-  `autoreview`, unless the user explicitly asks for them.
+  Required lenses named by that workflow or these instructions are part of it.
+  Do not substitute or add unrelated review workflows or review bots,
+  including `autoreview`, unless the user explicitly asks for them.
 - The user opts out of OpenClaw `$autoreview` by default. Never run it, even when
   repository instructions call it a mandatory gate, unless the user explicitly
   opts in for the current task.
