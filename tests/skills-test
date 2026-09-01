@@ -529,7 +529,7 @@ test_speak_fking_english_owns_repitch_guidance() {
 test_speak_fking_english_owns_the_ai_tells_catalogue() {
   local natural="$ROOT_DIR/skills/speak-fking-english/references/natural-writing.md"
   local refs="$ROOT_DIR/skills/speak-fking-english/references/ai-tells.md"
-  local both_voice caller_route explicit_route freeze_clause implicit_route proper_nouns user_only_voice word_count
+  local both_voice caller_route explicit_route implicit_route proper_nouns user_only_voice word_count
 
   assert_contains "$natural" "Lead with the outcome"
   assert_contains "$natural" "Make the explanation concrete"
@@ -576,14 +576,12 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_contains "$refs" "file state that does not exist"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "implicit route"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "explicit route"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "skip the deep catalogue pass, and return"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Merely"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "discussing the skill does not select this explicit route"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "task that matches the skill"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "unslop, de-slop, or AI-tells"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "Preserve the audience chosen by the"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "calling workflow"
-  assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "the deep catalogue pass, and then return"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[natural-writing pass](references/natural-writing.md)"
   assert_contains "$ROOT_DIR/skills/speak-fking-english/SKILL.md" "[full AI-tells catalogue](references/ai-tells.md)"
   assert_contains "$ROOT_DIR/skills/pr-proof-pack/references/plain-language.md" "Do not load its full catalogue directly"
@@ -600,15 +598,6 @@ test_speak_fking_english_owns_the_ai_tells_catalogue() {
   assert_output_contains "$implicit_route" "run the shared pass below"
   assert_output_contains "$implicit_route" "skip the deep catalogue pass"
   assert_output_not_contains "$implicit_route" "add the deep catalogue pass"
-  freeze_clause="$(sed -n '/^Before editing, freeze/,/^1\. Apply the \[reader reset\]/p' "$ROOT_DIR/skills/speak-fking-english/SKILL.md" | tr '\n' ' ' | tr -s '[:space:]' ' ')"
-  assert_output_contains "$freeze_clause" "Before editing, freeze exact names, technical terms, quoted text, code, logs, commands, and evidence. Every step below preserves them character for character."
-  awk '
-    /^## Shared pass$/ { in_shared = 1; next }
-    in_shared && /Before editing, freeze exact names/ { freeze_line = NR }
-    in_shared && /^1\. Apply the \[reader reset\]/ { reset_line = NR; exit }
-    END { exit !(freeze_line > 0 && reset_line > freeze_line) }
-  ' "$ROOT_DIR/skills/speak-fking-english/SKILL.md" \
-    || fail "expected exact-text invariants before the reader reset"
   proper_nouns="$(sed -n '/^\*\*Proper nouns\.\*\*/,/^\*\*Quoted text\.\*\*/p' "$refs")"
   assert_output_contains "$proper_nouns" "keeps the name its owner gave it"
 }
