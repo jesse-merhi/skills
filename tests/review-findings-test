@@ -1368,8 +1368,16 @@ NODE
     --decision-id LEGACY-SEVERITY --status open --source legacy --fingerprint "legacy severity" \
     --summary "Legacy severity finding" --text "derived severity" >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select priority, evidence_version from issues where decision_id = ?").get("LEGACY-SEVERITY"); if (row?.priority !== "" || row.evidence_version !== 8) process.exit(1)' "$db"
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main \
+    --command "pnpm test missing-head" --result passed \
+    --reason "Completed validation requires exact-head proof." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "completed runs must reject command recording without a head"
+  fi
+  assert_contains "$tmp/stderr" "recording against a completed review run requires --head"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main --head old-head \
     --command "pnpm test legacy-terminal" --result passed \
     --reason "Record validation without reopening completed legacy history." >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status from review_runs where id = ?").get("legacy-terminal"); if (row?.status !== "complete") process.exit(1)' "$db"

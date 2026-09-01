@@ -755,16 +755,26 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
   return runId
 })
 
+const completedWriteHead = Effect.fn("ReviewFindings.completedWriteHead")(function*(run: Pick<ReviewRun, "repoPath" | "head">) {
+  if (run.head.length > 0) return run.head
+  const missingHead = new InvalidFinding("recording against a completed review run requires --head when the checked-out head cannot be inferred")
+  const git = yield* trustedExecutable("git", run.repoPath).pipe(Effect.mapError(() => missingHead))
+  return yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: run.repoPath }).pipe(Effect.mapError(() => missingHead))
+})
+
 const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
   const matching = yield* sql.unsafe<RunBoundaryRow>(
-    "select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
+    "select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
     [repoKey, run.branch, run.target, run.base]
   )
   const matchedRun = matching[0]
-  if (matchedRun !== undefined && (matchedRun.status === "complete" || matchedRun.scope_status === "complete") && run.head.length > 0 && run.head !== matchedRun.head) {
-    return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+  if (matchedRun !== undefined && (matchedRun.status === "complete" || matchedRun.scope_status === "complete")) {
+    const writeHead = yield* completedWriteHead(run)
+    if (writeHead !== matchedRun.head) {
+      return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+    }
   }
   const updateSequence = yield* nextSequence()
   const runId = matchedRun?.id ?? stableId([repoKey, run.branch, run.target, run.base])
@@ -786,10 +796,13 @@ const latestRun = Effect.fn("ReviewFindings.latestRun")(function*(run: Pick<Revi
 
 const touchRun = Effect.fn("ReviewFindings.touchRun")(function*(runId: string, run: Pick<ReviewRun, "repoPath" | "head">) {
   const sql = yield* SqlClient.SqlClient
-  const boundary = (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId} limit 1`)[0]
+  const boundary = (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId} limit 1`)[0]
   const complete = boundary !== undefined && (boundary.status === "complete" || boundary.scope_status === "complete")
-  if (complete && run.head.length > 0 && run.head !== boundary.head) {
-    return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+  if (complete) {
+    const writeHead = yield* completedWriteHead(run)
+    if (writeHead !== boundary.head) {
+      return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+    }
   }
   const repoKey = yield* canonicalRepoKey(run.repoPath)
   const updateSequence = yield* nextSequence()
@@ -1407,7 +1420,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingIssue = existingIssues[0]
   const existingRun = existingRunId === undefined
     ? undefined
-    : (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${existingRunId} limit 1`)[0]
+    : (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${existingRunId} limit 1`)[0]
   const runComplete = existingRun !== undefined && (existingRun.status === "complete" || existingRun.scope_status === "complete")
   if (runComplete && run.head.length > 0 && run.head !== existingRun.head) {
     return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
