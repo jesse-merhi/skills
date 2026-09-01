@@ -749,7 +749,7 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
     values (${runId}, ${run.repo}, ${repoKey}, ${run.repoPath}, ${run.branch}, ${run.target}, ${run.base}, ${run.head}, ${run.status}, ${run.decisionLog}, ${timestamp}, ${updateSequence}, ${timestamp})
     on conflict(id) do update set
       repo_name=excluded.repo_name, repo_key=excluded.repo_key, repo_path=excluded.repo_path,
-      branch=excluded.branch, target=excluded.target, base=excluded.base,
+      branch=excluded.branch, target=excluded.target, base=review_runs.base,
       head=case when review_runs.status = 'complete' then review_runs.head when excluded.head != '' then excluded.head else review_runs.head end,
       status=case when review_runs.status = 'complete' then 'complete' else excluded.status end,
       decision_log_path=case when excluded.decision_log_path != '' then excluded.decision_log_path else review_runs.decision_log_path end,
