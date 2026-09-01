@@ -1132,6 +1132,7 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
     return `oid:${oid}`
   })
   const requestedBaseIdentity = yield* canonicalBaseIdentity(verifiedRun.base)
+  const requestedSymbolic = yield* checkedTrimmedText(git, ["rev-parse", "--symbolic-full-name", verifiedRun.base], { cwd: verifiedRun.repoPath }).pipe(Effect.orElseSucceed(() => ""))
   const priorRows = yield* sql.unsafe<PriorScopeRow>(
     `select review_scope_budgets.run_id, review_scope_budgets.base_ref
       from review_scope_budgets join review_runs on review_runs.id = review_scope_budgets.run_id
@@ -1146,6 +1147,8 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
   )
   let inheritedBaseline: ScopeBudgetStatus | undefined
   for (const prior of priorRows) {
+    const priorSymbolic = yield* checkedTrimmedText(git, ["rev-parse", "--symbolic-full-name", prior.base_ref], { cwd: verifiedRun.repoPath }).pipe(Effect.orElseSucceed(() => ""))
+    if (requestedSymbolic.length > 0 && priorSymbolic.length > 0 && requestedSymbolic !== priorSymbolic) continue
     const priorBaseIdentity = yield* canonicalBaseIdentity(prior.base_ref).pipe(Effect.orElseSucceed(() => `raw:${prior.base_ref}`))
     if (priorBaseIdentity !== requestedBaseIdentity) continue
     inheritedBaseline = yield* readScopeBudget(prior.run_id)
