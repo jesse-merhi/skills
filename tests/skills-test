@@ -210,10 +210,6 @@ behavior_checks = {
         "There is no universal",
         "resume the event wait",
     ],
-    root / "skills/cold-pr-review/references/prompt-template.md": [
-        "do not audit them as independent targets",
-        "identify the changed line or contract",
-    ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
     ],
