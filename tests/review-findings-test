@@ -1304,6 +1304,8 @@ db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("l
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-labels", "legacy-run", "LEGACY-LABELS", "open", "legacy", "legacy labels", "Legacy labels finding", "", "legacy labels text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-custom", "legacy-run", "LEGACY-CUSTOM", "open", "legacy", "legacy custom", "Legacy custom labels finding", "", "legacy custom text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-material", "legacy-run", "LEGACY-MATERIAL", "open", "legacy", "legacy material", "Legacy material finding", "", "legacy material text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-reject", "legacy-run", "LEGACY-REJECT", "open", "legacy", "legacy reject", "Legacy rejected finding", "", "legacy reject text", "", 1)
+db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-severity", "legacy-run", "LEGACY-SEVERITY", "open", "legacy", "legacy severity", "Legacy severity finding", "", "legacy severity text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete-finding", "legacy-complete", "LEGACY-COMPLETE", "fixed", "legacy", "legacy complete", "Legacy completed finding", "", "legacy complete text", "", 1)
 db.prepare("insert into issues values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-terminal-finding", "legacy-terminal", "LEGACY-TERMINAL", "fixed", "legacy", "legacy terminal", "Legacy terminal finding", "", "legacy terminal text", "", 1)
 db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", 0, "main", "base-oid", 30, "Legacy scope", "", 1, 0, 0, '["asset.bin"]', "ready", 1, 0, 0, 0, 0, "[]", "", 1, 1)
@@ -1316,6 +1318,7 @@ NODE
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("runtime", "accept", "local", "fix", "LEGACY-KIND")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set impact = ?, priority = ?, material = ?, finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("security", "P4", 1, "maintenance", "accept", "local", "fix", "LEGACY-LABELS")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set impact = ?, priority = ?, material = ?, finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("performance", "blocker", 0, "maintenance", "accept", "local", "fix", "LEGACY-CUSTOM")' "$db"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const update = db.prepare("update issues set priority = ?, finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?"); update.run("", "maintenance", "accept", "local", "fix", "LEGACY-REJECT"); update.run("P1", "maintenance", "accept", "local", "fix", "LEGACY-SEVERITY")' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id LEGACY-KIND --status open --source legacy --fingerprint "legacy kind" \
@@ -1343,6 +1346,18 @@ NODE
     --reachability-evidence "The supported review path reaches the migrated finding." \
     --likelihood possible --impact high --actual-consequence "The supported workflow fails." >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select impact, priority, material, evidence_version from issues where decision_id = ?").get("LEGACY-MATERIAL"); if (row?.impact !== "workflow" || row.priority !== "p1" || row.material !== 1 || row.evidence_version !== 8) process.exit(1)' "$db"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --finding-kind maintenance --fix-scope local --handling reject \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id LEGACY-REJECT --status rejected --source legacy --fingerprint "legacy reject" \
+    --summary "Legacy rejected finding" --decision "Current actionability evidence does not justify intervention." \
+    --rejection-gate importance --text "canonical rejected outcome" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status, disposition, handling, evidence_version from issues where decision_id = ?").get("LEGACY-REJECT"); if (row?.status !== "rejected" || row.disposition !== "reject" || row.handling !== "reject" || row.evidence_version !== 8) process.exit(1)' "$db"
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
+    --decision-id LEGACY-SEVERITY --status open --source legacy --fingerprint "legacy severity" \
+    --summary "Legacy severity finding" --text "derived severity" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select priority, evidence_version from issues where decision_id = ?").get("LEGACY-SEVERITY"); if (row?.priority !== "" || row.evidence_version !== 8) process.exit(1)' "$db"
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main \
     --command "pnpm test legacy-terminal" --result passed \

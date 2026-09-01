@@ -342,36 +342,28 @@ const legacyAreaEquivalents: Readonly<Record<string, string>> = {
   data: "data-correctness",
   history: "audit"
 }
-const legacySeverityEquivalents: Readonly<Record<string, string>> = {
-  critical: "p0",
-  high: "p1",
-  medium: "p2",
-  low: "p3",
-  p4: ""
-}
 const currentAreas = new Set<string>(FINDING_AREAS)
-const currentSeverities = new Set<string>(FINDING_SEVERITIES)
 const preservesLegacyArea = (existing: string, current: string) => {
   const normalized = normalizeToken(existing)
   return preservesLegacyValue(existing, current) || normalized === current || legacyAreaEquivalents[normalized] === current ||
     (!currentAreas.has(normalized) && current === "internal")
 }
-const preservesLegacySeverity = (existing: string, current: string) => {
-  const normalized = normalizeToken(existing)
-  return preservesLegacyValue(existing, current) || normalized === current || legacySeverityEquivalents[normalized] === current ||
-    !currentSeverities.has(normalized)
-}
+const permitsLegacyRejection = (existing: ExistingIssueRow, finding: Finding) =>
+  !isFindingTerminal(existing) && finding.status === "rejected" && finding.disposition === "reject"
 const isLegacyEvidenceUpgrade = (existing: ExistingIssueRow, finding: Finding, material: boolean) => hasLegacyEvidence(existing) &&
-  existing.status === finding.status && existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
+  (existing.status === finding.status || permitsLegacyRejection(existing, finding)) &&
+  existing.source === finding.source && existing.fingerprint === finding.fingerprint &&
   existing.summary === finding.summary && existing.material <= (material ? 1 : 0) &&
-  preservesLegacyArea(existing.area, finding.area) && preservesLegacySeverity(existing.severity, finding.severity) &&
+  preservesLegacyArea(existing.area, finding.area) &&
   preservesLegacyValue(existing.user_impact, finding.userImpact) && preservesLegacyValue(existing.decision, finding.decision) &&
   preservesLegacyValue(existing.finding_kind, finding.findingKind) && preservesLegacyValue(existing.production_path, finding.productionPath) &&
   preservesLegacyValue(existing.reachability_evidence, finding.reachabilityEvidence) && preservesLegacyValue(existing.likelihood, finding.likelihood) &&
   preservesLegacyValue(existing.impact, finding.impact) && preservesLegacyValue(existing.actual_consequence, finding.actualConsequence) &&
   preservesLegacyValue(existing.maintenance_evidence, finding.maintenanceEvidence) && preservesLegacyValue(existing.present_cost, finding.presentCost) &&
-  preservesLegacyValue(existing.disposition, finding.disposition) && preservesLegacyValue(existing.fix_scope, finding.fixScope) &&
-  preservesLegacyValue(existing.handling, finding.handling) && existing.owner_resolution === finding.ownerResolution
+  (preservesLegacyValue(existing.disposition, finding.disposition) || permitsLegacyRejection(existing, finding)) &&
+  preservesLegacyValue(existing.fix_scope, finding.fixScope) &&
+  (preservesLegacyValue(existing.handling, finding.handling) || (permitsLegacyRejection(existing, finding) && finding.handling === "reject")) &&
+  existing.owner_resolution === finding.ownerResolution
 interface CommandRow {
   readonly command: string
   readonly result: string
