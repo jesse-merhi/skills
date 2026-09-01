@@ -3319,13 +3319,13 @@ test_repeated_review_inherits_original_branch_loc() {
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "second review" --base main --scope-summary "Second review.")"
+    --target "second review" --base refs/heads/main --scope-summary "Second review.")"
   assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=3 maximum=13"
 
   printf 'line 14\n' >> "$repo/app.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "second review" --base main --reason "A repeated review must not add another buffer." \
+    --target "second review" --base refs/heads/main --reason "A repeated review must not add another buffer." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "a repeated review must keep the first branch LOC baseline"
   fi

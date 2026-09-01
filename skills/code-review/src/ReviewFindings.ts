@@ -441,7 +441,7 @@ interface UnresolvedFindingRow {
   readonly evidence_version: number
 }
 interface ActiveScopeRow { readonly run_id: string; readonly target: string }
-interface PriorScopeRow { readonly run_id: string }
+interface PriorScopeRow { readonly run_id: string; readonly base_ref: string }
 interface ScopeStatusRow { readonly status: string }
 interface ReviewFileAttestationRow {
   readonly review_id: string
@@ -1103,20 +1103,33 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
     if (existing.target === verifiedRun.target) return yield* Effect.fail(new ScopeBudgetAlreadyStarted())
     return yield* Effect.fail(new ActiveScopeBudgetExists(existing.target))
   }
+  const git = yield* trustedExecutable("git", verifiedRun.repoPath)
+  const canonicalBaseIdentity = Effect.fn("ReviewFindings.canonicalBaseIdentity")(function*(baseRef: string) {
+    const symbolic = yield* checkedTrimmedText(git, ["rev-parse", "--symbolic-full-name", baseRef], { cwd: verifiedRun.repoPath })
+    if (symbolic.length > 0) return `ref:${symbolic}`
+    const oid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${baseRef}^{commit}`], { cwd: verifiedRun.repoPath })
+    return `oid:${oid}`
+  })
+  const requestedBaseIdentity = yield* canonicalBaseIdentity(verifiedRun.base)
   const priorRows = yield* sql.unsafe<PriorScopeRow>(
-    `select review_scope_budgets.run_id
+    `select review_scope_budgets.run_id, review_scope_budgets.base_ref
       from review_scope_budgets join review_runs on review_runs.id = review_scope_budgets.run_id
       where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ?
-        and review_scope_budgets.base_ref = ? and review_scope_budgets.status = 'complete'
+        and review_scope_budgets.status = 'complete'
         and review_scope_budgets.line_metric = ?
       order by
         case when trim(coalesce(review_scope_budgets.authorization, '')) != '' then 0 else 1 end,
         case when trim(coalesce(review_scope_budgets.authorization, '')) != '' then review_scope_budgets.updated_at end desc,
-        case when trim(coalesce(review_scope_budgets.authorization, '')) = '' then review_scope_budgets.started_at end asc
-      limit 1`,
-    [repoKey, verifiedRun.branch, verifiedRun.base, TOTAL_LOC_LINE_METRIC]
+        case when trim(coalesce(review_scope_budgets.authorization, '')) = '' then review_scope_budgets.started_at end asc`,
+    [repoKey, verifiedRun.branch, TOTAL_LOC_LINE_METRIC]
   )
-  const inheritedBaseline = priorRows[0] === undefined ? undefined : yield* readScopeBudget(priorRows[0].run_id)
+  let inheritedBaseline: ScopeBudgetStatus | undefined
+  for (const prior of priorRows) {
+    const priorBaseIdentity = yield* canonicalBaseIdentity(prior.base_ref).pipe(Effect.orElseSucceed(() => `raw:${prior.base_ref}`))
+    if (priorBaseIdentity !== requestedBaseIdentity) continue
+    inheritedBaseline = yield* readScopeBudget(prior.run_id)
+    break
+  }
   const budget = yield* saveScopeBaseline(verifiedRun, {
     ...input,
     limitPercent: DEFAULT_SCOPE_GROWTH_PERCENT,
