@@ -263,6 +263,7 @@ export interface RecordedCommand {
 
 interface RunRow { readonly id: string }
 interface RunStateRow extends RunRow { readonly status: string; readonly head: string }
+interface RunBoundaryRow extends RunStateRow { readonly scope_status: string }
 interface CloseoutRunRow extends RunRow { readonly status: string }
 interface RunIdentityRow extends RunRow { readonly branch: string; readonly base: string }
 interface IdRow { readonly id: string }
@@ -645,7 +646,7 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
-    `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', contract_evidence text not null default '', root_cause text not null default '', recommended_fix text not null default '', intervention_justification text not null default '', rejection_gate text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', evidence_version integer not null default ${FINDING_SCHEMA_VERSION}, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
+    `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', contract_evidence text not null default '', root_cause text not null default '', recommended_fix text not null default '', intervention_justification text not null default '', rejection_gate text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', evidence_version integer not null default 7, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
     `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
     `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
@@ -750,12 +751,12 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
 const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
-  const matching = yield* sql.unsafe<RunStateRow>(
-    "select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head from review_runs where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
+  const matching = yield* sql.unsafe<RunBoundaryRow>(
+    "select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ? and review_runs.target = ? and coalesce(review_runs.base, '') = ? order by review_runs.update_seq desc limit 1",
     [repoKey, run.branch, run.target, run.base]
   )
   const matchedRun = matching[0]
-  if (matchedRun?.status === "complete" && run.head.length > 0 && run.head !== matchedRun.head) {
+  if (matchedRun !== undefined && (matchedRun.status === "complete" || matchedRun.scope_status === "complete") && run.head.length > 0 && run.head !== matchedRun.head) {
     return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
   }
   const updateSequence = yield* nextSequence()
@@ -778,9 +779,15 @@ const latestRun = Effect.fn("ReviewFindings.latestRun")(function*(run: Pick<Revi
 
 const touchRun = Effect.fn("ReviewFindings.touchRun")(function*(runId: string, run: Pick<ReviewRun, "repoPath" | "head">) {
   const sql = yield* SqlClient.SqlClient
+  const boundary = (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId} limit 1`)[0]
+  const complete = boundary !== undefined && (boundary.status === "complete" || boundary.scope_status === "complete")
+  if (complete && run.head.length > 0 && run.head !== boundary.head) {
+    return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+  }
   const repoKey = yield* canonicalRepoKey(run.repoPath)
   const updateSequence = yield* nextSequence()
-  yield* sql`update review_runs set repo_key = ${repoKey}, repo_path = ${run.repoPath}, head = case when ${run.head} != '' then ${run.head} else head end, update_seq = ${updateSequence}, updated_at = ${nowSeconds()} where id = ${runId}`
+  const nextHead = complete ? boundary.head : run.head
+  yield* sql`update review_runs set repo_key = ${repoKey}, repo_path = ${run.repoPath}, head = case when ${nextHead} != '' then ${nextHead} else head end, update_seq = ${updateSequence}, updated_at = ${nowSeconds()} where id = ${runId}`
 })
 
 const ScopePathsJson = Schema.fromJsonString(Schema.Array(Schema.String))
@@ -1393,11 +1400,18 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingIssue = existingIssues[0]
   const existingRun = existingRunId === undefined
     ? undefined
-    : (yield* sql<CloseoutRunRow>`select id, status from review_runs where id = ${existingRunId} limit 1`)[0]
+    : (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(review_runs.head, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${existingRunId} limit 1`)[0]
+  const runComplete = existingRun !== undefined && (existingRun.status === "complete" || existingRun.scope_status === "complete")
+  if (runComplete && run.head.length > 0 && run.head !== existingRun.head) {
+    return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+  }
   const exactCurrentTerminalReplay = existingIssue !== undefined && !hasLegacyEvidence(existingIssue) &&
     isFindingTerminal(existingIssue) && isExactResolvedReplay(existingIssue, input, material, text)
   if (exactCurrentTerminalReplay) return { runId: existingRunId, issueId: existingIssue.id }
-  if (existingRun?.status === "complete") {
+  if (runComplete) {
+    if (existingRun.scope_status === "complete") {
+      return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review before recording more findings"))
+    }
     return yield* Effect.fail(new InvalidFinding("completed review runs are terminal; start a new user-authorized review before recording more findings"))
   }
   if (existingIssue !== undefined && hasLegacyEvidence(existingIssue) && !isLegacyEvidenceUpgrade(existingIssue, input, material)) {

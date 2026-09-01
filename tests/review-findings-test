@@ -1281,9 +1281,10 @@ test_review_findings_cli_covers_full_review_lifecycle_closeout() {
 }
 
 test_review_findings_upgrades_legacy_schema() {
-  local tmp db out
+  local tmp db fresh_db out
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
+  fresh_db="$tmp/fresh.sqlite"
   node --input-type=module - "$db" <<'NODE'
 import { DatabaseSync } from "node:sqlite"
 const db = new DatabaseSync(process.argv[2])
@@ -1314,6 +1315,8 @@ db.prepare("insert into review_scope_budgets values (?, ?, ?, ?, ?, ?, ?, ?, ?, 
 NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$fresh_db" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("insert into review_runs (id, repo_name, repo_key, repo_path, branch, target, base, head, status, decision_log_path, started_at, update_seq, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("fresh-run", "sample-app", "sample-app", "sample-app", "", "fresh", "main", "", "active", "", 1, 1, 1); db.prepare("insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, text, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)").run("old-writer", "fresh-run", "OLD-WRITER", "open", "legacy", "old writer", "Older writer finding", "old writer text", 1); const row = db.prepare("select evidence_version from issues where id = ?").get("old-writer"); if (row?.evidence_version !== 7) process.exit(1)' "$fresh_db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("maintenance", "follow-up", "local", "follow-up", "LEGACY-DECISIONLESS")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("runtime", "accept", "local", "fix", "LEGACY-KIND")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set impact = ?, priority = ?, material = ?, finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("security", "P4", 1, "maintenance", "accept", "local", "fix", "LEGACY-LABELS")' "$db"
@@ -1372,6 +1375,15 @@ NODE
   fi
   assert_contains "$tmp/stderr" "completed review runs are bound to their reviewed head"
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const run = db.prepare("select status, head from review_runs where id = ?").get("legacy-terminal"); const commands = db.prepare("select count(*) as count from commands where run_id = ?").get("legacy-terminal"); if (run?.status !== "complete" || run.head !== "old-head" || commands?.count !== 1) process.exit(1)' "$db"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" record-command \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #3" --head new-scope-head \
+    --command "pnpm test new-scope-head" --result passed \
+    --reason "A completed scope budget must bind its run head." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-completed runs must reject base-less validation for a different head"
+  fi
+  assert_contains "$tmp/stderr" "completed review runs are bound to their reviewed head"
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status, head from review_runs where id = ?").get("legacy-complete"); if (row?.status !== "active" || row.head !== "old-head") process.exit(1)' "$db"
   if record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$db" --target "PR #1" --base main \
     --decision-id D0 --status fixed --source review --fingerprint "rewritten legacy identity" \
@@ -1417,6 +1429,14 @@ NODE
     --decision-id CURRENT-TERMINAL --status fixed --source review --fingerprint "current terminal" \
     --summary "Current terminal finding." --text "current" >/dev/null
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); const run = db.prepare("select status from review_runs where target = ?").get("PR #5"); const issue = db.prepare("select seen_count from issues where decision_id = ?").get("CURRENT-TERMINAL"); if (run?.status !== "complete" || issue?.seen_count !== 1) process.exit(1)' "$db"
+  if record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #5" --base main --head new-current-head \
+    --decision-id CURRENT-TERMINAL --status fixed --source review --fingerprint "current terminal" \
+    --summary "Current terminal finding." --text "current" \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "exact terminal replays must reject a different head"
+  fi
+  assert_contains "$tmp/stderr" "completed review runs are bound to their reviewed head"
   node --input-type=module - "$db" <<'NODE'
 import { DatabaseSync } from "node:sqlite"
 const row = new DatabaseSync(process.argv[2]).prepare("select baseline_binary_paths_json, new_binary_production_paths_json, line_metric, status, last_reason from review_scope_budgets where run_id = 'legacy-run'").get()
