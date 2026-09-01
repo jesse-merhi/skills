@@ -140,6 +140,36 @@ describe("review finding risk outcomes", () => {
       })
     ))
 
+  it.effect("requires unreachable runtime candidates to fail the reality gate", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      status: "rejected",
+      likelihood: "theoretical",
+      decision: "No current producer reaches the claimed state.",
+      rejectionGate: "repair",
+      rootCause: "",
+      recommendedFix: "",
+      interventionJustification: ""
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /theoretical runtime candidates must use --rejection-gate reality/u))
+    ))
+
+  it.effect("does not let reachable runtime candidates fail the reality gate", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      status: "rejected",
+      handling: "reject",
+      decision: "The proven behavior is not important enough to change.",
+      rejectionGate: "reality",
+      rootCause: "",
+      recommendedFix: "",
+      interventionJustification: ""
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /reachable runtime candidates cannot use --rejection-gate reality/u))
+    ))
+
   it.effect("requires a rejection gate before discarding a candidate", () =>
     decodeFinding({
       ...runtimeFinding,

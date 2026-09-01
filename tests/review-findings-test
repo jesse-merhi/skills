@@ -3322,14 +3322,64 @@ test_repeated_review_inherits_original_branch_loc() {
     --target "second review" --base refs/heads/main --scope-summary "Second review.")"
   assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=3 maximum=13"
 
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "second review" --base refs/heads/main \
+    --reason "The alias review is clean." >/dev/null
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "third review" --base 'main^{commit}' --scope-summary "Third review.")"
+  assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=3 maximum=13"
+
   printf 'line 14\n' >> "$repo/app.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "second review" --base refs/heads/main --reason "A repeated review must not add another buffer." \
+    --target "third review" --base 'main^{commit}' --reason "A repeated review must not add another buffer." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
     fail "a repeated review must keep the first branch LOC baseline"
   fi
   assert_contains "$tmp/stderr" "baseline=10 current=14 growth=4 allowed-growth=3 maximum=13"
+}
+
+test_completed_run_rejects_unresolved_findings() {
+  local tmp db
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+
+  if record_runtime_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
+    --target "completed review" --base main --head reviewed-head --run-status complete \
+    --decision-id COMPLETE-OPEN --status open --source review \
+    --fingerprint "completed run with open finding" \
+    --summary "A completed run cannot retain unresolved work." \
+    --production-path "review command -> run completion -> unresolved finding" \
+    --reachability-evidence "The public CLI accepts both lifecycle flags." \
+    --likelihood possible --impact medium \
+    --actual-consequence "The finding cannot be updated through the supported CLI." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "a completed run must reject unresolved findings"
+  fi
+  assert_contains "$tmp/stderr" "completed review runs require every finding to be fixed, rejected, or explicitly deferred"
+
+  node --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+const runs = db.prepare("select count(*) as count from review_runs").get()
+const issues = db.prepare("select count(*) as count from issues").get()
+if (runs.count !== 0 || issues.count !== 0) process.exit(1)
+NODE
+
+  record_runtime_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
+    --target "completed review" --base main --head reviewed-head --run-status complete \
+    --decision-id COMPLETE-FIXED --status fixed --source review \
+    --fingerprint "completed run with fixed finding" \
+    --summary "A completed run may contain resolved work." \
+    --production-path "review command -> fixed finding -> run completion" \
+    --reachability-evidence "The finding is terminal in the same transaction." \
+    --likelihood possible --impact medium \
+    --actual-consequence "The completed review remains internally consistent." >/dev/null
 }
 
 test_review_scope_budget_tapers_large_pr_allowance() {
@@ -3501,6 +3551,7 @@ test_review_scope_budget_uses_test_only_baseline
 test_review_scope_budget_keeps_the_allowance_it_was_created_with
 test_repeated_review_inherits_original_branch_loc
 test_review_scope_budget_tapers_large_pr_allowance
+test_completed_run_rejects_unresolved_findings
 test_review_findings_runs_from_repo_launcher
 test_review_findings_schema_is_visible_and_enforced
 test_review_findings_resolves_omitted_run_identity_before_lifecycle_checks

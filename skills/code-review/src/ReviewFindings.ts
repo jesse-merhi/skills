@@ -1105,8 +1105,6 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
   }
   const git = yield* trustedExecutable("git", verifiedRun.repoPath)
   const canonicalBaseIdentity = Effect.fn("ReviewFindings.canonicalBaseIdentity")(function*(baseRef: string) {
-    const symbolic = yield* checkedTrimmedText(git, ["rev-parse", "--symbolic-full-name", baseRef], { cwd: verifiedRun.repoPath })
-    if (symbolic.length > 0) return `ref:${symbolic}`
     const oid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${baseRef}^{commit}`], { cwd: verifiedRun.repoPath })
     return `oid:${oid}`
   })
@@ -1410,6 +1408,12 @@ const findingActionabilityError = (finding: Finding) => {
   if (finding.status === "rejected" && finding.ownerResolution.length === 0) {
     if (finding.rejectionGate.length === 0) return "rejected candidates require --rejection-gate"
     if (finding.decision.trim().length === 0) return "rejected candidates require --decision with the rejection rationale"
+    if (finding.findingKind === "runtime" && finding.likelihood === "theoretical" && finding.rejectionGate !== "reality") {
+      return "theoretical runtime candidates must use --rejection-gate reality"
+    }
+    if (finding.findingKind === "runtime" && ["likely", "possible", "rare"].includes(finding.likelihood) && finding.rejectionGate === "reality") {
+      return "reachable runtime candidates cannot use --rejection-gate reality"
+    }
   } else if (finding.rejectionGate.length > 0) {
     return "--rejection-gate is only valid for rejected candidates without an owner resolution"
   }
@@ -1550,6 +1554,13 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
       first_seen_at=coalesce(issues.first_seen_at, excluded.first_seen_at),
       last_seen_at=excluded.last_seen_at, seen_count=issues.seen_count + 1,
       updated_at=excluded.updated_at`
+  if (run.status === "complete") {
+    const findings = yield* sql<UnresolvedFindingRow>`select decision_id, status, summary, coalesce(disposition, '') as disposition, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${runId} order by decision_id`
+    const unresolved = findings.filter((finding) => !isFindingTerminalForReview(finding, true))
+    if (unresolved.length > 0) {
+      return yield* Effect.fail(new InvalidFinding("completed review runs require every finding to be fixed, rejected, or explicitly deferred"))
+    }
+  }
   return { runId, issueId }
   }))
 })
