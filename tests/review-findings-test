@@ -3281,7 +3281,58 @@ NODE
   assert_output_contains "$out" "authorization=User approved rebaseline."
 }
 
-test_review_scope_budget_uses_exact_percentage() {
+test_repeated_review_inherits_original_branch_loc() {
+  local tmp db repo out
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md
+  git -C "$repo" commit --quiet --message base
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'line %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --scope-summary "First review." >/dev/null
+  for number in {11..13}; do printf 'line %s\n' "$number"; done >> "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message "review fixes"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Use the original allowance." >/dev/null
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "The first review is clean." >/dev/null
+
+  git -C "$repo" switch --quiet main
+  for number in {1..50}; do printf 'upstream %s\n' "$number"; done > "$repo/upstream.ts"
+  git -C "$repo" add upstream.ts
+  git -C "$repo" commit --quiet --message "upstream work"
+  git -C "$repo" switch --quiet feature
+  git -C "$repo" rebase --quiet main
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "second review" --base main --scope-summary "Second review.")"
+  assert_output_contains "$out" "baseline=10 current=13 growth=3 allowed-growth=3 maximum=13"
+
+  printf 'line 14\n' >> "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "second review" --base main --reason "A repeated review must not add another buffer." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "a repeated review must keep the first branch LOC baseline"
+  fi
+  assert_contains "$tmp/stderr" "baseline=10 current=14 growth=4 allowed-growth=3 maximum=13"
+}
+
+test_review_scope_budget_tapers_large_pr_allowance() {
   local tmp db repo out
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
@@ -3300,29 +3351,29 @@ test_review_scope_budget_uses_exact_percentage() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #21" --base main --head "$(git -C "$repo" rev-parse HEAD)" \
-    --scope-summary "Use an exact percentage of total human-authored LOC." >/dev/null
+    --scope-summary "Taper the allowance for a large branch." >/dev/null
 
-  for number in {601..780}; do printf 'line %s\n' "$number"; done >> "$repo/app.ts"
+  for number in {601..700}; do printf 'line %s\n' "$number"; done >> "$repo/app.ts"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #21" --base main \
-    --reason "The accepted fixes grow the diff to exactly 30 percent.")"
+    --reason "The accepted fixes reach the tapered 100-line cap.")"
   assert_output_contains "$out" "SCOPE BUDGET OK"
-  assert_output_contains "$out" "baseline=600 current=780 growth=180 allowed-growth=180 maximum=780"
+  assert_output_contains "$out" "baseline=600 current=700 growth=100 allowed-growth=100 maximum=700"
 
-  printf 'line 781\n' >> "$repo/app.ts"
+  printf 'line 701\n' >> "$repo/app.ts"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #21" --base main \
-    --reason "One line past the percentage." \
+    --reason "One line past the tapered cap." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check should block once growth exceeds 30 percent of the baseline"
+    fail "scope-check should block once a large branch exceeds the 100-line allowance"
   fi
   assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=600 current=781 growth=181 allowed-growth=180 maximum=780"
+  assert_contains "$tmp/stderr" "baseline=600 current=701 growth=101 allowed-growth=100 maximum=700"
 
-  # Authorizing re-measures the tree, so the allowance must be recomputed from
-  # the new baseline. 30% of 781 is 234, so carrying forward 180 would fail.
+  # Authorizing re-measures the tree, but a large branch still gets no more
+  # than the 100-line cap.
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #21" --base main \
@@ -3331,7 +3382,7 @@ test_review_scope_budget_uses_exact_percentage() {
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #21" --base main)"
-  assert_output_contains "$out" "baseline=781 current=781 growth=0 allowed-growth=234 maximum=1015"
+  assert_output_contains "$out" "baseline=701 current=701 growth=0 allowed-growth=100 maximum=801"
 }
 
 test_review_scope_budget_uses_test_only_baseline() {
@@ -3448,7 +3499,8 @@ NODE
 test_review_findings_workflow_is_documented
 test_review_scope_budget_uses_test_only_baseline
 test_review_scope_budget_keeps_the_allowance_it_was_created_with
-test_review_scope_budget_uses_exact_percentage
+test_repeated_review_inherits_original_branch_loc
+test_review_scope_budget_tapers_large_pr_allowance
 test_review_findings_runs_from_repo_launcher
 test_review_findings_schema_is_visible_and_enforced
 test_review_findings_resolves_omitted_run_identity_before_lifecycle_checks

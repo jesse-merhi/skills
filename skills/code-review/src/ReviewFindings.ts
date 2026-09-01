@@ -441,6 +441,7 @@ interface UnresolvedFindingRow {
   readonly evidence_version: number
 }
 interface ActiveScopeRow { readonly run_id: string; readonly target: string }
+interface PriorScopeRow { readonly run_id: string }
 interface ScopeStatusRow { readonly status: string }
 interface ReviewFileAttestationRow {
   readonly review_id: string
@@ -496,6 +497,7 @@ export interface ScopeBudgetCheck extends ScopeBudgetStatus {
 }
 
 export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
+export const MAX_SCOPE_GROWTH_LINES = 100
 const PRODUCTION_ONLY_LINE_METRIC = "production-only"
 export const TOTAL_LOC_LINE_METRIC = "total-human-authored"
 const ScopeLineMetric = Schema.Literals([PRODUCTION_ONLY_LINE_METRIC, TOTAL_LOC_LINE_METRIC])
@@ -504,7 +506,7 @@ type ScopeLineMetric = typeof ScopeLineMetric.Type
 const humanAuthoredLines = (productionLines: number, testLines: number): number => productionLines + testLines
 
 export const allowedScopeGrowth = (baselineLines: number, limitPercent: number): number =>
-  Math.floor(baselineLines * limitPercent / 100)
+  Math.min(Math.floor(baselineLines * limitPercent / 100), MAX_SCOPE_GROWTH_LINES)
 
 export class MissingScopeBudget extends Error {
   readonly _tag = "MissingScopeBudget"
@@ -1007,8 +1009,10 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   readonly freshRun?: boolean
   readonly expectedGeneration?: number
   readonly allowReady?: boolean
+  readonly inheritedBaseline?: ScopeBudgetStatus
 }) {
-  yield* validateLimit(input.limitPercent)
+  const limitPercent = input.inheritedBaseline?.limitPercent ?? input.limitPercent
+  yield* validateLimit(limitPercent)
   const sql = yield* SqlClient.SqlClient
   const git = yield* trustedExecutable("git", run.repoPath)
   const baseOid = input.baseOid ?? (yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${run.base}^{commit}`], { cwd: run.repoPath }))
@@ -1017,8 +1021,20 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const checkoutOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: run.repoPath })
   const pinnedHeadOid = targetOid === checkoutOid ? "" : targetOid
   const measurement = yield* measureScopeDiff(run.repoPath, baseOid, targetOid, pinnedHeadOid.length === 0)
-  const baselineLines = humanAuthoredLines(measurement.production.changedLines, measurement.tests.changedLines)
-  const allowedGrowthLines = allowedScopeGrowth(baselineLines, input.limitPercent)
+  const baselineProductionLines = input.inheritedBaseline?.baselineProductionLines ?? measurement.production.changedLines
+  const baselineTestLines = input.inheritedBaseline?.baselineTestLines ?? measurement.tests.changedLines
+  const baselineGeneratedLines = input.inheritedBaseline?.baselineGeneratedLines ?? measurement.generated.changedLines
+  const baselinePaths = input.inheritedBaseline?.baselinePaths ?? measurement.humanAuthoredPaths
+  const baselineBinaryPaths = input.inheritedBaseline?.baselineBinaryPaths ?? measurement.humanAuthoredBinaryPaths
+  const authorization = input.authorization.length > 0 ? input.authorization : input.inheritedBaseline?.authorization ?? ""
+  const baselineLines = humanAuthoredLines(baselineProductionLines, baselineTestLines)
+  const currentLines = humanAuthoredLines(measurement.production.changedLines, measurement.tests.changedLines)
+  const growthLines = Math.max(0, currentLines - baselineLines)
+  const allowedGrowthLines = input.inheritedBaseline?.allowedGrowthLines ?? allowedScopeGrowth(baselineLines, limitPercent)
+  const baselinePathSet = new Set(baselinePaths)
+  const newHumanAuthoredPaths = measurement.humanAuthoredPaths.filter((path) => !baselinePathSet.has(path))
+  const baselineBinaryPathSet = new Set(baselineBinaryPaths)
+  const newBinaryHumanAuthoredPaths = measurement.humanAuthoredBinaryPaths.filter((path) => !baselineBinaryPathSet.has(path))
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = input.runId ?? (yield* (input.freshRun === true ? createScopeRun(run) : upsertRun(run)))
@@ -1045,7 +1061,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   }
   yield* sql`
     insert into review_scope_budgets (run_id, generation, line_metric, base_ref, base_oid, pinned_head_oid, limit_percent, scope_summary, authorization, baseline_production_lines, baseline_test_lines, baseline_generated_lines, baseline_paths_json, baseline_binary_paths_json, status, current_production_lines, current_test_lines, current_generated_lines, growth_lines, allowed_growth_lines, new_production_paths_json, new_binary_production_paths_json, last_reason, started_at, updated_at)
-    values (${runId}, 0, ${TOTAL_LOC_LINE_METRIC}, ${run.base}, ${baseOid}, ${pinnedHeadOid}, ${input.limitPercent}, ${input.scopeSummary}, ${input.authorization}, ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${JSON.stringify(measurement.humanAuthoredPaths)}, ${JSON.stringify(measurement.humanAuthoredBinaryPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, 0, ${allowedGrowthLines}, '[]', '[]', '', ${timestamp}, ${timestamp})
+    values (${runId}, 0, ${TOTAL_LOC_LINE_METRIC}, ${run.base}, ${baseOid}, ${pinnedHeadOid}, ${limitPercent}, ${input.scopeSummary}, ${authorization}, ${baselineProductionLines}, ${baselineTestLines}, ${baselineGeneratedLines}, ${JSON.stringify(baselinePaths)}, ${JSON.stringify(baselineBinaryPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${growthLines}, ${allowedGrowthLines}, ${JSON.stringify(newHumanAuthoredPaths)}, ${JSON.stringify(newBinaryHumanAuthoredPaths)}, '', ${timestamp}, ${timestamp})
     on conflict(run_id) do update set
       generation=review_scope_budgets.generation + 1, line_metric=excluded.line_metric, base_ref=excluded.base_ref, base_oid=excluded.base_oid, pinned_head_oid=excluded.pinned_head_oid, limit_percent=excluded.limit_percent, scope_summary=excluded.scope_summary,
       authorization=excluded.authorization, baseline_production_lines=excluded.baseline_production_lines,
@@ -1058,15 +1074,15 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
     runId,
     event: input.event,
     lineMetric: TOTAL_LOC_LINE_METRIC,
-    baselineProductionLines: measurement.production.changedLines,
-    baselineTestLines: measurement.tests.changedLines,
+    baselineProductionLines,
+    baselineTestLines,
     currentProductionLines: measurement.production.changedLines,
     currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines,
-    newPaths: [],
+    newPaths: newHumanAuthoredPaths,
     reason: "",
     scopeSummary: input.scopeSummary,
-    authorization: input.authorization
+    authorization
   })
   return yield* readScopeBudget(runId)
   }))
@@ -1087,7 +1103,32 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
     if (existing.target === verifiedRun.target) return yield* Effect.fail(new ScopeBudgetAlreadyStarted())
     return yield* Effect.fail(new ActiveScopeBudgetExists(existing.target))
   }
-  return yield* saveScopeBaseline(verifiedRun, { ...input, limitPercent: DEFAULT_SCOPE_GROWTH_PERCENT, authorization: "", event: "started", freshRun: true })
+  const priorRows = yield* sql.unsafe<PriorScopeRow>(
+    `select review_scope_budgets.run_id
+      from review_scope_budgets join review_runs on review_runs.id = review_scope_budgets.run_id
+      where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ?
+        and review_scope_budgets.base_ref = ? and review_scope_budgets.status = 'complete'
+        and review_scope_budgets.line_metric = ?
+      order by
+        case when trim(coalesce(review_scope_budgets.authorization, '')) != '' then 0 else 1 end,
+        case when trim(coalesce(review_scope_budgets.authorization, '')) != '' then review_scope_budgets.updated_at end desc,
+        case when trim(coalesce(review_scope_budgets.authorization, '')) = '' then review_scope_budgets.started_at end asc
+      limit 1`,
+    [repoKey, verifiedRun.branch, verifiedRun.base, TOTAL_LOC_LINE_METRIC]
+  )
+  const inheritedBaseline = priorRows[0] === undefined ? undefined : yield* readScopeBudget(priorRows[0].run_id)
+  const budget = yield* saveScopeBaseline(verifiedRun, {
+    ...input,
+    limitPercent: DEFAULT_SCOPE_GROWTH_PERCENT,
+    authorization: "",
+    event: "started",
+    freshRun: true,
+    ...(inheritedBaseline === undefined ? {} : { inheritedBaseline })
+  })
+  if (inheritedBaseline === undefined) return budget
+  const check = yield* checkScopeBudget(verifiedRun, "A repeated review keeps the branch's original LOC budget.")
+  if (check.blocked) return yield* Effect.fail(new ScopeBudgetBlocked(check))
+  return check
 })
 
 export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudget")(function*(run: ReviewRun, input: {

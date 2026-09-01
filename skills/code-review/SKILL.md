@@ -65,7 +65,8 @@ unless the current user explicitly requests that exact cross-harness session.
    repo_display_name = <readable repo name, such as sample-app>
    findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
    review_started = <local timestamp>
-   baseline_diff = <changed files and changed lines of the original target>
+   baseline_diff = <changed files and changed lines from the branch's first
+                    user-authorized review baseline for this base branch>
    scope_baseline = <request, target, intended behavior, owner boundary>
    consult_queue = []
    findings_registry = <SQLite findings database>
@@ -74,8 +75,10 @@ unless the current user explicitly requests that exact cross-harness session.
 
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
    for scope classification, budgets, consult queue, queue matching,
-   and blocked-on-consult behavior. For a new run, persist the baseline before
-   any review fix:
+   and blocked-on-consult behavior. For a new run, persist or inherit the branch
+   baseline before any review fix. A later run on the same branch and base must
+   keep the first authorized LOC baseline and its remaining allowance;
+   completing and restarting review never grants a fresh buffer:
 
    ```sh
    review_findings_bin="<skill-dir>/scripts/review-findings"
@@ -229,9 +232,10 @@ unless the current user explicitly requests that exact cross-harness session.
   approved consultations also record the recommended repair.
 - Every autonomous fix names a current reachable contract and remains
   proportional to its impact.
-- `scope-start` persisted the original baseline, every accepted fix was followed
-  by `scope-check`, and the final check passed before `scope-complete`. Any
-  authorized reset records the user's words through `scope-authorize`.
+- `scope-start` persisted or inherited the branch's original baseline, every
+  accepted fix was followed by `scope-check`, and the final check passed before
+  `scope-complete`. Repeated runs did not compound the allowance. Any authorized
+  reset records the user's words through `scope-authorize`.
 - Final validation for the affected flows passed, or blockers and residual
   risk are explicit.
 - No remote branch or PR mutation occurred while either review phase still had

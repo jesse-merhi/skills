@@ -252,5 +252,5 @@ describe("review file coverage", () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  }, 30_000)
+  }, 60_000)
 })

@@ -33,10 +33,12 @@ const runtimeFinding = {
 } satisfies FindingInput
 
 describe("review scope growth", () => {
-  it("uses exactly 30 percent with no absolute floor", () => {
+  it("uses 30 percent without a floor and caps large branches at 100 lines", () => {
     assert.strictEqual(allowedScopeGrowth(1, 30), 0)
     assert.strictEqual(allowedScopeGrowth(40, 30), 12)
-    assert.strictEqual(allowedScopeGrowth(600, 30), 180)
+    assert.strictEqual(allowedScopeGrowth(333, 30), 99)
+    assert.strictEqual(allowedScopeGrowth(334, 30), 100)
+    assert.strictEqual(allowedScopeGrowth(2_000, 30), 100)
   })
 })
 

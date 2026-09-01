@@ -13,9 +13,19 @@
 
 ## Diff-growth budget
 
-- Limit: exactly **30% of baseline human-authored changed LOC**. Human-authored
-  LOC includes production and test lines. The review CLI exposes no flag that
-  lets the agent raise the percentage and applies no absolute floor.
+- Limit: **30% of baseline human-authored changed LOC, capped at 100 lines**.
+  Human-authored LOC includes production and test lines. This keeps the full
+  30% allowance for branches up to 333 LOC, then reduces the effective
+  percentage as the PR grows: a 2,000-LOC branch receives 100 lines, not 600.
+  The review CLI exposes no flag that lets the agent raise either limit and
+  applies no absolute floor.
+- The baseline belongs to the checked-out branch and base branch, not one
+  invocation. The first `scope-start` freezes it. Later review runs inherit the
+  same original LOC, paths, and remaining allowance, so completing and rerunning
+  `code-review` cannot compound the buffer. Only an explicit `scope-authorize`
+  replaces that branch baseline. A later run measures the current branch against
+  the current base commit while retaining those original counts, so a rebase
+  does not grant a new buffer or charge upstream changes to the PR.
 - Every budget keeps the allowance computed when it was created, and only
   `scope-authorize` recomputes it. Reading a budget never rewrites it, so the
   stored allowance stays the bound the review was actually held to and keeps
@@ -32,8 +42,8 @@
   encoded in the CLI and include npm, pnpm, Yarn, Bun, Cargo, Ruby, PHP, Python
   Poetry, and uv lockfiles.
 - Calculate `baseline_total = baseline_production_lines +
-  baseline_test_lines`, then `allowed_growth = floor(baseline_total *
-  limit_percent / 100)`. Stay within `baseline_total + allowed_growth` with no
+  baseline_test_lines`, then `allowed_growth = min(floor(baseline_total *
+  limit_percent / 100), 100)`. Stay within `baseline_total + allowed_growth` with no
   new binary human-authored path. Added text paths are informational; any new
   production or test binary requires authorization because LOC cannot measure
   its size.
@@ -61,6 +71,8 @@
 - After the full review is clean, run a final passing check and
   `"$review_findings_bin" scope-complete`. Until then, another `scope-start` on the same
   repository and branch is rejected even if the caller changes the target label.
+  After completion, a later run may start but inherits the branch baseline and
+  already-consumed growth.
 - Past the time budget, stop and record the expiry in the loop report. Keep
   unanswered consult and investigate findings open. Use `deferred` only for
   explicitly accepted residual risk or an explicit owner decision.

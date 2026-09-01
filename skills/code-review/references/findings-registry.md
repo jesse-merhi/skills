@@ -35,8 +35,8 @@ database stores records under:
 
 ## Scope budget records
 
-Start each new review run by freezing its user-authorized scope and direct-diff
-baseline:
+Start each new review run by freezing or inheriting its user-authorized scope
+and direct-diff baseline:
 
 ```sh
 "$review_findings_bin" scope-start \
@@ -94,7 +94,9 @@ budget:
 ```
 
 An active budget blocks any second `scope-start` for the same repository and
-branch. `scope-complete` releases that lock for a later user-authorized review.
+branch. `scope-complete` releases that lock for a later user-authorized review,
+but the later run inherits the original branch-and-base LOC, paths, allowance,
+and already-consumed growth. It does not receive another percentage buffer.
 
 ## Finding records
 

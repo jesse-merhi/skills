@@ -17,8 +17,9 @@ Record at setup, before the first review cycle:
 
 ```text
 review_started = <local timestamp>
-baseline_diff  = <changed files and changed lines of the original target,
-                  persisted by `$review_findings_bin scope-start`>
+baseline_diff  = <changed files and changed lines from the branch's first
+                  user-authorized baseline for this base branch, persisted or
+                  inherited by `$review_findings_bin scope-start`>
 scope_baseline = <request, target, intended behavior, owner boundary>
 findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
 decision_log_path = <optional path for long-form rationale, when available>
