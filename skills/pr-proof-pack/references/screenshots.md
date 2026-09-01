@@ -99,23 +99,16 @@ requests that storage model.
 
 ## Bitbucket image upload
 
-For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). Upload images
-through the public repository Downloads API, embed their stable Downloads URLs
-in the complete Markdown description, and apply that description with
-`twg bb prs update <pr-id> --description <complete-markdown>`. A separate TWG
-or Atlassian skill is optional; use it when available and useful.
+For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). TWG applies the
+complete description and provider-hosted images together with
+`twg bb pull-requests update`, `--description-file`, repeated `--image` and
+paired descriptive `--image-name` flags, and body placeholders such as
+`{{image}}`. A separate TWG or Atlassian skill is optional; use it when
+available and useful.
 
-This path is proven for images, not video. If still images would lose an
-essential motion or playback claim, stop with `blocked` evidence instead of
-publishing weaker proof.
-
-Apply the same sizing rule used above: choose the smallest width that remains
-comfortably readable, treat `50%` as the starting point for focused visuals,
-and make full width deliberate. Bitbucket escapes raw HTML image sizing and
-strips Markdown attribute-list sizing. Its tested fallback is a two-column Markdown
-table with the image in one cell and its verified result in the other. Follow
-[bitbucket.md](bitbucket.md) for the exact shape and the required authenticated
-destination-size inspection.
+The TWG path supports images, not video. If still images would lose an essential
+motion or playback claim, stop with `blocked` evidence instead of publishing a
+weaker proof.
 
 ## Rendered PR verification
 
@@ -159,10 +152,9 @@ video viewer. Inspect the fetched rendered asset again after upload. A file with
 real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
-For Bitbucket Cloud, API and TWG readback prove the stored description and
-uploaded bytes but not literal placement, size, or rendered pixels. Follow
-[bitbucket.md](bitbucket.md) and inspect every finished image or diagram on the
-rendered PR in an authenticated interactive browser.
+For Bitbucket Cloud, TWG readback proves the stored PR description but not the
+rendered image. Follow [bitbucket.md](bitbucket.md) and inspect every finished
+image or diagram on the rendered PR in an authenticated interactive browser.
 
 ## Explanation diagrams
 
