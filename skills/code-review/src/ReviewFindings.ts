@@ -401,6 +401,11 @@ interface IssueIdRow {
   readonly disposition: string
   readonly owner_resolution: string
 }
+interface PruneIssueRow extends IssueIdRow {
+  readonly evidence_version: number
+  readonly run_status: string
+  readonly scope_status: string
+}
 interface ScopeBudgetRow {
   readonly run_id: string
   readonly generation: number
@@ -452,6 +457,8 @@ const isFindingTerminal = (finding: Pick<CloseoutFinding, "status" | "dispositio
 }
 
 const hasLegacyEvidence = (finding: Pick<CloseoutFinding, "evidence_version">) => finding.evidence_version < FINDING_SCHEMA_VERSION
+const isFindingTerminalForReview = (finding: Pick<CloseoutFinding, "status" | "disposition" | "owner_resolution" | "evidence_version">, reviewComplete: boolean) =>
+  isFindingTerminal(finding) && (reviewComplete || !hasLegacyEvidence(finding))
 
 const isDeferredWork = (finding: Pick<CloseoutFinding, "status" | "disposition" | "owner_resolution">) =>
   finding.status === "deferred" && (finding.disposition === "follow-up" || (finding.disposition === "consult" && finding.owner_resolution.length > 0))
@@ -1168,7 +1175,7 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
       return yield* Effect.fail(new InvalidScopeBudget("scope budget changed before scope-complete could commit; rerun the final scope-check"))
     }
     const findings = yield* sql<UnresolvedFindingRow>`select decision_id, status, summary, coalesce(disposition, '') as disposition, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${check.runId} order by decision_id`
-    const unresolved = findings.filter((finding) => !isFindingTerminal(finding) || hasLegacyEvidence(finding))
+    const unresolved = findings.filter((finding) => !isFindingTerminalForReview(finding, false))
     if (unresolved.length > 0) {
       const findings = unresolved.map((finding) => `${finding.decision_id} [${finding.status}]: ${finding.summary}`).join("\n")
       return yield* Effect.fail(new InvalidScopeBudget(`scope-complete requires every finding to be fixed, rejected, or explicitly deferred; resolve these findings first:\n${findings}`))
@@ -1534,7 +1541,7 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
     changes_made_while_reviewing: actionableFindings.filter((finding) => finding.status === "fixed"),
     verification_run: commands,
     deferred_work: actionableFindings.filter(isDeferredWork),
-    still_open: findings.filter((finding) => !isFindingTerminal(finding) || (!reviewComplete && hasLegacyEvidence(finding))),
+    still_open: findings.filter((finding) => !isFindingTerminalForReview(finding, reviewComplete)),
     ...(Option.isSome(scopeBudget) ? { scope_budget: scopeBudget.value } : {})
   } satisfies Closeout
 })
@@ -1620,8 +1627,10 @@ export const pruneFindings = Effect.fn("ReviewFindings.pruneFindings")(function*
   if (filters.repoPath !== undefined) { where.push("review_runs.repo_key = ?"); params.push(yield* canonicalRepoKey(filters.repoPath)) }
   else if (filters.repo !== undefined) { where.push("review_runs.repo_name = ?"); params.push(filters.repo) }
   if (filters.branch !== undefined) { where.push("review_runs.branch = ?"); params.push(filters.branch) }
-  const candidates = yield* sql.unsafe<IssueIdRow>(`select issues.id, issues.status, coalesce(issues.disposition, '') as disposition, coalesce(issues.owner_resolution, '') as owner_resolution from issues join review_runs on review_runs.id = issues.run_id where ${where.join(" and ")}`, params)
-  const issues = filters.includeOpen ? candidates : candidates.filter(isFindingTerminal)
+  const candidates = yield* sql.unsafe<PruneIssueRow>(`select issues.id, issues.status, coalesce(issues.disposition, '') as disposition, coalesce(issues.owner_resolution, '') as owner_resolution, coalesce(issues.evidence_version, 7) as evidence_version, review_runs.status as run_status, coalesce(review_scope_budgets.status, '') as scope_status from issues join review_runs on review_runs.id = issues.run_id left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where ${where.join(" and ")}`, params)
+  const issues = filters.includeOpen
+    ? candidates
+    : candidates.filter((finding) => isFindingTerminalForReview(finding, finding.run_status === "complete" || finding.scope_status === "complete"))
   if (!filters.dryRun) {
     yield* Effect.forEach(issues, ({ id }) => sql`delete from issues where id = ${id}`, { discard: true })
     yield* sql`delete from review_runs where id not in (select distinct run_id from issues) and id not in (select distinct run_id from commands) and id not in (select run_id from review_scope_budgets)`
@@ -1769,7 +1778,8 @@ const commandResultLabel = (result: string) => {
 export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSummary => {
   const acceptedResidualRisk = closeout.findings_found.filter((finding) => finding.disposition === "residual").sort(compareFindings)
   const deferredWork = [...closeout.deferred_work].sort(compareFindings)
-  const important = closeout.material_findings.filter((finding) => finding.disposition !== "residual" && !isDeferredWork(finding) && isFindingTerminal(finding)).sort(compareFindings)
+  const openDecisionIds = new Set(closeout.still_open.map((finding) => finding.decision_id))
+  const important = closeout.material_findings.filter((finding) => finding.disposition !== "residual" && !isDeferredWork(finding) && isFindingTerminal(finding) && !openDecisionIds.has(finding.decision_id)).sort(compareFindings)
   const stillOpen = [...closeout.still_open].sort(compareFindings)
   return {
     total_findings: closeout.findings_found.length,

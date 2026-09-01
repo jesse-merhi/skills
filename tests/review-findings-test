@@ -804,13 +804,19 @@ test_review_findings_prunes_terminal_deferred_records() {
     --reachability-evidence "The supported request reaches the handler." \
     --likelihood likely --impact medium "${RUNTIME_ACTIONABILITY[@]}" \
     --actual-consequence "The workflow fails." >/dev/null
+  record_maintenance_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #prune" --base main \
+    --decision-id D3 --status fixed --source legacy --fingerprint "legacy fixed cleanup" \
+    --summary "The legacy cleanup needs current evidence." --area workflow >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set evidence_version = 7 where decision_id = ?").run("D3")' "$db"
 
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout --summary \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #prune" --base main)"
   assert_output_contains "$out" "Important resolved findings (0 of 0 shown)"
   assert_output_contains "$out" "Accepted residual risk (1 of 1 shown)"
   assert_output_contains "$out" "D1 [deferred]"
-  assert_output_contains "$out" "Still open (1 of 1 shown)"
+  assert_output_contains "$out" "Still open (2 of 2 shown)"
+  assert_output_contains "$out" "D3 [fixed]"
 
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set last_seen_at = 0").run()' "$db"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" prune \
@@ -820,6 +826,7 @@ test_review_findings_prunes_terminal_deferred_records() {
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #prune" --base main)"
   assert_output_not_contains "$out" '"decision_id": "D1"'
   assert_output_contains "$out" '"decision_id": "D2"'
+  assert_output_contains "$out" '"decision_id": "D3"'
 }
 
 test_review_findings_summary_separates_deferred_work() {
