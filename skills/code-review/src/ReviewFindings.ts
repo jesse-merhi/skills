@@ -844,11 +844,14 @@ const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<Re
   if (Option.isNone(git)) return undefined
   const requestedBase = yield* checkedTrimmedText(git.value, ["rev-parse", "--verify", `${run.base}^{commit}`], { cwd: run.repoPath }).pipe(Effect.option)
   if (Option.isNone(requestedBase)) return undefined
+  const requestedSymbolic = yield* checkedTrimmedText(git.value, ["rev-parse", "--symbolic-full-name", run.base], { cwd: run.repoPath }).pipe(Effect.orElseSucceed(() => ""))
   const candidates = yield* sql.unsafe<RunIdentityRow>(
     "select id, coalesce(branch, '') as branch, coalesce(base, '') as base from review_runs where repo_key = ? and coalesce(branch, '') = ? and target = ? order by update_seq desc, updated_at desc, rowid desc",
     [repoKey, run.branch, run.target]
   )
   for (const candidate of candidates) {
+    const candidateSymbolic = yield* checkedTrimmedText(git.value, ["rev-parse", "--symbolic-full-name", candidate.base], { cwd: run.repoPath }).pipe(Effect.orElseSucceed(() => ""))
+    if (requestedSymbolic.length > 0 && candidateSymbolic.length > 0 && requestedSymbolic !== candidateSymbolic) continue
     const candidateBase = yield* checkedTrimmedText(git.value, ["rev-parse", "--verify", `${candidate.base}^{commit}`], { cwd: run.repoPath }).pipe(Effect.option)
     if (Option.isSome(candidateBase) && candidateBase.value === requestedBase.value) return candidate.id
   }
