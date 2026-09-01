@@ -1468,7 +1468,10 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const input = yield* decodeFindingForReplay(rawInput)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
-  const run = yield* resolveRecordRun(rawRun)
+  const resolvedRun = yield* resolveRecordRun(rawRun)
+  const run = resolvedRun.status === "complete" && resolvedRun.head.length === 0
+    ? { ...resolvedRun, head: yield* completedWriteHead(resolvedRun) }
+    : resolvedRun
   const existingRunId = yield* exactRunId(run)
   const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
   const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.contractEvidence, input.rootCause, input.recommendedFix, input.interventionJustification, input.rejectionGate, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
@@ -1480,8 +1483,11 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     ? undefined
     : (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${existingRunId} limit 1`)[0]
   const runComplete = existingRun !== undefined && (existingRun.status === "complete" || existingRun.scope_status === "complete")
-  if (runComplete && run.head.length > 0 && run.head !== existingRun.head) {
-    return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+  if (runComplete && (run.head.length > 0 || existingRun.head.length > 0)) {
+    const writeHead = run.head.length > 0 ? run.head : yield* completedWriteHead(run)
+    if (writeHead !== existingRun.head) {
+      return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
+    }
   }
   const exactCurrentTerminalReplay = existingIssue !== undefined && !hasLegacyEvidence(existingIssue) &&
     isFindingTerminal(existingIssue) && isExactResolvedReplay(existingIssue, input, material, text)

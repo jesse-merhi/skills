@@ -1426,7 +1426,7 @@ NODE
   node -e 'const { DatabaseSync } = require("node:sqlite"); const row = new DatabaseSync(process.argv[1]).prepare("select status, decision, disposition, evidence_version from issues where decision_id = ?").get("LEGACY-DECISIONLESS"); if (row?.status !== "deferred" || row.decision !== "Assign the deferred work to its owning review." || row.disposition !== "follow-up" || row.evidence_version !== 8) process.exit(1)' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set priority = ? where decision_id = ?").run("P4", "D0")' "$db"
   if record_maintenance_finding \
-    --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main \
+    --db "$db" --repo sample-app --repo-path "$db" --target "PR #4" --base main --head old-head \
     --decision-id LEGACY-TERMINAL --status fixed --source legacy --fingerprint "legacy terminal" \
     --summary "Legacy terminal finding updated." --text "updated" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -3343,9 +3343,17 @@ test_repeated_review_inherits_original_branch_loc() {
 }
 
 test_completed_run_rejects_unresolved_findings() {
-  local tmp db
+  local tmp db reviewed_head
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
+  git -C "$tmp" init --quiet --initial-branch main repo
+  git -C "$tmp/repo" config user.email test@example.com
+  git -C "$tmp/repo" config user.name "Test User"
+  printf 'base\n' > "$tmp/repo/app.ts"
+  git -C "$tmp/repo" add app.ts
+  git -C "$tmp/repo" commit --quiet --message base
+  git -C "$tmp/repo" switch --quiet --create feature
+  reviewed_head="$(git -C "$tmp/repo" rev-parse HEAD)"
 
   if record_runtime_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
@@ -3372,7 +3380,7 @@ NODE
 
   record_runtime_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
-    --target "completed review" --base main --head reviewed-head --run-status complete \
+    --target "completed review" --base main --run-status complete \
     --decision-id COMPLETE-FIXED --status fixed --source review \
     --fingerprint "completed run with fixed finding" \
     --summary "A completed run may contain resolved work." \
@@ -3380,6 +3388,31 @@ NODE
     --reachability-evidence "The finding is terminal in the same transaction." \
     --likelihood possible --impact medium \
     --actual-consequence "The completed review remains internally consistent." >/dev/null
+
+  node --input-type=module - "$db" "$reviewed_head" <<'NODE'
+import { DatabaseSync } from "node:sqlite"
+const db = new DatabaseSync(process.argv[2])
+const run = db.prepare("select head from review_runs").get()
+if (run.head !== process.argv[3]) process.exit(1)
+NODE
+
+  printf 'later\n' >> "$tmp/repo/app.ts"
+  git -C "$tmp/repo" add app.ts
+  git -C "$tmp/repo" commit --quiet --message later
+  if record_runtime_finding \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
+    --target "completed review" --base main --run-status complete \
+    --decision-id COMPLETE-FIXED --status fixed --source review \
+    --fingerprint "completed run with fixed finding" \
+    --summary "A completed run may contain resolved work." \
+    --production-path "review command -> fixed finding -> run completion" \
+    --reachability-evidence "The finding is terminal in the same transaction." \
+    --likelihood possible --impact medium \
+    --actual-consequence "The completed review remains internally consistent." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "a completed replay must infer and compare an omitted head"
+  fi
+  assert_contains "$tmp/stderr" "completed review runs are bound to their reviewed head"
 }
 
 test_review_scope_budget_tapers_large_pr_allowance() {
