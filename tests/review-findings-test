@@ -1300,7 +1300,7 @@ db.exec(`
   create table issues (id text primary key, run_id text not null, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, decision text, text text not null, decision_log_path text, updated_at integer not null, unique(run_id, decision_id));
   create table review_scope_budgets (run_id text primary key, generation integer not null default 0, base_ref text not null, base_oid text not null, limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, last_reason text not null default '', started_at integer not null, updated_at integer not null);
 `)
-db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "active", "", 1, 1)
+db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-run", "sample-app", process.argv[2], "PR #1", "main", "old-head", "complete", "", 1, 1)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-over", "sample-app", process.argv[2], "PR #2", "main", "old-head", "active", "", 1, 1)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-complete", "sample-app", process.argv[2], "PR #3", "main", "old-head", "active", "", 1, 1)
 db.prepare("insert into review_runs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("legacy-terminal", "sample-app", process.argv[2], "PR #4", "main", "old-head", "complete", "", 1, 1)
@@ -1323,6 +1323,9 @@ NODE
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$db")"
   assert_output_contains "$out" "$db"
   "$ROOT_DIR/skills/code-review/scripts/review-findings" init --db "$fresh_db" >/dev/null
+  node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set last_seen_at = unixepoch()").run(); db.prepare("update issues set last_seen_at = 0 where decision_id = ?").run("LEGACY-FIXED")' "$db"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" prune --db "$db" --repo-path "$db" --older-than-days 0 --min-seen-count 10)"
+  assert_output_contains "$out" "pruned findings=0"
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("insert into review_runs (id, repo_name, repo_key, repo_path, branch, target, base, head, status, decision_log_path, started_at, update_seq, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("fresh-run", "sample-app", "sample-app", "sample-app", "", "fresh", "main", "", "active", "", 1, 1, 1); db.prepare("insert into issues (id, run_id, decision_id, status, source, fingerprint, summary, text, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)").run("old-writer", "fresh-run", "OLD-WRITER", "open", "legacy", "old writer", "Older writer finding", "old writer text", 1); const row = db.prepare("select evidence_version from issues where id = ?").get("old-writer"); if (row?.evidence_version !== 7) process.exit(1)' "$fresh_db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("maintenance", "follow-up", "local", "follow-up", "LEGACY-DECISIONLESS")' "$db"
   node -e 'const { DatabaseSync } = require("node:sqlite"); new DatabaseSync(process.argv[1]).prepare("update issues set finding_kind = ?, disposition = ?, fix_scope = ?, handling = ? where decision_id = ?").run("runtime", "accept", "local", "fix", "LEGACY-KIND")' "$db"
@@ -3537,16 +3540,13 @@ test_review_scope_budget_keeps_the_allowance_it_was_created_with() {
     --target "PR #22" --base main --head "$(git -C "$repo" rev-parse HEAD)" \
     --scope-summary "A budget keeps the allowance it was created with." >/dev/null
 
-  # Plant an allowance lower than the current rule would produce.
   node --input-type=module - "$db" <<'NODE'
 import { DatabaseSync } from "node:sqlite"
 const db = new DatabaseSync(process.argv[2])
 db.exec("update review_scope_budgets set allowed_growth_lines = 5")
 NODE
 
-  # A budget keeps the allowance it was created with. Reading one never
-  # rewrites it, so the stored bound stays the bound the review was held to and
-  # the recorded status and event trail keep agreeing with it.
+  # Reading a budget never rewrites the allowance it was created with.
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #22" --base main)"

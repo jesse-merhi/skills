@@ -264,6 +264,8 @@ export interface RecordedCommand {
 interface RunRow { readonly id: string }
 interface RunStateRow extends RunRow { readonly status: string; readonly head: string }
 interface RunBoundaryRow extends RunStateRow { readonly scope_status: string }
+const runBoundaryComplete = (run: Pick<RunBoundaryRow, "status" | "scope_status">) => run.scope_status.length > 0 ? run.scope_status === "complete" : run.status === "complete"
+
 interface CloseoutRunRow extends RunRow { readonly status: string }
 interface RunIdentityRow extends RunRow { readonly branch: string; readonly base: string }
 interface IdRow { readonly id: string }
@@ -750,8 +752,8 @@ const persistRun = Effect.fn("ReviewFindings.persistRun")(function*(run: ReviewR
     on conflict(id) do update set
       repo_name=excluded.repo_name, repo_key=excluded.repo_key, repo_path=excluded.repo_path,
       branch=excluded.branch, target=excluded.target, base=review_runs.base,
-      head=case when review_runs.status = 'complete' then review_runs.head when excluded.head != '' then excluded.head else review_runs.head end,
-      status=case when review_runs.status = 'complete' then 'complete' else excluded.status end,
+      head=case when review_runs.status = 'complete' and not exists (select 1 from review_scope_budgets where run_id = review_runs.id and status != 'complete') then review_runs.head when excluded.head != '' then excluded.head else review_runs.head end,
+      status=case when review_runs.status = 'complete' and not exists (select 1 from review_scope_budgets where run_id = review_runs.id and status != 'complete') then 'complete' else excluded.status end,
       decision_log_path=case when excluded.decision_log_path != '' then excluded.decision_log_path else review_runs.decision_log_path end,
       update_seq=excluded.update_seq, updated_at=excluded.updated_at`
   return runId
@@ -779,7 +781,7 @@ const upsertRun = Effect.fn("ReviewFindings.upsertRun")(function*(run: ReviewRun
   const matchingRunId = yield* exactRunId(run)
   const matching = matchingRunId === undefined ? [] : yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${matchingRunId}`
   const matchedRun = matching[0]
-  if (matchedRun !== undefined && (matchedRun.status === "complete" || matchedRun.scope_status === "complete")) {
+  if (matchedRun !== undefined && runBoundaryComplete(matchedRun)) {
     const writeHead = fullGitOid.test(matchedRun.head) ? yield* resolvedCompletionHead(run) : yield* completedWriteHead(run)
     if (writeHead !== matchedRun.head) {
       return yield* Effect.fail(new InvalidFinding("completed review runs are bound to their reviewed head; start a new user-authorized review for a different head"))
@@ -806,7 +808,7 @@ const latestRun = Effect.fn("ReviewFindings.latestRun")(function*(run: Pick<Revi
 const touchRun = Effect.fn("ReviewFindings.touchRun")(function*(runId: string, run: Pick<ReviewRun, "repoPath" | "head">) {
   const sql = yield* SqlClient.SqlClient
   const boundary = (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId} limit 1`)[0]
-  const complete = boundary !== undefined && (boundary.status === "complete" || boundary.scope_status === "complete")
+  const complete = boundary !== undefined && runBoundaryComplete(boundary)
   if (complete) {
     const writeHead = fullGitOid.test(boundary.head) ? yield* resolvedCompletionHead(run) : yield* completedWriteHead(run)
     if (writeHead !== boundary.head) {
@@ -1513,8 +1515,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingRun = existingRunId === undefined
     ? undefined
     : (yield* sql<RunBoundaryRow>`select review_runs.id, review_runs.status, coalesce(nullif(review_runs.head, ''), review_scope_budgets.pinned_head_oid, '') as head, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${existingRunId} limit 1`)[0]
-  const legacyScopeRecovery = existingRun?.status === "complete" && existingRun.scope_status.length > 0 && existingRun.scope_status !== "complete"
-  const runComplete = existingRun !== undefined && !legacyScopeRecovery && (existingRun.status === "complete" || existingRun.scope_status === "complete")
+  const runComplete = existingRun !== undefined && runBoundaryComplete(existingRun)
   if (runComplete && (run.head.length > 0 || existingRun.head.length > 0)) {
     const writeHead = fullGitOid.test(existingRun.head)
       ? yield* resolvedCompletionHead(run)
@@ -1758,7 +1759,7 @@ export const pruneFindings = Effect.fn("ReviewFindings.pruneFindings")(function*
   const candidates = yield* sql.unsafe<PruneIssueRow>(`select issues.id, issues.status, coalesce(issues.disposition, '') as disposition, coalesce(issues.owner_resolution, '') as owner_resolution, coalesce(issues.evidence_version, 7) as evidence_version, review_runs.status as run_status, coalesce(review_scope_budgets.status, '') as scope_status from issues join review_runs on review_runs.id = issues.run_id left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where ${where.join(" and ")}`, params)
   const issues = filters.includeOpen
     ? candidates
-    : candidates.filter((finding) => isFindingTerminalForReview(finding, finding.run_status === "complete" || finding.scope_status === "complete"))
+    : candidates.filter((finding) => isFindingTerminalForReview(finding, runBoundaryComplete({ status: finding.run_status, scope_status: finding.scope_status })))
   if (!filters.dryRun) {
     yield* Effect.forEach(issues, ({ id }) => sql`delete from issues where id = ${id}`, { discard: true })
     yield* sql`delete from review_runs where id not in (select distinct run_id from issues) and id not in (select distinct run_id from commands) and id not in (select run_id from review_scope_budgets)`
