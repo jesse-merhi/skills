@@ -3357,7 +3357,7 @@ test_completed_run_rejects_unresolved_findings() {
 
   if record_runtime_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
-    --target "completed review" --base main --head reviewed-head --run-status complete \
+    --target "completed review" --base main --head "$reviewed_head" --run-status complete \
     --decision-id COMPLETE-OPEN --status open --source review \
     --fingerprint "completed run with open finding" \
     --summary "A completed run cannot retain unresolved work." \
@@ -3380,7 +3380,7 @@ NODE
 
   record_runtime_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
-    --target "completed review" --base main --run-status complete \
+    --target "completed review" --base main --head HEAD --run-status complete \
     --decision-id COMPLETE-FIXED --status fixed --source review \
     --fingerprint "completed run with fixed finding" \
     --summary "A completed run may contain resolved work." \
@@ -3401,7 +3401,7 @@ NODE
   git -C "$tmp/repo" commit --quiet --message later
   if record_runtime_finding \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
-    --target "completed review" --base main --run-status complete \
+    --target "completed review" --base main --head HEAD --run-status complete \
     --decision-id COMPLETE-FIXED --status fixed --source review \
     --fingerprint "completed run with fixed finding" \
     --summary "A completed run may contain resolved work." \
