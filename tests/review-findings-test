@@ -3414,6 +3414,10 @@ NODE
     fail "a completed replay must infer and compare an omitted head"
   fi
   assert_contains "$tmp/stderr" "completed review runs are bound to their reviewed head"
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" closeout \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --branch feature \
+    --target "completed review" --base refs/heads/main)"
+  assert_output_contains "$out" "COMPLETE-FIXED [fixed]"
 }
 
 test_review_scope_budget_tapers_large_pr_allowance() {

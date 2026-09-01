@@ -1631,13 +1631,19 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   readonly base?: string
 }) {
   const sql = yield* SqlClient.SqlClient
+  const exactIdentity = filters.repoPath !== undefined && filters.branch !== undefined && filters.target !== undefined && filters.base !== undefined
+  const exactFilteredRunId = exactIdentity
+    ? yield* exactRunId({ repoPath: filters.repoPath, branch: filters.branch, target: filters.target, base: filters.base })
+    : undefined
   const where = [filters.repoPath === undefined ? "repo_name = ?" : "repo_key = ?"]
   const repoKey = filters.repoPath === undefined ? undefined : yield* canonicalRepoKey(filters.repoPath)
   const params: Array<unknown> = [repoKey ?? filters.repo]
   if (filters.branch !== undefined) { where.push("branch = ?"); params.push(filters.branch) }
   if (filters.target !== undefined) { where.push("target = ?"); params.push(filters.target) }
   if (filters.base !== undefined) { where.push("coalesce(base, '') = ?"); params.push(filters.base) }
-  const runs = yield* sql.unsafe<CloseoutRunRow>(`select id, status from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 1`, params)
+  const runs = exactIdentity
+    ? exactFilteredRunId === undefined ? [] : yield* sql<CloseoutRunRow>`select id, status from review_runs where id = ${exactFilteredRunId}`
+    : yield* sql.unsafe<CloseoutRunRow>(`select id, status from review_runs where ${where.join(" and ")} order by update_seq desc, updated_at desc, rowid desc limit 1`, params)
   const runId = runs[0]?.id
   const findingRows = runId === undefined ? [] : yield* sql<CloseoutFindingRow>`select decision_id, status, source, summary, coalesce(impact, '') as area, case lower(coalesce(priority, '')) when 'p4' then '' else coalesce(priority, '') end as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, fingerprint, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${runId} order by decision_id`
   const findings: ReadonlyArray<CloseoutFinding> = findingRows.map((finding) => ({ ...finding, material: finding.material !== 0 }))
