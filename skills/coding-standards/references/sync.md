@@ -51,6 +51,11 @@ started as — use `apply` instead.
    dependencies. Dependencies added since vendoring can make presets apply that
    did not before.
 
+   The manifest keys `presets` by ecosystem name, while the catalog keys them
+   by `ecosystems.<name>.presets` — `javascript` in the manifest is `eslint` in
+   the catalog. Map through that field before comparing the two lists;
+   comparing the keys directly reads every vendored preset as missing.
+
    Done when every preset that now applies but is absent from the manifest is
    either vendored, with permission asked for its packages, or declined and
    recorded.

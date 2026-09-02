@@ -11,10 +11,17 @@ invariants a new entry has to satisfy.
   - `detect` — files whose presence at a repository root means the ecosystem is
     there.
   - `presets` — the key under `presets` holding that ecosystem presets.
+  - `packages` — optional. Package name to exact version for tooling the
+    ecosystem needs whatever presets are selected: `javascript` carries
+    `eslint` itself. Apply step 4 installs these together with the packages of
+    the selected presets.
 - `presets.<presets-key>.<preset-name>`
   - `file` — path relative to the skill directory. A config file for
     single-file presets, a directory for rule sets and check packages.
   - `packages` — package name to the exact version the preset needs installed.
+    Everything the preset file imports belongs here, including a resolver it
+    loads for itself: `base` imports the TypeScript import resolver, so
+    `eslint-import-resolver-typescript` is ordinary `packages` content there.
   - `applies` — `always: true`, or `dependencies` and `devDependencies` naming
     packages that must appear in the target `package.json`.
 - `standards[]`
