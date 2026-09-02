@@ -389,37 +389,6 @@ function isDirectZodTypeInstanceofGuard(node, predicateParameterName, zodTypeNam
 	);
 }
 
-function containsZodTypeInstanceofGuard(node, predicateParameterName, zodTypeNames, zodNamespaceNames) {
-	if (!node || typeof node !== "object") {
-		return false;
-	}
-
-	if (isDirectZodTypeInstanceofGuard(node, predicateParameterName, zodTypeNames, zodNamespaceNames)) {
-		return true;
-	}
-
-	for (const [key, value] of Object.entries(node)) {
-		if (key === "parent") {
-			continue;
-		}
-
-		if (
-			Array.isArray(value) &&
-			value.some((child) =>
-				containsZodTypeInstanceofGuard(child, predicateParameterName, zodTypeNames, zodNamespaceNames),
-			)
-		) {
-			return true;
-		}
-
-		if (containsZodTypeInstanceofGuard(value, predicateParameterName, zodTypeNames, zodNamespaceNames)) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
 function collectReturnStatements(node) {
 	const returnStatements = [];
 
