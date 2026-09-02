@@ -482,6 +482,11 @@ esac
         assert.match(await dirtyMessage(), /clean committed worktree/u)
         await execFile("git", ["add", "untracked.txt"], { cwd: directory })
         await execFile("git", ["commit", "-m", "update"], { cwd: directory })
+        await execFile("git", ["update-index", "--assume-unchanged", "untracked.txt"], { cwd: directory })
+        await writeFile(join(directory, "untracked.txt"), "index-hidden\n")
+        assert.match(await dirtyMessage(), /clean committed worktree/u)
+        await execFile("git", ["update-index", "--no-assume-unchanged", "untracked.txt"], { cwd: directory })
+        await writeFile(join(directory, "untracked.txt"), "unstaged\n")
         assert.strictEqual((await Effect.runPromise(live(selectReviewPlan("branch", Option.some("main"), "HEAD", false)))).label, "branch against main")
       } finally {
         process.chdir(previousCwd)

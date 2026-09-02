@@ -7,6 +7,10 @@ import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 
 import { checkedInherit, type CheckedProcessOptions, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { ReviewSnapshotError, trustedExecutable } from "./ReviewEnvironment.ts"
+import { measureScopeDiff } from "./ReviewScope.ts"
+
+export { ReviewSnapshotError, trustedExecutable } from "./ReviewEnvironment.ts"
 
 export type ReviewMode = "auto" | "whole" | "branch" | "commit"
 
@@ -23,7 +27,6 @@ export interface ReviewPlan {
 export class ReviewTargetChangedError extends Schema.TaggedError<ReviewTargetChangedError>()("ReviewTargetChangedError", {
   runs: Schema.Number
 }) {}
-export class ReviewSnapshotError extends Schema.TaggedError<ReviewSnapshotError>()("ReviewSnapshotError", { message: Schema.String }) {}
 export class CodexAuthenticationError extends Schema.TaggedError<CodexAuthenticationError>()("CodexAuthenticationError", { message: Schema.String }) {}
 export class CodexLivePreflightError extends Schema.TaggedError<CodexLivePreflightError>()("CodexLivePreflightError", { message: Schema.String }) {}
 
@@ -33,37 +36,6 @@ const CodexDoctorReport = Schema.fromJsonString(Schema.Struct({
   })
 }))
 
-// Explicit tool overrides are trusted user configuration; defaults are resolved outside the checkout.
-// @effect-diagnostics-next-line processEnv:off
-const toolEnvironment = { CODEX_BIN: process.env.CODEX_BIN, GH_BIN: process.env.GH_BIN, GIT_BIN: process.env.GIT_BIN, PATH: process.env.PATH ?? "", CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME }
-export const trustedExecutable = Effect.fn("NativeReview.trustedExecutable")(function*(name: string, reviewedRepoPath = process.cwd()) {
-  const explicit = name === "git" ? toolEnvironment.GIT_BIN : name === "gh" ? toolEnvironment.GH_BIN : name === "codex" ? toolEnvironment.CODEX_BIN : undefined
-  if (explicit !== undefined && explicit.length > 0) return explicit
-  const fs = yield* FileSystem.FileSystem
-  const paths = yield* Path.Path
-  let cursor = paths.resolve(reviewedRepoPath)
-  let repo: string | undefined
-  while (repo === undefined) {
-    if (yield* fs.exists(paths.join(cursor, ".git"))) repo = yield* fs.realPath(cursor).pipe(Effect.orElseSucceed(() => cursor))
-    else {
-      const parent = paths.dirname(cursor)
-      if (parent === cursor) break
-      cursor = parent
-    }
-  }
-  for (const entry of toolEnvironment.PATH.split(":")) {
-    if (entry.length === 0 || !paths.isAbsolute(entry)) continue
-    const candidate = paths.join(entry, name)
-    if (!(yield* fs.exists(candidate))) continue
-    const resolved = yield* fs.realPath(candidate).pipe(Effect.orElseSucceed(() => paths.resolve(candidate)))
-    const info = yield* fs.stat(resolved).pipe(Effect.option)
-    if (Option.isNone(info) || info.value.type !== "File" || (info.value.mode & 0o111) === 0) continue
-    const relative = repo === undefined ? undefined : paths.relative(repo, resolved)
-    const insideRepo = relative !== undefined && (relative === "" || (!paths.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${paths.sep}`)))
-    if (!insideRepo) return resolved
-  }
-  return yield* new ReviewSnapshotError({ message: `could not resolve trusted ${name} executable outside the reviewed checkout; use the explicit tool override` })
-})
 const capture = (executable: string, args: ReadonlyArray<string>, options?: CheckedProcessOptions) =>
   (executable.includes("/") ? Effect.succeed(executable) : trustedExecutable(executable)).pipe(Effect.flatMap((resolved) => checkedTrimmedText(resolved, args, options)))
 
@@ -157,8 +129,10 @@ export const requireCleanReviewTree = Effect.fn("NativeReview.requireCleanReview
   const head = yield* checkedTrimmedText(gitTool, ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: repoPath }).pipe(
     Effect.mapError(() => new ReviewSnapshotError({ message: "code review requires a committed HEAD" }))
   )
-  const status = yield* checkedText(gitTool, ["status", "--porcelain=v1", "--untracked-files=normal"], { cwd: repoPath })
+  const status = yield* checkedText(gitTool, ["-c", "core.hooksPath=/dev/null", "status", "--porcelain=v1", "--untracked-files=normal"], { cwd: repoPath })
   if (status.length > 0) return yield* new ReviewSnapshotError({ message: "code review requires a clean committed worktree; commit or discard staged, unstaged, and untracked changes before review" })
+  const measurement = yield* measureScopeDiff(repoPath, head, head, true)
+  if (measurement.changedPaths.length > 0) return yield* new ReviewSnapshotError({ message: "code review requires a clean committed worktree; commit or discard staged, unstaged, untracked, and index-hidden changes before review" })
   return head
 })
 
@@ -211,6 +185,9 @@ const sessionHeadBytes = 8192
 // concurrent interactive rollout is never loaded in full.
 const maxDriverSessionBytes = 4 * 1024 * 1024
 
+// @effect-diagnostics-next-line processEnv:off
+const sessionEnvironment = { CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME }
+
 const sessionDay = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "/")
 
 const readSessionHead = Effect.fn("NativeReview.readSessionHead")(function*(path: string) {
@@ -231,10 +208,10 @@ export const archiveReviewSessions = Effect.fn("NativeReview.archiveReviewSessio
   const paths = yield* Path.Path
   const codexHome = options.sessionsRoot !== undefined
     ? undefined
-    : toolEnvironment.CODEX_HOME !== undefined && toolEnvironment.CODEX_HOME.length > 0
-    ? toolEnvironment.CODEX_HOME
-    : toolEnvironment.HOME !== undefined && toolEnvironment.HOME.length > 0
-    ? paths.join(toolEnvironment.HOME, ".codex")
+    : sessionEnvironment.CODEX_HOME !== undefined && sessionEnvironment.CODEX_HOME.length > 0
+    ? sessionEnvironment.CODEX_HOME
+    : sessionEnvironment.HOME !== undefined && sessionEnvironment.HOME.length > 0
+    ? paths.join(sessionEnvironment.HOME, ".codex")
     : undefined
   const root = options.sessionsRoot ?? (codexHome === undefined ? undefined : paths.join(codexHome, "sessions"))
   if (root === undefined || !(yield* fs.exists(root))) return []

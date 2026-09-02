@@ -186,64 +186,10 @@ after the candidate derives an actionable finding:
   --text "<validation notes or other searchable context>"
 ```
 
-Record an `unknown` runtime candidate as an investigation without inventing
-repair fields:
-
-```sh
-"$review_findings_bin" record \
-  --repo <repo-display-name> --repo-path <repo-root> \
-  --branch <branch-or-review-key> --target <PR-or-range> --base <base> \
-  --head <head> --decision-id D<N> \
-  --finding-kind runtime --status open --fix-scope <local|systemic> \
-  --handling <fix|consult|follow-up> --source <native-review|cold-review|lens|user> \
-  --fingerprint "<file + code element + unproven risk>" \
-  --summary "<candidate that still needs proof>" \
-  --likelihood unknown --impact <critical|high|medium|low> \
-  --decision "<specific evidence to obtain and who owns it>" \
-  --text "<current evidence and missing proof>"
-```
-
-Record an unreachable runtime candidate without repair fields:
-
-```sh
-"$review_findings_bin" record \
-  --repo <repo-display-name> --repo-path <repo-root> \
-  --branch <branch-or-review-key> --target <PR-or-range> --base <base> \
-  --head <head> --decision-id D<N> \
-  --finding-kind runtime --status rejected --fix-scope <local|systemic> \
-  --handling reject --source <native-review|cold-review|lens|user> \
-  --fingerprint "<file + code element + unreachable risk>" \
-  --summary "<candidate that no supported producer can reach>" \
-  --likelihood theoretical \
-  --impact <critical|high|medium|low> \
-  --rejection-gate reality \
-  --decision "<why no supported producer can reach the candidate>" \
-  --text "<supporting evidence>"
-```
-
-For a reachable candidate rejected at a later gate, include the runtime evidence
-but omit repair fields:
-
-```sh
-"$review_findings_bin" record \
-  --repo <repo-display-name> --repo-path <repo-root> \
-  --branch <branch-or-review-key> --target <PR-or-range> --base <base> \
-  --head <head> --decision-id D<N> \
-  --finding-kind runtime --status rejected --fix-scope <local|systemic> \
-  --handling reject --source <native-review|cold-review|lens|user> \
-  --fingerprint "<file + code element + rejected risk>" \
-  --summary "<reachable candidate that failed a later gate>" \
-  --production-path "<current producer -> transformations -> observed sink>" \
-  --reachability-evidence "<current contract, payload, or repository invariant>" \
-  --likelihood <likely|possible|rare> --impact <critical|high|medium|low> \
-  --actual-consequence "<verified behavior and affected party>" \
-  --rejection-gate <importance|contract|repair|duplicate> \
-  --decision "<why the candidate failed that gate>" \
-  --text "<supporting evidence>"
-```
-
-`unknown` always derives an open investigation. `theoretical` is the rejection
-state when no supported producer can reach the candidate.
+For investigations, rejected candidates, consultations without a supported
+repair, and maintenance records, use the exact field contract printed by
+`"$review_findings_bin" schema`. Do not copy another record and invent evidence
+to satisfy its flags.
 
 Use a maintenance record for unnecessary changed code:
 
@@ -283,20 +229,10 @@ flags, record `--rejection-gate`, and record the rejection rationale in
 `--decision`. Rejected runtime candidates use the same rejection-gate rule and
 omit repair fields.
 
-Do not pass priority, severity, or disposition. The CLI derives severity and
-disposition from the current likelihood-impact matrix, evidence, and required
-`--handling`. Handling routes proven work but cannot raise a rejected or
-unproven risk. Actionable records require root cause and intervention
-justification. A patch, deferral, or approved consultation also requires a
-recommended repair; an unresolved consultation instead records the repair
-question, directions checked, and why no recommendation is supported. Rejected
-and investigating candidates must omit repair fields. A systemic
-finding may use `fix` only after `review-guardrails` classifies its durable
-repair as contained; material systemic repairs use `consult` and wait for an
-owner decision. `follow-up` requires deferred status plus an owner or next
-action, stays nonblocking, and appears under `Deferred work`. `reject` requires
-a rejected record, `--rejection-gate`, and a decision explaining why the
-candidate failed that gate. An accepted local
+Do not pass priority, severity, or disposition; the CLI derives them. Handling
+cannot turn rejected or unproven risk into work. Use `fix` for a contained
+repair and `consult` for a material systemic decision. `follow-up` is deferred
+and nonblocking. `reject` records the failed actionability gate. An accepted local
 finding handled as `fix` and recorded as deferred becomes residual risk and
 requires `--decision` to explain why that risk is accepted.
 A consulted finding may be marked fixed or rejected only

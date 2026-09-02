@@ -147,59 +147,15 @@ unless the current user explicitly requests that exact cross-harness session.
    Wait through `wait-efficiently` so completion wakes the active wait instead
    of being discovered by status polling.
 
-8. After an accepted Phase 1 finding:
+8. Let the owning phase loop handle accepted findings.
 
-   - for a runtime finding, record likelihood and impact before editing, and
-     require the CLI to derive `accept` and severity;
-   - for a maintenance finding, pass `--maintenance-evidence` proving current
-     unnecessary complexity, duplication, or code with no current job, and
-     `--present-cost` naming its current reading, change, test, or ownership
-     cost; require the CLI to derive `accept` without a severity;
-   - require contract evidence for a runtime finding, plus root cause and
-     intervention justification for either kind; require a recommended repair
-     before a patch, deferral, or approved consultation;
-   - apply a contained systemic repair at its owning boundary, but stop and
-     consult if `review-guardrails` classifies the durable repair as material;
-   - confirm the finding passes `review-guardrails`' autonomous fix bar;
-   - apply the fix in the real checkout;
-   - update the finding with the fix in the findings database;
-   - run affected validation and record each command;
-   - commit the accepted fixes from that review pass together before another
-     scope check or review; never create one commit per finding;
-   - run `"$review_findings_bin" scope-check` with the run identity and a
-     concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 1 and use `review-guardrails`' plain-language
-     scope-request rule;
-   - return to Phase 1.
+   `review-until-clean` and `cold-pr-review-until-clean` own the shared
+   actionability, repair, validation, scope-check, and pass-level commit
+   sequence. From Phase 1, return to Phase 1. From Phase 2, dispatch the next
+   fresh cold reviewer and do not return to Phase 1 unless the user explicitly
+   asks for a fresh native gate.
 
-9. After an accepted Phase 2 finding:
-
-   - for a runtime finding, record likelihood and impact before editing, and
-     require the CLI to derive `accept` and severity;
-   - for a maintenance finding, pass `--maintenance-evidence` proving current
-     unnecessary complexity, duplication, or code with no current job, and
-     `--present-cost` naming its current reading, change, test, or ownership
-     cost; require the CLI to derive `accept` without a severity;
-   - require contract evidence for a runtime finding, plus root cause and
-     intervention justification for either kind; require a recommended repair
-     before a patch, deferral, or approved consultation;
-   - apply a contained systemic repair at its owning boundary, but stop and
-     consult if `review-guardrails` classifies the durable repair as material;
-   - confirm the finding passes `review-guardrails`' autonomous fix bar;
-   - apply the fix in the real checkout;
-   - update the finding with the fix in the findings database;
-   - run affected validation and record each command;
-   - commit the accepted fixes from that review pass together before another
-     scope check or review; never create one commit per finding;
-   - run `"$review_findings_bin" scope-check` with the run identity and a
-     concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 2 and use `review-guardrails`' plain-language
-     scope-request rule;
-   - stay in Phase 2 and dispatch the next fresh cold reviewer;
-   - do not return to Phase 1 unless the user explicitly asks for a fresh
-     native gate.
-
-10. Close out only after the Phase 1 native gate has passed and Phase 2 is
+9. Close out only after the Phase 1 native gate has passed and Phase 2 is
     clean on the final local target.
 
    Run the full local validation selected during setup. If it changes code,

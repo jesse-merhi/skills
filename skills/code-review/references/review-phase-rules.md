@@ -15,9 +15,9 @@ with the blocker or residual risk.
   input before either review phase.
 - Default to whole PR/branch review against its base. Use commit mode only when
   the requested target is one immutable commit.
-- Batch accepted findings from one pass, validate them, and commit them together
-  before the next scope check or review pass. Never create one commit per
-  finding.
+- Batch accepted findings from one pass, validate them, run `scope-check`, then
+  commit them together before the next review pass. Never create one commit per
+  finding or commit growth that the scope check rejected.
 
 ## Run handling
 
