@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Profiles"
+  short_description: "Generate and install Codex role agents from skill profiles."
+  default_prompt: "Use $skill-profiles to check and regenerate the Codex agent file for a role in this repository."

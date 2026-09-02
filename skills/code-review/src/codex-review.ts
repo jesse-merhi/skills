@@ -6,11 +6,15 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import { Command, Flag } from "effect/unstable/cli"
 
+import { skillsConfigArgument } from "../../skill-profiles/src/SkillProfile.ts"
 import { preflightCodexAuthentication, reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } from "./NativeReview.ts"
 
 // Environment defaults are captured once at the CLI boundary.
 // @effect-diagnostics-next-line processEnv:off
 const defaultOutput = Option.fromNullishOr(process.env.CODEX_REVIEW_OUTPUT).pipe(Option.filter((path) => path.length > 0))
+// @effect-diagnostics-next-line processEnv:off
+const configuredProfile = process.env.CODEX_REVIEW_PROFILE
+const defaultProfile = configuredProfile !== undefined && configuredProfile.length > 0 ? configuredProfile : "cold-reviewer"
 
 const review = Command.make("codex-review", {
   mode: Flag.choice("mode", ["auto", "whole", "branch", "commit"] as const).pipe(Flag.withDefault("auto")),
@@ -20,14 +24,23 @@ const review = Command.make("codex-review", {
   // @effect-diagnostics-next-line processEnv:off
   codexBin: Flag.string("codex-bin").pipe(Flag.withDefault(process.env.CODEX_BIN ?? "codex")),
   output: Flag.optional(Flag.string("output")),
+  profile: Flag.string("profile").pipe(Flag.withDefault(defaultProfile)),
   parallelTests: Flag.optional(Flag.string("parallel-tests")),
   dryRun: Flag.boolean("dry-run")
 }, Effect.fn("codexReview.handler")(function*(args) {
   const outputPath = Option.orElse(args.output, () => defaultOutput)
   const fileSystem = yield* FileSystem.FileSystem
   if (!args.dryRun && Option.isSome(outputPath)) yield* fileSystem.remove(outputPath.value, { force: true })
+  // The catalogue does not change while the review runs, so the override is
+  // resolved once and reused for every target and rerun.
+  const profile = args.profile === "none" ? Option.none() : Option.some(yield* skillsConfigArgument(args.profile))
+  const skillsConfig = Option.map(profile, (resolved) => resolved.argument)
   const plan = yield* selectReviewPlan(args.mode, args.base, args.commit, !args.dryRun)
   yield* Console.log(`codex-review target: ${plan.label}`)
+  yield* Console.log(Option.isNone(profile) ? "profile: none" : `profile: ${args.profile} (${profile.value.disabledCount} skills disabled)`)
+  if (Option.isSome(profile)) {
+    for (const missing of profile.value.missingAllow) yield* Console.error(`warning: allowlist entry "${missing}" matched no discovered skill`)
+  }
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
   if (args.dryRun) return
   yield* preflightCodexAuthentication(args.codexBin)
@@ -46,7 +59,7 @@ const review = Command.make("codex-review", {
   const result = yield* untilReviewStable({
     identity: currentIdentity,
     operation: selectReviewPlan(args.mode, args.base, args.commit).pipe(
-      Effect.flatMap((currentPlan) => runNativeReview({ codexBin: args.codexBin, plan: currentPlan, testCommand: args.parallelTests }).pipe(
+      Effect.flatMap((currentPlan) => runNativeReview({ codexBin: args.codexBin, plan: currentPlan, skillsConfig, testCommand: args.parallelTests }).pipe(
         Effect.map((output) => ({ output, plan: currentPlan }))
       ))
     ),

@@ -292,6 +292,7 @@ export const untilReviewStable = <A, E, R, E2, R2>(options: {
 export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: {
   readonly codexBin: string
   readonly plan: ReviewPlan
+  readonly skillsConfig: Option.Option<string>
   readonly testCommand: Option.Option<string>
 }) {
   const repo = yield* git(["rev-parse", "--show-toplevel"])
@@ -303,7 +304,9 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   // so archive it to keep the resume picker and session search lean.
   const reviewTarget = Effect.fn("NativeReview.reviewTarget")(function*(target: ReviewTarget) {
     const startedAt = yield* DateTime.now
-    const output = yield* checkedText(reviewer, ["review", ...target.args])
+    // The `-c` override is a global flag, so it has to precede the subcommand.
+    const overrides = Option.isSome(options.skillsConfig) ? ["-c", options.skillsConfig.value] : []
+    const output = yield* checkedText(reviewer, [...overrides, "review", ...target.args])
     yield* archiveReviewSessions({
       reviewer,
       reviewCwds: [process.cwd(), repo],
