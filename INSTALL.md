@@ -164,7 +164,9 @@ node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
 Read the JSON result. If `notice` is present and no earlier model-profile
 notice appeared in this installation task, show it once and continue. The
 materializer refuses to replace an unmarked directory or a view owned by
-another repository clone.
+another repository clone. If this repository moved, read the view's
+`.skill-variant-view.json`, verify that `sourceRoot` is the previous clone, and
+authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
 
 Then:
 
@@ -202,6 +204,19 @@ and do not leave an invalid handler behind.
 The hook changes what later skill invocations load. Skill instructions already
 present in the conversation remain there until a fresh session; do not claim
 that the hook removes them.
+
+The view is scoped to one Claude configuration directory, so one config
+directory supports one active model profile at a time. Concurrent sessions on
+different Claude model families must use separate `CLAUDE_CONFIG_DIR` values,
+each with its own skills directory, settings file, and generated view. Do not
+claim that a shared config directory safely supports mixed-model sessions.
+
+Treat the materializer command as a repo-owned hook. Before adding it, remove
+older `SessionStart` or `PostModelSwitch` handlers whose command invokes
+`materialize-skill-variants.mjs` for this skill collection, then add the current
+command once to each event. On uninstall, remove those handlers. This makes
+reinstalling after a repository move idempotent without disturbing unrelated
+handlers.
 
 ## 8. Connect a running OpenClaw Gateway
 

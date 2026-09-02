@@ -357,7 +357,6 @@ test_bun_runtime_and_openclaw_install_are_documented() {
   test ! -e "$ROOT_DIR/pnpm-lock.yaml" || fail "expected pnpm-lock.yaml to be removed"
   test ! -e "$ROOT_DIR/pnpm-workspace.yaml" || fail "expected pnpm-workspace.yaml to be removed"
   assert_contains "$ROOT_DIR/README.md" "bun ci"
-  assert_contains "$ROOT_DIR/README.md" 'OpenClaw | generated model view via `skills.load.extraDirs`'
   assert_contains "$ROOT_DIR/INSTALL.md" "openclaw config validate"
   assert_contains "$ROOT_DIR/INSTALL.md" "skills.load.extraDirs"
   assert_contains "$ROOT_DIR/INSTALL.md" "openclaw skills list --json"

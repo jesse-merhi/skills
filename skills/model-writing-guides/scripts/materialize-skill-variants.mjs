@@ -41,8 +41,8 @@ export const profiles = [
 
 function modelFamily(model) {
   const normalized = model.toLowerCase();
-  if (normalized.includes("opus")) return "anthropic-opus";
-  if (normalized.includes("fable")) return "anthropic-fable";
+  if (/^(?:(?:anthropic\/)?claude-)?opus(?:[-.]\d|\[)/.test(normalized)) return "anthropic-opus";
+  if (/^(?:(?:anthropic\/)?claude-)?fable(?:[-.]\d|\[)/.test(normalized)) return "anthropic-fable";
   if (/^(?:openai\/)?gpt-\d/.test(normalized)) return "openai-gpt";
   return undefined;
 }
@@ -117,14 +117,19 @@ function linkSharedEntries(skill, outputDirectory) {
   }
 }
 
-function assertManagedOutput(outputRoot, sourceRoot) {
+function assertManagedOutput(outputRoot, sourceRoot, previousSourceRoot) {
   if (!fs.existsSync(outputRoot)) return;
   const markerPath = path.join(outputRoot, MARKER);
   if (!fs.existsSync(markerPath)) {
     throw new Error(`refusing to replace unmanaged directory ${outputRoot}`);
   }
   const marker = Schema.decodeUnknownSync(MarkerJson)(fs.readFileSync(markerPath, "utf8"));
-  if (marker.sourceRoot !== sourceRoot) {
+  const approvedPreviousSource = previousSourceRoot === undefined
+    ? undefined
+    : fs.existsSync(previousSourceRoot)
+      ? fs.realpathSync(previousSourceRoot)
+      : path.resolve(previousSourceRoot);
+  if (marker.sourceRoot !== sourceRoot && marker.sourceRoot !== approvedPreviousSource) {
     throw new Error(`refusing to replace view owned by another source: ${outputRoot}`);
   }
 }
@@ -154,10 +159,10 @@ function noticeOnce({ notice, outputRoot, sessionId }) {
   return notice;
 }
 
-export function materializeSkillVariants({ sourceRoot, outputRoot, model, sessionId }) {
+export function materializeSkillVariants({ sourceRoot, outputRoot, model, previousSourceRoot, sessionId }) {
   const resolvedSource = fs.realpathSync(sourceRoot);
   const resolvedOutput = path.resolve(outputRoot);
-  assertManagedOutput(resolvedOutput, resolvedSource);
+  assertManagedOutput(resolvedOutput, resolvedSource, previousSourceRoot);
   const { exact, profile } = resolveProfile(model);
   const skills = discoverSkills(resolvedSource);
   const stagingRoot = `${resolvedOutput}.staging-${process.pid}`;
@@ -227,6 +232,7 @@ async function main() {
     sourceRoot: args.source,
     outputRoot: args.output,
     model,
+    previousSourceRoot: args["previous-source"],
     sessionId,
   });
   if (args.format === "json") process.stdout.write(`${JSON.stringify(result)}\n`);
