@@ -82,12 +82,14 @@ test("a known profile omitted by the calling skill does not bypass its coverage"
 });
 
 test("an unknown model family keeps shared behavior and requires a notice", () => {
-  const result = resolve("gemini-3-pro");
-  assert.equal(result.status, "shared");
-  assert.equal(result.guideReference, null);
-  assert.equal(result.skillAdapterReference, null);
-  assert.equal(result.reason, "unknown-model-family");
-  assert.equal(result.noticeRequired, true);
+  for (const model of ["gemini-3-pro", "gpt-oss-120b", "openai/gpt-oss-120b"]) {
+    const result = resolve(model);
+    assert.equal(result.status, "shared");
+    assert.equal(result.guideReference, null);
+    assert.equal(result.skillAdapterReference, null);
+    assert.equal(result.reason, "unknown-model-family");
+    assert.equal(result.noticeRequired, true);
+  }
 });
 
 test("an unavailable model identifier keeps shared behavior without a stale notice", () => {
