@@ -1,6 +1,5 @@
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
-const DEFAULT_TOKEN_MODULE = "@/lib/elevation";
 const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "cva", "twMerge"]);
 
 function getStaticName(node) {
@@ -62,7 +61,7 @@ function isCanonicalClassFunctionImport(specifier) {
 	}
 
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return sourceName === "clsx" || sourceName === "tailwind-merge" || sourceName === "class-variance-authority";
+	return ["class-variance-authority", "clsx", "cn", "tailwind-merge"].includes(sourceName);
 }
 
 function seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, identifierBindings) {
@@ -250,7 +249,7 @@ function reportRawElevation(context, node, value, classFunctionBindings, identif
 
 		context.report({
 			node,
-			messageId: "rawElevation",
+			messageId: tokenModule === undefined ? "rawElevation" : "rawElevationFromModule",
 			data: { token, tokenModule },
 		});
 	}
@@ -267,35 +266,20 @@ export default {
 				type: "object",
 				properties: {
 					tokenModule: { type: "string" },
-					exemptFiles: {
-						type: "array",
-						items: { type: "string" },
-						uniqueItems: true,
-					},
 				},
 				additionalProperties: false,
 			},
 		],
 		messages: {
 			rawElevation:
+				"Raw elevation utility '{{token}}' is not allowed. Remove the decorative shadow or use a named elevation token for an approved layered state.",
+			rawElevationFromModule:
 				"Raw elevation utility '{{token}}' is not allowed. Remove the decorative shadow or use a named token from {{tokenModule}} for an approved layered state.",
 		},
 	},
 	create(context) {
-		const tokenModule = context.options[0]?.tokenModule ?? DEFAULT_TOKEN_MODULE;
-		const exemptFilePatterns = (context.options[0]?.exemptFiles ?? []).map((pattern) => ({
-			pattern,
-			expression: new RegExp(pattern, "u"),
-		}));
-		const filename = context.getFilename().replaceAll("\\", "/");
-		const isExempt = exemptFilePatterns.some(
-			({ pattern, expression }) => filename.includes(pattern) || expression.test(filename),
-		);
-		if (isExempt) {
-			return {};
-		}
-
-		const sourceCode = context.getSourceCode();
+		const tokenModule = context.options[0]?.tokenModule;
+		const { sourceCode } = context;
 		const identifierBindings = createIdentifierBindings(sourceCode);
 		const classFunctionBindings = new Set();
 		seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, identifierBindings);
@@ -323,9 +307,7 @@ export default {
 						}
 					} else if (
 						specifier.type === "ImportDefaultSpecifier" &&
-						(sourceName === "clsx" ||
-							sourceName === "tailwind-merge" ||
-							sourceName === "class-variance-authority")
+						["class-variance-authority", "clsx", "cn", "tailwind-merge"].includes(sourceName)
 					) {
 						updateClassFunctionBinding(specifier.local, true);
 					}

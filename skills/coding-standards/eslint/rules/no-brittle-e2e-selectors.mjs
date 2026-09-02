@@ -1,18 +1,7 @@
-import path from "node:path";
-
 const ALLOW_MARKER = "@allow-brittle-e2e-selector";
 const DEFAULT_CHECKS = ["nthChild", "domPath", "classAttribute", "utilityClass"];
-const DEFAULT_FILES_PATTERN = "/tests/e2e/";
 const TAILWIND_CLASS_SELECTOR_PATTERN =
 	/\.(?:bg|text|border|rounded|flex|min-w|max-w|truncate|overflow|whitespace|shadow|grid|hidden|block|inline|px|py|pt|pb|pl|pr|p|m|w|h)-[A-Za-z0-9_[\]/:%.-]+/;
-
-function normalizeFilename(filename) {
-	return filename.split(path.sep).join("/");
-}
-
-function getSourceCode(context) {
-	return context.sourceCode ?? context.getSourceCode();
-}
 
 function getPropertyName(node) {
 	if (!node) {
@@ -46,17 +35,9 @@ function extractStaticSelector(node) {
 	return null;
 }
 
-function getAncestors(context) {
-	if (typeof context.getAncestors === "function") {
-		return context.getAncestors();
-	}
-
-	return [];
-}
-
 function hasAllowComment(context, node) {
-	const sourceCode = getSourceCode(context);
-	const nodesToCheck = [node, ...getAncestors(context).slice(-4)];
+	const { sourceCode } = context;
+	const nodesToCheck = [node, ...sourceCode.getAncestors(node).slice(-4)];
 	const comments = nodesToCheck.flatMap((candidate) => sourceCode.getCommentsBefore(candidate));
 	const nearbyPreviousLines = sourceCode.lines
 		.slice(Math.max(0, node.loc.start.line - 4), Math.max(0, node.loc.start.line - 1))
@@ -115,7 +96,6 @@ export default {
 						},
 						uniqueItems: true,
 					},
-					files: { type: "string" },
 				},
 				additionalProperties: false,
 			},
@@ -132,11 +112,6 @@ export default {
 		},
 	},
 	create(context) {
-		const filename = normalizeFilename(context.getFilename());
-		const filesPattern = new RegExp(context.options[0]?.files ?? DEFAULT_FILES_PATTERN, "u");
-		if (!filesPattern.test(filename)) {
-			return {};
-		}
 		const enabledChecks = new Set(context.options[0]?.checks ?? DEFAULT_CHECKS);
 
 		return {

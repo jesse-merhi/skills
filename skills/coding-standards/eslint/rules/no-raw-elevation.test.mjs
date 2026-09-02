@@ -23,25 +23,27 @@ ruleTester.run("no-raw-elevation", rule, {
 			name: "allows named elevation tokens",
 			code: 'import { elevation } from "@/lib/elevation";\nconst Card = () => <div className={elevation.raised} />;\n',
 		},
-		{
-			name: "skips files matched by exemptFiles",
-			code: 'const Card = () => <div className="shadow-lg" />;\n',
-			filename: "/repo/src/lib/elevation.tsx",
-			options: [{ exemptFiles: ["/src/lib/elevation.tsx"] }],
-		},
 	],
 	invalid: [
 		{
-			name: "rejects raw shadow utilities and names the default token module",
+			name: "rejects raw shadow utilities without naming a token module",
 			code: 'const Card = () => <div className="shadow-lg" />;\n',
-			errors: [{ messageId: "rawElevation", data: { token: "shadow-lg", tokenModule: "@/lib/elevation" } }],
+			errors: [{ messageId: "rawElevation", data: { token: "shadow-lg" } }],
+		},
+		{
+			name: "treats a default import from the cn package as a class helper",
+			code: 'import merge from "cn";\nconst cardClass = merge("drop-shadow");\n',
+			errors: [{ messageId: "rawElevation", data: { token: "drop-shadow" } }],
 		},
 		{
 			name: "names the configured token module",
 			code: 'const Card = () => <div className="drop-shadow-md" />;\n',
 			options: [{ tokenModule: "~/design/elevation" }],
 			errors: [
-				{ messageId: "rawElevation", data: { token: "drop-shadow-md", tokenModule: "~/design/elevation" } },
+				{
+					messageId: "rawElevationFromModule",
+					data: { token: "drop-shadow-md", tokenModule: "~/design/elevation" },
+				},
 			],
 		},
 	],

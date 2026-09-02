@@ -20,17 +20,16 @@ ruleTester.run("no-brittle-e2e-selectors", rule, {
 			filename: "/repo/packages/web/tests/e2e/example.spec.ts",
 		},
 		{
-			name: "skips files outside the configured path gate",
-			code: '\n\t\t\tpage.locator("#root > span");\n\t\t',
-			filename: "/repo/packages/web/src/components/Table.tsx",
+			name: "allows an escape marker on an enclosing statement above the nearby-line window",
+			code: '\n// @allow-brittle-e2e-selector third-party calendar exposes no accessible date cell name.\nif (legacyCalendar) {\n\tconst grid = page.locator(\'[data-testid="calendar"]\');\n\tgrid.click();\n\tpage.locator("td:nth-child(2)");\n}\n',
+			filename: "/repo/packages/web/tests/e2e/example.spec.ts",
 		},
 	],
 	invalid: [
 		{
-			name: "checks the paths named by the files option",
+			name: "reports in every file the flat config enables it for",
 			code: '\n\t\t\tpage.locator("#root > span");\n\t\t',
-			filename: "/repo/packages/web/src/components/Table.spec.tsx",
-			options: [{ files: "\\.spec\\.tsx$" }],
+			filename: "/repo/packages/web/src/components/Table.tsx",
 			errors: [{ messageId: "domPath" }],
 		},
 		{

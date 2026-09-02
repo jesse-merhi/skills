@@ -60,18 +60,9 @@ function normalizeFilename(filename) {
 	return filename.split(path.sep).join("/");
 }
 
-function getSourceCode(context) {
-	return context.sourceCode ?? context.getSourceCode();
-}
-
-function getScope(context, node) {
-	const sourceCode = getSourceCode(context);
-	return typeof sourceCode.getScope === "function" ? sourceCode.getScope(node) : context.getScope();
-}
-
 function getFunctionParameterVariable(context, functionNode, parameter) {
 	if (parameter.type !== "Identifier") return null;
-	const functionScope = getSourceCode(context).scopeManager?.acquire(functionNode);
+	const functionScope = context.sourceCode.scopeManager?.acquire(functionNode);
 	return functionScope?.set.get(parameter.name) ?? null;
 }
 
@@ -83,7 +74,7 @@ function getPropertyName(node) {
 }
 
 function findVariable(context, node) {
-	let scope = getScope(context, node);
+	let scope = context.sourceCode.getScope(node);
 	while (scope) {
 		const variable = scope.set.get(node.name);
 		if (variable) return variable;
@@ -98,7 +89,7 @@ function isCanonicalClassFunctionImport(specifier) {
 	}
 	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") return false;
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return ["clsx", "tailwind-merge", "class-variance-authority"].includes(sourceName);
+	return ["class-variance-authority", "clsx", "cn", "tailwind-merge"].includes(sourceName);
 }
 
 function isClassFunctionReference(node, context, visitedVariables = new Set()) {
@@ -868,13 +859,9 @@ function isMarkupExpression(node, context, visitedVariables = new Set()) {
 	return false;
 }
 
-function getAncestors(context) {
-	return typeof context.getAncestors === "function" ? context.getAncestors() : [];
-}
-
 function hasAllowComment(context, node) {
-	const sourceCode = getSourceCode(context);
-	const nodesToCheck = [node, ...getAncestors(context).slice(-5)];
+	const { sourceCode } = context;
+	const nodesToCheck = [node, ...sourceCode.getAncestors(node).slice(-5)];
 	const comments = nodesToCheck.flatMap((candidate) => sourceCode.getCommentsBefore(candidate));
 	const nearbyPreviousLines = sourceCode.lines
 		.slice(Math.max(0, node.loc.start.line - 4), Math.max(0, node.loc.start.line - 1))
