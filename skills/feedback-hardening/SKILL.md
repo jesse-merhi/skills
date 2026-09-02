@@ -1,133 +1,176 @@
 ---
 name: feedback-hardening
-description: "User corrections or self-detected recurring agent mistakes: delegate one systemic-fix recommendation, get approval, then implement the approved repair."
+description: "Evidence-backed user corrections or self-detected mistakes revealing reusable agent failures: delegate one systemic-fix recommendation, get approval, then implement it."
 ---
 
 # Feedback hardening
 
-Turn a user correction or an agent's self-detected mistake that reveals a
-reusable failure into one separate durable repair while the current
-conversation keeps moving.
+Turn evidence of reusable agent failure into one durable repair without
+derailing the current task.
 
-## 1. Frame the intervention
+## 1. Qualify and capture the failure
 
-Use this workflow for either trigger:
+Use this workflow when:
 
-- The user corrects or criticizes how the agent worked, identifies a recurring
-  failure, or expresses frustration that points to avoidable agent behavior.
-- The agent independently recognizes that its own action violated a reusable
-  invariant or is likely to recur across tasks, sessions, repositories, or
-  users.
+- the user corrects how the agent worked and the evidence reveals a missing
+  reusable guard or a failure likely to recur; or
+- the agent independently finds that its action violated a reusable invariant
+  across tasks, sessions, repositories, or users.
 
-A self-detected mistake qualifies only when concrete evidence shows a missing
-reusable guard or a failure likely to recur beyond the immediate occurrence.
-Handle a trivial typo, expected review finding, ordinary debugging discovery,
-changed objective, factual clarification, or one-deliverable preference in the
-current task unless it exposes that reusable invariant.
+Handle trivial typos, expected review findings, ordinary debugging discoveries,
+changed objectives, factual clarifications, vague criticism, and one-deliverable
+preferences in the current task unless they expose that reusable invariant.
 
-Acknowledge a user correction briefly. For either trigger, repair the immediate
-user-facing result only when existing task authority allows it, and capture:
+Acknowledge user feedback briefly. Repair the immediate user-facing result only
+when existing task authority allows it. Capture and redact:
 
-- the observed agent behavior;
-- the desired invariant;
-- the evidence and affected surface;
-- the current task state and authorization boundary.
+- the observed behavior and desired invariant;
+- concrete evidence and affected surface;
+- current task state and permissions;
+- the likely Git repository or host-managed target.
 
-Redact secrets and unnecessary personal data. This step is complete when the
-immediate task is safe to continue and the failure is stated as an observable
-invariant rather than as an insult, example, or proposed fix.
+Before delegation, require a clean Git target and record its canonical worktree
+root, `--git-common-dir`, and `HEAD`. A dirty index, tracked tree, or untracked
+scope is a visible blocker. For managed targets, record the canonical target and
+revision or ETag.
 
-## 2. Assign a fresh recommendation owner
+Keep one active hardening workflow per source conversation. Same-invariant
+evidence refreshes it; a distinct direct or relayed invariant waits until the
+active workflow closes. This step is complete when the immediate task is safe
+to continue and the failure is stated as an observable invariant.
 
-Before creating a handoff, check the current conversation and available session
-records for an active or completed repair that owns the same invariant. Send
-new evidence to that owner; do not create another session.
+## 2. Delegate one recommendation
 
-Inside a hardening session, route a genuinely distinct qualifying invariant to
-the source conversation instead of launching a nested hardening session. This
-skill never hands off to itself recursively.
+The source conversation remains the coordinator. Spawn one cold native
+subagent, or the harness's equivalent isolated worker, solely to produce the
+recommendation. In Codex, use `spawn_agent` with
+`fork_turns: "none"`; in OpenClaw, use isolated context without a
+transcript fork; elsewhere, use the harness's no-history equivalent.
 
-Otherwise, start one cold native subagent or equivalent independent agent
-session with no conversation fork. Classify it as an aside when the current
-user task can continue independently; classify it as a continuation when the
-repair is required to complete that task. Give the receiver the triggering
-correction or self-detected mistake, evidence, desired invariant, affected
-systems, current permissions, and read-only context. Ask it to investigate
-independently rather than assuming the suggested mechanism is the root fix.
+Give it a compact redacted brief containing:
 
-The first phase is recommendation-only. Tell the receiver to inspect and reason
-without editing files, creating or updating pull requests, posting externally,
-or making other stateful changes before the user approves a path. Prepare a
-dedicated worktree before launch when the same session may later implement the
-approved repair.
+- an opaque workflow ID and evidence version;
+- the captured failure, invariant, evidence, and coordinator-owned constraints;
+- the canonical read-only target identity and state;
+- `role: feedback-hardening-recommendation`;
+- `authority: recommendation-only`, with no coordinator approvals;
+- an instruction to load `$feedback-hardening`, start at step 3, and return a
+  closed envelope with the workflow ID, evidence version, target identity and
+  state digest, outcome, and no-mutation attestation. `recommended` requires a
+  recommendation ID and options; `retargeted` requires the proposed target and
+  evidence; `blocked` requires the actionable blocker.
 
-A failed launch must remain visible: preserve the handoff artifact, report the
-exact blocker, and continue the immediate correction when safe. This step is
-complete when one verified independent session owns a read-only recommendation
-phase, or the user has an actionable launch blocker and handoff artifact.
+The recommendation phase makes no state changes. Use a harness-enforced
+read-only profile when available. Otherwise state that this is an
+instruction-only boundary and tell the worker not to edit files, create or
+update pull requests, post externally, or delegate implementation.
+
+Retain the returned child handle. Complete independent immediate work, then use
+the harness's event-driven wait or yield mechanism. Accept a brief only with the
+retained handle's host-authenticated terminal `Completed` event, never
+an interim message. Fail closed unless every required envelope field matches
+and the no-mutation attestation is true. Surface a host-authenticated terminal
+failure even when it lacks model-authored fields.
+
+After a wait timeout, inspect only the retained handle. Recover and authenticate
+its terminal result when available; otherwise report the exact delivery or
+worker blocker. On abandonment or unrecoverable delivery failure, use a
+harness-supported terminalization mechanism and wait for authenticated settled
+status before releasing the slot. Codex V2 interruption is not terminalization;
+without a terminal event, report an unreleasable blocker and keep the slot.
+Do not search unrelated sessions. The recommendation worker never receives
+approval or mutation authority and is never reused for implementation.
+
+This step is complete when the coordinator has one authenticated recommendation
+brief, or the user sees the actionable launch or delivery blocker.
 
 ## 3. Recommend the systemic fix
 
-Have the repair owner reconstruct the failure and locate the producer or
-lifecycle owner. Develop credible prevention options and rank them in this
-order:
+The recommendation worker reconstructs the failure, locates the producer or
+lifecycle owner, and ranks credible prevention options:
 
 1. eliminate the invalid choice through architecture, data structures, types,
    schemas, APIs, ownership, or lifecycle design;
-2. enforce the invariant automatically with a focused test, lint rule, type
-   check, schema check, CI gate, or deterministic verifier;
+2. enforce the invariant with a focused test, lint rule, type or schema check,
+   CI gate, or deterministic verifier;
 3. encode reusable judgment in the narrowest existing skill or scoped agent
    instruction;
-4. rely on human review only when stronger enforcement is genuinely unsuitable.
+4. rely on human review only when stronger enforcement is unsuitable.
 
-Lead with one recommended option. Combine layers when they protect different
-boundaries, but keep one canonical owner. For each credible option, state the
-mechanism, affected owner and surfaces, recurrence it prevents, proof plan,
-implementation scope, material risks, and why stronger layers are unsuitable.
-Prefer an existing abstraction or skill over a parallel mechanism. Avoid
-hardcoding the user's wording, the reported example, or an insult.
+Lead with one recommendation. For each credible option, state its mechanism,
+owner and affected surfaces, recurrence prevented, proof plan, implementation
+scope, material risks, and why stronger layers are unsuitable. Prefer existing
+abstractions and skills over parallel mechanisms. Avoid hardcoding the user's
+wording or reported example.
 
-When an already-used skill caused or failed to prevent the behavior, recommend
-inspecting and patching that skill through Skill Workshop instead of adding a
-competing skill. If only one credible option exists, still present it as a
-recommendation and request explicit approval.
+If the investigation identifies a different target or changed evidence, return
+that fact instead of recommending against stale context. The coordinator updates
+the evidence version and target state, then runs a fresh recommendation.
 
-This step is complete when the user receives the ranked decision brief and can
-approve the recommendation, choose an alternative, or redirect the
-investigation.
+When an existing skill caused or failed to prevent the behavior, report it to
+the coordinator without repair or nested delegation. The coordinator applies
+the harness-owned skill-repair policy and `writing-for-agents` after the worker
+terminates. Higher-priority harness policy wins; disclose any immediate repair
+and keep additional systemic work pending approval.
 
-## 4. Implement the approved path
+This step is complete when the coordinator receives a ranked brief tied to the
+final evidence version and target state.
 
-A qualifying trigger authorizes one read-only recommendation phase; it does not
-authorize systemic implementation. Existing task authority governs any
-immediate correction. Begin implementation only after the user explicitly
-approves a named option. That approval covers the selected reversible local
-changes in the same workspace; it does not bypass existing gates for public or
-external writes, publication, merges, deployment, destructive actions,
+## 4. Approve and implement
+
+Validate the closed envelope and require its target state to equal the current
+target exactly; otherwise run a fresh recommendation. Present the ranked brief.
+Before requesting approval, freeze:
+
+- the recommendation ID and selected option;
+- the evidence version;
+- the final target identity and state;
+- the complete mutation scope and mechanism.
+
+Wait for explicit approval of a named option. Approval covers only reversible
+changes on the frozen, bound target. It does not carry to later evidence or bypass gates
+for public writes, publication, merges, deployment, destructive actions,
 protected schema or protocol changes, spending, or access expansion.
+If the user declines, skip implementation, record `declined`, release the slot
+after worker settlement, and offer the next queued invariant.
 
-Use the same session to implement the approved path unless the user chooses
-another owner. Follow the target repository's instructions and applicable
-skills. Reproduce confirmed defects before editing. Add automated proof at the
-owning boundary when credible, and verify instruction-only changes with a
-realistic forward test. Keep the current conversation responsive while the
-independent owner works.
+After approval, the source coordinator implements through the target
+repository's or mechanism's normal workflow. It may use implementation workers
+required by that workflow, but the recommendation worker remains retired.
 
-This step is complete when the approved durable change is implemented and
-verified, or the owner has identified the exact permission or product decision
-that still blocks it.
+For Git, require exact equality with the frozen root, `--git-common-dir`, `HEAD`,
+and clean state before preparing the worktree, then verify its common directory
+and `HEAD` before editing and root every operation there. For
+a host-managed surface, bind its target and revision or ETag and use that
+revision as a conditional-write precondition.
 
-## 5. Close the loop
+Any mismatch, new same-invariant evidence, or retargeting invalidates
+approval and returns to a fresh recommendation. A distinct invariant queues for
+later without changing the approved work.
 
-Return the repair result to the source conversation. Report:
+Implementation workers that find qualifying evidence stop affected mutation
+and report it directly to the source coordinator. They do not start another
+feedback-hardening workflow.
+
+This step is complete when the approved repair is implemented and verified, or
+the exact permission, state, or product blocker is visible.
+
+## 5. Close the workflow
+
+Return to the source conversation and report:
 
 - the original behavior and root cause;
-- the approved option, architectural owner, and prevention layer;
-- the files, checks, skills, or rules changed;
+- the approved option, owner, and prevention layer;
+- files, checks, skills, or rules changed;
 - before-and-after evidence;
-- any remaining authorization request or recurrence risk;
-- the independent session link or handoff location.
+- remaining authorization requests or recurrence risks;
+- the recommendation brief or worker link.
 
-Do not create a second repair for the same root cause unless new evidence
-invalidates the existing fix. This step is complete when the user can verify
-what changed and why the same intervention should no longer be necessary.
+Record `completed`, `declined`, `failed`, or
+`abandoned`, release the active slot, and offer the next queued
+invariant. Do not release a slot while its recommendation result is unresolved
+or an implementation worker is still running.
+
+This step is complete when the user can verify the outcome and why the same
+intervention should no longer be necessary, or sees the terminal
+non-implementation result.
