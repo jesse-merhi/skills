@@ -9,7 +9,7 @@
 
 Before writing code against a library or framework, check the installed version
 in `package.json`, then use the project's official docs or the remote Context7
-workflow in [context7.md](context7.md) for that version. A configuration entry
+workflow in `references/context7.md` for that version. A configuration entry
 alone does not prove Context7 is callable; verify it with an actual tool call.
 If it is unavailable, use the official docs or installed package source. Do not
 install or start a local Context7 helper as a fallback.

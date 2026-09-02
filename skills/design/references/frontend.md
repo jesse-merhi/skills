@@ -19,4 +19,4 @@ implement and inspect the complete rendered result.
    visibly checked and any remaining risk.
 
 When motion or gestures materially affect the result, also read
-[motion.md](motion.md).
+`references/motion.md`.

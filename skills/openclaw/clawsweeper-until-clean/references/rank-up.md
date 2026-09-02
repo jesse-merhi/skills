@@ -5,7 +5,7 @@ bot-owned platinum-or-better label exist on one unchanged head.
 
 ## Read the awarded result
 
-Read [rating-rubric.md](rating-rubric.md). Check the current ClawSweeper source
+Read `references/rating-rubric.md`. Check the current ClawSweeper source
 if its main-branch SHA has moved beyond the pinned revision; the running bot and
 its current source outrank that snapshot.
 

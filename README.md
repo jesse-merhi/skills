@@ -265,8 +265,9 @@ bun run validate:effect
 
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
-TypeScript helpers. `bun run validate:effect` is lint, typecheck, Effect
-diagnostics, and Vitest. CI runs the same set.
+TypeScript helpers. `bun run validate:effect` is lint, the skill layout lint
+(`bun run lint:skills`), typecheck, Effect diagnostics, and Vitest. CI runs the
+same set.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
 [`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
@@ -283,7 +284,10 @@ PRs are welcome.
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
 - One skill per directory, `SKILL.md` at its root, `name` unique across the
-  repo. Keep the body short and push detail into `references/`.
+  repo. Keep the body short. Put anything every use needs inline; put
+  conditional or advanced detail in `references/`, linked one hop from
+  `SKILL.md` only. A reference file must not link to another reference. A
+  skill that runs on every turn is a single file.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

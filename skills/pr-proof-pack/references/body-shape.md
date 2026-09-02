@@ -114,7 +114,7 @@ word `workflow`.
 
 ## Proof shape
 
-Follow [proof-selection.md](proof-selection.md). Use text blocks for textual
+Follow `references/proof-selection.md`. Use text blocks for textual
 behavior and uploaded media only for visual behavior. Put enough context beside
 the evidence to reproduce it: the shared input, fixture, account or role,
 environment, and any viewport or capture detail that affects the claim.
@@ -151,7 +151,7 @@ When no meaningful baseline exists, state that constraint and show the actual
 product entry point and PR outcome. When a UI change has both a static visual
 claim and an interaction claim, include the required actual screenshots and
 recording. Size images to the PR content area as described in
-[screenshots.md](screenshots.md); do not let their source pixel dimensions
+`references/screenshots.md`; do not let their source pixel dimensions
 decide how large they appear. Technical diagrams used solely to explain the
 surrounding system belong in the explanation section and never occupy these
 practical before/after slots. When rendered diagram or export output is itself

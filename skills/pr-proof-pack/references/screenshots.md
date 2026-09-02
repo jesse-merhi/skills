@@ -115,7 +115,7 @@ requests that storage model.
 
 ## Bitbucket image upload
 
-For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). TWG applies the
+For a Bitbucket Cloud PR, follow `references/bitbucket.md`. TWG applies the
 complete description and provider-hosted images together with
 `twg bb pull-requests update`, `--description-file`, repeated `--image` and
 paired descriptive `--image-name` flags, and body placeholders such as
@@ -169,7 +169,7 @@ real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
 For Bitbucket Cloud, TWG readback proves the stored PR description but not the
-rendered image. Follow [bitbucket.md](bitbucket.md) and inspect every finished
+rendered image. Follow `references/bitbucket.md` and inspect every finished
 image or diagram on the rendered PR in an authenticated interactive browser.
 
 ## Explanation diagrams
@@ -268,7 +268,7 @@ interaction.
 
 ## Recording edit
 
-Follow [video-editing.md](video-editing.md) before upload. Remove inactive
+Follow `references/video-editing.md` before upload. Remove inactive
 lead-in, setup, and dead stretches; retain a short readable hold on the starting
 state, important transitions, and outcome. Keep the actual actions at normal
 speed. Preserve real waiting when duration or performance is itself the claim.

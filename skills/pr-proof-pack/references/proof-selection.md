@@ -27,8 +27,8 @@ Use visual evidence only when text would lose an important part of the claim:
 - a trace, chart, or spatial comparison whose shape carries the result.
 
 When visual evidence is necessary, use the smallest useful image or recording.
-Read [screenshots.md](screenshots.md); for recordings, also read
-[video-editing.md](video-editing.md). The model must inspect the actual pixels or
+Read `references/screenshots.md`; for recordings, also read
+`references/video-editing.md`. The model must inspect the actual pixels or
 frames before upload; file metadata and successful rendering are not a quality
 review.
 
