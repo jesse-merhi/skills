@@ -83,8 +83,8 @@ prove that the system depicted by the diagram ran.
   an important fact about appearance, layout, motion, interaction, rendering,
   or playback.
 - **Provider-hosted attachments:** Upload selected media through the provider's
-  supported path. On `github.com`, use the repository command and scoped `gh`
-  credential. On Bitbucket Cloud, use TWG's coupled PR-body and image update;
+  supported path. On `github.com`, use GitHub CLI's native `--attach` support.
+  On Bitbucket Cloud, use TWG's coupled PR-body and image update;
   a separate TWG or Atlassian skill is optional, not required.
 - **Rendered proof:** Check the rendered result headlessly by default. Use an
   interactive browser only when client-side rendering, literal page appearance,
@@ -153,16 +153,16 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 5. Pass the refresh preflight for stale proof.
 
    For a `github.com` PR, confirm
-   `gh auth status --active --hostname github.com`. The upload command in step 9
-   resolves and validates the exact PR and repository. Identify whether
+   `gh auth status --active --hostname github.com` and require `gh` 2.99.0 or
+   newer before a visual refresh. Identify whether
    practical capture needs a browser or device and whether the finished body
-   requires client-side inspection, such as a Mermaid diagram. When attachment
-   upload or rendered-media verification will run, require curl 8.4 or newer so
-   download limits apply even when a server omits `Content-Length`; the
-   repository commands preflight this and stop with an upgrade instruction. Do
-   not make an interactive browser a prerequisite for `github.com` upload or
-   ordinary rendered-body checks, and do not require attachment or browser
-   capabilities for text-only proof.
+   requires client-side inspection, such as a Mermaid diagram. When
+   rendered-media verification will run, require curl 8.4 or newer so download
+   limits apply even when a server omits `Content-Length`; the repository
+   verifier preflights this and stops with an upgrade instruction. Do not make
+   an interactive browser a prerequisite for `github.com` upload or ordinary
+   rendered-body checks, and do not require attachment or browser capabilities
+   for text-only proof.
 
    For Bitbucket Cloud, follow the preflight in
    [references/bitbucket.md](references/bitbucket.md). Treat live TWG help as
@@ -246,12 +246,28 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
 
    Reconfirm that the calling workflow authorizes the PR mutation. Follow
    [references/screenshots.md](references/screenshots.md) when a diagram or
-   visual evidence was selected. On `github.com`, run
-   `<skill-dir>/scripts/github-upload-attachment --pr <number-or-URL-resolved-in-step-2> <path>`
-   for each selected diagram, image, or video. Insert the URL printed only
-   after the command has verified the upload. Put media in the main PR body,
-   never in a detached comment. Use a table when it makes a small related group
-   or comparison easier to scan. On Bitbucket Cloud, follow the single
+   visual evidence was selected. On `github.com`, reference every selected
+   local image or video in the complete draft, then update the body and upload
+   all files in one native command. Immediately before the write, re-read
+   `headRefOid` and `body`; compare both with the snapshot from step 2. If
+   either changed, restart the freshness decision instead of overwriting a
+   concurrent push or human edit.
+
+   ```sh
+   gh pr edit <full-PR-URL-resolved-in-step-2> \
+     --body-file <draft-markdown-path> \
+     --attach <first-media-path> \
+     --attach <second-media-path>
+   ```
+
+   Repeat `--attach` for every selected file. GitHub CLI rewrites each matching
+   local Markdown reference to its provider-hosted URL. Keep media in the main
+   PR body, never in a detached comment, and use a table when it makes a small
+   related group or comparison easier to scan. If upload fails, use the live
+   body as the retry draft, attach only files whose local references remain,
+   and do not re-upload successful files. Before returning `blocked`, remove
+   every broken local reference from the live body or restore the last fully
+   provider-hosted body. On Bitbucket Cloud, follow the single
    `twg bb pull-requests update` operation in
    [references/bitbucket.md](references/bitbucket.md): pass the complete draft
    with `--description-file`, each selected image with `--image`, and a paired
@@ -259,8 +275,9 @@ the direct-base net diff, linked repo-visible context, or the PR body itself.
    evidence needs no attachment.
 
    Done when every selected diagram and visual is provider-hosted and every
-   text proof is present in the main body, or the workflow has stopped before
-   mutation because authority is absent.
+   text proof is present in the main body; an authority failure stopped before
+   mutation; or a partial upload failure left the live body with no broken local
+   references.
 
 10. Inspect the finished PR headlessly by default.
 
