@@ -20,13 +20,19 @@ replaced, only extended.
 
 2. **Survey the enforcement already there.**
 
-   Find, for JavaScript: the ESLint config (a legacy `.eslintrc*` means ESLint
-   8, a flat `eslint.config.*` means ESLint 9), any `oxlint` or `biome` setup,
-   the prettier config, the tsconfig, the `package.json` lint scripts, and the
-   CI jobs that run lint. For Python: `ruff`, `mypy`, or `flake8` settings in
-   `pyproject.toml` or their own files, and pre-commit hooks.
+   Survey only the ecosystems step 1 detected.
 
-   State the finding before writing anything, then apply these rules:
+   For JavaScript: the ESLint config (a legacy `.eslintrc*` means ESLint 8, a
+   flat `eslint.config.*` means ESLint 9), any `oxlint` or `biome` setup, the
+   prettier config, the tsconfig files, the `package.json` lint scripts, and
+   the CI jobs that run lint. For Python: `ruff`, `mypy`, or `flake8` settings
+   in `pyproject.toml` or their own files, the task runner the target drives
+   its own commands with, and pre-commit hooks.
+
+   State the finding before writing anything, then answer the questions
+   belonging to each detected ecosystem.
+
+   JavaScript:
 
    - **Legacy `.eslintrc*`:** the catalog presets are flat config, so adopting
      them requires an ESLint 9 upgrade. That is a dependency change — stop and
@@ -36,8 +42,15 @@ replaced, only extended.
      them. Say so and continue.
    - **Existing flat config:** add the presets to it. Never replace it.
 
-   Done when the survey is stated and each of those three questions has an
-   answer for this target.
+   Python:
+
+   - **Existing ruff, mypy, or flake8 config:** extend it where the tool
+     supports extension and merge the catalog options into it where the tool
+     does not. Never replace it.
+
+   Done when the survey is stated and every question of every detected
+   ecosystem has an answer for this target — the three JavaScript questions
+   only when JavaScript was detected, the Python question only when Python was.
 
 3. **Select the presets.**
 
@@ -53,48 +66,108 @@ replaced, only extended.
 
 4. **Ask before installing anything.**
 
-   Show the exact command for the target package manager — bun, npm, pnpm, or
-   yarn chosen by lockfile, `uv add --dev` for Python — with the exact versions
-   from `packages`. Then wait.
+   The install list is `ecosystems.<name>.packages` plus the `packages` of
+   every preset selected in step 3, minus what the target already has at that
+   exact version. The ecosystem entry carries tooling no preset names —
+   `javascript` carries `eslint` itself — so a target whose preset packages are
+   already satisfied can still be missing the linter.
+
+   Pin every version exactly. A range lets the target drift off the version the
+   catalog checked its rule ids against, and the config then fails on rules
+   that no longer exist. Use the form for the target package manager, chosen by
+   lockfile:
+
+   ```
+   bun add -d --exact <pkg>@<version>
+   npm i -D --save-exact <pkg>@<version>
+   pnpm add -D --save-exact <pkg>@<version>
+   yarn add -D --exact <pkg>@<version>
+   uv add --dev <pkg>==<version>
+   ```
+
+   A bun lockfile also decides a config option: the `base` preset takes
+   `bun: true` in step 6.
+
+   Show the exact command with every package and version in it. Then wait.
 
    Done when the user has answered. A refusal is not a blocker: continue to
-   vendor, and carry forward which presets cannot run until those packages
-   exist so steps 9 and 10 report them as blocked rather than clean.
+   vendor, but leave every preset whose packages are missing out of the config
+   in step 6 — ESLint refuses the whole config when one import fails to
+   resolve — and carry the blocked presets forward so steps 9 and 10 report
+   them as blocked rather than clean.
 
 5. **Vendor the files into `<target>/lint/standards/`.**
 
-   - JavaScript: the whole `eslint/` directory — rules, presets, plugin, index.
+   Copy only files the catalog repository tracks. Take the list from
+   `git -C <catalog dir> ls-files <paths>` rather than walking the directory:
+   the catalog is a working repository and carries `__pycache__`, `.venv`, and
+   tool caches from its own test runs, and a wholesale directory copy drags
+   them into the target.
+
+   - JavaScript: `eslint/` — rules, presets, and the standards plugin — minus
+     every `*.test.mjs`. The rule tests import vitest, which the target has no
+     reason to install.
    - Python: `python/ruff.toml`, `python/mypy.ini`, `python/semgrep/`, and
      `python/standards_checks/`. Not `python/tests`, `pyproject.toml`, or
      `uv.lock`; those test and build the catalog itself and mean nothing in a
      target.
    - `prettier/prettierrc.json` to `<target>/.prettierrc.json`, only when the
-     target has no prettier config.
-   - `tsconfig/strict.base.json` to `lint/standards/tsconfig.strict.json`, added
-     to the target tsconfig `extends` only where the target does not already
-     set something stricter.
-   - `react-doctor/doctor.config.json` to the target root, only when the react
-     preset applies and no doctor config exists.
+     target already depends on prettier and has no prettier config.
+   - `react-doctor/doctor.config.json` to the target root, only when the target
+     already has `react-doctor` installed and no doctor config exists.
+   - `tsconfig/strict.base.json` to `lint/standards/tsconfig.strict.json`,
+     added to the `extends` of every tsconfig that compiles something — one
+     that lists `files` or `include` — and only where the target does not
+     already set something stricter. A solution-style `tsconfig.json` holding
+     `files: []` and `references` compiles nothing, so extend the configs it
+     references instead. tsconfig files may carry comments; edit them as text
+     rather than parsing and rewriting them as JSON, which strips the comments.
 
-   Done when every path above exists in the target and no file that was already
-   there was overwritten.
+   Neither prettier nor `react-doctor` is worth installing for the sake of its
+   config file. When the dependency is absent, leave the file out and name it
+   in the report as available once the target adopts the tool.
+
+   Done when every path above exists in the target, no file that was already
+   there was overwritten, and nothing the catalog repository does not track was
+   copied.
 
 6. **Write the config.**
 
-   JavaScript: `eslint.config.mjs` importing the selected preset factories from
-   `./lint/standards/eslint/index.mjs`, with an `ignores` entry first. Scope
-   each preset with `files` naming the real source directories. Inspect the
-   tree to find them — `**/*` is wrong in any repository that has `dist`,
-   `build`, or generated output, because it turns vendored and generated code
-   into violations nobody will fix. When the target already has a flat config,
-   add the imports and entries to that file instead of creating a second one.
+   JavaScript: `eslint.config.mjs` importing each selected preset factory from
+   its own file, `./lint/standards/eslint/presets/<name>.mjs`, and
+   `./lint/standards/eslint/standards-plugin.mjs` only when the config needs
+   the plugin object itself. There is no index to import.
+
+   Make the first config object `{ ignores: [...] }` on its own — an `ignores`
+   key sharing an object with other keys filters only that entry, while an
+   object holding nothing else applies to the whole run. Name in it the build
+   output the survey found (`dist`, `build`, `out`, `.next`, `coverage`),
+   `node_modules`, the generated files the survey found, and
+   `lint/standards/**`.
+
+   Scope every preset, `base` included, with `files` naming the real source
+   directories. Inspect the tree to find them — `**/*` is wrong in any
+   repository that has `dist`, `build`, or generated output, because it turns
+   vendored and generated code into violations nobody will fix.
+
+   When the target already has a flat config, add the imports and entries to
+   that file instead of creating a second one. When the survey found `oxlint`
+   or `biome`, add `lint/standards` to that tool's ignore configuration as
+   well, so the tool that cannot run these rules also stops reporting on the
+   files that hold them.
 
    Python: point the target ruff config at the vendored one with
    `extend = "lint/standards/python/ruff.toml"`, creating `ruff.toml` if the
-   target has none, and point the target mypy config at
-   `lint/standards/python/mypy.ini` the same way. Then define four commands, as
-   package scripts or a `just` or `make` target, matching whatever the target
-   already uses:
+   target has none. mypy has no equivalent — no mypy config file can extend
+   another — so write the options from `lint/standards/python/mypy.ini` into
+   the target's `[tool.mypy]` table in `pyproject.toml`, or into `[mypy]` in
+   the mypy config file the target already has. The vendored file stays as the
+   manifest-tracked reference the options were copied from, which is what lets
+   `sync` show that they drifted.
+
+   Then define four commands, each run through the target's own runner:
+   prefixed with `uv run` in a uv project, bare where the target manages its
+   own environment.
 
    ```
    ruff check <src dirs>
@@ -103,9 +176,18 @@ replaced, only extended.
    PYTHONPATH=lint/standards/python python -m standards_checks <src dirs>
    ```
 
+   Put them where the target already keeps tasks — package scripts, a `just`
+   recipe, a `make` target — and follow that runner's naming. When the target
+   has no task runner at all, add a `Makefile` with a `lint` target; a make
+   target name cannot contain a colon, so the Python entry point there is
+   `lint-python`, not `lint:python`.
+
+   A wired entry point stops at the first command that fails, so step 9 runs
+   each command separately to get every count.
+
    Done when each detected ecosystem has config naming real source directories,
-   and the Python commands exist in the form the target already uses for its
-   own tasks.
+   the mypy options live in a file mypy itself reads, and the Python commands
+   exist in the form the target already uses for its own tasks.
 
 7. **Write the manifest `lint/standards/manifest.json`.**
 
@@ -115,9 +197,14 @@ replaced, only extended.
      "catalogVersion": 1,
      "ecosystems": ["javascript", "python"],
      "presets": { "javascript": ["base", "typescript"], "python": ["ruff"] },
-     "files": { "lint/standards/eslint/index.mjs": "<sha256>" }
+     "files": { "lint/standards/eslint/presets/base.mjs": "<sha256>" }
    }
    ```
+
+   `presets` is keyed by ecosystem name — the keys of `ecosystems`, so
+   `javascript` and `python` — not by the catalog's `presets` key that
+   `ecosystems.<name>.presets` points at. A manifest keyed `eslint` describes
+   an ecosystem that does not exist, and `sync` finds no presets under it.
 
    Paths in `files` are relative to the target root. Each hash is the sha256 of
    the catalog content vendored to that path, which stays true even after
@@ -129,9 +216,9 @@ replaced, only extended.
 
 8. **Wire the commands.**
 
-   Add or extend the target `lint` script, plus `lint:python` when Python was
-   detected, so the new enforcement runs from the entry point the target
-   already uses. Then check the CI workflows: confirm an existing lint job
+   Add or extend the target `lint` script, plus the Python entry point step 6
+   named when Python was detected, so the new enforcement runs from the command
+   the target already uses. Then check the CI workflows: confirm an existing lint job
    picks the script up, or add the step.
 
    Done when one command the target already documents runs every new check, and
@@ -139,7 +226,10 @@ replaced, only extended.
 
 9. **Run and report the baseline.**
 
-   Run the lint commands and report violation counts grouped by rule id.
+   Run each configured command on its own, not through the entry point that
+   chains them, and report violation counts grouped by rule id. Chained
+   commands stop at the first failure, and every command after it goes
+   uncounted.
 
    Do not auto-fix, add disables, or edit target source to make lint pass. The
    baseline is the finding, and a clean run bought with disables hides it. List
