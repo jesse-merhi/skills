@@ -5,6 +5,10 @@ description: Create or check concise reviewer-visible PR context and practical p
 
 # PR proof pack
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Treat this workflow as a delivery and merge-readiness gate. A proof check asks
 whether the existing PR still tells the truth. A proof refresh changes the PR
 only when that check finds stale or missing evidence.

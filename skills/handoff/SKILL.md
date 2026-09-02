@@ -5,6 +5,10 @@ description: 'Transfer the current work to a fresh full agent session, placing r
 
 # Handoff
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 A handoff always creates or prepares a full independent session. Never use a
 subagent, delegated in-chat worker, or background agent for any part of a
 handoff.

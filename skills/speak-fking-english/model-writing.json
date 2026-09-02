@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "skill": "speak-fking-english",
+  "mode": "prose-revision",
   "profiles": {
-    "gpt-5.6": "references/models/gpt-5.6.md",
-    "claude-fable-5.1": "references/models/claude-fable-5.1.md",
-    "claude-opus-5": "references/models/claude-opus-5.md"
+    "gpt-5.6": null,
+    "claude-fable-5.1": null,
+    "claude-opus-5": null
   }
 }

@@ -5,6 +5,10 @@ description: Query Jira, JPD, and Confluence through local Rovo Dev MCP, includi
 
 # Atlassian via Rovo Dev
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Route Atlassian work through the user's authenticated Rovo Dev gateway. Always
 name the intended site explicitly; the CLI may otherwise inherit an unrelated
 default Jira site.

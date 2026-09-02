@@ -5,6 +5,10 @@ description: 'Publish and inspect temporary OpenClaw Control UI previews through
 
 # OpenClaw staging test
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Publish a reviewer-testable Control UI without exposing an authenticated
 OpenClaw Gateway, browser proxy, or operator credentials.
 

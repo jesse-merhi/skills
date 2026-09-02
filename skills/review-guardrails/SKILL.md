@@ -5,6 +5,10 @@ description: 'Manage budgets, scope, findings, consults, provisional fixes, and 
 
 # Review guardrails
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Load this skill at the start of any until-clean review loop (`code-review`,
 `review-until-clean`, `cold-pr-review-until-clean`). It bounds how long an
 autonomous review may run, how much review fixes may grow the PR, and what

@@ -5,6 +5,10 @@ description: "Plan and audit test portfolios before creating, changing, or remov
 
 # Test audit
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Audit tests as a product-risk portfolio. Run this before creating tests, for
 every PR that changes tests or test infrastructure, and for every PR that
 changes production behavior. Test infrastructure includes fixtures, test-only

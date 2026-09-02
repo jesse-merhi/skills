@@ -5,6 +5,10 @@ description: 'Audit PR diffs for unrelated artifacts, noisy comments, deletions,
 
 # PR rubbish audit
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Audit the diff for coherence, not minimalism. The goal is **no rubbish in the
 PR**, not reduced functionality. Keep real behavior, tests, docs, and
 compatibility that the feature needs.

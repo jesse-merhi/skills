@@ -5,6 +5,10 @@ description: 'Write or review TypeScript with shared types, boundary validation,
 
 # TypeScript discipline
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use TypeScript to model the real contract. Prefer named types, validated
 boundaries, and compiler-checked narrowing over casts or informal object shapes.
 

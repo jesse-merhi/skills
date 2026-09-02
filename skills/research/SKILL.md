@@ -5,6 +5,10 @@ description: 'Investigate technical or product questions against primary sources
 
 # Research
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Research questions whose answer depends on documentation, source code,
 standards, first-party APIs, release behavior, or other evidence outside the
 current conversation. Do the work in the current session. A research request

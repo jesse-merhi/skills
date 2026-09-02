@@ -25,7 +25,9 @@ test("covered model variants select their reviewed profile without a notice", ()
     assert.equal(gpt.status, "covered");
     assert.equal(gpt.selectedProfile, "gpt-5.6");
     assert.equal(gpt.noticeRequired, false);
-    assert.match(gpt.skillAdapterReference, /gpt-5\.6\.md$/u);
+    assert.equal(gpt.mode, "prose-revision");
+    assert.match(gpt.guideReference, /prose-revision\/gpt-5\.6\.md$/u);
+    assert.equal(gpt.skillAdapterReference, null);
   }
 
   const fable = resolve("anthropic/claude-fable-5[1m]");
@@ -46,6 +48,7 @@ test("a known profile omitted by the calling skill does not bypass its coverage"
   const result = resolve("claude-opus-5", {
     schemaVersion: 1,
     skill: "fable-only",
+    mode: "execution",
     profiles: { "claude-fable-5.1": null },
   });
   assert.equal(result.status, "shared");
@@ -83,8 +86,8 @@ test("the documented CLI returns the resolved profile and reports argument error
   assert.equal(success.status, 0, success.stderr);
   const output = JSON.parse(success.stdout);
   assert.equal(output.status, "covered");
-  assert.equal(output.guideReference, path.join(skillRoot, "references/gpt-5.6.md"));
-  assert.equal(output.skillAdapterReference, path.join(speakRoot, "references/models/gpt-5.6.md"));
+  assert.equal(output.guideReference, path.join(skillRoot, "references/prose-revision/gpt-5.6.md"));
+  assert.equal(output.skillAdapterReference, null);
 
   const missingCoverage = spawnSync(process.execPath, [resolverPath, "--model", "gpt-5.6-sol"], { encoding: "utf8" });
   assert.equal(missingCoverage.status, 1);
@@ -112,7 +115,7 @@ test("the documented CLI runs through an installed skill symlink", () => {
 
 test("guide and adapter references cannot escape their owning skills", () => {
   const unsafeRegistry = structuredClone(registry);
-  unsafeRegistry.profiles[0].reference = "../writing-for-agents/SKILL.md";
+  unsafeRegistry.profiles[0].references["prose-revision"] = "../writing-for-agents/SKILL.md";
   assert.throws(() => resolveModelWritingGuide({
     model: "gpt-5.6-sol",
     registry: unsafeRegistry,
@@ -126,15 +129,43 @@ test("guide and adapter references cannot escape their owning skills", () => {
   assert.throws(() => resolve("gpt-5.6-sol", unsafeCoverage), /must stay inside its owning skill/u);
 });
 
-test("every coverage manifest belongs to its skill and resolves", () => {
-  const manifests = fs.globSync("skills/**/model-writing.json", { cwd: repoRoot });
-  assert.ok(manifests.length > 0);
+test("every skill except the registry declares every reviewed profile and resolves its mode", () => {
+  const manifests = fs.globSync("skills/**/model-writing.json", { cwd: repoRoot }).sort();
+  const skillFiles = fs.globSync("skills/**/SKILL.md", { cwd: repoRoot });
+  const expectedManifests = skillFiles
+    .filter((file) => file !== "skills/model-writing-guides/SKILL.md")
+    .map((file) => path.join(path.dirname(file), "model-writing.json"))
+    .sort();
+  assert.deepEqual(manifests, expectedManifests);
+  const expectedProfiles = registry.profiles.map((profile) => profile.id).sort();
   for (const manifest of manifests) {
     const callingSkillRoot = path.dirname(path.join(repoRoot, manifest));
     const coverage = JSON.parse(fs.readFileSync(path.join(repoRoot, manifest), "utf8"));
     assert.equal(coverage.skill, path.basename(callingSkillRoot));
+    assert.deepEqual(Object.keys(coverage.profiles).sort(), expectedProfiles);
     assert.doesNotThrow(() => resolveModelWritingGuide({
       model: "gpt-5.6-sol", registry, coverage, guideRoot: skillRoot, callingSkillRoot,
     }));
   }
+});
+
+test("execution and instruction-authoring skills select their own mode variants", () => {
+  for (const [skill, expectedMode, expectedPath] of [
+    ["ask-codex", "execution", "execution/gpt-5.6.md"],
+    ["writing-for-agents", "instruction-authoring", "gpt-5.6.md"],
+  ]) {
+    const callingSkillRoot = path.join(repoRoot, "skills", skill);
+    const coverage = JSON.parse(fs.readFileSync(path.join(callingSkillRoot, "model-writing.json"), "utf8"));
+    const result = resolveModelWritingGuide({
+      model: "gpt-5.6-sol", registry, coverage, guideRoot: skillRoot, callingSkillRoot,
+    });
+    assert.equal(result.mode, expectedMode);
+    assert.match(result.guideReference, new RegExp(`${expectedPath.replaceAll(".", "\\.")}$`, "u"));
+  }
+});
+
+test("coverage cannot select an unregistered mode", () => {
+  const coverage = structuredClone(speakCoverage);
+  coverage.mode = "imaginary";
+  assert.throws(() => resolve("gpt-5.6-sol", coverage), /unknown mode: imaginary/u);
 });

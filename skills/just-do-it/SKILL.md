@@ -5,6 +5,10 @@ description: 'Take one well-defined, cohesive change from its current implementa
 
 # Just Do It
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Take a small, well-defined change from whatever verified checkpoint it has
 reached to a non-draft PR that is ready for Jesse to inspect. Continue correct
 existing work instead of restarting it. Keep moving through ordinary

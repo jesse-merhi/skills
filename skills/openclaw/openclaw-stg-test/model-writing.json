@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "skill": "openclaw-stg-test",
+  "mode": "execution",
+  "profiles": {
+    "gpt-5.6": null,
+    "claude-fable-5.1": null,
+    "claude-opus-5": null
+  }
+}

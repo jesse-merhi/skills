@@ -5,6 +5,10 @@ description: 'Confirm actionable review findings, deduplicate root causes, and e
 
 # Finding discipline
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this skill after you have inspected enough code to know a concrete runtime
 failure or present maintenance cost. The goal is fewer, sharper findings that a
 PR author can fix.

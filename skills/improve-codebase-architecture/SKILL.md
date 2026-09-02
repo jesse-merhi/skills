@@ -5,6 +5,10 @@ description: 'Review architecture for module depth, interfaces, locality, depend
 
 # Improve codebase architecture
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this as an architectural review lens. Do not refactor by default; first
 identify the smallest structural change that improves the work the user actually
 asked for.

@@ -5,6 +5,10 @@ description: 'Wait for a command, CI run, subagent, or timed delay by holding on
 
 # Wait efficiently
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 A wait costs one model round trip every time it returns. One hold that spans the
 whole wait costs one round trip. Polling the same wait costs one per check, and
 each check carries the entire conversation.

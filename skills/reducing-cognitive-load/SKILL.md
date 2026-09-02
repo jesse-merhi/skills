@@ -5,6 +5,10 @@ description: 'Review dense, clever, stringly typed, weakly typed, over-abstracte
 
 # Reducing cognitive load
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this skill to make code easier to read without turning it into a maze of
 tiny wrapper functions. The goal is not "more abstraction"; the goal is a
 smaller mental stack for the next maintainer.

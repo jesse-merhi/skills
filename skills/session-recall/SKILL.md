@@ -5,6 +5,10 @@ description: Find prior local Codex or Claude sessions; keep contents local and 
 
 # Session recall
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use `agent-session-find` as the first recall step when previous agent work may
 answer the current question. The goal is to recover the right full session with
 minimal tokens, not to dump transcripts into context.

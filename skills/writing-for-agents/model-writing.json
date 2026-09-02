@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "skill": "writing-for-agents",
+  "mode": "instruction-authoring",
   "profiles": {
     "gpt-5.6": null,
     "claude-fable-5.1": null,

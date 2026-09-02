@@ -5,6 +5,10 @@ description: Review a GitHub PR in VS Code with local diffs, inline comments, na
 
 # PR review checkout
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Open a PR in its branch's real worktree, then review it through VS Code's
 dedicated active-pull-request view. This gives the user the PR diff and comment
 UI while the modified side remains a local file with full language services.

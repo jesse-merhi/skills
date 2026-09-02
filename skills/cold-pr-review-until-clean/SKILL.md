@@ -5,6 +5,10 @@ description: 'Repeat fresh cold reviews and fixes until the configured clean sto
 
 # Cold PR review until clean
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Run independent cold-review subagents in a loop. Every time a cold reviewer
 surfaces actionable findings, fix only those findings and run another fresh
 cold-review subagent.

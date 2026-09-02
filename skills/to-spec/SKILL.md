@@ -5,6 +5,10 @@ description: 'Turn a resolved conversation into an Obsidian spec with testing se
 
 # To spec
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 This skill takes the current conversation context and codebase understanding and
 produces a spec. Do not interview the user; synthesize what has already been
 discussed.

@@ -5,6 +5,10 @@ description: 'Build or fix behavior test-first through a red-green-refactor loop
 
 # Test-driven development
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use one vertical red-green-refactor cycle at a time. Tests should describe
 observable behavior and remain useful when the implementation changes.
 

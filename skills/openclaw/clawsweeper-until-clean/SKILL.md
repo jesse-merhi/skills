@@ -5,6 +5,10 @@ description: 'Re-review ClawSweeper PRs until three clean passes and a platinum-
 
 # Clawsweeper until clean
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this skill when the source of truth is the Clawsweeper bot acting on the
 GitHub PR, not a local review command. Trigger Clawsweeper, wait for the fresh
 review, fix actionable findings, push, and repeat.

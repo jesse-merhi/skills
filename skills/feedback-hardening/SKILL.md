@@ -5,6 +5,10 @@ description: "Evidence-backed user corrections or self-detected mistakes reveali
 
 # Feedback hardening
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Turn evidence of reusable agent failure into one durable repair without
 derailing the current task.
 

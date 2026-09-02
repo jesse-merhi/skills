@@ -5,6 +5,10 @@ description: 'Debug bugs, failing tests, regressions, flakiness, or unexpected b
 
 # Diagnose
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Do not start with a fix. Start by making the failure observable and repeatable.
 
 ## Workflow

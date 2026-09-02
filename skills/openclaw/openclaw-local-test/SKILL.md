@@ -5,6 +5,10 @@ description: 'Run an isolated local OpenClaw test Gateway using current Codex or
 
 # OpenClaw local test
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Provide a ready-to-use local OpenClaw instance for manual testing in a browser.
 
 ## Workflow

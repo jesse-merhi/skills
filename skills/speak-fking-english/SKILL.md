@@ -11,9 +11,9 @@ saving it.
 ## Model profile
 
 Before selecting a route, load `model-writing-guides` with this skill's
-[`model-writing.json`](model-writing.json). Apply its returned general guide and
-keep its returned skill adapter for the model pass. Model-profile resolution
-does not make an implicit call explicit or change the intended audience.
+[`model-writing.json`](model-writing.json). Keep its returned mode variant and
+any skill adapter for the model pass. Model-profile resolution does not make an
+implicit call explicit or change the intended audience.
 
 Then freeze exact names, technical terms, quoted text, code, logs, commands, and
 evidence. Every selected pass preserves them character for character.
@@ -75,9 +75,9 @@ it needs to say.
 
 ## Model pass
 
-Apply the one skill adapter selected by `model-writing-guides` after the shared,
-deep-catalogue, reader-reset, or visual-filter pass. When no adapter was
-selected, keep the result of that pass unchanged.
+Apply the mode variant and any skill adapter selected by
+`model-writing-guides` after the shared, deep-catalogue, reader-reset, or
+visual-filter pass.
 
 Done when the current model's known writing tendencies have been handled
 without adding rules from another model family.

@@ -5,6 +5,10 @@ description: "Audit agent skills: loaded roots, duplicate skills, unused skills,
 
 # Skill cleaner
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this when trimming skill prompt budget, finding duplicate skills, auditing
 enabled/disabled skill roots, or deciding which skills/plugins to remove.
 

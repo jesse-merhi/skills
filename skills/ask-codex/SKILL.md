@@ -5,6 +5,10 @@ description: 'Ask Codex from a non-Codex harness through a full ACP session for 
 
 # Ask Codex
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use a full Codex session through ACP. This is not a subagent and must not be
 implemented with the current harness's in-chat delegation tools.
 

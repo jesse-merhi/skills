@@ -5,6 +5,10 @@ description: 'Implement specs with parallel agents, disjoint ownership, integrat
 
 # Parallel slice orchestration
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this when the user wants an existing spec or slice plan implemented with
 subagents. The orchestrator owns decomposition, dependency order, integration,
 and final verification. Workers own narrow vertical slices.

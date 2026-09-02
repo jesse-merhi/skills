@@ -5,6 +5,10 @@ description: 'Run authorized native and independent fix-and-rerun reviews for a 
 
 # Code review
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Orchestrate two until-clean review phases for one target.
 
 1. Phase 1: run `review-until-clean` in an external harness-native review

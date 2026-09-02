@@ -5,6 +5,10 @@ description: Run a guarded local ClawHub test instance with development Convex d
 
 # ClawHub local test
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Give the user a ready-to-test local ClawHub instance with a development Convex
 deployment populated from a production snapshot. The Convex target may be a
 local loopback deployment or the worktree's named cloud `dev:` deployment. It

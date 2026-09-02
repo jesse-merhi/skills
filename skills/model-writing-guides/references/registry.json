@@ -1,5 +1,10 @@
 {
   "schemaVersion": 1,
+  "modes": [
+    "execution",
+    "instruction-authoring",
+    "prose-revision"
+  ],
   "families": [
     {
       "id": "openai-gpt",
@@ -22,7 +27,11 @@
       "fallbackRank": 56,
       "guideUrl": "https://developers.openai.com/api/docs/guides/latest-model",
       "reviewedOn": "2026-09-02",
-      "reference": "references/gpt-5.6.md"
+      "references": {
+        "execution": "references/execution/gpt-5.6.md",
+        "instruction-authoring": "references/gpt-5.6.md",
+        "prose-revision": "references/prose-revision/gpt-5.6.md"
+      }
     },
     {
       "id": "claude-fable-5.1",
@@ -31,7 +40,11 @@
       "fallbackRank": 51,
       "guideUrl": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1",
       "reviewedOn": "2026-09-02",
-      "reference": "references/claude-fable-5.1.md"
+      "references": {
+        "execution": "references/execution/claude-fable-5.1.md",
+        "instruction-authoring": "references/claude-fable-5.1.md",
+        "prose-revision": "references/prose-revision/claude-fable-5.1.md"
+      }
     },
     {
       "id": "claude-opus-5",
@@ -40,7 +53,11 @@
       "fallbackRank": 50,
       "guideUrl": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5",
       "reviewedOn": "2026-09-02",
-      "reference": "references/claude-opus-5.md"
+      "references": {
+        "execution": "references/execution/claude-opus-5.md",
+        "instruction-authoring": "references/claude-opus-5.md",
+        "prose-revision": "references/prose-revision/claude-opus-5.md"
+      }
     }
   ]
 }

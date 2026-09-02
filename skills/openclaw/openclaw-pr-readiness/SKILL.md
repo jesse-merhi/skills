@@ -5,6 +5,10 @@ description: 'Prepare or assess openclaw/openclaw PRs for exact-head proof, revi
 
 # OpenClaw PR readiness
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Make an `openclaw/openclaw` PR genuinely easy to merge. Prepare the strongest
 honest review packet, delegate ClawSweeper convergence and rating improvement to
 `clawsweeper-until-clean`, and finish only when every required gate describes

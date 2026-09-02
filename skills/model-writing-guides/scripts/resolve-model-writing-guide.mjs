@@ -18,16 +18,18 @@ const Profile = Schema.Struct({
   fallbackRank: Schema.Number,
   guideUrl: Schema.NonEmptyString,
   reviewedOn: Schema.NonEmptyString,
-  reference: Schema.NonEmptyString,
+  references: Schema.Record(Schema.String, Schema.NonEmptyString),
 });
 const Registry = Schema.Struct({
   schemaVersion: Schema.Literal(1),
+  modes: Schema.Array(Schema.NonEmptyString),
   families: Schema.Array(Family),
   profiles: Schema.Array(Profile),
 });
 const Coverage = Schema.Struct({
   schemaVersion: Schema.Literal(1),
   skill: Schema.NonEmptyString,
+  mode: Schema.NonEmptyString,
   profiles: Schema.Record(Schema.String, Schema.NullOr(Schema.NonEmptyString)),
 });
 const RegistryJson = Schema.fromJsonString(Registry);
@@ -68,6 +70,12 @@ function compileMatch(value, label) {
 function validateRegistry(value) {
   const decoded = Schema.decodeUnknownSync(Registry)(value);
 
+  const modes = new Set();
+  for (const mode of decoded.modes) {
+    if (modes.has(mode)) throw new Error(`duplicate mode: ${mode}`);
+    modes.add(mode);
+  }
+
   const familyIds = new Set();
   const families = decoded.families.map((family, index) => {
     const { id } = family;
@@ -90,26 +98,43 @@ function validateRegistry(value) {
       fallbackRank: profile.fallbackRank,
       guideUrl: profile.guideUrl,
       reviewedOn: profile.reviewedOn,
-      reference: profile.reference,
+      references: new Map(Object.entries(profile.references)),
     };
   });
 
-  return { families, profiles };
+  return { modes, families, profiles };
 }
 
 function validateCoverage(value) {
   const decoded = Schema.decodeUnknownSync(Coverage)(value);
-  return { skill: decoded.skill, profiles: new Map(Object.entries(decoded.profiles)) };
+  return { skill: decoded.skill, mode: decoded.mode, profiles: new Map(Object.entries(decoded.profiles)) };
 }
 
 export function resolveModelWritingGuide({ model, registry, coverage, guideRoot = skillRoot, callingSkillRoot }) {
   const checkedRegistry = validateRegistry(registry);
   const checkedCoverage = validateCoverage(coverage);
+  if (!checkedRegistry.modes.has(checkedCoverage.mode)) {
+    throw new Error(`coverage references unknown mode: ${checkedCoverage.mode}`);
+  }
   const registryProfileIds = new Set(checkedRegistry.profiles.map((profile) => profile.id));
-  const guideReferences = new Map(checkedRegistry.profiles.map((profile) => [
-    profile.id,
-    resolveOwnedFile(guideRoot, profile.reference, `registry reference for ${profile.id}`),
-  ]));
+  const guideReferences = new Map();
+  for (const profile of checkedRegistry.profiles) {
+    for (const mode of checkedRegistry.modes) {
+      const reference = profile.references.get(mode);
+      if (reference === undefined) {
+        throw new Error(`profile ${profile.id} has no reference for mode: ${mode}`);
+      }
+      guideReferences.set(
+        `${profile.id}:${mode}`,
+        resolveOwnedFile(guideRoot, reference, `registry reference for ${profile.id}/${mode}`),
+      );
+    }
+    for (const mode of profile.references.keys()) {
+      if (!checkedRegistry.modes.has(mode)) {
+        throw new Error(`profile ${profile.id} references unknown mode: ${mode}`);
+      }
+    }
+  }
   const adapterReferences = new Map();
   for (const profileId of checkedCoverage.profiles.keys()) {
     if (!registryProfileIds.has(profileId)) {
@@ -155,11 +180,14 @@ export function resolveModelWritingGuide({ model, registry, coverage, guideRoot 
 
   return {
     skill: checkedCoverage.skill,
+    mode: checkedCoverage.mode,
     currentModel: normalizedModel || null,
     currentProfile: currentProfile?.id ?? null,
     status,
     selectedProfile: selectedProfile?.id ?? null,
-    guideReference: selectedProfile === null ? null : guideReferences.get(selectedProfile.id),
+    guideReference: selectedProfile === null
+      ? null
+      : guideReferences.get(`${selectedProfile.id}:${checkedCoverage.mode}`),
     skillAdapterReference: selectedProfile === null ? null : adapter,
     guideUrl: selectedProfile?.guideUrl ?? null,
     guideReviewedOn: selectedProfile?.reviewedOn ?? null,

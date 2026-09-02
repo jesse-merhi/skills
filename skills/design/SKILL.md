@@ -5,6 +5,10 @@ description: 'Route UI design work among production visual design, interaction a
 
 # Design
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Choose the design mode that matches the requested outcome, then read only its
 reference:
 

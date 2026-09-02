@@ -5,6 +5,10 @@ description: 'Run authorized native reviews and fixes until two fresh passes are
 
 # Review until clean
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Run the harness's own built-in review in a loop. Every time the review
 surfaces actionable findings, fix only those findings and run the review again.
 

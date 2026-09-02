@@ -5,6 +5,10 @@ description: 'Turn a plan or spec into tracer-bullet Obsidian tickets with block
 
 # To tickets
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Break a plan, spec, or conversation into a set of tickets: tracer-bullet
 vertical slices, each declaring the tickets that block it. Publish tickets to
 Obsidian `Issues/`.

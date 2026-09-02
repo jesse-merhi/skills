@@ -5,6 +5,10 @@ description: Discover and remove local development artifacts that belong to fini
 
 # Cleanup
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Treat cleanup as an ownership problem, not a keyword search. Find the complete
 local footprint of the target work, remove what is proven disposable, preserve
 saved or shared state, and verify the footprint is gone.

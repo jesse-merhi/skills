@@ -5,9 +5,9 @@ description: 'Select model-specific writing guidance for another skill, includin
 
 # Model writing guides
 
-Use this skill when another skill points here because it shapes prose or
-agent-facing instructions. The calling skill keeps its durable behavior; this
-skill adds only the guidance that compensates for the current model.
+Use this skill when another skill points here before execution. The calling
+skill keeps its durable behavior; this skill adds only the guidance that
+compensates for the current model in the calling skill's declared mode.
 
 ## Resolve the profile
 
@@ -23,7 +23,8 @@ skill adds only the guidance that compensates for the current model.
      --coverage <calling-skill-dir>/model-writing.json
    ```
 
-3. Read `guideReference` when it is not `null`. Read
+3. Confirm that the returned `mode` matches the calling skill. Read
+   `guideReference` when it is not `null`. Read
    `skillAdapterReference` too when it is not `null`. Load no other model
    profile.
 
@@ -52,10 +53,11 @@ requested writing pass because coverage is stale.
 ## Maintain the registry
 
 [`references/registry.json`](references/registry.json) is the source of truth
-for known model profiles, exact matching, family fallback, official writing
-guide URLs, and the date each guide was reviewed. Add a profile when a new
-model-specific official guide appears. Keep each local profile to behavioral
-deltas that change skill instructions; link the source instead of copying its
+for known model profiles, exact matching, family fallback, execution modes,
+official writing-guide URLs, and the date each guide was reviewed. Every model
+profile covers every registered mode. Add a profile when a new model-specific
+official guide appears. Keep each profile variant and local adapter to
+behavioral deltas that change execution; link the source instead of copying its
 manual.
 
 Done when the calling skill used exactly one compatible model profile or its

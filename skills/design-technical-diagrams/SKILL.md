@@ -5,6 +5,10 @@ description: 'Create or refine architecture, lifecycle, sequence, trust-boundary
 
 # Design technical diagrams
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Make one system relationship easier to understand as a picture. Inspect the
 rendered artifact to prove that the diagram itself communicates at its
 destination size; source validity and geometry checks only support that claim.

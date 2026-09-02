@@ -5,6 +5,10 @@ description: 'Cold-review a PR, branch, or feature with neutral context, changed
 
 # Cold PR review
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Run an independent review subagent with zero implementation context. The
 reviewer sees only the work product, not your reasoning, decisions, or prior
 findings. This avoids anchoring bias where knowing why a decision was made

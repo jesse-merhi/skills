@@ -5,6 +5,10 @@ description: 'Create standalone HTML for complex explanations, code walkthroughs
 
 # HTML explanations
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this skill when the user needs to understand something and prose would
 become a wall of text. Produce a standalone `.html` file that the user can open
 locally.

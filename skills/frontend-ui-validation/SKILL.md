@@ -5,6 +5,10 @@ description: 'Validate web UI with Playwright screenshots, layout checks, respon
 
 # Frontend UI validation
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 This is a visual gate, not a vibe check. A screenshot by itself is not
 validation.
 

@@ -100,11 +100,12 @@ Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
-Writing-sensitive skills also declare which model profiles they have actually
+Every skill declares its execution mode and the model profiles it has actually
 been reviewed against. `model-writing-guides` resolves the active model against
-that coverage, applies the matching local profile, and keeps the requested
-skill running with a same-family fallback when coverage is stale. The first
-miss in a task tells you the skill needs an update; later misses stay quiet.
+that coverage, applies the matching model-and-mode variant, and keeps the
+requested skill running with a same-family fallback when coverage is stale.
+The first miss in a task tells you the skill needs an update; later misses stay
+quiet.
 
 ## The loop
 
@@ -289,8 +290,10 @@ PRs are welcome.
 - Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
-- For a skill that shapes prose, declare reviewed profiles in
-  `model-writing.json` and keep model-specific deltas behind references. The
+- Give every skill an `execution`, `instruction-authoring`, or `prose-revision`
+  mode in `model-writing.json`, declare every reviewed profile, and keep
+  model-specific deltas in the matching central mode variant. Add a local
+  adapter only for a genuinely skill-specific difference. The
   [`model-writing-guides`](skills/model-writing-guides/SKILL.md) registry owns
   the official guide links and fallback behavior.
 - One skill per directory, `SKILL.md` at its root, `name` unique across the

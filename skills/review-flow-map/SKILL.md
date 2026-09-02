@@ -5,6 +5,10 @@ description: 'Map changed runtime flows through contracts and side effects to ri
 
 # Review flow map
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Use this skill before writing findings. Build a review map: what changed, where
 execution starts, what contracts move between files, and which checks would
 actually prove the change.

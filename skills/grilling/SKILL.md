@@ -5,6 +5,10 @@ description: 'Stress-test a plan, decision, or idea through relentless questions
 
 # Grilling
 
+Before following this skill, load `model-writing-guides` with this skill's
+[`model-writing.json`](model-writing.json). Apply the returned mode variant
+without changing this skill's contract.
+
 Interview the user relentlessly until you reach a shared understanding. Map the
 subject as a design tree. Every decision branches into the decisions that hang
 off it.
