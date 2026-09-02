@@ -1,8 +1,9 @@
 import query from "@tanstack/eslint-plugin-query";
 
-export default function tanstackQuery() {
+export default function tanstackQuery(options = {}) {
 	return [
 		{
+			...(options.files === undefined ? {} : { files: options.files }),
 			plugins: { "@tanstack/query": query },
 			rules: {
 				"@tanstack/query/exhaustive-deps": "error",

@@ -5,9 +5,6 @@ export default function tailwind(options = {}) {
 	if (options.tokenModule !== undefined) {
 		elevationOptions.tokenModule = options.tokenModule;
 	}
-	if (options.exemptFiles !== undefined) {
-		elevationOptions.exemptFiles = options.exemptFiles;
-	}
 
 	const breakpointOptions = {};
 	if (options.maximumPx !== undefined) {
@@ -19,6 +16,7 @@ export default function tailwind(options = {}) {
 
 	return [
 		{
+			...(options.files === undefined ? {} : { files: options.files }),
 			plugins: { standards },
 			rules: {
 				"standards/no-light-mode-only-colors": "error",

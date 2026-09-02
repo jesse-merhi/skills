@@ -6,12 +6,7 @@ const DEFAULT_FILES = ["**/tests/e2e/**/*.{ts,tsx}"];
 const DEFAULT_CHECKS = ["domPath"];
 
 export default function playwright(options = {}) {
-	// `files` scopes the flat config by glob; `selectorFiles` is the rule's own
-	// path gate, a regular expression string. Override both together.
 	const brittleSelectorOptions = { checks: options.checks ?? DEFAULT_CHECKS };
-	if (options.selectorFiles !== undefined) {
-		brittleSelectorOptions.files = options.selectorFiles;
-	}
 
 	const brittleStyleOptions = {};
 	if (options.semanticClassTokens !== undefined) {

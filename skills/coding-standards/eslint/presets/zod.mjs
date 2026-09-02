@@ -11,12 +11,10 @@ export default function zod(options = {}) {
 
 	return [
 		{
+			...(options.files === undefined ? {} : { files: options.files }),
 			plugins: { standards },
 			rules: {
-				"standards/no-broad-rule-disable": [
-					"error",
-					{ rules: ["no-zod-type-any", "standards/no-zod-type-any"] },
-				],
+				"standards/no-broad-rule-disable": ["error", { rules: ["no-zod-type-any"] }],
 				"standards/no-zod-type-any": "error",
 				"standards/prefer-zod-for-unknown-typeof": ["error", preferZodOptions],
 			},

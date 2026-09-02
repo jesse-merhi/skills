@@ -9,7 +9,10 @@ export default function typescript(options = {}) {
 			files: options.files ?? DEFAULT_FILES,
 			languageOptions: {
 				parser: tsParser,
-				parserOptions: { projectService: true },
+				parserOptions: {
+					projectService: true,
+					...(options.tsconfigRootDir === undefined ? {} : { tsconfigRootDir: options.tsconfigRootDir }),
+				},
 			},
 			plugins: { "@typescript-eslint": tsPlugin },
 			rules: {

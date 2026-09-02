@@ -1,5 +1,4 @@
 import * as effect from "@effect/eslint-plugin/plugin"
-import tsParser from "@typescript-eslint/parser"
 
 import base from "./skills/coding-standards/eslint/presets/base.mjs"
 import typescript from "./skills/coding-standards/eslint/presets/typescript.mjs"
@@ -24,17 +23,10 @@ const noJsonParse = {
 export default [
   { ignores: ["node_modules/**"] },
   ...base({ files: [...sourceFiles, ...lintInfrastructureFiles] }),
-  ...typescript({ files: sourceFiles }).map((config) => ({
-    ...config,
-    languageOptions: {
-      ...config.languageOptions,
-      parserOptions: { ...config.languageOptions.parserOptions, tsconfigRootDir: import.meta.dirname }
-    }
-  })),
+  ...typescript({ files: sourceFiles, tsconfigRootDir: import.meta.dirname }),
   ...vitest({ files: testFiles }),
   {
     files: sourceFiles,
-    languageOptions: { parser: tsParser },
     plugins: { effect },
     rules: {
       ...noJsonParse,
