@@ -28,8 +28,8 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
 3. Make the hold with the mechanism for the current harness.
 
-   Codex: read [references/codex.md](references/codex.md).
-   Claude Code: read [references/claude-code.md](references/claude-code.md).
+   Codex: follow [Codex hold mechanisms](#codex-hold-mechanisms).
+   Claude Code: follow [Claude Code hold mechanisms](#claude-code-hold-mechanisms).
    Another harness: prefer a completion notification or callback. Otherwise,
    use one blocking wait sized to the expected work and tool limit.
 
@@ -40,6 +40,131 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
    Restarting the work discards the elapsed run and pays for it twice.
 
    Done when the work reached a terminal state and was never restarted.
+
+## Codex hold mechanisms
+
+Use the capabilities exposed by the current Codex host; do not pin behavior to
+a historical CLI version.
+
+### Shell commands
+
+Keep the command and every resume inside one code-mode cell. Set the cell and
+command yields to the expected duration, capped by the current tool schema.
+
+```js
+// @exec: {"yield_time_ms": 30000, "max_output_tokens": 10000}
+const maxOutputTokens = 10000;
+let result = await tools.exec_command({
+  cmd: "<command>",
+  yield_time_ms: 30000,
+  max_output_tokens: maxOutputTokens
+});
+const output = [result.output];
+let originalTokens = result.original_token_count ?? 0;
+while (result.session_id) {
+  result = await tools.write_stdin({
+    session_id: result.session_id,
+    chars: "",
+    yield_time_ms: 30000,
+    max_output_tokens: maxOutputTokens
+  });
+  output.push(result.output);
+  originalTokens += result.original_token_count ?? 0;
+}
+text(output.filter(Boolean).join(""));
+if (originalTokens > maxOutputTokens) {
+  throw new Error("command output exceeded the safe result budget; inspect its persisted artifact");
+}
+if (result.exit_code !== 0) {
+  throw new Error(`command exited with code ${result.exit_code ?? "unknown"}`);
+}
+```
+
+An empty `write_stdin` resumes the same process and returns when it exits or the
+ceiling is reached. Replace the illustrative 30-second values with the longest
+useful values accepted by the current tool and justified by the expected work.
+
+Accumulate each terminal result inside the cell so output received before the
+final wait is not lost. Make any command behind a review or validation gate
+persist its full artifact to a run-owned file. When a terminal result reports
+more original tokens than its output budget, fail the gate and inspect that
+artifact rather than classifying truncated output.
+
+If the outer cell yields before the process finishes, resume that same cell with
+`functions.wait`. Do not restart the command, call `notify`, or use
+`yield_control` for unchanged progress.
+
+### Subagents
+
+Finish useful independent work after dispatch. Once blocked on a result, call
+`wait_agent` with a deadline sized to the task and capped by the tool schema; it
+returns when mailbox activity arrives. Wait again only when the required agent
+is still running after an unrelated event or the deadline.
+
+Keep the parent turn active until every required agent reaches a terminal state.
+Reach for a further `wait_agent` rather than `list_agents`, a short repeated
+wait, a sleep, or a status heartbeat. `notify` is not a replacement: it cannot
+start a new parent turn after that turn has ended.
+
+### Independent calls
+
+Nested calls inside one cell are the only batching Codex code mode offers, and
+independent read-only calls belong in a single `Promise.all`. This applies to
+the reads that surround a wait as much as to the wait itself.
+
+## Claude Code hold mechanisms
+
+Use capabilities exposed by the current Claude Code host; do not pin behavior
+to a historical release.
+
+Claude Code re-invokes the agent when harness-tracked work finishes, so the
+cheapest hold is usually no wait at all.
+
+### One notification when work finishes
+
+Run the work with `Bash` and `run_in_background: true`, using a command that
+exits when the condition is true:
+
+```sh
+until grep -q "Ready in" dev.log; do sleep 0.5; done
+```
+
+The completion notification arrives on its own. Continue with other work in the
+meantime, and reach for `BashOutput` only when the notification names something
+that needs inspecting.
+
+### One notification per occurrence
+
+Use `Monitor`, whose every stdout line becomes a notification. Filter to the
+lines worth acting on, and cover failure states as well as success. A filter
+matching only the success marker stays silent through a crash, and silence reads
+as "still running".
+
+```sh
+tail -f run.log | grep -E --line-buffered "elapsed_steps=|Traceback|FAILED|Killed|OOM"
+```
+
+Set `persistent: true` for a session-length watch; otherwise `timeout_ms` caps
+it at one hour.
+
+### Blocking in the foreground
+
+Use the current foreground `Bash` ceiling when a completion notification is not
+available. Express work completion as a condition rather than a polling loop
+that returns to the model.
+
+### Subagents
+
+Subagents run in the background and report on completion. Continue with
+independent work and let the notification arrive; use `SendMessage` when a
+running agent needs new information.
+
+### Scheduled wake-ups
+
+`ScheduleWakeup` fits external state the harness cannot observe, such as a CI
+run or a remote queue, sized to how fast that state actually changes. For
+harness-tracked work, the completion notification already arrives, so a wake-up
+scheduled to check on it is a wasted round trip.
 
 ## Report
 
