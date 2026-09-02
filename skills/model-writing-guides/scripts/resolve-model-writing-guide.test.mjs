@@ -19,19 +19,21 @@ function resolve(model, coverage = speakCoverage, callingSkillRoot = speakRoot) 
 }
 
 test("covered model variants select their reviewed profile without a notice", () => {
-  const gpt = resolve("gpt-5.6-sol");
-  assert.equal(gpt.status, "covered");
-  assert.equal(gpt.selectedProfile, "gpt-5.6");
-  assert.equal(gpt.noticeRequired, false);
-  assert.match(gpt.skillAdapterReference, /gpt-5\.6\.md$/u);
+  for (const model of ["gpt-5.6-sol", "openai/gpt-5.6-sol"]) {
+    const gpt = resolve(model);
+    assert.equal(gpt.status, "covered");
+    assert.equal(gpt.selectedProfile, "gpt-5.6");
+    assert.equal(gpt.noticeRequired, false);
+    assert.match(gpt.skillAdapterReference, /gpt-5\.6\.md$/u);
+  }
 
-  const fable = resolve("claude-fable-5[1m]");
+  const fable = resolve("anthropic/claude-fable-5[1m]");
   assert.equal(fable.status, "covered");
   assert.equal(fable.selectedProfile, "claude-fable-5.1");
 });
 
 test("a new model version falls back within its family and requires one notice", () => {
-  const result = resolve("gpt-5.7-sol");
+  const result = resolve("openai/gpt-5.7-sol");
   assert.equal(result.currentProfile, null);
   assert.equal(result.status, "fallback");
   assert.equal(result.selectedProfile, "gpt-5.6");

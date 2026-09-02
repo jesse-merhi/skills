@@ -3,22 +3,22 @@
   "families": [
     {
       "id": "openai-gpt",
-      "match": "^gpt-"
+      "match": "^(?:openai/)?gpt-"
     },
     {
       "id": "anthropic-fable",
-      "match": "^claude-fable-"
+      "match": "^(?:anthropic/)?claude-fable-"
     },
     {
       "id": "anthropic-opus",
-      "match": "^claude-opus-"
+      "match": "^(?:anthropic/)?claude-opus-"
     }
   ],
   "profiles": [
     {
       "id": "gpt-5.6",
       "family": "openai-gpt",
-      "match": "^gpt-5\\.6(?:-(?:sol|terra|luna))?(?:-\\d{4}-\\d{2}-\\d{2})?$",
+      "match": "^(?:openai/)?gpt-5\\.6(?:-(?:sol|terra|luna))?(?:-\\d{4}-\\d{2}-\\d{2})?$",
       "fallbackRank": 56,
       "guideUrl": "https://developers.openai.com/api/docs/guides/latest-model",
       "reviewedOn": "2026-09-02",
@@ -27,7 +27,7 @@
     {
       "id": "claude-fable-5.1",
       "family": "anthropic-fable",
-      "match": "^claude-fable-5(?:[.-]1|\\[1m\\])(?:-\\d{8})?$",
+      "match": "^(?:anthropic/)?claude-fable-5(?:[.-]1|\\[1m\\])(?:-\\d{8})?$",
       "fallbackRank": 51,
       "guideUrl": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1",
       "reviewedOn": "2026-09-02",
@@ -36,7 +36,7 @@
     {
       "id": "claude-opus-5",
       "family": "anthropic-opus",
-      "match": "^claude-opus-5(?:-\\d{8})?$",
+      "match": "^(?:anthropic/)?claude-opus-5(?:-\\d{8})?$",
       "fallbackRank": 50,
       "guideUrl": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5",
       "reviewedOn": "2026-09-02",
