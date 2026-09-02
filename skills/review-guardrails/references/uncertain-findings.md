@@ -33,7 +33,8 @@ When the test passes:
 
 - Apply the fix now and record it as status `provisional` in the findings
   database.
-- Ask the user in parallel; do not wait for the answer.
+- Notify the user promptly without pausing independent loop work. Keep the
+  entry open; an unanswered notification is not approval.
 - Continue the loop on the fixed tree so later passes review the actual state.
 - If the user keeps it, close the entry as `fixed` with
   `--owner-resolution approved` and the user's decision text.
@@ -50,9 +51,10 @@ posture, data migration), or the fix would break a budget or the review
 boundary.
 
 Add the finding to `consult_queue` with a fingerprint: file, code element, and a
-one-sentence root cause. Raise it with the user without waiting: immediately
-when the user is active, otherwise in the suspension or final report. Keep
-fixing other findings.
+one-sentence root cause. Raise it promptly when the user is active, continue
+only independent work, and keep the entry open until the user approves,
+rejects, or defers it. When no independent work remains, the clean target is
+reached, or the consult cap is hit, suspend and present every open question.
 
 In Claude Code use the question tool. In Codex, ask in the reply.
 

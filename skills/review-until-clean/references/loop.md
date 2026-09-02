@@ -7,10 +7,11 @@ Classify every run from the engine's review output after triage:
 - `clean`: no findings, or only findings rejected with recorded evidence. For
   codex, the output clearly says the reviewed change is correct or has no
   findings. For claude, the workflow report has an empty findings list.
-- `clean-except-queue`: every remaining finding matches an open consult-queue
-  entry (`review-guardrails`). Counts toward the clean target; cannot produce the
-  final clean verdict.
-- `has_findings`: at least one actionable finding remains.
+- `clean-except-queue`: no fixable finding remains and every other candidate is
+  an open consult-queue or provisional entry (`review-guardrails`). Counts
+  toward the clean target; cannot produce the final clean verdict.
+- `has_findings`: at least one accepted finding classified `--handling fix`
+  remains.
 - `ambiguous`: errored, interrupted, wrong target, no clear verdict, or output
   could not be interpreted.
 
@@ -55,8 +56,8 @@ Repeat:
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - apply `review-guardrails`' autonomous fix bar before accepting a patch
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
-       pass -> fix now, log Provisional, ask the user without waiting
-       fail -> consult queue (Class B), ask the user without waiting
+       pass -> fix now, log Provisional, notify the user, keep the entry open
+       fail -> consult queue (Class B), no patch; continue only independent work
    - findings matching an open queue entry -> match note, no new entry
    If open questions for the user have reached consult_cap ->
      Record the open queue and stop reason `blocked-on-consult`.
@@ -75,8 +76,8 @@ Repeat:
      Else -> go to step 1 without changing the reviewed tree.
 7. If has_findings:
      consecutive_clean = 0
-     Fix the actionable findings with the smallest durable edits at the owning
-     boundary.
+     Fix only findings classified `--handling fix`, using the smallest durable
+     edits at the owning boundary. Never patch a queued consultation.
      Run relevant verification for the fixes.
      Record each command, result, and reason with the findings CLI.
      Run `"$review_findings_bin" scope-check --reason <remaining work and why it may

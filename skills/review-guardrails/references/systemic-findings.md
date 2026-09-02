@@ -67,5 +67,8 @@ Question: <which direction should I take?>
 
 Offer one or two scoped options, not a rewrite. Separate emergency containment
 from the durable fix when both are relevant. Record the finding in the consult
-queue, continue only independent review work, and suspend before claiming the
-review is clean.
+queue; it remains unresolved until the user explicitly approves, rejects, or
+defers it. Do not apply dependent code or substitute a local fallback. Continue
+only independent review work, then suspend and ask when none remains or the
+clean target is reached. Never claim the review is clean while the decision is
+open.

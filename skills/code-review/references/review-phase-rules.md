@@ -88,10 +88,10 @@ with the blocker or residual risk.
   impact are proven and the current change deliberately leaves the risk
   unresolved.
 - Prefer the smallest durable repair at the boundary that owns the problem.
-- Choose verification after the repair passes. Do not add a test merely because
-  a regression occurred; require a reachable stable contract at the lowest
-  practical layer. Prefer rendered UI proof for visual defects unless stable
-  behavior or state is worth automating.
+- Choose verification after the repair passes. Apply `test-audit` before any
+  test edit; its portfolio decision owns whether coverage is added, changed,
+  removed, consolidated, or unnecessary. Prefer rendered UI proof for visual
+  defects unless stable behavior or state is worth automating.
 
 ## Hard stops
 

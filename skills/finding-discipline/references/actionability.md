@@ -26,9 +26,11 @@ Repair quality passes through one of two routes:
   requires an owner decision. Record the exact question, options checked, and
   why none is supported yet; do not patch.
 
-Choose proof after the repair passes. Add or change a test only when it is the
-narrowest owner of a reachable, stable contract. A historical regression alone
-does not justify a test; visual UI defects usually need rendered proof instead.
+Choose proof after the repair passes. Before adding, changing, or removing a
+test, load `test-audit` and let its portfolio decision own whether coverage is
+kept, added, consolidated, moved, rewritten, deleted, or unnecessary. A
+historical regression alone does not justify a test; visual UI defects usually
+need rendered proof instead.
 
 ## Required record
 

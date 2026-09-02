@@ -11,9 +11,9 @@
 - Do not bundle unrelated cleanup into the fix step.
 - Run the relevant tests, typechecks, linters, or UI validation for the changed
   flows before the next review.
-- Add or change a test only after the repair passes the actionability gate.
-  Record why it catches a reachable, stable product, API,
-  workflow, security, or data regression in the related finding record.
+- After the repair passes the actionability gate, apply `test-audit` before
+  adding, changing, or removing tests. Record its portfolio classification and
+  executable owner, or why no test is needed, in the related finding record.
 - Inspect the diff after fixing so you can confirm the next review sees the
   intended tree.
 - Commit all accepted fixes from one pass together before the next review. Do
