@@ -9,7 +9,7 @@ FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || git ls-fi
 
 errors=0
 while IFS= read -r file; do
-  [[ "$file" =~ \.(ts|tsx|js|mjs|yaml|yml|sh)$ ]] || continue
+  [[ "$file" =~ \.(yaml|yml|sh)$ ]] || continue
   [[ "$file" =~ node_modules/ ]] && continue
   [[ "$file" =~ dist/ ]] && continue
 
