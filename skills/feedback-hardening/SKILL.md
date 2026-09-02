@@ -29,10 +29,16 @@ when existing task authority allows it. Capture and redact:
 - current task state and permissions;
 - the likely Git repository or host-managed target.
 
-Before delegation, require a clean Git target and record its canonical worktree
-root, `--git-common-dir`, and `HEAD`. A dirty index, tracked tree, or untracked
-scope is a visible blocker. For managed targets, record the canonical target and
-revision or ETag.
+Before the first recommendation, require a clean Git target and record an
+immutable baseline: its canonical worktree root, absolute `--git-common-dir`,
+`HEAD` and evidence that the index, tracked tree and untracked scope were clean.
+A dirty target is a visible blocker. Once approved implementation begins, keep
+that baseline and record the current implementation checkpoint separately:
+phase, evidence and recommendation IDs, approval state, selected option, frozen
+scope, current `HEAD`, exact status, a state checksum with the command and hash
+algorithm used to produce it, validation and next action. For managed targets,
+use the same split between the original revision or ETag and the current
+approved state.
 
 Keep one active hardening workflow per source conversation. Same-invariant
 evidence refreshes it; a distinct direct or relayed invariant waits until the
@@ -51,14 +57,15 @@ Give it a compact redacted brief containing:
 
 - an opaque workflow ID and evidence version;
 - the captured failure, invariant, evidence, and coordinator-owned constraints;
-- the canonical read-only target identity and state;
+- the immutable target baseline and current implementation checkpoint or its
+  explicit absence;
 - `role: feedback-hardening-recommendation`;
 - `authority: recommendation-only`, with no coordinator approvals;
 - an instruction to load `$feedback-hardening`, start at step 3, and return a
-  closed envelope with the workflow ID, evidence version, target identity and
-  state digest, outcome, and no-mutation attestation. `recommended` requires a
-  recommendation ID and options; `retargeted` requires the proposed target and
-  evidence; `blocked` requires the actionable blocker.
+  closed envelope with the workflow ID, evidence version, target identity,
+  reproducible state checksum, outcome, and no-mutation attestation.
+  `recommended` requires a recommendation ID and options; `retargeted` requires
+  the proposed target and evidence; `blocked` requires the actionable blocker.
 
 The recommendation phase makes no state changes. Use a harness-enforced
 read-only profile when available. Otherwise state that this is an
@@ -83,6 +90,32 @@ approval or mutation authority and is never reused for implementation.
 
 This step is complete when the coordinator has one authenticated recommendation
 brief, or the user sees the actionable launch or delivery blocker.
+
+### Hand off an active workflow
+
+Settle the retained recommendation worker before handing the source
+conversation to another full session. Worker handles are coordinator-local
+unless the harness proves otherwise, so do not transfer an unresolved worker
+or release its execution slot through a handoff.
+
+Use the handoff document's current state, evidence, blockers, suggested skills
+and next concrete actions sections to carry the workflow ID and evidence
+version, immutable target baseline, authenticated recommendation, and the
+current implementation checkpoint or its explicit absence. Name
+`feedback-hardening` as a suggested skill.
+
+The successor revalidates the baseline, inspects the current repository state
+against the checkpoint, and decides how to continue the recorded next action.
+An exact checkpoint match confirms that the carried state is intact; it does
+not replace the successor's judgment, infer approval or widen authority.
+Expected changes inside the frozen scope do not become invalid merely because
+the worktree is dirty. Base drift, a checkpoint mismatch, out-of-scope changes
+or new evidence requires a fresh recommendation under step 4. Refresh the
+checkpoint after authorized work before another handoff.
+
+Keep ownership with the source coordinator until a harness-delivered successor
+acknowledgement verifies adoption. If the harness cannot verify adoption,
+report the transfer blocker and keep the workflow active.
 
 ## 3. Recommend the systemic fix
 
@@ -138,15 +171,21 @@ After approval, the source coordinator implements through the target
 repository's or mechanism's normal workflow. It may use implementation workers
 required by that workflow, but the recommendation worker remains retired.
 
-For Git, require exact equality with the frozen root, `--git-common-dir`, `HEAD`,
-and clean state before preparing the worktree, then verify its common directory
-and `HEAD` before editing and root every operation there. For
-a host-managed surface, bind its target and revision or ETag and use that
-revision as a conditional-write precondition.
+For Git, require the immutable root, `--git-common-dir` and baseline `HEAD` to
+match, then require the current state to equal the recommendation's bound
+checkpoint before editing. The initial checkpoint is clean; a refreshed
+recommendation during approved implementation may bind an intentionally dirty
+checkpoint. Continue only within the frozen scope, root every operation in that
+worktree, and refresh the checkpoint after authorized changes. For a
+host-managed surface, bind both the original revision or ETag and the current
+approved state, and use the appropriate revision as a conditional-write
+precondition.
 
-Any mismatch, new same-invariant evidence, or retargeting invalidates
-approval and returns to a fresh recommendation. A distinct invariant queues for
-later without changing the approved work.
+Any pre-action mismatch, base drift, out-of-scope change, new same-invariant
+evidence or retargeting invalidates approval and returns to a fresh
+recommendation. Changes made within the frozen scope update the implementation
+checkpoint without requiring another recommendation. A distinct invariant
+queues for later without changing the approved work.
 
 Implementation workers that find qualifying evidence stop affected mutation
 and report it directly to the source coordinator. They do not start another
