@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feedback Hardening"
+  short_description: "Harden evidence-backed reusable agent failures"
+  default_prompt: "Use $feedback-hardening when evidence-backed user feedback or a self-detected mistake reveals a reusable agent failure: get one ranked systemic-fix recommendation, then wait for explicit approval before implementation."

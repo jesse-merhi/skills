@@ -2,7 +2,7 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-This repo is my working set of agent skills: 39 Markdown workflows that coding
+This repo is my working set of agent skills: 43 Markdown workflows that coding
 agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
 [`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
@@ -192,6 +192,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
+| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Turns evidence-backed user corrections or self-detected mistakes revealing reusable agent failures into one independent systemic-fix recommendation, waits for approval, then implements the selected repair. |
 | [`parallel-slice-orchestration`](skills/parallel-slice-orchestration/SKILL.md) | Implements a spec across parallel agents with disjoint file ownership, then integrates and verifies. |
 
 ### Frontend and design
