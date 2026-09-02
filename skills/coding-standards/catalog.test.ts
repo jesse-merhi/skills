@@ -1,5 +1,7 @@
 import { builtinRules } from "eslint/use-at-your-own-risk"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { existsSync, readdirSync, readFileSync } from "node:fs"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { assert, describe, it } from "vitest"
@@ -8,6 +10,11 @@ import type { Catalog } from "./catalog.schema.ts"
 
 import { decodeCatalog } from "./catalog.schema.ts"
 
+type PresetFactory = () => ReadonlyArray<{
+  plugins?: Record<string, { rules?: Record<string, unknown> }>
+  rules?: Record<string, unknown>
+}>
+
 const standardsDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryPackages = join(standardsDirectory, "../../node_modules")
 
@@ -15,15 +22,14 @@ const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "ca
 
 const eslintPresets = catalog.presets.eslint ?? {}
 
-const enforcements = catalog.standards.flatMap((standard) =>
-  Object.values(standard.enforcement).flatMap((entries) => entries.map((entry) => ({ standard, entry })))
-)
+const enforcements = catalog.standards.flatMap((standard) => Object.values(standard.enforcement).flat())
 
-const referencedPaths = enforcements.flatMap(({ entry }) => {
-  if (entry.kind === "rule") return [entry.rule, entry.test]
-  if (entry.kind === "script") return [entry.file]
-  return []
-})
+const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
+const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
+const referencedPaths = [
+  ...ruleEntries.flatMap((entry) => [entry.rule, entry.test]),
+  ...scriptEntries.map((entry) => entry.file)
+]
 
 const bareSpecifier = (specifier: string): string => {
   const segments = specifier.split("/")
@@ -45,8 +51,9 @@ const installedVersion = (packageName: string): string => {
 
 const pluginRuleNames = async (packageName: string): Promise<ReadonlySet<string>> => {
   if (packageName === "eslint") return new Set(builtinRules.keys())
-  const loaded: Record<string, unknown> = await import(packageName)
-  const plugin = (loaded.default ?? loaded) as { rules?: Record<string, unknown> }
+  type Plugin = { rules?: Record<string, unknown> }
+  const loaded: Plugin & { default?: Plugin } = await import(packageName)
+  const plugin = loaded.default ?? loaded
   return new Set(Object.keys(plugin.rules ?? {}))
 }
 
@@ -62,7 +69,6 @@ describe("coding standards catalog", () => {
   })
 
   it("catalogues every custom rule exactly once alongside its test", () => {
-    const ruleEntries = enforcements.flatMap(({ entry }) => (entry.kind === "rule" ? [entry] : []))
     assert.deepEqual(
       ruleFiles.toSorted(),
       ruleEntries.map((entry) => entry.rule).toSorted(),
@@ -74,7 +80,7 @@ describe("coding standards catalog", () => {
   })
 
   it("names preset ids that exist", () => {
-    for (const { entry } of enforcements) {
+    for (const entry of enforcements) {
       if (entry.kind !== "rule" && entry.kind !== "plugin") continue
       for (const preset of entry.presets) {
         assert.property(eslintPresets, preset)
@@ -84,7 +90,7 @@ describe("coding standards catalog", () => {
 
   // Loading every ESLint plugin costs more than vitest's default per-test budget.
   it("names plugin rules that resolve in the installed package", { timeout: 60_000 }, async () => {
-    for (const { entry } of enforcements) {
+    for (const entry of enforcements) {
       if (entry.kind !== "plugin") continue
       const available = await pluginRuleNames(entry.package)
       for (const ruleId of entry.rules) {
@@ -106,15 +112,11 @@ describe("coding standards catalog", () => {
 
   it("emits configs whose every rule id resolves against its own plugins", { timeout: 60_000 }, async () => {
     for (const [name, preset] of Object.entries(eslintPresets)) {
-      const module: Record<string, unknown> = await import(
+      const { default: factory }: { default: PresetFactory } = await import(
         pathToFileURL(join(standardsDirectory, preset.file)).href
       )
-      const factory = module.default
       assert.isFunction(factory, `${name} must default-export a factory`)
-      const configs: ReadonlyArray<{
-        plugins?: Record<string, { rules?: Record<string, unknown> }>
-        rules?: Record<string, unknown>
-      }> = factory()
+      const configs = factory()
       assert.isNotEmpty(configs, `${name} must emit at least one config`)
       for (const config of configs) {
         for (const ruleId of Object.keys(config.rules ?? {})) {
