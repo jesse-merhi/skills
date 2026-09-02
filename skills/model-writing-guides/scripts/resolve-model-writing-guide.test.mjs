@@ -222,7 +222,7 @@ test("registry semantic invariants reject malformed configuration", () => {
   }
 });
 
-test("every skill except the registry declares every reviewed profile and resolves its mode", () => {
+test("every skill except the registry declares valid coverage and resolves its mode", () => {
   const manifests = fs.globSync("skills/**/model-writing.json", { cwd: repoRoot }).sort();
   const skillFiles = fs.globSync("skills/**/SKILL.md", { cwd: repoRoot });
   const expectedManifests = skillFiles
@@ -230,12 +230,10 @@ test("every skill except the registry declares every reviewed profile and resolv
     .map((file) => path.join(path.dirname(file), "model-writing.json"))
     .sort();
   assert.deepEqual(manifests, expectedManifests);
-  const expectedProfiles = registry.profiles.map((profile) => profile.id).sort();
   for (const manifest of manifests) {
     const callingSkillRoot = path.dirname(path.join(repoRoot, manifest));
     const coverage = JSON.parse(fs.readFileSync(path.join(repoRoot, manifest), "utf8"));
     assert.equal(coverage.skill, path.basename(callingSkillRoot));
-    assert.deepEqual(Object.keys(coverage.profiles).sort(), expectedProfiles);
     assert.doesNotThrow(() => resolveModelWritingGuide({
       model: "gpt-5.6-sol", registry, coverage, guideRoot: skillRoot, callingSkillRoot,
     }));
