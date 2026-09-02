@@ -45,15 +45,22 @@ const repositoryPackages = join(standardsDirectory, "../../node_modules")
 const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "catalog.json"), "utf8"))
 
 const javascriptPresets = catalog.presets.javascript ?? {}
+const pythonPresets = catalog.presets.python ?? {}
 
 const enforcements = catalog.standards.flatMap((standard) => Object.values(standard.enforcement).flat())
 
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
+const pythonFileEntries = enforcements.flatMap((entry) =>
+  entry.kind === "check" || entry.kind === "semgrep" ? [entry] : []
+)
 const referencedPaths = [
   ...ruleEntries.flatMap((entry) => [entry.rule, entry.test]),
   ...scriptEntries.map((entry) => entry.file),
-  ...Object.values(catalog.baselines).map((baseline) => baseline.file)
+  ...Object.values(catalog.baselines).map((baseline) => baseline.file),
+  ...pythonFileEntries.flatMap((entry) => [entry.file, entry.test]),
+  ...Object.values(javascriptPresets).map((preset) => preset.file),
+  ...Object.values(pythonPresets).map((preset) => preset.file)
 ]
 
 const bareSpecifier = (specifier: string): string => {
@@ -111,8 +118,8 @@ const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
-  it("resolves every referenced rule, test, script, baseline, and preset file", () => {
-    for (const path of [...referencedPaths, ...Object.values(javascriptPresets).map((preset) => preset.file)]) {
+  it("resolves every referenced rule, test, script, check, baseline, and preset file", () => {
+    for (const path of referencedPaths) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
   })

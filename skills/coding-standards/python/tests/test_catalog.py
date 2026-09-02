@@ -1,6 +1,6 @@
-"""Guards against the fragment and the config files it describes drifting apart.
+"""Guards against the catalog and the Python config files it describes drifting.
 
-The fragment is the record of what each standard is enforced by; ruff.toml and
+catalog.json is the record of what each standard is enforced by; ruff.toml and
 mypy.ini are what actually runs. If someone adds a rule to one and forgets the
 other, the catalog starts lying about the codebase.
 """
@@ -14,31 +14,31 @@ from pathlib import Path
 import pytest
 
 CATALOG_ROOT = Path(__file__).resolve().parents[2]
-FRAGMENT = json.loads((CATALOG_ROOT / "catalog.python.json").read_text())
-ENFORCEMENT = FRAGMENT["enforcement"]
+CATALOG = json.loads((CATALOG_ROOT / "catalog.json").read_text())
+PYTHON_PRESETS = CATALOG["presets"]["python"]
 
 
 def entries_of_kind(kind: str) -> list[dict]:
     return [
         entry
-        for entries in ENFORCEMENT.values()
-        for entry in entries
+        for standard in CATALOG["standards"]
+        for entry in standard["enforcement"]["python"]
         if entry["kind"] == kind
     ]
 
 
-def test_ruff_config_selects_exactly_the_rules_the_fragment_claims():
+def test_ruff_config_selects_exactly_the_rules_the_catalog_claims():
     configured = tomllib.loads(
-        (CATALOG_ROOT / FRAGMENT["presets"]["python"]["ruff"]["file"]).read_text()
+        (CATALOG_ROOT / PYTHON_PRESETS["ruff"]["file"]).read_text()
     )["lint"]["select"]
     claimed = {code for entry in entries_of_kind("ruff") for code in entry["select"]}
     assert set(configured) == claimed
     assert len(configured) == len(claimed), "ruff.toml lists a rule twice"
 
 
-def test_mypy_config_sets_exactly_the_options_the_fragment_claims():
+def test_mypy_config_sets_exactly_the_options_the_catalog_claims():
     parser = ConfigParser()
-    parser.read(CATALOG_ROOT / FRAGMENT["presets"]["python"]["mypy"]["file"])
+    parser.read(CATALOG_ROOT / PYTHON_PRESETS["mypy"]["file"])
     configured = {
         option: parser.getboolean("mypy", option) for option in parser.options("mypy")
     }
@@ -53,17 +53,15 @@ def test_mypy_config_sets_exactly_the_options_the_fragment_claims():
 @pytest.mark.parametrize(
     "relative_path",
     sorted(
-        {preset["file"] for preset in FRAGMENT["presets"]["python"].values()}
-        | {
+        {
             entry[key]
-            for entries in ENFORCEMENT.values()
-            for entry in entries
+            for kind in ("check", "semgrep")
+            for entry in entries_of_kind(kind)
             for key in ("file", "test")
-            if key in entry
         }
     ),
 )
-def test_every_path_the_fragment_names_exists(relative_path: str):
+def test_every_path_the_python_column_names_exists(relative_path: str):
     assert (CATALOG_ROOT / relative_path).exists()
 
 
