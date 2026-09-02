@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -80,6 +81,25 @@ test("the documented CLI returns the resolved profile and reports argument error
   const missingCoverage = spawnSync(process.execPath, [resolverPath, "--model", "gpt-5.6-sol"], { encoding: "utf8" });
   assert.equal(missingCoverage.status, 1);
   assert.match(missingCoverage.stderr, /--coverage is required/u);
+});
+
+test("the documented CLI runs through an installed skill symlink", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "model-writing-guide-symlink-"));
+  const linkedResolver = path.join(directory, "resolve-model-writing-guide.mjs");
+  fs.symlinkSync(resolverPath, linkedResolver);
+  try {
+    const result = spawnSync(process.execPath, [
+      linkedResolver,
+      "--model",
+      "openai/gpt-5.6-sol",
+      "--coverage",
+      path.join(speakRoot, "model-writing.json"),
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).selectedProfile, "gpt-5.6");
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("guide and adapter references cannot escape their owning skills", () => {

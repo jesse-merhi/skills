@@ -173,12 +173,20 @@ function argumentValue(name) {
   return index === -1 ? null : process.argv[index + 1] ?? null;
 }
 
+export function pathsReferToSameFile(left, right) {
+  try {
+    return fs.realpathSync(left) === fs.realpathSync(right);
+  } catch {
+    return path.resolve(left) === path.resolve(right);
+  }
+}
+
 function readJson(file, schema) {
   return Schema.decodeUnknownSync(schema)(fs.readFileSync(file, "utf8"));
 }
 
 const invokedPath = process.argv[1] === undefined ? null : path.resolve(process.argv[1]);
-if (invokedPath === fileURLToPath(import.meta.url)) {
+if (invokedPath !== null && pathsReferToSameFile(invokedPath, fileURLToPath(import.meta.url))) {
   try {
     const coveragePath = argumentValue("--coverage");
     if (coveragePath === null) throw new Error("--coverage is required");
