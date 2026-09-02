@@ -1,0 +1,7 @@
+interface:
+  display_name: "Coding Standards"
+  short_description: "Apply, sync, or translate the standards catalog."
+  default_prompt: "Use $coding-standards to bootstrap the catalog standards into this repository as working ESLint and Python enforcement, wired to a command CI runs."
+
+policy:
+  allow_implicit_invocation: false
