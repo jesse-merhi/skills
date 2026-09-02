@@ -85,9 +85,6 @@ replaced, only extended.
    uv add --dev <pkg>==<version>
    ```
 
-   A bun lockfile also decides a config option: the `base` preset takes
-   `bun: true` in step 6.
-
    Show the exact command with every package and version in it. Then wait.
 
    Done when the user has answered. A refusal is not a blocker: continue to
