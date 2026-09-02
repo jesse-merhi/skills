@@ -1,0 +1,215 @@
+{
+  "ecosystems": {
+    "python": {
+      "detect": ["pyproject.toml"],
+      "presets": "python"
+    }
+  },
+  "presets": {
+    "python": {
+      "ruff": {
+        "file": "python/ruff.toml",
+        "packages": { "ruff": "0.16.5" },
+        "applies": { "always": true }
+      },
+      "mypy": {
+        "file": "python/mypy.ini",
+        "packages": { "mypy": "2.3.1" },
+        "applies": { "always": true }
+      },
+      "semgrep": {
+        "file": "python/semgrep",
+        "packages": { "semgrep": "1.173.0" },
+        "applies": { "always": true }
+      },
+      "checks": {
+        "file": "python/standards_checks",
+        "packages": {},
+        "applies": { "always": true }
+      }
+    }
+  },
+  "enforcement": {
+    "no-banner-comments": [
+      {
+        "kind": "check",
+        "module": "standards_checks.no_banner_comments",
+        "file": "python/standards_checks/no_banner_comments.py",
+        "test": "python/tests/test_no_banner_comments.py"
+      }
+    ],
+    "no-trivial-forwarding-wrapper": [
+      {
+        "kind": "check",
+        "module": "standards_checks.no_trivial_forwarding_wrapper",
+        "file": "python/standards_checks/no_trivial_forwarding_wrapper.py",
+        "test": "python/tests/test_no_trivial_forwarding_wrapper.py"
+      }
+    ],
+    "no-large-test-snapshots": [
+      {
+        "kind": "check",
+        "module": "standards_checks.no_large_test_snapshots",
+        "file": "python/standards_checks/no_large_test_snapshots.py",
+        "test": "python/tests/test_no_large_test_snapshots.py"
+      }
+    ],
+    "no-broad-rule-disable": [
+      {
+        "kind": "ruff",
+        "select": ["PGH003", "PGH004"]
+      }
+    ],
+    "no-raw-sql": [
+      {
+        "kind": "ruff",
+        "select": ["S608"]
+      },
+      {
+        "kind": "semgrep",
+        "file": "python/semgrep/no-raw-sql-orm-escape.yaml",
+        "test": "python/semgrep/no-raw-sql-orm-escape.py"
+      }
+    ],
+    "import-sorting": [
+      {
+        "kind": "ruff",
+        "select": ["I"]
+      }
+    ],
+    "import-hygiene": [
+      {
+        "kind": "ruff",
+        "select": ["F401", "F811", "PLW0406"]
+      }
+    ],
+    "promise-correctness": [
+      {
+        "kind": "ruff",
+        "select": ["ASYNC", "RUF006"]
+      }
+    ],
+    "control-flow-correctness": [
+      {
+        "kind": "ruff",
+        "select": ["B", "RET", "SIM103", "PLW0120", "S110"]
+      }
+    ],
+    "strict-types": [
+      {
+        "kind": "mypy",
+        "options": {
+          "strict": true,
+          "disallow_any_explicit": true,
+          "warn_return_any": true
+        }
+      },
+      {
+        "kind": "ruff",
+        "select": ["ANN401"]
+      }
+    ],
+    "prefer-zod-for-unknown-typeof": [
+      {
+        "kind": "not-applicable",
+        "reason": "Deciding that an isinstance chain guards untyped input, and that a pydantic TypeAdapter belongs at that boundary, needs type-aware analysis that ruff and semgrep do not have; candidate for a future check."
+      }
+    ],
+    "no-zod-type-any": [
+      {
+        "kind": "not-applicable",
+        "reason": "Zod-specific. The Python analogue is a schema typed as Any, which strict-types already forbids through mypy disallow_any_explicit and ruff ANN401."
+      }
+    ],
+    "test-hygiene": [
+      {
+        "kind": "ruff",
+        "select": ["PT"]
+      }
+    ],
+    "e2e-hygiene": [
+      {
+        "kind": "not-applicable",
+        "reason": "No ruff or semgrep coverage of playwright-python locators and expect() assertions; enforcing web-first assertions needs a Playwright-aware checker."
+      }
+    ],
+    "no-brittle-e2e-selectors": [
+      {
+        "kind": "not-applicable",
+        "reason": "CSS and test-id selectors live in browser E2E suites, not in Python source."
+      }
+    ],
+    "no-brittle-test-style-assertions": [
+      {
+        "kind": "not-applicable",
+        "reason": "Targets DOM and component-testing assertion styles that have no Python equivalent."
+      }
+    ],
+    "no-light-mode-only-colors": [
+      {
+        "kind": "not-applicable",
+        "reason": "Tailwind theme concern; Python source carries no light or dark colour variants."
+      }
+    ],
+    "no-raw-elevation": [
+      {
+        "kind": "not-applicable",
+        "reason": "Shadow and elevation tokens are a CSS design-system concern."
+      }
+    ],
+    "no-small-text": [
+      {
+        "kind": "not-applicable",
+        "reason": "Type-scale rule enforced on stylesheets and JSX class names."
+      }
+    ],
+    "no-wide-arbitrary-breakpoints": [
+      {
+        "kind": "not-applicable",
+        "reason": "Tailwind arbitrary breakpoint syntax does not exist in Python source."
+      }
+    ],
+    "no-raw-color-literals": [
+      {
+        "kind": "not-applicable",
+        "reason": "Colour literals belong to stylesheets and design tokens, not Python source."
+      }
+    ],
+    "react-hooks-purity": [
+      {
+        "kind": "not-applicable",
+        "reason": "React-specific."
+      }
+    ],
+    "react-effect-discipline": [
+      {
+        "kind": "not-applicable",
+        "reason": "React-specific."
+      }
+    ],
+    "react-fast-refresh-exports": [
+      {
+        "kind": "not-applicable",
+        "reason": "React Fast Refresh is a bundler concern with no Python counterpart."
+      }
+    ],
+    "web-accessibility": [
+      {
+        "kind": "not-applicable",
+        "reason": "ARIA and semantic-markup rules apply to JSX and HTML, not Python source."
+      }
+    ],
+    "native-accessibility": [
+      {
+        "kind": "not-applicable",
+        "reason": "React Native accessibility props have no Python counterpart."
+      }
+    ],
+    "query-hygiene": [
+      {
+        "kind": "not-applicable",
+        "reason": "TanStack Query key and cache conventions are client-side and JavaScript-only."
+      }
+    ]
+  }
+}
