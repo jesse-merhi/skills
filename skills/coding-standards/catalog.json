@@ -5,6 +5,9 @@
 			"detect": [
 				"package.json"
 			],
+			"packages": {
+				"eslint": "9.39.2"
+			},
 			"presets": "eslint"
 		}
 	},
@@ -13,6 +16,7 @@
 			"base": {
 				"file": "eslint/presets/base.mjs",
 				"packages": {
+					"eslint-import-resolver-typescript": "3.10.1",
 					"eslint-plugin-import-x": "4.17.0",
 					"eslint-plugin-perfectionist": "5.9.1",
 					"eslint-plugin-promise": "7.3.0",

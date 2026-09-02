@@ -110,6 +110,14 @@ describe("coding standards catalog", () => {
     }
   })
 
+  it("pins the packages each ecosystem installs", () => {
+    for (const [name, ecosystem] of Object.entries(catalog.ecosystems)) {
+      for (const [packageName, version] of Object.entries(ecosystem.packages ?? {})) {
+        assert.strictEqual(version, installedVersion(packageName), `${name} pins ${packageName}`)
+      }
+    }
+  })
+
   it("emits configs whose every rule id resolves against its own plugins", { timeout: 60_000 }, async () => {
     for (const [name, preset] of Object.entries(eslintPresets)) {
       const { default: factory }: { default: PresetFactory } = await import(

@@ -1,4 +1,5 @@
-import importX from "eslint-plugin-import-x";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
+import importX, { createNodeResolver } from "eslint-plugin-import-x";
 import perfectionist from "eslint-plugin-perfectionist";
 import promise from "eslint-plugin-promise";
 import sonarjs from "eslint-plugin-sonarjs";
@@ -7,6 +8,7 @@ import { standards } from "../standards-plugin.mjs";
 
 const DEFAULT_TSCONFIG_PATHS = ["./tsconfig.json"];
 const DEFAULT_INTERNAL_PATTERN = ["^@/.+", "^~/.+", "^#.+"];
+const RESOLVED_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".d.ts"];
 
 export default function base(options = {}) {
 	const tsconfigPaths = options.tsconfigPaths ?? DEFAULT_TSCONFIG_PATHS;
@@ -14,21 +16,16 @@ export default function base(options = {}) {
 
 	return [
 		{
+			...(options.files === undefined ? {} : { files: options.files }),
 			plugins: { "import-x": importX, perfectionist, promise, sonarjs, standards },
 			settings: {
 				"import-x/parsers": {
 					"@typescript-eslint/parser": [".ts", ".tsx"],
 				},
-				"import-x/resolver": {
-					node: {
-						extensions: [".js", ".jsx", ".ts", ".tsx", ".d.ts"],
-					},
-					typescript: {
-						alwaysTryTypes: true,
-						bun: options.bun === true,
-						project: tsconfigPaths,
-					},
-				},
+				"import-x/resolver-next": [
+					createTypeScriptImportResolver({ alwaysTryTypes: true, project: tsconfigPaths }),
+					createNodeResolver({ extensions: RESOLVED_EXTENSIONS }),
+				],
 			},
 			rules: {
 				"array-callback-return": "error",

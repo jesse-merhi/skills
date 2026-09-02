@@ -94,6 +94,7 @@ const Standard = Schema.Struct({
 
 const Ecosystem = Schema.Struct({
   detect: Schema.Array(Schema.NonEmptyString),
+  packages: Schema.optionalKey(Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)),
   presets: Schema.NonEmptyString
 })
 

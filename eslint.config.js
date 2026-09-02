@@ -23,7 +23,7 @@ const noJsonParse = {
 
 export default [
   { ignores: ["node_modules/**"] },
-  ...base().map((config) => ({ ...config, files: [...sourceFiles, ...lintInfrastructureFiles] })),
+  ...base({ files: [...sourceFiles, ...lintInfrastructureFiles] }),
   ...typescript({ files: sourceFiles }).map((config) => ({
     ...config,
     languageOptions: {
