@@ -185,21 +185,26 @@ Then:
    - Ask before replacing a real directory with user-authored changes or a
      symlink owned elsewhere.
 
-For Claude Code, also merge the following command hook into both `SessionStart`
-and `PostModelSwitch` in `~/.claude/settings.json`, preserving all existing
-settings and hook handlers:
+For Claude Code, also merge the following command hook into `SessionStart`,
+`PreModelSwitch`, and `PostModelSwitch` in `~/.claude/settings.json`, preserving
+all existing settings and hook handlers:
 
 ```text
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --source REPO/skills --output VIEW_ROOT
 ```
 
-Both events pass their JSON input on stdin. `SessionStart` supplies `model` and
-`PostModelSwitch` supplies `to_model`; the materializer accepts either. A
-fallback notice is stored by `session_id`, so it appears at most once in that
-session. Validate the merged settings with the installed Claude Code build. If
-that build does not support `PostModelSwitch`, leave the `SessionStart` handler
-installed, report that in-session switching requires reinstalling the view,
-and do not leave an invalid handler behind.
+All three events pass their JSON input on stdin. `SessionStart` usually supplies
+`model`; both model-switch events supply `to_model`. Claude can omit `model`
+from `SessionStart` after recovery or `/clear`, in which case the hook leaves
+the already selected view unchanged. `PreModelSwitch` materializes a supported
+profile before the switch and blocks an unsupported family. `PostModelSwitch`
+confirms the selected profile after the switch and deactivates the view if an
+automatic switch reaches an unsupported family. A fallback notice is stored by
+`session_id`, so it appears at most once in that session. Validate the merged
+settings with the installed Claude Code build. If that build does not support
+the model-switch events, leave the `SessionStart` handler installed, report
+that in-session switching requires reinstalling the view, and do not leave an
+invalid handler behind.
 
 The hook changes what later skill invocations load. Skill instructions already
 present in the conversation remain there until a fresh session; do not claim
@@ -212,7 +217,7 @@ each with its own skills directory, settings file, and generated view. Do not
 claim that a shared config directory safely supports mixed-model sessions.
 
 Treat the materializer command as a repo-owned hook. Before adding it, remove
-older `SessionStart` or `PostModelSwitch` handlers whose command invokes
+older `SessionStart`, `PreModelSwitch`, or `PostModelSwitch` handlers whose command invokes
 `materialize-skill-variants.mjs` for this skill collection, then add the current
 command once to each event. On uninstall, remove those handlers. This makes
 reinstalling after a repository move idempotent without disturbing unrelated
@@ -311,7 +316,8 @@ Report:
 - Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
 - selected model profile and whether it was an exact match or fallback
-- Claude Code SessionStart/PostModelSwitch hooks installed, unsupported, or skipped
+- Claude Code SessionStart/PreModelSwitch/PostModelSwitch hooks installed,
+  unsupported, or skipped
 - existing local skills preserved
 - third-party installs run or skipped
 - repo runtime dependencies installed

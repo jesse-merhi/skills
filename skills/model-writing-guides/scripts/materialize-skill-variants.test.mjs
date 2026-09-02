@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -37,10 +37,13 @@ function fixture(t) {
 
 test("recognizes Claude Code family aliases as exact profiles", () => {
   const fable = resolveProfile("fable[1m]");
+  const canonicalFable = resolveProfile("claude-fable-5-1[1m]");
   const opus = resolveProfile("opus");
 
   assert.equal(fable.exact, true);
   assert.equal(fable.profile.id, "claude-fable-5.1");
+  assert.equal(canonicalFable.exact, true);
+  assert.equal(canonicalFable.profile.id, "claude-fable-5.1");
   assert.equal(opus.exact, true);
   assert.equal(opus.profile.id, "claude-opus-5");
 });
@@ -93,6 +96,54 @@ test("accepts SessionStart and PostModelSwitch hook input", (t) => {
   const switched = runHook({ to_model: "claude-opus-5", session_id: "session-one" });
   assert.equal(switched.status, 0, switched.stderr);
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("claude-opus-5\n"), true);
+
+  const modelOmitted = runHook({ hook_event_name: "SessionStart", session_id: "session-two", source: "clear" });
+  assert.equal(modelOmitted.status, 0, modelOmitted.stderr);
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("claude-opus-5\n"), true);
+});
+
+test("blocks unsupported pre-switches and deactivates after unsupported post-switches", (t) => {
+  const current = fixture(t);
+  const runHook = (input) =>
+    spawnSync(
+      process.execPath,
+      [materializer, "--source", current.source, "--output", current.output],
+      { encoding: "utf8", input: JSON.stringify(input) },
+    );
+  materializeSkillVariants({ model: "claude-fable-5.1", outputRoot: current.output, sourceRoot: current.source });
+
+  const blocked = runHook({ hook_event_name: "PreModelSwitch", to_model: "gemini-3-pro", session_id: "session-one" });
+  assert.equal(blocked.status, 2);
+  assert.match(blocked.stderr, /model switch blocked/);
+  assert.equal(fs.existsSync(path.join(current.output, "alpha", "SKILL.md")), true);
+
+  const deactivated = runHook({ hook_event_name: "PostModelSwitch", to_model: "gemini-3-pro", session_id: "session-one" });
+  assert.equal(deactivated.status, 1);
+  assert.match(deactivated.stderr, /unsupported model family/);
+  assert.equal(fs.existsSync(path.join(current.output, "alpha", "SKILL.md")), false);
+});
+
+test("serializes concurrent view publication", async (t) => {
+  const current = fixture(t);
+  const run = (model) => new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      [materializer, "--source", current.source, "--output", current.output, "--model", model],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+    let stderr = "";
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", (status) => resolve({ status, stderr }));
+  });
+
+  const results = await Promise.all([run("claude-fable-5.1"), run("claude-opus-5")]);
+  assert.deepEqual(results.map((result) => result.status), [0, 0], results.map((result) => result.stderr).join("\n"));
+  const selected = fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8");
+  assert.equal(selected.endsWith("claude-fable-5.1\n") || selected.endsWith("claude-opus-5\n"), true);
+  assert.equal(fs.existsSync(`${current.output}.lock`), false);
+  const leftovers = fs.readdirSync(current.temporary).filter((entry) => entry.includes(".previous-") || entry.includes(".staging-"));
+  assert.deepEqual(leftovers, []);
 });
 
 test("prints documented JSON output and emits one fallback notice per session", (t) => {

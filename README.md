@@ -60,6 +60,8 @@ your skills directory stays a real directory and every repo skill is one
 symlink into a generated view. Shared scripts and references still link back to
 this repo; only `SKILL.md` is selected per model. OpenClaw watches the same kind
 of generated view. Hand-written local skills are never replaced without asking.
+One generated view represents one active model profile. Run concurrent Claude
+sessions on different model families with separate `CLAUDE_CONFIG_DIR` roots.
 
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
 Fable keeps product, architecture, design direction, integration, and high-level
