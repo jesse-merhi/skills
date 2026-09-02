@@ -16,6 +16,9 @@
   workflow, security, or data regression in the related finding record.
 - Inspect the diff after fixing so you can confirm the next review sees the
   intended tree.
+- Commit all accepted fixes from one pass together before the next review. Do
+  not create one commit per finding or rewrite earlier commits unless the user
+  asks.
 - If a finding is invalid, document why and run another review. Do not count
   your rejection as a clean pass by itself.
 
@@ -24,9 +27,9 @@
 Narrate one short line per iteration:
 
 ```text
-iter 1: codex review --uncommitted -> 2 findings -> fixed
-iter 2: codex review --uncommitted -> clean (1/2)
-iter 3: codex review --uncommitted -> clean (2/2)
+iter 1: codex review --base main -> 2 findings -> fixed and committed together
+iter 2: codex review --base main -> clean (1/2)
+iter 3: codex review --base main -> clean (2/2)
 ```
 
 The claude engine narrates the same way:

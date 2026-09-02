@@ -8,7 +8,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { createHash } from "node:crypto"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
-import { trustedExecutable } from "./NativeReview.ts"
+import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
@@ -1256,6 +1256,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
 
 export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string) {
   if (reason.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-complete requires the clean review result"))
+  yield* requireCleanReviewTree(run.repoPath).pipe(Effect.mapError((error) => new InvalidScopeBudget(error.message)))
   const sql = yield* SqlClient.SqlClient
   const budget = yield* getScopeBudget(run)
   if (budget.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))

@@ -17,9 +17,9 @@ lost. If either is incomplete, repair the database records before answering.
 
 Write a short owner report:
 
-Before these sections, state the exact reviewed head SHA and target, or the
-dirty snapshot identity. A later PR workflow must be able to compare this
-identity with the current head without relying on chat memory or CI state.
+Before these sections, state the exact reviewed commit SHA and target. A later
+PR workflow must be able to compare it with the current head without relying on
+chat memory or CI state.
 
 1. **Outcome:** clean, blocked, or incomplete; whether the final push and CI
    completed.

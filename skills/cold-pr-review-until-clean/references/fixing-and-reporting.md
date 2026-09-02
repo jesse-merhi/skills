@@ -16,6 +16,9 @@
   workflow, security, or data regression in the related finding record.
 - Inspect the diff after fixing so you can confirm the next reviewer is seeing
   the intended tree.
+- Commit all accepted fixes from one pass together before the next review. Do
+  not create one commit per finding or rewrite earlier commits unless the user
+  asks.
 - If a finding is invalid, document why and run another cold review. Do not
   count your rejection as a clean pass by itself.
 

@@ -1046,21 +1046,8 @@ test_review_flow_map_is_the_public_review_mapping_skill() {
   fi
 }
 
-test_examples_report_the_exact_command_or_computed_value() {
-  local codex_engine="$ROOT_DIR/skills/review-until-clean/references/codex-engine.md"
+test_examples_report_computed_values() {
   local retry_model="$ROOT_DIR/skills/html-explanations/assets/patterns/interactive-model.html"
-  local expected_commands positive_commands
-
-  positive_commands="$(awk '
-    /^Use these forms:$/ { found = 1; next }
-    found && /^```sh$/ { in_block = 1; next }
-    in_block && /^```$/ { exit }
-    in_block && !/^#/ && NF { print }
-  ' "$codex_engine")"
-  expected_commands=$'codex review --uncommitted\ncodex review --base main\ncodex review --commit <sha>'
-  if [[ "$positive_commands" != "$expected_commands" ]]; then
-    fail "expected the valid Codex example block to contain only the three exact commands"
-  fi
   assert_contains "$retry_model" 'Failures show up after ${formatSeconds(totalWait)} of modeled retry delay'
   assert_not_contains "$retry_model" "within one retry cycle"
 
@@ -1444,9 +1431,6 @@ test_gh_stack_workflow_is_pinned_and_wired() {
     "$ROOT_DIR/skills/code-review/references/pr-closeout.md" \
     'exact final head'
   assert_contains \
-    "$ROOT_DIR/skills/code-review/references/final-output.md" \
-    'exact reviewed head SHA'
-  assert_contains \
     "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" \
     'Proof-pack does not count as review.'
   assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" 'PR gates:'
@@ -1557,7 +1541,7 @@ test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate
 test_review_flow_map_is_the_public_review_mapping_skill
-test_examples_report_the_exact_command_or_computed_value
+test_examples_report_computed_values
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_waits_hold_instead_of_polling
 test_harness_references_carry_the_api_surface

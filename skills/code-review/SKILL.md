@@ -61,7 +61,7 @@ unless the current user explicitly requests that exact cross-harness session.
    ```text
    iteration = 0
    last_reviewed_head = <current HEAD or PR head SHA>
-   last_reviewed_target = <base + HEAD + dirty-tree/snapshot identity>
+   last_reviewed_target = <base + committed HEAD>
    repo_display_name = <readable repo name, such as sample-app>
    findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
    review_started = <local timestamp>
@@ -72,6 +72,12 @@ unless the current user explicitly requests that exact cross-harness session.
    findings_registry = <SQLite findings database>
    file_coverage = <changed files ranked by current valid review count>
    ```
+
+   Require `HEAD` to resolve to a commit and `git status --porcelain` to be
+   empty before `scope-start` or either review phase. Stop and ask for the
+   staged, unstaged, and untracked changes to be committed or discarded when
+   the checkout is dirty. Review never creates or certifies a temporary
+   snapshot of uncommitted code.
 
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
    for scope classification, budgets, consult queue, queue matching,
@@ -158,6 +164,8 @@ unless the current user explicitly requests that exact cross-harness session.
    - apply the fix in the real checkout;
    - update the finding with the fix in the findings database;
    - run affected validation and record each command;
+   - commit the accepted fixes from that review pass together before another
+     scope check or review; never create one commit per finding;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
    - if it exits non-zero, stop Phase 1 and use `review-guardrails`' plain-language
@@ -181,6 +189,8 @@ unless the current user explicitly requests that exact cross-harness session.
    - apply the fix in the real checkout;
    - update the finding with the fix in the findings database;
    - run affected validation and record each command;
+   - commit the accepted fixes from that review pass together before another
+     scope check or review; never create one commit per finding;
    - run `"$review_findings_bin" scope-check` with the run identity and a
      concise `--reason` for any remaining work;
    - if it exits non-zero, stop Phase 2 and use `review-guardrails`' plain-language
@@ -199,7 +209,7 @@ unless the current user explicitly requests that exact cross-harness session.
    [references/pr-closeout.md](references/pr-closeout.md) for the final PR-owner
    gate, one final push, proof freshness, GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
-   final response. Record the exact final head or dirty snapshot identity in
+   final response. Record the exact final committed head in
    the closeout so a later PR workflow can detect whether the review is current.
 
 ## Done means
@@ -212,8 +222,7 @@ unless the current user explicitly requests that exact cross-harness session.
 - `review-flow-map`, required lenses, applicable conditional lenses,
   `review-guardrails`, and `finding-discipline` were used.
 - Native review met its clean stop condition before Phase 2, and cold review
-  met its clean stop condition on the final target and dirty-tree/snapshot
-  identity.
+  met its clean stop condition on the final committed target.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
@@ -244,7 +253,7 @@ unless the current user explicitly requests that exact cross-harness session.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or
   the PR/proof blocker is reported separately from the review result.
 - The final answer is backed by `review-findings closeout`, not chat memory.
-- The final answer identifies the exact reviewed head or dirty snapshot.
+- The final answer identifies the exact reviewed commit.
 
 ## Stop honestly
 
@@ -268,7 +277,7 @@ consult queue is resolved.
 - editing between clean passes in either phase;
 - returning from Phase 2 to Phase 1 after cold-review fixes unless explicitly
   requested;
-- leaving accepted fixes in a temporary snapshot instead of the real checkout;
+- reviewing or completing a dirty checkout;
 - pushing just to review;
 - pushing between findings, review phases, or targeted validation runs;
 - writing final closeout sections from chat history;

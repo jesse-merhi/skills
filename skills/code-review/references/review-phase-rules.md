@@ -11,19 +11,13 @@ with the blocker or residual risk.
 
 ## Target handling
 
-- Default to whole PR/branch review. If the branch has committed PR changes and
-  dirty local changes, review a temporary snapshot that includes both the branch
-  diff and the dirty local overlay. A clean local-only review only proves there
-  is no local patch; it does not prove the PR/branch is clean.
-- Treat a whole-target snapshot as review input, not the working copy. If review
-  finds a real bug from snapshot content, apply the accepted fix in the real
-  checkout, run affected validation there, then rerun review. The next
-  whole-target review must rebuild a fresh snapshot from the real checkout. Do
-  not leave accepted fixes only inside the temporary worktree; the helper
-  removes that worktree after review.
-- Use local mode only when the requested target is the local patch by itself.
-  Use branch mode only when the requested target is the committed branch by
-  itself.
+- Review only a clean committed checkout. Refuse staged, unstaged, and untracked
+  input before either review phase.
+- Default to whole PR/branch review against its base. Use commit mode only when
+  the requested target is one immutable commit.
+- Batch accepted findings from one pass, validate them, and commit them together
+  before the next scope check or review pass. Never create one commit per
+  finding.
 
 ## Run handling
 

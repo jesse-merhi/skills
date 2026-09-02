@@ -77,9 +77,6 @@ Repeat:
      consecutive_clean = 0
      Fix the actionable findings with the smallest durable edits at the owning
      boundary.
-     If the target was an immutable commit SHA, update the reviewed target to
-     the amended/new commit SHA, or switch to the base/uncommitted target before
-     the next review. Do not re-review an old immutable commit after fixes.
      Run relevant verification for the fixes.
      Record each command, result, and reason with the findings CLI.
      Run `"$review_findings_bin" scope-check --reason <remaining work and why it may
@@ -87,6 +84,10 @@ Repeat:
      If it exits non-zero -> record stop reason `blocked-on-consult`, present
        the CLI report to the user, and STOP before another review or fix.
      Keep fixed-finding details in the findings CLI.
+     Commit all accepted fixes from this pass together. Review the new HEAD
+     against the same base, or retarget an immutable-commit review to the new
+     commit. Do not re-review the old commit and do not rewrite earlier history
+     unless the user asks.
      Go to step 1.
 8. If ambiguous:
      consecutive_clean = 0

@@ -1714,6 +1714,8 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   git -C "$repo" commit --quiet --allow-empty --message base
   git -C "$repo" switch --quiet --create feature
   printf 'feature\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
 
   printf '%s\n' \
     '#!/bin/sh' \
@@ -2205,6 +2207,8 @@ test_review_scope_budget_can_close_before_a_later_review() {
   git -C "$repo" commit --quiet --message base
   git -C "$repo" switch --quiet --create feature
   printf 'feature\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
 
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
@@ -2213,9 +2217,21 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Run the final clean review." >/dev/null
 
+  printf 'uncommitted\n' >> "$repo/app.ts"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Dirty review result." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-complete must reject an uncommitted review tree"
+  fi
+  assert_contains "$tmp/stderr" "clean committed worktree"
+  printf 'feature\n' > "$repo/app.ts"
+
   # Post-check drift past the allowance must block scope-complete and route to
   # scope-authorize, rather than closing on the stale passing check.
   { printf 'feature\n'; for number in {1..200}; do printf 'post-check change %s\n' "$number"; done; } > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message "grow past review budget"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Stale clean result." \
@@ -2224,6 +2240,8 @@ test_review_scope_budget_can_close_before_a_later_review() {
   fi
   assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
   printf 'feature\n' > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message "restore reviewed tree"
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --scope-summary "First review after restoring the approved tree." \

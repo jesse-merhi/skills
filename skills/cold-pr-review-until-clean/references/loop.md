@@ -68,6 +68,9 @@ Repeat:
        `review-guardrails`' plain-language scope-request rule, and STOP before
        another review or fix.
      Keep fixed-finding details in the findings CLI.
+     Commit all accepted fixes from this pass together before dispatching the
+     next fresh reviewer. Do not create one commit per finding or rewrite
+     earlier commits unless the user asks.
      Go to step 1.
 ```
 
