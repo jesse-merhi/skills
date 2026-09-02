@@ -15,8 +15,9 @@ planner or shard count also changes, report that as a separate comparison so
 portfolio savings remain attributable.
 
 Prefer observed elapsed durations from representative runs. A maintained
-duration inventory is acceptable for fast, repeatable modelling when both
-states use the same inventory, fallback for unknown tests, and shard planner.
+duration inventory is acceptable for fast, repeatable modelling when compared
+states use the same inventory, fallback for unknown tests, and runner execution
+model.
 Label modelled results as modelled; do not present them as observed wall time.
 State limitations instead of inventing timings when reliable data is absent.
 
@@ -89,8 +90,9 @@ For portfolio reduction, stop at the portfolio fixed point: a fresh ownership
 pass finds no equivalent duplicate owner, ownerless test or infrastructure, or
 lower-cost proof level that can be removed, consolidated, or moved without
 losing a promised regression. Completion also requires every retained risk to
-have its named owner and the final validation and comparable measurement to
-pass.
+have its named owner and the final validation to pass. Require comparable
+measurement when practical; otherwise report the available portfolio counts
+and the timing limitation.
 
 For scheduling-only work, stop when the preserved test set is fully assigned,
 the changed planner and configuration pass, and comparable measurement shows
