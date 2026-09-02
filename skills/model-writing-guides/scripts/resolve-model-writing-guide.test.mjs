@@ -127,7 +127,7 @@ test("guide and adapter references cannot escape their owning skills", () => {
 });
 
 test("every coverage manifest belongs to its skill and resolves", () => {
-  const manifests = fs.globSync("skills/*/model-writing.json", { cwd: repoRoot });
+  const manifests = fs.globSync("skills/**/model-writing.json", { cwd: repoRoot });
   assert.ok(manifests.length > 0);
   for (const manifest of manifests) {
     const callingSkillRoot = path.dirname(path.join(repoRoot, manifest));
