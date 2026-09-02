@@ -6,14 +6,19 @@
 - Apply `review-guardrails`' autonomous fix bar before editing. Reject
   unsupported cases; record residual risk only when reachability and impact are
   proven.
-- Prefer the smallest change that addresses the reviewer's concern.
+- Prefer the smallest durable repair at the boundary that owns the problem.
+  Reject a local patch that merely quiets the reported symptom.
 - Do not bundle unrelated cleanup into the fix step.
 - Run the relevant tests, typechecks, linters, or UI validation for the changed
   flows before the next cold review.
-- Record why each added or changed test catches a reachable product, API,
-  workflow, security, or data regression in the related finding record.
+- After the repair passes the actionability gate, apply `test-audit` before
+  adding, changing, or removing tests. Record its portfolio classification and
+  executable owner, or why no test is needed, in the related finding record.
 - Inspect the diff after fixing so you can confirm the next reviewer is seeing
   the intended tree.
+- Commit all accepted fixes from one pass together before the next review. Do
+  not create one commit per finding or rewrite earlier commits unless the user
+  asks.
 - If a finding is invalid, document why and run another cold review. Do not
   count your rejection as a clean pass by itself.
 

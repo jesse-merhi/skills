@@ -7,7 +7,9 @@ A review finding must satisfy all of these:
 - Has an evidence-backed, realistic failure mode or a concrete present
   maintenance cost, not just "this looks risky" or "this could be cleaner."
 - Explains impact in current product, runtime, or maintenance terms.
-- Gives a specific fix direction.
+- Has either a justified repair direction or a concrete unresolved repair
+  decision that is important enough to bring to the owner. A possible patch or
+  vague request for guidance is not enough.
 - Has enough confidence that a maintainer would likely want the author to act.
 
 ## Defensive Findings

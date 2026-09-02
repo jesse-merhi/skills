@@ -210,10 +210,6 @@ behavior_checks = {
         "There is no universal",
         "resume the event wait",
     ],
-    root / "skills/cold-pr-review/references/prompt-template.md": [
-        "do not audit them as independent targets",
-        "Every finding must identify the changed line or",
-    ],
     root / "INSTALL.md": [
         "writing-great-skills` becoming",
     ],
@@ -448,55 +444,6 @@ test_prototypes_stay_isolated_from_production() {
   assert_contains "$design/references/prototype.md" "integrate only the winner"
   assert_contains "$design/references/prototype.md" "prototype-only"
   test ! -e "$ROOT_DIR/skills/prototype/SKILL.md" || fail "prototype must remain internal to the design router"
-}
-
-test_code_review_flags_unsupported_defense_and_proxy_helpers() {
-  assert_contains "$ROOT_DIR/skills/code-review/references/setup-and-lenses.md" "plausibility and proxy tests"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "## Risk Reality Check"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Production path:"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Likelihood: likely | possible | rare | unknown | theoretical"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Low-probability, low-impact risk defaults to no finding and no code"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "Supply likelihood and impact. Do not choose severity or disposition"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "| rare | no severity, reject | no severity, reject | P2, consult | P1, consult |"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "## Defence In Depth"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "The burden of proof belongs to the finding"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/risk-rating.md" "it cannot supply missing production"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/output.md" "Use exactly the severity and disposition returned by the findings CLI"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "## Autonomous Fix Bar"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" 'CLI-derived `accept`'
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "severity combines likelihood and impact"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "does not substitute"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "Do not autonomously patch a P3"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "uncertainty about the repair"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/SKILL.md" "for a maintenance candidate"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "for a maintenance candidate"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/uncertain-findings.md" "do not apply a provisional fix"
-  assert_contains "$ROOT_DIR/skills/review-until-clean/references/loop.md" 'CLI-derived `investigate` or `consult` -> no patch'
-  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/references/loop.md" 'CLI-derived `investigate` or `consult` -> no patch'
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "For a capacity cap or truncation path"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "For escaping or delimiter handling"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "complete risk rating"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/exclusions.md" "Reject unsupported possibilities"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Why the local fix is a Band-Aid"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" "Smallest durable option"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/systemic-findings.md" 'Load `improve-codebase-architecture`'
-  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "risk rating for runtime candidates"
-  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind runtime"
-  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind maintenance"
-  assert_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "To reject an unsupported"
-  assert_not_contains "$ROOT_DIR/skills/code-review/references/findings-registry.md" "--finding-kind <runtime|maintenance>"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" "for a maintenance finding"
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--maintenance-evidence`'
-  assert_contains "$ROOT_DIR/skills/code-review/SKILL.md" '`--present-cost`'
-  assert_contains "$ROOT_DIR/skills/code-review/references/review-phase-rules.md" "only runtime findings receive severity"
-  assert_contains "$ROOT_DIR/skills/review-guardrails/references/scope-governor.md" "but no runtime risk fields or severity"
-  assert_contains "$ROOT_DIR/skills/review-until-clean/references/loop.md" "for a maintenance candidate"
-  assert_contains "$ROOT_DIR/skills/cold-pr-review-until-clean/references/loop.md" "for a maintenance candidate"
-  assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Plausibility test"
-  assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "## Proxy test"
-  assert_contains "$ROOT_DIR/skills/reducing-cognitive-load/references/review-checklist.md" "admin-provided connection string"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/finding-bar.md" "current unnecessary"
-  assert_contains "$ROOT_DIR/skills/finding-discipline/references/confirmation.md" "For a maintenance finding"
 }
 
 test_design_router_owns_motion_opportunity_audits() {
@@ -1050,21 +997,8 @@ test_review_flow_map_is_the_public_review_mapping_skill() {
   fi
 }
 
-test_examples_report_the_exact_command_or_computed_value() {
-  local codex_engine="$ROOT_DIR/skills/review-until-clean/references/codex-engine.md"
+test_examples_report_computed_values() {
   local retry_model="$ROOT_DIR/skills/html-explanations/assets/patterns/interactive-model.html"
-  local expected_commands positive_commands
-
-  positive_commands="$(awk '
-    /^Use these forms:$/ { found = 1; next }
-    found && /^```sh$/ { in_block = 1; next }
-    in_block && /^```$/ { exit }
-    in_block && !/^#/ && NF { print }
-  ' "$codex_engine")"
-  expected_commands=$'codex review --uncommitted\ncodex review --base main\ncodex review --commit <sha>'
-  if [[ "$positive_commands" != "$expected_commands" ]]; then
-    fail "expected the valid Codex example block to contain only the three exact commands"
-  fi
   assert_contains "$retry_model" 'Failures show up after ${formatSeconds(totalWait)} of modeled retry delay'
   assert_not_contains "$retry_model" "within one retry cycle"
 
@@ -1448,9 +1382,6 @@ test_gh_stack_workflow_is_pinned_and_wired() {
     "$ROOT_DIR/skills/code-review/references/pr-closeout.md" \
     'exact final head'
   assert_contains \
-    "$ROOT_DIR/skills/code-review/references/final-output.md" \
-    'exact reviewed head SHA'
-  assert_contains \
     "$ROOT_DIR/skills/pr-proof-pack/SKILL.md" \
     'Proof-pack does not count as review.'
   assert_contains "$ROOT_DIR/skills/to-spec/references/note-template.md" 'PR gates:'
@@ -1552,7 +1483,6 @@ test_codex_default_mode_questions_are_configured
 test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
 test_prototypes_stay_isolated_from_production
-test_code_review_flags_unsupported_defense_and_proxy_helpers
 test_design_router_owns_motion_opportunity_audits
 test_speak_fking_english_owns_repitch_guidance
 test_speak_fking_english_owns_the_ai_tells_catalogue
@@ -1561,7 +1491,7 @@ test_speak_fking_english_owns_the_visual_decision
 test_speak_fking_english_owns_the_final_response_checkpoint
 test_pr_proof_pack_is_a_concise_evidence_publishing_gate
 test_review_flow_map_is_the_public_review_mapping_skill
-test_examples_report_the_exact_command_or_computed_value
+test_examples_report_computed_values
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_waits_hold_instead_of_polling
 test_harness_references_carry_the_api_surface

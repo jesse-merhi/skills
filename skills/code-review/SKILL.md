@@ -61,21 +61,30 @@ unless the current user explicitly requests that exact cross-harness session.
    ```text
    iteration = 0
    last_reviewed_head = <current HEAD or PR head SHA>
-   last_reviewed_target = <base + HEAD + dirty-tree/snapshot identity>
+   last_reviewed_target = <base + committed HEAD>
    repo_display_name = <readable repo name, such as sample-app>
    findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
    review_started = <local timestamp>
-   baseline_diff = <changed files and changed lines of the original target>
+   baseline_diff = <changed files and changed lines from the branch's first
+                    user-authorized review baseline for this base branch>
    scope_baseline = <request, target, intended behavior, owner boundary>
    consult_queue = []
    findings_registry = <SQLite findings database>
    file_coverage = <changed files ranked by current valid review count>
    ```
 
+   Require `HEAD` to resolve to a commit and `git status --porcelain` to be
+   empty before `scope-start` or either review phase. Stop and ask for the
+   staged, unstaged, and untracked changes to be committed or discarded when
+   the checkout is dirty. Review never creates or certifies a temporary
+   snapshot of uncommitted code.
+
    Read [references/guardrails-and-scope.md](references/guardrails-and-scope.md)
    for scope classification, budgets, consult queue, queue matching,
-   and blocked-on-consult behavior. For a new run, persist the baseline before
-   any review fix:
+   and blocked-on-consult behavior. For a new run, persist or inherit the branch
+   baseline before any review fix. A later run on the same branch and base must
+   keep the first authorized LOC baseline and its remaining allowance;
+   completing and restarting review never grants a fresh buffer:
 
    ```sh
    review_findings_bin="<skill-dir>/scripts/review-findings"
@@ -138,47 +147,15 @@ unless the current user explicitly requests that exact cross-harness session.
    Wait through `wait-efficiently` so completion wakes the active wait instead
    of being discovered by status polling.
 
-8. After an accepted Phase 1 finding:
+8. Let the owning phase loop handle accepted findings.
 
-   - for a runtime finding, record likelihood and impact before editing, and
-     require the CLI to derive `accept` and severity;
-   - for a maintenance finding, pass `--maintenance-evidence` proving current
-     unnecessary complexity, duplication, or code with no current job, and
-     `--present-cost` naming its current reading, change, test, or ownership
-     cost; require the CLI to derive `accept` without a severity;
-   - stop and consult if `review-guardrails` classifies the fix as systemic;
-   - confirm the finding passes `review-guardrails`' autonomous fix bar;
-   - apply the fix in the real checkout;
-   - update the finding with the fix in the findings database;
-   - run affected validation and record each command;
-   - run `"$review_findings_bin" scope-check` with the run identity and a
-     concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 1 and use `review-guardrails`' plain-language
-     scope-request rule;
-   - return to Phase 1.
+   `review-until-clean` and `cold-pr-review-until-clean` own the shared
+   actionability, repair, validation, scope-check, and pass-level commit
+   sequence. From Phase 1, return to Phase 1. From Phase 2, dispatch the next
+   fresh cold reviewer and do not return to Phase 1 unless the user explicitly
+   asks for a fresh native gate.
 
-9. After an accepted Phase 2 finding:
-
-   - for a runtime finding, record likelihood and impact before editing, and
-     require the CLI to derive `accept` and severity;
-   - for a maintenance finding, pass `--maintenance-evidence` proving current
-     unnecessary complexity, duplication, or code with no current job, and
-     `--present-cost` naming its current reading, change, test, or ownership
-     cost; require the CLI to derive `accept` without a severity;
-   - stop and consult if `review-guardrails` classifies the fix as systemic;
-   - confirm the finding passes `review-guardrails`' autonomous fix bar;
-   - apply the fix in the real checkout;
-   - update the finding with the fix in the findings database;
-   - run affected validation and record each command;
-   - run `"$review_findings_bin" scope-check` with the run identity and a
-     concise `--reason` for any remaining work;
-   - if it exits non-zero, stop Phase 2 and use `review-guardrails`' plain-language
-     scope-request rule;
-   - stay in Phase 2 and dispatch the next fresh cold reviewer;
-   - do not return to Phase 1 unless the user explicitly asks for a fresh
-     native gate.
-
-10. Close out only after the Phase 1 native gate has passed and Phase 2 is
+9. Close out only after the Phase 1 native gate has passed and Phase 2 is
     clean on the final local target.
 
    Run the full local validation selected during setup. If it changes code,
@@ -188,7 +165,7 @@ unless the current user explicitly requests that exact cross-harness session.
    [references/pr-closeout.md](references/pr-closeout.md) for the final PR-owner
    gate, one final push, proof freshness, GitHub Actions, and PR blockers.
    Read [references/final-output.md](references/final-output.md) before the
-   final response. Record the exact final head or dirty snapshot identity in
+   final response. Record the exact final committed head in
    the closeout so a later PR workflow can detect whether the review is current.
 
 ## Done means
@@ -201,8 +178,7 @@ unless the current user explicitly requests that exact cross-harness session.
 - `review-flow-map`, required lenses, applicable conditional lenses,
   `review-guardrails`, and `finding-discipline` were used.
 - Native review met its clean stop condition before Phase 2, and cold review
-  met its clean stop condition on the final target and dirty-tree/snapshot
-  identity.
+  met its clean stop condition on the final committed target.
 - Every accepted finding, rejected finding, deferred finding, provisional fix,
   verification command, consult-queue entry, and stop reason is recorded through
   the findings CLI.
@@ -213,13 +189,18 @@ unless the current user explicitly requests that exact cross-harness session.
   whole-target clean gate.
 - Every finding passes the current `review-findings schema`. Every accepted
   runtime finding has a recorded production path, reachability evidence,
-  likelihood, impact, and actual consequence; the CLI derived severity and
-  `accept` from the risk rating.
+  likelihood, impact, actual consequence, contract evidence, root cause,
+  recommended repair, and intervention justification; the CLI derived severity
+  and `accept` from the risk rating.
+- Every actionable maintenance finding records root cause and intervention
+  justification in addition to current-cost evidence. Patches, deferrals, and
+  approved consultations also record the recommended repair.
 - Every autonomous fix names a current reachable contract and remains
   proportional to its impact.
-- `scope-start` persisted the original baseline, every accepted fix was followed
-  by `scope-check`, and the final check passed before `scope-complete`. Any
-  authorized reset records the user's words through `scope-authorize`.
+- `scope-start` persisted or inherited the branch's original baseline, every
+  accepted fix was followed by `scope-check`, and the final check passed before
+  `scope-complete`. Repeated runs did not compound the allowance. Any authorized
+  reset records the user's words through `scope-authorize`.
 - Final validation for the affected flows passed, or blockers and residual
   risk are explicit.
 - No remote branch or PR mutation occurred while either review phase still had
@@ -228,7 +209,7 @@ unless the current user explicitly requests that exact cross-harness session.
 - The PR-capable target has reviewer-checkable proof from `pr-proof-pack`, or
   the PR/proof blocker is reported separately from the review result.
 - The final answer is backed by `review-findings closeout`, not chat memory.
-- The final answer identifies the exact reviewed head or dirty snapshot.
+- The final answer identifies the exact reviewed commit.
 
 ## Stop honestly
 
@@ -252,7 +233,7 @@ consult queue is resolved.
 - editing between clean passes in either phase;
 - returning from Phase 2 to Phase 1 after cold-review fixes unless explicitly
   requested;
-- leaving accepted fixes in a temporary snapshot instead of the real checkout;
+- reviewing or completing a dirty checkout;
 - pushing just to review;
 - pushing between findings, review phases, or targeted validation runs;
 - writing final closeout sections from chat history;

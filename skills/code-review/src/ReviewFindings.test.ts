@@ -1,12 +1,44 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Effect from "effect/Effect"
 
-import { allowedScopeGrowth, deriveRuntimeOutcome } from "./ReviewFindings.ts"
+import { allowedScopeGrowth, decodeFinding, deriveRuntimeOutcome, type FindingInput } from "./ReviewFindings.ts"
+
+const runtimeFinding = {
+  decisionId: "D1",
+  status: "open",
+  source: "cold-review",
+  fingerprint: "src/queue.ts schedule payload ownership",
+  summary: "Reachable scheduled work exceeds the platform contract",
+  area: "workflow",
+  material: false,
+  userImpact: "Operators lose queued work until they retry.",
+  decision: "Fix the owning queue boundary.",
+  text: "",
+  findingKind: "runtime",
+  productionPath: "supported request -> queue producer -> scheduler",
+  reachabilityEvidence: "A current caller produces the measured payload.",
+  likelihood: "likely",
+  impact: "medium",
+  actualConsequence: "The scheduler rejects the job and the request fails.",
+  maintenanceEvidence: "",
+  presentCost: "",
+  contractEvidence: "The scheduler contract accepts jobs below its documented limit; this payload exceeds it.",
+  rootCause: "The queue boundary owns copied payloads instead of durable work identifiers.",
+  recommendedFix: "Persist the work and schedule its identifier.",
+  interventionJustification: "The supported path currently loses work; using the existing job store removes the payload failure without a new fallback.",
+  rejectionGate: "",
+  fixScope: "local",
+  handling: "fix",
+  ownerResolution: ""
+} satisfies FindingInput
 
 describe("review scope growth", () => {
-  it("uses exactly 30 percent with no absolute floor", () => {
+  it("uses 30 percent without a floor and caps large branches at 100 lines", () => {
     assert.strictEqual(allowedScopeGrowth(1, 30), 0)
     assert.strictEqual(allowedScopeGrowth(40, 30), 12)
-    assert.strictEqual(allowedScopeGrowth(600, 30), 180)
+    assert.strictEqual(allowedScopeGrowth(333, 30), 99)
+    assert.strictEqual(allowedScopeGrowth(334, 30), 100)
+    assert.strictEqual(allowedScopeGrowth(2_000, 30), 100)
   })
 })
 
@@ -28,4 +60,123 @@ describe("review finding risk outcomes", () => {
       assert.deepStrictEqual(deriveRuntimeOutcome(likelihood, impact), { severity, disposition })
     }
   })
+
+  it.effect("accepts an actionable finding only with complete repair evidence", () =>
+    decodeFinding(runtimeFinding).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.disposition, "accept")
+        assert.strictEqual(finding.recommendedFix, "Persist the work and schedule its identifier.")
+      })
+    ))
+
+  it.effect("accepts a contained systemic repair", () =>
+    decodeFinding({ ...runtimeFinding, fixScope: "systemic" }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.fixScope, "systemic")
+        assert.strictEqual(finding.handling, "fix")
+        assert.strictEqual(finding.disposition, "accept")
+      })
+    ))
+
+  it.effect("rejects an actionable finding without root-cause repair evidence", () =>
+    decodeFinding({ ...runtimeFinding, rootCause: "" }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /actionable findings require --root-cause/u))
+    ))
+
+  it.effect("consults on a material problem without inventing a repair", () =>
+    decodeFinding({ ...runtimeFinding, likelihood: "rare", impact: "high", handling: "consult", recommendedFix: "", decision: "The owning repair remains unresolved after checking the current queue primitives." }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.disposition, "consult")
+        assert.strictEqual(finding.recommendedFix, "")
+      })
+    ))
+
+  it.effect("requires an owner question for every unresolved consult", () =>
+    decodeFinding({ ...runtimeFinding, likelihood: "rare", impact: "high", handling: "consult", decision: "" }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /unresolved consult findings require --decision/u))
+    ))
+
+  it.effect("requires the repair when an owner closes a consult", () =>
+    decodeFinding({ ...runtimeFinding, status: "fixed", likelihood: "rare", impact: "high", handling: "consult", recommendedFix: "", ownerResolution: "approved" }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /actionable findings require --recommended-fix/u))
+    ))
+
+  it.effect("allows an owner to decline a consult with no supported repair", () =>
+    decodeFinding({ ...runtimeFinding, status: "rejected", likelihood: "rare", impact: "high", handling: "consult", recommendedFix: "", ownerResolution: "declined" }).pipe(
+      Effect.map((finding) => assert.strictEqual(finding.ownerResolution, "declined"))
+    ))
+
+  it.effect("keeps optional repairs off rejected candidates", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      status: "rejected",
+      likelihood: "theoretical",
+      decision: "No current producer reaches the claimed state.",
+      rejectionGate: "reality",
+      rootCause: "",
+      interventionJustification: ""
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /reject candidates must omit repair field --recommended-fix/u))
+    ))
+
+  it.effect("records the gate that rejected a candidate", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      status: "rejected",
+      likelihood: "theoretical",
+      decision: "No current producer reaches the claimed state.",
+      rejectionGate: "reality",
+      rootCause: "",
+      recommendedFix: "",
+      interventionJustification: ""
+    }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.disposition, "reject")
+        assert.strictEqual(finding.rejectionGate, "reality")
+      })
+    ))
+
+  it.effect("requires a rejection gate before discarding a candidate", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      status: "rejected",
+      likelihood: "theoretical",
+      decision: "No current producer reaches the claimed state.",
+      rootCause: "",
+      recommendedFix: "",
+      interventionJustification: ""
+    }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /rejected candidates require --rejection-gate/u))
+    ))
+
+  it.effect("can reject a proven maintenance concern whose intervention is not worthwhile", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      status: "rejected",
+      findingKind: "maintenance",
+      productionPath: "",
+      reachabilityEvidence: "",
+      likelihood: "",
+      impact: "",
+      actualConsequence: "",
+      contractEvidence: "",
+      maintenanceEvidence: "The changed helper duplicates an existing branch.",
+      presentCost: "Readers must compare both branches before changing behavior.",
+      rootCause: "",
+      recommendedFix: "",
+      interventionJustification: "",
+      rejectionGate: "repair",
+      handling: "reject",
+      decision: "Removing it now would create more churn than the current reading cost."
+    }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.disposition, "reject")
+        assert.strictEqual(finding.rejectionGate, "repair")
+      })
+    ))
 })

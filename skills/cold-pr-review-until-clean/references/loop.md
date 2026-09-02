@@ -29,18 +29,25 @@ Repeat:
    - for a maintenance candidate, use `--maintenance-evidence` to prove current
      unnecessary complexity, duplication, or code with no current job, and
      `--present-cost` for its concrete reading, change, test, or ownership cost
+   - apply `finding-discipline`'s reality, importance, and repair-quality gates;
+     only actionable candidates may receive `--handling fix`
+   - record contract evidence for every actionable runtime candidate, plus root
+     cause and intervention justification for every actionable candidate;
+     require a recommended repair before patching, deferring, or approving one
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
-       pass -> fix now, log Provisional, ask the user without waiting
-       fail -> consult queue (Class B), ask the user without waiting
+       pass -> fix now, log Provisional, notify the user, keep the entry open
+       fail -> consult queue (Class B), no patch; continue only independent work
    - findings matching an open queue entry -> match note, no new entry
    If open questions for the user have reached consult_cap ->
      Record the open queue and stop reason `blocked-on-consult`.
      SUSPEND as blocked-on-consult: present all open questions and wait.
 5. Classify the review:
    - clean              -> no findings, or only evidence-rejected ones
-   - clean-except-queue -> every remaining finding matches the open queue
-   - has_findings       -> at least one actionable finding remains
+   - clean-except-queue -> no fixable finding remains; every other candidate is
+                           an open consult-queue or provisional entry
+   - has_findings       -> at least one accepted finding is classified
+                           `--handling fix`
 6. If clean or clean-except-queue:
      consecutive_clean += 1
      Track the run verdict and clean count.
@@ -53,7 +60,8 @@ Repeat:
      Else -> go to step 1 without editing anything.
 7. If has_findings:
      consecutive_clean = 0
-     Fix the actionable findings with narrow edits.
+     Fix only findings classified `--handling fix`, using the smallest durable
+     edits at the owning boundary. Never patch a queued consultation.
      Run relevant verification for the fixes.
      Record each command, result, and reason with the findings CLI.
      Run `"$review_findings_bin" scope-check --reason <remaining work and why it may
@@ -62,6 +70,9 @@ Repeat:
        `review-guardrails`' plain-language scope-request rule, and STOP before
        another review or fix.
      Keep fixed-finding details in the findings CLI.
+     Commit all accepted fixes from this pass together before dispatching the
+     next fresh reviewer. Do not create one commit per finding or rewrite
+     earlier commits unless the user asks.
      Go to step 1.
 ```
 

@@ -4,7 +4,7 @@ import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 
 import { checkedBytes, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
-import { trustedExecutable } from "./NativeReview.ts"
+import { trustedExecutable } from "./ReviewEnvironment.ts"
 
 export class UnsupportedHistoricalGitVersion extends Schema.TaggedError<UnsupportedHistoricalGitVersion>()("UnsupportedHistoricalGitVersion", {
   message: Schema.String
