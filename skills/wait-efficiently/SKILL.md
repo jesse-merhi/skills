@@ -52,11 +52,12 @@ Keep the command and every resume inside one code-mode cell. Set the cell and
 command yields to the expected duration, capped by the current tool schema.
 
 ```js
-// @exec: {"yield_time_ms": 30000, "max_output_tokens": 10000}
+// @exec: {"yield_time_ms": <expected-ms>, "max_output_tokens": 10000}
+const yieldMs = <expected-ms>;
 const maxOutputTokens = 10000;
 let result = await tools.exec_command({
   cmd: "<command>",
-  yield_time_ms: 30000,
+  yield_time_ms: yieldMs,
   max_output_tokens: maxOutputTokens
 });
 const output = [result.output];
@@ -65,7 +66,7 @@ while (result.session_id) {
   result = await tools.write_stdin({
     session_id: result.session_id,
     chars: "",
-    yield_time_ms: 30000,
+    yield_time_ms: yieldMs,
     max_output_tokens: maxOutputTokens
   });
   output.push(result.output);
@@ -81,8 +82,13 @@ if (result.exit_code !== 0) {
 ```
 
 An empty `write_stdin` resumes the same process and returns when it exits or the
-ceiling is reached. Replace the illustrative 30-second values with the longest
-useful values accepted by the current tool and justified by the expected work.
+ceiling is reached. Set `<expected-ms>` before writing the cell: take the
+duration named in Hold step 1, express the whole expected run in milliseconds,
+and cap it at the maximum the current tool schema accepts. The `@exec` header
+is JSON and cannot read `yieldMs`, so type the same number in both places;
+without the header the cell yields at its 10-second default no matter what the
+calls ask for. A sample value copied from a template is the common failure: it
+returns with the work still running and buys another round trip for nothing.
 
 Accumulate each terminal result inside the cell so output received before the
 final wait is not lost. Make any command behind a review or validation gate
@@ -100,6 +106,11 @@ Finish useful independent work after dispatch. Once blocked on a result, call
 `wait_agent` with a deadline sized to the task and capped by the tool schema; it
 returns when mailbox activity arrives. Wait again only when the required agent
 is still running after an unrelated event or the deadline.
+
+When `wait_agent` or `wait_threads` runs inside an exec cell, give the cell the
+same `// @exec: {"yield_time_ms": <expected-ms>}` header sized to that
+deadline; without the header the cell yields at its 10-second default
+regardless of the call's own `timeoutMs`.
 
 Keep the parent turn active until every required agent reaches a terminal state.
 Reach for a further `wait_agent` rather than `list_agents`, a short repeated
