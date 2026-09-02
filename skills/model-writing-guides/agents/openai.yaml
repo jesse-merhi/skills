@@ -1,4 +1,4 @@
 interface:
   display_name: "Model Writing Guides"
   short_description: "Route skills through current model writing guidance"
-  default_prompt: "Use $model-writing-guides to select the writing guidance for the current model."
+  default_prompt: "Use $model-writing-guides to check $speak-fking-english coverage for the current model."
