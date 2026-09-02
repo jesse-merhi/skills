@@ -2,7 +2,7 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-This repo is my working set of agent skills: 43 Markdown workflows that coding
+This repo is my working set of agent skills: 44 Markdown workflows that coding
 agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
 [`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
@@ -100,6 +100,15 @@ Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
+One skill is mostly not prose. `coding-standards` carries a catalog of
+language-agnostic standards — the principle behind each one, and the ESLint
+rules and Python ruff, mypy, semgrep, and AST-checker entries that enforce it,
+so the standard is a failing command instead of a review comment. `apply`
+bootstraps that enforcement into a repository, from detecting the ecosystem
+through a lint command CI actually runs. `sync` reconciles a repository's
+vendored copy against the catalog without clobbering local edits. `translate`
+adds a new language column to the catalog itself.
+
 ## The loop
 
 The skills are not a menu. They snap into the loop I actually run:
@@ -180,6 +189,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`improve-codebase-architecture`](skills/improve-codebase-architecture/SKILL.md) | An architectural lens over module depth, interfaces, locality, and testability. Proposes the smallest structural change, not a refactor. |
+| [`coding-standards`](skills/coding-standards/SKILL.md) | Applies the standards catalog to a repository as real ESLint and Python enforcement, syncs a vendored copy against it, or translates it to a new language. |
 
 ### Planning, context, and handoff
 
