@@ -22,6 +22,11 @@ in `CLAUDE.md`, which imports this file and layers on top of it.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
+- When an evidence-backed user correction exposes reusable agent behavior or
+  asks to codify prevention in instructions, skills, lint, tests, or other
+  controls, load `feedback-hardening` before systemic repair. Task-local repair
+  may continue under existing authority, but a prevention request is not
+  advance approval of an unbound systemic recommendation.
 
 ## Implementation design
 
