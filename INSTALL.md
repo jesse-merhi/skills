@@ -21,6 +21,12 @@ Figure out which harness you're running in:
 If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
+Also resolve the exact active model identifier from the harness. Do not infer
+it from writing style. The model selects which complete skill variant is
+installed. A newer model in a known family uses that family's newest variant
+and produces one informational update notice. An unknown family stops instead
+of receiving an unrelated prompt.
+
 ## 2. Link global instructions
 
 This repo owns the user's global agent instructions:
@@ -118,7 +124,8 @@ before touching anything:
 
 Classify existing entries:
 
-1. A matching skill from this repo: safe to replace with a symlink.
+1. A matching skill from this repo, including a link into this repo's generated
+   skill view: safe to replace with a symlink.
 2. A third-party skill not in this repo: leave it alone unless `external.md`
    explicitly says to install, update, replace, or remove it.
 3. A hand-written local skill not in this repo: ask before touching it.
@@ -128,18 +135,38 @@ Classify existing entries:
 Skip this step for OpenClaw; its existing skills are inspected after connecting
 the repo in step 8.
 
-## 7. Link skills
+## 7. Materialize and link one model variant
 
-For Claude Code, Codex, opencode, or Pi, always use per-skill symlinks. The
-target skills directory should remain a real directory; each repo skill gets
-its own symlink inside it. Skip this step for OpenClaw.
+For Claude Code, Codex, opencode, or Pi, keep the target skills directory real
+and retain one per-skill symlink. Point those links at a generated view, not at
+`REPO/skills` directly. Each view contains shared resource links plus exactly
+one model-specific `SKILL.md`, so invoking a skill causes no routing hop.
 
-Discover every `SKILL.md` under `REPO/skills/`, recursively and following
-directory symlinks. Install by the frontmatter `name`, not by folder path. This
-allows grouped skills such as `skills/openclaw/clawhub-local-test/` to install
-as `<target>/clawhub-local-test`.
+Choose a view outside the target skills directory:
 
-Procedure:
+| Harness | View root |
+| --- | --- |
+| Claude Code | `~/.claude/.skill-variants/jesse-merhi-skills` |
+| Codex | `~/.codex/.skill-variants/jesse-merhi-skills` |
+| opencode | `~/.config/opencode/.skill-variants/jesse-merhi-skills` |
+| Pi | `~/.pi/agent/.skill-variants/jesse-merhi-skills` |
+
+Build or switch the view with:
+
+```sh
+node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
+  --source REPO/skills \
+  --output VIEW_ROOT \
+  --model ACTIVE_MODEL_ID \
+  --format json
+```
+
+Read the JSON result. If `notice` is present and no earlier model-profile
+notice appeared in this installation task, show it once and continue. The
+materializer refuses to replace an unmarked directory or a view owned by
+another repository clone.
+
+Then:
 
 1. Create the target skills directory if it does not exist.
 2. If the target skills directory is a symlink, stop and ask unless it points at
@@ -148,22 +175,40 @@ Procedure:
    skills after a rename, such as `writing-great-skills` becoming
    `writing-for-agents`, without touching real directories or live third-party
    links.
-4. For each discovered skill:
-   - read `SKILL.md` frontmatter `name`
-   - stop if two repo skills have the same name
-   - create `<target>/<name>` as a symlink to the directory containing
-     `SKILL.md`
-   - if `<target>/<name>` already points there, skip it
-   - if `<target>/<name>` is a real directory, compare it before replacing and
-     ask when it contains user-authored changes
-   - if `<target>/<name>` is a symlink elsewhere, stop and ask
+4. Discover each immediate skill directory under `VIEW_ROOT`. Read its
+   `SKILL.md` frontmatter and stop if two entries have the same `name`.
+5. Link `<target>/<name>` to `VIEW_ROOT/<name>`.
+   - Replace a link to this repo or this repo's previous generated view.
+   - Leave an identical link unchanged.
+   - Ask before replacing a real directory with user-authored changes or a
+     symlink owned elsewhere.
+
+For Claude Code, also merge the following command hook into both `SessionStart`
+and `PostModelSwitch` in `~/.claude/settings.json`, preserving all existing
+settings and hook handlers:
+
+```text
+node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --source REPO/skills --output VIEW_ROOT
+```
+
+Both events pass their JSON input on stdin. `SessionStart` supplies `model` and
+`PostModelSwitch` supplies `to_model`; the materializer accepts either. A
+fallback notice is stored by `session_id`, so it appears at most once in that
+session. Validate the merged settings with the installed Claude Code build. If
+that build does not support `PostModelSwitch`, leave the `SessionStart` handler
+installed, report that in-session switching requires reinstalling the view,
+and do not leave an invalid handler behind.
+
+The hook changes what later skill invocations load. Skill instructions already
+present in the conversation remain there until a fresh session; do not claim
+that the hook removes them.
 
 ## 8. Connect a running OpenClaw Gateway
 
 Only run this step when the user asked to install these skills into OpenClaw.
-OpenClaw discovers nested `SKILL.md` files from an extra skills directory, so
-point it at `REPO/skills` directly. Do not create per-skill copies or symlinks
-for OpenClaw.
+OpenClaw discovers nested `SKILL.md` files from an extra skills directory. Build
+the same generated view for OpenClaw's configured model and point OpenClaw at
+that view instead of `REPO/skills` so it receives the selected model prompt.
 
 Use the `openclaw` CLI that belongs to the running Gateway. Before changing its
 configuration, run:
@@ -178,13 +223,14 @@ If validation fails, stop. The CLI may be older than the Gateway or its config;
 do not let a mismatched CLI rewrite that file. A missing
 `skills.load.extraDirs` value means an empty array.
 
-Resolve `REPO/skills` to an absolute, physical path. Preserve every existing
-entry in `skills.load.extraDirs`, append that path once, remove exact
-duplicates, and write the complete JSON array back with `--strict-json`. For
-example, when the existing array is empty:
+Resolve the configured model, then materialize into
+`~/.openclaw/.skill-variants/jesse-merhi-skills` with the command from step 7.
+Preserve every existing entry in `skills.load.extraDirs`, append that absolute
+view path once, remove exact duplicates, and write the complete JSON array back
+with `--strict-json`. For example, when the existing array is empty:
 
 ```sh
-openclaw config set skills.load.extraDirs '["/absolute/path/to/repo/skills"]' --strict-json
+openclaw config set skills.load.extraDirs '["/absolute/path/to/generated/view"]' --strict-json
 openclaw config validate
 ```
 
@@ -201,7 +247,9 @@ openclaw skills check --json
 Current OpenClaw builds apply `skills.*` configuration without restarting the
 Gateway. Start a new OpenClaw session so it receives the updated skill set. If
 the CLI explicitly says a restart is required, follow that instruction; for a
-managed Gateway, use `openclaw gateway restart`.
+managed Gateway, use `openclaw gateway restart`. Re-materialize the view before
+starting a session with a different model; OpenClaw has no Claude Code model
+switch hook.
 
 ## 9. Reconcile third-party skills
 
@@ -214,10 +262,10 @@ not survive after this repository stops using them.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 9. Verify repo-owned CLIs
+## 10. Verify repo-owned CLIs
 
 The `review-findings` CLI runs directly from the linked skill and uses the
-repo-owned Effect runtime installed in step 4. Verify it can resolve that
+repo-owned Effect runtime installed in step 5. Verify it can resolve that
 runtime and report its SQLite database path:
 
 ```sh
@@ -229,7 +277,7 @@ That override belonged to the removed Rust installation and can silently select
 a CLI that lacks the required scope commands. The skill-owned launcher above is
 the only supported entrypoint.
 
-## 10. Verify
+## 11. Verify
 
 Run:
 
@@ -247,6 +295,8 @@ Report:
   required
 - Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
+- selected model profile and whether it was an exact match or fallback
+- Claude Code SessionStart/PostModelSwitch hooks installed, unsupported, or skipped
 - existing local skills preserved
 - third-party installs run or skipped
 - repo runtime dependencies installed

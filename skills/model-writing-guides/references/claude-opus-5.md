@@ -2,7 +2,7 @@
 
 Official guide: [Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
 
-Reviewed: 2026-09-02.
+Reviewed: 2026-09-03.
 
 Apply these deltas when writing or maintaining an agent instruction:
 
@@ -10,6 +10,8 @@ Apply these deltas when writing or maintaining an agent instruction:
   bounded task through to completion.
 - Control response, progress-update, and saved-deliverable length explicitly;
   lowering reasoning effort does not reliably shorten visible writing.
+- Ask for one short opening update, then updates only for important discoveries
+  or changes in direction, and lead the final response with the outcome.
 - Remove legacy instructions to double-check or add a separate verification
   pass. Opus 5 already self-corrects and can over-verify when prompted again.
 - Constrain scope expansion and subagent use. Reserve delegation for sizeable,

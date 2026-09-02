@@ -39,9 +39,9 @@ Read INSTALL.md and install these skills for your harness.
 ```
 
 [`INSTALL.md`](INSTALL.md) is the authoritative installer and is written *to the
-agent*, not to you. It detects the harness, links the global instruction
-files, surveys what is already in your skills directory, symlinks each repo
-skill in by its frontmatter `name`, reconciles third-party skills from
+agent*, not to you. It detects the harness and active model, builds a lightweight
+view containing one complete model-specific prompt per skill, links those
+skills by frontmatter `name`, reconciles third-party skills from
 [`external.md`](external.md), and runs the tests. It asks before touching
 anything it did not put there.
 
@@ -53,13 +53,13 @@ Where the skills land, per harness:
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
-| OpenClaw | `REPO/skills` via `skills.load.extraDirs` | not linked | not linked |
+| OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
 
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
-symlink inside it. OpenClaw watches `REPO/skills` directly instead. So you can
-pull, diff, and update this repo like any other, and nothing turns into a
-mystery tree. Hand-written local skills are never replaced without asking.
+symlink into a generated view. Shared scripts and references still link back to
+this repo; only `SKILL.md` is selected per model. OpenClaw watches the same kind
+of generated view. Hand-written local skills are never replaced without asking.
 
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
 Fable keeps product, architecture, design direction, integration, and high-level
@@ -77,10 +77,11 @@ something this repo proves.
 
 ## What a skill actually is
 
-A skill is a directory with a `SKILL.md` inside it. The frontmatter carries a
-`name` and a one-line `description`; the body is the workflow: steps, rules,
-stop conditions, and pointers to reference files that only get read when they
-are needed.
+A skill is a directory with complete prompts under `variants/`. Its root
+`SKILL.md` points at the GPT-5.6 variant so ordinary repository discovery still
+works. Installation selects one variant as the harness-visible `SKILL.md`; the
+frontmatter carries a `name` and one-line `description`, and the body contains
+the workflow, constraints, stop conditions, and reference pointers.
 
 Two ways one gets used:
 
@@ -100,12 +101,12 @@ Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
-Every skill declares its execution mode and the model profiles it has actually
-been reviewed against. `model-writing-guides` resolves the active model against
-that coverage, applies the matching model-and-mode variant, and keeps the
-requested skill running with a same-family fallback when coverage is stale.
-The first miss in a task tells you the skill needs an update; later misses stay
-quiet.
+Every skill currently has full GPT-5.6, Claude Fable 5.1, and Claude Opus 5
+variants. Selection happens locally before the model sees the skill, so there
+is no router turn or unused prompt in context. Claude Code refreshes the view at
+session start and after `/model`; a new model falls back to the newest family
+variant and produces one update notice for that session. Unknown model families
+stop instead of silently receiving an unrelated prompt.
 
 ## The loop
 
@@ -217,7 +218,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | Skill | What it does |
 | --- | --- |
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Runs a compact clarity and voice pass before every final response, then adds the full AI-tells catalogue when the user invokes the skill explicitly. |
-| [`model-writing-guides`](skills/model-writing-guides/SKILL.md) | Selects the reviewed writing profile for the active model, warns once when a skill's coverage is stale, and falls back without blocking the skill. |
+| [`model-writing-guides`](skills/model-writing-guides/SKILL.md) | Maintains complete model-specific skill prompts, official writing-guide references, local selection, fallback, and stale-profile notices. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
 ### Meta and operations
@@ -290,14 +291,13 @@ PRs are welcome.
 - Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
-- Give every skill an `execution`, `instruction-authoring`, or `prose-revision`
-  mode in `model-writing.json`, declare every reviewed profile, and keep
-  model-specific deltas in the matching central mode variant. Add a local
-  adapter only for a genuinely skill-specific difference. The
-  [`model-writing-guides`](skills/model-writing-guides/SKILL.md) registry owns
-  the official guide links and fallback behavior.
-- One skill per directory, `SKILL.md` at its root, `name` unique across the
-  repo. Keep the body short and push detail into `references/`.
+- Give every skill a complete prompt in `variants/gpt-5.6.md`,
+  `variants/claude-fable-5.1.md`, and `variants/claude-opus-5.md`. Preserve one
+  behavior contract while following each model's official prompting guide. The
+  [`model-writing-guides`](skills/model-writing-guides/SKILL.md) skill owns the
+  guide links, selector, fallback order, and new-model workflow.
+- One skill per directory, root `SKILL.md` linked to the GPT-5.6 variant, and
+  `name` unique across the repo. Keep shared detail in `references/`.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

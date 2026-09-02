@@ -131,86 +131,36 @@ for path in sorted(skill_paths):
             errors.append(f"duplicate skill name: {name}: {previous} and {path}")
         seen_names[name] = path
 
-behavior_checks = {
-    root / "skills/grilling/SKILL.md": [
-        "Ask the whole frontier",
-        "dispatch a background subagent",
-        "horizontal rule between questions",
-    ],
-    root / "skills/grill-with-docs/SKILL.md": [
-        "`Next Round`",
-        "background fact-finding",
-    ],
-    root / "skills/improve-codebase-architecture/SKILL.md": [
-        "last 20 commit messages",
-    ],
-    root / "skills/design/SKILL.md": [
-        "Choose the design mode",
-    ],
-    root / "skills/writing-for-agents/SKILL.md": [
-        "name: writing-for-agents",
-        "Treat the environment as a source of truth",
-    ],
-    root / "skills/writing-for-agents/SKILL-MECHANICS.md": [
-        "policy.allow_implicit_invocation: false",
-    ],
-    root / "CLAUDE.md": [
-        "Use the external `browser-use` skill directly",
-        "including Chrome and Dia",
-        "`DevToolsActivePort` and `BU_CDP_URL`",
-    ],
-    root / "external.md": [
-        "browser-use==0.13.7",
-        "f0aa3a8bb03779c71a5aa262d389e3bfe6b77cdc",
-        "browser-use skill install --target claude --no-install --force",
-    ],
-    root / "skills/pr-proof-pack/SKILL.md": [
-        "twg bb pull-requests update",
-        "`body_html`",
-        "direct-base `+LOC` and `-LOC`",
-    ],
-    root / "skills/pr-proof-pack/references/screenshots.md": [
-        "GitHub attachment upload",
-        "server-rendered body without opening a browser",
-    ],
-    root / "skills/pr-proof-pack/references/bitbucket.md": [
-        "provider CLI",
-        "twg bb pull-requests update",
-        "--description-file",
-        "{{image}}",
-        "headless Bitbucket rendered-media verifier",
-    ],
-    root / "skills/pr-proof-pack/src/NetDiff.ts": [
-        "baseline is meaningful and reproducible; otherwise state the constraint",
-        "copyable text for textual behavior",
-        "## Change Breakdown",
-    ],
-    root / "skills/review-guardrails/SKILL.md": [
-        "load `speak-fking-english`",
-    ],
-    root / "skills/review-guardrails/references/scope-governor.md": [
-        "Assume the user has not",
-        "what the reviewer found, in plain language",
-        "Should I include it in",
-        "Keep CLI terms, budget calculations, finding classes",
-    ],
-    root / "skills/wait-efficiently/SKILL.md": [
-        "There is no universal",
-        "resume the event wait",
-    ],
-    root / "INSTALL.md": [
-        "writing-great-skills` becoming",
-    ],
-}
+    if not path.is_symlink():
+        errors.append(f"root SKILL.md must select the default variant by symlink: {path}")
+    elif os.readlink(path) != "variants/gpt-5.6.md":
+        errors.append(f"unexpected default variant link: {path}: {os.readlink(path)!r}")
 
-for path, required_text in behavior_checks.items():
-    if not path.is_file():
-        errors.append(f"missing refreshed skill file: {path}")
-        continue
-    text = path.read_text()
-    for required in required_text:
-        if required not in text:
-            errors.append(f"missing refreshed behavior: {path}: {required!r}")
+    for profile in ("gpt-5.6", "claude-fable-5.1", "claude-opus-5"):
+        variant = path.parent / "variants" / f"{profile}.md"
+        if not variant.is_file():
+            errors.append(f"missing model variant: {variant}")
+            continue
+        variant_lines = variant.read_text().splitlines()
+        if not variant_lines or variant_lines[0] != "---":
+            errors.append(f"missing variant frontmatter: {variant}")
+            continue
+        try:
+            variant_end = variant_lines[1:].index("---") + 1
+        except ValueError:
+            errors.append(f"unterminated variant frontmatter: {variant}")
+            continue
+        variant_name = None
+        variant_description = None
+        for line in variant_lines[1:variant_end]:
+            if line.startswith("name:"):
+                variant_name = parse_scalar(line.split(":", 1)[1])
+            if line.startswith("description:"):
+                variant_description = parse_scalar(line.split(":", 1)[1])
+        if variant_name != name:
+            errors.append(f"variant name mismatch: {variant}: {variant_name!r}")
+        if variant_description != metadata.get("description"):
+            errors.append(f"variant description mismatch: {variant}")
 
 old_writing_skill = root / "skills/writing-great-skills"
 if old_writing_skill.exists():
@@ -407,7 +357,7 @@ test_bun_runtime_and_openclaw_install_are_documented() {
   test ! -e "$ROOT_DIR/pnpm-lock.yaml" || fail "expected pnpm-lock.yaml to be removed"
   test ! -e "$ROOT_DIR/pnpm-workspace.yaml" || fail "expected pnpm-workspace.yaml to be removed"
   assert_contains "$ROOT_DIR/README.md" "bun ci"
-  assert_contains "$ROOT_DIR/README.md" 'OpenClaw | `REPO/skills` via `skills.load.extraDirs`'
+  assert_contains "$ROOT_DIR/README.md" 'OpenClaw | generated model view via `skills.load.extraDirs`'
   assert_contains "$ROOT_DIR/INSTALL.md" "openclaw config validate"
   assert_contains "$ROOT_DIR/INSTALL.md" "skills.load.extraDirs"
   assert_contains "$ROOT_DIR/INSTALL.md" "openclaw skills list --json"
@@ -1248,8 +1198,8 @@ test_skill_cleaner_uses_current_model_configuration() {
   assert_not_contains "$ROOT_DIR/skills/skill-cleaner/references/analyzer-notes.md" 'GPT-5.5'
 }
 
-test_model_writing_guide_resolver() {
-  node --test "$ROOT_DIR/skills/model-writing-guides/scripts/resolve-model-writing-guide.test.mjs"
+test_model_skill_variant_materializer() {
+  node --test "$ROOT_DIR/skills/model-writing-guides/scripts/materialize-skill-variants.test.mjs"
 }
 
 test_external_teach_install_is_pinned() {
@@ -1478,6 +1428,6 @@ test_review_neutrality_and_skill_ownership_are_explicit
 test_cross_harness_sessions_are_full_and_symmetric
 test_claude_fable_orchestration_is_repo_owned
 test_skill_cleaner_uses_current_model_configuration
-test_model_writing_guide_resolver
+test_model_skill_variant_materializer
 test_handoff_tmux_helper_builds_tmux_window_command
 printf 'ok - skills tests\n'
