@@ -51,12 +51,12 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 2. Pre-flight the target.
 
-   Confirm the target: uncommitted local diff, base branch, or commit SHA. Check
-   engine availability, inspect the working tree, load `review-guardrails`,
-   confirm the persisted scope budget with `scope-status`, and identify
-   verification commands. Done when fixes will land in the intended checkout,
-   the scope budget is ready, and no review checklist or implementation
-   rationale will be fed to the engine.
+   Confirm the target: a clean committed branch against its base, or a commit
+   SHA. Refuse staged, unstaged, or untracked changes. Check engine
+   availability, load `review-guardrails`, confirm the persisted scope budget
+   with `scope-status`, and identify verification commands. Done when fixes
+   will land in the intended checkout, the scope budget is ready, and no review
+   checklist or implementation rationale will be fed to the engine.
 
 3. Run the until-clean loop.
 
@@ -84,6 +84,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
   conditions are recorded in the findings CLI.
 - Every accepted fix is followed by a passing `scope-check`, and the final scope
   status is not missing or blocked.
+- Accepted fixes from one pass are committed together before the next review.
 - No code was edited between clean passes.
 - No final clean verdict is reported while the consult queue has open entries.
 
@@ -94,6 +95,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 - replacing the engine's review with `spawn_agent`, `cold-pr-review`, a
   repo-specific review command, or manual judgment;
 - switching engines mid-loop;
+- reviewing staged, unstaged, or untracked changes;
 - re-reviewing an old immutable commit after fixes;
 - counting your own rejection of a finding as a clean pass;
 - silently fixing or rejecting consult-worthy findings;

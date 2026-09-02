@@ -40,11 +40,12 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 1. Pre-flight the target.
 
-   Confirm the PR number, URL, branch, git range, or local diff. Check the
-   working tree, load `review-guardrails`, and identify required verification
-   commands. If running inside `code-review`, inherit the orchestrator's
-   persisted scope budget, consult queue, and queue-matching rules. Confirm it
-   with `scope-status` before fixing anything.
+   Confirm the PR number, URL, branch, or git range and the exact committed
+   `HEAD`. Refuse staged, unstaged, or untracked changes. Load
+   `review-guardrails` and identify required verification commands. If running
+   inside `code-review`, inherit the orchestrator's persisted scope budget,
+   consult queue, and queue-matching rules. Confirm it with `scope-status`
+   before fixing anything.
 
 2. Build neutral reviewer context.
 
@@ -90,6 +91,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
   conditions are recorded in the findings CLI.
 - Every accepted fix is followed by a passing `scope-check`, and the final scope
   status is not missing or blocked.
+- Accepted fixes from one pass are committed together before the next reviewer.
 - No code was edited between clean passes.
 - No final clean verdict is reported while the consult queue has open entries.
 
@@ -97,6 +99,7 @@ fixed_point: when the clean target is met and the consult queue is non-empty, su
 
 - substituting the implementer's judgment for a cold review;
 - leaking prior findings or implementation rationale into reviewer prompts;
+- reviewing staged, unstaged, or untracked changes;
 - stopping without a fresh clean cold-review pass;
 - silently fixing or rejecting consult-worthy findings;
 - running more reviews on an unchanged tree beyond the clean target.

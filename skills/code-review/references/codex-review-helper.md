@@ -7,19 +7,16 @@ verdict protocol, or parse prose to decide whether a review is clean.
 ```sh
 scripts/codex-review
 scripts/codex-review --mode branch --base origin/main
-scripts/codex-review --mode uncommitted
 scripts/codex-review --mode commit --commit HEAD
 scripts/codex-review --parallel-tests "bun run test"
 scripts/codex-review --output /tmp/codex-review.out
 scripts/codex-review --dry-run
 ```
 
-The helper resolves a concrete Git target, delegates review to the native
-command, prints its output unchanged, and propagates process or parallel-test
-failures. In auto or whole mode, a dirty branch is copied into a temporary
-detached worktree with staged, unstaged, and untracked changes committed as one
-ephemeral snapshot. One base review therefore covers committed and local
-changes together, and the snapshot is removed afterward.
+The helper requires a clean committed worktree, resolves a concrete Git target,
+delegates review to the native command, prints its output unchanged, and
+propagates process or parallel-test failures. It stops before review when staged,
+unstaged, or untracked changes exist.
 
 A clean checkout uses `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`
@@ -42,11 +39,11 @@ creating an unrelated embedded-provider login. With the shared auth file in
 place, switching accounts through `cxa` also switches the account used by
 OpenClaw's standalone `codex` command.
 
-The helper records the branch, tracked diff, and hashes of untracked files
-before and after each review. If the target changes while the reviewer is
-running, it discards that stale answer, resolves the latest target, and reruns.
-It stops with an error after three continuously changing runs instead of
-claiming that an unstable target was reviewed.
+The helper records the resolved base and committed head before and after each
+review. If either changes while the reviewer is running, it discards that stale
+answer, resolves the latest target, and reruns. It stops with an error after
+three continuously changing runs instead of claiming that an unstable target
+was reviewed.
 
 Run the helper through the `wait-efficiently` Codex shell-wait pattern. Resume a
 yielded cell instead of rerunning the helper.

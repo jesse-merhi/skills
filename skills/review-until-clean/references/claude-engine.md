@@ -13,11 +13,12 @@ Workflow({ name: "code-review", args: "<level> [target]" })
   part of the target and the level silently falls back to `high`, so always
   spell the level out.
 - Everything after the level is the review target only:
-  - omit the target to review the current branch diff plus uncommitted changes
-    (the whole-target default);
   - `<base>...HEAD` (for example `main...HEAD`) for branch-vs-base review;
   - a commit SHA for one commit;
   - a PR number for a checked-out PR.
+- Require a clean committed checkout before invoking the workflow. After
+  accepted fixes, validate them and commit the pass as one batch before
+  reviewing the new `HEAD`.
 - Pass only the target. The workflow accepts free-form instructions in the
   target string, but nothing else goes in: no checklists, prior findings,
   implementation rationale, or desired verdicts. Match returned candidates

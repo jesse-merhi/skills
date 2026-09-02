@@ -9,12 +9,27 @@ changed flows, entrypoints, contracts, side effects, and validation targets.
 Check for unrelated diff rubbish, architecture issues, cognitive load, and
 React state ownership issues. Check TypeScript type boundaries, API/client contracts,
 schemas, casts, `any`, `unknown`, and ts-ignore usage when TypeScript changed.
-Apply security and UI lenses when the diff touches those areas. Report only
-concrete actionable findings. Every finding must identify the changed line or
-contract that causes, exposes, or worsens the problem. Exclude pre-existing
-improvements and unrelated defects. Report every distinct actionable finding in
-this pass, ordered by severity. Before returning, sweep the changed flows again
-for distinct failure modes you may have missed, then give a merge verdict.
+Apply security and UI lenses when the diff touches those areas. Treat every
+observation as a candidate and report it only after three independent checks:
+(1) a current supported path reaches the behavior, (2) its likelihood, impact,
+affected users, recovery, and current contract make intervention worthwhile,
+and (3) either a recommended repair addresses the root cause at the owning
+boundary and is better than doing nothing after counting complexity and new
+failure modes, or a proven material problem has a concrete unresolved repair
+decision worth bringing to the owner. Do not return candidates that fail a gate
+as findings, suggestions, or optional hardening. Put them only in a compact
+`Rejected candidates` audit section with a stable fingerprint, failed gate, and
+one-sentence evidence rationale. A
+consultation is actionable as an owner decision but never authorizes a patch;
+report it without inventing a fix. Every finding must
+identify the changed line or contract that causes, exposes, or worsens the
+problem, plus the root cause and intervention justification. Include the
+recommended repair, or for consultation name the repair question, directions
+checked, and why no recommendation is yet supported.
+Exclude pre-existing improvements and
+unrelated defects. Report every distinct actionable finding in this pass,
+ordered by severity. Before returning, sweep the changed flows again for
+distinct failure modes you may have missed, then give a merge verdict.
 ```
 
 Add domain-specific checklist items only when they are neutral and visible from

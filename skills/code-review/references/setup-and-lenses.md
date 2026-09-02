@@ -1,7 +1,7 @@
 # Setup and lenses
 
-Do once before review loops, then redo only if the target, base, or dirty local
-overlay changes.
+Do once before review loops, then redo only if the committed target or base
+changes.
 
 1. Map changed flows, entrypoints, contracts, side effects, state transitions,
    risk areas, and validation targets with `review-flow-map`.

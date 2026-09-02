@@ -50,9 +50,11 @@ describe("review file coverage", () => {
       await writeFile(join(repository, "a.txt"), "feature a\n")
       await writeFile(join(repository, "b.txt"), "feature b\n")
       await execFile("git", ["commit", "-am", "feature"], { cwd: repository })
-      await execFile("git", ["update-index", "--assume-unchanged", "hidden.txt"], { cwd: repository })
       await writeFile(join(repository, "hidden.txt"), "hidden change\n")
       await writeFile(join(repository, "untracked.txt"), "untracked\n")
+      await execFile("git", ["add", "hidden.txt", "untracked.txt"], { cwd: repository })
+      await execFile("git", ["commit", "-m", "more feature files"], { cwd: repository })
+      await execFile("git", ["update-index", "--assume-unchanged", "hidden.txt"], { cwd: repository })
 
       const run: ReviewRun = {
         repo: "sample",
@@ -252,5 +254,5 @@ describe("review file coverage", () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  }, 30_000)
+  }, 60_000)
 })

@@ -11,19 +11,13 @@ with the blocker or residual risk.
 
 ## Target handling
 
-- Default to whole PR/branch review. If the branch has committed PR changes and
-  dirty local changes, review a temporary snapshot that includes both the branch
-  diff and the dirty local overlay. A clean local-only review only proves there
-  is no local patch; it does not prove the PR/branch is clean.
-- Treat a whole-target snapshot as review input, not the working copy. If review
-  finds a real bug from snapshot content, apply the accepted fix in the real
-  checkout, run affected validation there, then rerun review. The next
-  whole-target review must rebuild a fresh snapshot from the real checkout. Do
-  not leave accepted fixes only inside the temporary worktree; the helper
-  removes that worktree after review.
-- Use local mode only when the requested target is the local patch by itself.
-  Use branch mode only when the requested target is the committed branch by
-  itself.
+- Review only a clean committed checkout. Refuse staged, unstaged, and untracked
+  input before either review phase.
+- Default to whole PR/branch review against its base. Use commit mode only when
+  the requested target is one immutable commit.
+- Batch accepted findings from one pass, validate them, run `scope-check`, then
+  commit them together before the next review pass. Never create one commit per
+  finding or commit growth that the scope check rejected.
 
 ## Run handling
 
@@ -54,15 +48,20 @@ with the blocker or residual risk.
 - Treat native and cold reviewer output as candidates. Before editing code,
   require `finding-discipline`'s recorded likelihood-impact risk rating for a
   runtime candidate, or its maintenance and present-cost evidence for a
-  maintenance candidate. Require the CLI's derived disposition in either case;
+  maintenance candidate. Then require contract evidence for a runtime finding,
+  plus root cause and intervention justification for either kind. Require a
+  recommended repair before a patch, deferral, or approved consultation.
+  Require the CLI's derived disposition in either case;
   only runtime findings receive severity. Record `--handling fix` for current
   in-scope work, `consult` for an owner decision, `follow-up` for real work
-  outside this review, or `reject` for proven runtime behavior the current
-  contract allows.
+  outside this review, or `reject` when a candidate fails a named actionability
+  gate.
 - Before editing an accepted finding, apply `review-guardrails`' systemic-finding
-  stop. Bring the user durable architecture options instead of applying a local
-  Band-Aid.
-- Apply `review-guardrails`' autonomous fix bar after `finding-discipline` and
+  boundary. Apply a contained systemic repair at the owning layer instead of a
+  local Band-Aid; bring the user durable architecture options before a material
+  systemic repair.
+- Apply `review-guardrails`' autonomous fix bar after all three
+  `finding-discipline` gates and
   before editing. A valid review observation is not automatically worth
   permanent production code, compatibility behavior, or tests.
 - Reapply `reducing-cognitive-load`'s plausibility and proxy tests to every
@@ -88,7 +87,11 @@ with the blocker or residual risk.
 - Reject unsupported edge cases. Record residual risk only when reachability and
   impact are proven and the current change deliberately leaves the risk
   unresolved.
-- Prefer small fixes at the right ownership boundary.
+- Prefer the smallest durable repair at the boundary that owns the problem.
+- Choose verification after the repair passes. Apply `test-audit` before any
+  test edit; its portfolio decision owns whether coverage is added, changed,
+  removed, consolidated, or unnecessary. Prefer rendered UI proof for visual
+  defects unless stable behavior or state is worth automating.
 
 ## Hard stops
 

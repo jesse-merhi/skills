@@ -5,9 +5,6 @@ Invoke `codex review` with the target flag only. Do not append a prompt.
 Use these forms:
 
 ```sh
-# Review staged, unstaged, and untracked local changes.
-codex review --uncommitted
-
 # Review branch changes against a base branch such as main.
 codex review --base main
 
@@ -19,17 +16,16 @@ For GitHub PRs, check out the PR branch locally first, then use
 `codex review --base <base-branch>`. `codex review` does not take a PR number in
 the tested CLI.
 
-Prefer `--base <branch>` or `--uncommitted` for review-until-clean loops where
-you expect to edit fixes. A commit SHA is immutable. After fixing findings from
-`codex review --commit <sha>`, do **not** keep reviewing the old SHA. Either
-amend/create the fix commit and retarget the command to the new SHA, or switch
-the loop target to `codex review --base <branch>` or
-`codex review --uncommitted` so Codex reviews the fixed tree.
+The checkout must have a committed `HEAD` and no staged, unstaged, or untracked
+changes before either command runs. Prefer `--base <branch>` for an editable
+review-until-clean loop. A commit SHA is immutable. After fixing findings,
+validate them, commit all accepted fixes from that pass together, and review
+the new `HEAD` with `--base <branch>` or its new SHA. Do not amend or rewrite
+earlier commits merely to keep the review history tidy unless the user asks.
 
 Do not use these forms:
 
 ```sh
-codex review --uncommitted "custom instructions"
 codex review --base main "custom instructions"
 codex review - <<'PROMPT'
 ...
