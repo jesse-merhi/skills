@@ -42,6 +42,30 @@ test("a new model version falls back within its family and requires one notice",
   assert.equal(result.selectedProfile, "gpt-5.6");
   assert.equal(result.reason, "unregistered-model-version");
   assert.equal(result.noticeRequired, true);
+  assert.match(result.notice, /speak-fking-english/u);
+  assert.match(result.notice, /openai\/gpt-5\.7-sol/u);
+  assert.match(result.notice, /gpt-5\.6 guidance/u);
+});
+
+test("same-family fallback selects the highest covered rank", () => {
+  const rankedRegistry = structuredClone(registry);
+  const current = rankedRegistry.profiles.find((profile) => profile.id === "gpt-5.6");
+  rankedRegistry.profiles.unshift({
+    ...structuredClone(current),
+    id: "gpt-5.5",
+    match: "^(?:openai/)?gpt-5\\.5$",
+    fallbackRank: 55,
+  });
+  const coverage = structuredClone(speakCoverage);
+  coverage.profiles = { "gpt-5.5": null, ...coverage.profiles };
+  const result = resolveModelWritingGuide({
+    model: "openai/gpt-5.7-sol",
+    registry: rankedRegistry,
+    coverage,
+    guideRoot: skillRoot,
+    callingSkillRoot: speakRoot,
+  });
+  assert.equal(result.selectedProfile, "gpt-5.6");
 });
 
 test("a known profile omitted by the calling skill does not bypass its coverage", () => {
@@ -127,6 +151,75 @@ test("guide and adapter references cannot escape their owning skills", () => {
   const unsafeCoverage = structuredClone(speakCoverage);
   unsafeCoverage.profiles["gpt-5.6"] = "../writing-for-agents/SKILL.md";
   assert.throws(() => resolve("gpt-5.6-sol", unsafeCoverage), /must stay inside its owning skill/u);
+});
+
+test("guide and adapter symlinks cannot escape their owning skills", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "model-writing-guide-containment-"));
+  const guideRoot = path.join(directory, "guide");
+  const callingSkillRoot = path.join(directory, "caller");
+  const external = path.join(directory, "external.md");
+  fs.mkdirSync(path.join(guideRoot, "references"), { recursive: true });
+  fs.mkdirSync(path.join(callingSkillRoot, "references"), { recursive: true });
+  fs.writeFileSync(external, "outside\n");
+  fs.symlinkSync(external, path.join(guideRoot, "references/escape.md"));
+  fs.symlinkSync(external, path.join(callingSkillRoot, "references/escape.md"));
+  const minimalRegistry = {
+    schemaVersion: 1,
+    modes: ["execution"],
+    families: [{ id: "openai-gpt", match: "^gpt-" }],
+    profiles: [{
+      id: "gpt-5.6",
+      family: "openai-gpt",
+      match: "^gpt-5\\.6$",
+      fallbackRank: 56,
+      guideUrl: "https://example.test/guide",
+      reviewedOn: "2026-09-02",
+      references: { execution: "references/escape.md" },
+    }],
+  };
+  const coverage = {
+    schemaVersion: 1,
+    skill: "caller",
+    mode: "execution",
+    profiles: { "gpt-5.6": null },
+  };
+  try {
+    assert.throws(() => resolveModelWritingGuide({
+      model: "gpt-5.6", registry: minimalRegistry, coverage, guideRoot, callingSkillRoot,
+    }), /must stay inside its owning skill/u);
+    fs.unlinkSync(path.join(guideRoot, "references/escape.md"));
+    fs.writeFileSync(path.join(guideRoot, "references/escape.md"), "inside\n");
+    coverage.profiles["gpt-5.6"] = "references/escape.md";
+    assert.throws(() => resolveModelWritingGuide({
+      model: "gpt-5.6", registry: minimalRegistry, coverage, guideRoot, callingSkillRoot,
+    }), /must stay inside its owning skill/u);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("registry semantic invariants reject malformed configuration", () => {
+  const cases = [
+    ["duplicate mode", (value) => value.modes.push(value.modes[0]), /duplicate mode/u],
+    ["duplicate family", (value) => value.families.push(structuredClone(value.families[0])), /duplicate family id/u],
+    ["invalid family match", (value) => { value.families[0].match = "["; }, /valid regular expression/u],
+    ["duplicate profile", (value) => value.profiles.push(structuredClone(value.profiles[0])), /duplicate profile id/u],
+    ["invalid profile match", (value) => { value.profiles[0].match = "["; }, /valid regular expression/u],
+    ["unknown family", (value) => { value.profiles[0].family = "missing"; }, /unknown family/u],
+    ["missing mode reference", (value) => { delete value.profiles[0].references.execution; }, /has no reference for mode/u],
+    ["extra mode reference", (value) => { value.profiles[0].references.imaginary = value.profiles[0].references.execution; }, /references unknown mode/u],
+  ];
+  for (const [name, mutate, pattern] of cases) {
+    const malformed = structuredClone(registry);
+    mutate(malformed);
+    assert.throws(() => resolveModelWritingGuide({
+      model: "gpt-5.6-sol",
+      registry: malformed,
+      coverage: speakCoverage,
+      guideRoot: skillRoot,
+      callingSkillRoot: speakRoot,
+    }), pattern, name);
+  }
 });
 
 test("every skill except the registry declares every reviewed profile and resolves its mode", () => {
