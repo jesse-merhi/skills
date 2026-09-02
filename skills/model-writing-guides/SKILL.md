@@ -37,9 +37,13 @@ shared behavior without a model pass.
 
 When `noticeRequired` is `true`, check whether any earlier assistant message in
 the current task already gave a model-writing coverage notice. If none did,
-show the returned `notice` in the next commentary update, or in the final
-response when no commentary turn remains. Once one such notice has appeared,
-do not repeat it for this or another skill during the same task.
+show the returned `notice` in a separate user-facing progress or status update
+before finalizing the requested output. When the harness has no separate
+channel, include it only in an ordinary prose response that permits extra text.
+If the required output is schema-constrained, machine-consumed, or otherwise
+forbids extra prose, preserve that output and defer the notice until the next
+prose-safe reply in the task. Once one such notice has appeared, do not repeat
+it for this or another skill during the same task.
 
 The notice is informational. Continue the calling skill with the returned
 fallback or its shared behavior. Do not stop, ask for permission, or omit the
