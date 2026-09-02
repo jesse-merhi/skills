@@ -7,10 +7,11 @@ Classify every run from the engine's review output after triage:
 - `clean`: no findings, or only findings rejected with recorded evidence. For
   codex, the output clearly says the reviewed change is correct or has no
   findings. For claude, the workflow report has an empty findings list.
-- `clean-except-queue`: every remaining finding matches an open consult-queue
-  entry (`review-guardrails`). Counts toward the clean target; cannot produce the
-  final clean verdict.
-- `has_findings`: at least one actionable finding remains.
+- `clean-except-queue`: no fixable finding remains and every other candidate is
+  an open consult-queue or provisional entry (`review-guardrails`). Counts
+  toward the clean target; cannot produce the final clean verdict.
+- `has_findings`: at least one accepted finding classified `--handling fix`
+  remains.
 - `ambiguous`: errored, interrupted, wrong target, no clear verdict, or output
   could not be interpreted.
 
@@ -47,11 +48,16 @@ Repeat:
    - for a maintenance candidate, use `--maintenance-evidence` to prove current
      unnecessary complexity, duplication, or code with no current job, and
      `--present-cost` for its concrete reading, change, test, or ownership cost
+   - apply `finding-discipline`'s reality, importance, and repair-quality gates;
+     only actionable candidates may receive `--handling fix`
+   - record contract evidence for every actionable runtime candidate, plus root
+     cause and intervention justification for every actionable candidate;
+     require a recommended repair before patching, deferring, or approving one
    - CLI-derived `investigate` or `consult` -> no patch; investigate or queue it
    - apply `review-guardrails`' autonomous fix bar before accepting a patch
    - accepted finding with uncertain repair -> provisional-fix test (review-guardrails):
-       pass -> fix now, log Provisional, ask the user without waiting
-       fail -> consult queue (Class B), ask the user without waiting
+       pass -> fix now, log Provisional, notify the user, keep the entry open
+       fail -> consult queue (Class B), no patch; continue only independent work
    - findings matching an open queue entry -> match note, no new entry
    If open questions for the user have reached consult_cap ->
      Record the open queue and stop reason `blocked-on-consult`.
@@ -70,10 +76,8 @@ Repeat:
      Else -> go to step 1 without changing the reviewed tree.
 7. If has_findings:
      consecutive_clean = 0
-     Fix the actionable findings with narrow edits.
-     If the target was an immutable commit SHA, update the reviewed target to
-     the amended/new commit SHA, or switch to the base/uncommitted target before
-     the next review. Do not re-review an old immutable commit after fixes.
+     Fix only findings classified `--handling fix`, using the smallest durable
+     edits at the owning boundary. Never patch a queued consultation.
      Run relevant verification for the fixes.
      Record each command, result, and reason with the findings CLI.
      Run `"$review_findings_bin" scope-check --reason <remaining work and why it may
@@ -81,6 +85,10 @@ Repeat:
      If it exits non-zero -> record stop reason `blocked-on-consult`, present
        the CLI report to the user, and STOP before another review or fix.
      Keep fixed-finding details in the findings CLI.
+     Commit all accepted fixes from this pass together. Review the new HEAD
+     against the same base, or retarget an immutable-commit review to the new
+     commit. Do not re-review the old commit and do not rewrite earlier history
+     unless the user asks.
      Go to step 1.
 8. If ambiguous:
      consecutive_clean = 0

@@ -17,17 +17,18 @@ lost. If either is incomplete, repair the database records before answering.
 
 Write a short owner report:
 
-Before these sections, state the exact reviewed head SHA and target, or the
-dirty snapshot identity. A later PR workflow must be able to compare this
-identity with the current head without relying on chat memory or CI state.
+Before these sections, state the exact reviewed commit SHA and target. A later
+PR workflow must be able to compare it with the current head without relying on
+chat memory or CI state.
 
 1. **Outcome:** clean, blocked, or incomplete; whether the final push and CI
    completed.
 2. **What review found:** total and status counts, then group every finding into
    a small number of plain-language themes. Give each theme a count and its
    finding IDs so the counts reconcile with the complete audit. Explain the
-   highest-impact findings and their fixes. Do not print hundreds of repetitive
-   cards.
+   highest-impact findings and their fixes. Include source-by-disposition and
+   rejection-gate counts so weak native and cold-review candidates remain
+   measurable. Do not print hundreds of repetitive cards.
 3. **Still open:** unresolved decisions and failed or skipped validation.
    Report follow-ups and owner-declined deferred work separately from explicitly
    accepted residual risk so none is mislabeled as resolved or unresolved.

@@ -17,8 +17,9 @@ Record at setup, before the first review cycle:
 
 ```text
 review_started = <local timestamp>
-baseline_diff  = <changed files and changed lines of the original target,
-                  persisted by `$review_findings_bin scope-start`>
+baseline_diff  = <changed files and changed lines from the branch's first
+                  user-authorized baseline for this base branch, persisted or
+                  inherited by `$review_findings_bin scope-start`>
 scope_baseline = <request, target, intended behavior, owner boundary>
 findings_db_path = <local SQLite path, normally ~/.local/state/agent-review-findings/reviews.sqlite>
 decision_log_path = <optional path for long-form rationale, when available>
@@ -52,12 +53,15 @@ fields in its header.
    accepted fix.
 3. Require `finding-discipline`'s recorded risk rating for a runtime candidate,
    or its maintenance and present-cost evidence for a maintenance candidate.
-   Then classify accepted findings and apply the autonomous fix bar in
+   Require its reality, importance, and repair-quality gates before classifying
+   a candidate as actionable. Then classify accepted findings and apply the
+   autonomous fix bar in
    [scope-governor.md](references/scope-governor.md).
-4. Before patching, apply the systemic-finding stop in
-   [systemic-findings.md](references/systemic-findings.md). Patch only
-   non-systemic blockers within the task and diff budget. Allow new text paths,
-   but require authorization for new binaries.
+4. Before patching, apply the systemic-finding boundary in
+   [systemic-findings.md](references/systemic-findings.md). Apply a contained
+   systemic repair at the owning boundary; consult before a material systemic
+   repair or any local Band-Aid. Allow new text paths, but require authorization
+   for new binaries.
 5. For accepted findings with an uncertain repair, use the provisional-fix or
    consult rules in [uncertain-findings.md](references/uncertain-findings.md).
    Do not use provisional code to resolve uncertainty about whether a risk

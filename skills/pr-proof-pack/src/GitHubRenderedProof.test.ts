@@ -12,7 +12,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { GitHubAttachmentError, parseTrustedMediaUrl } from "./GitHubAttachment.ts"
+import { GitHubAttachmentError, parsePullRequestUrl, parseTrustedMediaUrl } from "./GitHubAttachment.ts"
 import {
   extractRenderedMedia,
   parseRenderedProofResponse,
@@ -57,6 +57,21 @@ const waitForFile = (path: string) => Effect.gen(function*() {
 })
 
 describe("rendered GitHub proof verification", () => {
+  it.effect("accepts only full credential-free github.com pull request URLs", () => Effect.all([
+    parsePullRequestUrl("https://github.com/jesse-merhi/skills/pull/81"),
+    parsePullRequestUrl("81").pipe(Effect.flip),
+    parsePullRequestUrl("https://github.example.com/acme/private/pull/7").pipe(Effect.flip),
+    parsePullRequestUrl("https://github.com/acme/private/pull/7?view=files").pipe(Effect.flip),
+    parsePullRequestUrl("https://github.com/acme/private/pull/7#discussion").pipe(Effect.flip),
+    parsePullRequestUrl("https://sentinel-secret@github.com/acme/private/pull/7").pipe(Effect.flip)
+  ]).pipe(Effect.map(([valid, ...errors]) => {
+    assert.strictEqual(valid.href, "https://github.com/jesse-merhi/skills/pull/81")
+    for (const error of errors) {
+      assert.match(error.message, /full github[.]com PR URL/u)
+      assert.notInclude(error.message, "sentinel-secret")
+    }
+  })))
+
   it.effect("extracts rendered image and video URLs without preferring canonical metadata", () => extractRenderedMedia(
     '<p><img data-canonical-src="https://github.com/user-attachments/assets/canonical" src="https://camo.githubusercontent.com/signed?x=1&amp;y=2"></p><video controls src=\'https://private-user-images.githubusercontent.com/video-signed\'></video>'
   ).pipe(Effect.map((media) => {

@@ -35,32 +35,48 @@ ask them to restore the blocked capability. Continue only after it works.
 
 ## GitHub attachment upload
 
-For a PR hosted on exactly `github.com`, upload each image or video with the
-repository command:
+For a PR hosted on exactly `github.com`, require GitHub CLI 2.99.0 or newer and
+upload through native `--attach` support. Draft the complete PR body with each
+local file referenced at its intended position:
 
-```sh
-<skill-dir>/scripts/github-upload-attachment \
-  --pr <number-or-URL-resolved-in-step-2> \
-  <path>
+```md
+![Supplier results remain visible while the role search is filtered](./after.png)
+
+![](./filtered-results.mp4)
 ```
 
-The command resolves the exact PR and numeric repository ID, detects the media
-type, sends the binary through GitHub's token-authenticated attachment endpoint,
-and requires a `201` response with a canonical
-`https://github.com/user-attachments/assets/*` URL. It then authenticates only
-the initial canonical URL, follows redirects without forwarding credentials to
-another host, ignores user curl configuration that could weaken that boundary,
-keeps signed redirect URLs out of process arguments, rejects redirects outside
-GitHub-controlled media hosts, and verifies HTTP status, HTTP and detected
-content types, and exact byte size.
-It prints only the verified asset URL on success.
+An image reference keeps its Markdown alt text. A video reference must be alone
+in its paragraph so GitHub CLI rewrites it to a bare URL that renders as a
+player. Run `gh` from the directory against which those local paths resolve,
+then re-read the PR's `headRefOid` and `body`. Compare both with the snapshot
+used to prepare the draft. If either changed, restart the freshness decision.
+Otherwise upload the body and all media together:
 
-The command supports `github.com` PRs only and accepts only image or video
-content. It requires curl 8.4 or newer so its byte limit also applies to
-responses without `Content-Length`. If the preflight fails, upgrade curl and
-ensure the newer binary is first on `PATH`.
-If it fails, stop and report its diagnostics. Do not extract or reuse browser
+```sh
+gh pr edit <full-PR-URL-resolved-in-step-2> \
+  --body-file <draft-markdown-path> \
+  --attach <first-media-path> \
+  --attach <second-media-path>
+```
+
+Repeat `--attach` for every selected file. GitHub CLI supports at most 50 files
+per invocation and accepts PNG, JPEG, GIF, WebP, SVG, MP4, MOV, and WebM. The
+active `gh` credential must have write access to the repository. If upload
+fails, stop and read the live body: earlier files may already have uploaded and
+been written even though the command exited nonzero. Use that live body as the
+retry draft and attach only files whose local references remain. Before
+returning `blocked`, remove every remaining local reference from the live body
+or restore the last fully provider-hosted body. Do not extract or reuse browser
 credentials.
+
+Read the body back after upload and confirm every local reference became a
+provider-hosted URL. Native rewriting produces Markdown images. When an image
+needs a deliberate percentage width, replace only that rewritten image in the
+read-back body with the HTML form below, then apply the complete body once more
+with `gh pr edit --body-file` and no `--attach` flags. Immediately before this
+second whole-body write, re-read `headRefOid` and `body` and require both to
+still match the post-upload readback; restart the freshness decision on a
+mismatch.
 
 Insert images with descriptive alt text and a deliberate percentage width:
 
@@ -91,8 +107,8 @@ controls the grouping:
 ```
 
 Keep a single image, a sequential interaction, or a comparison whose details
-become cramped outside a table. Insert videos as a bare URL on their own line;
-image Markdown such as `![](url)` does not produce a working MP4 player. Keep
+become cramped outside a table. GitHub CLI rewrites a standalone local video
+image reference to the bare hosted URL required for a player. Keep
 every attachment in the main PR body, never in a detached comment. Do not
 commit proof media to the repository unless the project or user explicitly
 requests that storage model.

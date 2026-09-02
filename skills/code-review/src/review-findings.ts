@@ -74,7 +74,7 @@ const init = Command.make("init", { db }, ({ db }) => withDb(db, initialize()).p
 const pathCommand = Command.make("path", { db }, ({ db }) => Console.log(expandHomePath(db)))
 const findingSchema = Command.make("schema", {}, () => Console.log(formatFindingSchema())).pipe(Command.withDescription("Print the authoritative record schema and consistency rules"))
 const record = Command.make("record", {
-  db, ...commonRun, runStatus: Flag.string("run-status").pipe(Flag.withDefault("active")), decisionLog: Flag.string("decision-log").pipe(Flag.withDefault("")),
+  db, ...commonRun, decisionLog: Flag.string("decision-log").pipe(Flag.withDefault("")),
   decisionId: Flag.string("decision-id"), status: Flag.choice("status", FINDING_STATUSES), source: Flag.string("source"), fingerprint: Flag.string("fingerprint"), summary: Flag.string("summary"),
   area: Flag.string("area").pipe(Flag.withDefault("")), impact: Flag.string("impact").pipe(Flag.withDefault("")), material: Flag.boolean("material"),
   userImpact: Flag.string("user-impact").pipe(Flag.withDefault("")), decision: Flag.string("decision").pipe(Flag.withDefault("")), text: Flag.string("text").pipe(Flag.withDefault("")),
@@ -82,12 +82,17 @@ const record = Command.make("record", {
   reachabilityEvidence: Flag.string("reachability-evidence").pipe(Flag.withDefault("")), likelihood: Flag.string("likelihood").pipe(Flag.withDefault("")),
   actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
   maintenanceEvidence: Flag.string("maintenance-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
+  contractEvidence: Flag.string("contract-evidence").pipe(Flag.withDefault("")),
+  rootCause: Flag.string("root-cause").pipe(Flag.withDefault("")),
+  recommendedFix: Flag.string("recommended-fix").pipe(Flag.withDefault("")),
+  interventionJustification: Flag.string("intervention-justification").pipe(Flag.withDefault("")),
+  rejectionGate: Flag.string("rejection-gate").pipe(Flag.withDefault("")),
   fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES),
   handling: Flag.choice("handling", FINDING_HANDLINGS),
   ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
-  const result = yield* recordFinding({ ...toRun(args), status: args.runStatus, decisionLog: args.decisionLog }, args)
+  const result = yield* recordFinding({ ...toRun(args), decisionLog: args.decisionLog }, args)
   yield* Console.log(`recorded run=${result.runId} issue=${result.issueId} decision=${args.decisionId} db=${args.db}`)
 })))
 const recordCommandCli = Command.make("record-command", {

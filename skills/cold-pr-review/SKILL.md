@@ -23,7 +23,9 @@ prevents questioning whether it was correct.
    and add domain-specific checklist items only when they are neutral and visible
    from the review target.
 6. Require `finding-discipline`: report only concrete actionable findings tied
-   to changed code or contracts, not style nits or vague risks.
+   to changed code or contracts, not style nits or vague risks. Keep candidates
+   that fail its gates out of the finding list, but return a compact audit-only
+   rejection with the failed gate and evidence rationale.
 
 ## Required discipline
 
@@ -31,6 +33,8 @@ prevents questioning whether it was correct.
   context that implemented the change also performs the review.
 - Give the reviewer the work product, not the story of the work.
 - Do not leak prior review outcomes or desired verdicts.
+- Keep audit-only rejections separate from findings so they remain measurable
+  without becoming suggestions, fixes, or tests.
 - If a separate reviewer is unavailable, say so explicitly and perform a fresh
   self-review after deliberately discarding the implementation rationale.
 

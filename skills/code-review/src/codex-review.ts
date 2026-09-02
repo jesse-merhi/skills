@@ -13,7 +13,7 @@ import { preflightCodexAuthentication, reviewIdentity, runNativeReview, selectRe
 const defaultOutput = Option.fromNullishOr(process.env.CODEX_REVIEW_OUTPUT).pipe(Option.filter((path) => path.length > 0))
 
 const review = Command.make("codex-review", {
-  mode: Flag.choice("mode", ["auto", "whole", "local", "uncommitted", "branch", "commit"] as const).pipe(Flag.withDefault("auto")),
+  mode: Flag.choice("mode", ["auto", "whole", "branch", "commit"] as const).pipe(Flag.withDefault("auto")),
   base: Flag.optional(Flag.string("base")),
   commit: Flag.string("commit").pipe(Flag.withDefault("HEAD")),
   // Environment defaults are read at the CLI boundary.
@@ -28,7 +28,6 @@ const review = Command.make("codex-review", {
   if (!args.dryRun && Option.isSome(outputPath)) yield* fileSystem.remove(outputPath.value, { force: true })
   const plan = yield* selectReviewPlan(args.mode, args.base, args.commit, !args.dryRun)
   yield* Console.log(`codex-review target: ${plan.label}`)
-  if (plan.targets.some((target) => target.snapshot)) yield* Console.log("snapshot: temporary worktree with local overlay")
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
   if (args.dryRun) return
   yield* preflightCodexAuthentication(args.codexBin)
@@ -38,12 +37,10 @@ const review = Command.make("codex-review", {
       return index < 0 ? [] : [target.args[index + 1] ?? ""]
     }).filter((ref) => ref.length > 0)
     const commitRefs = refsFor("--commit")
-    const includeWorkingTree = currentPlan.targets.some((target) => target.snapshot || target.args.includes("--uncommitted"))
     return reviewIdentity({
       baseRefs: refsFor("--base"),
       commitRefs,
-      includeHead: commitRefs.length === 0,
-      includeWorkingTree
+      includeHead: commitRefs.length === 0
     })
   }))
   const result = yield* untilReviewStable({

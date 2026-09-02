@@ -15,16 +15,24 @@ PR author can fix.
    apply the likelihood-impact framework in
    [risk-rating.md](references/risk-rating.md), then apply the finding bar in
    [finding-bar.md](references/finding-bar.md).
-2. Drop excluded observations using [exclusions.md](references/exclusions.md).
-3. Run the confirmation pass in [confirmation.md](references/confirmation.md).
-4. Write each finding with the format and severity rules in
+2. Apply the three-gate actionability contract in
+   [actionability.md](references/actionability.md). Treat this as the required
+   decision point for whether a candidate may produce a finding, code, or a
+   test.
+3. Drop excluded observations using [exclusions.md](references/exclusions.md).
+4. Run the confirmation pass in [confirmation.md](references/confirmation.md).
+5. Write each finding with the format and severity rules in
    [output.md](references/output.md).
-5. Perform the final review pass before presenting findings.
+6. Perform the final review pass before presenting findings.
 
 ## Required discipline
 
 - Optimize candidate generation for recall and finding acceptance for precision.
 - Prefer no finding over a weak finding.
+- Require reality, importance, and repair quality to pass independently.
+  Repair quality may authorize either a supported repair or an owner
+  consultation when the problem is proven but the repair is not. Neither path
+  automatically authorizes a patch or test.
 - Put only proven, deliberately tolerated risk in residual risk. Reject
   theoretical possibilities instead of preserving them as warnings.
 - Merge duplicates under one root cause.
@@ -37,6 +45,8 @@ PR author can fix.
 - Use [risk-rating.md](references/risk-rating.md) for the required risk reality
   check and CLI-derived likelihood-impact outcome.
 - Use [finding-bar.md](references/finding-bar.md) for the must-pass criteria.
+- Use [actionability.md](references/actionability.md) for the required reality,
+  importance, repair-quality, and verification gates.
 - Use [exclusions.md](references/exclusions.md) for observations to drop.
 - Use [confirmation.md](references/confirmation.md) before finalizing each
   finding.

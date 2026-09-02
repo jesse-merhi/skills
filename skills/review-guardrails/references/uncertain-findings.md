@@ -1,18 +1,19 @@
 # Uncertain findings
 
-Use this workflow only after the findings CLI returned `accept`: from
-`finding-discipline`'s risk rating for a runtime candidate, or from maintenance
-and present-cost evidence for a maintenance candidate.
+Use this workflow only after the evidence proves the finding and the findings
+CLI returned `accept` or `consult`: from `finding-discipline`'s risk rating for
+a runtime candidate, or from maintenance and present-cost evidence for a maintenance candidate.
 It handles uncertainty about the repair, not uncertainty about whether the
 finding exists. A runtime candidate with unproven reachability or consequence
-remains
-`investigate` or `consult`; do not apply a provisional fix.
+remains `investigate`; do not apply a provisional fix.
 
-Some accepted findings still have an uncertain repair: contested between
-passes or a judgment call about implementation. Never silently fix or silently
-reject one.
+Some proven, important findings still have an uncertain repair: contested
+between passes or a judgment call about implementation. An accepted risk rating
+does not authorize a provisional patch. First apply `finding-discipline`'s
+repair-quality gate. Never silently fix or silently reject one.
 
-Use the provisional-fix test. All four checks must hold:
+Use the provisional-fix test only for an `accept` finding after a recommended
+direction passes the repair-quality gate. All four checks must hold:
 
 1. **Root cause**: the fix removes the failure mode, not the symptom or the
    reviewer's report of it. Suppressing an error path, papering a null check
@@ -32,7 +33,8 @@ When the test passes:
 
 - Apply the fix now and record it as status `provisional` in the findings
   database.
-- Ask the user in parallel; do not wait for the answer.
+- Notify the user promptly without pausing independent loop work. Keep the
+  entry open; an unanswered notification is not approval.
 - Continue the loop on the fixed tree so later passes review the actual state.
 - If the user keeps it, close the entry as `fixed` with
   `--owner-resolution approved` and the user's decision text.
@@ -49,9 +51,10 @@ posture, data migration), or the fix would break a budget or the review
 boundary.
 
 Add the finding to `consult_queue` with a fingerprint: file, code element, and a
-one-sentence root cause. Raise it with the user without waiting: immediately
-when the user is active, otherwise in the suspension or final report. Keep
-fixing other findings.
+one-sentence root cause. Raise it promptly when the user is active, continue
+only independent work, and keep the entry open until the user approves,
+rejects, or defers it. When no independent work remains, the clean target is
+reached, or the consult cap is hit, suspend and present every open question.
 
 In Claude Code use the question tool. In Codex, ask in the reply.
 
