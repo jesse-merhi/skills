@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -8,6 +9,7 @@ import { resolveModelWritingGuide } from "./resolve-model-writing-guide.mjs";
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(skillRoot, "../..");
+const resolverPath = path.join(skillRoot, "scripts/resolve-model-writing-guide.mjs");
 const registry = JSON.parse(fs.readFileSync(path.join(skillRoot, "references/registry.json"), "utf8"));
 const speakRoot = path.join(repoRoot, "skills/speak-fking-english");
 const speakCoverage = JSON.parse(fs.readFileSync(path.join(speakRoot, "model-writing.json"), "utf8"));
@@ -56,4 +58,40 @@ test("an unknown model family keeps shared behavior and requires a notice", () =
   assert.equal(result.skillAdapterReference, null);
   assert.equal(result.reason, "unknown-model-family");
   assert.equal(result.noticeRequired, true);
+});
+
+test("the documented CLI returns the resolved profile and reports argument errors", () => {
+  const coveragePath = path.join(speakRoot, "model-writing.json");
+  const success = spawnSync(process.execPath, [
+    resolverPath,
+    "--model",
+    "gpt-5.6-sol",
+    "--coverage",
+    coveragePath,
+  ], { encoding: "utf8" });
+  assert.equal(success.status, 0, success.stderr);
+  const output = JSON.parse(success.stdout);
+  assert.equal(output.status, "covered");
+  assert.equal(output.guideReference, path.join(skillRoot, "references/gpt-5.6.md"));
+  assert.equal(output.skillAdapterReference, path.join(speakRoot, "references/models/gpt-5.6.md"));
+
+  const missingCoverage = spawnSync(process.execPath, [resolverPath, "--model", "gpt-5.6-sol"], { encoding: "utf8" });
+  assert.equal(missingCoverage.status, 1);
+  assert.match(missingCoverage.stderr, /--coverage is required/u);
+});
+
+test("guide and adapter references cannot escape their owning skills", () => {
+  const unsafeRegistry = structuredClone(registry);
+  unsafeRegistry.profiles[0].reference = "../writing-for-agents/SKILL.md";
+  assert.throws(() => resolveModelWritingGuide({
+    model: "gpt-5.6-sol",
+    registry: unsafeRegistry,
+    coverage: speakCoverage,
+    guideRoot: skillRoot,
+    callingSkillRoot: speakRoot,
+  }), /must stay inside its owning skill/u);
+
+  const unsafeCoverage = structuredClone(speakCoverage);
+  unsafeCoverage.profiles["gpt-5.6"] = "../writing-for-agents/SKILL.md";
+  assert.throws(() => resolve("gpt-5.6-sol", unsafeCoverage), /must stay inside its owning skill/u);
 });

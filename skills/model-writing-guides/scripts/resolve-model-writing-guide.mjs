@@ -33,6 +33,30 @@ const Coverage = Schema.Struct({
 const RegistryJson = Schema.fromJsonString(Registry);
 const CoverageJson = Schema.fromJsonString(Coverage);
 
+function resolveOwnedFile(root, reference, label) {
+  if (path.isAbsolute(reference)) {
+    throw new Error(`${label} must be relative to its owning skill`);
+  }
+
+  const absoluteRoot = path.resolve(root);
+  const resolved = path.resolve(absoluteRoot, reference);
+  const relative = path.relative(absoluteRoot, resolved);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`${label} must stay inside its owning skill`);
+  }
+
+  const realRoot = fs.realpathSync(absoluteRoot);
+  const realResolved = fs.realpathSync(resolved);
+  const realRelative = path.relative(realRoot, realResolved);
+  if (realRelative === ".." || realRelative.startsWith(`..${path.sep}`) || path.isAbsolute(realRelative)) {
+    throw new Error(`${label} must stay inside its owning skill`);
+  }
+  if (!fs.statSync(realResolved).isFile()) {
+    throw new Error(`${label} must name a file`);
+  }
+  return resolved;
+}
+
 function compileMatch(value, label) {
   try {
     return new RegExp(value, "u");
@@ -82,10 +106,22 @@ export function resolveModelWritingGuide({ model, registry, coverage, guideRoot 
   const checkedRegistry = validateRegistry(registry);
   const checkedCoverage = validateCoverage(coverage);
   const registryProfileIds = new Set(checkedRegistry.profiles.map((profile) => profile.id));
+  const guideReferences = new Map(checkedRegistry.profiles.map((profile) => [
+    profile.id,
+    resolveOwnedFile(guideRoot, profile.reference, `registry reference for ${profile.id}`),
+  ]));
+  const adapterReferences = new Map();
   for (const profileId of checkedCoverage.profiles.keys()) {
     if (!registryProfileIds.has(profileId)) {
       throw new Error(`coverage references unknown profile: ${profileId}`);
     }
+    const adapter = checkedCoverage.profiles.get(profileId);
+    adapterReferences.set(
+      profileId,
+      adapter === null
+        ? null
+        : resolveOwnedFile(callingSkillRoot, adapter, `coverage adapter for ${profileId}`),
+    );
   }
   const normalizedModel = typeof model === "string" ? model.trim().toLowerCase() : "";
   const currentProfile = checkedRegistry.profiles.find((profile) => profile.match.test(normalizedModel)) ?? null;
@@ -114,7 +150,7 @@ export function resolveModelWritingGuide({ model, registry, coverage, guideRoot 
   const notice = exactCovered
     ? null
     : `Model-writing coverage: ${checkedCoverage.skill} has not been reviewed for ${modelLabel}; using ${fallbackLabel} for this task. Please update its model guide coverage.`;
-  const adapter = selectedProfile === null ? null : checkedCoverage.profiles.get(selectedProfile.id);
+  const adapter = selectedProfile === null ? null : adapterReferences.get(selectedProfile.id);
 
   return {
     skill: checkedCoverage.skill,
@@ -122,10 +158,8 @@ export function resolveModelWritingGuide({ model, registry, coverage, guideRoot 
     currentProfile: currentProfile?.id ?? null,
     status,
     selectedProfile: selectedProfile?.id ?? null,
-    guideReference: selectedProfile === null ? null : path.resolve(guideRoot, selectedProfile.reference),
-    skillAdapterReference: selectedProfile === null || adapter === null
-      ? null
-      : path.resolve(callingSkillRoot, adapter),
+    guideReference: selectedProfile === null ? null : guideReferences.get(selectedProfile.id),
+    skillAdapterReference: selectedProfile === null ? null : adapter,
     guideUrl: selectedProfile?.guideUrl ?? null,
     guideReviewedOn: selectedProfile?.reviewedOn ?? null,
     noticeRequired: !exactCovered,
