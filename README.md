@@ -2,7 +2,7 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-This repo is my working set of agent skills: 43 Markdown workflows that coding
+This repo is my working set of agent skills: 44 Markdown workflows that coding
 agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
 [`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
@@ -218,6 +218,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | --- | --- |
 | [`writing-for-agents`](skills/writing-for-agents/SKILL.md) | How to write skills, `AGENTS.md`, and `CLAUDE.md` so the instruction actually changes behaviour. Read this before adding a skill. |
 | [`skill-cleaner`](skills/skill-cleaner/SKILL.md) | Audits installed skill roots for duplicates, unused skills, and prompt-budget pressure, with safety checks before deleting. |
+| [`skill-profiles`](skills/skill-profiles/SKILL.md) | Generates the Codex role agents, such as the read-only `cold-reviewer`, so a spawned agent loads only the skills its role allows. |
 | [`cleanup`](skills/cleanup/SKILL.md) | Discovers and removes the complete local footprint of finished or abandoned work while preserving saved work and shared infrastructure. |
 | [`wait-efficiently`](skills/wait-efficiently/SKILL.md) | Waits on commands, CI, and subagents through native event-driven mechanisms instead of burning tokens on heartbeats. |
 | [`atlassian-cloudid-jira`](skills/atlassian-cloudid-jira/SKILL.md) | Queries Jira, JPD, and Confluence through the local Rovo Dev gateway, always naming the site explicitly. |
@@ -261,12 +262,16 @@ two reinstalls.
 ./tests/skills-test
 ./tests/review-findings-test
 bun run validate:effect
+skills/skill-profiles/scripts/skills-profile cold-reviewer --check
 ```
 
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
 TypeScript helpers. `bun run validate:effect` is lint, typecheck, Effect
-diagnostics, and Vitest. CI runs the same set.
+diagnostics, and Vitest. CI runs the first three. `skills-profile
+cold-reviewer --check` is local only: it fails when the installed Codex agent
+file is missing or stale, which is what happens whenever the installed skills
+or plugins change.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
 [`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)

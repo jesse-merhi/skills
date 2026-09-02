@@ -10,6 +10,7 @@ scripts/codex-review --mode branch --base origin/main
 scripts/codex-review --mode commit --commit HEAD
 scripts/codex-review --parallel-tests "bun run test"
 scripts/codex-review --output /tmp/codex-review.out
+scripts/codex-review --profile none
 scripts/codex-review --dry-run
 ```
 
@@ -17,6 +18,14 @@ The helper requires a clean committed worktree, resolves a concrete Git target,
 delegates review to the native command, prints its output unchanged, and
 propagates process or parallel-test failures. It stops before review when staged,
 unstaged, or untracked changes exist.
+
+`--profile <role>` applies a `skill-profiles` role to the native reviewer
+through `-c skills.config=[...]`, so it loads only that role's allowed skills.
+It defaults to `cold-reviewer`, reads `CODEX_REVIEW_PROFILE`, and accepts
+`none` to leave the reviewer's skills alone. The helper prints
+`profile: <role> (<N> skills disabled)` next to the target line, including
+under `--dry-run`. That list is generated per run from the installed skills and
+plugins, so it never needs a stored copy.
 
 A clean checkout uses `--base`. Without it, the helper discovers the current
 PR base, then `origin/HEAD`, `origin/main`, `origin/master`, `main`, or `master`

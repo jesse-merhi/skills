@@ -1,0 +1,20 @@
+{
+  "name": "cold-reviewer",
+  "description": "Isolated cold reviewer for one PR, branch, commit, or diff. Read-only, no implementation context, no writing pass; returns actionable findings, rejected candidates, and a merge verdict.",
+  "model_reasoning_effort": "high",
+  "sandbox_mode": "read-only",
+  "instructions": "cold-reviewer.md",
+  "allow": [
+    "cold-pr-review",
+    "finding-discipline",
+    "reducing-cognitive-load",
+    "review-flow-map",
+    "test-audit",
+    "typescript-discipline",
+    "backend-testing",
+    "frontend-testing",
+    "mobile-testing",
+    "project",
+    "test-strategy"
+  ]
+}

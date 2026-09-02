@@ -214,10 +214,36 @@ not survive after this repository stops using them.
 Do not symlink third-party skills from this repo. Their own installer owns
 those files.
 
-## 9. Verify repo-owned CLIs
+## 10. Install Codex role agents
+
+For Codex, this repo owns role agents generated from the profiles in
+`REPO/skills/skill-profiles/profiles/`. Run this after the repo skills and
+third-party skills are linked, because the generated file lists every installed
+skill the role does not allow. Check the installed `cold-reviewer` agent:
+
+```sh
+REPO/skills/skill-profiles/scripts/skills-profile cold-reviewer --check
+```
+
+When it reports the agent file as missing or stale, show the user the diff the
+CLI prints and ask before installing:
+
+```sh
+REPO/skills/skill-profiles/scripts/skills-profile cold-reviewer --install --yes
+```
+
+The agent file carries an opt-out entry for every installed skill the profile
+does not allow, because Codex disables skills by exact `SKILL.md` path. That
+list describes the skills and plugins present when it was generated, so it is
+stale as soon as either set changes: rerun this step on every reinstall of this
+repo and after any skill or plugin is added or removed.
+
+Skip this step for other harnesses.
+
+## 11. Verify repo-owned CLIs
 
 The `review-findings` CLI runs directly from the linked skill and uses the
-repo-owned Effect runtime installed in step 4. Verify it can resolve that
+repo-owned Effect runtime installed in step 5. Verify it can resolve that
 runtime and report its SQLite database path:
 
 ```sh
@@ -229,7 +255,7 @@ That override belonged to the removed Rust installation and can silently select
 a CLI that lacks the required scope commands. The skill-owned launcher above is
 the only supported entrypoint.
 
-## 10. Verify
+## 12. Verify
 
 Run:
 
@@ -237,6 +263,7 @@ Run:
 ./tests/skills-test
 ./tests/review-findings-test
 bun run validate:effect
+REPO/skills/skill-profiles/scripts/skills-profile cold-reviewer --check
 ```
 
 Report:
@@ -246,6 +273,7 @@ Report:
   collisions or ineligible skills, and whether a new session or restart is
   required
 - Codex Default-mode question UI enabled, unsupported, or skipped
+- Codex role agents installed, already current, or skipped
 - skills linked
 - existing local skills preserved
 - third-party installs run or skipped

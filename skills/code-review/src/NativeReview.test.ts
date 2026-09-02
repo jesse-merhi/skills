@@ -177,7 +177,7 @@ esac
       await execFile("git", ["add", "file.txt"], { cwd: repository })
       await execFile("git", ["commit", "-m", "base"], { cwd: repository })
       // @effect-diagnostics-next-line processEnv:off
-      await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
+      await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--profile", "none"], { cwd: repository, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_HOME: join(directory, "codex-home"), CODEX_REVIEW_OUTPUT: output } })
       assert.strictEqual(await readFile(output, "utf8"), "reviewed master\n")
     } finally {
       await rm(directory, { recursive: true, force: true })
@@ -200,7 +200,7 @@ esac
       await execFile("git", ["add", "file.txt"], { cwd: repository })
       await execFile("git", ["commit", "-m", "feature"], { cwd: repository })
       const result = await new Promise<{ readonly failed: boolean; readonly output: string }>((resolve) => {
-        execFileCallback(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, encoding: "utf8", env: { ...process.env, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh") } }, (error, stdout, stderr) => resolve({ failed: error !== null, output: `${stdout}${stderr}` }))
+        execFileCallback(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--profile", "none"], { cwd: repository, encoding: "utf8", env: { ...process.env, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_HOME: join(directory, "codex-home") } }, (error, stdout, stderr) => resolve({ failed: error !== null, output: `${stdout}${stderr}` }))
       })
       assert.isTrue(result.failed)
       assert.match(result.output, /could not discover a review base; pass --base/u)
@@ -227,7 +227,7 @@ esac
       let reviewFailed = false
       try {
         // @effect-diagnostics-next-line processEnv:off
-        await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
+        await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--profile", "none"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_HOME: join(directory, "codex-home"), CODEX_REVIEW_OUTPUT: output } })
       } catch {
         reviewFailed = true
       }
@@ -256,7 +256,7 @@ esac
       await execFile("git", ["commit", "-m", "base"], { cwd: directory })
       await writeFile(output, "stale clean review\n")
       await new Promise<void>((resolve) => {
-        execFileCallback(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--base", "missing", "--output", output], { cwd: directory }, () => resolve())
+        execFileCallback(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--base", "missing", "--output", output, "--profile", "none"], { cwd: directory, env: { ...process.env, CODEX_HOME: join(directory, "codex-home") } }, () => resolve())
       })
       let staleOutputExists = true
       try {
@@ -362,7 +362,7 @@ esac
       await execFile("git", ["commit", "-am", "advance"], { cwd: updater })
       await execFile("git", ["push", "origin", "main"], { cwd: updater })
       const beforeDryRun = (await execFile("git", ["rev-parse", "origin/main"], { cwd: repository })).stdout.trim()
-      await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--base", "origin/main", "--dry-run"], { cwd: repository })
+      await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--base", "origin/main", "--dry-run", "--profile", "none"], { cwd: repository, env: { ...process.env, CODEX_HOME: join(directory, "codex-home") } })
       assert.strictEqual((await execFile("git", ["rev-parse", "origin/main"], { cwd: repository })).stdout.trim(), beforeDryRun)
       const previousCwd = process.cwd()
       process.chdir(repository)
@@ -496,6 +496,94 @@ esac
     }
   })
 
+  it("disables every catalogued skill the profile does not allow, before the review subcommand", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-review-profile-"))
+    const repository = join(directory, "repo")
+    const codexHome = join(directory, ".codex")
+    const home = join(directory, "home")
+    const bin = join(directory, "bin")
+    const calls = join(directory, "calls")
+    try {
+      await mkdir(bin)
+      await mkdir(home)
+      await mkdir(repository)
+      for (const [skill, description] of [["cold-pr-review", "Allowed by the profile."], ["other", "Not allowed by the profile."]]) {
+        await mkdir(join(codexHome, "skills", `${skill}`), { recursive: true })
+        await writeFile(join(codexHome, "skills", `${skill}`, "SKILL.md"), `---\nname: ${skill}\ndescription: ${description}\n---\nbody\n`)
+      }
+      await writeFile(join(bin, "codex"), `#!/bin/sh
+printf '%s\\n' "$*" >> "${calls}"
+if [ "$1" = "-c" ]; then shift 2; fi
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
+  exec) printf 'ok\\n' ;;
+  review) printf 'reviewed\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      await writeFile(join(bin, "gh"), "#!/bin/sh\nexit 1\n", { mode: 0o700 })
+      await execFile("git", ["init", "-b", "main"], { cwd: repository })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: repository })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: repository })
+      await writeFile(join(repository, "file.txt"), "base\n")
+      await execFile("git", ["add", "file.txt"], { cwd: repository })
+      await execFile("git", ["commit", "-m", "base"], { cwd: repository })
+      // Executable-boundary compatibility test intentionally extends the caller environment.
+      // @effect-diagnostics-next-line processEnv:off
+      const environment = { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_HOME: codexHome, HOME: home }
+
+      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--base", "main"], { cwd: repository, env: environment })
+
+      assert.include(stdout, "profile: cold-reviewer (1 skills disabled)")
+      const recorded = (await readFile(calls, "utf8")).split("\n")
+      assert.include(recorded, `-c skills.config=[{path="${join(codexHome, "skills", "other", "SKILL.md")}",enabled=false}] review --base main`)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  }, 30_000)
+
+  it("passes no skills override when the profile is disabled", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-review-profile-none-"))
+    const repository = join(directory, "repo")
+    const bin = join(directory, "bin")
+    const calls = join(directory, "calls")
+    try {
+      await mkdir(bin)
+      await mkdir(repository)
+      await writeFile(join(bin, "codex"), `#!/bin/sh
+printf '%s\\n' "$*" >> "${calls}"
+if [ "$1" = "-c" ]; then shift 2; fi
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
+  exec) printf 'ok\\n' ;;
+  review) printf 'reviewed\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      await writeFile(join(bin, "gh"), "#!/bin/sh\nexit 1\n", { mode: 0o700 })
+      await execFile("git", ["init", "-b", "main"], { cwd: repository })
+      await execFile("git", ["config", "user.email", "test@example.com"], { cwd: repository })
+      await execFile("git", ["config", "user.name", "Test"], { cwd: repository })
+      await writeFile(join(repository, "file.txt"), "base\n")
+      await execFile("git", ["add", "file.txt"], { cwd: repository })
+      await execFile("git", ["commit", "-m", "base"], { cwd: repository })
+      // Executable-boundary compatibility test intentionally extends the caller environment.
+      // @effect-diagnostics-next-line processEnv:off
+      const environment = { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_HOME: join(directory, "codex-home") }
+
+      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch", "--base", "main", "--profile", "none"], { cwd: repository, env: environment })
+
+      assert.include(stdout, "profile: none")
+      const recorded = (await readFile(calls, "utf8")).split("\n")
+      assert.include(recorded, "review --base main")
+      assert.notInclude(await readFile(calls, "utf8"), "-c ")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  }, 30_000)
+
   it("runs parallel tests from the repository root when invoked below it", async () => {
     const directory = await mkdtemp(join(tmpdir(), "review-test-root-"))
     const child = join(directory, "nested")
@@ -512,7 +600,7 @@ esac
       const previousCwd = process.cwd()
       process.chdir(child)
       try {
-        await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD"), testCommand: Option.some('test "$(pwd)" = "$(git rev-parse --show-toplevel)"') })))
+        await Effect.runPromise(live(runNativeReview({ codexBin: reviewer, plan: planReview("branch", "main", "HEAD"), skillsConfig: Option.none(), testCommand: Option.some('test "$(pwd)" = "$(git rev-parse --show-toplevel)"') })))
       } finally {
         process.chdir(previousCwd)
       }

@@ -13,6 +13,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { checkedText } from "../../../packages/effect-cli/CheckedProcess.ts";
+import { exists, expandHome, parseFrontmatter, pluginPrefixFor, sanitizeSingleLine, walkFiles } from "../../../packages/skill-catalog/SkillFiles.ts";
 
 type Skill = {
   name: string;
@@ -105,19 +106,6 @@ const extraRoots = process.argv
     const value = all[index + 1];
     return arg === "--root" && value && !value.startsWith("--") ? [value] : [];
   });
-
-function expandHome(input: string): string {
-  return input.replace(/^~(?=$|\/)/, home);
-}
-
-function exists(input: string): boolean {
-  try {
-    fs.accessSync(input);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function numberArg(value: string, fallback: number): number {
   const parsed = Number(value);
@@ -218,99 +206,6 @@ function codexModelContext(modelName: string): {
   return { tokens: 128_000, source: "fallback:conservative-context", effectivePercent: null };
 }
 
-function walkFiles(root: string, predicate: (file: string) => boolean, maxDepth = 8): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  function walk(dir: string, depth: number) {
-    if (depth > maxDepth) return;
-    let real = dir;
-    try {
-      real = fs.realpathSync(dir);
-    } catch {
-      return;
-    }
-    if (seen.has(real)) return;
-    seen.add(real);
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.name === "node_modules" || entry.name === ".git") continue;
-      const file = path.join(dir, entry.name);
-      if (entry.isDirectory() || entry.isSymbolicLink()) {
-        let stat: fs.Stats;
-        try {
-          stat = fs.statSync(file);
-        } catch {
-          continue;
-        }
-        if (stat.isDirectory()) walk(file, depth + 1);
-      } else if (entry.isFile() && predicate(file)) {
-        out.push(file);
-      }
-    }
-  }
-  if (exists(root)) walk(root, 0);
-  return out;
-}
-
-function sanitizeSingleLine(value: string): string {
-  return value.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function parseYamlScalar(raw: string): string {
-  const value = raw.trim();
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    return value.slice(1, -1);
-  }
-  return value;
-}
-
-function parseFrontmatter(file: string): { name?: string; description?: string; body: string } | null {
-  const text = fs.readFileSync(file, "utf8");
-  const lines = text.split(/\r?\n/);
-  if (lines[0]?.trim() !== "---") return null;
-  const fm: string[] = [];
-  let end = -1;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i]?.trim() === "---") {
-      end = i;
-      break;
-    }
-    fm.push(lines[i] ?? "");
-  }
-  if (end < 0) return null;
-  let name: string | undefined;
-  let description: string | undefined;
-  for (let i = 0; i < fm.length; i++) {
-    const line = fm[i] ?? "";
-    const match = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
-    if (!match) continue;
-    const key = match[1];
-    const raw = match[2] ?? "";
-    if (key === "name") name = sanitizeSingleLine(parseYamlScalar(raw));
-    if (key === "description") {
-      if (raw.trim() === "|" || raw.trim() === ">") {
-        const block: string[] = [];
-        for (let j = i + 1; j < fm.length; j++) {
-          if (/^[A-Za-z0-9_-]+:\s*/.test(fm[j] ?? "")) break;
-          block.push((fm[j] ?? "").replace(/^\s{2}/, ""));
-        }
-        description = sanitizeSingleLine(block.join(" "));
-      } else {
-        description = sanitizeSingleLine(parseYamlScalar(raw));
-      }
-    }
-  }
-  return { ...(name === undefined ? {} : { name }), ...(description === undefined ? {} : { description }), body: lines.slice(end + 1).join("\n") };
-}
-
 function findSkillsPrompt(value: unknown): string | null {
   if (typeof value === "string") {
     return value.includes("<skills_instructions>") && value.includes("### Available skills") ? value : null;
@@ -382,7 +277,7 @@ function resolveLivePath(locator: string, roots: Map<string, string>): string {
   const match = /^(r\d+)\/(.+)$/.exec(locator);
   return match?.[1] && match[2]
     ? path.join(roots.get(match[1]) ?? match[1], match[2])
-    : expandHome(locator);
+    : expandHome(locator, home);
 }
 
 function parseLiveSkills(live: LivePrompt): Skill[] {
@@ -493,18 +388,6 @@ function preferredDisplaySkill(a: Skill, b: Skill): Skill {
   return a.path.length <= b.path.length ? a : b;
 }
 
-function pluginPrefixFor(file: string): string | null {
-  const parts = file.split(path.sep);
-  const cache = parts.indexOf("cache");
-  const skills = parts.lastIndexOf("skills");
-  if (cache >= 0 && skills > cache + 1) {
-    const maybePlugin = parts[cache + 2];
-    if (maybePlugin && maybePlugin !== "plugin-install-VGdwGs") return maybePlugin;
-    return parts[cache + 3] ?? null;
-  }
-  return null;
-}
-
 function disabledPluginMatches(disabledPlugin: string, pluginPrefix: string): boolean {
   return disabledPlugin === pluginPrefix || disabledPlugin.startsWith(`${pluginPrefix}@`);
 }
@@ -541,7 +424,7 @@ function configState(): { disabledPaths: Set<string>; disabledNames: Set<string>
     if (block === "skill") {
       const pathMatch = /^path\s*=\s*"([^"]+)"/.exec(line);
       const nameMatch = /^name\s*=\s*"([^"]+)"/.exec(line);
-      if (pathMatch) currentPath = expandHome(pathMatch[1] ?? "");
+      if (pathMatch) currentPath = expandHome(pathMatch[1] ?? "", home);
       if (nameMatch) currentName = nameMatch[1] ?? "";
       if (/^enabled\s*=\s*false/.test(line)) {
         if (currentPath) disabledPaths.add(currentPath);
@@ -728,11 +611,11 @@ function collectWorkingDirectories(value: unknown): string[] {
 export function referencedSkillPaths(callArgs: string): string[] {
   const parsed: unknown = decodeJson(callArgs) ?? callArgs;
   const texts = typeof parsed === "string" ? [parsed] : messageText(parsed);
-  const workdirs = collectWorkingDirectories(parsed).map(expandHome);
+  const workdirs = collectWorkingDirectories(parsed).map((workdir) => expandHome(workdir, home));
   const paths = new Set<string>();
   for (const text of texts) {
     for (const match of text.matchAll(/(?:^|[\s"'`=])((?:\/|\.{1,2}\/)?[^\s"'`]*\/SKILL\.md)\b/g)) {
-      const locator = expandHome(match[1] ?? "");
+      const locator = expandHome(match[1] ?? "", home);
       if (!locator) continue;
       if (path.isAbsolute(locator)) {
         paths.add(path.normalize(locator));
