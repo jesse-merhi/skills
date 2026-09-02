@@ -2,7 +2,7 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-This repo is my working set of agent skills: 43 Markdown workflows that coding
+This repo is my working set of agent skills: 44 Markdown workflows that coding
 agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
 [`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
@@ -99,6 +99,12 @@ Two ways one gets used:
 Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
+
+Writing-sensitive skills also declare which model profiles they have actually
+been reviewed against. `model-writing-guides` resolves the active model against
+that coverage, applies the matching local profile, and keeps the requested
+skill running with a same-family fallback when coverage is stale. The first
+miss in a task tells you the skill needs an update; later misses stay quiet.
 
 ## The loop
 
@@ -210,6 +216,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | Skill | What it does |
 | --- | --- |
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Runs a compact clarity and voice pass before every final response, then adds the full AI-tells catalogue when the user invokes the skill explicitly. |
+| [`model-writing-guides`](skills/model-writing-guides/SKILL.md) | Selects the reviewed writing profile for the active model, warns once when a skill's coverage is stale, and falls back without blocking the skill. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
 ### Meta and operations
@@ -282,6 +289,10 @@ PRs are welcome.
 - Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
+- For a skill that shapes prose, declare reviewed profiles in
+  `model-writing.json` and keep model-specific deltas behind references. The
+  [`model-writing-guides`](skills/model-writing-guides/SKILL.md) registry owns
+  the official guide links and fallback behavior.
 - One skill per directory, `SKILL.md` at its root, `name` unique across the
   repo. Keep the body short and push detail into `references/`.
 - Run the three commands above before opening a PR.

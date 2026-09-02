@@ -37,6 +37,9 @@ in `CLAUDE.md`, which imports this file and layers on top of it.
 - Make architectural decisions for the long term. Do not implement a stopgap
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
+- Before creating or changing a skill that shapes prose or agent-facing
+  instructions, load `writing-for-agents` and apply its model-writing coverage
+  contract.
 
 ## Dependency-first implementation
 

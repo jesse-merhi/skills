@@ -1343,6 +1343,10 @@ test_skill_cleaner_uses_current_model_configuration() {
   assert_not_contains "$ROOT_DIR/skills/skill-cleaner/references/analyzer-notes.md" 'GPT-5.5'
 }
 
+test_model_writing_guide_resolver() {
+  node --test "$ROOT_DIR/skills/model-writing-guides/scripts/resolve-model-writing-guide.test.mjs"
+}
+
 test_external_teach_install_is_pinned() {
   assert_contains "$ROOT_DIR/external.md" "https://github.com/mattpocock/skills/tree/697d4ce9742da558fd1ba6697c8e9775e2e302dd/skills/productivity/teach"
   assert_contains "$ROOT_DIR/external.md" "refs/heads/codex-skill-metadata"
@@ -1573,5 +1577,6 @@ test_review_neutrality_and_skill_ownership_are_explicit
 test_cross_harness_sessions_are_full_and_symmetric
 test_claude_fable_orchestration_is_repo_owned
 test_skill_cleaner_uses_current_model_configuration
+test_model_writing_guide_resolver
 test_handoff_tmux_helper_builds_tmux_window_command
 printf 'ok - skills tests\n'

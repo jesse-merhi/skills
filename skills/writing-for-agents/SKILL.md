@@ -14,6 +14,34 @@ When the target is a skill, also read
 and router skills. The upstream MIT notice is in
 [upstream-license.md](references/upstream-license.md).
 
+## Model-aware instructions
+
+Before drafting agent-facing instructions, load `model-writing-guides` with
+this skill's [`model-writing.json`](model-writing.json) and apply the one model
+profile it returns.
+
+When a target skill materially shapes user-facing, reviewer-facing, or saved
+prose, give it an explicit model-writing coverage contract:
+
+1. Keep the skill's durable outcome, permissions, and workflow model-neutral.
+2. Put behavioral compensations for individual models behind model-specific
+   references instead of mixing them into the shared path.
+3. Add `model-writing.json`. Name only profiles that have been reviewed against
+   the central `model-writing-guides` registry. Map a profile to a local adapter
+   reference when the skill needs extra behavior for that model, or to `null`
+   when the shared skill plus central guide is sufficient.
+4. Make the target skill load `model-writing-guides` before it writes. Preserve
+   the router's once-per-task stale-coverage notice and same-family fallback.
+
+An operational skill that does not make writing judgments does not need model
+coverage. Do not create empty model adapters merely to make directories
+symmetrical. `model-writing-guides` itself is the sole exception: it owns the
+profile registry and therefore must not route through itself.
+
+Done when every writing-sensitive skill names the exact profiles it has been
+reviewed against, model-specific advice has one owner, and an unreviewed future
+model remains visibly uncovered instead of silently inheriting stale advice.
+
 ## Context pointers
 
 A context pointer is text already in the agent's context that names material
