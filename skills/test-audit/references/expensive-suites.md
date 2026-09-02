@@ -33,9 +33,10 @@ Record the metrics the environment can support:
 - observed or billable runner-minutes when available, including setup overhead
   if the runner charges or materially delays each shard.
 
-Do not substitute the maximum sum of test durations or maximum shard elapsed
-time for workflow makespan unless every shard starts together and executes its
-tests sequentially.
+Maximum observed shard elapsed is the workflow makespan when every shard starts
+together. Maximum summed test duration is equivalent only when those shards
+also execute their tests sequentially. Otherwise use observed workflow makespan
+or the runner-aware model.
 
 File count, test count, and lines deleted describe portfolio size but do not
 prove a runtime improvement.
