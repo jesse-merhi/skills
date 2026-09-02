@@ -1,5 +1,3 @@
-import type * as PlatformError from "effect/PlatformError"
-
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
@@ -19,6 +17,7 @@ export interface ReferenceSource {
 }
 
 export interface SkillSource {
+  readonly root: string
   readonly directory: string
   readonly content: string
   readonly references: ReadonlyArray<ReferenceSource>
@@ -30,13 +29,14 @@ export interface LintReport {
   readonly skillCount: number
 }
 
-export const maximumBodyLines = 500
+const maximumBodyLines = 500
 
 const skillFileName = "SKILL.md"
 const referencesDirectoryName = "references"
 const attributionPrefix = "upstream-license"
+const vendorDirectoryName = "node_modules"
 
-const fenceDelimiter = /^\s*(?:`{3,}|~{3,})/u
+const fenceDelimiter = /^\s*(`{3,}|~{3,})/u
 const linkPattern = /\[[^\]]*\]\(([^)]*)\)/gu
 const numberedItemStart = /^\s*\d+[.)]\s/u
 const headingPattern = /^(#{1,6})\s+(.*)$/u
@@ -51,10 +51,12 @@ const splitLines = (content: string): Array<string> => {
 }
 
 const fenceMask = (lines: ReadonlyArray<string>): Array<boolean> => {
-  let open = false
+  let open: { readonly character: string; readonly length: number } | undefined = undefined
   return lines.map((line) => {
-    if (!fenceDelimiter.test(line)) return open
-    open = !open
+    const delimiter = fenceDelimiter.exec(line)?.[1]
+    if (delimiter === undefined) return open !== undefined
+    if (open === undefined) open = { character: delimiter[0] ?? "", length: delimiter.length }
+    else if (delimiter[0] === open.character && delimiter.length >= open.length) open = undefined
     return true
   })
 }
@@ -69,11 +71,7 @@ const linkTargets = (line: string): Array<string> => {
   return targets
 }
 
-const containedPath = (path: Path.Path, base: string, target: string): string | undefined => {
-  const relative = path.relative(base, target)
-  const escapes = relative.length === 0 || relative === ".." || relative.startsWith(`..${path.sep}`)
-  return escapes || path.isAbsolute(relative) ? undefined : relative
-}
+const isWithin = (path: Path.Path, base: string, target: string): boolean => target.startsWith(base + path.sep)
 
 const bodyLineCount = (content: string): number => {
   const lines = splitLines(content)
@@ -87,13 +85,13 @@ const bodyFindings = (skillPath: string, content: string): Array<Finding> => {
   if (count <= maximumBodyLines) return []
   return [{
     line: undefined,
-    message: `body is ${count} lines; keep the SKILL.md body under ${maximumBodyLines} lines`,
+    message: `body is ${count} lines; keep the SKILL.md body at ${maximumBodyLines} lines or fewer`,
     path: skillPath,
     severity: "error"
   }]
 }
 
-const chainFindings = (path: Path.Path, skillDirectory: string, skillPath: string, reference: ReferenceSource): Array<Finding> => {
+const chainFindings = (path: Path.Path, skill: SkillSource, skillPath: string, reference: ReferenceSource): Array<Finding> => {
   const directory = path.dirname(reference.path)
   const lines = splitLines(reference.content)
   const fenced = fenceMask(lines)
@@ -103,11 +101,10 @@ const chainFindings = (path: Path.Path, skillDirectory: string, skillPath: strin
     for (const target of linkTargets(line)) {
       const resolved = path.resolve(directory, target)
       if (!resolved.endsWith(".md") || resolved === skillPath) continue
-      const relative = containedPath(path, skillDirectory, resolved)
-      if (relative === undefined) continue
+      if (!isWithin(path, skill.root, resolved)) continue
       findings.push({
         line: index + 1,
-        message: `links to ${relative}; a reference may link only back to ${skillFileName}`,
+        message: `links to ${path.relative(skill.directory, resolved)}; a reference may link only back to its own ${skillFileName}`,
         path: reference.path,
         severity: "error"
       })
@@ -154,7 +151,7 @@ const fanOutFindings = (path: Path.Path, skillDirectory: string, skillPath: stri
     if (!context.inNumberedItem && !context.inContextPointers) return
     for (const target of linkTargets(line)) {
       const resolved = path.resolve(skillDirectory, target)
-      if (containedPath(path, referencesDirectory, resolved) === undefined) continue
+      if (!isWithin(path, referencesDirectory, resolved)) continue
       const display = path.relative(skillDirectory, resolved)
       if (context.inNumberedItem) steps.add(display)
       if (context.inContextPointers) pointers.add(display)
@@ -172,7 +169,7 @@ export const analyzeSkill = (path: Path.Path, skill: SkillSource): Array<Finding
   const skillPath = path.join(skill.directory, skillFileName)
   return [
     ...bodyFindings(skillPath, skill.content),
-    ...skill.references.flatMap((reference) => chainFindings(path, skill.directory, skillPath, reference)),
+    ...skill.references.flatMap((reference) => chainFindings(path, skill, skillPath, reference)),
     ...fanOutFindings(path, skill.directory, skillPath, skill.content)
   ]
 }
@@ -182,42 +179,27 @@ export const formatFinding = (finding: Finding): string =>
 
 export const isError = (finding: Finding): boolean => finding.severity === "error"
 
-const walkFiles: (directory: string) => Effect.Effect<
-  Array<string>,
-  PlatformError.PlatformError,
-  FileSystem.FileSystem | Path.Path
-> = Effect.fn("SkillLayoutLint.walkFiles")(function*(directory: string) {
-  const fileSystem = yield* FileSystem.FileSystem
-  const path = yield* Path.Path
-  const entries = yield* fileSystem.readDirectory(directory)
-  const files: Array<string> = []
-  for (const entry of entries.toSorted()) {
-    if (entry === "node_modules") continue
-    const full = path.join(directory, entry)
-    const info = yield* fileSystem.stat(full)
-    if (info.type === "Directory") files.push(...(yield* walkFiles(full)))
-    else if (info.type === "File") files.push(full)
-  }
-  return files
-})
-
 export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(function*(root: string) {
   const fileSystem = yield* FileSystem.FileSystem
   const path = yield* Path.Path
-  const files = yield* walkFiles(root)
+  const entries = yield* fileSystem.readDirectory(root, { recursive: true })
+  const files = entries
+    .filter((entry) => !entry.split(path.sep).includes(vendorDirectoryName))
+    .map((entry) => path.join(root, entry))
+    .toSorted()
   const skillPaths = files.filter((file) => path.basename(file) === skillFileName)
   const findings: Array<Finding> = []
   let referenceCount = 0
   for (const skillPath of skillPaths) {
     const directory = path.dirname(skillPath)
-    const prefix = path.join(directory, referencesDirectoryName) + path.sep
+    const referencesDirectory = path.join(directory, referencesDirectoryName)
     const referencePaths = files.filter((file) =>
-      file.startsWith(prefix) && file.endsWith(".md") && !path.basename(file).startsWith(attributionPrefix))
+      isWithin(path, referencesDirectory, file) && file.endsWith(".md") && !path.basename(file).startsWith(attributionPrefix))
     const content = yield* fileSystem.readFileString(skillPath)
     const references = yield* Effect.forEach(referencePaths, (referencePath) =>
       Effect.map(fileSystem.readFileString(referencePath), (referenceContent) => ({ content: referenceContent, path: referencePath })))
     referenceCount += references.length
-    findings.push(...analyzeSkill(path, { content, directory, references }))
+    findings.push(...analyzeSkill(path, { content, directory, references, root }))
   }
   const report: LintReport = { findings, referenceCount, skillCount: skillPaths.length }
   return report

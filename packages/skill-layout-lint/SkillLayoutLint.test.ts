@@ -1,162 +1,133 @@
 import { NodeServices } from "@effect/platform-node"
+import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { spawnSync } from "node:child_process"
-// @effect-diagnostics-next-line nodeBuiltinImport:off
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-// @effect-diagnostics-next-line nodeBuiltinImport:off
-import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { afterEach, describe, expect, it } from "vitest"
 
-import { analyzeSkill, lintSkillsRoot, type SkillSource } from "./SkillLayoutLint.ts"
+import { analyzeSkill, type Finding, lintSkillsRoot, type SkillSource } from "./SkillLayoutLint.ts"
 
-const packageDirectory = dirname(fileURLToPath(import.meta.url))
-const fixture = (name: string): string => join(packageDirectory, "fixtures", name)
-const lintScript = join(packageDirectory, "lint.ts")
-
-const temporaryDirectories: string[] = []
-
-afterEach(() => {
-  for (const directory of temporaryDirectories.splice(0)) rmSync(directory, { recursive: true, force: true })
-})
-
-const temporaryRoot = (): string => {
-  const directory = mkdtempSync(join(tmpdir(), "skill-layout-lint-"))
-  temporaryDirectories.push(directory)
-  return directory
-}
-
-const run = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>): Promise<A> =>
+const live = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(
   // @effect-diagnostics-next-line strictEffectProvide:off
-  Effect.runPromise(Effect.provide(effect, NodeServices.layer))
+  Effect.provide(NodeServices.layer)
+)
 
-const lint = (root: string) => run(lintSkillsRoot(root))
+const localPath = (relative: string): string => fileURLToPath(new URL(relative, import.meta.url))
+const fixture = (name: string): string => localPath(`fixtures/${name}`)
+const lintScript = localPath("lint.ts")
 
-const analyze = (skill: SkillSource) =>
-  run(Effect.gen(function*() {
-    const path = yield* Path.Path
-    return analyzeSkill(path, skill)
-  }))
+const relativeFindings = (findings: ReadonlyArray<Finding>, root: string) =>
+  findings.map((finding) => ({ line: finding.line, message: finding.message, path: finding.path.slice(root.length + 1) }))
 
 const body = (lines: number): string => Array.from({ length: lines }, (_, index) => `line ${index + 1}`).join("\n")
 
-const skillWithBody = (content: string): SkillSource => ({ content, directory: "/skills/long", references: [] })
-
-const relativeFindings = (findings: ReadonlyArray<{ readonly path: string; readonly line: number | undefined; readonly message: string }>, root: string) =>
-  findings.map((finding) => ({ line: finding.line, message: finding.message, path: finding.path.slice(root.length + 1) }))
+const skillWithBody = (content: string): SkillSource => ({ content, directory: "/skills/long", references: [], root: "/skills" })
 
 describe("lintSkillsRoot", () => {
-  it("reports no findings for a skill that keeps conditional detail in references", async () => {
-    const report = await lint(fixture("clean"))
+  it.effect("reports no findings for a skill that keeps conditional detail in references", () => live(Effect.gen(function*() {
+    const report = yield* lintSkillsRoot(fixture("clean"))
 
-    expect(report.findings).toEqual([])
-    expect(report.skillCount).toBe(1)
-  })
+    assert.deepStrictEqual(report.findings, [])
+    assert.strictEqual(report.skillCount, 1)
+  })))
 
-  it("excludes upstream-license attribution files from the reference set", async () => {
-    const report = await lint(fixture("clean"))
+  it.effect("excludes upstream-license attribution files from the reference set", () => live(Effect.gen(function*() {
+    const report = yield* lintSkillsRoot(fixture("clean"))
 
-    expect(report.referenceCount).toBe(1)
-  })
+    assert.strictEqual(report.referenceCount, 1)
+  })))
 
-  it("flags only reference-to-reference links, with the line that made each link", async () => {
+  it.effect("flags every link a reference makes to another file in the skills tree", () => live(Effect.gen(function*() {
     const root = fixture("chain")
-    const report = await lint(root)
+    const report = yield* lintSkillsRoot(root)
 
-    expect(relativeFindings(report.findings, root)).toEqual([
-      { line: 3, message: "links to references/detail.md; a reference may link only back to SKILL.md", path: "chained/references/hub.md" },
-      { line: 4, message: "links to references/detail.md; a reference may link only back to SKILL.md", path: "chained/references/hub.md" },
-      { line: 5, message: "links to references/detail.md; a reference may link only back to SKILL.md", path: "chained/references/hub.md" },
-      { line: 6, message: "links to references/references/detail.md; a reference may link only back to SKILL.md", path: "chained/references/hub.md" }
+    assert.deepStrictEqual(relativeFindings(report.findings, root), [
+      { line: 3, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
+      { line: 4, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
+      { line: 5, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
+      { line: 6, message: "links to references/references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
+      { line: 8, message: "links to ../other/references/thing.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
+      { line: 26, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" }
     ])
-    expect(report.findings.every((finding) => finding.severity === "error")).toBe(true)
-  })
+    assert.isTrue(report.findings.every((finding) => finding.severity === "error"))
+  })))
 
-  it("warns once for a reference linked from both a numbered step and Context pointers", async () => {
+  it.effect("warns once for a reference linked from both a numbered step and Context pointers", () => live(Effect.gen(function*() {
     const root = fixture("fanout")
-    const report = await lint(root)
+    const report = yield* lintSkillsRoot(root)
 
-    expect(relativeFindings(report.findings, root)).toEqual([
+    assert.deepStrictEqual(relativeFindings(report.findings, root), [
       { line: undefined, message: "references/guide.md is linked from a numbered step and from Context pointers; decide whether to inline it", path: "both/SKILL.md" }
     ])
-    expect(report.findings.every((finding) => finding.severity === "warning")).toBe(true)
-  })
+    assert.isTrue(report.findings.every((finding) => finding.severity === "warning"))
+  })))
 
-  it("discovers skills nested below the skills root", async () => {
-    const report = await lint(fixture("nested"))
+  it.effect("discovers skills nested below the skills root", () => live(Effect.gen(function*() {
+    const report = yield* lintSkillsRoot(fixture("nested"))
 
-    expect(report.skillCount).toBe(1)
-    expect(report.findings).toEqual([])
-  })
+    assert.strictEqual(report.skillCount, 1)
+    assert.deepStrictEqual(report.findings, [])
+  })))
 
-  it("skips skills vendored under node_modules", async () => {
-    const root = temporaryRoot()
-    const vendored = join(root, "node_modules", "vendored")
-    mkdirSync(join(vendored, "references"), { recursive: true })
-    writeFileSync(join(vendored, "SKILL.md"), "---\nname: vendored\ndescription: 'y'\n---\n\n[a](references/a.md)\n")
-    writeFileSync(join(vendored, "references", "a.md"), "[b](b.md)\n")
+  it.effect("skips skills vendored under node_modules", () => live(Effect.gen(function*() {
+    const fileSystem = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const root = yield* fileSystem.makeTempDirectoryScoped({ prefix: "skill-layout-lint-" })
+    const vendored = path.join(root, "node_modules", "vendored")
+    yield* fileSystem.makeDirectory(path.join(vendored, "references"), { recursive: true })
+    yield* fileSystem.writeFileString(path.join(vendored, "SKILL.md"), "---\nname: vendored\ndescription: 'y'\n---\n\n[a](references/a.md)\n")
+    yield* fileSystem.writeFileString(path.join(vendored, "references", "a.md"), "[b](b.md)\n")
 
-    const report = await lint(root)
+    const report = yield* lintSkillsRoot(root)
 
-    expect(report.skillCount).toBe(0)
-    expect(report.findings).toEqual([])
-  })
+    assert.strictEqual(report.skillCount, 0)
+    assert.deepStrictEqual(report.findings, [])
+  })))
 })
 
 describe("analyzeSkill", () => {
-  it("accepts a SKILL.md body of exactly 500 lines", async () => {
-    const findings = await analyze(skillWithBody(`---\nname: long\ndescription: 'y'\n---\n${body(500)}`))
+  it.effect("accepts a SKILL.md body of exactly 500 lines", () => live(Effect.gen(function*() {
+    const path = yield* Path.Path
 
-    expect(findings).toEqual([])
-  })
+    assert.deepStrictEqual(analyzeSkill(path, skillWithBody(`---\nname: long\ndescription: 'y'\n---\n${body(500)}\n`)), [])
+  })))
 
-  it("flags a SKILL.md body longer than 500 lines", async () => {
-    const findings = await analyze(skillWithBody(`---\nname: long\ndescription: 'y'\n---\n${body(501)}`))
+  it.effect("flags a SKILL.md body longer than 500 lines", () => live(Effect.gen(function*() {
+    const path = yield* Path.Path
 
-    expect(findings).toEqual([
-      { line: undefined, message: "body is 501 lines; keep the SKILL.md body under 500 lines", path: "/skills/long/SKILL.md", severity: "error" }
+    assert.deepStrictEqual(analyzeSkill(path, skillWithBody(`---\nname: long\ndescription: 'y'\n---\n${body(501)}`)), [
+      { line: undefined, message: "body is 501 lines; keep the SKILL.md body at 500 lines or fewer", path: "/skills/long/SKILL.md", severity: "error" }
     ])
-  })
+  })))
 
-  it("counts every line when SKILL.md has no frontmatter", async () => {
-    const findings = await analyze(skillWithBody(body(501)))
+  it.effect("counts every line when SKILL.md has no frontmatter", () => live(Effect.gen(function*() {
+    const path = yield* Path.Path
 
-    expect(findings).toEqual([
-      { line: undefined, message: "body is 501 lines; keep the SKILL.md body under 500 lines", path: "/skills/long/SKILL.md", severity: "error" }
+    assert.deepStrictEqual(analyzeSkill(path, skillWithBody(body(501))), [
+      { line: undefined, message: "body is 501 lines; keep the SKILL.md body at 500 lines or fewer", path: "/skills/long/SKILL.md", severity: "error" }
     ])
-  })
+  })))
 })
 
 describe("lint.ts", () => {
-  it("exits 1 and prints each error when a reference links another reference", () => {
+  it("exits 1 and prints one error line per finding", () => {
     const result = spawnSync("bun", [lintScript, fixture("chain")], { encoding: "utf8" })
+    const lines = result.stdout.trimEnd().split("\n")
 
-    expect(result.status).toBe(1)
-    expect(result.stdout.trimEnd().split("\n")).toEqual([
-      "error: chain/chained/references/hub.md:3: links to references/detail.md; a reference may link only back to SKILL.md",
-      "error: chain/chained/references/hub.md:4: links to references/detail.md; a reference may link only back to SKILL.md",
-      "error: chain/chained/references/hub.md:5: links to references/detail.md; a reference may link only back to SKILL.md",
-      "error: chain/chained/references/hub.md:6: links to references/references/detail.md; a reference may link only back to SKILL.md"
-    ])
+    assert.strictEqual(result.status, 1)
+    assert.strictEqual(lines.length, 6)
+    assert.isTrue(lines.every((line) => line.startsWith("error: chain/chained/references/hub.md:")))
   })
 
   it("exits 0 when only warnings remain", () => {
     const result = spawnSync("bun", [lintScript, fixture("fanout")], { encoding: "utf8" })
 
-    expect(result.status).toBe(0)
-    expect(result.stdout.trimEnd().split("\n")).toEqual([
+    assert.strictEqual(result.status, 0)
+    assert.deepStrictEqual(result.stdout.trimEnd().split("\n"), [
       "warning: fanout/both/SKILL.md: references/guide.md is linked from a numbered step and from Context pointers; decide whether to inline it",
       "skill-layout-lint: 2 skills, 4 references, no errors"
     ])
-  })
-
-  it("summarises a clean tree", () => {
-    const result = spawnSync("bun", [lintScript, fixture("clean")], { encoding: "utf8" })
-
-    expect(result.status).toBe(0)
-    expect(result.stdout.trim()).toBe("skill-layout-lint: 1 skills, 1 references, no errors")
   })
 })

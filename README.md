@@ -288,6 +288,9 @@ PRs are welcome.
   conditional or advanced detail in `references/`, linked one hop from
   `SKILL.md` only. A reference file must not link to another reference. A
   skill that runs on every turn is a single file.
+- `bun run lint:skills` enforces the hop and length rules and warns when one
+  reference is linked from both a workflow step and a `Context pointers`
+  section, so you can decide whether to inline it.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

@@ -12,3 +12,15 @@ Anchor: [top](#hub).
 ```md
 Fenced: [detail](detail.md).
 ```
+
+````md
+```text
+Nested fence: [detail](detail.md).
+```
+````
+
+````md
+```text
+````
+
+After block: [detail](detail.md).

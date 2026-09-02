@@ -17,7 +17,3 @@ frequent work or exists only as decoration.
 6. Preserve keyboard, focus, touch, screen-reader, and reduced-motion behavior.
 7. Test normal speed, rapid repetition, interruption, reversal, reduced motion,
    and representative device performance.
-
-For motion opportunities, read `references/motion-opportunity-audit.md`. For
-complex gestures, read `references/gesture-design.md`. When the effect is hard
-to name, read `references/animation-vocabulary.md`.

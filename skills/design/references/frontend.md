@@ -17,6 +17,3 @@ implement and inspect the complete rendered result.
    turning every group into a card.
 6. Inspect the rendered result at supported widths and states. Report what was
    visibly checked and any remaining risk.
-
-When motion or gestures materially affect the result, also read
-`references/motion.md`.

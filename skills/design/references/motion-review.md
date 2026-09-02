@@ -12,5 +12,4 @@ evidence, the visible behavior, why it matters in this interaction, and the
 narrowest useful fix. A value differing from a reference default is not a
 finding without a concrete effect.
 
-Read `references/motion-review-standards.md` before finalizing
-findings. Conclude with `Block`, `Needs follow-up`, or `Approve`.
+Conclude with `Block`, `Needs follow-up`, or `Approve`.

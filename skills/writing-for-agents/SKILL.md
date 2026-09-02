@@ -58,15 +58,13 @@ Place them on this hierarchy:
 3. Disclosed reference behind a context pointer.
 
 Use progressive disclosure to move branch-specific reference down the ladder.
-Keep what every branch needs inline. Too little disclosure creates sprawl; too
-much hides instructions the agent needs on every run.
-
-Every file the agent opens is one more model call that re-sends the whole
-conversation. Put anything every use needs inline in `SKILL.md`. Put
-conditional or advanced detail in `references/`, linked one hop from
-`SKILL.md` only; a reference file must not link to another reference. Keep
-the `SKILL.md` body under 500 lines. House rule: a skill that runs on every
-turn is a single file.
+Too little disclosure creates sprawl; too much hides instructions the agent
+needs on every run. Every file the agent opens is one more model call that
+re-sends the whole conversation, so put anything every use needs inline in
+`SKILL.md` and put conditional or advanced detail in `references/`, linked one
+hop from `SKILL.md` only. A reference file must not link to another reference.
+Keep the `SKILL.md` body at most 500 lines. House rule: a skill that runs on
+every turn is a single file.
 
 Co-locate a concept's definition, rules, and caveats under one heading. Grouped
 material reads like documentation; scattered material makes the agent rebuild

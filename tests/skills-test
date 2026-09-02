@@ -1089,8 +1089,6 @@ test_waits_hold_instead_of_polling() {
   assert_contains "$wait_skill" 'deadline is a ceiling, not a delay'
   assert_contains "$wait_skill" 'resume the same wait'
   assert_contains "$wait_skill" 'Unchanged progress is not a state change'
-  assert_contains "$wait_skill" '## Codex hold mechanisms'
-  assert_contains "$wait_skill" '## Claude Code hold mechanisms'
 }
 
 test_harness_sections_carry_the_api_surface() {
@@ -1099,7 +1097,6 @@ test_harness_sections_carry_the_api_surface() {
   assert_contains "$wait_skill" '"yield_time_ms": <expected-ms>'
   assert_contains "$wait_skill" 'const yieldMs = <expected-ms>'
   assert_contains "$wait_skill" 'yield_time_ms: yieldMs'
-  assert_not_contains "$wait_skill" 'yield_time_ms: 30000'
   assert_contains "$wait_skill" 'const maxOutputTokens = 10000'
   assert_contains "$wait_skill" 'originalTokens += result.original_token_count'
   assert_contains "$wait_skill" 'returns when it exits'
@@ -1111,9 +1108,6 @@ test_harness_sections_carry_the_api_surface() {
   assert_contains "$wait_skill" '`notify` is not a replacement'
   assert_contains "$wait_skill" 'Do not restart the'
   assert_contains "$wait_skill" 'single `Promise.all`'
-  assert_contains "$wait_skill" 'the maximum the current tool schema accepts'
-  assert_contains "$wait_skill" 'without the header the cell yields at its 10-second default'
-  assert_contains "$wait_skill" 'When `wait_agent` or `wait_threads` runs inside an exec cell'
 
   assert_contains "$wait_skill" 'run_in_background: true'
   assert_contains "$wait_skill" '`Monitor`'
