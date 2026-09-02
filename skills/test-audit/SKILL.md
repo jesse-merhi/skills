@@ -96,6 +96,9 @@ There are three gates:
   bar, good signals, and waste signals.
 - Use [portfolio.md](references/portfolio.md) for ownership, consolidation,
   proof-level placement, replacement owners, and portfolio-audit measurement.
+- Use [expensive-suites.md](references/expensive-suites.md) when reducing a
+  slow, costly, or sharded suite; it defines comparable baselines,
+  duration-aware planning, dual cost reporting, and fixed-point completion.
 - Use [recommendations.md](references/recommendations.md) for common add,
   rewrite, and delete guidance.
 - Use [output.md](references/output.md) for review output shape and the stale
