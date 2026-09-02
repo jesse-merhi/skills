@@ -1,0 +1,862 @@
+{
+	"version": 1,
+	"ecosystems": {
+		"javascript": {
+			"detect": [
+				"package.json"
+			],
+			"presets": "eslint"
+		}
+	},
+	"presets": {
+		"eslint": {
+			"base": {
+				"file": "eslint/presets/base.mjs",
+				"packages": {
+					"eslint-plugin-import-x": "4.17.0",
+					"eslint-plugin-perfectionist": "5.9.1",
+					"eslint-plugin-promise": "7.3.0",
+					"eslint-plugin-sonarjs": "4.1.0"
+				},
+				"applies": {
+					"always": true
+				}
+			},
+			"typescript": {
+				"file": "eslint/presets/typescript.mjs",
+				"packages": {
+					"@typescript-eslint/eslint-plugin": "8.60.1",
+					"@typescript-eslint/parser": "8.60.1"
+				},
+				"applies": {
+					"devDependencies": [
+						"typescript"
+					]
+				}
+			},
+			"react": {
+				"file": "eslint/presets/react.mjs",
+				"packages": {
+					"eslint-plugin-jsx-a11y": "6.10.2",
+					"eslint-plugin-react-hooks": "7.1.1",
+					"eslint-plugin-react-refresh": "0.4.19",
+					"eslint-plugin-react-you-might-not-need-an-effect": "1.0.1"
+				},
+				"applies": {
+					"dependencies": [
+						"react"
+					]
+				}
+			},
+			"react-native": {
+				"file": "eslint/presets/react-native.mjs",
+				"packages": {
+					"eslint-plugin-react-native-a11y": "3.5.1"
+				},
+				"applies": {
+					"dependencies": [
+						"react-native"
+					]
+				}
+			},
+			"tailwind": {
+				"file": "eslint/presets/tailwind.mjs",
+				"packages": {},
+				"applies": {
+					"devDependencies": [
+						"tailwindcss"
+					]
+				}
+			},
+			"zod": {
+				"file": "eslint/presets/zod.mjs",
+				"packages": {},
+				"applies": {
+					"dependencies": [
+						"zod"
+					]
+				}
+			},
+			"tanstack-query": {
+				"file": "eslint/presets/tanstack-query.mjs",
+				"packages": {
+					"@tanstack/eslint-plugin-query": "5.101.1"
+				},
+				"applies": {
+					"dependencies": [
+						"@tanstack/react-query"
+					]
+				}
+			},
+			"prisma": {
+				"file": "eslint/presets/prisma.mjs",
+				"packages": {},
+				"applies": {
+					"dependencies": [
+						"@prisma/client"
+					]
+				}
+			},
+			"vitest": {
+				"file": "eslint/presets/vitest.mjs",
+				"packages": {
+					"@vitest/eslint-plugin": "1.6.20"
+				},
+				"applies": {
+					"devDependencies": [
+						"vitest"
+					]
+				}
+			},
+			"jest": {
+				"file": "eslint/presets/jest.mjs",
+				"packages": {
+					"eslint-plugin-jest": "29.15.4"
+				},
+				"applies": {
+					"devDependencies": [
+						"jest"
+					]
+				}
+			},
+			"playwright": {
+				"file": "eslint/presets/playwright.mjs",
+				"packages": {
+					"eslint-plugin-playwright": "2.10.4"
+				},
+				"applies": {
+					"devDependencies": [
+						"@playwright/test"
+					]
+				}
+			}
+		}
+	},
+	"standards": [
+		{
+			"id": "no-banner-comments",
+			"title": "No decorative comment separators",
+			"principle": "A comment should say something. Rows of dashes or equals signs only add noise and go stale when the code around them moves. Write a plain one-line section comment, or nothing.",
+			"scope": "any",
+			"origin": "uplinked eslint-rules/no-banner-comments.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-banner-comments.mjs",
+						"test": "eslint/rules/no-banner-comments.test.mjs",
+						"presets": [
+							"base"
+						]
+					}
+				],
+				"script": [
+					{
+						"kind": "script",
+						"file": "scripts/no-banner-comments.sh",
+						"languages": [
+							"yaml",
+							"sh"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-trivial-forwarding-wrapper",
+			"title": "No pass-through wrappers",
+			"principle": "A helper whose whole body is `return other(sameArgs)` adds a name and a hop without adding meaning. Call the underlying function directly. Keep a wrapper only when it captures a concept, enforces an invariant, marks a boundary, or exists as a test seam.",
+			"scope": "any",
+			"origin": "uplinked eslint-rules/no-trivial-forwarding-wrapper.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-trivial-forwarding-wrapper.mjs",
+						"test": "eslint/rules/no-trivial-forwarding-wrapper.test.mjs",
+						"presets": [
+							"base"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-large-test-snapshots",
+			"title": "No broad snapshots in ordinary tests",
+			"principle": "A whole-output snapshot fails on every unrelated change and gets re-recorded without being read, so it stops proving anything. Assert the specific fields or behaviour the test is about, and keep deliberate serializer coverage in files named for it.",
+			"scope": "tests",
+			"origin": "uplinked eslint-rules/no-large-test-snapshots.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-large-test-snapshots.mjs",
+						"test": "eslint/rules/no-large-test-snapshots.test.mjs",
+						"presets": [
+							"vitest",
+							"jest",
+							"playwright"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-broad-rule-disable",
+			"title": "No blanket disables of protected rules",
+			"principle": "A file- or block-level disable silently turns a rule off for everything below it, including code written later. Disable a protected rule on the single line that needs the exception, so the next reader sees exactly what was excused and why.",
+			"scope": "any",
+			"origin": "uplinked eslint-rules/no-zod-type-any-block-disable.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-broad-rule-disable.mjs",
+						"test": "eslint/rules/no-broad-rule-disable.test.mjs",
+						"presets": [
+							"zod"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-raw-sql",
+			"title": "No raw SQL escape hatches",
+			"principle": "Query-builder escape hatches such as `Prisma.raw` hand a string straight to the database, so any interpolated value becomes injectable. Use parameterised queries or the builder's typed API instead.",
+			"scope": "prisma",
+			"origin": "uplinked eslint-rules/no-prisma-raw.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-raw-sql.mjs",
+						"test": "eslint/rules/no-raw-sql.test.mjs",
+						"presets": [
+							"prisma"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-raw-color-literals",
+			"title": "No raw color literals in color props",
+			"principle": "A hex or rgb() literal in a color prop bypasses the theme, so it cannot follow light and dark mode or a palette change. Use a theme token.",
+			"scope": "react-native",
+			"origin": "uplinked eslint-rules/mobile-raw-color-selectors.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-raw-color-literals.mjs",
+						"test": "eslint/rules/no-raw-color-literals.test.mjs",
+						"presets": [
+							"react-native"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-zod-type-any",
+			"title": "No weak schema types",
+			"principle": "Weak schema types such as `ZodTypeAny` or a bare `ZodType` accept anything, so the validated value arrives untyped and the boundary stops proving anything. Name the precise schema type the boundary actually parses.",
+			"scope": "zod",
+			"origin": "uplinked eslint-rules/no-zod-type-any.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-zod-type-any.mjs",
+						"test": "eslint/rules/no-zod-type-any.test.mjs",
+						"presets": [
+							"zod"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "prefer-zod-for-unknown-typeof",
+			"title": "Parse unknown boundary values with a schema",
+			"principle": "Hand-written `typeof` and `instanceof` checks on an unknown value validate one field at a time and drift from the shape the code expects. Parse the value once with a schema, and work with the typed result.",
+			"scope": "zod",
+			"origin": "uplinked eslint-rules/prefer-zod-for-unknown-typeof.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/prefer-zod-for-unknown-typeof.mjs",
+						"test": "eslint/rules/prefer-zod-for-unknown-typeof.test.mjs",
+						"presets": [
+							"zod"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-light-mode-only-colors",
+			"title": "No light-mode-only color utilities",
+			"principle": "A hard-coded light neutral such as `bg-gray-100` looks correct until dark mode is on, and then it is unreadable. Use the semantic token, or pair the utility with an explicit dark counterpart.",
+			"scope": "tailwind",
+			"origin": "uplinked eslint-rules/no-light-mode-only-colors.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-light-mode-only-colors.mjs",
+						"test": "eslint/rules/no-light-mode-only-colors.test.mjs",
+						"presets": [
+							"tailwind"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-raw-elevation",
+			"title": "Elevation comes from named tokens",
+			"principle": "Ad-hoc shadow utilities scatter a depth scale across the codebase and drift apart. Remove the decorative shadow, or use a named elevation token so layering stays one decision.",
+			"scope": "tailwind",
+			"origin": "uplinked eslint-rules/no-raw-elevation.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-raw-elevation.mjs",
+						"test": "eslint/rules/no-raw-elevation.test.mjs",
+						"presets": [
+							"tailwind"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-small-text",
+			"title": "No undersized or all-caps text",
+			"principle": "Text below the minimum size is hard to read, and all-caps copy is slower to read and mangled by screen readers. Use a shared typography token and sentence case, and mark a genuine exception in a comment.",
+			"scope": "tailwind",
+			"origin": "uplinked eslint-rules/no-small-text.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-small-text.mjs",
+						"test": "eslint/rules/no-small-text.test.mjs",
+						"presets": [
+							"react-native",
+							"tailwind"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-wide-arbitrary-breakpoints",
+			"title": "No oversized ad-hoc breakpoints",
+			"principle": "A one-off breakpoint above the layout's widest named step splits responsive behaviour across two systems that no longer agree. Use a named responsive variant, and document a component-specific exception in a comment.",
+			"scope": "tailwind",
+			"origin": "uplinked eslint-rules/no-wide-arbitrary-breakpoints.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-wide-arbitrary-breakpoints.mjs",
+						"test": "eslint/rules/no-wide-arbitrary-breakpoints.test.mjs",
+						"presets": [
+							"tailwind"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-brittle-e2e-selectors",
+			"title": "Stable selectors in end-to-end tests",
+			"principle": "Selectors built from DOM position, class attributes, or styling classes break when markup is restructured even though the product still works. Select by role, label, visible text, or test id.",
+			"scope": "e2e",
+			"origin": "uplinked eslint-rules/no-brittle-e2e-selectors.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-brittle-e2e-selectors.mjs",
+						"test": "eslint/rules/no-brittle-e2e-selectors.test.mjs",
+						"presets": [
+							"playwright"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-brittle-test-style-assertions",
+			"title": "No exact style assertions in ordinary tests",
+			"principle": "Asserting exact class strings or computed styles pins a test to today's styling rather than to what the user can do, so it fails on restyles and passes through real breakage. Assert user-visible behaviour, and keep deliberate visual coverage in files named for it.",
+			"scope": "tests",
+			"origin": "uplinked eslint-rules/no-brittle-test-style-assertions.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "rule",
+						"rule": "eslint/rules/no-brittle-test-style-assertions.mjs",
+						"test": "eslint/rules/no-brittle-test-style-assertions.test.mjs",
+						"presets": [
+							"vitest",
+							"jest",
+							"playwright"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "import-sorting",
+			"title": "Imports and exports keep one order",
+			"principle": "One mechanical import order removes a whole class of merge conflicts and makes a missing dependency obvious at a glance. Let the linter decide the order rather than each author.",
+			"scope": "any",
+			"origin": "uplinked eslint-config/perfectionist-import-export-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-perfectionist",
+						"rules": [
+							"perfectionist/sort-exports",
+							"perfectionist/sort-imports",
+							"perfectionist/sort-named-exports",
+							"perfectionist/sort-named-imports"
+						],
+						"presets": [
+							"base"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "import-hygiene",
+			"title": "Imports resolve to one real module",
+			"principle": "Duplicate, self-referential, and module-system-mixing imports produce modules that load twice or not at all, and the failure shows up far from the import. Keep one import per module and let it resolve.",
+			"scope": "any",
+			"origin": "uplinked eslint-config/import-x-config.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-import-x",
+						"rules": [
+							"import-x/no-duplicates",
+							"import-x/no-import-module-exports",
+							"import-x/no-self-import"
+						],
+						"presets": [
+							"base"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "promise-correctness",
+			"title": "Async results are settled exactly once",
+			"principle": "A promise resolved twice, returned from a `finally`, or wrapped in a needless extra promise loses errors and results silently. Settle each async result once, on a path the reader can follow.",
+			"scope": "any",
+			"origin": "uplinked eslint-config/js-correctness-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-promise",
+						"rules": [
+							"promise/no-multiple-resolved",
+							"promise/no-return-in-finally",
+							"promise/no-return-wrap",
+							"promise/param-names",
+							"promise/valid-params"
+						],
+						"presets": [
+							"base"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "control-flow-correctness",
+			"title": "Control flow says what it does",
+			"principle": "Branches that are all identical, a `catch` that only rethrows, a loop counter changed inside the body, and a `map` callback with no return all read as intent but behave as an accident. Make the branch, the handler, and the loop do the thing they appear to do.",
+			"scope": "any",
+			"origin": "uplinked eslint-config/js-correctness-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint",
+						"rules": [
+							"array-callback-return"
+						],
+						"presets": [
+							"base"
+						]
+					},
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-sonarjs",
+						"rules": [
+							"sonarjs/no-all-duplicated-branches",
+							"sonarjs/no-useless-catch",
+							"sonarjs/updated-loop-counter"
+						],
+						"presets": [
+							"base"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "strict-types",
+			"title": "No escape hatches out of the type system",
+			"principle": "`any` and type assertions tell the checker to stop looking, so the first wrong assumption surfaces at runtime instead of at the keyboard. Describe the real type, or validate the value at the boundary.",
+			"scope": "typescript",
+			"origin": "uplinked eslint-config/typescript-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "@typescript-eslint/eslint-plugin",
+						"rules": [
+							"@typescript-eslint/consistent-type-assertions",
+							"@typescript-eslint/no-explicit-any",
+							"@typescript-eslint/no-unused-vars"
+						],
+						"presets": [
+							"typescript"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "react-hooks-purity",
+			"title": "Components render as pure functions",
+			"principle": "Rendering that mutates shared values, reads refs, or sets state mid-render makes output depend on how many times React ran it. Keep render a pure function of props and state, and put effects where effects belong.",
+			"scope": "react",
+			"origin": "uplinked eslint-config/react-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-react-hooks",
+						"rules": [
+							"react-hooks/config",
+							"react-hooks/error-boundaries",
+							"react-hooks/gating",
+							"react-hooks/globals",
+							"react-hooks/immutability",
+							"react-hooks/incompatible-library",
+							"react-hooks/preserve-manual-memoization",
+							"react-hooks/purity",
+							"react-hooks/refs",
+							"react-hooks/set-state-in-effect",
+							"react-hooks/set-state-in-render",
+							"react-hooks/static-components",
+							"react-hooks/unsupported-syntax",
+							"react-hooks/use-memo"
+						],
+						"presets": [
+							"react"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "react-effect-discipline",
+			"title": "Effects only reach outside the component",
+			"principle": "An effect used to derive state, chain updates, or hand data back to a parent adds a render pass and a way for the two copies to disagree. Compute derived values during render, and keep effects for genuinely external systems.",
+			"scope": "react",
+			"origin": "uplinked eslint-config/react-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-react-you-might-not-need-an-effect",
+						"rules": [
+							"react-you-might-not-need-an-effect/no-adjust-state-on-prop-change",
+							"react-you-might-not-need-an-effect/no-chain-state-updates",
+							"react-you-might-not-need-an-effect/no-derived-state",
+							"react-you-might-not-need-an-effect/no-event-handler",
+							"react-you-might-not-need-an-effect/no-external-store-subscription",
+							"react-you-might-not-need-an-effect/no-initialize-state",
+							"react-you-might-not-need-an-effect/no-pass-data-to-parent",
+							"react-you-might-not-need-an-effect/no-pass-live-state-to-parent",
+							"react-you-might-not-need-an-effect/no-reset-all-state-on-prop-change"
+						],
+						"presets": [
+							"react"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "react-fast-refresh-exports",
+			"title": "Component files export components",
+			"principle": "When a file mixes components with other exports, hot reload cannot swap it and remounts the tree, losing local state on every edit. Keep components in their own files.",
+			"scope": "react",
+			"origin": "uplinked eslint-config/react-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-react-refresh",
+						"rules": [
+							"react-refresh/only-export-components"
+						],
+						"presets": [
+							"react"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "web-accessibility",
+			"title": "Web UI is reachable without a mouse",
+			"principle": "Images without alt text, controls without labels, click handlers without key handlers, and invalid ARIA lock people out of the interface entirely. Name every control, and make everything clickable reachable by keyboard.",
+			"scope": "react",
+			"origin": "uplinked eslint-config/accessibility-config.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-jsx-a11y",
+						"rules": [
+							"jsx-a11y/alt-text",
+							"jsx-a11y/anchor-has-content",
+							"jsx-a11y/anchor-is-valid",
+							"jsx-a11y/aria-activedescendant-has-tabindex",
+							"jsx-a11y/aria-props",
+							"jsx-a11y/aria-proptypes",
+							"jsx-a11y/aria-role",
+							"jsx-a11y/aria-unsupported-elements",
+							"jsx-a11y/autocomplete-valid",
+							"jsx-a11y/click-events-have-key-events",
+							"jsx-a11y/control-has-associated-label",
+							"jsx-a11y/heading-has-content",
+							"jsx-a11y/html-has-lang",
+							"jsx-a11y/iframe-has-title",
+							"jsx-a11y/img-redundant-alt",
+							"jsx-a11y/interactive-supports-focus",
+							"jsx-a11y/label-has-associated-control",
+							"jsx-a11y/lang",
+							"jsx-a11y/media-has-caption",
+							"jsx-a11y/mouse-events-have-key-events",
+							"jsx-a11y/no-access-key",
+							"jsx-a11y/no-aria-hidden-on-focusable",
+							"jsx-a11y/no-distracting-elements",
+							"jsx-a11y/no-noninteractive-element-interactions",
+							"jsx-a11y/no-noninteractive-tabindex",
+							"jsx-a11y/no-redundant-roles",
+							"jsx-a11y/no-static-element-interactions",
+							"jsx-a11y/role-has-required-aria-props",
+							"jsx-a11y/role-supports-aria-props",
+							"jsx-a11y/scope",
+							"jsx-a11y/tabindex-no-positive"
+						],
+						"presets": [
+							"react"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "native-accessibility",
+			"title": "Native UI exposes its controls",
+			"principle": "A touchable with no accessibility role, label, or state is invisible to VoiceOver and TalkBack, and nested touchables swallow each other's taps. Describe each control the way assistive technology needs to read it.",
+			"scope": "react-native",
+			"origin": "uplinked eslint-config/accessibility-config.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-react-native-a11y",
+						"rules": [
+							"react-native-a11y/has-accessibility-props",
+							"react-native-a11y/has-valid-accessibility-actions",
+							"react-native-a11y/has-valid-accessibility-descriptors",
+							"react-native-a11y/has-valid-accessibility-role",
+							"react-native-a11y/has-valid-accessibility-state",
+							"react-native-a11y/has-valid-accessibility-value",
+							"react-native-a11y/no-nested-touchables"
+						],
+						"presets": [
+							"react-native"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "query-hygiene",
+			"title": "Cached queries declare what they depend on",
+			"principle": "A query whose key omits an input serves another input's cached data, and an unstable dependency refetches forever. State every input in the key, and keep the option order the library expects.",
+			"scope": "tanstack-query",
+			"origin": "uplinked eslint-config/tanstack-query-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "@tanstack/eslint-plugin-query",
+						"rules": [
+							"@tanstack/query/exhaustive-deps",
+							"@tanstack/query/infinite-query-property-order",
+							"@tanstack/query/mutation-property-order",
+							"@tanstack/query/no-rest-destructuring",
+							"@tanstack/query/no-unstable-deps",
+							"@tanstack/query/no-void-query-fn"
+						],
+						"presets": [
+							"tanstack-query"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "test-hygiene",
+			"title": "Tests actually run and actually assert",
+			"principle": "A focused, skipped, commented-out, or conditionally defined test passes without checking anything, and an unawaited assertion reports success before the result arrives. Every test in the suite should run and its assertions should be waited for.",
+			"scope": "tests",
+			"origin": "uplinked eslint-config/vitest-rules.cjs and jest-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "@vitest/eslint-plugin",
+						"rules": [
+							"@vitest/consistent-each-for",
+							"@vitest/no-commented-out-tests",
+							"@vitest/no-conditional-tests",
+							"@vitest/no-disabled-tests",
+							"@vitest/no-done-callback",
+							"@vitest/no-duplicate-hooks",
+							"@vitest/no-focused-tests",
+							"@vitest/no-identical-title",
+							"@vitest/no-import-node-test",
+							"@vitest/no-interpolation-in-snapshots",
+							"@vitest/no-mocks-import",
+							"@vitest/no-standalone-expect",
+							"@vitest/no-test-return-statement",
+							"@vitest/no-unneeded-async-expect-function",
+							"@vitest/prefer-each",
+							"@vitest/prefer-mock-return-shorthand",
+							"@vitest/prefer-to-have-length",
+							"@vitest/prefer-vi-mocked",
+							"@vitest/require-awaited-expect-poll",
+							"@vitest/require-local-test-context-for-concurrent-snapshots",
+							"@vitest/require-to-throw-message",
+							"@vitest/valid-describe-callback",
+							"@vitest/valid-expect",
+							"@vitest/valid-expect-in-promise",
+							"@vitest/valid-title"
+						],
+						"presets": [
+							"vitest"
+						]
+					},
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-jest",
+						"rules": [
+							"jest/no-alias-methods",
+							"jest/no-commented-out-tests",
+							"jest/no-confusing-set-timeout",
+							"jest/no-deprecated-functions",
+							"jest/no-disabled-tests",
+							"jest/no-done-callback",
+							"jest/no-duplicate-hooks",
+							"jest/no-error-equal",
+							"jest/no-export",
+							"jest/no-focused-tests",
+							"jest/no-identical-title",
+							"jest/no-interpolation-in-snapshots",
+							"jest/no-jasmine-globals",
+							"jest/no-mocks-import",
+							"jest/no-standalone-expect",
+							"jest/no-test-prefixes",
+							"jest/no-test-return-statement",
+							"jest/no-unneeded-async-expect-function",
+							"jest/require-to-throw-message",
+							"jest/valid-describe-callback",
+							"jest/valid-expect",
+							"jest/valid-expect-in-promise",
+							"jest/valid-expect-with-promise",
+							"jest/valid-title"
+						],
+						"presets": [
+							"jest"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "e2e-hygiene",
+			"title": "End-to-end tests wait for the app, not the clock",
+			"principle": "Fixed sleeps, network-idle waits, and forced clicks make a suite that is slow when it passes and useless when it fails. Wait for the state the assertion needs, and let the framework's web-first assertions do the retrying.",
+			"scope": "e2e",
+			"origin": "uplinked eslint-config/playwright-rules.cjs",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-playwright",
+						"rules": [
+							"playwright/missing-playwright-await",
+							"playwright/no-commented-out-tests",
+							"playwright/no-duplicate-hooks",
+							"playwright/no-duplicate-slow",
+							"playwright/no-element-handle",
+							"playwright/no-eval",
+							"playwright/no-focused-test",
+							"playwright/no-force-option",
+							"playwright/no-get-by-title",
+							"playwright/no-nested-step",
+							"playwright/no-networkidle",
+							"playwright/no-page-pause",
+							"playwright/no-skipped-test",
+							"playwright/no-standalone-expect",
+							"playwright/no-unsafe-references",
+							"playwright/no-unused-locators",
+							"playwright/no-useless-await",
+							"playwright/no-useless-not",
+							"playwright/no-wait-for-navigation",
+							"playwright/no-wait-for-selector",
+							"playwright/no-wait-for-timeout",
+							"playwright/prefer-native-locators",
+							"playwright/prefer-to-have-count",
+							"playwright/prefer-to-have-length",
+							"playwright/prefer-web-first-assertions",
+							"playwright/valid-describe-callback",
+							"playwright/valid-expect",
+							"playwright/valid-expect-in-promise",
+							"playwright/valid-test-tags",
+							"playwright/valid-title"
+						],
+						"presets": [
+							"playwright"
+						]
+					}
+				]
+			}
+		}
+	]
+}
