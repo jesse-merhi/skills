@@ -165,16 +165,12 @@ behavior_checks = {
         "browser-use skill install --target claude --no-install --force",
     ],
     root / "skills/pr-proof-pack/SKILL.md": [
-        "scripts/github-upload-attachment",
-        "repository command",
         "twg bb pull-requests update",
         "`body_html`",
         "direct-base `+LOC` and `-LOC`",
     ],
     root / "skills/pr-proof-pack/references/screenshots.md": [
         "GitHub attachment upload",
-        "scripts/github-upload-attachment",
-        "requires a `201` response",
         "server-rendered body without opening a browser",
     ],
     root / "skills/pr-proof-pack/references/bitbucket.md": [
@@ -183,14 +179,6 @@ behavior_checks = {
         "--description-file",
         "{{image}}",
         "headless Bitbucket rendered-media verifier",
-    ],
-    root / "skills/pr-proof-pack/src/GitHubAttachment.ts": [
-        "https://uploads.github.com/user-attachments/assets",
-        "Attachment verification returned HTTP",
-        "Downloaded attachment size",
-    ],
-    root / "skills/pr-proof-pack/scripts/github-upload-attachment": [
-        "github-upload-attachment.ts",
     ],
     root / "skills/pr-proof-pack/src/NetDiff.ts": [
         "baseline is meaningful and reproducible; otherwise state the constraint",
@@ -741,7 +729,6 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/references/body-shape.md" "When no meaningful baseline exists"
   assert_contains "$skill/references/body-shape.md" "Technical diagrams used solely to explain"
   assert_contains "$skill/references/body-shape.md" "actual output may occupy these slots as proof of itself"
-  assert_contains "$skill/SKILL.md" '<skill-dir>/scripts/github-upload-attachment'
   assert_contains "$skill/SKILL.md" '<full-PR-URL-resolved-in-step-2>'
   assert_contains "$skill/SKILL.md" 'gh auth status --active --hostname github.com'
   assert_contains "$skill/SKILL.md" "interactive browser only when client-side rendering"
@@ -749,14 +736,9 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_contains "$skill/SKILL.md" '`--description-file`'
   assert_contains "$skill/SKILL.md" 'a separate TWG or Atlassian skill is optional, not required'
   assert_contains "$skill/references/screenshots.md" "## GitHub attachment upload"
-  assert_contains "$skill/references/screenshots.md" '<skill-dir>/scripts/github-upload-attachment'
-  assert_contains "$skill/references/screenshots.md" 'The command supports `github.com` PRs only'
-  assert_contains "$skill/references/screenshots.md" 'https://github.com/user-attachments/assets/*'
-  assert_contains "$skill/references/screenshots.md" 'It prints only the verified asset URL on success'
   assert_not_contains "$skill/references/screenshots.md" "## Interactive Browser Fallback"
   assert_not_contains "$skill/references/screenshots.md" 'upload_file'
   assert_not_contains "$skill/references/screenshots.md" 'browser upload'
-  assert_contains "$skill/references/screenshots.md" "If it fails, stop and report its diagnostics"
   assert_contains "$skill/references/screenshots.md" "server-rendered body without opening a browser"
   assert_contains "$skill/references/screenshots.md" "## Bitbucket image upload"
   assert_contains "$skill/references/screenshots.md" '`twg bb pull-requests update`'
@@ -830,17 +812,6 @@ test_pr_proof_pack_is_a_concise_evidence_publishing_gate() {
   assert_output_contains "$bitbucket_verify" 'every intended section'
   assert_output_contains "$bitbucket_verify" 'no literal `{{image...}}` placeholder'
   assert_output_contains "$bitbucket_verify" 'rendered pixels'
-  assert_contains "$skill/src/GitHubAttachment.ts" 'https://uploads.github.com/user-attachments/assets'
-  assert_contains "$skill/src/GitHubAttachment.ts" '"--input", options.evidencePath'
-  assert_contains "$skill/src/GitHubAttachment.ts" 'stdin: `Authorization: Bearer ${token}\n`'
-  assert_contains "$skill/scripts/github-upload-attachment" 'github-upload-attachment.ts'
-  if [[ ! -x "$skill/scripts/github-upload-attachment" ]]; then
-    fail "expected github-upload-attachment wrapper to be executable"
-  fi
-  upload_help="$("$skill/scripts/github-upload-attachment" --help)"
-  assert_output_contains "$upload_help" "--pr"
-  assert_output_contains "$upload_help" "Positive PR number or full https://github.com/<owner>/<repository>/pull/<number> URL"
-  assert_output_contains "$upload_help" "evidence-path"
   if [[ ! -x "$skill/scripts/github-verify-rendered-proof" ]]; then
     fail "expected github-verify-rendered-proof wrapper to be executable"
   fi
