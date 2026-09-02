@@ -24,8 +24,11 @@ replaced, only extended.
 
    For JavaScript: the ESLint config (a legacy `.eslintrc*` means ESLint 8, a
    flat `eslint.config.*` means ESLint 9), any `oxlint` or `biome` setup, the
-   prettier config, the tsconfig files, the `package.json` lint scripts, and
-   the CI jobs that run lint. For Python: `ruff`, `mypy`, or `flake8` settings
+   prettier config, the tsconfig files, the `package.json` lint scripts, the CI
+   jobs that run lint, and what is not source: the output directories
+   `.gitignore` names, and the generated files in the tree (`*.gen.ts`,
+   `routeTree.gen.ts`, `*.d.ts` a tool emits), which is where step 6 gets the
+   contents of its `ignores`. For Python: `ruff`, `mypy`, or `flake8` settings
    in `pyproject.toml` or their own files, the task runner the target drives
    its own commands with, and pre-commit hooks.
 
@@ -103,7 +106,10 @@ replaced, only extended.
 
    - JavaScript: `eslint/` — rules, presets, and the standards plugin — minus
      every `*.test.mjs`. The rule tests import vitest, which the target has no
-     reason to install.
+     reason to install. Vendoring all of `eslint/` deliberately brings presets
+     this target did not select: the config never imports them, so they are
+     inert until their packages exist, and holding them under the manifest lets
+     `sync` keep them current so enabling one later is a single import line.
    - Python: `python/ruff.toml`, `python/mypy.ini`, `python/semgrep/`, and
      `python/standards_checks/`. Not `python/tests`, `pyproject.toml`, or
      `uv.lock`; those test and build the catalog itself and mean nothing in a
@@ -114,11 +120,14 @@ replaced, only extended.
      already has `react-doctor` installed and no doctor config exists.
    - `tsconfig/strict.base.json` to `lint/standards/tsconfig.strict.json`,
      added to the `extends` of every tsconfig that compiles something — one
-     that lists `files` or `include` — and only where the target does not
-     already set something stricter. A solution-style `tsconfig.json` holding
-     `files: []` and `references` compiles nothing, so extend the configs it
-     references instead. tsconfig files may carry comments; edit them as text
-     rather than parsing and rewriting them as JSON, which strips the comments.
+     that lists `files` or `include`. A tsconfig's own `compilerOptions`
+     override what it extends, so an option the target already sets equal or
+     stricter needs no change, and a looser one is the target's choice to keep
+     or drop: report it rather than silently overriding it. A solution-style
+     `tsconfig.json` holding `files: []` and `references` compiles nothing, so
+     extend the configs it references instead. Any JSON config the target
+     keeps may carry comments, tsconfig files especially; edit it as text
+     rather than parsing and rewriting it as JSON, which strips the comments.
 
    Neither prettier nor `react-doctor` is worth installing for the sake of its
    config file. When the dependency is absent, leave the file out and name it
@@ -147,11 +156,19 @@ replaced, only extended.
    repository that has `dist`, `build`, or generated output, because it turns
    vendored and generated code into violations nobody will fix.
 
+   `base` also takes `tsconfigPaths`: pass the same compiling tsconfigs step 5
+   found. Its default `./tsconfig.json` is a solution file that compiles nothing
+   in a Vite-style repository, so the import resolver resolves nothing. `base`
+   takes `internalPattern` too, for a repository whose path aliases are
+   something other than `@/`, `~/`, or `#`.
+
    When the target already has a flat config, add the imports and entries to
    that file instead of creating a second one. When the survey found `oxlint`
    or `biome`, add `lint/standards` to that tool's ignore configuration as
-   well, so the tool that cannot run these rules also stops reporting on the
-   files that hold them.
+   well — oxlint's `ignorePatterns` in `.oxlintrc.json`, biome's `files` ignore
+   setting — so the tool that cannot run these rules also stops reporting on
+   the files that hold them. Edit those configs as text for the reason step 5
+   gives.
 
    Python: point the target ruff config at the vendored one with
    `extend = "lint/standards/python/ruff.toml"`, creating `ruff.toml` if the
@@ -203,6 +220,12 @@ replaced, only extended.
    `ecosystems.<name>.presets` points at. A manifest keyed `eslint` describes
    an ecosystem that does not exist, and `sync` finds no presets under it.
 
+   `files` lists every file step 5 vendored, including
+   `lint/standards/tsconfig.strict.json`. It does not list the target's own
+   files apply edited in place — tsconfigs, `.oxlintrc.json`, `package.json` —
+   because those belong to the target rather than being catalog content `sync`
+   can update.
+
    Paths in `files` are relative to the target root. Each hash is the sha256 of
    the catalog content vendored to that path, which stays true even after
    someone edits the target copy — that is what lets `sync` tell an upstream
@@ -226,7 +249,9 @@ replaced, only extended.
    Run each configured command on its own, not through the entry point that
    chains them, and report violation counts grouped by rule id. Chained
    commands stop at the first failure, and every command after it goes
-   uncounted.
+   uncounted. Take the counts from machine output rather than by eye:
+   `eslint . -f json` piped through `jq` grouping `.[].messages[].ruleId`, and
+   ruff's `--output-format json` or its `--statistics`.
 
    Do not auto-fix, add disables, or edit target source to make lint pass. The
    baseline is the finding, and a clean run bought with disables hides it. List
