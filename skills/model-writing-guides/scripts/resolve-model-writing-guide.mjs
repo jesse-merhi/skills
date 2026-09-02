@@ -145,11 +145,12 @@ export function resolveModelWritingGuide({ model, registry, coverage, guideRoot 
         : currentFamily !== null
           ? "unregistered-model-version"
           : "unknown-model-family";
+  const noticeRequired = !exactCovered && reason !== "model-unavailable";
   const modelLabel = normalizedModel || "an unidentified model";
   const fallbackLabel = selectedProfile === null ? "shared writing guidance" : `${selectedProfile.id} guidance`;
-  const notice = exactCovered
-    ? null
-    : `Model-writing coverage: ${checkedCoverage.skill} has not been reviewed for ${modelLabel}; using ${fallbackLabel} for this task. Please update its model guide coverage.`;
+  const notice = noticeRequired
+    ? `Model-writing coverage: ${checkedCoverage.skill} has not been reviewed for ${modelLabel}; using ${fallbackLabel} for this task. Please update its model guide coverage.`
+    : null;
   const adapter = selectedProfile === null ? null : adapterReferences.get(selectedProfile.id);
 
   return {
@@ -162,7 +163,7 @@ export function resolveModelWritingGuide({ model, registry, coverage, guideRoot 
     skillAdapterReference: selectedProfile === null ? null : adapter,
     guideUrl: selectedProfile?.guideUrl ?? null,
     guideReviewedOn: selectedProfile?.reviewedOn ?? null,
-    noticeRequired: !exactCovered,
+    noticeRequired,
     reason,
     notice,
   };

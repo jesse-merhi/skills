@@ -63,6 +63,14 @@ test("an unknown model family keeps shared behavior and requires a notice", () =
   assert.equal(result.noticeRequired, true);
 });
 
+test("an unavailable model identifier keeps shared behavior without a stale notice", () => {
+  const result = resolve("");
+  assert.equal(result.status, "shared");
+  assert.equal(result.reason, "model-unavailable");
+  assert.equal(result.noticeRequired, false);
+  assert.equal(result.notice, null);
+});
+
 test("the documented CLI returns the resolved profile and reports argument errors", () => {
   const coveragePath = path.join(speakRoot, "model-writing.json");
   const success = spawnSync(process.execPath, [
