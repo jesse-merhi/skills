@@ -27,13 +27,15 @@ Record the metrics the environment can support:
 - total test work, calculated as the sum of test durations;
 - per-shard loads under the actual planner, shard count, and runner execution
   model;
-- parallel critical path, using observed per-shard elapsed time or a
-  runner-aware model that includes intra-shard concurrency and setup; and
+- parallel critical path, using observed workflow makespan or a runner-aware
+  model that includes shard start offsets, runner-pool concurrency and queueing,
+  intra-shard concurrency, and setup; and
 - observed or billable runner-minutes when available, including setup overhead
   if the runner charges or materially delays each shard.
 
-Do not substitute the maximum sum of test durations for the critical path
-unless each shard executes its tests sequentially.
+Do not substitute the maximum sum of test durations or maximum shard elapsed
+time for workflow makespan unless every shard starts together and executes its
+tests sequentially.
 
 File count, test count, and lines deleted describe portfolio size but do not
 prove a runtime improvement.
