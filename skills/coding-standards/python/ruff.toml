@@ -1,0 +1,25 @@
+# Ruff half of the Python coding-standards preset.
+# `lint.select` is exactly the union of every `kind: "ruff"` select in
+# catalog.python.json; tests/test_catalog_fragment.py fails if the two drift.
+
+target-version = "py312"
+
+[lint]
+select = [
+  "ANN401",
+  "ASYNC",
+  "B",
+  "F401",
+  "F811",
+  "I",
+  "PGH003",
+  "PGH004",
+  "PLW0120",
+  "PLW0406",
+  "PT",
+  "RET",
+  "RUF006",
+  "S110",
+  "S608",
+  "SIM103",
+]
