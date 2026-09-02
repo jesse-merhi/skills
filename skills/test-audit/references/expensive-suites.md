@@ -24,10 +24,15 @@ Record the metrics the environment can support:
 
 - discovered files or flows and expanded test cases;
 - total test work, calculated as the sum of test durations;
-- per-shard loads under the actual planner and shard count;
-- parallel critical path, calculated as the maximum shard load; and
+- per-shard loads under the actual planner, shard count, and runner execution
+  model;
+- parallel critical path, using observed per-shard elapsed time or a
+  runner-aware model that includes intra-shard concurrency and setup; and
 - observed or billable runner-minutes when available, including setup overhead
   if the runner charges or materially delays each shard.
+
+Do not substitute the maximum sum of test durations for the critical path
+unless each shard executes its tests sequentially.
 
 File count, test count, and lines deleted describe portfolio size but do not
 prove a runtime improvement.
@@ -55,13 +60,18 @@ and the additional runner usage or cost is acceptable within the user's scope.
 An unsharded suite is not by itself a reason to introduce sharding.
 
 Prefer the repository's existing runner, selector, timing source, and CI
-orchestration over a competing scheduler. When independent tests have useful
-duration estimates but the existing tooling has no suitable balancing
-primitive, longest-processing-time greedy assignment is a simple baseline:
+orchestration over a competing scheduler. When independent tests run
+sequentially within each shard, have useful duration estimates, and the
+existing tooling has no suitable balancing primitive, longest-processing-time
+greedy assignment is a simple baseline:
 
 1. sort tests from longest to shortest, with a deterministic tie-break;
 2. assign each test to the currently lightest shard; and
 3. report every resulting shard load and their maximum.
+
+For concurrent execution within a shard, use the runner's native balancing or
+a model of its worker concurrency instead of treating the shard as a serial
+queue.
 
 Compare scheduling changes with the same test set. Compare portfolio changes
 with the same planner and shard count. This separates cheaper coverage from
