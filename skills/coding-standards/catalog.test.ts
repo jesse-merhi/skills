@@ -1,8 +1,10 @@
+import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import { builtinRules } from "eslint/use-at-your-own-risk"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { assert, describe, it } from "vitest"
 
@@ -10,10 +12,32 @@ import type { Catalog } from "./catalog.schema.ts"
 
 import { decodeCatalog } from "./catalog.schema.ts"
 
-type PresetFactory = () => ReadonlyArray<{
-  plugins?: Record<string, { rules?: Record<string, unknown> }>
-  rules?: Record<string, unknown>
-}>
+const PluginShape = Schema.Struct({
+  rules: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown))
+})
+
+const PluginModule = Schema.Struct({
+  default: Schema.optionalKey(PluginShape),
+  rules: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown))
+})
+
+const RuleSetting = Schema.Union([Schema.String, Schema.Number, Schema.Array(Schema.Unknown)])
+
+const PresetModule = Schema.Struct({ default: Schema.Unknown })
+
+const PresetConfigs = Schema.Array(
+  Schema.Struct({
+    plugins: Schema.optionalKey(Schema.Record(Schema.String, PluginShape)),
+    rules: Schema.optionalKey(Schema.Record(Schema.String, RuleSetting))
+  })
+)
+
+const PackageManifest = Schema.Struct({ version: Schema.NonEmptyString })
+
+const decodePluginModule = Schema.decodeUnknownSync(PluginModule)
+const decodePresetModule = Schema.decodeUnknownSync(PresetModule)
+const decodePresetConfigs = Schema.decodeUnknownSync(PresetConfigs)
+const decodeManifest = Schema.decodeSync(Schema.fromJsonString(PackageManifest))
 
 const standardsDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryPackages = join(standardsDirectory, "../../node_modules")
@@ -28,7 +52,8 @@ const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [en
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
 const referencedPaths = [
   ...ruleEntries.flatMap((entry) => [entry.rule, entry.test]),
-  ...scriptEntries.map((entry) => entry.file)
+  ...scriptEntries.map((entry) => entry.file),
+  ...Object.values(catalog.baselines).map((baseline) => baseline.file)
 ]
 
 const bareSpecifier = (specifier: string): string => {
@@ -42,19 +67,43 @@ const importedPackages = (presetFile: string): ReadonlyArray<string> => {
   return [...new Set(specifiers.filter((specifier) => !specifier.startsWith(".")).map(bareSpecifier))].sort()
 }
 
-const installedVersion = (packageName: string): string => {
-  const manifest: { version?: string } = JSON.parse(
-    readFileSync(join(repositoryPackages, packageName, "package.json"), "utf8")
-  )
-  return manifest.version ?? ""
-}
+const installedVersion = (packageName: string): string =>
+  decodeManifest(readFileSync(join(repositoryPackages, packageName, "package.json"), "utf8")).version
 
 const pluginRuleNames = async (packageName: string): Promise<ReadonlySet<string>> => {
   if (packageName === "eslint") return new Set(builtinRules.keys())
-  type Plugin = { rules?: Record<string, unknown> }
-  const loaded: Plugin & { default?: Plugin } = await import(packageName)
-  const plugin = loaded.default ?? loaded
-  return new Set(Object.keys(plugin.rules ?? {}))
+  const loaded: unknown = await import(packageName)
+  const pluginModule = decodePluginModule(loaded)
+  return new Set(Object.keys(pluginModule.default?.rules ?? pluginModule.rules ?? {}))
+}
+
+const presetConfigs = async (name: string, presetFile: string): Promise<typeof PresetConfigs.Type> => {
+  const loaded: unknown = await import(pathToFileURL(join(standardsDirectory, presetFile)).href)
+  const { default: factory } = decodePresetModule(loaded)
+  if (!Predicate.isFunction(factory)) throw new Error(`${name} must default-export a factory`)
+  const configs = decodePresetConfigs(factory())
+  assert.isNotEmpty(configs, `${name} must emit at least one config`)
+  return configs
+}
+
+// A `rule` entry claims the plugin rule named after its file; a `plugin` entry
+// claims the ids it lists.
+const claimedRuleIds = (presetName: string): ReadonlySet<string> => {
+  const claimed = new Set<string>()
+  for (const entry of enforcements) {
+    if (entry.kind === "rule" && entry.presets.includes(presetName)) {
+      claimed.add(`standards/${basename(entry.rule, ".mjs")}`)
+    }
+    if (entry.kind === "plugin" && entry.presets.includes(presetName)) {
+      for (const ruleId of entry.rules) claimed.add(ruleId)
+    }
+  }
+  return claimed
+}
+
+const isEnabled = (setting: typeof RuleSetting.Type): boolean => {
+  const severity = Array.isArray(setting) ? setting[0] : setting
+  return severity !== "off" && severity !== 0
 }
 
 const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
@@ -62,7 +111,7 @@ const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
-  it("resolves every referenced rule, test, script, and preset file", () => {
+  it("resolves every referenced rule, test, script, baseline, and preset file", () => {
     for (const path of [...referencedPaths, ...Object.values(eslintPresets).map((preset) => preset.file)]) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
@@ -79,7 +128,10 @@ describe("coding standards catalog", () => {
     }
   })
 
-  it("names preset ids that exist", () => {
+  it("names preset families and preset ids that exist", () => {
+    for (const [name, ecosystem] of Object.entries(catalog.ecosystems)) {
+      assert.property(catalog.presets, ecosystem.presets, `${name} names a preset family`)
+    }
     for (const entry of enforcements) {
       if (entry.kind !== "rule" && entry.kind !== "plugin") continue
       for (const preset of entry.presets) {
@@ -120,13 +172,7 @@ describe("coding standards catalog", () => {
 
   it("emits configs whose every rule id resolves against its own plugins", { timeout: 60_000 }, async () => {
     for (const [name, preset] of Object.entries(eslintPresets)) {
-      const { default: factory }: { default: PresetFactory } = await import(
-        pathToFileURL(join(standardsDirectory, preset.file)).href
-      )
-      assert.isFunction(factory, `${name} must default-export a factory`)
-      const configs = factory()
-      assert.isNotEmpty(configs, `${name} must emit at least one config`)
-      for (const config of configs) {
+      for (const config of await presetConfigs(name, preset.file)) {
         for (const ruleId of Object.keys(config.rules ?? {})) {
           const separator = ruleId.lastIndexOf("/")
           const resolved =
@@ -136,6 +182,18 @@ describe("coding standards catalog", () => {
           assert.isTrue(resolved, `${name} enables unresolvable rule ${ruleId}`)
         }
       }
+    }
+  })
+
+  it("claims exactly the rules each preset enables", { timeout: 60_000 }, async () => {
+    for (const [name, preset] of Object.entries(eslintPresets)) {
+      const enabled = new Set<string>()
+      for (const config of await presetConfigs(name, preset.file)) {
+        for (const [ruleId, setting] of Object.entries(config.rules ?? {})) {
+          if (isEnabled(setting)) enabled.add(ruleId)
+        }
+      }
+      assert.deepEqual([...enabled].toSorted(), [...claimedRuleIds(name)].toSorted(), `${name} catalog claims`)
     }
   })
 })

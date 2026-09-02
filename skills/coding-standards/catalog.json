@@ -136,6 +136,35 @@
 			}
 		}
 	},
+	"baselines": {
+		"prettier": {
+			"file": "prettier/prettierrc.json",
+			"target": ".prettierrc.json",
+			"applies": {
+				"devDependencies": [
+					"prettier"
+				]
+			}
+		},
+		"tsconfig-strict": {
+			"file": "tsconfig/strict.base.json",
+			"target": "lint/standards/tsconfig.strict.json",
+			"applies": {
+				"devDependencies": [
+					"typescript"
+				]
+			}
+		},
+		"react-doctor": {
+			"file": "react-doctor/doctor.config.json",
+			"target": "doctor.config.json",
+			"applies": {
+				"devDependencies": [
+					"react-doctor"
+				]
+			}
+		}
+	},
 	"standards": [
 		{
 			"id": "no-banner-comments",
@@ -524,6 +553,45 @@
 			}
 		},
 		{
+			"id": "typescript-recommended",
+			"title": "The TypeScript recommended baseline stays on",
+			"principle": "typescript-eslint's recommended set catches the TypeScript mistakes the compiler still accepts: unsafe `any`-adjacent types, empty object types, misused `new`, and stale triple-slash references. The typescript preset spreads it wholesale, so the catalog lists it rather than letting two dozen enforced rules go undocumented.",
+			"scope": "typescript",
+			"origin": "@typescript-eslint/eslint-plugin configs.recommended at 8.60.1",
+			"enforcement": {
+				"eslint": [
+					{
+						"kind": "plugin",
+						"package": "@typescript-eslint/eslint-plugin",
+						"rules": [
+							"@typescript-eslint/ban-ts-comment",
+							"@typescript-eslint/no-array-constructor",
+							"@typescript-eslint/no-duplicate-enum-values",
+							"@typescript-eslint/no-empty-object-type",
+							"@typescript-eslint/no-explicit-any",
+							"@typescript-eslint/no-extra-non-null-assertion",
+							"@typescript-eslint/no-misused-new",
+							"@typescript-eslint/no-namespace",
+							"@typescript-eslint/no-non-null-asserted-optional-chain",
+							"@typescript-eslint/no-require-imports",
+							"@typescript-eslint/no-this-alias",
+							"@typescript-eslint/no-unnecessary-type-constraint",
+							"@typescript-eslint/no-unsafe-declaration-merging",
+							"@typescript-eslint/no-unsafe-function-type",
+							"@typescript-eslint/no-unused-expressions",
+							"@typescript-eslint/no-wrapper-object-types",
+							"@typescript-eslint/prefer-as-const",
+							"@typescript-eslint/prefer-namespace-keyword",
+							"@typescript-eslint/triple-slash-reference"
+						],
+						"presets": [
+							"typescript"
+						]
+					}
+				]
+			}
+		},
+		{
 			"id": "strict-types",
 			"title": "No escape hatches out of the type system",
 			"principle": "`any` and type assertions tell the checker to stop looking, so the first wrong assumption surfaces at runtime instead of at the keyboard. Describe the real type, or validate the value at the boundary.",
@@ -536,8 +604,7 @@
 						"package": "@typescript-eslint/eslint-plugin",
 						"rules": [
 							"@typescript-eslint/consistent-type-assertions",
-							"@typescript-eslint/no-explicit-any",
-							"@typescript-eslint/no-unused-vars"
+							"@typescript-eslint/no-explicit-any"
 						],
 						"presets": [
 							"typescript"

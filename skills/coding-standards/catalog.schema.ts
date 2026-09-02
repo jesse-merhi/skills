@@ -72,6 +72,13 @@ const Preset = Schema.Struct({
   packages: Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)
 })
 
+// A config file copied into a target repository rather than enforced by a rule.
+const Baseline = Schema.Struct({
+  applies: Applies,
+  file: Schema.NonEmptyString,
+  target: Schema.NonEmptyString
+})
+
 const Standard = Schema.Struct({
   enforcement: Schema.Record(Schema.NonEmptyString, Schema.Array(Enforcement)),
   id: Schema.NonEmptyString,
@@ -99,6 +106,7 @@ const Ecosystem = Schema.Struct({
 })
 
 const CatalogSchema = Schema.Struct({
+  baselines: Schema.Record(Schema.NonEmptyString, Baseline),
   ecosystems: Schema.Record(Schema.NonEmptyString, Ecosystem),
   presets: Schema.Record(Schema.NonEmptyString, Schema.Record(Schema.NonEmptyString, Preset)),
   standards: Schema.Array(Standard),
@@ -107,6 +115,6 @@ const CatalogSchema = Schema.Struct({
 
 export type Catalog = typeof CatalogSchema.Type
 
-const decode = Schema.decodeUnknownSync(Schema.fromJsonString(CatalogSchema))
+const decode = Schema.decodeSync(Schema.fromJsonString(CatalogSchema))
 
 export const decodeCatalog = (text: string): Catalog => decode(text)
