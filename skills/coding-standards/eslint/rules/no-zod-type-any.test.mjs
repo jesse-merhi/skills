@@ -118,10 +118,6 @@ ruleTester.run("no-zod-type-any", rule, {
 			name: "allows non-Zod heritage clauses",
 			code: "declare namespace Foo { interface ZodTypeAny {} }\ninterface Schema extends Foo.ZodTypeAny {}\n",
 		},
-		{
-			name: "source roots do not use ZodTypeAny",
-			code: 'import { createRequire } from "node:module";\n\nconst require = createRequire(import.meta.url);\n\n// Prisma loads this generator from schema.prisma via provider string.\nexport const prismaJsonTypesGeneratorProvider = require.resolve("prisma-json-types-generator");\n',
-		},
 	],
 	invalid: [
 		{

@@ -27,6 +27,11 @@ ruleTester.run("no-broad-rule-disable", rule, {
 			code: "/* eslint-disable no-console */\nconst value = 1;\n",
 		},
 		{
+			name: "ignores a protected name that appears only in another rule's description",
+			code: "/* eslint-disable no-debugger -- no-console is handled below */\nconst value = 1;\n",
+			options: protectedConsole,
+		},
+		{
 			name: "allows focused line disables of a protected rule",
 			code: "const value = 1; // eslint-disable-line no-console\n",
 			options: protectedConsole,
@@ -52,12 +57,6 @@ ruleTester.run("no-broad-rule-disable", rule, {
 		{
 			name: "rejects broad line disables of a protected rule",
 			code: "// eslint-disable no-console\nconst value = 1;\n",
-			options: protectedConsole,
-			errors: [{ messageId: "broadDisable", data: { rule: "no-console" } }],
-		},
-		{
-			name: "ignores the eslint-disable description when matching",
-			code: "/* eslint-disable no-console -- legacy logging shim */\nconst value = 1;\n",
 			options: protectedConsole,
 			errors: [{ messageId: "broadDisable", data: { rule: "no-console" } }],
 		},

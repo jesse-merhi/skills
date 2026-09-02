@@ -33,9 +33,9 @@ ruleTester.run("no-small-text", rule, {
 			options: [{ minimumFontSizePx: 10 }],
 		},
 		{
-			name: "allows extra all-caps terms once they are configured",
+			name: "allows all-caps terms once they are configured",
 			code: "const Row = () => <span>SAVE CHANGES</span>;\n",
-			options: [{ allowedAllCapsTerms: ["JSON", "SAVE CHANGES"] }],
+			options: [{ allowedAllCapsTerms: ["SAVE CHANGES"] }],
 		},
 	],
 	invalid: [
@@ -63,6 +63,12 @@ ruleTester.run("no-small-text", rule, {
 			name: "rejects all-caps visible copy",
 			code: "const Row = () => <span>SAVE CHANGES</span>;\n",
 			errors: [{ messageId: "allCapsCopy", data: { text: "SAVE CHANGES" } }],
+		},
+		{
+			name: "rejects the default all-caps term once allowedAllCapsTerms replaces it",
+			code: "const Row = () => <span>JSON</span>;\n",
+			options: [{ allowedAllCapsTerms: ["SAVE CHANGES"] }],
+			errors: [{ messageId: "allCapsCopy", data: { text: "JSON" } }],
 		},
 		{
 			name: "rejects inline font sizes below a raised minimum",
