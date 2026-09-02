@@ -125,3 +125,16 @@ test("guide and adapter references cannot escape their owning skills", () => {
   unsafeCoverage.profiles["gpt-5.6"] = "../writing-for-agents/SKILL.md";
   assert.throws(() => resolve("gpt-5.6-sol", unsafeCoverage), /must stay inside its owning skill/u);
 });
+
+test("every coverage manifest belongs to its skill and resolves", () => {
+  const manifests = fs.globSync("skills/*/model-writing.json", { cwd: repoRoot });
+  assert.ok(manifests.length > 0);
+  for (const manifest of manifests) {
+    const callingSkillRoot = path.dirname(path.join(repoRoot, manifest));
+    const coverage = JSON.parse(fs.readFileSync(path.join(repoRoot, manifest), "utf8"));
+    assert.equal(coverage.skill, path.basename(callingSkillRoot));
+    assert.doesNotThrow(() => resolveModelWritingGuide({
+      model: "gpt-5.6-sol", registry, coverage, guideRoot: skillRoot, callingSkillRoot,
+    }));
+  }
+});
