@@ -13,6 +13,7 @@ import {
   renderClaudeSkill,
   resolveProfile,
   routeClaudeSkill,
+  withOutputLock,
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
@@ -88,6 +89,30 @@ test("switches the active view without changing installed skill paths", (t) => {
   assert.equal(fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8").endsWith("claude-opus-5\n"), true);
 });
 
+test("retries when a contended output lock disappears before inspection", (t) => {
+  const current = fixture(t);
+  const lockRoot = `${current.output}.lock`;
+  fs.mkdirSync(lockRoot);
+  const originalStatSync = fs.statSync;
+  let simulatedRace = false;
+  fs.statSync = (target, ...options) => {
+    if (target === lockRoot && !simulatedRace) {
+      simulatedRace = true;
+      fs.rmSync(lockRoot, { recursive: true, force: true });
+      const error = new Error(`ENOENT: no such file or directory, stat '${lockRoot}'`);
+      error.code = "ENOENT";
+      throw error;
+    }
+    return originalStatSync(target, ...options);
+  };
+  t.after(() => {
+    fs.statSync = originalStatSync;
+  });
+
+  assert.equal(withOutputLock(current.output, () => "published"), "published");
+  assert.equal(simulatedRace, true);
+});
+
 test("renders the selected variant independently for concurrent Claude sessions", (t) => {
   const current = fixture(t);
   const stateRoot = path.join(current.temporary, "sessions");
@@ -111,7 +136,7 @@ test("Claude loader injects the recorded session variant without mutating the sh
 
   const loaderSkill = path.join(current.output, "alpha", "SKILL.md");
   const loaderBefore = fs.readFileSync(loaderSkill, "utf8");
-  assert.match(loaderBefore, /allowed-tools: Bash\(node \$\{CLAUDE_SKILL_DIR\}\/\.model-variant-loader \*\)/);
+  assert.match(loaderBefore, /allowed-tools: Bash\(node "\$\{CLAUDE_SKILL_DIR\}\/\.model-variant-loader" \*\)/);
   const command = loaderBefore.match(/!`(.+)`/)?.[1]
     .replaceAll("${CLAUDE_SKILL_DIR}", path.dirname(loaderSkill))
     .replaceAll("${CLAUDE_SESSION_ID}", "session-one");
@@ -120,6 +145,24 @@ test("Claude loader injects the recorded session variant without mutating the sh
   assert.equal(rendered.status, 0, rendered.stderr);
   assert.equal(rendered.stdout, "claude-fable-5.1\n");
   assert.equal(fs.readFileSync(loaderSkill, "utf8"), loaderBefore);
+});
+
+test("Claude loader works when the generated view path contains whitespace", (t) => {
+  const current = fixture(t);
+  const outputRoot = path.join(current.temporary, "generated view");
+  const stateRoot = path.join(current.temporary, "sessions");
+  materializeClaudeSessionView({ outputRoot, sourceRoot: current.source, stateRoot });
+  recordClaudeSession({ model: "claude-fable-5.1", sessionId: "session-one", stateRoot });
+
+  const loaderSkill = path.join(outputRoot, "alpha", "SKILL.md");
+  const loader = fs.readFileSync(loaderSkill, "utf8");
+  const command = loader.match(/!`(.+)`/)?.[1]
+    .replaceAll("${CLAUDE_SKILL_DIR}", path.dirname(loaderSkill))
+    .replaceAll("${CLAUDE_SESSION_ID}", "session-one");
+  assert.notEqual(command, undefined);
+  const rendered = spawnSync("bash", ["-lc", command], { encoding: "utf8" });
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.equal(rendered.stdout, "claude-fable-5.1\n");
 });
 
 test("routes an Opus worker to a contained model-qualified skill", (t) => {

@@ -83,7 +83,7 @@ function sleep(milliseconds) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
-function withOutputLock(outputRoot, operation) {
+export function withOutputLock(outputRoot, operation) {
   const lockRoot = `${outputRoot}.lock`;
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   fs.mkdirSync(path.dirname(outputRoot), { recursive: true });
@@ -93,7 +93,14 @@ function withOutputLock(outputRoot, operation) {
       break;
     } catch (error) {
       if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "EEXIST") throw error;
-      const age = Date.now() - fs.statSync(lockRoot).mtimeMs;
+      let lockStat;
+      try {
+        lockStat = fs.statSync(lockRoot);
+      } catch (statError) {
+        if (statError instanceof Error && Object.hasOwn(statError, "code") && statError.code === "ENOENT") continue;
+        throw statError;
+      }
+      const age = Date.now() - lockStat.mtimeMs;
       if (age > STALE_LOCK_MS) {
         fs.rmSync(lockRoot, { recursive: true, force: true });
         continue;
@@ -303,7 +310,7 @@ export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousS
         const { frontmatter } = splitSkillDocument(path.join(skill.directory, "variants", "gpt-5.6.md"));
         const command = [
           "node",
-          "${CLAUDE_SKILL_DIR}/.model-variant-loader",
+          '"${CLAUDE_SKILL_DIR}/.model-variant-loader"',
           "--action render-skill",
           `--skill ${quoteShell(skill.name)}`,
           `--source ${quoteShell(resolvedSource)}`,
@@ -312,7 +319,7 @@ export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousS
         ].join(" ");
         fs.writeFileSync(
           path.join(skillOutput, "SKILL.md"),
-          `---\n${frontmatter}\nallowed-tools: Bash(node \${CLAUDE_SKILL_DIR}/.model-variant-loader *)\n---\n\n!\`${command}\`\n`,
+          `---\n${frontmatter}\nallowed-tools: Bash(node "\${CLAUDE_SKILL_DIR}/.model-variant-loader" *)\n---\n\n!\`${command}\`\n`,
         );
         fs.symlinkSync(loader, path.join(skillOutput, ".model-variant-loader"));
         linkSharedEntries(skill, skillOutput);
