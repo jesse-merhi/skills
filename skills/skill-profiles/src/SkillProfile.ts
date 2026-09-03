@@ -11,6 +11,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { trustedExecutable } from "../../../packages/effect-cli/TrustedExecutable.ts"
 import { exists, parseFrontmatter, pluginPrefixFor, walkFiles } from "../../../packages/skill-catalog/SkillFiles.ts"
 
 export class SkillProfileError extends Schema.TaggedError<SkillProfileError>()("SkillProfileError", {
@@ -59,6 +60,7 @@ export interface ProfileApplication {
 
 export interface SkillsConfigOptions {
   readonly codexHome?: string | undefined
+  readonly cwd?: string | undefined
   readonly home?: string | undefined
   readonly repos?: ReadonlyArray<string> | undefined
 }
@@ -179,13 +181,37 @@ const trustedProjectPaths = (codexHome: string): ReadonlyArray<string> => {
   return projects
 }
 
+const realPath = (candidate: string) => {
+  try {
+    return fs.realpathSync(candidate)
+  } catch {
+    return path.resolve(candidate)
+  }
+}
+
+// Codex also loads `.agents/skills` from every directory between the working
+// directory and the repository root, so each of those ancestors is a root too.
+const workingDirectoryRoots = (cwd: string, repository: string | undefined): ReadonlyArray<string> => {
+  const roots: Array<string> = []
+  let cursor = cwd
+  while (true) {
+    roots.push(cursor)
+    const parent = path.dirname(cursor)
+    if (cursor === repository || parent === cursor) return roots
+    cursor = parent
+  }
+}
+
 export const catalogueOptions = Effect.fn("SkillProfile.catalogueOptions")(function*(options?: SkillsConfigOptions) {
   const home = options?.home ?? os.homedir()
   const configured = profileEnvironment.CODEX_HOME
   const codexHome = options?.codexHome ?? (configured !== undefined && configured.length > 0 ? configured : path.join(home, ".codex"))
-  const repository = yield* checkedTrimmedText("git", ["rev-parse", "--show-toplevel"]).pipe(Effect.option)
+  const cwd = realPath(options?.cwd ?? process.cwd())
+  const git = yield* trustedExecutable("git", cwd)
+  const repository = yield* checkedTrimmedText(git, ["rev-parse", "--show-toplevel"], { cwd }).pipe(Effect.option)
+  const toplevel = Option.isSome(repository) && repository.value.length > 0 ? realPath(repository.value) : undefined
   const repos = [
-    ...(Option.isSome(repository) && repository.value.length > 0 ? [repository.value] : []),
+    ...workingDirectoryRoots(cwd, toplevel),
     ...trustedProjectPaths(codexHome),
     ...(options?.repos ?? [])
   ]

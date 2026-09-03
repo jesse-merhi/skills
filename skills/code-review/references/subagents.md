@@ -16,10 +16,13 @@ allowed and expected; inherited turns are not.
 
 In Codex, spawn the Phase 2 cold reviewer with `agent_type: "cold-reviewer"`.
 That agent carries the cold-review checklist, finding gates, and report format
-itself, so its brief names the target, base, boundary, changed flows, and any
-domain-specific topics, and nothing else. A full-history fork inherits the
-parent's agent type, so keep `fork_turns: "none"`. Install or refresh the agent
-with `skill-profiles`. The focused subagents below are unchanged.
+itself, so its brief names the target, base, boundary, changed flows, any
+domain-specific topics, and the coverage assignment described below: the
+assigned files with their observed `changeId` values and the review ID. Its
+sandbox is read-only, so it returns the coverage attestation in its report and
+the coordinator records that batch. A full-history fork inherits the parent's
+agent type, so keep `fork_turns: "none"`. Install or refresh the agent with
+`skill-profiles`. The focused subagents below are unchanged.
 
 Always add a focused `test-audit` subagent when the PR changes production
 behavior or creates, changes, or deletes tests or test infrastructure. Ask it

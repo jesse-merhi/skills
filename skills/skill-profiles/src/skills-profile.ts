@@ -9,6 +9,7 @@ import * as Schema from "effect/Schema"
 import { Argument, Command, Flag, Prompt } from "effect/unstable/cli"
 
 import { checkedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { trustedExecutable } from "../../../packages/effect-cli/TrustedExecutable.ts"
 import { applyProfile, catalogueOptions, discoverCatalogue, loadProfile, renderAgentFile, renderConfigArgument, renderConfigBlocks } from "./SkillProfile.ts"
 
 // The diff, the refusal, and the selector conflict are already written to
@@ -28,7 +29,8 @@ const renderDiff = Effect.fn("skillsProfile.renderDiff")(function*(target: strin
     const candidate = paths.join(directory, paths.basename(target))
     yield* fileSystem.writeFileString(candidate, content)
     const installed = (yield* fileSystem.exists(target)) ? target : "/dev/null"
-    return yield* checkedText("git", ["diff", "--no-index", "--no-color", installed, candidate], { allowedExitCodes: [1] })
+    const git = yield* trustedExecutable("git")
+    return yield* checkedText(git, ["diff", "--no-index", "--no-color", installed, candidate], { allowedExitCodes: [1] })
   }))
 })
 

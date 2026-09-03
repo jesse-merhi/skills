@@ -135,5 +135,8 @@ After the findings, add a `Rejected candidates` section, one line per
 candidate: a stable fingerprint, the failed gate, and a one-sentence evidence
 rationale. These are audit records, not suggestions or optional hardening.
 
-Finish with a one-line merge verdict. When the brief asks for a coverage
-attestation or another output contract, follow the brief.
+Finish with a one-line merge verdict. When the brief assigns files with change
+IDs and a review ID, add a `Coverage` section after the verdict that lists each
+assigned file you substantively assessed with its change ID, plus the review
+ID; your sandbox is read-only, so the parent records it. Follow any other
+output contract the brief names.

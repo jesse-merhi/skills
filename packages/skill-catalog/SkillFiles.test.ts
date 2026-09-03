@@ -45,7 +45,10 @@ describe("walkFiles", () => {
     writeSkill(join(directory, "root", "demo"), "---\nname: demo\n---\n")
     symlinkSync(join(directory, "root", "demo"), join(directory, "root", "alias"))
 
-    expect(walkFiles(join(directory, "root"), isSkill)).toEqual([join(directory, "root", "alias", "SKILL.md")])
+    // Either directory entry may be read first, so the walk owes one visit, not a fixed name.
+    const walked = walkFiles(join(directory, "root"), isSkill)
+    expect(walked).toHaveLength(1)
+    expect([join(directory, "root", "alias", "SKILL.md"), join(directory, "root", "demo", "SKILL.md")]).toContain(walked[0])
   })
 
   it("skips node_modules and .git and stops at the depth limit", () => {
