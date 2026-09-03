@@ -4,10 +4,11 @@ rules:
       - python
     severity: ERROR
     message: >-
-      SQL built by string formatting is handed to a raw-query escape hatch.
-      Ruff's S608 does not see through `.raw(...)`, `text(...)` and
-      `cursor.execute(...)`, and neither does the ORM: the interpolated value
-      reaches the database as SQL. Pass the value as a query parameter instead.
+      SQL built by string formatting is handed to a raw-query escape hatch,
+      so the interpolated value reaches the database as SQL. Pass the value as
+      a query parameter instead. Ruff's S608 flags most formatted SQL literals;
+      this rule covers the escape hatches it misses, such as a concatenated
+      suffix on `.raw(...)`, `text(...)`, or `cursor.execute(...)`.
     metadata:
       standard: no-raw-sql
       category: security

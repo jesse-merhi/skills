@@ -68,7 +68,7 @@ invariants a new entry has to satisfy.
 
 - an empty `enforcement.<ecosystem>` array, so a standard this ecosystem cannot
   enforce has to carry a `not-applicable` entry rather than `[]`.
-- an `applies` naming no condition, and a `ruff` `select` or `packages` entry
+- an `applies` naming no condition, and a `ruff` `select` entry
   that is empty.
 - any key an enforcement kind does not define, and any value of the wrong type:
   `mypy` `options` are booleans, not the strings a config file writes.
