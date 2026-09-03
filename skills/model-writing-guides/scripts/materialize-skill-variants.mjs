@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as Schema from "effect/Schema";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -8,11 +9,15 @@ import { fileURLToPath } from "node:url";
 
 const MARKER = ".skill-variant-view.json";
 const LOCK_TIMEOUT_MS = 5_000;
-const STALE_LOCK_MS = 30_000;
+const LOCK_OWNER = "owner.json";
 const MarkerJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
   sourceRoot: Schema.NonEmptyString,
   profile: Schema.NonEmptyString,
+}));
+const LockOwnerJson = Schema.fromJsonString(Schema.Struct({
+  pid: Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0))),
+  token: Schema.NonEmptyString,
 }));
 
 export const profiles = [
@@ -59,34 +64,65 @@ function sleep(milliseconds) {
 
 export function withOutputLock(outputRoot, operation) {
   const lockRoot = `${outputRoot}.lock`;
+  const ownerPath = path.join(lockRoot, LOCK_OWNER);
+  const owner = { pid: process.pid, token: crypto.randomUUID() };
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   fs.mkdirSync(path.dirname(outputRoot), { recursive: true });
   while (true) {
     try {
       fs.mkdirSync(lockRoot);
-      break;
     } catch (error) {
       if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "EEXIST") throw error;
-      let lockStat;
-      try {
-        lockStat = fs.statSync(lockRoot);
-      } catch (statError) {
-        if (statError instanceof Error && Object.hasOwn(statError, "code") && statError.code === "ENOENT") continue;
-        throw statError;
-      }
-      if (Date.now() - lockStat.mtimeMs > STALE_LOCK_MS) {
-        fs.rmSync(lockRoot, { recursive: true, force: true });
-        continue;
-      }
+      if (reclaimAbandonedLock(lockRoot)) continue;
       if (Date.now() >= deadline) throw new Error(`timed out waiting for model view lock ${lockRoot}`);
       sleep(25);
+      continue;
     }
+    try {
+      fs.writeFileSync(ownerPath, Schema.encodeSync(LockOwnerJson)(owner));
+    } catch (error) {
+      fs.rmSync(lockRoot, { recursive: true, force: true });
+      throw error;
+    }
+    break;
   }
   try {
     return operation();
   } finally {
-    fs.rmSync(lockRoot, { recursive: true, force: true });
+    let currentOwner;
+    try {
+      currentOwner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(ownerPath, "utf8"));
+    } catch (error) {
+      if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ENOENT") throw error;
+    }
+    if (currentOwner?.token === owner.token) fs.rmSync(lockRoot, { recursive: true, force: true });
   }
+}
+
+export function reclaimAbandonedLock(lockRoot) {
+  let owner;
+  try {
+    owner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(path.join(lockRoot, LOCK_OWNER), "utf8"));
+  } catch (error) {
+    if (error instanceof Error && Object.hasOwn(error, "code") && error.code === "ENOENT") return false;
+    return false;
+  }
+  if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0) return false;
+  try {
+    process.kill(owner.pid, 0);
+    return false;
+  } catch (error) {
+    if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ESRCH") return false;
+  }
+  const abandonedRoot = `${lockRoot}.abandoned-${process.pid}-${crypto.randomUUID()}`;
+  try {
+    fs.renameSync(lockRoot, abandonedRoot);
+  } catch (error) {
+    if (error instanceof Error && Object.hasOwn(error, "code") && error.code === "ENOENT") return false;
+    throw error;
+  }
+  fs.rmSync(abandonedRoot, { recursive: true, force: true });
+  return true;
 }
 
 function parseSkillName(skillFile) {

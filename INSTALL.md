@@ -21,11 +21,15 @@ Figure out which harness you're running in:
 If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
-Also resolve the exact active model identifier from the harness. Do not infer
-it from writing style. The model selects which complete skill variant is
-installed. This repository supports GPT-5.6 and Claude Fable 5.1. A newer model
-in either known family uses that family's newest variant and produces one
-informational update notice. Installation stops on an unknown family.
+Also resolve the model identifier used by the installed harness. Do not infer
+it from writing style. For Claude Code, use the exact Fable model pinned by
+`fable-orchestrator`, even when the installer is currently running under a
+different Claude model; that pin becomes active in the next session. For other
+harnesses, use the exact active model identifier. The model selects which
+complete skill variant is installed. This repository supports GPT-5.6 and
+Claude Fable 5.1. A newer model in either known family uses that family's newest
+variant and produces one informational update notice. Installation stops on an
+unknown family.
 
 ## 2. Link global instructions
 
@@ -67,6 +71,11 @@ Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
 into that real directory. Replace a matching repo symlink or a dead symlink,
 but ask before replacing a real file or a symlink owned elsewhere. Preserve all
 unrelated agents.
+
+Retire the deleted `opus-worker.md` only when it is a symlink whose stored
+target is `REPO/claude/agents/opus-worker.md`, or a previous clone's matching
+path that you have verified belongs to this repository. Preserve a real file
+or any link owned elsewhere.
 
 Set `agent` to `fable-orchestrator` in `~/.claude/settings.json`, preserving
 every other setting. If `agent` already names something else, ask before
@@ -156,9 +165,13 @@ executable resources remain linked to their repository dependency root:
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
   --source REPO/skills \
   --output VIEW_ROOT \
-  --model 'ACTIVE_MODEL_ID' \
+  --model 'INSTALL_MODEL_ID' \
   --format json
 ```
+
+For Claude Code, `INSTALL_MODEL_ID` is the exact Fable identifier from
+`fable-orchestrator`, not necessarily the model running the installation. For
+other harnesses it is the active model identifier resolved in step 1.
 
 Read the JSON result. If `notice` is present and no earlier model-profile
 notice appeared in this installation task, show it once and continue. The

@@ -8,8 +8,8 @@ import test from "node:test";
 
 import {
   materializeSkillVariants,
+  reclaimAbandonedLock,
   resolveProfile,
-  withOutputLock,
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
@@ -87,28 +87,27 @@ test("materializes one contained static variant and links shared resources", (t)
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("claude-fable-5.1\n"), true);
 });
 
-test("retries when a contended output lock disappears before inspection", (t) => {
+test("does not reclaim a live lock based on its age", (t) => {
   const current = fixture(t);
   const lockRoot = current.output + ".lock";
   fs.mkdirSync(lockRoot);
-  const originalStatSync = fs.statSync;
-  let simulatedRace = false;
-  fs.statSync = (target, ...options) => {
-    if (target === lockRoot && !simulatedRace) {
-      simulatedRace = true;
-      fs.rmSync(lockRoot, { recursive: true, force: true });
-      const error = new Error("ENOENT: no such file or directory, stat '" + lockRoot + "'");
-      error.code = "ENOENT";
-      throw error;
-    }
-    return originalStatSync(target, ...options);
-  };
-  t.after(() => {
-    fs.statSync = originalStatSync;
-  });
+  fs.writeFileSync(path.join(lockRoot, "owner.json"), JSON.stringify({ pid: process.pid, token: "live" }));
+  fs.utimesSync(lockRoot, new Date(0), new Date(0));
 
-  assert.equal(withOutputLock(current.output, () => "published"), "published");
-  assert.equal(simulatedRace, true);
+  assert.equal(reclaimAbandonedLock(lockRoot), false);
+  assert.equal(fs.existsSync(lockRoot), true);
+});
+
+test("reclaims a lock whose owning process has exited", (t) => {
+  const current = fixture(t);
+  const lockRoot = current.output + ".lock";
+  const exited = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+  assert.equal(exited.status, 0, exited.stderr);
+  fs.mkdirSync(lockRoot);
+  fs.writeFileSync(path.join(lockRoot, "owner.json"), JSON.stringify({ pid: Number(exited.stdout), token: "dead" }));
+
+  assert.equal(reclaimAbandonedLock(lockRoot), true);
+  assert.equal(fs.existsSync(lockRoot), false);
 });
 
 test("restores the previous view when publication fails", (t) => {
