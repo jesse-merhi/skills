@@ -28,6 +28,25 @@ in `CLAUDE.md`, which imports this file and layers on top of it.
   may continue under existing authority, but a prevention request is not
   advance approval of an unbound systemic recommendation.
 
+## Living skills
+
+Treat this repository as a living record of how agents should work. When Jesse
+criticizes an output or workflow produced under a repo-owned skill, fix the
+immediate problem, then decide whether the feedback exposes a reusable gap in
+that skill. If it does, name the skill and suggest one concrete instruction,
+example, or check that would prevent the same failure in future runs.
+
+When Jesse wants that reusable improvement pursued, load `handoff` and give it
+to a fresh session rooted in this skills repository. Include the original
+complaint, the output or evidence that exposed the gap, the skill to change,
+and observable acceptance checks. Keep the product task and skill repair in
+separate worktrees and conversations.
+
+Distinguish a missing rule from a failure to follow an existing rule. Say when
+the skill already covered the complaint instead of adding duplicate guidance.
+Keep one-off preferences in the current task rather than turning them into
+global policy. Do not edit a skill unless the current request authorizes it.
+
 ## Implementation design
 
 - Treat backward compatibility as the user's decision. If the preferred design

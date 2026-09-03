@@ -401,6 +401,18 @@ test_codex_default_mode_questions_are_configured() {
   assert_contains "$ROOT_DIR/AGENTS.md" "including outside planning-only modes"
 }
 
+test_living_skills_turn_feedback_into_reusable_improvements() {
+  assert_contains "$ROOT_DIR/AGENTS.md" "living record of how agents should work"
+  assert_contains "$ROOT_DIR/AGENTS.md" "feedback exposes a reusable gap"
+  assert_contains "$ROOT_DIR/AGENTS.md" 'load `handoff`'
+  assert_contains "$ROOT_DIR/AGENTS.md" "fresh session rooted in this skills repository"
+  assert_contains "$ROOT_DIR/AGENTS.md" "output or evidence that exposed the gap"
+  assert_contains "$ROOT_DIR/AGENTS.md" "observable acceptance checks"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Distinguish a missing rule from a failure to follow an existing rule"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Keep one-off preferences in the current task"
+  assert_contains "$ROOT_DIR/AGENTS.md" "Do not edit a skill unless the current request authorizes it"
+}
+
 test_bun_runtime_and_openclaw_install_are_documented() {
   assert_contains "$ROOT_DIR/package.json" '"packageManager": "bun@1.3.14"'
   test -f "$ROOT_DIR/bun.lock" || fail "expected bun.lock to be committed"
@@ -1420,6 +1432,7 @@ test_gh_stack_workflow_is_pinned_and_wired
 test_just_do_it_and_scoped_openclaw_readiness
 test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
+test_living_skills_turn_feedback_into_reusable_improvements
 test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
 test_prototypes_stay_isolated_from_production
