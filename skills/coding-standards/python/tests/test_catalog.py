@@ -158,3 +158,13 @@ def test_every_check_module_is_wired_into_the_cli() -> None:
 
     claimed = {entry["module"] for entry in entries_of_kind("check")}
     assert {check.__module__ for check in CHECKS} == claimed
+
+
+def test_every_semgrep_fixture_shares_its_rule_file_stem() -> None:
+    # semgrep --test pairs a fixture with its rule by basename and exits 0 with
+    # "No unit tests found" when nothing pairs, so a renamed fixture would leave
+    # the rule untested while CI stayed green.
+    for entry in entries_of_kind("semgrep"):
+        rule = Path(str(entry["file"])).with_suffix("")
+        fixture = Path(str(entry["test"])).with_suffix("")
+        assert fixture == rule, entry

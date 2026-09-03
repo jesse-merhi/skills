@@ -357,11 +357,14 @@ replaced, only extended.
 
     - `eslint --print-config <a real source file>` lists `standards/*` rules and
       the rules of the selected presets. For ruff, the equivalent is
-      `ruff check --show-settings <a real source file> | grep -A40 'linter.rules.enabled'`,
-      which lists the rules enabled for that file: the catalog codes have to be
-      among them, since an `extend` the target config never reads, or one a
-      later `select` reset, is silently inert. For the rest, run each command
-      against a real source file.
+      `ruff check --show-settings <a real source file> | sed -n '/linter.rules.enabled/,/^\]/p'`
+      prints every rule enabled for that file, several hundred lines once the
+      catalog is wired in, so pipe it through
+      `grep -E '\((ANN401|S608|PGH003|RUF006)\)'` — a few codes from the
+      vendored `extend-select` — and expect one line per code. They have to be
+      there, since an `extend` the target config never reads, or one a later
+      `select` reset, is silently inert. For the rest, run each command against
+      a real source file.
       A tool that prints nothing on a clean file — the checks CLI — proves
       nothing that way, so run it against a file holding a known violation and
       show the finding it reports.

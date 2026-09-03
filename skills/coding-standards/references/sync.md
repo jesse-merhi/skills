@@ -65,15 +65,18 @@ started as — use `apply` instead.
    catalog byte for byte, and every `both` file has an explicit decision from
    the user.
 
-4. **Offer newly applicable presets.**
+4. **Offer newly applicable presets and baselines.**
 
-   Re-run the `applies` evaluation from apply's **Select the presets** step against the target current
-   dependencies. Dependencies added since vendoring can make presets apply that
-   did not before.
+   Re-run the `applies` evaluation from apply's **Select the presets** step
+   against the target current dependencies, for `catalog.baselines` as well as
+   the presets. Dependencies added since vendoring can make presets apply that
+   did not before, and a baseline added to the catalog since vendoring lives
+   under no vendored root, so step 2 never sees it: a baseline whose `target`
+   has no manifest entry is new to this target.
 
-   Done when every preset that now applies but is absent from the manifest is
-   either vendored, with permission asked for its packages, or declined and
-   recorded.
+   Done when every preset or baseline that now applies but is absent from the
+   manifest is either vendored, with permission asked for its packages, or
+   declined and recorded.
 
 5. **Update the manifest.**
 

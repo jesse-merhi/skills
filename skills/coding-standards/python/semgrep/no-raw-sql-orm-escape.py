@@ -7,6 +7,7 @@ older formatting style (UP031, UP032); they name each rule, as
 no-broad-rule-disable requires.
 """
 
+import sqlalchemy as sa  # type: ignore[import-not-found]
 from django.db import connection, models  # type: ignore[import-not-found]
 from sqlalchemy import text  # type: ignore[import-not-found]
 
@@ -68,6 +69,11 @@ def connection_exec_driver_sql_with_concatenation(connection, where_clause):
 def session_scalar_text_with_concatenation(session, where_clause):
     # ruleid: no-raw-sql-orm-escape
     return session.scalar(text("SELECT count(*) FROM orders WHERE " + where_clause))  # noqa: S608
+
+
+def session_scalar_aliased_text_with_concatenation(session, where_clause):
+    # ruleid: no-raw-sql-orm-escape
+    return session.scalar(sa.text(where_clause + " ORDER BY id"))
 
 
 def session_scalars_text_with_fstring(session, customer_id):

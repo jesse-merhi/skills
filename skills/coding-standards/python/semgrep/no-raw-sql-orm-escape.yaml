@@ -23,9 +23,11 @@ rules:
           - pattern: $QUERY.executemany($SQL, ...)
           - pattern: $QUERY.executescript($SQL, ...)
           - pattern: $QUERY.exec_driver_sql($SQL, ...)
-          - pattern: $QUERY.execute(text($SQL), ...)
-          - pattern: $QUERY.scalar(text($SQL), ...)
-          - pattern: $QUERY.scalars(text($SQL), ...)
+          # Qualified so semgrep's import resolution also matches `sa.text`
+          # and `sqlalchemy.text`, not only a bare imported `text`.
+          - pattern: $QUERY.execute(sqlalchemy.text($SQL), ...)
+          - pattern: $QUERY.scalar(sqlalchemy.text($SQL), ...)
+          - pattern: $QUERY.scalars(sqlalchemy.text($SQL), ...)
       - metavariable-pattern:
           metavariable: $SQL
           pattern-either:
