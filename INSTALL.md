@@ -184,8 +184,12 @@ A static view serves one active model profile. Before starting a session with a
 different supported model, rerun this command with that model's full configured
 ID. Do not run concurrent different-model sessions against the same static
 view; configure separate harness roots and view roots when that is required. A
-static view does not detect later model changes. The repo-owned Claude main
-agent is pinned to Fable 5.1, so its view does not need runtime model routing.
+static view does not detect later model changes. Rerun the materializer after
+every pull or other update to this repository before starting the next session,
+even when the selected model is unchanged; copied `SKILL.md` files and linked
+resources must come from the same repository revision. The repo-owned Claude
+main agent is pinned to Fable 5.1, so its view does not need runtime model
+routing.
 
 Then:
 
