@@ -36,6 +36,16 @@ def test_reports_each_finding_in_ruff_format_and_exits_one(
     ]
 
 
+def test_reads_a_file_that_starts_with_a_byte_order_mark(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    target = tmp_path / "module.py"
+    target.write_bytes(b"\xef\xbb\xbf# ----------\n")
+
+    assert main([str(target)]) == 1
+    assert capsys.readouterr().out.startswith(f"{target}:1:1: no-banner-comments")
+
+
 def test_exits_zero_when_nothing_is_found(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -132,10 +132,13 @@ replaced, only extended.
      vendored checks need Python 3.10 or newer; when the target
      `requires-python` allows less, stop and say so.
 
-   Copy every tracked file under those roots, minus every `*.test.mjs`, whose
-   rule tests import vitest that the target has no reason to install. Read the
-   Python roots out of `catalog.json`; a list written here drifts the first time
-   a preset is added.
+   Copy every tracked file under those roots except the ones that only test the
+   catalog itself: every `*.test.mjs`, whose rule tests import vitest that the
+   target has no reason to install, and every `python/semgrep/*.py`, the
+   fixture semgrep's `--test` reads — deliberately injectable SQL that a
+   target's own scanners would flag, and nothing semgrep loads at run time.
+   `sync` applies the same two exclusions. Read the Python roots out of
+   `catalog.json`; a list written here drifts the first time a preset is added.
 
    Then every baseline in `catalog.baselines` whose `applies` matches the
    target, evaluated exactly as the presets in step 3: copy its `file` to the
@@ -206,20 +209,44 @@ replaced, only extended.
    the files that hold them. Edit those configs as text for the reason step 5
    gives.
 
-   Python: point the target ruff config at the vendored one with
-   `extend = "lint/standards/python/ruff.toml"`, creating `ruff.toml` if the
-   target has none. The vendored file uses `lint.extend-select`, so extending it
-   adds the catalog codes on top of whatever the target's own `select` already
-   enables rather than replacing it. mypy has no equivalent — no mypy config file can extend
-   another — so write the options from `lint/standards/python/mypy.ini` into
-   the target's `[tool.mypy]` table in `pyproject.toml`, or into `[mypy]` in
-   the mypy config file the target already has. The vendored file stays as the
-   manifest-tracked reference the options were copied from, which is what lets
-   `sync` show that they drifted.
+   Python: ruff first. Find the config ruff actually reads — `.ruff.toml`,
+   `ruff.toml`, or `[tool.ruff]` in `pyproject.toml`, the first one present in
+   that order — and wire it one of two ways, decided by whether it sets
+   `select`:
+
+   - No `select` (neither `lint.select` nor the older top-level `select`): add
+     `extend = "lint/standards/python/ruff.toml"`. The vendored file uses
+     `lint.extend-select`, and ruff resolves the chain base first, so the
+     catalog codes land on top of ruff's defaults and whatever else the target
+     enables.
+   - A `select`: `extend` is inert, because a child `select` resets every code
+     the chain enabled before it — ruff 0.16.5 with the `extend` plus
+     `select = ["E", "W"]` enables E, W, and nothing from the catalog. Copy the
+     `lint.extend-select` list out of `lint/standards/python/ruff.toml` into
+     the target's own `lint.extend-select`, merged with any codes already
+     there. The vendored file then plays the part `mypy.ini` plays below: the
+     manifest-tracked reference the codes were copied from.
+
+   Create `ruff.toml` only when the target has no ruff config at all. Beside a
+   `pyproject.toml` that already holds `[tool.ruff]`, a new `ruff.toml` wins
+   outright and that table stops applying — exactly the replacement this mode
+   never makes.
+
+   mypy has no `extend` at all — no mypy config file can extend another — so
+   write the options from `lint/standards/python/mypy.ini` into the target's
+   `[tool.mypy]` table in `pyproject.toml`, or into `[mypy]` in the mypy config
+   file the target already has. An option the target already sets equal or
+   stricter needs no change; one it sets looser — `strict = false`,
+   `disallow_any_explicit = false` — is the target's choice to keep or drop,
+   as with tsconfig in step 5: report it rather than overriding it. The
+   vendored file stays as the manifest-tracked reference the options were
+   copied from, which is what lets `sync` show that they drifted.
 
    Then define one command per selected `presets.python` entry, each run
-   through the target's own runner: prefixed with `uv run` in a uv project,
-   bare where the target manages its own environment.
+   through the target's own runner: `uv run` in a uv project, bare where the
+   target manages its own environment. An environment assignment goes before
+   the runner, never after it: `uv run PYTHONPATH=… python` tries to spawn a
+   program named `PYTHONPATH=…` and fails.
 
    ```
    ruff check <src dirs>
@@ -227,6 +254,9 @@ replaced, only extended.
    semgrep --error --config lint/standards/python/semgrep <src dirs>
    PYTHONPATH=lint/standards/python python -m standards_checks <src dirs>
    ```
+
+   In a uv project the last one is
+   `PYTHONPATH=lint/standards/python uv run python -m standards_checks <src dirs>`.
 
    Put them where the target already keeps tasks — package scripts, a `just`
    recipe, a `make` target — and follow that runner's naming. When the target
@@ -320,8 +350,9 @@ replaced, only extended.
       the rules of the selected presets. For ruff, the equivalent is
       `ruff check --show-settings <a real source file> | grep -A40 'linter.rules.enabled'`,
       which lists the rules enabled for that file: the catalog codes have to be
-      among them, since the `extend` is silently inert when the target config
-      never reads it. For the rest, run each command against a real source file.
+      among them, since an `extend` the target config never reads, or one a
+      later `select` reset, is silently inert. For the rest, run each command
+      against a real source file.
       A tool that prints nothing on a clean file — the checks CLI — proves
       nothing that way, so run it against a file holding a known violation and
       show the finding it reports.

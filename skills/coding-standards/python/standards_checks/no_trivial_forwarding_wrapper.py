@@ -76,7 +76,7 @@ def _exported_names(module: ast.Module) -> frozenset[str]:
     for statement in module.body:
         if isinstance(statement, ast.Assign):
             targets: list[ast.expr] = list(statement.targets)
-        elif isinstance(statement, ast.AnnAssign):
+        elif isinstance(statement, ast.AnnAssign | ast.AugAssign):
             targets = [statement.target]
         else:
             continue

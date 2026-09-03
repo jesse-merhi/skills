@@ -44,7 +44,7 @@ already handles, while costing a test suite and a CLI to maintain.
    Create `<ecosystem>/` in the skill directory holding the config for the
    ecosystem standard linter and type checker. Its enabled set must equal the
    union of the native entries in the catalog, with a test asserting that
-   equality — `test_ruff_config_selects_exactly_the_rules_the_catalog_claims`
+   equality — `test_ruff_config_extend_selects_exactly_the_rules_the_catalog_claims`
    is that test for ruff.
 
    Done when the config exists and its equality test fails if a code is added

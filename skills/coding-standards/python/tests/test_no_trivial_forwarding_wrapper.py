@@ -139,6 +139,17 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
         ),
         pytest.param(
             """\
+            __all__ = []
+            __all__ += ["fetch"]
+
+
+            def fetch(customer_id):
+                return load(customer_id)
+            """,
+            id="appended-to-dunder-all",
+        ),
+        pytest.param(
+            """\
             def fetch(customer_id):
                 log(customer_id)
                 return load(customer_id)

@@ -50,7 +50,7 @@ def python_files(paths: Iterable[str]) -> Iterator[Path]:
 
 def check_file(path: Path) -> list[Finding]:
     """Run every check over one file, ordered by position."""
-    source = path.read_text(encoding="utf-8")
+    source = path.read_text(encoding="utf-8-sig")
     findings = [finding for check in CHECKS for finding in check(source, str(path))]
     return sorted(findings, key=lambda finding: (finding.line, finding.col))
 

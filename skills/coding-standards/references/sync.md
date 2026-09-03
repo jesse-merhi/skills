@@ -36,8 +36,13 @@ started as — use `apply` instead.
    A file added upstream has no manifest entry at all, so the table cannot see
    it. Find those separately: for every vendored root of apply's **Vendor the
    files** step — `eslint/` for JavaScript, each `presets.python.*.file` for
-   Python — compare `git ls-files <root>` in the catalog against the manifest
-   keys vendored from it. Anything upstream and unlisted is **new upstream**.
+   Python — take `git ls-files <root>` in the catalog, drop the files apply
+   never vendors (every `*.test.mjs` and `python/semgrep/*.py`), and compare
+   what is left against the `source` of every manifest entry. Manifest keys
+   are target paths (`lint/standards/...`) and `git ls-files` yields catalog
+   paths, so matching on keys matches nothing and classes every vendored file
+   as new. Anything upstream, unexcluded, and matching no `source` is **new
+   upstream**.
    Walk the roots rather than the preset entries: a JavaScript preset entry is a
    single `.mjs` file, so a rule added under `eslint/rules/` is invisible to a
    scan that only descends preset entries naming a directory. Skipping this

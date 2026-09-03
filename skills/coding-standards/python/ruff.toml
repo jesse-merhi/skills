@@ -2,8 +2,9 @@
 # `lint.extend-select` is exactly the union of every `kind: "ruff"` select in
 # the python column of catalog.json; tests/test_catalog.py fails if the two
 # drift. It is `extend-select` rather than `select` so a target that extends
-# this file gains these codes on top of its own `select` instead of having that
-# select silently override the catalog's.
+# this file keeps ruff's defaults and its own additions. A target whose own
+# config sets `select` cannot use `extend`, since ruff resets the enabled set
+# at that `select`; it copies this list into its own `extend-select` instead.
 
 
 [lint]

@@ -27,12 +27,9 @@ rules:
             - pattern: f"..."
             - pattern: '"..." % $VALUES'
             - pattern: '"...".format(...)'
+            # `+` is associative to semgrep, so `"..." + "..."` matches a chain
+            # made only of string literals however many pieces it has. Any
+            # other operand anywhere in the chain is a value reaching the SQL.
             - patterns:
-                - pattern-either:
-                    - pattern: '"..." + $VALUE'
-                    - pattern: $VALUE + "..."
-                - metavariable-pattern:
-                    metavariable: $VALUE
-                    patterns:
-                      - pattern: $ANY
-                      - pattern-not: '"..."'
+                - pattern: $LEFT + $RIGHT
+                - pattern-not: '"..." + "..."'

@@ -91,6 +91,31 @@ def cursor_execute_split_literal_parameterised(cursor, customer_id):
     cursor.execute("SELECT * FROM orders " + "WHERE id = %s", [customer_id])  # noqa: S608
 
 
+def cursor_execute_three_literals_parameterised(cursor, customer_id):
+    # ok: no-raw-sql-orm-escape
+    cursor.execute("SELECT * FROM orders " + "WHERE " + "id = %s", [customer_id])  # noqa: S608
+
+
+def cursor_execute_multiline_literals_parameterised(cursor, customer_id):
+    # ok: no-raw-sql-orm-escape
+    cursor.execute(
+        "SELECT id, customer_id, total, currency, created_at, updated_at "
+        + "FROM orders "
+        + "WHERE customer_id = %s AND status = 'open' ORDER BY created_at DESC",
+        [customer_id],
+    )
+
+
+def cursor_execute_literals_then_variable(cursor, customer_id):
+    # ruleid: no-raw-sql-orm-escape
+    cursor.execute("SELECT * " + "FROM orders " + "WHERE id = " + customer_id)
+
+
+def cursor_execute_variable_between_literals(cursor, customer_id):
+    # ruleid: no-raw-sql-orm-escape
+    cursor.execute("SELECT * FROM orders WHERE id = " + customer_id + " AND 1 = 1")  # noqa: S608
+
+
 def unrelated_formatting(customer_id):
     # ok: no-raw-sql-orm-escape
     return f"customer {customer_id}"
