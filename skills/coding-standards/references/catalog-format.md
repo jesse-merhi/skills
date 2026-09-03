@@ -13,7 +13,7 @@ invariants a new entry has to satisfy.
   - `presets` — the key under `presets` holding that ecosystem presets.
   - `packages` — optional. Package name to exact version for tooling the
     ecosystem needs whatever presets are selected: `javascript` carries
-    `eslint` itself. Apply step 4 installs these together with the packages of
+    `eslint` itself. Apply's **Ask before installing anything** step installs these together with the packages of
     the selected presets.
 - `presets.<ecosystem>.<preset-name>` — preset columns are keyed by ecosystem
   name, the same names `ecosystems` uses.
@@ -30,7 +30,7 @@ invariants a new entry has to satisfy.
     Python package would mean teaching `applies` to read `pyproject.toml`. That
     is a known limit, not a task.
 - `baselines.<id>` — a config file copied whole into a target rather than
-  enforced by a rule. Apply step 5 is what consumes this record.
+  enforced by a rule. Apply's **Vendor the files** step is what consumes this record.
   - `file` — path relative to the skill directory. `catalog.test.ts` checks it
     exists.
   - `target` — where the file lands in the target repository, often under

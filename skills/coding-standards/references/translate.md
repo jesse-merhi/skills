@@ -92,16 +92,16 @@ already handles, while costing a test suite and a CLI to maintain.
 ## How apply consumes the new column
 
 `apply` reads `catalog.ecosystems` and `catalog.presets` instead of hardcoding
-a list, so detection (apply step 1), preset selection (step 3), and the
-dependency prompt (step 4) start working for the new ecosystem the moment the
+a list, so detection (**Detect the ecosystems**), preset selection (**Select the
+presets**), and the dependency prompt (**Ask before installing anything**) start working for the new ecosystem the moment the
 catalog carries it.
 
-Vendoring (apply step 5) follows too: it copies whatever
+Vendoring (**Vendor the files**) follows too: it copies whatever
 `presets.<eco>.*.file` names, so a new preset entry is a new vendored file with
 no prose to change.
 
 One thing does not follow, because it is per-ecosystem prose in
-[apply.md](apply.md): **step 6, config and commands** — how the target config
+[apply.md](apply.md): the **Write the config** step — how the target config
 points at the vendored files, and which commands run the linter, the pattern
 tool, and the checks. Add the new ecosystem there in the same change, or
 `apply` will detect it, vendor its files, and then have nothing to run them

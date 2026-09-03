@@ -89,12 +89,13 @@ Two ways one gets used:
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks eight skills as
+  "use `grilling` on this" in either harness. Codex marks ten skills as
   explicit-only: `code-review`, `html-explanations`, `pr-review-checkout`,
-  `just-do-it`, `to-spec`, `to-tickets`, `clawsweeper-until-clean`, and
-  `coding-standards`. They can review and fix code, operate desktop UI, write
-  durable planning files, run a long external loop, or write lint enforcement
-  into a repository, so Codex waits for you to name them.
+  `just-do-it`, `to-spec`, `to-tickets`, `clawsweeper-until-clean`,
+  `coding-standards`, `ask-claude`, and `ask-codex`. They can review and fix
+  code, operate desktop UI, write durable planning files, run a long external
+  loop, write lint enforcement into a repository, or open a session in another
+  harness, so Codex waits for you to name them.
 
 Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review

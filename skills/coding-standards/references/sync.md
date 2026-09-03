@@ -58,7 +58,7 @@ started as — use `apply` instead.
 
 4. **Offer newly applicable presets.**
 
-   Re-run the `applies` evaluation from apply step 3 against the target current
+   Re-run the `applies` evaluation from apply's **Select the presets** step against the target current
    dependencies. Dependencies added since vendoring can make presets apply that
    did not before.
 
