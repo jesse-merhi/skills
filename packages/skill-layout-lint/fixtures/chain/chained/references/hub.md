@@ -24,3 +24,8 @@ Nested fence: [detail](detail.md).
 ````
 
 After block: [detail](detail.md).
+
+Reference style: [detail][d] and [external][x].
+
+[d]: <./detail.md#section>
+[x]: https://example.com/detail.md

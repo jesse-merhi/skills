@@ -38,6 +38,7 @@ const vendorDirectoryName = "node_modules"
 
 const fenceDelimiter = /^\s*(`{3,}|~{3,})/u
 const linkPattern = /\[[^\]]*\]\(([^)]*)\)/gu
+const linkDefinitionPattern = /^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?/u
 const numberedItemStart = /^\s*\d+[.)]\s/u
 const headingPattern = /^(#{1,6})\s+(.*)$/u
 const indented = /^\s/u
@@ -63,8 +64,11 @@ const fenceMask = (lines: ReadonlyArray<string>): Array<boolean> => {
 
 const linkTargets = (line: string): Array<string> => {
   const targets: Array<string> = []
-  for (const match of line.matchAll(linkPattern)) {
-    const target = (match[1] ?? "").trim().split(whitespace)[0]?.split("#")[0] ?? ""
+  const candidates = [...line.matchAll(linkPattern)].map((match) => match[1] ?? "")
+  const definition = linkDefinitionPattern.exec(line)?.[1]
+  if (definition !== undefined) candidates.push(definition)
+  for (const candidate of candidates) {
+    const target = candidate.trim().split(whitespace)[0]?.split("#")[0] ?? ""
     if (target.length === 0 || urlScheme.test(target)) continue
     targets.push(target)
   }

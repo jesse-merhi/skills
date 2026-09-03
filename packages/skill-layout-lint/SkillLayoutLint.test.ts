@@ -49,7 +49,8 @@ describe("lintSkillsRoot", () => {
       { line: 5, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
       { line: 6, message: "links to references/references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
       { line: 8, message: "links to ../other/references/thing.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
-      { line: 26, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" }
+      { line: 26, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" },
+      { line: 30, message: "links to references/detail.md; a reference may link only back to its own SKILL.md", path: "chained/references/hub.md" }
     ])
     assert.isTrue(report.findings.every((finding) => finding.severity === "error"))
   })))
@@ -117,7 +118,7 @@ describe("lint.ts", () => {
     const lines = result.stdout.trimEnd().split("\n")
 
     assert.strictEqual(result.status, 1)
-    assert.strictEqual(lines.length, 6)
+    assert.strictEqual(lines.length, 7)
     assert.isTrue(lines.every((line) => line.startsWith("error: chain/chained/references/hub.md:")))
   })
 
