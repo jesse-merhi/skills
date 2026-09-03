@@ -108,10 +108,11 @@ Finish useful independent work after dispatch. Once blocked on a result, call
 returns when mailbox activity arrives. Wait again only when the required agent
 is still running after an unrelated event or the deadline.
 
-When `wait_agent` or `wait_threads` runs inside an exec cell, give the cell the
-same `// @exec: {"yield_time_ms": <expected-ms>}` header sized to that
-deadline; without the header the cell yields at the exec tool's own default
-regardless of the timeout the call itself asks for.
+Call the agent wait directly unless the current host exposes it inside an exec
+cell. When it does run inside a cell, give that cell the same
+`// @exec: {"yield_time_ms": <expected-ms>}` header sized to the deadline;
+without the header the cell yields at the exec tool's own default regardless of
+the timeout the call itself asks for.
 
 Keep the parent turn active until every required agent reaches a terminal state.
 Reach for a further `wait_agent` rather than `list_agents`, a short repeated
