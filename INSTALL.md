@@ -177,8 +177,8 @@ against the same static view; configure separate harness roots and view roots
 when that is required. A static view does not detect later model changes.
 
 For Claude Code, build a stable session-aware view instead. It keeps one small
-loader at each public `SKILL.md`, contained model-qualified prompts for routed
-subagents, linked shared resources, and session model state outside the view:
+loader at each public `SKILL.md`, linked shared resources, and session model
+state outside the view:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
@@ -190,12 +190,12 @@ node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
 ```
 
 Claude Code expands `${CLAUDE_SESSION_ID}` and runs the loader through its
-native dynamic-context mechanism when a skill is invoked. The loader reads
-that session's recorded model and emits only its complete Fable or Opus prompt.
-This is a local shell command, not another model or network request. The view
-never changes during model switches, so concurrent sessions cannot change each
-other's skill prompts. The contained model-qualified prompts are hidden from
-model discovery and selected only by the hook below.
+native dynamic-context mechanism when a skill is invoked. The loader emits
+complete, isolated Fable and Opus branches under one unchanged public skill
+name; each Claude model follows only its own branch. This is a local shell
+command, not another model or network request. It preserves name-scoped Skill
+permissions and lets concurrent Fable and Opus agents share the immutable view.
+The trade-off is that each invocation loads both Claude branches.
 
 Inspect the effective Claude settings before using this mode. If
 `disableSkillShellExecution` is `true`, stop and report that these session-aware
@@ -228,21 +228,6 @@ and hook handlers:
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --action record-session --state-root ~/.claude/.skill-variants/jesse-merhi-sessions
 ```
 
-Merge this command under `PreToolUse` with matcher `Skill`:
-
-```text
-node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --action route-skill --source REPO/skills
-```
-
-The skill hook reads Claude's `agent_type`. For the repo-owned `opus-worker`, it
-rewrites that individual Skill call to the contained Opus variant while
-preserving its arguments. Other agents and third-party skills are unchanged.
-Because the selection belongs to the tool call, parallel parent and subagent
-invocations cannot overwrite each other. The public Skill passes invocation
-policy before this allowed `PreToolUse` rewrite, so the destination alias stays
-hidden with `disable-model-invocation: true` without blocking the routed call.
-Validate this behavior with the installed Claude build.
-
 Both events pass their JSON input on stdin. `SessionStart` usually supplies
 `model`; `PostModelSwitch` supplies `to_model`. Claude can omit `model` from
 `SessionStart` after recovery or `/clear`, in which case the hook keeps that
@@ -258,12 +243,12 @@ The hook changes what later skill invocations load in that session. Skill
 instructions already present in its conversation remain there until a fresh
 session; do not claim that the hook removes them.
 
-Treat both materializer commands as repo-owned hooks. Before adding them,
-remove older `SessionStart`, `PostModelSwitch`, or `PreToolUse` handlers whose
-command invokes `materialize-skill-variants.mjs` for this skill collection,
-then add each current command once to its documented events and matcher. On
-uninstall, remove those handlers. This makes reinstalling after a repository
-move idempotent without disturbing unrelated handlers.
+Treat the materializer command as a repo-owned hook. Before adding it, remove
+older `SessionStart`, `PostModelSwitch`, or `PreToolUse` handlers whose command
+invokes `materialize-skill-variants.mjs` for this skill collection, then add the
+current command once to its documented events. On uninstall, remove those
+handlers. This makes reinstalling after a repository move idempotent without
+disturbing unrelated handlers.
 
 ## 8. Connect a running OpenClaw Gateway
 

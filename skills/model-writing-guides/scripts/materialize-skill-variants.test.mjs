@@ -12,7 +12,6 @@ import {
   recordClaudeSession,
   renderClaudeSkill,
   resolveProfile,
-  routeClaudeSkill,
   withOutputLock,
 } from "./materialize-skill-variants.mjs";
 
@@ -124,19 +123,29 @@ test("retries when a contended output lock disappears before inspection", (t) =>
   assert.equal(simulatedRace, true);
 });
 
-test("renders the selected variant independently for concurrent Claude sessions", (t) => {
+test("renders immutable model branches for concurrent Claude sessions", (t) => {
   const current = fixture(t);
   const stateRoot = path.join(current.temporary, "sessions");
-  materializeClaudeSessionView({ outputRoot: current.output, sourceRoot: current.source, stateRoot });
+  const view = materializeClaudeSessionView({ outputRoot: current.output, sourceRoot: current.source, stateRoot });
+  assert.equal(view.skillCount, 2);
+  assert.deepEqual(
+    fs.readdirSync(current.output).filter((entry) => !entry.startsWith(".")),
+    ["alpha", "beta"],
+  );
   recordClaudeSession({ model: "claude-fable-5.1", sessionId: "fable-session", stateRoot });
   recordClaudeSession({ model: "claude-opus-5", sessionId: "opus-session", stateRoot });
 
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "fable-session", skillName: "alpha" }), "claude-fable-5.1\n");
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "opus-session", skillName: "alpha" }), "claude-opus-5\n");
+  const fable = renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "fable-session", skillName: "alpha" });
+  const opus = renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "opus-session", skillName: "alpha" });
+  for (const rendered of [fable, opus]) {
+    assert.match(rendered, /Follow only the branch matching your own model family/);
+    assert.match(rendered, /<claude-fable-5\.1>\nclaude-fable-5\.1/);
+    assert.match(rendered, /<claude-opus-5>\nclaude-opus-5/);
+  }
 
   recordClaudeSession({ model: "claude-opus-5", sessionId: "fable-session", stateRoot });
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "fable-session", skillName: "alpha" }), "claude-opus-5\n");
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "opus-session", skillName: "alpha" }), "claude-opus-5\n");
+  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "fable-session", skillName: "alpha" }), fable);
+  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "opus-session", skillName: "alpha" }), opus);
 });
 
 test("Claude loader injects the recorded session variant without mutating the shared view", (t) => {
@@ -154,7 +163,8 @@ test("Claude loader injects the recorded session variant without mutating the sh
   assert.notEqual(command, undefined);
   const rendered = spawnSync("bash", ["-lc", command], { encoding: "utf8" });
   assert.equal(rendered.status, 0, rendered.stderr);
-  assert.equal(rendered.stdout, "claude-fable-5.1\n");
+  assert.match(rendered.stdout, /<claude-fable-5\.1>\nclaude-fable-5\.1/);
+  assert.match(rendered.stdout, /<claude-opus-5>\nclaude-opus-5/);
   assert.equal(fs.readFileSync(loaderSkill, "utf8"), loaderBefore);
 });
 
@@ -173,50 +183,8 @@ test("Claude loader works when the generated view path contains whitespace", (t)
   assert.notEqual(command, undefined);
   const rendered = spawnSync("bash", ["-lc", command], { encoding: "utf8" });
   assert.equal(rendered.status, 0, rendered.stderr);
-  assert.equal(rendered.stdout, "claude-fable-5.1\n");
-});
-
-test("routes an Opus worker to a contained model-qualified skill", (t) => {
-  const current = fixture(t);
-  const stateRoot = path.join(current.temporary, "sessions");
-  const result = materializeClaudeSessionView({ outputRoot: current.output, sourceRoot: current.source, stateRoot });
-  const alias = "model-variant-claude-opus-5--alpha";
-  const aliasSkill = path.join(current.output, alias, "SKILL.md");
-
-  assert.equal(result.routedSkillCount, 2);
-  assert.equal(fs.lstatSync(aliasSkill).isSymbolicLink(), false);
-  assert.match(fs.readFileSync(aliasSkill, "utf8"), new RegExp(`name: ${alias}`));
-  assert.match(fs.readFileSync(aliasSkill, "utf8"), /disable-model-invocation: true/);
-  assert.equal(fs.readFileSync(aliasSkill, "utf8").endsWith("claude-opus-5\n"), true);
-
-  const routed = routeClaudeSkill({
-    sourceRoot: current.source,
-    hook: {
-      agent_type: "opus-worker",
-      tool_input: { args: "keep this", skill: "alpha" },
-      tool_name: "Skill",
-    },
-  });
-  assert.deepEqual(routed?.hookSpecificOutput.updatedInput, { args: "keep this", skill: alias });
-  assert.equal(routeClaudeSkill({
-    sourceRoot: current.source,
-    hook: { agent_type: "opus-worker", tool_input: { skill: "third-party" }, tool_name: "Skill" },
-  }), undefined);
-  assert.equal(routeClaudeSkill({
-    sourceRoot: current.source,
-    hook: { agent_type: "Explore", tool_input: { skill: "alpha" }, tool_name: "Skill" },
-  }), undefined);
-
-  const cli = spawnSync(
-    process.execPath,
-    [materializer, "--action", "route-skill", "--source", current.source],
-    {
-      encoding: "utf8",
-      input: JSON.stringify({ agent_type: "opus-worker", tool_input: { skill: "alpha" }, tool_name: "Skill" }),
-    },
-  );
-  assert.equal(cli.status, 0, cli.stderr);
-  assert.equal(JSON.parse(cli.stdout).hookSpecificOutput.updatedInput.skill, alias);
+  assert.match(rendered.stdout, /<claude-fable-5\.1>\nclaude-fable-5\.1/);
+  assert.match(rendered.stdout, /<claude-opus-5>\nclaude-opus-5/);
 });
 
 test("Claude hooks update only their session and retain it when model data is unavailable", (t) => {
@@ -232,12 +200,12 @@ test("Claude hooks update only their session and retain it when model data is un
   assert.equal(started.status, 0, started.stderr);
   const missingModel = runHook({ hook_event_name: "SessionStart", session_id: "session-one", source: "clear" });
   assert.equal(missingModel.status, 0, missingModel.stderr);
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "session-one", skillName: "alpha" }), "claude-fable-5.1\n");
+  assert.match(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "session-one", skillName: "alpha" }), /<claude-fable-5\.1>/);
 
   const unsupported = runHook({ hook_event_name: "PostModelSwitch", to_model: "gemini-3-pro", session_id: "session-one" });
   assert.equal(unsupported.status, 1);
   assert.match(unsupported.stderr, /unsupported model family/);
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "session-one", skillName: "alpha" }), "claude-fable-5.1\n");
+  assert.match(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "session-one", skillName: "alpha" }), /<claude-fable-5\.1>/);
 
   const fallback = runHook({ hook_event_name: "SessionStart", model: "claude-fable-5.2", session_id: "future-session" });
   assert.equal(fallback.status, 0, fallback.stderr);
@@ -249,7 +217,7 @@ test("Claude hooks update only their session and retain it when model data is un
     renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "future-session", skillName: "alpha" }),
     /not been updated for claude-fable-5\.2[\s\S]*claude-fable-5\.1/,
   );
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "future-session", skillName: "alpha" }), "claude-fable-5.1\n");
+  assert.match(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "future-session", skillName: "alpha" }), /<claude-fable-5\.1>/);
 });
 
 test("prints documented JSON output and emits one fallback notice per session", (t) => {

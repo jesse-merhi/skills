@@ -10,9 +10,7 @@ import { fileURLToPath } from "node:url";
 const MARKER = ".skill-variant-view.json";
 const LOCK_TIMEOUT_MS = 5_000;
 const STALE_LOCK_MS = 30_000;
-const CLAUDE_AGENT_PROFILES = new Map([
-  ["opus-worker", "claude-opus-5"],
-]);
+const CLAUDE_PROFILES = ["claude-fable-5.1", "claude-opus-5"];
 const MarkerJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
   sourceRoot: Schema.NonEmptyString,
@@ -138,18 +136,6 @@ function quoteShell(value) {
 function sessionStatePath(stateRoot, sessionId) {
   const key = createHash("sha256").update(sessionId).digest("hex");
   return path.join(path.resolve(stateRoot), `${key}.json`);
-}
-
-function claudeAliasName(profileId, skillName) {
-  return `model-variant-${profileId}--${skillName}`;
-}
-
-function aliasSkillDocument(skillFile, aliasName) {
-  const { frontmatter, body } = splitSkillDocument(skillFile);
-  const aliasedFrontmatter = frontmatter.replace(/^name:.*$/m, `name: ${aliasName}`);
-  // The public Skill passes invocation policy before routeClaudeSkill rewrites its allowed call.
-  // This keeps aliases out of model discovery without blocking the routed invocation.
-  return `---\n${aliasedFrontmatter}\ndisable-model-invocation: true\n---\n${body}`;
 }
 
 export function discoverSkills(sourceRoot) {
@@ -325,18 +311,6 @@ export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousS
         fs.symlinkSync(loader, path.join(skillOutput, ".model-variant-loader"));
         linkSharedEntries(skill, skillOutput);
       }
-      for (const profileId of new Set(CLAUDE_AGENT_PROFILES.values())) {
-        const profile = profiles.find((candidate) => candidate.id === profileId);
-        if (profile === undefined) throw new Error(`unknown Claude agent profile ${profileId}`);
-        for (const skill of skills) {
-          const aliasName = claudeAliasName(profile.id, skill.name);
-          const skillOutput = path.join(stagingRoot, aliasName);
-          fs.mkdirSync(skillOutput);
-          const selection = selectVariant(skill, profile);
-          fs.writeFileSync(path.join(skillOutput, "SKILL.md"), aliasSkillDocument(selection.path, aliasName));
-          linkSharedEntries(skill, skillOutput);
-        }
-      }
       fs.writeFileSync(
         path.join(stagingRoot, MARKER),
         `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: "claude-session" })}\n`,
@@ -350,26 +324,8 @@ export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousS
   fs.mkdirSync(resolvedState, { recursive: true });
   return {
     profile: "claude-session",
-    routedSkillCount: skills.length * new Set(CLAUDE_AGENT_PROFILES.values()).size,
     skillCount: skills.length,
     stateRoot: resolvedState,
-  };
-}
-
-export function routeClaudeSkill({ sourceRoot, hook }) {
-  if (hook.tool_name !== "Skill" || hook.agent_type === undefined || hook.tool_input === undefined) return undefined;
-  const profileId = CLAUDE_AGENT_PROFILES.get(hook.agent_type);
-  const skillName = hook.tool_input.skill;
-  if (profileId === undefined || typeof skillName !== "string") return undefined;
-  const repoSkillNames = new Set(discoverSkills(fs.realpathSync(sourceRoot)).map((skill) => skill.name));
-  if (!repoSkillNames.has(skillName)) return undefined;
-  return {
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "allow",
-      permissionDecisionReason: `Use the ${profileId} prompt selected for ${hook.agent_type}.`,
-      updatedInput: { ...hook.tool_input, skill: claudeAliasName(profileId, skillName) },
-    },
   };
 }
 
@@ -393,19 +349,22 @@ export function renderClaudeSkill({ sourceRoot, stateRoot, sessionId, skillName 
   }
   const state = Schema.decodeUnknownSync(SessionStateJson)(fs.readFileSync(stateFile, "utf8"));
   if (state.sessionId !== sessionId) throw new Error("Claude session state does not match the requested session");
-  const profile = profiles.find((candidate) => candidate.id === state.profile);
-  if (profile === undefined) throw new Error(`unknown recorded skill profile ${state.profile}`);
+  if (!profiles.some((candidate) => candidate.id === state.profile)) throw new Error(`unknown recorded skill profile ${state.profile}`);
   const skill = discoverSkills(resolvedSource).find((candidate) => candidate.name === skillName);
   if (skill === undefined) throw new Error(`unknown skill ${skillName}`);
-  const selection = selectVariant(skill, profile);
-  const { body } = splitSkillDocument(selection.path);
-  const stale = !state.exact || selection.profile.id !== profile.id;
-  const detail = selection.profile.id === profile.id ? "" : `; using ${selection.profile.id} for ${skillName}`;
-  const notice = stale
-    ? `Skill variants have not been updated for ${state.model}${detail}. Tell the user once in this session, then continue.`
+  const branches = CLAUDE_PROFILES.map((profileId) => {
+    const profile = profiles.find((candidate) => candidate.id === profileId);
+    if (profile === undefined) throw new Error(`unknown Claude profile ${profileId}`);
+    const selection = selectVariant(skill, profile);
+    const { body } = splitSkillDocument(selection.path);
+    return `<${profileId}>\n${body.trim()}\n</${profileId}>`;
+  }).join("\n\n");
+  const notice = !state.exact
+    ? `Skill variants have not been updated for ${state.model}. Tell the user once in this session, then continue.`
     : undefined;
   const visibleNotice = noticeOnce({ notice, outputRoot: path.join(path.resolve(stateRoot), "session"), sessionId });
-  return visibleNotice === undefined ? body : `${visibleNotice}\n\n${body}`;
+  const instructions = `Follow only the branch matching your own model family. Claude Fable uses <claude-fable-5.1>; Claude Opus uses <claude-opus-5>. Do not combine branches.\n\n${branches}\n`;
+  return visibleNotice === undefined ? instructions : `${visibleNotice}\n\n${instructions}`;
 }
 
 function parseArguments(argv) {
@@ -435,12 +394,6 @@ async function main() {
   const action = args.action ?? "materialize";
   const model = args.model ?? hook.to_model ?? hook.model;
   const sessionId = args.session ?? hook.session_id;
-  if (action === "route-skill") {
-    if (args.source === undefined) throw new Error("route-skill requires --source");
-    const result = routeClaudeSkill({ sourceRoot: args.source, hook });
-    if (result !== undefined) process.stdout.write(`${JSON.stringify(result)}\n`);
-    return;
-  }
   if (action === "claude-view") {
     if (args.source === undefined || args.output === undefined || args["state-root"] === undefined) {
       throw new Error("claude-view requires --source, --output, and --state-root");
