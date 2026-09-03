@@ -1,10 +1,13 @@
 # Ruff half of the Python coding-standards preset.
-# `lint.select` is exactly the union of every `kind: "ruff"` select in the
-# python column of catalog.json; tests/test_catalog.py fails if the two drift.
+# `lint.extend-select` is exactly the union of every `kind: "ruff"` select in
+# the python column of catalog.json; tests/test_catalog.py fails if the two
+# drift. It is `extend-select` rather than `select` so a target that extends
+# this file gains these codes on top of its own `select` instead of having that
+# select silently override the catalog's.
 
 
 [lint]
-select = [
+extend-select = [
   "ANN401",
   "ASYNC",
   "B",

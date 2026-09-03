@@ -8,7 +8,9 @@ rules:
       so the interpolated value reaches the database as SQL. Pass the value as
       a query parameter instead. Ruff's S608 flags most formatted SQL literals;
       this rule covers the escape hatches it misses, such as a concatenated
-      suffix on `.raw(...)`, `text(...)`, or `cursor.execute(...)`.
+      suffix on `.raw(...)`, `text(...)`, or `cursor.execute(...)`. The
+      receiver is unconstrained, so a non-SQL `.execute(f"...")` — a GraphQL
+      client, say — matches too; mark that call `# nosemgrep`.
     metadata:
       standard: no-raw-sql
       category: security
@@ -25,5 +27,12 @@ rules:
             - pattern: f"..."
             - pattern: '"..." % $VALUES'
             - pattern: '"...".format(...)'
-            - pattern: '"..." + $VALUE'
-            - pattern: $VALUE + "..."
+            - patterns:
+                - pattern-either:
+                    - pattern: '"..." + $VALUE'
+                    - pattern: $VALUE + "..."
+                - metavariable-pattern:
+                    metavariable: $VALUE
+                    patterns:
+                      - pattern: $ANY
+                      - pattern-not: '"..."'

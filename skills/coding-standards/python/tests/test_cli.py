@@ -24,11 +24,15 @@ def test_reports_each_finding_in_ruff_format_and_exits_one(
 
     assert exit_code == 1
     assert capsys.readouterr().out.splitlines() == [
-        f"{target}:1:1: no-trivial-forwarding-wrapper `fetch` only forwards its "
-        "parameters to `load`; inline it unless the name marks a concept, "
-        "boundary, or test seam",
-        f"{target}:5:1: no-banner-comments decorative banner comment; "
-        "write a plain section comment that says what the section is",
+        (
+            f"{target}:1:1: no-trivial-forwarding-wrapper `fetch` only forwards "
+            "its parameters to `load`; inline it unless the name marks a "
+            "concept, boundary, or test seam"
+        ),
+        (
+            f"{target}:5:1: no-banner-comments decorative banner comment; "
+            "write a plain section comment that says what the section is"
+        ),
     ]
 
 

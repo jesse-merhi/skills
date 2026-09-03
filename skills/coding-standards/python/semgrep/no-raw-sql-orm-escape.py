@@ -1,8 +1,9 @@
 """Fixtures for `semgrep --test --config semgrep/ semgrep/`.
 
 Each annotation below marks the expected verdict for the line after it, and
-semgrep fails the run if any of them is wrong. The `# noqa: S608` markers keep
-ruff quiet about SQL that is deliberately unsafe here; they name the rule, as
+semgrep fails the run if any of them is wrong. The `# noqa` markers keep ruff quiet
+about SQL that is deliberately unsafe (S608) and deliberately written in an
+older formatting style (UP031, UP032); they name each rule, as
 no-broad-rule-disable requires.
 """
 
@@ -21,12 +22,12 @@ def orm_raw_with_fstring(customer_id):
 
 def orm_raw_with_percent(customer_id):
     # ruleid: no-raw-sql-orm-escape
-    return Order.objects.raw("SELECT * FROM orders WHERE id = %s" % customer_id)  # noqa: S608
+    return Order.objects.raw("SELECT * FROM orders WHERE id = %s" % customer_id)  # noqa: S608, UP031
 
 
 def orm_raw_with_format(customer_id):
     # ruleid: no-raw-sql-orm-escape
-    return Order.objects.raw("SELECT * FROM orders WHERE id = {}".format(customer_id))  # noqa: S608
+    return Order.objects.raw("SELECT * FROM orders WHERE id = {}".format(customer_id))  # noqa: S608, UP032
 
 
 def sqlalchemy_text_with_fstring(session, customer_id):
@@ -46,7 +47,7 @@ def connection_execute_with_concatenation(where_clause):
 
 def cursor_executemany_with_format(cursor, table):
     # ruleid: no-raw-sql-orm-escape
-    cursor.executemany("INSERT INTO {} VALUES (?)".format(table), [])  # noqa: S608
+    cursor.executemany("INSERT INTO {} VALUES (?)".format(table), [])  # noqa: S608, UP032
 
 
 def cursor_execute_with_trailing_concatenation(cursor, where_clause):
@@ -83,6 +84,11 @@ def cursor_executemany_parameterised(cursor, rows):
 def orm_queryset(customer_id):
     # ok: no-raw-sql-orm-escape
     return Order.objects.filter(id=customer_id)
+
+
+def cursor_execute_split_literal_parameterised(cursor, customer_id):
+    # ok: no-raw-sql-orm-escape
+    cursor.execute("SELECT * FROM orders " + "WHERE id = %s", [customer_id])  # noqa: S608
 
 
 def unrelated_formatting(customer_id):

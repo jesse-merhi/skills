@@ -85,3 +85,20 @@ def test_ignores_a_bare_name_that_is_not_the_fixture() -> None:
         assert build_report() == snapshotter
     """
     assert check(source) == []
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["src/state.py", "state.py", "src/testing.py"],
+)
+def test_allows_a_snapshot_comparison_outside_a_test_file(filename: str) -> None:
+    assert check("if state == snapshot:\n    pass\n", filename) == []
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["tests/test_state.py", "state_test.py", "test/helpers.py"],
+)
+def test_reports_a_snapshot_comparison_in_a_test_file(filename: str) -> None:
+    (finding,) = check("if state == snapshot:\n    pass\n", filename)
+    assert "syrupy snapshot assertion" in finding.message

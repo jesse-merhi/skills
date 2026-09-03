@@ -74,10 +74,10 @@ PIN_SOURCES: dict[str, Callable[[str], str]] = {
 }
 
 
-def test_ruff_config_selects_exactly_the_rules_the_catalog_claims() -> None:
+def test_ruff_config_extend_selects_exactly_the_rules_the_catalog_claims() -> None:
     configured = tomllib.loads(
         (CATALOG_ROOT / PYTHON_PRESETS["ruff"]["file"]).read_text()
-    )["lint"]["select"]
+    )["lint"]["extend-select"]
     claimed = {
         code for entry in entries_of_kind("ruff") for code in listed(entry, "select")
     }

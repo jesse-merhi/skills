@@ -15,6 +15,11 @@ Anything that could carry meaning on its own is skipped:
   holds no ``yield``),
 * defaults, ``*args``, ``**kwargs``, keyword-only parameters (the signature
   adapts rather than forwards),
+* functions taking no parameters, which forward nothing and are usually a
+  factory or an accessor,
+* module-level functions named in ``__all__``, the Python analogue of the
+  exported functions the ESLint rule skips by default: an explicit export is a
+  published name, and inlining it would break the callers,
 * self-recursion, which is a bug rather than a wrapper.
 
 No ruff rule models this, so it is a custom AST check.
@@ -26,6 +31,7 @@ from standards_checks.finding import Finding
 
 CHECK_ID = "no-trivial-forwarding-wrapper"
 BOUND_FIRST_PARAMETERS = frozenset({"self", "cls"})
+EXPORT_LIST = "__all__"
 
 
 def _callee_name(func: ast.expr) -> str | None:
@@ -41,7 +47,7 @@ def _forwards_parameters_verbatim(node: ast.FunctionDef, call: ast.Call) -> bool
     if call.keywords:
         return False
     parameters = [*node.args.posonlyargs, *node.args.args]
-    if len(call.args) != len(parameters):
+    if not parameters or len(call.args) != len(parameters):
         return False
     return all(
         isinstance(argument, ast.Name) and argument.id == parameter.arg
@@ -65,6 +71,29 @@ def _is_bound_method(node: ast.FunctionDef) -> bool:
     return bool(parameters) and parameters[0].arg in BOUND_FIRST_PARAMETERS
 
 
+def _exported_names(module: ast.Module) -> frozenset[str]:
+    names: set[str] = set()
+    for statement in module.body:
+        if isinstance(statement, ast.Assign):
+            targets: list[ast.expr] = list(statement.targets)
+        elif isinstance(statement, ast.AnnAssign):
+            targets = [statement.target]
+        else:
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == EXPORT_LIST
+            for target in targets
+        ):
+            continue
+        if isinstance(statement.value, ast.List | ast.Tuple):
+            names.update(
+                element.value
+                for element in statement.value.elts
+                if isinstance(element, ast.Constant) and isinstance(element.value, str)
+            )
+    return frozenset(names)
+
+
 def _forwarded_call(node: ast.FunctionDef) -> ast.Call | None:
     if len(node.body) != 1:
         return None
@@ -79,13 +108,16 @@ def _forwarded_call(node: ast.FunctionDef) -> ast.Call | None:
 def check_source(source: str, filename: str) -> list[Finding]:
     """Report every function whose whole body forwards its parameters onward."""
     findings: list[Finding] = []
-    for node in ast.walk(ast.parse(source)):
+    module = ast.parse(source)
+    exported = _exported_names(module)
+    for node in ast.walk(module):
         if not isinstance(node, ast.FunctionDef):
             continue
         if (
             node.decorator_list
             or _has_adapting_signature(node)
             or _is_bound_method(node)
+            or (node in module.body and node.name in exported)
         ):
             continue
         call = _forwarded_call(node)

@@ -122,6 +122,23 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
         ),
         pytest.param(
             """\
+            def now():
+                return time.time()
+            """,
+            id="no-parameters-to-forward",
+        ),
+        pytest.param(
+            """\
+            __all__ = ["fetch"]
+
+
+            def fetch(customer_id):
+                return load(customer_id)
+            """,
+            id="listed-in-dunder-all",
+        ),
+        pytest.param(
+            """\
             def fetch(customer_id):
                 log(customer_id)
                 return load(customer_id)
@@ -146,3 +163,15 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
 )
 def test_allows_functions_that_are_not_bare_forwarders(source: str) -> None:
     assert check(source) == []
+
+
+def test_reports_a_wrapper_the_export_list_leaves_out() -> None:
+    source = """\
+    __all__ = ["other"]
+
+
+    def fetch(customer_id):
+        return load(customer_id)
+    """
+    (finding,) = check(source)
+    assert "`fetch` only forwards its parameters to `load`" in finding.message
