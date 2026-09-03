@@ -132,7 +132,7 @@ export default {
 	meta: {
 		type: "suggestion",
 		docs: {
-			description: "Disallow undersized text and arbitrary numeric text sizes outside documented exceptions",
+			description: "Disallow undersized text, arbitrary numeric text sizes, uppercase utilities, and all-caps copy outside documented exceptions",
 		},
 		schema: [
 			{

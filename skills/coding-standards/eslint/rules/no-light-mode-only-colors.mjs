@@ -78,7 +78,7 @@ export default {
 	meta: {
 		type: "suggestion",
 		docs: {
-			description: "Flag hard-coded light-mode neutral utilities in className strings",
+			description: "Flag hard-coded light-only colour utilities and bare prose in className strings that lack a dark counterpart",
 		},
 		schema: [],
 		messages: {

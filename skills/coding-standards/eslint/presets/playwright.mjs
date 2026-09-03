@@ -3,10 +3,8 @@ import playwrightPlugin from "eslint-plugin-playwright";
 import { standards } from "../standards-plugin.mjs";
 
 const DEFAULT_FILES = ["**/tests/e2e/**/*.{ts,tsx}"];
-const DEFAULT_CHECKS = ["domPath"];
-
 export default function playwright(options = {}) {
-	const brittleSelectorOptions = { checks: options.checks ?? DEFAULT_CHECKS };
+	const brittleSelectorOptions = options.checks === undefined ? {} : { checks: options.checks };
 
 	const brittleStyleOptions = {};
 	if (options.semanticClassTokens !== undefined) {
