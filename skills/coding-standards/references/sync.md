@@ -17,8 +17,9 @@ started as — use `apply` instead.
 
 2. **Classify every file in `files` by three hashes.**
 
-   - **catalog:** sha256 of that file in the resolved catalog directory now.
-   - **manifest:** the hash recorded when it was vendored.
+   - **catalog:** sha256 of the entry `source` path in the resolved catalog
+     directory now.
+   - **manifest:** the entry `sha256`, recorded when it was vendored.
    - **local:** sha256 of the file in the target now.
 
    | catalog vs manifest | local vs manifest | class |
@@ -28,9 +29,9 @@ started as — use `apply` instead.
    | same | differs | locally-modified |
    | differs | differs | both |
 
-   A manifest entry with no file in the catalog was removed upstream; one with
-   no file in the target was deleted locally. Report each rather than guessing
-   which side is right.
+   A manifest entry whose `source` is gone from the catalog was removed
+   upstream; one with no file in the target was deleted locally. Report each
+   rather than guessing which side is right.
 
    Done when every manifest entry carries exactly one class.
 
@@ -51,21 +52,17 @@ started as — use `apply` instead.
    dependencies. Dependencies added since vendoring can make presets apply that
    did not before.
 
-   The manifest keys `presets` by ecosystem name, while the catalog keys them
-   by `ecosystems.<name>.presets` — `javascript` in the manifest is `eslint` in
-   the catalog. Map through that field before comparing the two lists;
-   comparing the keys directly reads every vendored preset as missing.
-
    Done when every preset that now applies but is absent from the manifest is
    either vendored, with permission asked for its packages, or declined and
    recorded.
 
 5. **Update the manifest.**
 
-   Write the new source commit, and update each file hash to the sha256 of the
-   catalog content that path was synced from. Leave the old hash on any file
-   kept as a local modification: setting it to the local bytes would make the
-   next run read that file as pristine and overwrite it.
+   Write the new source commit, and update each entry `sha256` to the sha256 of
+   the catalog content that path was synced from, leaving its `source`
+   unchanged. Leave the old hash on any file kept as a local modification:
+   setting it to the local bytes would make the next run read that file as
+   pristine and overwrite it.
 
    Done when re-running step 2 classes every file `unchanged`, apart from the
    files deliberately kept as local modifications, which still class as
