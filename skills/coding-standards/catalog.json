@@ -8,11 +8,11 @@
 			"packages": {
 				"eslint": "9.39.2"
 			},
-			"presets": "eslint"
+			"presets": "javascript"
 		}
 	},
 	"presets": {
-		"eslint": {
+		"javascript": {
 			"base": {
 				"file": "eslint/presets/base.mjs",
 				"packages": {
@@ -173,7 +173,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-rules/no-banner-comments.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-banner-comments.mjs",
@@ -202,7 +202,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-rules/no-trivial-forwarding-wrapper.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-trivial-forwarding-wrapper.mjs",
@@ -221,7 +221,7 @@
 			"scope": "tests",
 			"origin": "uplinked eslint-rules/no-large-test-snapshots.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-large-test-snapshots.mjs",
@@ -242,7 +242,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-rules/no-zod-type-any-block-disable.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-broad-rule-disable.mjs",
@@ -261,7 +261,7 @@
 			"scope": "prisma",
 			"origin": "uplinked eslint-rules/no-prisma-raw.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-sql.mjs",
@@ -280,7 +280,7 @@
 			"scope": "react-native",
 			"origin": "uplinked eslint-rules/mobile-raw-color-selectors.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-color-literals.mjs",
@@ -299,7 +299,7 @@
 			"scope": "zod",
 			"origin": "uplinked eslint-rules/no-zod-type-any.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-zod-type-any.mjs",
@@ -318,7 +318,7 @@
 			"scope": "zod",
 			"origin": "uplinked eslint-rules/prefer-zod-for-unknown-typeof.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/prefer-zod-for-unknown-typeof.mjs",
@@ -337,7 +337,7 @@
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-light-mode-only-colors.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-light-mode-only-colors.mjs",
@@ -356,7 +356,7 @@
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-raw-elevation.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-elevation.mjs",
@@ -375,7 +375,7 @@
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-small-text.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-small-text.mjs",
@@ -395,7 +395,7 @@
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-wide-arbitrary-breakpoints.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-wide-arbitrary-breakpoints.mjs",
@@ -414,7 +414,7 @@
 			"scope": "e2e",
 			"origin": "uplinked eslint-rules/no-brittle-e2e-selectors.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-brittle-e2e-selectors.mjs",
@@ -433,7 +433,7 @@
 			"scope": "tests",
 			"origin": "uplinked eslint-rules/no-brittle-test-style-assertions.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-brittle-test-style-assertions.mjs",
@@ -454,7 +454,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-config/perfectionist-import-export-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-perfectionist",
@@ -478,7 +478,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-config/import-x-config.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-import-x",
@@ -501,7 +501,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-config/js-correctness-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-promise",
@@ -526,7 +526,7 @@
 			"scope": "any",
 			"origin": "uplinked eslint-config/js-correctness-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint",
@@ -559,7 +559,7 @@
 			"scope": "typescript",
 			"origin": "@typescript-eslint/eslint-plugin configs.recommended at 8.60.1",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "@typescript-eslint/eslint-plugin",
@@ -598,7 +598,7 @@
 			"scope": "typescript",
 			"origin": "uplinked eslint-config/typescript-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "@typescript-eslint/eslint-plugin",
@@ -620,7 +620,7 @@
 			"scope": "react",
 			"origin": "uplinked eslint-config/react-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-react-hooks",
@@ -654,7 +654,7 @@
 			"scope": "react",
 			"origin": "uplinked eslint-config/react-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-react-you-might-not-need-an-effect",
@@ -683,7 +683,7 @@
 			"scope": "react",
 			"origin": "uplinked eslint-config/react-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-react-refresh",
@@ -704,7 +704,7 @@
 			"scope": "react",
 			"origin": "uplinked eslint-config/accessibility-config.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-jsx-a11y",
@@ -755,7 +755,7 @@
 			"scope": "react-native",
 			"origin": "uplinked eslint-config/accessibility-config.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-react-native-a11y",
@@ -782,7 +782,7 @@
 			"scope": "tanstack-query",
 			"origin": "uplinked eslint-config/tanstack-query-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "@tanstack/eslint-plugin-query",
@@ -808,7 +808,7 @@
 			"scope": "tests",
 			"origin": "uplinked eslint-config/vitest-rules.cjs and jest-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "@vitest/eslint-plugin",
@@ -886,7 +886,7 @@
 			"scope": "e2e",
 			"origin": "uplinked eslint-config/playwright-rules.cjs",
 			"enforcement": {
-				"eslint": [
+				"javascript": [
 					{
 						"kind": "plugin",
 						"package": "eslint-plugin-playwright",

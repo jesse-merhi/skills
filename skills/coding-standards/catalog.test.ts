@@ -44,7 +44,7 @@ const repositoryPackages = join(standardsDirectory, "../../node_modules")
 
 const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "catalog.json"), "utf8"))
 
-const eslintPresets = catalog.presets.eslint ?? {}
+const javascriptPresets = catalog.presets.javascript ?? {}
 
 const enforcements = catalog.standards.flatMap((standard) => Object.values(standard.enforcement).flat())
 
@@ -112,7 +112,7 @@ const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
 
 describe("coding standards catalog", () => {
   it("resolves every referenced rule, test, script, baseline, and preset file", () => {
-    for (const path of [...referencedPaths, ...Object.values(eslintPresets).map((preset) => preset.file)]) {
+    for (const path of [...referencedPaths, ...Object.values(javascriptPresets).map((preset) => preset.file)]) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
   })
@@ -135,7 +135,7 @@ describe("coding standards catalog", () => {
     for (const entry of enforcements) {
       if (entry.kind !== "rule" && entry.kind !== "plugin") continue
       for (const preset of entry.presets) {
-        assert.property(eslintPresets, preset)
+        assert.property(javascriptPresets, preset)
       }
     }
   })
@@ -153,7 +153,7 @@ describe("coding standards catalog", () => {
   })
 
   it("pins the packages each preset actually imports", () => {
-    for (const [name, preset] of Object.entries(eslintPresets)) {
+    for (const [name, preset] of Object.entries(javascriptPresets)) {
       const imported = importedPackages(preset.file)
       assert.deepEqual(Object.keys(preset.packages).toSorted(), imported, `${name} package list`)
       for (const [packageName, version] of Object.entries(preset.packages)) {
@@ -171,7 +171,7 @@ describe("coding standards catalog", () => {
   })
 
   it("emits configs whose every rule id resolves against its own plugins", { timeout: 60_000 }, async () => {
-    for (const [name, preset] of Object.entries(eslintPresets)) {
+    for (const [name, preset] of Object.entries(javascriptPresets)) {
       for (const config of await presetConfigs(name, preset.file)) {
         for (const ruleId of Object.keys(config.rules ?? {})) {
           const separator = ruleId.lastIndexOf("/")
@@ -186,7 +186,7 @@ describe("coding standards catalog", () => {
   })
 
   it("claims exactly the rules each preset enables", { timeout: 60_000 }, async () => {
-    for (const [name, preset] of Object.entries(eslintPresets)) {
+    for (const [name, preset] of Object.entries(javascriptPresets)) {
       const enabled = new Set<string>()
       for (const config of await presetConfigs(name, preset.file)) {
         for (const [ruleId, setting] of Object.entries(config.rules ?? {})) {
