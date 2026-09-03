@@ -96,19 +96,20 @@ export function withOutputLock(outputRoot, operation) {
   const startIdentity = processStartIdentity(process.pid);
   if (startIdentity === undefined) throw new Error(`unable to identify model view lock process ${process.pid}`);
   const owner = { pid: process.pid, startIdentity, token: crypto.randomUUID() };
-  const ownerPath = `${lockRoot}.owner-${owner.pid}-${owner.token}`;
+  const ownerFile = `owner-${owner.token}.json`;
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   fs.mkdirSync(path.dirname(outputRoot), { recursive: true });
-  fs.writeFileSync(ownerPath, Schema.encodeSync(LockOwnerJson)(owner), { flag: "wx" });
+  const candidate = fs.mkdtempSync(`${lockRoot}.candidate-`);
   let acquired = false;
   try {
+    fs.writeFileSync(path.join(candidate, ownerFile), Schema.encodeSync(LockOwnerJson)(owner), { flag: "wx" });
     while (true) {
       try {
-        fs.linkSync(ownerPath, lockRoot);
+        fs.renameSync(candidate, lockRoot);
         acquired = true;
         break;
       } catch (error) {
-        if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "EEXIST") throw error;
+        if (!(error instanceof Error) || !Object.hasOwn(error, "code") || !["EEXIST", "ENOTEMPTY"].includes(error.code)) throw error;
         if (reclaimAbandonedLock(lockRoot)) continue;
         if (Date.now() >= deadline) throw new Error(`timed out waiting for model view lock ${lockRoot}`);
         sleep(25);
@@ -116,23 +117,20 @@ export function withOutputLock(outputRoot, operation) {
     }
     return operation();
   } finally {
-    let currentOwner;
-    if (acquired) {
-      try {
-        currentOwner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(lockRoot, "utf8"));
-      } catch (error) {
-        if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ENOENT") throw error;
-      }
-      if (currentOwner?.token === owner.token) fs.rmSync(lockRoot, { force: true });
-    }
-    fs.rmSync(ownerPath, { force: true });
+    if (acquired) removeLockOwner(lockRoot, ownerFile);
+    fs.rmSync(candidate, { recursive: true, force: true });
   }
 }
 
 export function reclaimAbandonedLock(lockRoot) {
   let owner;
+  let ownerFile;
   try {
-    owner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(lockRoot, "utf8"));
+    const entries = fs.readdirSync(lockRoot);
+    if (entries.length === 0) return removeLockOwner(lockRoot);
+    ownerFile = entries.find((entry) => entry.startsWith("owner-") && entry.endsWith(".json"));
+    if (ownerFile === undefined) return false;
+    owner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(path.join(lockRoot, ownerFile), "utf8"));
   } catch (error) {
     if (error instanceof Error && Object.hasOwn(error, "code") && error.code === "ENOENT") return false;
     return false;
@@ -142,22 +140,22 @@ export function reclaimAbandonedLock(lockRoot) {
     process.kill(owner.pid, 0);
   } catch (error) {
     if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ESRCH") return false;
-    return quarantineAbandonedLock(lockRoot);
+    return removeLockOwner(lockRoot, ownerFile);
   }
   const currentStartIdentity = processStartIdentity(owner.pid);
   if (currentStartIdentity === undefined || currentStartIdentity === owner.startIdentity) return false;
-  return quarantineAbandonedLock(lockRoot);
+  return removeLockOwner(lockRoot, ownerFile);
 }
 
-function quarantineAbandonedLock(lockRoot) {
-  const abandonedRoot = `${lockRoot}.abandoned-${process.pid}-${crypto.randomUUID()}`;
+function removeLockOwner(lockRoot, ownerFile) {
+  if (ownerFile !== undefined) fs.rmSync(path.join(lockRoot, ownerFile), { force: true });
+  // A replacement owner has a different file. Non-recursive removal preserves it.
   try {
-    fs.renameSync(lockRoot, abandonedRoot);
+    fs.rmdirSync(lockRoot);
   } catch (error) {
-    if (error instanceof Error && Object.hasOwn(error, "code") && error.code === "ENOENT") return false;
+    if (error instanceof Error && Object.hasOwn(error, "code") && ["ENOENT", "ENOTEMPTY", "EEXIST"].includes(error.code)) return false;
     throw error;
   }
-  fs.rmSync(abandonedRoot, { recursive: true, force: true });
   return true;
 }
 

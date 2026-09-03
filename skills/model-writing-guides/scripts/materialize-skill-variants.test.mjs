@@ -48,6 +48,13 @@ function processStartIdentity(pid) {
   return result.stdout.trim();
 }
 
+function writeLock(lockRoot, owner) {
+  fs.mkdirSync(lockRoot);
+  const ownerPath = path.join(lockRoot, `owner-${owner.token}.json`);
+  fs.writeFileSync(ownerPath, JSON.stringify(owner));
+  return ownerPath;
+}
+
 test("recognizes supported model identifiers and same-family fallbacks", () => {
   const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
   const configuredFable = resolveProfile("claude-fable-5[1m]");
@@ -98,7 +105,7 @@ test("materializes one contained static variant and links shared resources", (t)
 test("does not reclaim a live lock based on its age", (t) => {
   const current = fixture(t);
   const lockRoot = current.output + ".lock";
-  fs.writeFileSync(lockRoot, JSON.stringify({ pid: process.pid, startIdentity: processStartIdentity(process.pid), token: "live" }));
+  writeLock(lockRoot, { pid: process.pid, startIdentity: processStartIdentity(process.pid), token: "live" });
   fs.utimesSync(lockRoot, new Date(0), new Date(0));
 
   assert.equal(reclaimAbandonedLock(lockRoot), false);
@@ -110,7 +117,7 @@ test("reclaims a lock whose owning process has exited", (t) => {
   const lockRoot = current.output + ".lock";
   const exited = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
   assert.equal(exited.status, 0, exited.stderr);
-  fs.writeFileSync(lockRoot, JSON.stringify({ pid: Number(exited.stdout), startIdentity: "exited process", token: "dead" }));
+  writeLock(lockRoot, { pid: Number(exited.stdout), startIdentity: "exited process", token: "dead" });
 
   assert.equal(reclaimAbandonedLock(lockRoot), true);
   assert.equal(fs.existsSync(lockRoot), false);
@@ -119,7 +126,7 @@ test("reclaims a lock whose owning process has exited", (t) => {
 test("reclaims a lock after its owner PID is reused", (t) => {
   const current = fixture(t);
   const lockRoot = current.output + ".lock";
-  fs.writeFileSync(lockRoot, JSON.stringify({ pid: process.pid, startIdentity: "different process start", token: "reused" }));
+  writeLock(lockRoot, { pid: process.pid, startIdentity: "different process start", token: "reused" });
 
   assert.equal(reclaimAbandonedLock(lockRoot), true);
   assert.equal(fs.existsSync(lockRoot), false);
@@ -127,10 +134,31 @@ test("reclaims a lock after its owner PID is reused", (t) => {
 
 test("an interrupted owner-file preparation cannot block acquisition", (t) => {
   const current = fixture(t);
-  fs.writeFileSync(current.output + ".lock.owner-interrupted", "incomplete");
+  fs.mkdirSync(current.output + ".lock.candidate-interrupted");
 
   assert.equal(withOutputLock(current.output, () => "published"), "published");
   assert.equal(fs.existsSync(current.output + ".lock"), false);
+});
+
+test("a stale reclaimer cannot remove a replacement live owner's lock", (t) => {
+  const current = fixture(t);
+  const lockRoot = current.output + ".lock";
+  const staleOwnerPath = writeLock(lockRoot, { pid: process.pid, startIdentity: "different process start", token: "stale" });
+  const liveOwner = { pid: process.pid, startIdentity: processStartIdentity(process.pid), token: "live" };
+  const originalReadFileSync = fs.readFileSync;
+  t.after(() => { fs.readFileSync = originalReadFileSync; });
+  fs.readFileSync = (file, ...options) => {
+    const result = originalReadFileSync(file, ...options);
+    if (file === staleOwnerPath) {
+      fs.readFileSync = originalReadFileSync;
+      assert.equal(reclaimAbandonedLock(lockRoot), true);
+      writeLock(lockRoot, liveOwner);
+    }
+    return result;
+  };
+
+  assert.equal(reclaimAbandonedLock(lockRoot), false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(lockRoot, "owner-live.json"), "utf8")), liveOwner);
 });
 
 test("restores the previous view when publication fails", (t) => {
