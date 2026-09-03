@@ -114,24 +114,25 @@ replaced, only extended.
      `python/standards_checks/`. Not `python/tests`, `pyproject.toml`, or
      `uv.lock`; those test and build the catalog itself and mean nothing in a
      target.
-   - `prettier/prettierrc.json` to `<target>/.prettierrc.json`, only when the
-     target already depends on prettier and has no prettier config.
-   - `react-doctor/doctor.config.json` to the target root, only when the target
-     already has `react-doctor` installed and no doctor config exists.
-   - `tsconfig/strict.base.json` to `lint/standards/tsconfig.strict.json`,
-     added to the `extends` of every tsconfig that compiles something — one
-     that lists `files` or `include`. A tsconfig's own `compilerOptions`
-     override what it extends, so an option the target already sets equal or
-     stricter needs no change, and a looser one is the target's choice to keep
-     or drop: report it rather than silently overriding it. A solution-style
-     `tsconfig.json` holding `files: []` and `references` compiles nothing, so
-     extend the configs it references instead. Any JSON config the target
-     keeps may carry comments, tsconfig files especially; edit it as text
-     rather than parsing and rewriting it as JSON, which strips the comments.
+   - Every baseline in `catalog.baselines` whose `applies` matches the target,
+     evaluated exactly as the presets in step 3: copy its `file` to the
+     `target` path it names, and only when nothing is there already.
 
-   Neither prettier nor `react-doctor` is worth installing for the sake of its
-   config file. When the dependency is absent, leave the file out and name it
-   in the report as available once the target adopts the tool.
+   The `tsconfig-strict` baseline lands at
+   `lint/standards/tsconfig.strict.json` and then goes into the `extends` of
+   every tsconfig that compiles something — one that lists `files` or
+   `include`. A tsconfig's own `compilerOptions` override what it extends, so
+   an option the target already sets equal or stricter needs no change, and a
+   looser one is the target's choice to keep or drop: report it rather than
+   silently overriding it. A solution-style `tsconfig.json` holding
+   `files: []` and `references` compiles nothing, so extend the configs it
+   references instead. Any JSON config the target keeps may carry comments,
+   tsconfig files especially; edit it as text rather than parsing and
+   rewriting it as JSON, which strips the comments.
+
+   A baseline is never worth installing its tool for. When the dependency its
+   `applies` names is absent, leave the file out and name it in the report as
+   available once the target adopts the tool.
 
    Done when every path above exists in the target, no file that was already
    there was overwritten, and nothing the catalog repository does not track was
@@ -211,25 +212,31 @@ replaced, only extended.
      "catalogVersion": 1,
      "ecosystems": ["javascript", "python"],
      "presets": { "javascript": ["base", "typescript"], "python": ["ruff"] },
-     "files": { "lint/standards/eslint/presets/base.mjs": "<sha256>" }
+     "files": {
+       "lint/standards/eslint/presets/base.mjs": {
+         "source": "eslint/presets/base.mjs",
+         "sha256": "<sha256>"
+       }
+     }
    }
    ```
 
-   `presets` is keyed by ecosystem name — the keys of `ecosystems`, so
-   `javascript` and `python` — not by the catalog's `presets` key that
-   `ecosystems.<name>.presets` points at. A manifest keyed `eslint` describes
-   an ecosystem that does not exist, and `sync` finds no presets under it.
+   `presets` uses the same ecosystem names as `catalog.ecosystems`.
 
-   `files` lists every file step 5 vendored, including
-   `lint/standards/tsconfig.strict.json`. It does not list the target's own
-   files apply edited in place — tsconfigs, `.oxlintrc.json`, `package.json` —
-   because those belong to the target rather than being catalog content `sync`
-   can update.
+   `files` lists every file step 5 vendored, baselines included. It does not
+   list the target's own files apply edited in place — tsconfigs,
+   `.oxlintrc.json`, `package.json` — because those belong to the target
+   rather than being catalog content `sync` can update.
 
-   Paths in `files` are relative to the target root. Each hash is the sha256 of
-   the catalog content vendored to that path, which stays true even after
-   someone edits the target copy — that is what lets `sync` tell an upstream
-   change from a local one.
+   Each key is a path relative to the target root, and its `source` is where
+   that content came from, relative to the catalog directory:
+   `eslint/presets/base.mjs` for a plain vendored file,
+   `prettier/prettierrc.json` for a baseline that lands under another name.
+   Three baselines are renamed on the way in, and without `source` `sync` has
+   no way back to the catalog file to hash. Each `sha256` is the hash of the
+   catalog content vendored to that path, which stays true even after someone
+   edits the target copy — that is what lets `sync` tell an upstream change
+   from a local one.
 
    Done when every file step 5 wrote has an entry. `sync` can only see what the
    manifest lists, so an omitted file silently stops receiving updates.

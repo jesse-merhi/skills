@@ -30,9 +30,9 @@ already handles, while costing a test suite and a CLI to maintain.
 
 1. **Read the existing columns for every standard.**
 
-   The ESLint column says what each standard actually catches, which is more
-   specific than the `principle` prose. The python column shows how those same
-   standards were split across the four tiers.
+   The `javascript` column says what each standard actually catches, which is
+   more specific than the `principle` prose. The `python` column shows how those
+   same standards were split across the four tiers.
 
    Done when every standard id has a tier chosen and a reason, including the
    `not-applicable` ones.
@@ -71,13 +71,16 @@ already handles, while costing a test suite and a CLI to maintain.
 
 5. **Add the column to `catalog.json`.**
 
-   Add `ecosystems.<eco>` with its `detect` files, `presets.<eco>`, and an
-   `enforcement.<eco>` array on every standard. Read
+   Add `ecosystems.<eco>` with its `detect` files, the preset column
+   `presets.<eco>`, and an `enforcement.<eco>` array on every existing
+   standard — `<eco>` is the ecosystem name in all three places. Read
    [catalog-format.md](catalog-format.md) for the field shapes and the
    invariants.
 
-   Done when no standard is missing the new column and the catalog still
-   decodes against `catalog.schema.ts`.
+   Done when every existing standard carries the new column, no column is
+   empty — a standard this ecosystem cannot enforce takes a `not-applicable`
+   entry with its reason — and the catalog still decodes against
+   `catalog.schema.ts`.
 
 6. **Extend `catalog.test.ts`.**
 
