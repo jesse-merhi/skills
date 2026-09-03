@@ -1,3 +1,4 @@
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -102,3 +103,14 @@ def test_allows_a_snapshot_comparison_outside_a_test_file(filename: str) -> None
 def test_reports_a_snapshot_comparison_in_a_test_file(filename: str) -> None:
     (finding,) = check("if state == snapshot:\n    pass\n", filename)
     assert "syrupy snapshot assertion" in finding.message
+
+
+def test_reads_directory_names_from_the_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "test" / "repo"
+    repo.mkdir(parents=True)
+    monkeypatch.chdir(repo)
+
+    assert check(SYRUPY_SOURCE, str(repo / "app" / "models.py")) == []
+    assert check(SYRUPY_SOURCE, str(repo / "tests" / "models.py")) != []

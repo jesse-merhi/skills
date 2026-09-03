@@ -235,12 +235,21 @@ replaced, only extended.
    mypy has no `extend` at all — no mypy config file can extend another — so
    write the options from `lint/standards/python/mypy.ini` into the target's
    `[tool.mypy]` table in `pyproject.toml`, or into `[mypy]` in the mypy config
-   file the target already has. An option the target already sets equal or
-   stricter needs no change; one it sets looser — `strict = false`,
+   file the target already has. In `pyproject.toml` that means TOML spelling,
+   `strict = true`: `True` is not a TOML value, and one such line breaks the
+   file for every tool that reads it. An option the target already sets equal
+   or stricter needs no change; one it sets looser — `strict = false`,
    `disallow_any_explicit = false` — is the target's choice to keep or drop,
    as with tsconfig in step 5: report it rather than overriding it. The
    vendored file stays as the manifest-tracked reference the options were
    copied from, which is what lets `sync` show that they drifted.
+
+   Whichever way ruff was wired, add `lint/standards` to that ruff config's
+   `extend-exclude` and to mypy's `exclude` (`^lint/standards/`), as the
+   JavaScript config ignores `lint/standards/**`: the vendored package is not
+   the target's code, a target task like `ruff check .` or `ruff format .`
+   would otherwise lint it under the target's own rules and rewrite it, and a
+   rewritten file is one `sync` then classes as locally modified.
 
    Then define one command per selected `presets.python` entry, each run
    through the target's own runner: `uv run` in a uv project, bare where the

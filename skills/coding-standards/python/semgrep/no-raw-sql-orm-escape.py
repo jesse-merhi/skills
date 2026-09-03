@@ -55,6 +55,26 @@ def cursor_execute_with_trailing_concatenation(cursor, where_clause):
     cursor.execute(where_clause + " ORDER BY id")
 
 
+def cursor_executescript_with_fstring(cursor, table):
+    # ruleid: no-raw-sql-orm-escape
+    cursor.executescript(f"DROP TABLE {table}")
+
+
+def connection_exec_driver_sql_with_concatenation(connection, where_clause):
+    # ruleid: no-raw-sql-orm-escape
+    return connection.exec_driver_sql(where_clause + " ORDER BY id")
+
+
+def session_scalar_text_with_concatenation(session, where_clause):
+    # ruleid: no-raw-sql-orm-escape
+    return session.scalar(text("SELECT count(*) FROM orders WHERE " + where_clause))  # noqa: S608
+
+
+def session_scalars_text_with_fstring(session, customer_id):
+    # ruleid: no-raw-sql-orm-escape
+    return session.scalars(text(f"SELECT * FROM orders WHERE id = {customer_id}"))  # noqa: S608
+
+
 def orm_raw_parameterised(customer_id):
     # ok: no-raw-sql-orm-escape
     return Order.objects.raw("SELECT * FROM orders WHERE id = %s", [customer_id])

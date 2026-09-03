@@ -14,6 +14,8 @@ from importlib import import_module
 from pathlib import Path
 
 import pytest
+from mypy.config_parser import ini_config_types
+from mypy.options import Options
 
 CATALOG_ROOT = Path(__file__).resolve().parents[2]
 CATALOG = json.loads((CATALOG_ROOT / "catalog.json").read_text())
@@ -83,6 +85,14 @@ def test_ruff_config_extend_selects_exactly_the_rules_the_catalog_claims() -> No
     }
     assert set(configured) == claimed
     assert len(configured) == len(claimed), "ruff.toml lists a rule twice"
+
+
+def test_every_mypy_option_the_catalog_claims_is_one_mypy_defines() -> None:
+    # mypy accepts an unrecognised ini option with a warning and exit 0, so a
+    # typo here would be written into every target as an inert line.
+    for entry in entries_of_kind("mypy"):
+        for option in mapping(entry, "options"):
+            assert option in ini_config_types or hasattr(Options(), option), option
 
 
 def test_mypy_config_sets_exactly_the_options_the_catalog_claims() -> None:

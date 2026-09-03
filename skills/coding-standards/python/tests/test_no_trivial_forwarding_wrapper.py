@@ -170,6 +170,20 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
             """,
             id="callee-is-not-a-name",
         ),
+        pytest.param(
+            """\
+            def get(customer_id):
+                return get_client().fetch(customer_id)
+            """,
+            id="callee-reached-through-a-call",
+        ),
+        pytest.param(
+            """\
+            def get(customer_id):
+                return handlers[0].fetch(customer_id)
+            """,
+            id="callee-reached-through-a-subscript",
+        ),
     ],
 )
 def test_allows_functions_that_are_not_bare_forwarders(source: str) -> None:

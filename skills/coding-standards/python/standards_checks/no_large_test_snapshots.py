@@ -5,7 +5,8 @@ file was written, so every incidental detail becomes a thing that must not
 change. Assert the specific facts the test is about instead.
 
 Only test files are checked: a basename pytest collects (``test_*.py`` or
-``*_test.py``), or any file under a ``tests``/``test`` directory. Elsewhere
+``*_test.py``), or any file under a ``tests``/``test`` directory inside the
+working directory. Elsewhere
 ``snapshot`` is an ordinary name, and comparing against it says nothing about
 snapshot testing.
 
@@ -20,7 +21,7 @@ check. It recognises the two call shapes those libraries document:
 
 import ast
 from fnmatch import fnmatch
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 from standards_checks.finding import Finding
 
@@ -38,7 +39,12 @@ def _is_snapshot_allowed(filename: str) -> bool:
 
 
 def _is_test_file(filename: str) -> bool:
-    path = PurePath(filename)
+    # Directory names count from the working directory, so a checkout that
+    # lives under a directory called `test` does not turn its whole tree into
+    # test files.
+    path = Path(filename)
+    if path.is_absolute() and path.is_relative_to(Path.cwd()):
+        path = path.relative_to(Path.cwd())
     return any(
         fnmatch(path.name, pattern) for pattern in TEST_FILENAME_PATTERNS
     ) or bool(TEST_DIRECTORY_NAMES.intersection(path.parts[:-1]))

@@ -20,6 +20,8 @@ Anything that could carry meaning on its own is skipped:
 * module-level functions named in ``__all__``, the Python analogue of the
   exported functions the ESLint rule skips by default: an explicit export is a
   published name, and inlining it would break the callers,
+* a callee reached through a call or a subscript (``client().fetch``,
+  ``handlers[0].fetch``): acquiring the receiver is work the wrapper does,
 * self-recursion, which is a bug rather than a wrapper.
 
 No ruff rule models this, so it is a custom AST check.
@@ -39,7 +41,7 @@ def _callee_name(func: ast.expr) -> str | None:
         return func.id
     if isinstance(func, ast.Attribute):
         prefix = _callee_name(func.value)
-        return f"{prefix}.{func.attr}" if prefix else func.attr
+        return f"{prefix}.{func.attr}" if prefix else None
     return None
 
 

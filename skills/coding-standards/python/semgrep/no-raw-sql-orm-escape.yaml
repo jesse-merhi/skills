@@ -10,7 +10,8 @@ rules:
       this rule covers the escape hatches it misses, such as a concatenated
       suffix on `.raw(...)`, `text(...)`, or `cursor.execute(...)`. The
       receiver is unconstrained, so a non-SQL `.execute(f"...")` — a GraphQL
-      client, say — matches too; mark that call `# nosemgrep`.
+      client, say — matches too; mark that call
+      `# nosemgrep: no-raw-sql-orm-escape`.
     metadata:
       standard: no-raw-sql
       category: security
@@ -20,7 +21,11 @@ rules:
           - pattern: $QUERY.raw($SQL, ...)
           - pattern: $QUERY.execute($SQL, ...)
           - pattern: $QUERY.executemany($SQL, ...)
+          - pattern: $QUERY.executescript($SQL, ...)
+          - pattern: $QUERY.exec_driver_sql($SQL, ...)
           - pattern: $QUERY.execute(text($SQL), ...)
+          - pattern: $QUERY.scalar(text($SQL), ...)
+          - pattern: $QUERY.scalars(text($SQL), ...)
       - metavariable-pattern:
           metavariable: $SQL
           pattern-either:
