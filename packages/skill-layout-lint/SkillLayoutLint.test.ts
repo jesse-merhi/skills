@@ -65,6 +65,16 @@ describe("lintSkillsRoot", () => {
     assert.isTrue(report.findings.every((finding) => finding.severity === "warning"))
   })))
 
+  it.effect("reports a reference that SKILL.md never links", () => live(Effect.gen(function*() {
+    const root = fixture("orphan")
+    const report = yield* lintSkillsRoot(root)
+
+    assert.deepStrictEqual(relativeFindings(report.findings, root), [
+      { line: undefined, message: "references/hidden.md is not linked from SKILL.md; link every reference from SKILL.md or delete it", path: "lonely/references/hidden.md" }
+    ])
+    assert.isTrue(report.findings.every((finding) => finding.severity === "error"))
+  })))
+
   it.effect("discovers skills nested below the skills root", () => live(Effect.gen(function*() {
     const report = yield* lintSkillsRoot(fixture("nested"))
 

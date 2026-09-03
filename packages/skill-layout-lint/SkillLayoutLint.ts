@@ -169,11 +169,28 @@ const fanOutFindings = (path: Path.Path, skillDirectory: string, skillPath: stri
   }))
 }
 
+const undisclosedFindings = (path: Path.Path, skill: SkillSource): Array<Finding> => {
+  const lines = splitLines(skill.content)
+  const fenced = fenceMask(lines)
+  const linked = new Set<string>()
+  lines.forEach((line, index) => {
+    if (fenced[index] === true) return
+    for (const target of linkTargets(line)) linked.add(path.resolve(skill.directory, target))
+  })
+  return skill.references.filter((reference) => !linked.has(reference.path)).map((reference) => ({
+    line: undefined,
+    message: `${path.relative(skill.directory, reference.path)} is not linked from ${skillFileName}; link every reference from ${skillFileName} or delete it`,
+    path: reference.path,
+    severity: "error"
+  }))
+}
+
 export const analyzeSkill = (path: Path.Path, skill: SkillSource): Array<Finding> => {
   const skillPath = path.join(skill.directory, skillFileName)
   return [
     ...bodyFindings(skillPath, skill.content),
     ...skill.references.flatMap((reference) => chainFindings(path, skill, skillPath, reference)),
+    ...undisclosedFindings(path, skill),
     ...fanOutFindings(path, skill.directory, skillPath, skill.content)
   ]
 }
