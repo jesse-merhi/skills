@@ -163,6 +163,15 @@ replaced, only extended.
    takes `internalPattern` too, for a repository whose path aliases are
    something other than `@/`, `~/`, or `#`.
 
+   Three presets take a file exemption or an opt-in that only the target can
+   name: `tailwind({ elevationModuleFiles })` turns the elevation rule off in the
+   module that defines the tokens, `reactNative({ colorModuleFiles })` does the
+   same for the palette module, and `typescript({ typeChecked: true })` enables
+   the project service only when the target wants type-aware rules (with it on,
+   a `.ts` file outside every tsconfig is a fatal parse error). Find those
+   modules in the survey and pass them; leave `typeChecked` off unless a
+   type-aware rule is enabled.
+
    When the target already has a flat config, add the imports and entries to
    that file instead of creating a second one. When the survey found `oxlint`
    or `biome`, add `lint/standards` to that tool's ignore configuration as
