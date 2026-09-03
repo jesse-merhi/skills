@@ -203,4 +203,12 @@ describe("coding standards catalog", () => {
       assert.deepEqual([...enabled].toSorted(), [...claimedRuleIds(name)].toSorted(), `${name} catalog claims`)
     }
   })
+
+  it("gives every standard a column for every ecosystem", () => {
+    for (const standard of catalog.standards) {
+      for (const ecosystem of Object.keys(catalog.ecosystems)) {
+        assert.property(standard.enforcement, ecosystem, `${standard.id} lacks a ${ecosystem} column`)
+      }
+    }
+  })
 })

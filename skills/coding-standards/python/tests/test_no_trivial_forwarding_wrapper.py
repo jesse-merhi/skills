@@ -2,14 +2,15 @@ from textwrap import dedent
 
 import pytest
 
+from standards_checks.finding import Finding
 from standards_checks.no_trivial_forwarding_wrapper import check_source
 
 
-def check(source: str):
+def check(source: str) -> list[Finding]:
     return check_source(dedent(source), "module.py")
 
 
-def test_reports_a_wrapper_that_forwards_every_parameter():
+def test_reports_a_wrapper_that_forwards_every_parameter() -> None:
     source = """\
     def fetch(customer_id, cursor):
         return load(customer_id, cursor)
@@ -23,7 +24,7 @@ def test_reports_a_wrapper_that_forwards_every_parameter():
     assert "`fetch` only forwards its parameters to `load`" in finding.message
 
 
-def test_names_a_dotted_callee_in_the_message():
+def test_names_a_dotted_callee_in_the_message() -> None:
     source = """\
     def fetch(customer_id):
         return _client.orders.get(customer_id)
@@ -32,7 +33,7 @@ def test_names_a_dotted_callee_in_the_message():
     assert "`_client.orders.get`" in finding.message
 
 
-def test_reports_a_nested_wrapper_at_its_own_column():
+def test_reports_a_nested_wrapper_at_its_own_column() -> None:
     source = """\
     def outer():
         def fetch(customer_id):
@@ -136,5 +137,5 @@ def test_reports_a_nested_wrapper_at_its_own_column():
         ),
     ],
 )
-def test_allows_functions_that_are_not_bare_forwarders(source: str):
+def test_allows_functions_that_are_not_bare_forwarders(source: str) -> None:
     assert check(source) == []

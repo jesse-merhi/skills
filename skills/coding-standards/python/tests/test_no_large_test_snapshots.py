@@ -2,19 +2,20 @@ from textwrap import dedent
 
 import pytest
 
+from standards_checks.finding import Finding
 from standards_checks.no_large_test_snapshots import check_source
 
 SYRUPY_SOURCE = """\
-def test_report(snapshot):
+def test_report(snapshot) -> None:
     assert build_report() == snapshot
 """
 
 
-def check(source: str, filename: str = "test_report.py"):
+def check(source: str, filename: str = "test_report.py") -> list[Finding]:
     return check_source(dedent(source), filename)
 
 
-def test_reports_a_bare_syrupy_snapshot_comparison():
+def test_reports_a_bare_syrupy_snapshot_comparison() -> None:
     (finding,) = check(SYRUPY_SOURCE)
     assert (finding.line, finding.col, finding.check_id) == (
         2,
@@ -24,18 +25,18 @@ def test_reports_a_bare_syrupy_snapshot_comparison():
     assert "syrupy snapshot assertion" in finding.message
 
 
-def test_reports_a_configured_syrupy_snapshot_comparison():
+def test_reports_a_configured_syrupy_snapshot_comparison() -> None:
     source = """\
-    def test_report(snapshot):
+    def test_report(snapshot) -> None:
         assert build_report() == snapshot(name="report")
     """
     (finding,) = check(source)
     assert "syrupy snapshot assertion" in finding.message
 
 
-def test_reports_a_pytest_snapshot_assertion():
+def test_reports_a_pytest_snapshot_assertion() -> None:
     source = """\
-    def test_report(snapshot):
+    def test_report(snapshot) -> None:
         snapshot.assert_match(build_report(), "report.json")
     """
     (finding,) = check(source)
@@ -47,13 +48,13 @@ def test_reports_a_pytest_snapshot_assertion():
     "filename",
     ["report_snapshot_test.py", "test_report_snapshot.py", "pkg/test_a_snapshot.py"],
 )
-def test_allows_snapshots_in_files_named_for_them(filename: str):
+def test_allows_snapshots_in_files_named_for_them(filename: str) -> None:
     assert check(SYRUPY_SOURCE, filename) == []
 
 
-def test_allows_an_assertion_on_the_specific_facts():
+def test_allows_an_assertion_on_the_specific_facts() -> None:
     source = """\
-    def test_report():
+    def test_report() -> None:
         report = build_report()
         assert report.total == 3
         assert report.currency == "GBP"
@@ -61,9 +62,9 @@ def test_allows_an_assertion_on_the_specific_facts():
     assert check(source) == []
 
 
-def test_ignores_an_unrelated_name_that_only_looks_like_the_fixture():
+def test_ignores_an_unrelated_name_that_only_looks_like_the_fixture() -> None:
     source = """\
-    def test_report(snapshotter):
+    def test_report(snapshotter) -> None:
         assert build_report() == snapshotter.value
     """
     assert check(source) == []

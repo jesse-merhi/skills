@@ -33,6 +33,9 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Install Node dependencies
         run: bun ci
 
@@ -42,6 +45,7 @@ jobs:
           ./tests/review-findings-test
           python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py'
           bun run validate:effect
+          bun run validate:python
 
       - name: Check remaining shell and JavaScript syntax
         run: |

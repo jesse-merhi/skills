@@ -14,7 +14,7 @@ BANNER_AND_WRAPPER = dedent("""\
 
 def test_reports_each_finding_in_ruff_format_and_exits_one(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
+) -> None:
     target = tmp_path / "module.py"
     target.write_text(BANNER_AND_WRAPPER)
 
@@ -32,7 +32,7 @@ def test_reports_each_finding_in_ruff_format_and_exits_one(
 
 def test_exits_zero_when_nothing_is_found(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
+) -> None:
     (tmp_path / "module.py").write_text("value = 1\n")
 
     assert main([str(tmp_path)]) == 0
@@ -41,7 +41,7 @@ def test_exits_zero_when_nothing_is_found(
 
 def test_checks_python_files_under_a_directory_but_skips_caches(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
+) -> None:
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "module.py").write_text("# ----------\n")
     (tmp_path / ".venv").mkdir()
@@ -60,7 +60,7 @@ def test_checks_python_files_under_a_directory_but_skips_caches(
 
 def test_reports_a_file_it_cannot_parse_without_pretending_it_is_clean(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
+) -> None:
     target = tmp_path / "broken.py"
     target.write_text("def fetch(:\n")
 

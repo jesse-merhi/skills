@@ -2,7 +2,6 @@
 # `lint.select` is exactly the union of every `kind: "ruff"` select in the
 # python column of catalog.json; tests/test_catalog.py fails if the two drift.
 
-target-version = "py312"
 
 [lint]
 select = [

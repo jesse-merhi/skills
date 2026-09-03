@@ -11,7 +11,8 @@
     "diagnostics": "effect-language-service diagnostics --project tsconfig.json --strict",
     "lint": "eslint --max-warnings 0 packages skills vitest.config.ts eslint.config.js",
     "test": "vitest run",
-    "validate:effect": "bun run lint && bun run check && bun run diagnostics && bun run test"
+    "validate:effect": "bun run lint && bun run check && bun run diagnostics && bun run test",
+    "validate:python": "cd skills/coding-standards/python && uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy standards_checks tests && uv run pytest -q && uvx semgrep@1.173.0 --test --config semgrep/ semgrep/"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-beta.107",
