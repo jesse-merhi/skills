@@ -2,7 +2,8 @@ import playwrightPlugin from "eslint-plugin-playwright";
 
 import { standards } from "../standards-plugin.mjs";
 
-const DEFAULT_FILES = ["**/tests/e2e/**/*.{ts,tsx}"];
+// Common Playwright layouts; pass `files` when specs live elsewhere.
+const DEFAULT_FILES = ["**/e2e/**/*.{spec,test}.{ts,tsx}", "**/playwright/**/*.{spec,test}.{ts,tsx}", "**/*.e2e.{spec,test}.{ts,tsx}"];
 export default function playwright(options = {}) {
 	const brittleSelectorOptions = options.checks === undefined ? {} : { checks: options.checks };
 

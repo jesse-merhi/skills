@@ -3,7 +3,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import reactEffect from "eslint-plugin-react-you-might-not-need-an-effect";
 
-const DEFAULT_FILES = ["**/*.{jsx,tsx}"];
+const DEFAULT_FILES = ["**/*.{js,jsx,ts,tsx}"];
 const DEFAULT_COMPONENTS = {
 	Button: "button",
 	Checkbox: "input",
