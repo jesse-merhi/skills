@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as Schema from "effect/Schema";
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +17,7 @@ const MarkerJson = Schema.fromJsonString(Schema.Struct({
 }));
 const LockOwnerJson = Schema.fromJsonString(Schema.Struct({
   pid: Schema.Int.pipe(Schema.check(Schema.isGreaterThan(0))),
+  startIdentity: Schema.NonEmptyString,
   token: Schema.NonEmptyString,
 }));
 
@@ -83,9 +85,17 @@ function sleep(milliseconds) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
+function processStartIdentity(pid) {
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+  if (result.status !== 0 || result.stdout.trim().length === 0) return undefined;
+  return result.stdout.trim();
+}
+
 export function withOutputLock(outputRoot, operation) {
   const lockRoot = `${outputRoot}.lock`;
-  const owner = { pid: process.pid, token: crypto.randomUUID() };
+  const startIdentity = processStartIdentity(process.pid);
+  if (startIdentity === undefined) throw new Error(`unable to identify model view lock process ${process.pid}`);
+  const owner = { pid: process.pid, startIdentity, token: crypto.randomUUID() };
   const ownerPath = `${lockRoot}.owner-${owner.pid}-${owner.token}`;
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   fs.mkdirSync(path.dirname(outputRoot), { recursive: true });
@@ -130,10 +140,16 @@ export function reclaimAbandonedLock(lockRoot) {
   if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0) return false;
   try {
     process.kill(owner.pid, 0);
-    return false;
   } catch (error) {
     if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ESRCH") return false;
+    return quarantineAbandonedLock(lockRoot);
   }
+  const currentStartIdentity = processStartIdentity(owner.pid);
+  if (currentStartIdentity === undefined || currentStartIdentity === owner.startIdentity) return false;
+  return quarantineAbandonedLock(lockRoot);
+}
+
+function quarantineAbandonedLock(lockRoot) {
   const abandonedRoot = `${lockRoot}.abandoned-${process.pid}-${crypto.randomUUID()}`;
   try {
     fs.renameSync(lockRoot, abandonedRoot);

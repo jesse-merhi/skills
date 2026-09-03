@@ -42,6 +42,12 @@ function fixture(t) {
   return { output, source, temporary };
 }
 
+function processStartIdentity(pid) {
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
 test("recognizes supported model identifiers and same-family fallbacks", () => {
   const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
   const configuredFable = resolveProfile("claude-fable-5[1m]");
@@ -92,7 +98,7 @@ test("materializes one contained static variant and links shared resources", (t)
 test("does not reclaim a live lock based on its age", (t) => {
   const current = fixture(t);
   const lockRoot = current.output + ".lock";
-  fs.writeFileSync(lockRoot, JSON.stringify({ pid: process.pid, token: "live" }));
+  fs.writeFileSync(lockRoot, JSON.stringify({ pid: process.pid, startIdentity: processStartIdentity(process.pid), token: "live" }));
   fs.utimesSync(lockRoot, new Date(0), new Date(0));
 
   assert.equal(reclaimAbandonedLock(lockRoot), false);
@@ -104,7 +110,16 @@ test("reclaims a lock whose owning process has exited", (t) => {
   const lockRoot = current.output + ".lock";
   const exited = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
   assert.equal(exited.status, 0, exited.stderr);
-  fs.writeFileSync(lockRoot, JSON.stringify({ pid: Number(exited.stdout), token: "dead" }));
+  fs.writeFileSync(lockRoot, JSON.stringify({ pid: Number(exited.stdout), startIdentity: "exited process", token: "dead" }));
+
+  assert.equal(reclaimAbandonedLock(lockRoot), true);
+  assert.equal(fs.existsSync(lockRoot), false);
+});
+
+test("reclaims a lock after its owner PID is reused", (t) => {
+  const current = fixture(t);
+  const lockRoot = current.output + ".lock";
+  fs.writeFileSync(lockRoot, JSON.stringify({ pid: process.pid, startIdentity: "different process start", token: "reused" }));
 
   assert.equal(reclaimAbandonedLock(lockRoot), true);
   assert.equal(fs.existsSync(lockRoot), false);
