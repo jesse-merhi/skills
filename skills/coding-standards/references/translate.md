@@ -81,8 +81,9 @@ already handles, while costing a test suite and a CLI to maintain.
 
    Done when every existing standard carries the new column, no column is
    empty — a standard this ecosystem cannot enforce takes a `not-applicable`
-   entry with its reason — and the catalog still decodes against
-   `catalog.schema.ts`.
+   entry with its reason — and the catalog decodes against
+   `catalog.schema.ts`, whose `Enforcement` struct needs the new column and
+   the kinds it admits.
 
 6. **Run the repository validation.**
 

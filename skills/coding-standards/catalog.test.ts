@@ -46,7 +46,11 @@ const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "ca
 
 const javascriptPresets = catalog.presets.javascript ?? {}
 
-const enforcements = catalog.standards.flatMap((standard) => Object.values(standard.enforcement).flat())
+const enforcements = catalog.standards.flatMap((standard) => [
+  ...standard.enforcement.javascript,
+  ...standard.enforcement.python,
+  ...(standard.enforcement.script ?? [])
+])
 
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
@@ -112,7 +116,7 @@ const isEnabled = (setting: typeof RuleSetting.Type): boolean => {
 }
 
 interface MutableStandard {
-  enforcement: { python: Array<Record<string, unknown>> }
+  enforcement: { javascript: Array<Record<string, unknown>>; python: Array<Record<string, unknown>> }
 }
 
 const pythonEntries = (standards: ReadonlyArray<MutableStandard>): ReadonlyArray<Record<string, unknown>> =>
@@ -143,6 +147,20 @@ const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandar
     "an enforcement entry carrying a key its kind does not define",
     (standards) => {
       for (const entry of pythonEntries(standards)) entry.severity = "error"
+    }
+  ],
+  [
+    "a ruff entry pasted into the javascript column",
+    (standards) => {
+      for (const standard of standards) standard.enforcement.javascript.push({ kind: "ruff", select: ["S608"] })
+    }
+  ],
+  [
+    "an ESLint rule entry pasted into the python column",
+    (standards) => {
+      for (const standard of standards) {
+        standard.enforcement.python.push({ kind: "rule", presets: ["base"], rule: "r.mjs", test: "r.test.mjs" })
+      }
     }
   ]
 ]
@@ -237,14 +255,8 @@ describe("coding standards catalog", () => {
       assert.deepEqual([...enabled].toSorted(), [...claimedRuleIds(name)].toSorted(), `${name} catalog claims`)
     }
   })
-  it("keys every enforcement column and preset family by a known ecosystem", () => {
-    const ecosystemNames = new Set(Object.keys(catalog.ecosystems))
+  it("keys every preset family by a known ecosystem and claims every rule in a preset", () => {
     const families = new Set(Object.values(catalog.ecosystems).map((ecosystem) => ecosystem.presets))
-    for (const standard of catalog.standards) {
-      for (const column of Object.keys(standard.enforcement)) {
-        assert.isTrue(column === "script" || ecosystemNames.has(column), `${standard.id} has an unknown column ${column}`)
-      }
-    }
     for (const family of Object.keys(catalog.presets)) {
       assert.isTrue(families.has(family), `preset family ${family} belongs to no ecosystem`)
     }
@@ -255,12 +267,14 @@ describe("coding standards catalog", () => {
     }
   })
 
-  it("rejects a preset or baseline whose applies names no condition", () => {
-    const raw: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(
-      readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
-    )
-    raw.presets.javascript.base.applies = {}
-    assert.throws(() => decodeCatalog(JSON.stringify(raw)))
+  it("rejects an applies naming no condition and an ecosystem detecting nothing", () => {
+    const source = readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
+    const presets: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(source)
+    presets.presets.javascript.base.applies = {}
+    assert.throws(() => decodeCatalog(JSON.stringify(presets)))
+    const ecosystems: { ecosystems: { python: { detect: unknown } } } = JSON.parse(source)
+    ecosystems.ecosystems.python.detect = []
+    assert.throws(() => decodeCatalog(JSON.stringify(ecosystems)))
   })
 
   it.each(rejectedMutations)("rejects %s", (_, mutate) => {

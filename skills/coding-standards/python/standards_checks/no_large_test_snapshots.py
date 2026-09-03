@@ -39,9 +39,10 @@ def _is_snapshot_allowed(filename: str) -> bool:
 
 
 def _is_test_file(filename: str) -> bool:
-    # Directory names count from the working directory, so a checkout that
-    # lives under a directory called `test` does not turn its whole tree into
-    # test files.
+    # Directory names count from the working directory, the target root when
+    # the CLI runs from its wired task, so a checkout under a directory called
+    # `test` does not turn its whole tree into test files. A path outside the
+    # working directory keeps every ancestor.
     path = Path(filename)
     if path.is_absolute() and path.is_relative_to(Path.cwd()):
         path = path.relative_to(Path.cwd())

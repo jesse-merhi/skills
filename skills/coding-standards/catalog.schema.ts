@@ -48,16 +48,21 @@ const NotApplicableEnforcement = Schema.Struct({
   reason: Schema.NonEmptyString
 })
 
-const Enforcement = Schema.Union([
-  CheckEnforcement,
-  MypyEnforcement,
-  NotApplicableEnforcement,
-  PluginEnforcement,
-  RuffEnforcement,
-  RuleEnforcement,
-  ScriptEnforcement,
-  SemgrepEnforcement
-])
+// Each column admits only its own ecosystem's kinds, so a ruff entry pasted
+// into the javascript column is rejected instead of claiming a code nothing enables.
+const Enforcement = Schema.Struct({
+  javascript: Schema.NonEmptyArray(Schema.Union([PluginEnforcement, RuleEnforcement])),
+  python: Schema.NonEmptyArray(
+    Schema.Union([
+      CheckEnforcement,
+      MypyEnforcement,
+      NotApplicableEnforcement,
+      RuffEnforcement,
+      SemgrepEnforcement
+    ])
+  ),
+  script: Schema.optionalKey(Schema.NonEmptyArray(ScriptEnforcement))
+})
 
 const PackageNames = Schema.NonEmptyArray(Schema.NonEmptyString)
 
@@ -82,7 +87,7 @@ const Baseline = Schema.Struct({
 })
 
 const Standard = Schema.Struct({
-  enforcement: Schema.Record(Schema.NonEmptyString, Schema.NonEmptyArray(Enforcement)),
+  enforcement: Enforcement,
   id: Schema.NonEmptyString,
   origin: Schema.NonEmptyString,
   principle: Schema.NonEmptyString,
@@ -102,7 +107,7 @@ const Standard = Schema.Struct({
 })
 
 const Ecosystem = Schema.Struct({
-  detect: Schema.Array(Schema.NonEmptyString),
+  detect: Schema.NonEmptyArray(Schema.NonEmptyString),
   packages: Schema.optionalKey(Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)),
   presets: Schema.NonEmptyString
 })

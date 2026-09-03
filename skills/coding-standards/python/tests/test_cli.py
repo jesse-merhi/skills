@@ -55,7 +55,7 @@ def test_exits_zero_when_nothing_is_found(
     assert capsys.readouterr().out == ""
 
 
-def test_checks_python_files_under_a_directory_but_skips_caches(
+def test_checks_python_files_under_a_directory_but_skips_environments(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     (tmp_path / "pkg").mkdir()
@@ -66,6 +66,8 @@ def test_checks_python_files_under_a_directory_but_skips_caches(
     (tmp_path / "node_modules" / "vendored.py").write_text("# ----------\n")
     (tmp_path / "__pycache__").mkdir()
     (tmp_path / "__pycache__" / "cached.py").write_text("# ----------\n")
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "venv" / "vendored.py").write_text("# ----------\n")
 
     assert main([str(tmp_path)]) == 1
     (reported,) = capsys.readouterr().out.splitlines()

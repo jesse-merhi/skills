@@ -45,9 +45,9 @@ invariants a new entry has to satisfy.
   - `origin` — where the standard came from.
   - `enforcement.<ecosystem>` — an array, one column per ecosystem, keyed by
     the same names as `ecosystems`. `script` is the one exception: it holds the
-    shell twin of a rule, for file types no ecosystem linter parses. Never
-    empty: a standard nothing enforces in a column takes a `not-applicable`
-    entry.
+    shell twin of a rule, for file types no ecosystem linter parses. Each
+    column admits only its ecosystem's kinds. Never empty: a standard nothing
+    enforces in a column takes a `not-applicable` entry.
 
 ## Enforcement kinds
 
@@ -67,7 +67,9 @@ invariants a new entry has to satisfy.
 `catalog.schema.ts` rejects on decode:
 
 - an empty `enforcement.<ecosystem>` array, so a standard this ecosystem cannot
-  enforce has to carry a `not-applicable` entry rather than `[]`.
+  enforce has to carry a `not-applicable` entry rather than `[]`, and a kind in
+  the wrong column: `ruff` under `javascript`, `rule` under `python`.
+- an ecosystem with no `detect` files.
 - an `applies` naming no condition, and a `ruff` `select` entry
   that is empty.
 - any key an enforcement kind does not define, and any value of the wrong type:

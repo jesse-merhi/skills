@@ -27,7 +27,20 @@ CHECKS: tuple[CheckSource, ...] = (
     no_trivial_forwarding_wrapper.check_source,
 )
 
-IGNORED_DIRECTORY_NAMES = frozenset({"__pycache__", "node_modules"})
+# The directory names ruff's default exclude skips, minus the dot-prefixed
+# ones, which are skipped as a class.
+IGNORED_DIRECTORY_NAMES = frozenset(
+    {
+        "__pycache__",
+        "__pypackages__",
+        "_build",
+        "buck-out",
+        "dist",
+        "node_modules",
+        "site-packages",
+        "venv",
+    }
+)
 
 
 def _is_searchable(path: Path) -> bool:
