@@ -113,8 +113,7 @@ function hasNoZodTypeAnyDisableComment(context, node) {
 }
 
 function hasNoZodTypeAnyDisableCommentInRange(context, node) {
-	return context
-		.getSourceCode()
+	return context.sourceCode
 		.getAllComments()
 		.some((comment) => {
 			return (
