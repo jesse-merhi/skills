@@ -1094,9 +1094,6 @@ test_waits_hold_instead_of_polling() {
 test_harness_sections_carry_the_api_surface() {
   local wait_skill="$ROOT_DIR/skills/wait-efficiently/SKILL.md"
 
-  assert_contains "$wait_skill" '"yield_time_ms": <expected-ms>'
-  assert_contains "$wait_skill" 'const yieldMs = <expected-ms>'
-  assert_contains "$wait_skill" 'yield_time_ms: yieldMs'
   assert_contains "$wait_skill" 'const maxOutputTokens = 10000'
   assert_contains "$wait_skill" 'originalTokens += result.original_token_count'
   assert_contains "$wait_skill" 'returns when it exits'

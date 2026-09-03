@@ -86,9 +86,10 @@ ceiling is reached. Set `<expected-ms>` before writing the cell: take the
 duration named in Hold step 1, express the whole expected run in milliseconds,
 and cap it at the maximum the current tool schema accepts. The `@exec` header
 is JSON and cannot read `yieldMs`, so type the same number in both places;
-without the header the cell yields at its 10-second default no matter what the
-calls ask for. A sample value copied from a template is the common failure: it
-returns with the work still running and buys another round trip for nothing.
+without the header the cell yields at the exec tool's own default, which is far
+shorter than most waits, no matter what the calls ask for. A sample value copied
+from a template is the common failure: it returns with the work still running
+and buys another round trip for nothing.
 
 Accumulate each terminal result inside the cell so output received before the
 final wait is not lost. Make any command behind a review or validation gate
@@ -109,7 +110,7 @@ is still running after an unrelated event or the deadline.
 
 When `wait_agent` or `wait_threads` runs inside an exec cell, give the cell the
 same `// @exec: {"yield_time_ms": <expected-ms>}` header sized to that
-deadline; without the header the cell yields at its 10-second default
+deadline; without the header the cell yields at the exec tool's own default
 regardless of the call's own `timeoutMs`.
 
 Keep the parent turn active until every required agent reaches a terminal state.
