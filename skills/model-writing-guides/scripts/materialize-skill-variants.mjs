@@ -24,13 +24,13 @@ export const profiles = [
   {
     id: "gpt-5.6",
     family: "openai-gpt",
-    rank: 56,
+    version: [5, 6],
     matches: /^(?:openai\/)?gpt-5\.6(?:-(?:sol|terra|luna))?(?:-\d{4}-\d{2}-\d{2})?$/i,
   },
   {
     id: "claude-fable-5.1",
     family: "anthropic-fable",
-    rank: 51,
+    version: [5, 1],
     matches: /^(?:(?:anthropic\/)?claude-fable-5(?:(?:[.-]1)(?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
   },
 ];
@@ -42,6 +42,21 @@ function modelFamily(model) {
   return undefined;
 }
 
+function modelVersion(model, family) {
+  const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase();
+  if (family === "openai-gpt") {
+    const match = normalized.match(/^gpt-(\d+)(?:[.-](\d+))?/);
+    return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
+  }
+  if (normalized === "fable[1m]" || normalized === "claude-fable-5[1m]") return [5, 1];
+  const match = normalized.match(/^(?:claude-)?fable-(\d+)(?:[.-](\d+))?/);
+  return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
+}
+
+function compareVersions(left, right) {
+  return left[0] - right[0] || left[1] - right[1];
+}
+
 export function resolveProfile(model) {
   const unqualifiedModel = model.slice(model.lastIndexOf("/") + 1);
   const exact = profiles.find((profile) => profile.matches.test(unqualifiedModel));
@@ -51,9 +66,13 @@ export function resolveProfile(model) {
   }
   const fallback = profiles
     .filter((profile) => profile.family === family)
-    .sort((left, right) => right.rank - left.rank)[0];
+    .sort((left, right) => compareVersions(right.version, left.version))[0];
   if (fallback === undefined) {
     throw new Error(`no skill profile is available for model family ${family}`);
+  }
+  const requestedVersion = modelVersion(model, family);
+  if (exact === undefined && (requestedVersion === undefined || compareVersions(requestedVersion, fallback.version) < 0)) {
+    throw new Error(`model ${model} is older than the earliest supported ${family} profile`);
   }
   return { exact: exact !== undefined, profile: exact ?? fallback };
 }
@@ -169,7 +188,7 @@ function selectVariant(skill, requestedProfile) {
   if (exact !== undefined) return { path: exact, profile: requestedProfile };
   const fallback = profiles
     .filter((profile) => profile.family === requestedProfile.family)
-    .sort((left, right) => right.rank - left.rank)
+    .sort((left, right) => compareVersions(right.version, left.version))
     .find((profile) => availableVariant(skill, profile) !== undefined);
   if (fallback === undefined) {
     throw new Error(`${skill.name} has no ${requestedProfile.family} variant`);

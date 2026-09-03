@@ -172,9 +172,12 @@ test("prints JSON output and emits one same-family fallback notice per session",
   assert.match(thirdSession.notice, /not been updated for gpt-5\.7-sol/);
 });
 
-test("rejects unsupported model families", () => {
+test("rejects unsupported families and older same-family models", () => {
   assert.throws(() => resolveProfile("gemini-3-pro"), /unsupported model family/);
   assert.throws(() => resolveProfile("gpt-oss-120b"), /unsupported model family/);
+  assert.throws(() => resolveProfile("gpt-4.1"), /older than the earliest supported/);
+  assert.throws(() => resolveProfile("gpt-5.5"), /older than the earliest supported/);
+  assert.throws(() => resolveProfile("claude-fable-5.0"), /older than the earliest supported/);
 });
 
 test("rejects skill names that could escape the generated view", (t) => {
