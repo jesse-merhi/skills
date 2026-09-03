@@ -6,10 +6,9 @@ understand this without the agent thread?
 
 ## Restore the missing premise
 
-The reader reset in
-[`speak-fking-english/references/reader-reset.md`](../../speak-fking-english/references/reader-reset.md)
-owns this move. Run it with the reviewer as the reader, and back up just far
-enough to explain why the change exists.
+The reader reset in `speak-fking-english` owns this move. Run it with the
+reviewer as the reader, and back up just far enough to explain why the change
+exists.
 
 One thing it cannot know: a ticket ID, sprint name, internal nickname, file
 path, or class name is not a premise. None of them explains the change to

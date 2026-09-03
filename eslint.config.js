@@ -12,7 +12,7 @@ import noLargeTestSnapshots from "./eslint-rules/no-large-test-snapshots.js"
 import noTrivialForwardingWrapper from "./eslint-rules/no-trivial-forwarding-wrapper.js"
 
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
-const testFiles = ["**/*.test.ts", "eslint-rules/rules.test.mjs"]
+const testFiles = ["**/*.test.ts"]
 const jsonParseAllowedFiles = ["**/*.test.ts", "**/*.test.mjs"]
 const runtimeJavaScriptFiles = ["skills/**/*.mjs"]
 const lintInfrastructureFiles = ["eslint.config.js", "eslint-rules/**/*.js", "eslint-rules/**/*.mjs"]

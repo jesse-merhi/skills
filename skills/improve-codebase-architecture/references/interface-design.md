@@ -10,7 +10,7 @@ candidate.
 Explain:
 
 - constraints the new interface must satisfy
-- dependencies and their category from [deepening.md](deepening.md)
+- dependencies and their deepening category
 - a short illustrative code sketch to make the constraints concrete
 
 ### Explore alternatives

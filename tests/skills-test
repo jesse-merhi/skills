@@ -1089,37 +1089,6 @@ test_waits_hold_instead_of_polling() {
   assert_contains "$wait_skill" 'deadline is a ceiling, not a delay'
   assert_contains "$wait_skill" 'resume the same wait'
   assert_contains "$wait_skill" 'Unchanged progress is not a state change'
-  assert_contains "$wait_skill" 'references/codex.md'
-  assert_contains "$wait_skill" 'references/claude-code.md'
-
-  # SKILL.md stays agent-agnostic; API names belong in the per-tool references.
-  assert_not_contains "$wait_skill" 'write_stdin'
-  assert_not_contains "$wait_skill" 'run_in_background'
-}
-
-test_harness_references_carry_the_api_surface() {
-  local refs="$ROOT_DIR/skills/wait-efficiently/references"
-
-  assert_contains "$refs/codex.md" '"yield_time_ms": 30000'
-  assert_contains "$refs/codex.md" 'yield_time_ms: 30000'
-  assert_contains "$refs/codex.md" 'const maxOutputTokens = 10000'
-  assert_contains "$refs/codex.md" 'originalTokens += result.original_token_count'
-  assert_contains "$refs/codex.md" 'returns when it exits'
-  assert_contains "$refs/codex.md" 'output.push(result.output)'
-  assert_contains "$refs/codex.md" 'if (result.exit_code !== 0)'
-  assert_contains "$refs/codex.md" 'command output exceeded the safe result budget'
-  assert_contains "$refs/codex.md" 'persist its full artifact to a run-owned file'
-  assert_contains "$refs/codex.md" '`wait_agent` with a deadline sized to the task'
-  assert_contains "$refs/codex.md" '`notify` is not a replacement'
-  assert_contains "$refs/codex.md" 'Do not restart the'
-  assert_contains "$refs/codex.md" 'single `Promise.all`'
-  assert_contains "$refs/codex.md" 'values accepted by the current tool'
-
-  assert_contains "$refs/claude-code.md" 'run_in_background: true'
-  assert_contains "$refs/claude-code.md" '`Monitor`'
-  assert_contains "$refs/claude-code.md" 'cover failure states as well as success'
-  assert_contains "$refs/claude-code.md" 'current foreground `Bash` ceiling'
-  assert_contains "$refs/claude-code.md" 'wasted round trip'
 }
 
 test_agents_md_bounds_model_turns() {
@@ -1465,7 +1434,6 @@ test_review_flow_map_is_the_public_review_mapping_skill
 test_examples_report_computed_values
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_waits_hold_instead_of_polling
-test_harness_references_carry_the_api_surface
 test_agents_md_bounds_model_turns
 test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths

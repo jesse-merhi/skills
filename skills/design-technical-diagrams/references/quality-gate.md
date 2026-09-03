@@ -57,8 +57,8 @@ fonts, icons, routes, labels, and destination-size readability.
 ## Automated assistance
 
 Use browser measurements for overflow, clipping, overlaps, and console errors.
-For dense inline SVG, use [svg-linting.md](svg-linting.md). Treat findings as an
-inspection queue. Zero findings do not certify composition or clarity.
+Treat findings as an inspection queue. Zero findings do not certify composition
+or clarity.
 
 ## Completion evidence
 
