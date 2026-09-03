@@ -201,10 +201,11 @@ Then:
 2. If the target skills directory is a symlink, stop and ask unless it points at
    an old whole-directory install of this repo.
 3. Re-scan the target directory after publishing the view. Remove a dead
-   symlink only when its stored target is under this exact `VIEW_ROOT`. This
-   retires repo-owned skills removed or renamed during publication, such as
-   `writing-great-skills` becoming `writing-for-agents`, without touching real
-   directories or unrelated links.
+   symlink only when its stored target is under this exact `VIEW_ROOT`, the
+   current `REPO/skills`, or an `OLD_REPO/skills` root explicitly verified
+   during ownership transfer. This retires repo-owned skills removed or renamed
+   during publication, such as `writing-great-skills` becoming
+   `writing-for-agents`, without touching real directories or unrelated links.
 4. Discover each immediate skill directory under `VIEW_ROOT`. Read its
    `SKILL.md` frontmatter and stop if two entries have the same `name`.
 5. Link `<target>/<name>` to `VIEW_ROOT/<name>`.
@@ -280,9 +281,12 @@ do not let a mismatched CLI rewrite that file. A missing
 
 Resolve the configured model, then materialize into
 `~/.openclaw/.skill-variants/jesse-merhi-skills` with the command from step 7.
-Preserve every existing entry in `skills.load.extraDirs`, append that absolute
-view path once, remove exact duplicates, and write the complete JSON array back
-with `--strict-json`. For example, when the existing array is empty:
+Remove the exact current `REPO/skills` entry and an explicitly verified previous
+repo skills root from `skills.load.extraDirs`; those are legacy installs of this
+collection and would duplicate every skill. Preserve every unrelated entry,
+append the absolute view path once, remove exact duplicates, and write the
+complete JSON array back with `--strict-json`. For example, when the remaining
+array is empty:
 
 ```sh
 openclaw config set skills.load.extraDirs '["/absolute/path/to/generated/view"]' --strict-json
