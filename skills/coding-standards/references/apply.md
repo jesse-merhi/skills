@@ -81,12 +81,22 @@ replaced, only extended.
    lockfile:
 
    ```
-   bun add -d --exact <pkg>@<version>
-   npm i -D --save-exact <pkg>@<version>
-   pnpm add -D --save-exact <pkg>@<version>
-   yarn add -D --exact <pkg>@<version>
-   uv add --dev <pkg>==<version>
+   bun.lock          -> bun add -d --exact <pkg>@<version>
+   package-lock.json -> npm i -D --save-exact <pkg>@<version>
+   pnpm-lock.yaml    -> pnpm add -D --save-exact <pkg>@<version>
+   yarn.lock         -> yarn add -D --exact <pkg>@<version>
+   uv.lock           -> uv add --dev <pkg>==<version>
+   poetry.lock       -> poetry add --group dev <pkg>==<version>
+   pdm.lock          -> pdm add -dG dev <pkg>==<version>
    ```
+
+   A Python target with none of those lockfiles manages its environment itself:
+   add the pinned `<pkg>==<version>` line to the dev requirements file it
+   already has (`requirements-dev.txt` or whatever it calls that file) rather
+   than picking a manager for it. The lockfile decides because the managers are
+   not interchangeable — `uv add` on a poetry project rewrites `pyproject.toml`
+   into uv's dependency layout, which is a change to the target's build the user
+   did not ask for.
 
    Show the exact command with every package and version in it. Then wait.
 
@@ -104,26 +114,32 @@ replaced, only extended.
    tool caches from its own test runs, and a wholesale directory copy drags
    them into the target.
 
-   The catalog names what to copy: every `presets.<ecosystem>.*.file` of a
-   detected ecosystem — that file when the entry names a file, every tracked
-   file under it when the entry names a directory — minus every `*.test.mjs` in
-   the JavaScript family, whose rule tests import vitest that the target has no
-   reason to install. Read those paths out of `catalog.json`; a list written
-   here drifts the first time a preset is added.
+   The catalog names what to copy through the **vendored roots** of each
+   detected ecosystem, and `sync` walks these same roots to find files added
+   upstream:
 
-   - JavaScript: the preset files import `eslint/rules/` and
-     `eslint/standards-plugin.mjs`, so vendor all of `eslint/` under the same
-     rule. That deliberately brings presets this target did not select: the
-     config never imports them, so they are inert until their packages exist,
-     and holding them under the manifest lets `sync` keep them current so
-     enabling one later is a single import line.
-   - Python: no preset entry names `python/tests`, `pyproject.toml`, or
-     `uv.lock`, and none should — those test and build the catalog itself and
-     mean nothing in a target. The vendored checks need Python 3.10 or newer;
-     when the target `requires-python` allows less, stop and say so.
-   - Every baseline in `catalog.baselines` whose `applies` matches the target,
-     evaluated exactly as the presets in step 3: copy its `file` to the
-     `target` path it names, and only when nothing is there already.
+   - JavaScript: one root, `eslint/`. The preset files import `eslint/rules/`
+     and `eslint/standards-plugin.mjs`, so the whole directory is vendored
+     rather than the individual `presets.javascript.*.file` entries. That
+     deliberately brings presets this target did not select: the config never
+     imports them, so they are inert until their packages exist, and holding
+     them under the manifest lets `sync` keep them current so enabling one
+     later is a single import line.
+   - Python: each `presets.python.*.file` is a root — that file when the entry
+     names a file, the directory when it names one. No preset entry names
+     `python/tests`, `pyproject.toml`, or `uv.lock`, and none should — those
+     test and build the catalog itself and mean nothing in a target. The
+     vendored checks need Python 3.10 or newer; when the target
+     `requires-python` allows less, stop and say so.
+
+   Copy every tracked file under those roots, minus every `*.test.mjs`, whose
+   rule tests import vitest that the target has no reason to install. Read the
+   Python roots out of `catalog.json`; a list written here drifts the first time
+   a preset is added.
+
+   Then every baseline in `catalog.baselines` whose `applies` matches the
+   target, evaluated exactly as the presets in step 3: copy its `file` to the
+   `target` path it names, and only when nothing is there already.
 
    The `tsconfig-strict` baseline lands at
    `lint/standards/tsconfig.strict.json` and then goes into the `extends` of
@@ -192,7 +208,9 @@ replaced, only extended.
 
    Python: point the target ruff config at the vendored one with
    `extend = "lint/standards/python/ruff.toml"`, creating `ruff.toml` if the
-   target has none. mypy has no equivalent — no mypy config file can extend
+   target has none. The vendored file uses `lint.extend-select`, so extending it
+   adds the catalog codes on top of whatever the target's own `select` already
+   enables rather than replacing it. mypy has no equivalent — no mypy config file can extend
    another — so write the options from `lint/standards/python/mypy.ini` into
    the target's `[tool.mypy]` table in `pyproject.toml`, or into `[mypy]` in
    the mypy config file the target already has. The vendored file stays as the
@@ -206,7 +224,7 @@ replaced, only extended.
    ```
    ruff check <src dirs>
    mypy <src dirs>
-   semgrep --config lint/standards/python/semgrep <src dirs>
+   semgrep --error --config lint/standards/python/semgrep <src dirs>
    PYTHONPATH=lint/standards/python python -m standards_checks <src dirs>
    ```
 
@@ -215,6 +233,9 @@ replaced, only extended.
    has no task runner at all, add a `Makefile` with a `lint` target; a make
    target name cannot contain a colon, so the Python entry point there is
    `lint-python`, not `lint:python`.
+
+   `semgrep` carries `--error` because without it semgrep prints its findings
+   and still exits 0, so a CI job that runs it stays green over every violation.
 
    A wired entry point stops at the first command that fails, so step 9 runs
    each command separately to get every count.
@@ -296,10 +317,14 @@ replaced, only extended.
     the output that shows each:
 
     - `eslint --print-config <a real source file>` lists `standards/*` rules and
-      the rules of the selected presets. For Python, run each command against a
-      real source file. A tool that prints nothing on a clean file — the checks
-      CLI — proves nothing that way, so run it against a file holding a known
-      violation and show the finding it reports.
+      the rules of the selected presets. For ruff, the equivalent is
+      `ruff check --show-settings <a real source file> | grep -A40 'linter.rules.enabled'`,
+      which lists the rules enabled for that file: the catalog codes have to be
+      among them, since the `extend` is silently inert when the target config
+      never reads it. For the rest, run each command against a real source file.
+      A tool that prints nothing on a clean file — the checks CLI — proves
+      nothing that way, so run it against a file holding a known violation and
+      show the finding it reports.
     - the lint script exists and runs those commands.
     - CI runs that script, or the target has no CI.
 

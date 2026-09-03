@@ -90,8 +90,8 @@ invariants a new entry has to satisfy.
 
 `python/tests/test_catalog.py` enforces:
 
-- `python/ruff.toml` `lint.select` equals the union of every python `ruff`
-  `select`, with no duplicates.
+- `python/ruff.toml` `lint.extend-select` equals the union of every python
+  `ruff` `select`, with no duplicates.
 - `python/mypy.ini` equals the union of every python `mypy` `options`.
 - every `check` `module` imports, and the file it loads from is the `file` the
   same entry names.

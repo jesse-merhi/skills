@@ -34,12 +34,16 @@ started as — use `apply` instead.
    rather than guessing which side is right.
 
    A file added upstream has no manifest entry at all, so the table cannot see
-   it. Find those separately: for every vendored `presets.<eco>.*.file` that
-   names a directory, compare `git ls-files` of that directory in the catalog
-   against the manifest keys vendored from it. Anything upstream and unlisted
-   is **new upstream**. Skipping this leaves a target that no longer runs:
-   upstream adds a check module and imports it from `cli.py`, sync updates
-   `cli.py` alone, and the CLI now imports a module that is not there.
+   it. Find those separately: for every vendored root of apply's **Vendor the
+   files** step — `eslint/` for JavaScript, each `presets.python.*.file` for
+   Python — compare `git ls-files <root>` in the catalog against the manifest
+   keys vendored from it. Anything upstream and unlisted is **new upstream**.
+   Walk the roots rather than the preset entries: a JavaScript preset entry is a
+   single `.mjs` file, so a rule added under `eslint/rules/` is invisible to a
+   scan that only descends preset entries naming a directory. Skipping this
+   leaves a target that no longer runs: upstream adds a module and imports it
+   from the updated `standards-plugin.mjs` or `cli.py`, sync copies the importer
+   alone, and the target now imports a module that is not there.
 
    Done when every manifest entry carries exactly one class and every new
    upstream file is named.
