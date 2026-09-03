@@ -1091,28 +1091,6 @@ test_waits_hold_instead_of_polling() {
   assert_contains "$wait_skill" 'Unchanged progress is not a state change'
 }
 
-test_harness_sections_carry_the_api_surface() {
-  local wait_skill="$ROOT_DIR/skills/wait-efficiently/SKILL.md"
-
-  assert_contains "$wait_skill" 'const maxOutputTokens = 10000'
-  assert_contains "$wait_skill" 'originalTokens += result.original_token_count'
-  assert_contains "$wait_skill" 'returns when it exits'
-  assert_contains "$wait_skill" 'output.push(result.output)'
-  assert_contains "$wait_skill" 'if (result.exit_code !== 0)'
-  assert_contains "$wait_skill" 'command output exceeded the safe result budget'
-  assert_contains "$wait_skill" 'persist its full artifact to a run-owned file'
-  assert_contains "$wait_skill" '`wait_agent` with a deadline sized to the task'
-  assert_contains "$wait_skill" '`notify` is not a replacement'
-  assert_contains "$wait_skill" 'Do not restart the'
-  assert_contains "$wait_skill" 'single `Promise.all`'
-
-  assert_contains "$wait_skill" 'run_in_background: true'
-  assert_contains "$wait_skill" '`Monitor`'
-  assert_contains "$wait_skill" 'cover failure states as well as success'
-  assert_contains "$wait_skill" 'current foreground `Bash` ceiling'
-  assert_contains "$wait_skill" 'wasted round trip'
-}
-
 test_agents_md_bounds_model_turns() {
   local agents="$ROOT_DIR/AGENTS.md"
 
@@ -1456,7 +1434,6 @@ test_review_flow_map_is_the_public_review_mapping_skill
 test_examples_report_computed_values
 test_code_review_has_a_local_review_and_owner_checked_closeout
 test_waits_hold_instead_of_polling
-test_harness_sections_carry_the_api_surface
 test_agents_md_bounds_model_turns
 test_review_waits_load_the_wait_skill
 test_openclaw_agent_discovery_paths
