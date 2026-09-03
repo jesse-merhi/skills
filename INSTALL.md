@@ -200,10 +200,11 @@ Then:
 1. Create the target skills directory if it does not exist.
 2. If the target skills directory is a symlink, stop and ask unless it points at
    an old whole-directory install of this repo.
-3. Remove dead symlinks identified during the survey. This retires repo-owned
-   skills after a rename, such as `writing-great-skills` becoming
-   `writing-for-agents`, without touching real directories or live third-party
-   links.
+3. Re-scan the target directory after publishing the view. Remove a dead
+   symlink only when its stored target is under this exact `VIEW_ROOT`. This
+   retires repo-owned skills removed or renamed during publication, such as
+   `writing-great-skills` becoming `writing-for-agents`, without touching real
+   directories or unrelated links.
 4. Discover each immediate skill directory under `VIEW_ROOT`. Read its
    `SKILL.md` frontmatter and stop if two entries have the same `name`.
 5. Link `<target>/<name>` to `VIEW_ROOT/<name>`.
@@ -230,7 +231,10 @@ The skill hook reads Claude's `agent_type`. For the repo-owned `opus-worker`, it
 rewrites that individual Skill call to the contained Opus variant while
 preserving its arguments. Other agents and third-party skills are unchanged.
 Because the selection belongs to the tool call, parallel parent and subagent
-invocations cannot overwrite each other.
+invocations cannot overwrite each other. The public Skill passes invocation
+policy before this allowed `PreToolUse` rewrite, so the destination alias stays
+hidden with `disable-model-invocation: true` without blocking the routed call.
+Validate this behavior with the installed Claude build.
 
 Both events pass their JSON input on stdin. `SessionStart` usually supplies
 `model`; `PostModelSwitch` supplies `to_model`. Claude can omit `model` from

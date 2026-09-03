@@ -139,6 +139,8 @@ function claudeAliasName(profileId, skillName) {
 function aliasSkillDocument(skillFile, aliasName) {
   const { frontmatter, body } = splitSkillDocument(skillFile);
   const aliasedFrontmatter = frontmatter.replace(/^name:.*$/m, `name: ${aliasName}`);
+  // The public Skill passes invocation policy before routeClaudeSkill rewrites its allowed call.
+  // This keeps aliases out of model discovery without blocking the routed invocation.
   return `---\n${aliasedFrontmatter}\ndisable-model-invocation: true\n---\n${body}`;
 }
 
