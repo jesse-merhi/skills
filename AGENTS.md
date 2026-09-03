@@ -84,6 +84,9 @@ resource lifecycle, and graceful shutdown.
   Do not add deterministic tests of skill prose, headings, links, or routing
   wording. Keep deterministic tests for executable scripts and machine-readable
   contracts such as schemas and metadata.
+- Do not write tests for linters. A linter is proved by running it on the
+  repository inside `validate:effect`; the tree is its fixture, and a rule that
+  misfires shows up there.
 - During code review, load `reducing-cognitive-load` while assessing the initial
   diff and every proposed fix so reduction happens inside the review loop.
 
