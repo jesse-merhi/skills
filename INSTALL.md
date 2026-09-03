@@ -23,10 +23,9 @@ proceeding.
 
 Also resolve the exact active model identifier from the harness. Do not infer
 it from writing style. The model selects which complete skill variant is
-installed. A newer model in a known family uses that family's newest variant
-and produces one informational update notice. A static install stops on an
-unknown family. Claude's session loader retains that session's last supported
-selection; without one, invocation fails instead of using an unrelated prompt.
+installed. This repository supports GPT-5.6 and Claude Fable 5.1. A newer model
+in either known family uses that family's newest variant and produces one
+informational update notice. Installation stops on an unknown family.
 
 ## 2. Link global instructions
 
@@ -58,11 +57,10 @@ step when installing only into OpenClaw.
 
 ## 3. Configure Claude orchestration
 
-For Claude Code, this repo owns three user-level agents under
+For Claude Code, this repo owns two user-level agents under
 `REPO/claude/agents/`:
 
 - `fable-orchestrator` is the default main agent;
-- `opus-worker` implements settled changes and production UI in Opus 5;
 - `codex-reviewer` relays code-centric review to GPT-5.6 Sol High.
 
 Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
@@ -151,9 +149,8 @@ Choose a view outside the target skills directory:
 | opencode | `~/.config/opencode/.skill-variants/jesse-merhi-skills` |
 | Pi | `~/.pi/agent/.skill-variants/jesse-merhi-skills` |
 
-For Codex, opencode, Pi, or OpenClaw, build a static view containing the active
-model's copied `SKILL.md`. Shared executable resources remain linked to their
-repository dependency root:
+Build a static view containing the active model's copied `SKILL.md`. Shared
+executable resources remain linked to their repository dependency root:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
@@ -170,36 +167,12 @@ another repository clone. If this repository moved, read the view's
 `.skill-variant-view.json`, verify that `sourceRoot` is the previous clone, and
 authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
 
-A static view serves one active model profile. Before starting a Codex,
-opencode, or Pi session with a different model, rerun this command with that
-model's full configured ID. Do not run concurrent different-model sessions
-against the same static view; configure separate harness roots and view roots
-when that is required. A static view does not detect later model changes.
-
-For Claude Code, build a stable session-aware view instead. It keeps one small
-loader at each public `SKILL.md`, linked shared resources, and session model
-state outside the view:
-
-```sh
-node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
-  --action claude-view \
-  --source REPO/skills \
-  --output VIEW_ROOT \
-  --state-root ~/.claude/.skill-variants/jesse-merhi-sessions \
-  --format json
-```
-
-Claude Code expands `${CLAUDE_SESSION_ID}` and runs the loader through its
-native dynamic-context mechanism when a skill is invoked. The loader emits
-complete, isolated Fable and Opus branches under one unchanged public skill
-name; each Claude model follows only its own branch. This is a local shell
-command, not another model or network request. It preserves name-scoped Skill
-permissions and lets concurrent Fable and Opus agents share the immutable view.
-The trade-off is that each invocation loads both Claude branches.
-
-Inspect the effective Claude settings before using this mode. If
-`disableSkillShellExecution` is `true`, stop and report that these session-aware
-loaders cannot run under the current policy; do not install inert loaders.
+A static view serves one active model profile. Before starting a session with a
+different supported model, rerun this command with that model's full configured
+ID. Do not run concurrent different-model sessions against the same static
+view; configure separate harness roots and view roots when that is required. A
+static view does not detect later model changes. The repo-owned Claude main
+agent is pinned to Fable 5.1, so its view does not need runtime model routing.
 
 Then:
 
@@ -220,35 +193,10 @@ Then:
    - Ask before replacing a real directory with user-authored changes or a
      symlink owned elsewhere.
 
-For Claude Code, also merge the following command hook into `SessionStart` and
-`PostModelSwitch` in `~/.claude/settings.json`, preserving all existing settings
-and hook handlers:
-
-```text
-node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --action record-session --state-root ~/.claude/.skill-variants/jesse-merhi-sessions
-```
-
-Both events pass their JSON input on stdin. `SessionStart` usually supplies
-`model`; `PostModelSwitch` supplies `to_model`. Claude can omit `model` from
-`SessionStart` after recovery or `/clear`, in which case the hook keeps that
-session's existing selection. A newer recognized family uses its newest prompt
-and emits one notice per session. An unrelated unsupported family leaves that
-session's previous selection in place and reports the hook error. Validate the
-merged settings with the installed Claude Code build. If that build does not
-support `PostModelSwitch`, leave the `SessionStart` handler installed, report
-that in-session switching is not tracked, and do not leave an invalid handler
-behind.
-
-The hook changes what later skill invocations load in that session. Skill
-instructions already present in its conversation remain there until a fresh
-session; do not claim that the hook removes them.
-
-Treat the materializer command as a repo-owned hook. Before adding it, remove
-older `SessionStart`, `PostModelSwitch`, or `PreToolUse` handlers whose command
-invokes `materialize-skill-variants.mjs` for this skill collection, then add the
-current command once to its documented events. On uninstall, remove those
-handlers. This makes reinstalling after a repository move idempotent without
-disturbing unrelated handlers.
+For Claude Code, remove older `SessionStart`, `PostModelSwitch`, or
+`PreToolUse` handlers whose command invokes
+`materialize-skill-variants.mjs` for this skill collection. They belong to the
+retired multi-Claude-model loader. Preserve unrelated handlers.
 
 ## 8. Connect a running OpenClaw Gateway
 

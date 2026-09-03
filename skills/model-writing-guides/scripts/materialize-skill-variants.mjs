@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import * as Schema from "effect/Schema";
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -10,26 +9,9 @@ import { fileURLToPath } from "node:url";
 const MARKER = ".skill-variant-view.json";
 const LOCK_TIMEOUT_MS = 5_000;
 const STALE_LOCK_MS = 30_000;
-const CLAUDE_PROFILES = ["claude-fable-5.1", "claude-opus-5"];
 const MarkerJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
   sourceRoot: Schema.NonEmptyString,
-  profile: Schema.NonEmptyString,
-}));
-const HookInputJson = Schema.fromJsonString(Schema.Struct({
-  hook_event_name: Schema.optional(Schema.NonEmptyString),
-  model: Schema.optional(Schema.NonEmptyString),
-  to_model: Schema.optional(Schema.NonEmptyString),
-  session_id: Schema.optional(Schema.NonEmptyString),
-  agent_type: Schema.optional(Schema.NonEmptyString),
-  tool_name: Schema.optional(Schema.NonEmptyString),
-  tool_input: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
-}));
-const SessionStateJson = Schema.fromJsonString(Schema.Struct({
-  schemaVersion: Schema.Literal(1),
-  sessionId: Schema.NonEmptyString,
-  model: Schema.NonEmptyString,
-  exact: Schema.Boolean,
   profile: Schema.NonEmptyString,
 }));
 
@@ -46,17 +28,10 @@ export const profiles = [
     rank: 51,
     matches: /^(?:(?:anthropic\/)?claude-fable-5(?:(?:[.-]1)(?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
   },
-  {
-    id: "claude-opus-5",
-    family: "anthropic-opus",
-    rank: 50,
-    matches: /^(?:(?:anthropic\/)?claude-opus-5(?:\[1m\])?(?:-\d{8})?|opus(?:\[1m\])?)$/i,
-  },
 ];
 
 function modelFamily(model) {
   const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase();
-  if (/^(?:(?:anthropic\/)?claude-)?opus(?:[-.]\d|\[)/.test(normalized)) return "anthropic-opus";
   if (/^(?:(?:anthropic\/)?claude-)?fable(?:[-.]\d|\[)/.test(normalized)) return "anthropic-fable";
   if (/^(?:openai\/)?gpt-\d/.test(normalized)) return "openai-gpt";
   return undefined;
@@ -99,8 +74,7 @@ export function withOutputLock(outputRoot, operation) {
         if (statError instanceof Error && Object.hasOwn(statError, "code") && statError.code === "ENOENT") continue;
         throw statError;
       }
-      const age = Date.now() - lockStat.mtimeMs;
-      if (age > STALE_LOCK_MS) {
+      if (Date.now() - lockStat.mtimeMs > STALE_LOCK_MS) {
         fs.rmSync(lockRoot, { recursive: true, force: true });
         continue;
       }
@@ -120,22 +94,6 @@ function parseSkillName(skillFile) {
   const match = source.match(/^---\n[\s\S]*?^name:\s*['"]?([^'"\n]+)['"]?\s*$[\s\S]*?^---$/m);
   if (match === null) throw new Error(`missing skill name in ${skillFile}`);
   return match[1].trim();
-}
-
-function splitSkillDocument(skillFile) {
-  const source = fs.readFileSync(skillFile, "utf8");
-  const match = source.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (match === null) throw new Error(`invalid skill document ${skillFile}`);
-  return { frontmatter: match[1], body: match[2] };
-}
-
-function quoteShell(value) {
-  return `'${value.replaceAll("'", `'"'"'`)}'`;
-}
-
-function sessionStatePath(stateRoot, sessionId) {
-  const key = createHash("sha256").update(sessionId).digest("hex");
-  return path.join(path.resolve(stateRoot), `${key}.json`);
 }
 
 export function discoverSkills(sourceRoot) {
@@ -252,7 +210,6 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
         fs.copyFileSync(selection.path, path.join(skillOutput, "SKILL.md"));
         linkSharedEntries(skill, skillOutput);
       }
-
       fs.writeFileSync(
         path.join(stagingRoot, MARKER),
         `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: profile.id })}\n`,
@@ -279,94 +236,6 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
   };
 }
 
-export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousSourceRoot, stateRoot }) {
-  const resolvedSource = fs.realpathSync(sourceRoot);
-  const resolvedOutput = path.resolve(outputRoot);
-  const resolvedState = path.resolve(stateRoot);
-  const skills = discoverSkills(resolvedSource);
-  const loader = fileURLToPath(import.meta.url);
-  withOutputLock(resolvedOutput, () => {
-    assertManagedOutput(resolvedOutput, resolvedSource, previousSourceRoot);
-    const stagingRoot = `${resolvedOutput}.staging-${process.pid}`;
-    fs.rmSync(stagingRoot, { recursive: true, force: true });
-    fs.mkdirSync(stagingRoot, { recursive: true });
-    try {
-      for (const skill of skills) {
-        const skillOutput = path.join(stagingRoot, skill.name);
-        fs.mkdirSync(skillOutput);
-        const { frontmatter } = splitSkillDocument(path.join(skill.directory, "variants", "gpt-5.6.md"));
-        const command = [
-          "node",
-          '"${CLAUDE_SKILL_DIR}/.model-variant-loader"',
-          "--action render-skill",
-          `--skill ${quoteShell(skill.name)}`,
-          `--source ${quoteShell(resolvedSource)}`,
-          `--state-root ${quoteShell(resolvedState)}`,
-          `--session ${quoteShell("${CLAUDE_SESSION_ID}")}`,
-        ].join(" ");
-        fs.writeFileSync(
-          path.join(skillOutput, "SKILL.md"),
-          `---\n${frontmatter}\nallowed-tools: Bash(node "\${CLAUDE_SKILL_DIR}/.model-variant-loader" *)\n---\n\n!\`${command}\`\n`,
-        );
-        fs.symlinkSync(loader, path.join(skillOutput, ".model-variant-loader"));
-        linkSharedEntries(skill, skillOutput);
-      }
-      fs.writeFileSync(
-        path.join(stagingRoot, MARKER),
-        `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: "claude-session" })}\n`,
-      );
-      publishView(stagingRoot, resolvedOutput);
-    } catch (error) {
-      fs.rmSync(stagingRoot, { recursive: true, force: true });
-      throw error;
-    }
-  });
-  fs.mkdirSync(resolvedState, { recursive: true });
-  return {
-    profile: "claude-session",
-    skillCount: skills.length,
-    stateRoot: resolvedState,
-  };
-}
-
-export function recordClaudeSession({ stateRoot, sessionId, model }) {
-  const { exact, profile } = resolveProfile(model);
-  const resolvedState = path.resolve(stateRoot);
-  fs.mkdirSync(resolvedState, { recursive: true });
-  const target = sessionStatePath(resolvedState, sessionId);
-  const staging = `${target}.staging-${process.pid}`;
-  const state = { schemaVersion: 1, sessionId, model, exact, profile: profile.id };
-  fs.writeFileSync(staging, `${JSON.stringify(state)}\n`, { flag: "wx" });
-  fs.renameSync(staging, target);
-  return state;
-}
-
-export function renderClaudeSkill({ sourceRoot, stateRoot, sessionId, skillName }) {
-  const resolvedSource = fs.realpathSync(sourceRoot);
-  const stateFile = sessionStatePath(stateRoot, sessionId);
-  if (!fs.existsSync(stateFile)) {
-    throw new Error(`no model profile was recorded for Claude session ${sessionId}`);
-  }
-  const state = Schema.decodeUnknownSync(SessionStateJson)(fs.readFileSync(stateFile, "utf8"));
-  if (state.sessionId !== sessionId) throw new Error("Claude session state does not match the requested session");
-  if (!profiles.some((candidate) => candidate.id === state.profile)) throw new Error(`unknown recorded skill profile ${state.profile}`);
-  const skill = discoverSkills(resolvedSource).find((candidate) => candidate.name === skillName);
-  if (skill === undefined) throw new Error(`unknown skill ${skillName}`);
-  const branches = CLAUDE_PROFILES.map((profileId) => {
-    const profile = profiles.find((candidate) => candidate.id === profileId);
-    if (profile === undefined) throw new Error(`unknown Claude profile ${profileId}`);
-    const selection = selectVariant(skill, profile);
-    const { body } = splitSkillDocument(selection.path);
-    return `<${profileId}>\n${body.trim()}\n</${profileId}>`;
-  }).join("\n\n");
-  const notice = !state.exact
-    ? `Skill variants have not been updated for ${state.model}. Tell the user once in this session, then continue.`
-    : undefined;
-  const visibleNotice = noticeOnce({ notice, outputRoot: path.join(path.resolve(stateRoot), "session"), sessionId });
-  const instructions = `Follow only the branch matching your own model family. Claude Fable uses <claude-fable-5.1>; Claude Opus uses <claude-opus-5>. Do not combine branches.\n\n${branches}\n`;
-  return visibleNotice === undefined ? instructions : `${visibleNotice}\n\n${instructions}`;
-}
-
 function parseArguments(argv) {
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
@@ -380,63 +249,17 @@ function parseArguments(argv) {
   return values;
 }
 
-async function readHookInput() {
-  if (process.stdin.isTTY) return {};
-  const chunks = [];
-  for await (const chunk of process.stdin) chunks.push(chunk);
-  const text = Buffer.concat(chunks).toString("utf8").trim();
-  return text === "" ? {} : Schema.decodeUnknownSync(HookInputJson)(text);
-}
-
-async function main() {
+function main() {
   const args = parseArguments(process.argv.slice(2));
-  const hook = await readHookInput();
-  const action = args.action ?? "materialize";
-  const model = args.model ?? hook.to_model ?? hook.model;
-  const sessionId = args.session ?? hook.session_id;
-  if (action === "claude-view") {
-    if (args.source === undefined || args.output === undefined || args["state-root"] === undefined) {
-      throw new Error("claude-view requires --source, --output, and --state-root");
-    }
-    const result = materializeClaudeSessionView({
-      sourceRoot: args.source,
-      outputRoot: args.output,
-      previousSourceRoot: args["previous-source"],
-      stateRoot: args["state-root"],
-    });
-    if (args.format === "json") process.stdout.write(`${JSON.stringify(result)}\n`);
-    return;
-  }
-  if (action === "record-session") {
-    if (args["state-root"] === undefined || sessionId === undefined) {
-      throw new Error("record-session requires --state-root and a session ID");
-    }
-    if (model === undefined && hook.hook_event_name === "SessionStart") return;
-    if (model === undefined) throw new Error("record-session requires a model");
-    recordClaudeSession({ stateRoot: args["state-root"], sessionId, model });
-    return;
-  }
-  if (action === "render-skill") {
-    if (args.source === undefined || args["state-root"] === undefined || sessionId === undefined || args.skill === undefined) {
-      throw new Error("render-skill requires --source, --state-root, --session, and --skill");
-    }
-    process.stdout.write(renderClaudeSkill({
-      sourceRoot: args.source,
-      stateRoot: args["state-root"],
-      sessionId,
-      skillName: args.skill,
-    }));
-    return;
-  }
-  if (args.source === undefined || args.output === undefined || model === undefined) {
+  if (args.source === undefined || args.output === undefined || args.model === undefined) {
     throw new Error("materialize requires --source, --output, and a model");
   }
   const result = materializeSkillVariants({
     sourceRoot: args.source,
     outputRoot: args.output,
-    model,
+    model: args.model,
     previousSourceRoot: args["previous-source"],
-    sessionId,
+    sessionId: args.session,
   });
   if (args.format === "json") process.stdout.write(`${JSON.stringify(result)}\n`);
   else if (result.notice !== undefined) process.stdout.write(`${result.notice}\n`);
@@ -445,8 +268,10 @@ async function main() {
 const invokedPath = process.argv[1] === undefined ? undefined : path.resolve(process.argv[1]);
 const invokedSource = invokedPath !== undefined && fs.existsSync(invokedPath) ? fs.realpathSync(invokedPath) : invokedPath;
 if (invokedSource === fileURLToPath(import.meta.url)) {
-  main().catch((error) => {
+  try {
+    main();
+  } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
-  });
+  }
 }

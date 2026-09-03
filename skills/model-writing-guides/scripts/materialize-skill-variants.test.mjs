@@ -7,26 +7,24 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
-  materializeClaudeSessionView,
   materializeSkillVariants,
-  recordClaudeSession,
-  renderClaudeSkill,
   resolveProfile,
   withOutputLock,
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
+const supportedProfiles = ["gpt-5.6", "claude-fable-5.1"];
 
-function writeSkill(root, directory, name, profiles) {
+function writeSkill(root, directory, name, profileNames = supportedProfiles) {
   const skill = path.join(root, directory);
   fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
   fs.mkdirSync(path.join(skill, "references"));
-  fs.writeFileSync(path.join(skill, "SKILL.md"), `---\nname: ${name}\ndescription: fixture\n---\n`);
+  fs.writeFileSync(path.join(skill, "SKILL.md"), "---\nname: " + name + "\ndescription: fixture\n---\n");
   fs.writeFileSync(path.join(skill, "references", "shared.md"), "shared\n");
-  for (const profile of profiles) {
+  for (const profile of profileNames) {
     fs.writeFileSync(
-      path.join(skill, "variants", `${profile}.md`),
-      `---\nname: ${name}\ndescription: fixture\n---\n${profile}\n`,
+      path.join(skill, "variants", profile + ".md"),
+      "---\nname: " + name + "\ndescription: fixture\n---\n" + profile + "\n",
     );
   }
 }
@@ -37,44 +35,36 @@ function fixture(t) {
   const source = path.join(temporary, "skills");
   const output = path.join(temporary, "view");
   fs.mkdirSync(source);
-  writeSkill(source, "alpha", "alpha", ["gpt-5.6", "claude-fable-5.1", "claude-opus-5"]);
-  writeSkill(source, "group/beta", "beta", ["gpt-5.6", "claude-fable-5.1", "claude-opus-5"]);
+  writeSkill(source, "alpha", "alpha");
+  writeSkill(source, "group/beta", "beta");
   return { output, source, temporary };
 }
 
-test("recognizes Claude Code family aliases as exact profiles", () => {
-  const fable = resolveProfile("fable[1m]");
-  const canonicalFable = resolveProfile("claude-fable-5-1[1m]");
-  const opus = resolveProfile("opus");
+test("recognizes supported model identifiers and same-family fallbacks", () => {
+  const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
+  const futureFable = resolveProfile("claude-fable-5.2");
+  const gpt = resolveProfile("azure-openai/gpt-5.6-sol");
+  const futureGpt = resolveProfile("atlassian-ai-gateway-openai/gpt-5.7-terra");
 
-  assert.equal(fable.exact, true);
-  assert.equal(fable.profile.id, "claude-fable-5.1");
-  assert.equal(canonicalFable.exact, true);
-  assert.equal(canonicalFable.profile.id, "claude-fable-5.1");
-  assert.equal(opus.exact, true);
-  assert.equal(opus.profile.id, "claude-opus-5");
-});
-
-test("recognizes model families behind provider-qualified identifiers", () => {
-  const exact = resolveProfile("azure-openai/gpt-5.6-sol");
-  const fallback = resolveProfile("atlassian-ai-gateway-openai/gpt-5.5-2026-04-23");
-
-  assert.equal(exact.exact, true);
-  assert.equal(exact.profile.id, "gpt-5.6");
-  assert.equal(fallback.exact, false);
-  assert.equal(fallback.profile.id, "gpt-5.6");
-  assert.throws(() => resolveProfile("gateway/gemini-opus-pro"), /unsupported model family/);
+  assert.deepEqual(
+    [fable.profile.id, fable.exact, futureFable.profile.id, futureFable.exact],
+    ["claude-fable-5.1", true, "claude-fable-5.1", false],
+  );
+  assert.deepEqual(
+    [gpt.profile.id, gpt.exact, futureGpt.profile.id, futureGpt.exact],
+    ["gpt-5.6", true, "gpt-5.6", false],
+  );
 });
 
 test("materializes one contained static variant and links shared resources", (t) => {
   const current = fixture(t);
-  const result = materializeSkillVariants({
+  const gpt = materializeSkillVariants({
     model: "gpt-5.6-sol",
     outputRoot: current.output,
     sourceRoot: current.source,
   });
 
-  assert.deepEqual(result, {
+  assert.deepEqual(gpt, {
     exact: true,
     model: "gpt-5.6-sol",
     notice: undefined,
@@ -86,22 +76,19 @@ test("materializes one contained static variant and links shared resources", (t)
   assert.equal(fs.readFileSync(path.join(current.output, "beta", "references", "shared.md"), "utf8"), "shared\n");
   assert.equal(fs.lstatSync(path.join(current.output, "beta", "references")).isSymbolicLink(), true);
   assert.equal(fs.existsSync(path.join(current.output, "alpha", "variants")), false);
-});
 
-test("switches the active view without changing installed skill paths", (t) => {
-  const current = fixture(t);
-  materializeSkillVariants({ model: "gpt-5.6", outputRoot: current.output, sourceRoot: current.source });
-  const installedSkill = path.join(current.temporary, "installed-alpha");
-  fs.symlinkSync(path.join(current.output, "alpha"), installedSkill);
-
-  materializeSkillVariants({ model: "claude-opus-5", outputRoot: current.output, sourceRoot: current.source });
-
-  assert.equal(fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8").endsWith("claude-opus-5\n"), true);
+  const fable = materializeSkillVariants({
+    model: "claude-fable-5.1",
+    outputRoot: current.output,
+    sourceRoot: current.source,
+  });
+  assert.equal(fable.profile, "claude-fable-5.1");
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("claude-fable-5.1\n"), true);
 });
 
 test("retries when a contended output lock disappears before inspection", (t) => {
   const current = fixture(t);
-  const lockRoot = `${current.output}.lock`;
+  const lockRoot = current.output + ".lock";
   fs.mkdirSync(lockRoot);
   const originalStatSync = fs.statSync;
   let simulatedRace = false;
@@ -109,7 +96,7 @@ test("retries when a contended output lock disappears before inspection", (t) =>
     if (target === lockRoot && !simulatedRace) {
       simulatedRace = true;
       fs.rmSync(lockRoot, { recursive: true, force: true });
-      const error = new Error(`ENOENT: no such file or directory, stat '${lockRoot}'`);
+      const error = new Error("ENOENT: no such file or directory, stat '" + lockRoot + "'");
       error.code = "ENOENT";
       throw error;
     }
@@ -123,106 +110,9 @@ test("retries when a contended output lock disappears before inspection", (t) =>
   assert.equal(simulatedRace, true);
 });
 
-test("renders immutable model branches for concurrent Claude sessions", (t) => {
+test("prints JSON output and emits one same-family fallback notice per session", (t) => {
   const current = fixture(t);
-  const stateRoot = path.join(current.temporary, "sessions");
-  const view = materializeClaudeSessionView({ outputRoot: current.output, sourceRoot: current.source, stateRoot });
-  assert.equal(view.skillCount, 2);
-  assert.deepEqual(
-    fs.readdirSync(current.output).filter((entry) => !entry.startsWith(".")),
-    ["alpha", "beta"],
-  );
-  recordClaudeSession({ model: "claude-fable-5.1", sessionId: "fable-session", stateRoot });
-  recordClaudeSession({ model: "claude-opus-5", sessionId: "opus-session", stateRoot });
-
-  const fable = renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "fable-session", skillName: "alpha" });
-  const opus = renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "opus-session", skillName: "alpha" });
-  for (const rendered of [fable, opus]) {
-    assert.match(rendered, /Follow only the branch matching your own model family/);
-    assert.match(rendered, /<claude-fable-5\.1>\nclaude-fable-5\.1/);
-    assert.match(rendered, /<claude-opus-5>\nclaude-opus-5/);
-  }
-
-  recordClaudeSession({ model: "claude-opus-5", sessionId: "fable-session", stateRoot });
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "fable-session", skillName: "alpha" }), fable);
-  assert.equal(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "opus-session", skillName: "alpha" }), opus);
-});
-
-test("Claude loader injects the recorded session variant without mutating the shared view", (t) => {
-  const current = fixture(t);
-  const stateRoot = path.join(current.temporary, "sessions");
-  materializeClaudeSessionView({ outputRoot: current.output, sourceRoot: current.source, stateRoot });
-  recordClaudeSession({ model: "claude-fable-5.1", sessionId: "session-one", stateRoot });
-
-  const loaderSkill = path.join(current.output, "alpha", "SKILL.md");
-  const loaderBefore = fs.readFileSync(loaderSkill, "utf8");
-  assert.match(loaderBefore, /allowed-tools: Bash\(node "\$\{CLAUDE_SKILL_DIR\}\/\.model-variant-loader" \*\)/);
-  const command = loaderBefore.match(/!`(.+)`/)?.[1]
-    .replaceAll("${CLAUDE_SKILL_DIR}", path.dirname(loaderSkill))
-    .replaceAll("${CLAUDE_SESSION_ID}", "session-one");
-  assert.notEqual(command, undefined);
-  const rendered = spawnSync("bash", ["-lc", command], { encoding: "utf8" });
-  assert.equal(rendered.status, 0, rendered.stderr);
-  assert.match(rendered.stdout, /<claude-fable-5\.1>\nclaude-fable-5\.1/);
-  assert.match(rendered.stdout, /<claude-opus-5>\nclaude-opus-5/);
-  assert.equal(fs.readFileSync(loaderSkill, "utf8"), loaderBefore);
-});
-
-test("Claude loader works when the generated view path contains whitespace", (t) => {
-  const current = fixture(t);
-  const outputRoot = path.join(current.temporary, "generated view");
-  const stateRoot = path.join(current.temporary, "sessions");
-  materializeClaudeSessionView({ outputRoot, sourceRoot: current.source, stateRoot });
-  recordClaudeSession({ model: "claude-fable-5.1", sessionId: "session-one", stateRoot });
-
-  const loaderSkill = path.join(outputRoot, "alpha", "SKILL.md");
-  const loader = fs.readFileSync(loaderSkill, "utf8");
-  const command = loader.match(/!`(.+)`/)?.[1]
-    .replaceAll("${CLAUDE_SKILL_DIR}", path.dirname(loaderSkill))
-    .replaceAll("${CLAUDE_SESSION_ID}", "session-one");
-  assert.notEqual(command, undefined);
-  const rendered = spawnSync("bash", ["-lc", command], { encoding: "utf8" });
-  assert.equal(rendered.status, 0, rendered.stderr);
-  assert.match(rendered.stdout, /<claude-fable-5\.1>\nclaude-fable-5\.1/);
-  assert.match(rendered.stdout, /<claude-opus-5>\nclaude-opus-5/);
-});
-
-test("Claude hooks update only their session and retain it when model data is unavailable", (t) => {
-  const current = fixture(t);
-  const stateRoot = path.join(current.temporary, "sessions");
-  const runHook = (input) => spawnSync(
-    process.execPath,
-    [materializer, "--action", "record-session", "--state-root", stateRoot],
-    { encoding: "utf8", input: JSON.stringify(input) },
-  );
-
-  const started = runHook({ hook_event_name: "SessionStart", model: "claude-fable-5.1", session_id: "session-one" });
-  assert.equal(started.status, 0, started.stderr);
-  const missingModel = runHook({ hook_event_name: "SessionStart", session_id: "session-one", source: "clear" });
-  assert.equal(missingModel.status, 0, missingModel.stderr);
-  assert.match(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "session-one", skillName: "alpha" }), /<claude-fable-5\.1>/);
-
-  const unsupported = runHook({ hook_event_name: "PostModelSwitch", to_model: "gemini-3-pro", session_id: "session-one" });
-  assert.equal(unsupported.status, 1);
-  assert.match(unsupported.stderr, /unsupported model family/);
-  assert.match(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "session-one", skillName: "alpha" }), /<claude-fable-5\.1>/);
-
-  const fallback = runHook({ hook_event_name: "SessionStart", model: "claude-fable-5.2", session_id: "future-session" });
-  assert.equal(fallback.status, 0, fallback.stderr);
-  assert.equal(fallback.stdout, "");
-  const repeated = runHook({ hook_event_name: "PostModelSwitch", to_model: "claude-fable-5.2", session_id: "future-session" });
-  assert.equal(repeated.status, 0, repeated.stderr);
-  assert.equal(repeated.stdout, "");
-  assert.match(
-    renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "future-session", skillName: "alpha" }),
-    /not been updated for claude-fable-5\.2[\s\S]*claude-fable-5\.1/,
-  );
-  assert.match(renderClaudeSkill({ sourceRoot: current.source, stateRoot, sessionId: "future-session", skillName: "alpha" }), /<claude-fable-5\.1>/);
-});
-
-test("prints documented JSON output and emits one fallback notice per session", (t) => {
-  const current = fixture(t);
-  const cli = spawnSync(
+  const run = () => spawnSync(
     process.execPath,
     [
       materializer,
@@ -233,41 +123,29 @@ test("prints documented JSON output and emits one fallback notice per session", 
       "--model",
       "gpt-5.7-sol",
       "--session",
-      "cli-session",
+      "session/one",
       "--format",
       "json",
     ],
     { encoding: "utf8" },
   );
-  assert.equal(cli.status, 0, cli.stderr);
-  const cliResult = JSON.parse(cli.stdout);
-  assert.equal(cliResult.profile, "gpt-5.6");
-  assert.match(cliResult.notice, /not been updated for gpt-5\.7-sol/);
 
-  const first = materializeSkillVariants({
-    model: "gpt-5.7-sol",
-    outputRoot: current.output,
-    sessionId: "session/one",
-    sourceRoot: current.source,
-  });
-  const second = materializeSkillVariants({
-    model: "gpt-5.7-sol",
-    outputRoot: current.output,
-    sessionId: "session/one",
-    sourceRoot: current.source,
-  });
+  const first = run();
+  assert.equal(first.status, 0, first.stderr);
+  const firstResult = JSON.parse(first.stdout);
+  assert.equal(firstResult.profile, "gpt-5.6");
+  assert.match(firstResult.notice, /not been updated for gpt-5\.7-sol/);
 
-  assert.equal(first.profile, "gpt-5.6");
-  assert.match(first.notice, /not been updated for gpt-5\.7-sol/);
-  assert.equal(second.notice, undefined);
+  const second = run();
+  assert.equal(second.status, 0, second.stderr);
+  assert.equal(JSON.parse(second.stdout).notice, undefined);
 });
 
-test("rejects an unsupported model family instead of using an unrelated prompt", () => {
+test("rejects unsupported model families, including Opus", () => {
+  assert.throws(() => resolveProfile("claude-opus-5"), /unsupported model family/);
   assert.throws(() => resolveProfile("gemini-3-pro"), /unsupported model family/);
   assert.throws(() => resolveProfile("gpt-oss-120b"), /unsupported model family/);
   assert.throws(() => resolveProfile("llama-5"), /unsupported model family/);
-  assert.throws(() => resolveProfile("gemini-opus-pro"), /unsupported model family/);
-  assert.throws(() => resolveProfile("my-fable-model"), /unsupported model family/);
 });
 
 test("refuses to overwrite a directory it did not create", (t) => {
@@ -288,14 +166,12 @@ test("requires explicit ownership transfer when the repository moves", (t) => {
 
   const secondRoot = fs.mkdtempSync(path.join(os.tmpdir(), "skill-variants-source-"));
   t.after(() => fs.rmSync(secondRoot, { recursive: true, force: true }));
-  writeSkill(secondRoot, "alpha", "alpha", ["gpt-5.6", "claude-fable-5.1", "claude-opus-5"]);
+  writeSkill(secondRoot, "alpha", "alpha");
 
   assert.throws(
     () => materializeSkillVariants({ model: "gpt-5.6", outputRoot: first.output, sourceRoot: secondRoot }),
     /refusing to replace view owned by another source/,
   );
-  assert.equal(fs.readFileSync(path.join(first.output, "alpha", "SKILL.md"), "utf8").endsWith("gpt-5.6\n"), true);
-
   const transferred = materializeSkillVariants({
     model: "gpt-5.6",
     outputRoot: first.output,

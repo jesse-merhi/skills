@@ -13,7 +13,6 @@ model, while each invocation receives only its selected workflow.
 - GPT-5.6: read [gpt-5.6.md](references/gpt-5.6.md).
 - Claude Fable 5.1: read
   [claude-fable-5.1.md](references/claude-fable-5.1.md).
-- Claude Opus 5: read [claude-opus-5.md](references/claude-opus-5.md).
 
 The profile definitions and same-family fallback order live in
 [`scripts/materialize-skill-variants.mjs`](scripts/materialize-skill-variants.mjs).
@@ -25,21 +24,17 @@ Variant file presence is the coverage record; do not add a per-skill manifest.
    permissions, completion criteria, exact commands, and evidence requirements
    that must remain equivalent across models.
 2. Fetch the current official prompting guide for every supported model whose
-   variant will change. Keep links and review dates in the three references
-   above; do not copy whole vendor manuals.
+   variant will change. Keep links and review dates in the references above;
+   do not copy whole vendor manuals.
 3. Write a complete `variants/<profile>.md` for every supported profile:
    - GPT-5.6: state the outcome, constraints, evidence, completion criteria, and
      output shape once; leave routine execution choices open.
    - Fable 5.1: use literal, explicit steps; bound scope and rewrites; name
      batching, progress, and current-source lookup when they matter.
-   - Opus 5: give the complete bounded task up front; specify output and
-     delegation limits; avoid redundant verification instructions.
 4. Keep supporting scripts, references, assets, and `agents/openai.yaml` shared
    unless their runtime behavior truly differs by model.
-5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`. Static
-   harness views expose a contained selected file directly. Claude's stable
-   loader uses native dynamic context for the main session, while a per-call
-   hook routes model-pinned subagents to hidden contained variants.
+5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`.
+   Harness views expose one contained selected file directly.
 6. Run the materializer test and exercise the changed skill independently with
    each affected model profile. Judge behavior, not prose shape.
 

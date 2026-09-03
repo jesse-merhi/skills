@@ -136,7 +136,7 @@ for path in sorted(skill_paths):
     elif os.readlink(path) != "variants/gpt-5.6.md":
         errors.append(f"unexpected default variant link: {path}: {os.readlink(path)!r}")
 
-    for profile in ("gpt-5.6", "claude-fable-5.1", "claude-opus-5"):
+    for profile in ("gpt-5.6", "claude-fable-5.1"):
         variant = path.parent / "variants" / f"{profile}.md"
         if not variant.is_file():
             errors.append(f"missing model variant: {variant}")
@@ -1158,22 +1158,16 @@ test_cross_harness_sessions_are_full_and_symmetric() {
 test_claude_fable_orchestration_is_repo_owned() {
   local agents="$ROOT_DIR/claude/agents"
   local orchestrator="$agents/fable-orchestrator.md"
-  local worker="$agents/opus-worker.md"
   local reviewer="$agents/codex-reviewer.md"
 
   assert_contains "$orchestrator" "name: fable-orchestrator"
   assert_contains "$orchestrator" 'model: "claude-fable-5[1m]"'
-  assert_contains "$orchestrator" "Use \`opus-worker\` proactively"
   assert_contains "$orchestrator" "Use \`codex-reviewer\` for an ad hoc code-centric review"
   assert_contains "$orchestrator" "Keep high-level review here"
   assert_contains "$orchestrator" "explicitly select Codex as its review engine"
   assert_contains "$orchestrator" "Do not initiate the formal \`code-review\` workflow merely because implementation"
 
-  assert_contains "$worker" "name: opus-worker"
-  assert_contains "$worker" "model: claude-opus-5"
-  assert_contains "$worker" "effort: high"
-  assert_contains "$worker" "production UI"
-  assert_contains "$worker" "disallowedTools: Agent"
+  test ! -e "$agents/opus-worker.md" || fail "retired Opus worker must not be installed"
 
   assert_contains "$reviewer" "name: codex-reviewer"
   assert_contains "$reviewer" "model: haiku"
@@ -1186,7 +1180,6 @@ test_claude_fable_orchestration_is_repo_owned() {
   assert_contains "$ROOT_DIR/INSTALL.md" "## 3. Configure Claude orchestration"
   assert_contains "$ROOT_DIR/INSTALL.md" 'Set `agent` to `fable-orchestrator`'
   assert_contains "$ROOT_DIR/INSTALL.md" "claude plugin validate ~/.claude/agents"
-  assert_contains "$ROOT_DIR/README.md" "Fable orchestrator, Opus worker, Codex reviewer"
 }
 
 test_skill_cleaner_uses_current_model_configuration() {

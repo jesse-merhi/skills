@@ -18,7 +18,6 @@ targeted to the requested skill set and model profiles.
 - GPT-5.6: [gpt-5.6.md](references/gpt-5.6.md)
 - Claude Fable 5.1:
   [claude-fable-5.1.md](references/claude-fable-5.1.md)
-- Claude Opus 5: [claude-opus-5.md](references/claude-opus-5.md)
 
 Batch those independent guide reads. The exact matchers and fallback order are
 in [`scripts/materialize-skill-variants.mjs`](scripts/materialize-skill-variants.mjs).
@@ -37,14 +36,10 @@ Files under `variants/` record coverage; there is no per-skill manifest.
      execution.
    - Fable 5.1 gets literal steps, bounded scope and rewrites, useful batching,
      and progress guidance for long work.
-   - Opus 5 gets the whole bounded specification, explicit output and
-     delegation limits, and one required verification path.
 5. Share scripts, references, assets, and `agents/openai.yaml` unless their
    runtime behavior differs. Point root `SKILL.md` at
-   `variants/gpt-5.6.md` for repository discovery. Static harness views expose
-   one contained file directly; Claude's stable loader injects the main
-   session variant through native dynamic context, and a per-call hook routes
-   model-pinned subagents to hidden contained variants.
+   `variants/gpt-5.6.md` for repository discovery. Harness views expose one
+   contained selected file directly.
 6. Run the materializer test. Exercise the changed skill independently under
    every affected profile and inspect the resulting behavior.
 
