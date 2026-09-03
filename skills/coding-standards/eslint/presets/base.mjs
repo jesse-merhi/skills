@@ -11,6 +11,10 @@ const DEFAULT_INTERNAL_PATTERN = ["^@/.+", "^~/.+", "^#.+"];
 const RESOLVED_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".d.ts"];
 
 export default function base(options = {}) {
+	const forwardingOptions = {};
+	if (options.ignoreExported !== undefined) {
+		forwardingOptions.ignoreExported = options.ignoreExported;
+	}
 	const tsconfigPaths = options.tsconfigPaths ?? DEFAULT_TSCONFIG_PATHS;
 	const internalPattern = options.internalPattern ?? DEFAULT_INTERNAL_PATTERN;
 
@@ -102,7 +106,7 @@ export default function base(options = {}) {
 				"sonarjs/no-useless-catch": "error",
 				"sonarjs/updated-loop-counter": "error",
 				"standards/no-banner-comments": "error",
-				"standards/no-trivial-forwarding-wrapper": "error",
+				"standards/no-trivial-forwarding-wrapper": ["error", forwardingOptions],
 			},
 		},
 	];

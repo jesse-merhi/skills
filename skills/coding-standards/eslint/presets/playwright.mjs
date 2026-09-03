@@ -10,6 +10,9 @@ export default function playwright(options = {}) {
 	if (options.semanticClassTokens !== undefined) {
 		brittleStyleOptions.semanticClassTokens = options.semanticClassTokens;
 	}
+	if (options.semanticClassValues !== undefined) {
+		brittleStyleOptions.semanticClassValues = options.semanticClassValues;
+	}
 
 	return [
 		{

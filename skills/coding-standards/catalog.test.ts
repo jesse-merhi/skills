@@ -213,4 +213,11 @@ describe("coding standards catalog", () => {
       }
     }
   })
+  it("rejects a preset or baseline whose applies names no condition", () => {
+    const raw: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(
+      readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
+    )
+    raw.presets.javascript.base.applies = {}
+    assert.throws(() => decodeCatalog(JSON.stringify(raw)))
+  })
 })

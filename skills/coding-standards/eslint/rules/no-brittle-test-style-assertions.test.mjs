@@ -319,12 +319,6 @@ ruleTester.run("no-brittle-test-style-assertions", rule, {
 			errors: [{ messageId: "classAssertion" }],
 		},
 		{
-			name: "rejects exact output from a default class helper import of the cn package",
-			code: '\nimport merge from "cn";\nexpect(merge("hidden")).toEqual("hidden");\n',
-			filename: "/repo/packages/web/tests/e2e/example.spec.ts",
-			errors: [{ messageId: "classAssertion" }],
-		},
-		{
 			name: "rejects exact output from canonical class helpers",
 			code: '\n\t\t\timport { cn as mergeClasses } from "@/lib/utils";\n\t\t\timport clsx from "clsx";\n\t\t\timport { twMerge } from "tailwind-merge";\n\t\t\tconst mergeAlias = twMerge;\n\t\t\texpect(mergeClasses("w-full")).toBe("w-full");\n\t\t\texpect(clsx("hidden")).toEqual("hidden");\n\t\t\texpect(mergeAlias("w-full")).toBe("w-full");\n\t\t',
 			filename: "/repo/packages/web/tests/e2e/example.spec.ts",

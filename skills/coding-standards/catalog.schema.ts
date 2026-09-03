@@ -60,11 +60,14 @@ const Enforcement = Schema.Union([
   SemgrepEnforcement
 ])
 
-const Applies = Schema.Struct({
-  always: Schema.optionalKey(Schema.Boolean),
-  dependencies: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
-  devDependencies: Schema.optionalKey(Schema.Array(Schema.NonEmptyString))
-})
+const PackageNames = Schema.NonEmptyArray(Schema.NonEmptyString)
+
+// Every shape names at least one condition, so an empty object cannot mean "never applies".
+const Applies = Schema.Union([
+  Schema.Struct({ always: Schema.Literal(true) }),
+  Schema.Struct({ dependencies: PackageNames, devDependencies: Schema.optionalKey(PackageNames) }),
+  Schema.Struct({ dependencies: Schema.optionalKey(PackageNames), devDependencies: PackageNames })
+])
 
 const Preset = Schema.Struct({
   applies: Applies,

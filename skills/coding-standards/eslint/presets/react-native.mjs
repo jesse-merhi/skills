@@ -5,6 +5,18 @@ import { standards } from "../standards-plugin.mjs";
 const DEFAULT_FILES = ["**/*.{js,jsx,ts,tsx}"];
 
 export default function reactNative(options = {}) {
+	const smallTextOptions = {};
+	if (options.minimumFontSizePx !== undefined) {
+		smallTextOptions.minimumFontSizePx = options.minimumFontSizePx;
+	}
+	if (options.allowedAllCapsTerms !== undefined) {
+		smallTextOptions.allowedAllCapsTerms = options.allowedAllCapsTerms;
+	}
+	const colorOptions = {};
+	if (options.colorMessage !== undefined) {
+		colorOptions.message = options.colorMessage;
+	}
+
 	return [
 		{
 			files: options.files ?? DEFAULT_FILES,
@@ -20,8 +32,8 @@ export default function reactNative(options = {}) {
 				"react-native-a11y/has-valid-accessibility-state": "error",
 				"react-native-a11y/has-valid-accessibility-value": "error",
 				"react-native-a11y/no-nested-touchables": "error",
-				"standards/no-raw-color-literals": "warn",
-				"standards/no-small-text": "error",
+				"standards/no-raw-color-literals": ["warn", colorOptions],
+				"standards/no-small-text": ["error", smallTextOptions],
 			},
 		},
 	];

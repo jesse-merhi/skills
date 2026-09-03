@@ -31,11 +31,6 @@ ruleTester.run("no-raw-elevation", rule, {
 			errors: [{ messageId: "rawElevation", data: { token: "shadow-lg" } }],
 		},
 		{
-			name: "treats a default import from the cn package as a class helper",
-			code: 'import merge from "cn";\nconst cardClass = merge("drop-shadow");\n',
-			errors: [{ messageId: "rawElevation", data: { token: "drop-shadow" } }],
-		},
-		{
 			name: "names the configured token module",
 			code: 'const Card = () => <div className="drop-shadow-md" />;\n',
 			options: [{ tokenModule: "~/design/elevation" }],

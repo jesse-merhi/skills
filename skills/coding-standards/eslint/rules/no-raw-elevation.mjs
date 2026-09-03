@@ -61,7 +61,7 @@ function isCanonicalClassFunctionImport(specifier) {
 	}
 
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return ["class-variance-authority", "clsx", "cn", "tailwind-merge"].includes(sourceName);
+	return ["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName);
 }
 
 function seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, identifierBindings) {
@@ -307,7 +307,7 @@ export default {
 						}
 					} else if (
 						specifier.type === "ImportDefaultSpecifier" &&
-						["class-variance-authority", "clsx", "cn", "tailwind-merge"].includes(sourceName)
+						["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName)
 					) {
 						updateClassFunctionBinding(specifier.local, true);
 					}

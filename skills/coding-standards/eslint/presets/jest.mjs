@@ -9,6 +9,9 @@ export default function jest(options = {}) {
 	if (options.semanticClassTokens !== undefined) {
 		brittleStyleOptions.semanticClassTokens = options.semanticClassTokens;
 	}
+	if (options.semanticClassValues !== undefined) {
+		brittleStyleOptions.semanticClassValues = options.semanticClassValues;
+	}
 
 	return [
 		{

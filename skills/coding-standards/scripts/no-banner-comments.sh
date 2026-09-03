@@ -7,7 +7,8 @@ set -euo pipefail
 PATTERN='^[[:space:]]*(//|#)[[:space:]]*[-=]{10,}[[:space:]]*$'
 
 # Default: every tracked file. `--staged` limits the scan to the files staged for commit.
-if [ "${1:-}" = "--staged" ]; then
+MODE="${1:-tracked}"
+if [ "$MODE" = "--staged" ]; then
   FILES=$(git diff --cached --name-only --diff-filter=ACM)
 else
   FILES=$(git ls-files)
@@ -19,7 +20,12 @@ while IFS= read -r file; do
   [[ "$file" =~ node_modules/ ]] && continue
   [[ "$file" =~ dist/ ]] && continue
 
-  matches=$(grep -nE "$PATTERN" "$file" 2>/dev/null || true)
+  if [ "$MODE" = "--staged" ]; then
+    content=$(git show ":$file" 2>/dev/null || true)
+  else
+    content=$(cat "$file" 2>/dev/null || true)
+  fi
+  matches=$(printf '%s\n' "$content" | grep -nE "$PATTERN" || true)
   if [ -n "$matches" ]; then
     while IFS= read -r match; do
       echo "ERROR: $file:$match — decorative comment separator"
