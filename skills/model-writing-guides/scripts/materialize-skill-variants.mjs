@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as Schema from "effect/Schema";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -19,6 +20,13 @@ const HookInputJson = Schema.fromJsonString(Schema.Struct({
   model: Schema.optional(Schema.NonEmptyString),
   to_model: Schema.optional(Schema.NonEmptyString),
   session_id: Schema.optional(Schema.NonEmptyString),
+}));
+const SessionStateJson = Schema.fromJsonString(Schema.Struct({
+  schemaVersion: Schema.Literal(1),
+  sessionId: Schema.NonEmptyString,
+  model: Schema.NonEmptyString,
+  exact: Schema.Boolean,
+  profile: Schema.NonEmptyString,
 }));
 
 export const profiles = [
@@ -100,6 +108,22 @@ function parseSkillName(skillFile) {
   const match = source.match(/^---\n[\s\S]*?^name:\s*['"]?([^'"\n]+)['"]?\s*$[\s\S]*?^---$/m);
   if (match === null) throw new Error(`missing skill name in ${skillFile}`);
   return match[1].trim();
+}
+
+function splitSkillDocument(skillFile) {
+  const source = fs.readFileSync(skillFile, "utf8");
+  const match = source.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (match === null) throw new Error(`invalid skill document ${skillFile}`);
+  return { frontmatter: match[1], body: match[2] };
+}
+
+function quoteShell(value) {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+function sessionStatePath(stateRoot, sessionId) {
+  const key = createHash("sha256").update(sessionId).digest("hex");
+  return path.join(path.resolve(stateRoot), `${key}.json`);
 }
 
 export function discoverSkills(sourceRoot) {
@@ -243,20 +267,85 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
   };
 }
 
-function deactivateManagedView({ sourceRoot, outputRoot, model, previousSourceRoot }) {
+export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousSourceRoot, stateRoot }) {
   const resolvedSource = fs.realpathSync(sourceRoot);
   const resolvedOutput = path.resolve(outputRoot);
+  const resolvedState = path.resolve(stateRoot);
+  const skills = discoverSkills(resolvedSource);
+  const loader = fileURLToPath(import.meta.url);
   withOutputLock(resolvedOutput, () => {
     assertManagedOutput(resolvedOutput, resolvedSource, previousSourceRoot);
     const stagingRoot = `${resolvedOutput}.staging-${process.pid}`;
     fs.rmSync(stagingRoot, { recursive: true, force: true });
     fs.mkdirSync(stagingRoot, { recursive: true });
-    fs.writeFileSync(
-      path.join(stagingRoot, MARKER),
-      `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: `unsupported:${model}` })}\n`,
-    );
-    publishView(stagingRoot, resolvedOutput);
+    try {
+      for (const skill of skills) {
+        const skillOutput = path.join(stagingRoot, skill.name);
+        fs.mkdirSync(skillOutput);
+        const { frontmatter } = splitSkillDocument(path.join(skill.directory, "variants", "gpt-5.6.md"));
+        const command = [
+          "node",
+          "${CLAUDE_SKILL_DIR}/.model-variant-loader",
+          "--action render-skill",
+          `--skill ${quoteShell(skill.name)}`,
+          `--source ${quoteShell(resolvedSource)}`,
+          `--state-root ${quoteShell(resolvedState)}`,
+          `--session ${quoteShell("${CLAUDE_SESSION_ID}")}`,
+        ].join(" ");
+        fs.writeFileSync(
+          path.join(skillOutput, "SKILL.md"),
+          `---\n${frontmatter}\nallowed-tools: Bash(node \${CLAUDE_SKILL_DIR}/.model-variant-loader *)\n---\n\n!\`${command}\`\n`,
+        );
+        fs.symlinkSync(loader, path.join(skillOutput, ".model-variant-loader"));
+        linkSharedEntries(skill, skillOutput);
+      }
+      fs.writeFileSync(
+        path.join(stagingRoot, MARKER),
+        `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: "claude-session" })}\n`,
+      );
+      publishView(stagingRoot, resolvedOutput);
+    } catch (error) {
+      fs.rmSync(stagingRoot, { recursive: true, force: true });
+      throw error;
+    }
   });
+  fs.mkdirSync(resolvedState, { recursive: true });
+  return { profile: "claude-session", skillCount: skills.length, stateRoot: resolvedState };
+}
+
+export function recordClaudeSession({ stateRoot, sessionId, model }) {
+  const { exact, profile } = resolveProfile(model);
+  const resolvedState = path.resolve(stateRoot);
+  fs.mkdirSync(resolvedState, { recursive: true });
+  const target = sessionStatePath(resolvedState, sessionId);
+  const staging = `${target}.staging-${process.pid}`;
+  const state = { schemaVersion: 1, sessionId, model, exact, profile: profile.id };
+  fs.writeFileSync(staging, `${JSON.stringify(state)}\n`, { flag: "wx" });
+  fs.renameSync(staging, target);
+  return state;
+}
+
+export function renderClaudeSkill({ sourceRoot, stateRoot, sessionId, skillName }) {
+  const resolvedSource = fs.realpathSync(sourceRoot);
+  const stateFile = sessionStatePath(stateRoot, sessionId);
+  if (!fs.existsSync(stateFile)) {
+    throw new Error(`no model profile was recorded for Claude session ${sessionId}`);
+  }
+  const state = Schema.decodeUnknownSync(SessionStateJson)(fs.readFileSync(stateFile, "utf8"));
+  if (state.sessionId !== sessionId) throw new Error("Claude session state does not match the requested session");
+  const profile = profiles.find((candidate) => candidate.id === state.profile);
+  if (profile === undefined) throw new Error(`unknown recorded skill profile ${state.profile}`);
+  const skill = discoverSkills(resolvedSource).find((candidate) => candidate.name === skillName);
+  if (skill === undefined) throw new Error(`unknown skill ${skillName}`);
+  const selection = selectVariant(skill, profile);
+  const { body } = splitSkillDocument(selection.path);
+  const stale = !state.exact || selection.profile.id !== profile.id;
+  const detail = selection.profile.id === profile.id ? "" : `; using ${selection.profile.id} for ${skillName}`;
+  const notice = stale
+    ? `Skill variants have not been updated for ${state.model}${detail}. Tell the user once in this session, then continue.`
+    : undefined;
+  const visibleNotice = noticeOnce({ notice, outputRoot: path.join(path.resolve(stateRoot), "session"), sessionId });
+  return visibleNotice === undefined ? body : `${visibleNotice}\n\n${body}`;
 }
 
 function parseArguments(argv) {
@@ -283,46 +372,60 @@ async function readHookInput() {
 async function main() {
   const args = parseArguments(process.argv.slice(2));
   const hook = await readHookInput();
+  const action = args.action ?? "materialize";
   const model = args.model ?? hook.to_model ?? hook.model;
   const sessionId = args.session ?? hook.session_id;
-  if (args.source === undefined || args.output === undefined) {
-    throw new Error("--source and --output are required");
-  }
-  if (model === undefined && hook.hook_event_name === "SessionStart") return;
-  if (model === undefined) throw new Error("a model is required");
-  let result;
-  try {
-    result = materializeSkillVariants({
+  if (action === "claude-view") {
+    if (args.source === undefined || args.output === undefined || args["state-root"] === undefined) {
+      throw new Error("claude-view requires --source, --output, and --state-root");
+    }
+    const result = materializeClaudeSessionView({
       sourceRoot: args.source,
       outputRoot: args.output,
-      model,
       previousSourceRoot: args["previous-source"],
-      sessionId: hook.hook_event_name === "PreModelSwitch" ? undefined : sessionId,
+      stateRoot: args["state-root"],
     });
-  } catch (error) {
-    const unsupported = error instanceof Error && error.message.startsWith("unsupported model family");
-    if (unsupported && hook.hook_event_name === "PostModelSwitch") {
-      deactivateManagedView({
-        sourceRoot: args.source,
-        outputRoot: args.output,
-        model,
-        previousSourceRoot: args["previous-source"],
-      });
-    }
-    if (unsupported && hook.hook_event_name === "PreModelSwitch") {
-      process.stderr.write(`${error.message}; model switch blocked until a matching skill profile exists\n`);
-      process.exitCode = 2;
-      return;
-    }
-    throw error;
+    if (args.format === "json") process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
   }
-  if (hook.hook_event_name === "PreModelSwitch") return;
+  if (action === "record-session") {
+    if (args["state-root"] === undefined || sessionId === undefined) {
+      throw new Error("record-session requires --state-root and a session ID");
+    }
+    if (model === undefined && hook.hook_event_name === "SessionStart") return;
+    if (model === undefined) throw new Error("record-session requires a model");
+    recordClaudeSession({ stateRoot: args["state-root"], sessionId, model });
+    return;
+  }
+  if (action === "render-skill") {
+    if (args.source === undefined || args["state-root"] === undefined || sessionId === undefined || args.skill === undefined) {
+      throw new Error("render-skill requires --source, --state-root, --session, and --skill");
+    }
+    process.stdout.write(renderClaudeSkill({
+      sourceRoot: args.source,
+      stateRoot: args["state-root"],
+      sessionId,
+      skillName: args.skill,
+    }));
+    return;
+  }
+  if (args.source === undefined || args.output === undefined || model === undefined) {
+    throw new Error("materialize requires --source, --output, and a model");
+  }
+  const result = materializeSkillVariants({
+    sourceRoot: args.source,
+    outputRoot: args.output,
+    model,
+    previousSourceRoot: args["previous-source"],
+    sessionId,
+  });
   if (args.format === "json") process.stdout.write(`${JSON.stringify(result)}\n`);
   else if (result.notice !== undefined) process.stdout.write(`${result.notice}\n`);
 }
 
 const invokedPath = process.argv[1] === undefined ? undefined : path.resolve(process.argv[1]);
-if (invokedPath === fileURLToPath(import.meta.url)) {
+const invokedSource = invokedPath !== undefined && fs.existsSync(invokedPath) ? fs.realpathSync(invokedPath) : invokedPath;
+if (invokedSource === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

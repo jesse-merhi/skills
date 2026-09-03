@@ -7,8 +7,8 @@ description: 'Maintain complete model-specific skill variants and add coverage w
 
 Maintain complete, behaviorally equivalent skill prompts for every supported
 model. Change only the requested skills and profiles, preserve their permission
-and evidence contracts, and keep the installed `SKILL.md` as the already
-selected prompt so no runtime router enters model context.
+and evidence contracts, and ensure each invocation receives one selected
+workflow without a model-facing router.
 
 Before the first tool call, give one short sentence stating which skills and
 profiles you will maintain. Update the user only for an important discovery or
@@ -48,7 +48,9 @@ For each skill change:
      limits, required verification stated once.
 4. Keep scripts, references, assets, and `agents/openai.yaml` shared unless
    runtime behavior differs. Keep root `SKILL.md` linked to
-   `variants/gpt-5.6.md` for repository discovery.
+   `variants/gpt-5.6.md` for repository discovery. Static harness views expose
+   one variant directly; Claude's stable loader injects the session-recorded
+   variant through native dynamic context.
 5. Run the materializer test and one independent behavioral exercise for each
    changed profile. Do not add deterministic tests of prompt wording.
 

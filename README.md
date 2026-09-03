@@ -40,8 +40,8 @@ Read INSTALL.md and install these skills for your harness.
 
 [`INSTALL.md`](INSTALL.md) is the authoritative installer and is written *to the
 agent*, not to you. It detects the harness and active model, builds a lightweight
-view containing one complete model-specific prompt per skill, links those
-skills by frontmatter `name`, reconciles third-party skills from
+view that delivers one complete model-specific prompt per invocation, links
+those skills by frontmatter `name`, reconciles third-party skills from
 [`external.md`](external.md), and runs the tests. It asks before touching
 anything it did not put there.
 
@@ -58,10 +58,11 @@ Where the skills land, per harness:
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
 symlink into a generated view. Shared scripts and references still link back to
-this repo; only `SKILL.md` is selected per model. OpenClaw watches the same kind
-of generated view. Hand-written local skills are never replaced without asking.
-One generated view represents one active model profile. Run concurrent Claude
-sessions on different model families with separate `CLAUDE_CONFIG_DIR` roots.
+this repo. Codex, opencode, Pi, and OpenClaw receive a static selected variant.
+Claude's stable loader injects the variant recorded for that session, so Fable
+and Opus sessions can run concurrently without changing each other's prompts.
+The loader is a local shell command, not another model request. Hand-written
+local skills are never replaced without asking.
 
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
 Fable keeps product, architecture, design direction, integration, and high-level
@@ -104,11 +105,12 @@ Some skills are not entry points at all. `review-guardrails`,
 loops load; you can invoke them directly, but usually something else does.
 
 Every skill currently has full GPT-5.6, Claude Fable 5.1, and Claude Opus 5
-variants. Selection happens locally before the model sees the skill, so there
-is no router turn or unused prompt in context. Claude Code refreshes the view at
-session start and after `/model`; a new model falls back to the newest family
-variant and produces one update notice for that session. Unknown model families
-stop instead of silently receiving an unrelated prompt.
+variants. Selection happens locally before the model sees the workflow, so
+there is no router turn or unused prompt in context. Static harness views expose
+the selected prompt directly. Claude Code records the model per session and its
+stable loader injects that session's variant when invoked; a new model falls
+back to the newest family variant and produces one update notice for that
+session. An unrelated Claude model retains that session's previous selection.
 
 ## The loop
 

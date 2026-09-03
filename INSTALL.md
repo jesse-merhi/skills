@@ -24,8 +24,9 @@ proceeding.
 Also resolve the exact active model identifier from the harness. Do not infer
 it from writing style. The model selects which complete skill variant is
 installed. A newer model in a known family uses that family's newest variant
-and produces one informational update notice. An unknown family stops instead
-of receiving an unrelated prompt.
+and produces one informational update notice. A static install stops on an
+unknown family. Claude's session loader retains that session's last supported
+selection; without one, invocation fails instead of using an unrelated prompt.
 
 ## 2. Link global instructions
 
@@ -135,12 +136,11 @@ Classify existing entries:
 Skip this step for OpenClaw; its existing skills are inspected after connecting
 the repo in step 8.
 
-## 7. Materialize and link one model variant
+## 7. Materialize and link model-aware skills
 
 For Claude Code, Codex, opencode, or Pi, keep the target skills directory real
 and retain one per-skill symlink. Point those links at a generated view, not at
-`REPO/skills` directly. Each view contains shared resource links plus exactly
-one model-specific `SKILL.md`, so invoking a skill causes no routing hop.
+`REPO/skills` directly. Shared scripts and references remain linked to the repo.
 
 Choose a view outside the target skills directory:
 
@@ -151,7 +151,8 @@ Choose a view outside the target skills directory:
 | opencode | `~/.config/opencode/.skill-variants/jesse-merhi-skills` |
 | Pi | `~/.pi/agent/.skill-variants/jesse-merhi-skills` |
 
-Build or switch the view with:
+For Codex, opencode, or Pi, build a static view containing the active model's
+complete variant:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
@@ -167,6 +168,29 @@ materializer refuses to replace an unmarked directory or a view owned by
 another repository clone. If this repository moved, read the view's
 `.skill-variant-view.json`, verify that `sourceRoot` is the previous clone, and
 authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
+
+For Claude Code, build a stable session-aware view instead. It keeps one small
+loader at each `SKILL.md` and stores session model state outside the view:
+
+```sh
+node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
+  --action claude-view \
+  --source REPO/skills \
+  --output VIEW_ROOT \
+  --state-root ~/.claude/.skill-variants/jesse-merhi-sessions \
+  --format json
+```
+
+Claude Code expands `${CLAUDE_SESSION_ID}` and runs the loader through its
+native dynamic-context mechanism when a skill is invoked. The loader reads
+that session's recorded model and emits only its complete Fable or Opus prompt.
+This is a local shell command, not another model or network request. The view
+never changes during model switches, so concurrent sessions cannot change each
+other's skill prompts.
+
+Inspect the effective Claude settings before using this mode. If
+`disableSkillShellExecution` is `true`, stop and report that these session-aware
+loaders cannot run under the current policy; do not install inert loaders.
 
 Then:
 
@@ -185,39 +209,31 @@ Then:
    - Ask before replacing a real directory with user-authored changes or a
      symlink owned elsewhere.
 
-For Claude Code, also merge the following command hook into `SessionStart`,
-`PreModelSwitch`, and `PostModelSwitch` in `~/.claude/settings.json`, preserving
-all existing settings and hook handlers:
+For Claude Code, also merge the following command hook into `SessionStart` and
+`PostModelSwitch` in `~/.claude/settings.json`, preserving all existing settings
+and hook handlers:
 
 ```text
-node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --source REPO/skills --output VIEW_ROOT
+node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --action record-session --state-root ~/.claude/.skill-variants/jesse-merhi-sessions
 ```
 
-All three events pass their JSON input on stdin. `SessionStart` usually supplies
-`model`; both model-switch events supply `to_model`. Claude can omit `model`
-from `SessionStart` after recovery or `/clear`, in which case the hook leaves
-the already selected view unchanged. `PreModelSwitch` materializes a supported
-profile before the switch and blocks an unsupported family. `PostModelSwitch`
-confirms the selected profile after the switch and deactivates the view if an
-automatic switch reaches an unsupported family. A fallback notice is stored by
-`session_id`, so it appears at most once in that session. Validate the merged
-settings with the installed Claude Code build. If that build does not support
-the model-switch events, leave the `SessionStart` handler installed, report
-that in-session switching requires reinstalling the view, and do not leave an
-invalid handler behind.
+Both events pass their JSON input on stdin. `SessionStart` usually supplies
+`model`; `PostModelSwitch` supplies `to_model`. Claude can omit `model` from
+`SessionStart` after recovery or `/clear`, in which case the hook keeps that
+session's existing selection. A newer recognized family uses its newest prompt
+and emits one notice per session. An unrelated unsupported family leaves that
+session's previous selection in place and reports the hook error. Validate the
+merged settings with the installed Claude Code build. If that build does not
+support `PostModelSwitch`, leave the `SessionStart` handler installed, report
+that in-session switching is not tracked, and do not leave an invalid handler
+behind.
 
-The hook changes what later skill invocations load. Skill instructions already
-present in the conversation remain there until a fresh session; do not claim
-that the hook removes them.
-
-The view is scoped to one Claude configuration directory, so one config
-directory supports one active model profile at a time. Concurrent sessions on
-different Claude model families must use separate `CLAUDE_CONFIG_DIR` values,
-each with its own skills directory, settings file, and generated view. Do not
-claim that a shared config directory safely supports mixed-model sessions.
+The hook changes what later skill invocations load in that session. Skill
+instructions already present in its conversation remain there until a fresh
+session; do not claim that the hook removes them.
 
 Treat the materializer command as a repo-owned hook. Before adding it, remove
-older `SessionStart`, `PreModelSwitch`, or `PostModelSwitch` handlers whose command invokes
+older `SessionStart` or `PostModelSwitch` handlers whose command invokes
 `materialize-skill-variants.mjs` for this skill collection, then add the current
 command once to each event. On uninstall, remove those handlers. This makes
 reinstalling after a repository move idempotent without disturbing unrelated
@@ -316,7 +332,7 @@ Report:
 - Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
 - selected model profile and whether it was an exact match or fallback
-- Claude Code SessionStart/PreModelSwitch/PostModelSwitch hooks installed,
+- Claude Code SessionStart/PostModelSwitch hooks installed,
   unsupported, or skipped
 - existing local skills preserved
 - third-party installs run or skipped

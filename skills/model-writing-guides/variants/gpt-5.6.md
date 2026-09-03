@@ -6,7 +6,7 @@ description: 'Maintain complete model-specific skill variants and add coverage w
 # Model writing guides
 
 Outcome: every repo skill has a complete prompt written for every supported
-model, while installation exposes only the selected prompt as `SKILL.md`.
+model, while each invocation receives only its selected workflow.
 
 ## Supported profiles
 
@@ -36,15 +36,15 @@ Variant file presence is the coverage record; do not add a per-skill manifest.
      delegation limits; avoid redundant verification instructions.
 4. Keep supporting scripts, references, assets, and `agents/openai.yaml` shared
    unless their runtime behavior truly differs by model.
-5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`. The
-   installer materializes the selected model instead of loading this link as a
-   router.
+5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`. Static
+   harness views expose the selected file directly. Claude's stable loader uses
+   native dynamic context to inject the variant recorded for that session.
 6. Run the materializer test and exercise the changed skill independently with
    each affected model profile. Judge behavior, not prose shape.
 
 Done when all supported variants preserve one behavior contract, each model's
 prompt removes guidance it does not need, and the installed skill loads one
-complete variant with no model-facing routing hop.
+complete variant with no model or network routing hop.
 
 ## Add a new model
 

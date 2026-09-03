@@ -33,8 +33,9 @@ For each skill:
    using their current official prompting guides.
 3. Share references, scripts, assets, and UI metadata unless runtime behavior
    truly differs by model.
-4. Keep root `SKILL.md` linked to `variants/gpt-5.6.md`. The installer exposes
-   the active model's variant directly, so runtime skills never load a router.
+4. Keep root `SKILL.md` linked to `variants/gpt-5.6.md`. Static harness views
+   expose the active variant directly; Claude's stable loader injects the
+   session-recorded variant through native dynamic context.
 5. Treat variant file presence as coverage. When a new model appears, add its
    profile and complete variant across the repository; until then, keep the
    nearest family variant running. The materializer owns fallback notices.
