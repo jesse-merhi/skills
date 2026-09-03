@@ -204,8 +204,9 @@ Done when one call spanned the whole requested delay.
 ## Subagents
 
 Use the harness's event-driven agent wait. After a non-terminal update or
-timeout, resume the event wait without a status-list call. Inspect agent status only for an explicit error or repeated
-timeouts. Keep the coordinator active until it receives the result.
+timeout, resume the event wait without a status-list call. Inspect agent status
+only for an explicit error or repeated timeouts. Keep the coordinator active
+until it receives the result.
 
 ## GitHub Actions
 
