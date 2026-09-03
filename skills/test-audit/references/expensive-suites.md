@@ -1,13 +1,24 @@
-# Expensive suite optimisation
+# Suite execution cost and optimisation
 
-Use this workflow when a portfolio audit aims to reduce test runtime, runner
-cost, or the wall-clock duration of a parallel suite. Performance pressure does
-not lower the ownership bar: first preserve one executable owner for every
-retained risk, then optimise how those owners are expressed and scheduled.
+Use this workflow when the default execution-cost gate traces the current
+change to a plausible material cost or makespan impact, or when a portfolio
+audit aims to reduce test runtime, runner cost, or the wall-clock duration of a
+parallel suite. Do not wait for an explicit performance request. For cost-drift
+risk without optimisation work, use the baseline and reporting guidance; apply
+edit-validation requirements only after authorised changes. Measurement-only
+work may run only the measurements and non-mutating diagnostics within its
+authority. Use portfolio reduction or scheduling only when that lever changes.
+Performance pressure does not lower the ownership bar: first preserve one
+executable owner for every retained risk, then optimise how those owners are
+expressed and scheduled.
 
 ## Freeze a comparable baseline
 
-Before editing, record the exact baseline test or flow set and the command,
+Choose a baseline that matches the work. During a PR or post-change audit,
+compare the direct base with the candidate revision under the same comparison
+controls, allowing only the intended changed mechanism to vary. Before
+authorised optimisation work begins, capture a pre-edit baseline when
+practical. Record the exact baseline test or flow set and the command,
 discovery boundary, selection rules, shard count, retry policy, setup and cache
 behavior, timing source, and relevant runner environment. Record the resulting
 candidate set separately while holding the other conditions constant. If the
@@ -85,10 +96,25 @@ overloaded shard.
 
 ## Validate and stop
 
-Run the suite's discovery or configuration validation, the tests for changed
-selectors and helpers, and every affected shard or equivalent full-suite gate.
-Run typecheck or lint when shared contracts or test infrastructure changed.
-Re-measure the final state with the baseline method when practical.
+Choose the validation branch that matches the authority:
+
+- For audit-only or recommendation-only work without authorised edits or
+  measurements, inspect existing evidence and run only safe diagnostics
+  proportionate to the request. Do not trigger affected shards or a full-suite
+  run solely to satisfy the audit; report the measurement limitation instead.
+- For measurement-only work, run only the authorised measurements and
+  supporting non-mutating diagnostics. Do not apply edit-validation gates or
+  directly edit tests, infrastructure, cache settings, or configuration.
+  Incidental cache or runtime-state writes from an authorised measurement
+  command are allowed when they are representative and remain within that
+  command's normal scope.
+- After authorised edits, apply the edit-validation requirements below.
+
+After authorised edits, run the suite's discovery or configuration validation,
+the tests for changed selectors and helpers, and every affected shard or
+equivalent full-suite gate. Run typecheck or lint when shared contracts or test
+infrastructure changed. Re-measure the final state with the baseline method when
+practical.
 
 When the portfolio changed, stop at the portfolio fixed point: a fresh ownership
 pass finds no equivalent duplicate owner, ownerless test or infrastructure, or
