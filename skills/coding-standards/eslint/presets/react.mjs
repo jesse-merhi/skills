@@ -15,11 +15,14 @@ const DEFAULT_COMPONENTS = {
 };
 const DEFAULT_CONTROL_COMPONENTS = ["Checkbox", "Input", "Select", "SelectTrigger", "Switch", "Textarea"];
 const DEFAULT_LABEL_COMPONENTS = ["Label"];
+// Components that render a control which must carry its own accessible label.
+const DEFAULT_CONTROLS_REQUIRING_LABEL = ["Button", "SelectTrigger"];
 
 export default function react(options = {}) {
 	const components = options.a11y?.components ?? DEFAULT_COMPONENTS;
 	const controlComponents = options.a11y?.controlComponents ?? DEFAULT_CONTROL_COMPONENTS;
 	const labelComponents = options.a11y?.labelComponents ?? DEFAULT_LABEL_COMPONENTS;
+	const controlsRequiringLabel = options.a11y?.controlsRequiringLabel ?? DEFAULT_CONTROLS_REQUIRING_LABEL;
 
 	return [
 		{
@@ -54,7 +57,7 @@ export default function react(options = {}) {
 				"jsx-a11y/control-has-associated-label": [
 					"error",
 					{
-						controlComponents: ["Button", "SelectTrigger"],
+						controlComponents: controlsRequiringLabel,
 						depth: 3,
 						ignoreElements: ["audio", "canvas", "embed", "input", "textarea", "tr", "video"],
 						ignoreRoles: [
