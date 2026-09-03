@@ -288,7 +288,8 @@ PRs are welcome.
   conditional or advanced detail in `references/`, linked one hop from
   `SKILL.md` only. A reference file must not link to another reference; the
   only file under `skills/` it may link to is its own `SKILL.md`. A skill that
-  runs on every turn is a single file.
+  runs on every turn is a single file; `speak-fking-english` is the one
+  outstanding exception and is being restructured separately.
 - `bun run lint:skills` enforces the hop and length rules, requires every
   reference to be linked from `SKILL.md`, and warns when one reference is
   linked from both a workflow step and a `Context pointers` section, so you
