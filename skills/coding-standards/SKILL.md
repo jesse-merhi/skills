@@ -35,9 +35,9 @@ real directory holding this SKILL.md with `realpath` or `readlink -f` and read
 and `git rev-parse HEAD` of the repository that directory belongs to.
 
 Check that the commit is reachable from the remote: `git branch -r --contains
-<sha>` returns something, or `git merge-base --is-ancestor <sha> origin/HEAD`
-succeeds. When it is not, say so in the report, because a manifest pointing at
-an unpushed commit cannot be synced from another machine.
+<sha>` names at least one branch. When it prints nothing, say so in the report,
+because a manifest pointing at an unpushed commit cannot be synced from another
+machine.
 
 Done when `catalog.json` has been read from a resolved real path, the source
 repository URL and commit SHA are both written down, and the commit is either

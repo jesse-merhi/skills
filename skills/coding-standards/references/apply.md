@@ -104,16 +104,23 @@ replaced, only extended.
    tool caches from its own test runs, and a wholesale directory copy drags
    them into the target.
 
-   - JavaScript: `eslint/` — rules, presets, and the standards plugin — minus
-     every `*.test.mjs`. The rule tests import vitest, which the target has no
-     reason to install. Vendoring all of `eslint/` deliberately brings presets
-     this target did not select: the config never imports them, so they are
-     inert until their packages exist, and holding them under the manifest lets
-     `sync` keep them current so enabling one later is a single import line.
-   - Python: `python/ruff.toml`, `python/mypy.ini`, `python/semgrep/`, and
-     `python/standards_checks/`. Not `python/tests`, `pyproject.toml`, or
-     `uv.lock`; those test and build the catalog itself and mean nothing in a
-     target.
+   The catalog names what to copy: every `presets.<ecosystem>.*.file` of a
+   detected ecosystem — that file when the entry names a file, every tracked
+   file under it when the entry names a directory — minus every `*.test.mjs` in
+   the JavaScript family, whose rule tests import vitest that the target has no
+   reason to install. Read those paths out of `catalog.json`; a list written
+   here drifts the first time a preset is added.
+
+   - JavaScript: the preset files import `eslint/rules/` and
+     `eslint/standards-plugin.mjs`, so vendor all of `eslint/` under the same
+     rule. That deliberately brings presets this target did not select: the
+     config never imports them, so they are inert until their packages exist,
+     and holding them under the manifest lets `sync` keep them current so
+     enabling one later is a single import line.
+   - Python: no preset entry names `python/tests`, `pyproject.toml`, or
+     `uv.lock`, and none should — those test and build the catalog itself and
+     mean nothing in a target. The vendored checks need Python 3.10 or newer;
+     when the target `requires-python` allows less, stop and say so.
    - Every baseline in `catalog.baselines` whose `applies` matches the target,
      evaluated exactly as the presets in step 3: copy its `file` to the
      `target` path it names, and only when nothing is there already.
@@ -163,13 +170,16 @@ replaced, only extended.
    takes `internalPattern` too, for a repository whose path aliases are
    something other than `@/`, `~/`, or `#`.
 
-   Three presets take a file exemption or an opt-in that only the target can
-   name: `tailwind({ elevationModuleFiles })` turns the elevation rule off in the
+   Every preset factory takes one options object, and the factory itself is the
+   list of what it accepts. Named here are only the ones a target has to supply:
+   `tailwind({ elevationModuleFiles })` turns the elevation rule off in the
    module that defines the tokens, `reactNative({ colorModuleFiles })` does the
    same for the palette module, and `typescript({ typeChecked: true })` enables
    the project service only when the target wants type-aware rules (with it on,
-   a `.ts` file outside every tsconfig is a fatal parse error). Find those
-   modules in the survey and pass them; leave `typeChecked` off unless a
+   a `.ts` file outside every tsconfig is a fatal parse error).
+   `typescript({ tsconfigRootDir })` rides with it and means nothing without it:
+   it tells the project service which directory to resolve tsconfigs from. Find
+   those modules in the survey and pass them; leave `typeChecked` off unless a
    type-aware rule is enabled.
 
    When the target already has a flat config, add the imports and entries to
@@ -189,9 +199,9 @@ replaced, only extended.
    manifest-tracked reference the options were copied from, which is what lets
    `sync` show that they drifted.
 
-   Then define four commands, each run through the target's own runner:
-   prefixed with `uv run` in a uv project, bare where the target manages its
-   own environment.
+   Then define one command per selected `presets.python` entry, each run
+   through the target's own runner: prefixed with `uv run` in a uv project,
+   bare where the target manages its own environment.
 
    ```
    ruff check <src dirs>
@@ -220,7 +230,10 @@ replaced, only extended.
      "source": { "repository": "<git remote url>", "commit": "<sha>" },
      "catalogVersion": 1,
      "ecosystems": ["javascript", "python"],
-     "presets": { "javascript": ["base", "typescript"], "python": ["ruff"] },
+     "presets": {
+       "javascript": ["base", "typescript"],
+       "python": ["ruff", "mypy", "semgrep", "checks"]
+     },
      "files": {
        "lint/standards/eslint/presets/base.mjs": {
          "source": "eslint/presets/base.mjs",
@@ -241,11 +254,11 @@ replaced, only extended.
    that content came from, relative to the catalog directory:
    `eslint/presets/base.mjs` for a plain vendored file,
    `prettier/prettierrc.json` for a baseline that lands under another name.
-   Three baselines are renamed on the way in, and without `source` `sync` has
-   no way back to the catalog file to hash. Each `sha256` is the hash of the
-   catalog content vendored to that path, which stays true even after someone
-   edits the target copy — that is what lets `sync` tell an upstream change
-   from a local one.
+   Every baseline whose `target` differs from its `file` is renamed on the way
+   in, and without `source` `sync` has no way back to the catalog file to hash.
+   Each `sha256` is the hash of the catalog content vendored to that path,
+   which stays true even after someone edits the target copy — that is what
+   lets `sync` tell an upstream change from a local one.
 
    Done when every file step 5 wrote has an entry. `sync` can only see what the
    manifest lists, so an omitted file silently stops receiving updates.
@@ -284,7 +297,9 @@ replaced, only extended.
 
     - `eslint --print-config <a real source file>` lists `standards/*` rules and
       the rules of the selected presets. For Python, run each command against a
-      real source file and show that it inspected it.
+      real source file. A tool that prints nothing on a clean file — the checks
+      CLI — proves nothing that way, so run it against a file holding a known
+      violation and show the finding it reports.
     - the lint script exists and runs those commands.
     - CI runs that script, or the target has no CI.
 

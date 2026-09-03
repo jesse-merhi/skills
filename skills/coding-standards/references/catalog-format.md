@@ -24,7 +24,11 @@ invariants a new entry has to satisfy.
     loads for itself: `base` imports the TypeScript import resolver, so
     `eslint-import-resolver-typescript` is ordinary `packages` content there.
   - `applies` — `always: true`, or `dependencies` and `devDependencies` naming
-    packages that must appear in the target `package.json`.
+    packages that must appear in the target `package.json`. Apply evaluates it
+    against `package.json` alone, so a Python-only target selects the `always`
+    presets and nothing else; conditioning a Python preset on an installed
+    Python package would mean teaching `applies` to read `pyproject.toml`. That
+    is a known limit, not a task.
 - `baselines.<id>` — a config file copied whole into a target rather than
   enforced by a rule. Apply step 5 is what consumes this record.
   - `file` — path relative to the skill directory. `catalog.test.ts` checks it
@@ -60,6 +64,15 @@ invariants a new entry has to satisfy.
 
 ## Invariants
 
+`catalog.schema.ts` rejects on decode:
+
+- an empty `enforcement.<ecosystem>` array, so a standard this ecosystem cannot
+  enforce has to carry a `not-applicable` entry rather than `[]`.
+- an `applies` naming no condition, and a `ruff` `select` or `packages` entry
+  that is empty.
+- any key an enforcement kind does not define, and any value of the wrong type:
+  `mypy` `options` are booleans, not the strings a config file writes.
+
 `catalog.test.ts` enforces:
 
 - every `rule`, `test`, `script.file`, `check`/`semgrep` `file` and `test`, and
@@ -73,20 +86,22 @@ invariants a new entry has to satisfy.
   the version installed in this repository.
 - every rule id a preset emits resolves against the plugins that preset
   declares.
-- every standard carries a column for every ecosystem in `ecosystems`, and no
-  column is empty.
+- every standard carries a column for every ecosystem in `ecosystems`.
 
 `python/tests/test_catalog.py` enforces:
 
 - `python/ruff.toml` `lint.select` equals the union of every python `ruff`
   `select`, with no duplicates.
 - `python/mypy.ini` equals the union of every python `mypy` `options`.
-- every python `check` and `semgrep` `file` and `test` path exists.
-- every `check` `module` imports and exposes `check_source`, and the set of
-  those modules equals what `standards_checks.cli` runs.
-- the `ruff` and `mypy` preset `packages` versions equal the pins in the
-  `python/pyproject.toml` dev group. `semgrep` is not lock-backed: the host
-  machine provides it, and its version comes from `semgrep --version`.
+- every `check` `module` imports, and the file it loads from is the `file` the
+  same entry names.
+- every `check` module `CHECK_ID` equals the id of the standard it enforces.
+- the set of `check` modules equals what `standards_checks.cli` runs.
+- every python preset `packages` pin equals the version that installs it:
+  `ruff` and `mypy` against the `python/pyproject.toml` dev group, `semgrep`
+  against the `semgrep@<version>` in the root `package.json` `validate:python`
+  script. Semgrep is not a project dependency — the host provides it at run
+  time through `uvx` — so that command line is the only pin it has.
 
 ## Adding an entry
 

@@ -33,18 +33,28 @@ started as — use `apply` instead.
    upstream; one with no file in the target was deleted locally. Report each
    rather than guessing which side is right.
 
-   Done when every manifest entry carries exactly one class.
+   A file added upstream has no manifest entry at all, so the table cannot see
+   it. Find those separately: for every vendored `presets.<eco>.*.file` that
+   names a directory, compare `git ls-files` of that directory in the catalog
+   against the manifest keys vendored from it. Anything upstream and unlisted
+   is **new upstream**. Skipping this leaves a target that no longer runs:
+   upstream adds a check module and imports it from `cli.py`, sync updates
+   `cli.py` alone, and the CLI now imports a module that is not there.
+
+   Done when every manifest entry carries exactly one class and every new
+   upstream file is named.
 
 3. **Apply the upstream changes.**
 
-   Overwrite each `upstream-changed` file with the catalog content. Leave every
-   `locally-modified` file alone. For each `both`, show what changed upstream,
-   what changed locally, and ask which to keep. Never overwrite a local
-   modification silently — the target edited it for a reason the catalog cannot
-   see.
+   Overwrite each `upstream-changed` file with the catalog content, and copy
+   each `new upstream` file in. Leave every `locally-modified` file alone. For
+   each `both`, show what changed upstream, what changed locally, and ask which
+   to keep. Never overwrite a local modification silently — the target edited
+   it for a reason the catalog cannot see.
 
-   Done when every `upstream-changed` file matches the catalog byte for byte,
-   and every `both` file has an explicit decision from the user.
+   Done when every `upstream-changed` and `new upstream` file matches the
+   catalog byte for byte, and every `both` file has an explicit decision from
+   the user.
 
 4. **Offer newly applicable presets.**
 
@@ -58,11 +68,12 @@ started as — use `apply` instead.
 
 5. **Update the manifest.**
 
-   Write the new source commit, and update each entry `sha256` to the sha256 of
-   the catalog content that path was synced from, leaving its `source`
-   unchanged. Leave the old hash on any file kept as a local modification:
-   setting it to the local bytes would make the next run read that file as
-   pristine and overwrite it.
+   Write the new source commit, add an entry for every `new upstream` file step
+   3 copied in, and update each existing entry `sha256` to the sha256 of the
+   catalog content that path was synced from, leaving its `source` unchanged.
+   Leave the old hash on any file kept as a local modification: setting it to
+   the local bytes would make the next run read that file as pristine and
+   overwrite it.
 
    Done when re-running step 2 classes every file `unchanged`, apart from the
    files deliberately kept as local modifications, which still class as

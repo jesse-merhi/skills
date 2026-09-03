@@ -10,7 +10,9 @@ column covering all four tiers, with the drift test that keeps it honest in
 ## Tiers
 
 Every standard ends up with an `enforcement.<ecosystem>` array. For each one,
-take the first tier that fits.
+take the first tier that fits. A tier is a catalog `kind`: native is the
+ecosystem's linter and type-checker kinds — `ruff` and `mypy` for Python —
+pattern is `semgrep`, check is `check`, and the last tier is `not-applicable`.
 
 1. **native** — a rule code or option of the ecosystem standard linter or type
    checker: ruff, mypy, clippy, golangci-lint, rubocop. Cheapest to run, and
@@ -82,14 +84,7 @@ already handles, while costing a test suite and a CLI to maintain.
    entry with its reason — and the catalog still decodes against
    `catalog.schema.ts`.
 
-6. **Extend `catalog.test.ts`.**
-
-   Add the new column preset `file` paths and its rule and fixture paths to the
-   file-existence case.
-
-   Done when deleting any file the new column names makes that test fail.
-
-7. **Run the repository validation.**
+6. **Run the repository validation.**
 
    Done when the repository lint, typecheck, diagnostics, catalog tests, and
    the new ecosystem test commands all pass.
@@ -101,13 +96,20 @@ a list, so detection (apply step 1), preset selection (step 3), and the
 dependency prompt (step 4) start working for the new ecosystem the moment the
 catalog carries it.
 
-Two things do not follow automatically, because they are per-ecosystem prose in
-[apply.md](apply.md):
+Vendoring (apply step 5) follows too: it copies whatever
+`presets.<eco>.*.file` names, so a new preset entry is a new vendored file with
+no prose to change.
 
-- **Step 5, vendoring:** which files get copied into `lint/standards/`, and
-  which stay behind because they only test or build the catalog.
-- **Step 6, config:** how the target config points at the vendored files, and
-  which commands run the linter, the pattern tool, and the checks.
+One thing does not follow, because it is per-ecosystem prose in
+[apply.md](apply.md): **step 6, config and commands** — how the target config
+points at the vendored files, and which commands run the linter, the pattern
+tool, and the checks. Add the new ecosystem there in the same change, or
+`apply` will detect it, vendor its files, and then have nothing to run them
+with.
 
-Add the new ecosystem to both lists in the same change, or `apply` will detect
-it, offer its presets, and then have nothing to write.
+Preset selection reads the target `package.json` and nothing else, so a target
+with no `package.json` selects the `always` presets of the new ecosystem and no
+others. Give the new presets `applies.always` unless they genuinely depend on a
+JavaScript package; conditioning one on the new ecosystem's own manifest means
+extending `applies` to read that manifest, which is a known limit rather than a
+task in this mode.
