@@ -238,7 +238,7 @@
 		{
 			"id": "no-broad-rule-disable",
 			"title": "No blanket disables of protected rules",
-			"principle": "A file- or block-level disable silently turns a rule off for everything below it, including code written later. Disable a protected rule on the single line that needs the exception, so the next reader sees exactly what was excused and why.",
+			"principle": "A file- or block-level disable silently turns a rule off for everything below it, including code written later. Disable a protected rule on the single line that needs the exception, so the next reader sees exactly what was excused and why. A bare eslint-disable with no rule name is invisible to ESLint itself, so pair this rule with a repository-wide grep for it.",
 			"scope": "any",
 			"origin": "uplinked eslint-rules/no-zod-type-any-block-disable.cjs",
 			"enforcement": {

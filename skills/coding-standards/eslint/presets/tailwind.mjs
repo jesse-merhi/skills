@@ -14,7 +14,7 @@ export default function tailwind(options = {}) {
 		breakpointOptions.disallowedNamedBreakpoints = options.disallowedNamedBreakpoints;
 	}
 
-	return [
+	const configs = [
 		{
 			...(options.files === undefined ? {} : { files: options.files }),
 			plugins: { standards },
@@ -26,4 +26,16 @@ export default function tailwind(options = {}) {
 			},
 		},
 	];
+
+	// The module that defines the elevation tokens is the one place raw shadow
+	// utilities belong, so the preset turns the rule off there.
+	if (options.elevationModuleFiles !== undefined && options.elevationModuleFiles.length > 0) {
+		configs.push({
+			files: options.elevationModuleFiles,
+			plugins: { standards },
+			rules: { "standards/no-raw-elevation": "off" },
+		});
+	}
+
+	return configs;
 }

@@ -196,4 +196,21 @@ describe("coding standards catalog", () => {
       assert.deepEqual([...enabled].toSorted(), [...claimedRuleIds(name)].toSorted(), `${name} catalog claims`)
     }
   })
+  it("keys every enforcement column and preset family by a known ecosystem", () => {
+    const ecosystemNames = new Set(Object.keys(catalog.ecosystems))
+    const families = new Set(Object.values(catalog.ecosystems).map((ecosystem) => ecosystem.presets))
+    for (const standard of catalog.standards) {
+      for (const column of Object.keys(standard.enforcement)) {
+        assert.isTrue(column === "script" || ecosystemNames.has(column), `${standard.id} has an unknown column ${column}`)
+      }
+    }
+    for (const family of Object.keys(catalog.presets)) {
+      assert.isTrue(families.has(family), `preset family ${family} belongs to no ecosystem`)
+    }
+    for (const entry of enforcements) {
+      if (entry.kind === "rule" || entry.kind === "plugin") {
+        assert.isNotEmpty(entry.presets, `${entry.kind === "rule" ? entry.rule : entry.package} is claimed by no preset`)
+      }
+    }
+  })
 })

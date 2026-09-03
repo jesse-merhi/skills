@@ -2,7 +2,7 @@ import nativeA11y from "eslint-plugin-react-native-a11y";
 
 import { standards } from "../standards-plugin.mjs";
 
-const DEFAULT_FILES = ["**/*.{jsx,tsx}"];
+const DEFAULT_FILES = ["**/*.{js,jsx,ts,tsx}"];
 
 export default function reactNative(options = {}) {
 	return [
