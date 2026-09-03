@@ -34,11 +34,10 @@ Record the metrics the environment can support:
 - observed or billable runner-minutes when available, including setup overhead
   if the runner charges or materially delays each shard.
 
-Maximum observed shard elapsed is the workflow makespan only when every shard
-starts together and no required critical-path work occurs outside those shards.
-Maximum summed test duration is equivalent only when those shards also execute
-their tests sequentially. Otherwise use observed workflow makespan or the
-runner-aware model.
+Treat shard loads and full workflow makespan as separate measures. Use a
+shard-based proxy for makespan only when the observed data or runner-aware model
+includes every dependency, start offset, capacity limit, queue delay, setup,
+and teardown that can affect the critical path, and state those assumptions.
 
 File count, test count, and lines deleted describe portfolio size but do not
 prove a runtime improvement.
@@ -66,10 +65,10 @@ and the additional runner usage or cost is acceptable within the user's scope.
 An unsharded suite is not by itself a reason to introduce sharding.
 
 Prefer the repository's existing runner, selector, timing source, and CI
-orchestration over a competing scheduler. When independent tests run
-sequentially within each shard, have useful duration estimates, and the
-existing tooling has no suitable balancing primitive, longest-processing-time
-greedy assignment is a simple baseline:
+orchestration over a competing scheduler. When freely assignable independent
+tests run sequentially on interchangeable shards, have useful duration
+estimates, and the existing tooling has no suitable balancing primitive,
+longest-processing-time greedy assignment is a simple baseline:
 
 1. sort tests from longest to shortest, with a deterministic tie-break;
 2. assign each test to the currently lightest shard; and
@@ -91,7 +90,7 @@ selectors and helpers, and every affected shard or equivalent full-suite gate.
 Run typecheck or lint when shared contracts or test infrastructure changed.
 Re-measure the final state with the baseline method when practical.
 
-For portfolio reduction, stop at the portfolio fixed point: a fresh ownership
+When the portfolio changed, stop at the portfolio fixed point: a fresh ownership
 pass finds no equivalent duplicate owner, ownerless test or infrastructure, or
 lower-cost proof level that can be removed, consolidated, or moved without
 losing a promised regression. Completion also requires every retained risk to
@@ -99,9 +98,10 @@ have its named owner and the final validation to pass. Require comparable
 measurement when practical; otherwise report the available portfolio counts
 and the timing limitation.
 
-For scheduling-only work, stop when the preserved test set is fully assigned,
-the changed planner and configuration pass, and comparable measurement shows
-the resulting distribution. Do not use an arbitrary percentage target;
+When scheduling changed, stop when the retained test set is fully assigned, the
+changed planner and configuration pass, and comparable measurement shows the
+resulting distribution. Apply both completion gates when both levers changed.
+Do not use an arbitrary percentage target;
 remaining runtime alone is not evidence that coverage is disposable or that a
 more complex scheduler is justified. Report infrastructure or product-
 testability costs that remain outside the requested optimisation as separate
