@@ -170,6 +170,12 @@ another repository clone. If this repository moved, read the view's
 `.skill-variant-view.json`, verify that `sourceRoot` is the previous clone, and
 authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
 
+A static view serves one active model profile. Before starting a Codex,
+opencode, or Pi session with a different model, rerun this command with that
+model's full configured ID. Do not run concurrent different-model sessions
+against the same static view; configure separate harness roots and view roots
+when that is required. A static view does not detect later model changes.
+
 For Claude Code, build a stable session-aware view instead. It keeps one small
 loader at each public `SKILL.md`, contained model-qualified prompts for routed
 subagents, linked shared resources, and session model state outside the view:

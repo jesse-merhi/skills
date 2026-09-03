@@ -57,7 +57,7 @@ export const profiles = [
 ];
 
 function modelFamily(model) {
-  const normalized = model.toLowerCase();
+  const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase();
   if (/^(?:(?:anthropic\/)?claude-)?opus(?:[-.]\d|\[)/.test(normalized)) return "anthropic-opus";
   if (/^(?:(?:anthropic\/)?claude-)?fable(?:[-.]\d|\[)/.test(normalized)) return "anthropic-fable";
   if (/^(?:openai\/)?gpt-\d/.test(normalized)) return "openai-gpt";
@@ -65,7 +65,8 @@ function modelFamily(model) {
 }
 
 export function resolveProfile(model) {
-  const exact = profiles.find((profile) => profile.matches.test(model));
+  const unqualifiedModel = model.slice(model.lastIndexOf("/") + 1);
+  const exact = profiles.find((profile) => profile.matches.test(unqualifiedModel));
   const family = exact?.family ?? modelFamily(model);
   if (family === undefined) {
     throw new Error(`unsupported model family for ${model}`);

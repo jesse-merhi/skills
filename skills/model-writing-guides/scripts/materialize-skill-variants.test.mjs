@@ -56,6 +56,17 @@ test("recognizes Claude Code family aliases as exact profiles", () => {
   assert.equal(opus.profile.id, "claude-opus-5");
 });
 
+test("recognizes model families behind provider-qualified identifiers", () => {
+  const exact = resolveProfile("azure-openai/gpt-5.6-sol");
+  const fallback = resolveProfile("atlassian-ai-gateway-openai/gpt-5.5-2026-04-23");
+
+  assert.equal(exact.exact, true);
+  assert.equal(exact.profile.id, "gpt-5.6");
+  assert.equal(fallback.exact, false);
+  assert.equal(fallback.profile.id, "gpt-5.6");
+  assert.throws(() => resolveProfile("gateway/gemini-opus-pro"), /unsupported model family/);
+});
+
 test("materializes one contained static variant and links shared resources", (t) => {
   const current = fixture(t);
   const result = materializeSkillVariants({
