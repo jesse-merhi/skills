@@ -156,7 +156,7 @@ executable resources remain linked to their repository dependency root:
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
   --source REPO/skills \
   --output VIEW_ROOT \
-  --model ACTIVE_MODEL_ID \
+  --model 'ACTIVE_MODEL_ID' \
   --format json
 ```
 

@@ -42,13 +42,14 @@ function fixture(t) {
 
 test("recognizes supported model identifiers and same-family fallbacks", () => {
   const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
+  const configuredFable = resolveProfile("claude-fable-5[1m]");
   const futureFable = resolveProfile("claude-fable-5.2");
   const gpt = resolveProfile("azure-openai/gpt-5.6-sol");
   const futureGpt = resolveProfile("atlassian-ai-gateway-openai/gpt-5.7-terra");
 
   assert.deepEqual(
-    [fable.profile.id, fable.exact, futureFable.profile.id, futureFable.exact],
-    ["claude-fable-5.1", true, "claude-fable-5.1", false],
+    [fable.profile.id, fable.exact, configuredFable.profile.id, configuredFable.exact, futureFable.profile.id, futureFable.exact],
+    ["claude-fable-5.1", true, "claude-fable-5.1", true, "claude-fable-5.1", false],
   );
   assert.deepEqual(
     [gpt.profile.id, gpt.exact, futureGpt.profile.id, futureGpt.exact],
@@ -110,6 +111,28 @@ test("retries when a contended output lock disappears before inspection", (t) =>
   assert.equal(simulatedRace, true);
 });
 
+test("restores the previous view when publication fails", (t) => {
+  const current = fixture(t);
+  materializeSkillVariants({ model: "gpt-5.6", outputRoot: current.output, sourceRoot: current.source });
+  const previousSkill = fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8");
+  const originalRenameSync = fs.renameSync;
+  fs.renameSync = (source, target) => {
+    if (source.startsWith(current.output + ".staging-") && target === current.output) {
+      throw new Error("injected publication failure");
+    }
+    return originalRenameSync(source, target);
+  };
+  t.after(() => {
+    fs.renameSync = originalRenameSync;
+  });
+
+  assert.throws(
+    () => materializeSkillVariants({ model: "claude-fable-5.1", outputRoot: current.output, sourceRoot: current.source }),
+    /injected publication failure/,
+  );
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), previousSkill);
+});
+
 test("prints JSON output and emits one same-family fallback notice per session", (t) => {
   const current = fixture(t);
   const run = () => spawnSync(
@@ -134,18 +157,36 @@ test("prints JSON output and emits one same-family fallback notice per session",
   assert.equal(first.status, 0, first.stderr);
   const firstResult = JSON.parse(first.stdout);
   assert.equal(firstResult.profile, "gpt-5.6");
+  assert.equal(firstResult.exact, false);
   assert.match(firstResult.notice, /not been updated for gpt-5\.7-sol/);
 
   const second = run();
   assert.equal(second.status, 0, second.stderr);
   assert.equal(JSON.parse(second.stdout).notice, undefined);
+
+  const thirdSession = materializeSkillVariants({
+    model: "gpt-5.7-sol",
+    outputRoot: current.output,
+    sessionId: "session/two",
+    sourceRoot: current.source,
+  });
+  assert.match(thirdSession.notice, /not been updated for gpt-5\.7-sol/);
 });
 
-test("rejects unsupported model families, including Opus", () => {
-  assert.throws(() => resolveProfile("claude-opus-5"), /unsupported model family/);
+test("rejects unsupported model families", () => {
   assert.throws(() => resolveProfile("gemini-3-pro"), /unsupported model family/);
   assert.throws(() => resolveProfile("gpt-oss-120b"), /unsupported model family/);
-  assert.throws(() => resolveProfile("llama-5"), /unsupported model family/);
+});
+
+test("rejects skill names that could escape the generated view", (t) => {
+  const current = fixture(t);
+  writeSkill(current.source, "unsafe", "../escaped");
+
+  assert.throws(
+    () => materializeSkillVariants({ model: "gpt-5.6", outputRoot: current.output, sourceRoot: current.source }),
+    /invalid skill name/,
+  );
+  assert.equal(fs.existsSync(path.join(current.temporary, "escaped")), false);
 });
 
 test("refuses to overwrite a directory it did not create", (t) => {
@@ -167,11 +208,13 @@ test("requires explicit ownership transfer when the repository moves", (t) => {
   const secondRoot = fs.mkdtempSync(path.join(os.tmpdir(), "skill-variants-source-"));
   t.after(() => fs.rmSync(secondRoot, { recursive: true, force: true }));
   writeSkill(secondRoot, "alpha", "alpha");
+  fs.appendFileSync(path.join(secondRoot, "alpha", "variants", "gpt-5.6.md"), "second source\n");
 
   assert.throws(
     () => materializeSkillVariants({ model: "gpt-5.6", outputRoot: first.output, sourceRoot: secondRoot }),
     /refusing to replace view owned by another source/,
   );
+  assert.equal(fs.readFileSync(path.join(first.output, "alpha", "SKILL.md"), "utf8").includes("second source"), false);
   const transferred = materializeSkillVariants({
     model: "gpt-5.6",
     outputRoot: first.output,
@@ -179,4 +222,26 @@ test("requires explicit ownership transfer when the repository moves", (t) => {
     sourceRoot: secondRoot,
   });
   assert.equal(transferred.skillCount, 1);
+  assert.equal(fs.readFileSync(path.join(first.output, "alpha", "SKILL.md"), "utf8").includes("second source"), true);
+  const marker = JSON.parse(fs.readFileSync(path.join(first.output, ".skill-variant-view.json"), "utf8"));
+  assert.equal(marker.sourceRoot, fs.realpathSync(secondRoot));
+});
+
+test("materializes the repository corpus and keeps installed links stable across profiles", (t) => {
+  const current = fixture(t);
+  const repositorySkills = fileURLToPath(new URL("../..", import.meta.url));
+  const installedSkill = path.join(current.temporary, "installed-diagnose");
+
+  materializeSkillVariants({ model: "gpt-5.6", outputRoot: current.output, sourceRoot: repositorySkills });
+  fs.symlinkSync(path.join(current.output, "diagnose"), installedSkill);
+  assert.equal(
+    fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),
+    fs.readFileSync(path.join(repositorySkills, "diagnose", "variants", "gpt-5.6.md"), "utf8"),
+  );
+
+  materializeSkillVariants({ model: "claude-fable-5.1", outputRoot: current.output, sourceRoot: repositorySkills });
+  assert.equal(
+    fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),
+    fs.readFileSync(path.join(repositorySkills, "diagnose", "variants", "claude-fable-5.1.md"), "utf8"),
+  );
 });

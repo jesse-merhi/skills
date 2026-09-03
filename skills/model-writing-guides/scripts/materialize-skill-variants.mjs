@@ -93,7 +93,11 @@ function parseSkillName(skillFile) {
   const source = fs.readFileSync(skillFile, "utf8");
   const match = source.match(/^---\n[\s\S]*?^name:\s*['"]?([^'"\n]+)['"]?\s*$[\s\S]*?^---$/m);
   if (match === null) throw new Error(`missing skill name in ${skillFile}`);
-  return match[1].trim();
+  const name = match[1].trim();
+  if (name.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
+    throw new Error(`invalid skill name in ${skillFile}: ${name}`);
+  }
+  return name;
 }
 
 export function discoverSkills(sourceRoot) {

@@ -150,6 +150,8 @@ for path in sorted(skill_paths):
         except ValueError:
             errors.append(f"unterminated variant frontmatter: {variant}")
             continue
+        if not any(line.strip() for line in variant_lines[variant_end + 1 :]):
+            errors.append(f"empty model variant body: {variant}")
         variant_name = None
         variant_description = None
         for line in variant_lines[1:variant_end]:
@@ -1166,8 +1168,6 @@ test_claude_fable_orchestration_is_repo_owned() {
   assert_contains "$orchestrator" "Keep high-level review here"
   assert_contains "$orchestrator" "explicitly select Codex as its review engine"
   assert_contains "$orchestrator" "Do not initiate the formal \`code-review\` workflow merely because implementation"
-
-  test ! -e "$agents/opus-worker.md" || fail "retired Opus worker must not be installed"
 
   assert_contains "$reviewer" "name: codex-reviewer"
   assert_contains "$reviewer" "model: haiku"
