@@ -272,12 +272,15 @@ two reinstalls.
 ./tests/skills-test
 ./tests/review-findings-test
 bun run validate:effect
+bun run validate:python
 ```
 
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
 TypeScript helpers. `bun run validate:effect` is lint, typecheck, Effect
-diagnostics, and Vitest. CI runs the same set.
+diagnostics, and Vitest. `bun run validate:python` runs the coding-standards
+Python column: ruff, mypy, pytest, and semgrep's own rule tests. CI runs the
+same set.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
 [`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
@@ -295,7 +298,7 @@ PRs are welcome.
   will not load it at the right moment.
 - One skill per directory, `SKILL.md` at its root, `name` unique across the
   repo. Keep the body short and push detail into `references/`.
-- Run the three commands above before opening a PR.
+- Run the four commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.
 
