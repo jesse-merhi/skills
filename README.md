@@ -274,8 +274,9 @@ bun run validate:effect
 
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
-TypeScript helpers. `bun run validate:effect` is lint, typecheck, Effect
-diagnostics, and Vitest. CI runs the same set.
+TypeScript helpers. `bun run validate:effect` is lint, the skill layout lint
+(`bun run lint:skills`), typecheck, Effect diagnostics, and Vitest. CI runs the
+same set.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
 [`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
@@ -297,7 +298,15 @@ PRs are welcome.
   [`model-writing-guides`](skills/model-writing-guides/SKILL.md) skill owns the
   guide links, selector, fallback order, and new-model workflow.
 - One skill per directory, root `SKILL.md` linked to the GPT-5.6 variant, and
-  `name` unique across the repo. Keep shared detail in `references/`.
+  `name` unique across the repo. Keep each complete variant short. Put anything
+  every use needs inline; put conditional or advanced detail in `references/`,
+  linked one hop from the variant only. A reference file must not link to
+  another reference; the only file under `skills/` it may link to is its own
+  root `SKILL.md`.
+- `bun run lint:skills` enforces the hop and length rules, requires every
+  reference to be linked from `SKILL.md`, and warns when one reference is
+  linked from both a workflow step and a `Context pointers` section, so you
+  can decide whether to inline it.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

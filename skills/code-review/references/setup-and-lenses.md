@@ -6,10 +6,6 @@ changes.
 1. Map changed flows, entrypoints, contracts, side effects, state transitions,
    risk areas, and validation targets with `review-flow-map`.
 
-   If the map identifies at least three substantially independent runtime
-   flows, follow [large-diff-slices.md](large-diff-slices.md) once before
-   Phase 1. Do not slice a diff merely because it has many files.
-
 2. Load `review-guardrails`; resolve its `review_findings_bin` absolute
    launcher, then persist `review_started`, `baseline_diff`, and
    `scope_baseline` with `"$review_findings_bin" scope-start`. On resume,

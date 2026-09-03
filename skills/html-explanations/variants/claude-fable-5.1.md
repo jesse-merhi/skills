@@ -29,7 +29,7 @@ Good fits:
 
 1. Decide the one thing the page should help the user understand.
 2. Pick a reader question and format from
-   `references/html-effectiveness-patterns.md`.
+   [html-effectiveness-patterns.md](references/html-effectiveness-patterns.md).
 3. Create a local standalone HTML file. Use
    `assets/explanation-template.html` for a small starter or copy the closest
    repo-owned pattern from `assets/patterns/`.
@@ -154,12 +154,13 @@ Before saying the work is done:
 
 ## Pattern library
 
-Read `references/html-effectiveness-patterns.md` before choosing a page shape.
+Read [html-effectiveness-patterns.md](references/html-effectiveness-patterns.md)
+before choosing a page shape.
 The seven examples in `assets/patterns/` are intentionally different reasoning
 structures, not visual themes. Copy the closest structure, replace all sample
 facts, and remove sections that do not help the reader.
 
 The library was informed by GOV.UK content patterns, WCAG reflow guidance,
 MDN live examples, Distill, Tufte CSS, Observable Plot, and a review of
-`ThariqS/html-effectiveness`. The shared pattern reference above records the
-supporting guidance and source links.
+`ThariqS/html-effectiveness`. The full research and source links live in
+[`research/html-explanation-patterns.md`](../../research/html-explanation-patterns.md).

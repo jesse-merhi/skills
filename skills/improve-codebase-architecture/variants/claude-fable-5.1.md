@@ -18,6 +18,7 @@ asked for.
 Use the vocabulary in [language.md](references/language.md). For deepening
 candidates, read [deepening.md](references/deepening.md). When the user wants
 alternative interfaces for a chosen candidate, read
+[deepening.md](references/deepening.md) for its dependency categories, then
 [interface-design.md](references/interface-design.md).
 
 ## Workflow

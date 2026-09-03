@@ -10,7 +10,6 @@ directions by default and at most five.
 - Reuse the project's stack, tokens, components, and dependencies.
 - Keep prototype routes and modules isolated from production imports.
 - Render one direction at a time in realistic context.
-- Use [prototype-picker.md](prototype-picker.md) for the picker contract.
 - Verify every direction at wide and narrow widths, including keyboard, focus,
   reduced motion, and console behavior.
 

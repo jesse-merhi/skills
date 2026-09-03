@@ -5,13 +5,14 @@ description: 'Review architecture for module depth, interfaces, locality, depend
 
 # Improve codebase architecture
 
-Outcome: identify the smallest durable structural change that improves the work
-the user asked for. This is a review lens; do not refactor unless implementation
-is authorized.
+Use this as an architectural review lens. Do not refactor by default; first
+identify the smallest structural change that improves the work the user actually
+asked for.
 
 Use the vocabulary in [language.md](references/language.md). For deepening
 candidates, read [deepening.md](references/deepening.md). When the user wants
 alternative interfaces for a chosen candidate, read
+[deepening.md](references/deepening.md) for its dependency categories, then
 [interface-design.md](references/interface-design.md).
 
 ## Workflow

@@ -5,8 +5,7 @@ description: 'Run authorized native and independent fix-and-rerun reviews for a 
 
 # Code review
 
-Outcome: complete and record two ordered until-clean review phases for one
-frozen target.
+Orchestrate two until-clean review phases for one target.
 
 1. Phase 1: run `review-until-clean` in an external harness-native review
    session until native review is clean. Never substitute an in-chat subagent.
@@ -103,7 +102,11 @@ unless the current user explicitly requests that exact cross-harness session.
 
 4. Run one-time setup for the current target.
 
-   Read [references/setup-and-lenses.md](references/setup-and-lenses.md). Done
+   Read [references/setup-and-lenses.md](references/setup-and-lenses.md). If
+   its flow map identifies at least three substantially independent runtime
+   flows, also read
+   [references/large-diff-slices.md](references/large-diff-slices.md) once
+   before Phase 1; do not slice a diff merely because it has many files. Done
    when the changed flows are mapped, required lenses have run, conditional
    lenses have run or been marked not applicable, the Fowler smell baseline has
    been considered on the Standards path, the neutral cold-review risk checklist
@@ -126,10 +129,12 @@ unless the current user explicitly requests that exact cross-harness session.
 6. Run Phase 1.
 
    Load `review-until-clean` and `wait-efficiently`, then run the native review
-   externally until it is clean on the current target. Apply the temporary
-   session capture-and-cleanup rule above to every invocation. Use
-   `finding-discipline` and the autonomous fix bar to triage findings before
-   fixing. Read
+   externally until it is clean on the current target. Record every created
+   external task or session ID before waiting. After each invocation reaches a
+   terminal state and its output has been captured, archive it before starting
+   another invocation or leaving Phase 1. Run the same cleanup after errors,
+   cancellation, budget expiry, or an early stop. Use `finding-discipline` and
+   the autonomous fix bar to triage findings before fixing. Read
    [references/review-phase-rules.md](references/review-phase-rules.md) for
    whole-target review, validation, finding classification, and held-wait
    behavior. If Phase 1 uses the Codex engine,
@@ -223,10 +228,20 @@ consult queue is resolved.
 ## Avoid
 
 - switching or overriding the review model without user approval;
+- invoking `ask-codex` or `ask-claude` without the current user's explicit
+  request;
 - substituting self-review, ad hoc prompts, or one-off subagents for the two
   configured phases;
 - patching follow-up or out-of-scope findings into this PR;
+- leaking prior findings or desired conclusions into cold reviewers;
 - editing between clean passes in either phase;
+- returning from Phase 2 to Phase 1 after cold-review fixes unless explicitly
+  requested;
+- reviewing or completing a dirty checkout;
 - pushing just to review;
+- pushing between findings, review phases, or targeted validation runs;
+- writing final closeout sections from chat history;
+- leaving external native-review tasks or sessions unarchived after collecting
+  their output;
 - treating file coverage as a clean verdict or telling a cold reviewer that
   lower-priority files were previously approved.

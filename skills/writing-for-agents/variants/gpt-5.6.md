@@ -5,11 +5,6 @@ description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs w
 
 # Writing for agents
 
-Outcome: produce precise agent-facing instructions that change decisions
-without constraining unrelated work. State the context, hard constraints,
-evidence, success criteria, and output shape once; leave routine execution
-choices to the agent.
-
 Treat every document an agent consumes as part of one instruction system:
 skills, `AGENTS.md`, `CLAUDE.md`, and documents reached through pointers all use
 the same levers to make the agent's process predictable.
@@ -18,29 +13,6 @@ When the target is a skill, also read
 [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation metadata, splitting,
 and router skills. The upstream MIT notice is in
 [upstream-license.md](references/upstream-license.md).
-
-## Model-specific skill variants
-
-When the target is a skill, load `model-writing-guides` before drafting. Treat
-all files under `variants/` as complete prompts with one shared behavior
-contract, not a base prompt plus optional adapters.
-
-For each skill:
-
-1. Preserve the same outcome, permissions, hard ordering, completion criteria,
-   commands, and evidence across every model.
-2. Write complete variants for GPT-5.6 and Claude Fable 5.1
-   using their current official prompting guides.
-3. Share references, scripts, assets, and UI metadata unless runtime behavior
-   truly differs by model.
-4. Keep root `SKILL.md` linked to `variants/gpt-5.6.md`. Harness views
-   expose the active variant directly.
-5. Treat variant file presence as coverage. When a new model appears, add its
-   profile and complete variant across the repository; until then, keep the
-   nearest family variant running. The materializer owns fallback notices.
-
-Done when every installed invocation loads one complete model-specific prompt
-and each variant still implements the same skill.
 
 ## Context pointers
 
@@ -86,8 +58,14 @@ Place them on this hierarchy:
 3. Disclosed reference behind a context pointer.
 
 Use progressive disclosure to move branch-specific reference down the ladder.
-Keep what every branch needs inline. Too little disclosure creates sprawl; too
-much hides instructions the agent needs on every run.
+Too little disclosure creates sprawl; too much hides instructions the agent
+needs on every run. Every file the agent opens is one more model call that
+re-sends the whole conversation, so put anything every use needs inline in
+`SKILL.md` and put conditional or advanced detail in `references/`, linked one
+hop from `SKILL.md` only. A reference file must not link to another reference;
+the only file under `skills/` it may link to is its own `SKILL.md`. Keep the
+`SKILL.md` body at most 500 lines. House rule: a skill that runs on every turn
+is a single file.
 
 Co-locate a concept's definition, rules, and caveats under one heading. Grouped
 material reads like documentation; scattered material makes the agent rebuild
