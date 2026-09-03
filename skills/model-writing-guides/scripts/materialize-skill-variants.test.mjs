@@ -8,8 +8,10 @@ import test from "node:test";
 
 import {
   materializeSkillVariants,
+  profiles,
   reclaimAbandonedLock,
   resolveProfile,
+  withOutputLock,
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
@@ -90,8 +92,7 @@ test("materializes one contained static variant and links shared resources", (t)
 test("does not reclaim a live lock based on its age", (t) => {
   const current = fixture(t);
   const lockRoot = current.output + ".lock";
-  fs.mkdirSync(lockRoot);
-  fs.writeFileSync(path.join(lockRoot, "owner.json"), JSON.stringify({ pid: process.pid, token: "live" }));
+  fs.writeFileSync(lockRoot, JSON.stringify({ pid: process.pid, token: "live" }));
   fs.utimesSync(lockRoot, new Date(0), new Date(0));
 
   assert.equal(reclaimAbandonedLock(lockRoot), false);
@@ -103,11 +104,18 @@ test("reclaims a lock whose owning process has exited", (t) => {
   const lockRoot = current.output + ".lock";
   const exited = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
   assert.equal(exited.status, 0, exited.stderr);
-  fs.mkdirSync(lockRoot);
-  fs.writeFileSync(path.join(lockRoot, "owner.json"), JSON.stringify({ pid: Number(exited.stdout), token: "dead" }));
+  fs.writeFileSync(lockRoot, JSON.stringify({ pid: Number(exited.stdout), token: "dead" }));
 
   assert.equal(reclaimAbandonedLock(lockRoot), true);
   assert.equal(fs.existsSync(lockRoot), false);
+});
+
+test("an interrupted owner-file preparation cannot block acquisition", (t) => {
+  const current = fixture(t);
+  fs.writeFileSync(current.output + ".lock.owner-interrupted", "incomplete");
+
+  assert.equal(withOutputLock(current.output, () => "published"), "published");
+  assert.equal(fs.existsSync(current.output + ".lock"), false);
 });
 
 test("restores the previous view when publication fails", (t) => {
@@ -178,6 +186,19 @@ test("rejects unsupported families and older same-family models", () => {
   assert.throws(() => resolveProfile("gpt-4.1"), /older than the earliest supported/);
   assert.throws(() => resolveProfile("gpt-5.5"), /older than the earliest supported/);
   assert.throws(() => resolveProfile("claude-fable-5.0"), /older than the earliest supported/);
+});
+
+test("selects the newest profile not newer than an inexact request", (t) => {
+  profiles.push({
+    id: "gpt-5.7",
+    family: "openai-gpt",
+    version: [5, 7],
+    matches: /^gpt-5\.7$/i,
+  });
+  t.after(() => profiles.pop());
+
+  assert.equal(resolveProfile("gpt-5.6-high").profile.id, "gpt-5.6");
+  assert.equal(resolveProfile("gpt-5.8-terra").profile.id, "gpt-5.7");
 });
 
 test("rejects skill names that could escape the generated view", (t) => {

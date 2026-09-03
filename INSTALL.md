@@ -307,8 +307,7 @@ Report:
 - Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
 - selected model profile and whether it was an exact match or fallback
-- Claude Code SessionStart/PostModelSwitch and Skill-routing hooks installed,
-  unsupported, or skipped
+- retired Claude Code model-routing hooks removed, absent, or skipped
 - existing local skills preserved
 - third-party installs run or skipped
 - repo runtime dependencies installed

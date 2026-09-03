@@ -9,7 +9,6 @@ import { fileURLToPath } from "node:url";
 
 const MARKER = ".skill-variant-view.json";
 const LOCK_TIMEOUT_MS = 5_000;
-const LOCK_OWNER = "owner.json";
 const MarkerJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
   sourceRoot: Schema.NonEmptyString,
@@ -64,16 +63,19 @@ export function resolveProfile(model) {
   if (family === undefined) {
     throw new Error(`unsupported model family for ${model}`);
   }
-  const fallback = profiles
+  const familyProfiles = profiles
     .filter((profile) => profile.family === family)
-    .sort((left, right) => compareVersions(right.version, left.version))[0];
-  if (fallback === undefined) {
+    .sort((left, right) => compareVersions(left.version, right.version));
+  const earliest = familyProfiles[0];
+  if (earliest === undefined) {
     throw new Error(`no skill profile is available for model family ${family}`);
   }
   const requestedVersion = modelVersion(model, family);
-  if (exact === undefined && (requestedVersion === undefined || compareVersions(requestedVersion, fallback.version) < 0)) {
+  if (exact === undefined && (requestedVersion === undefined || compareVersions(requestedVersion, earliest.version) < 0)) {
     throw new Error(`model ${model} is older than the earliest supported ${family} profile`);
   }
+  const fallback = exact ?? familyProfiles.findLast((profile) => compareVersions(profile.version, requestedVersion) <= 0);
+  if (fallback === undefined) throw new Error(`no compatible skill profile is available for model ${model}`);
   return { exact: exact !== undefined, profile: exact ?? fallback };
 }
 
@@ -83,45 +85,44 @@ function sleep(milliseconds) {
 
 export function withOutputLock(outputRoot, operation) {
   const lockRoot = `${outputRoot}.lock`;
-  const ownerPath = path.join(lockRoot, LOCK_OWNER);
   const owner = { pid: process.pid, token: crypto.randomUUID() };
+  const ownerPath = `${lockRoot}.owner-${owner.pid}-${owner.token}`;
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   fs.mkdirSync(path.dirname(outputRoot), { recursive: true });
-  while (true) {
-    try {
-      fs.mkdirSync(lockRoot);
-    } catch (error) {
-      if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "EEXIST") throw error;
-      if (reclaimAbandonedLock(lockRoot)) continue;
-      if (Date.now() >= deadline) throw new Error(`timed out waiting for model view lock ${lockRoot}`);
-      sleep(25);
-      continue;
-    }
-    try {
-      fs.writeFileSync(ownerPath, Schema.encodeSync(LockOwnerJson)(owner));
-    } catch (error) {
-      fs.rmSync(lockRoot, { recursive: true, force: true });
-      throw error;
-    }
-    break;
-  }
+  fs.writeFileSync(ownerPath, Schema.encodeSync(LockOwnerJson)(owner), { flag: "wx" });
+  let acquired = false;
   try {
+    while (true) {
+      try {
+        fs.linkSync(ownerPath, lockRoot);
+        acquired = true;
+        break;
+      } catch (error) {
+        if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "EEXIST") throw error;
+        if (reclaimAbandonedLock(lockRoot)) continue;
+        if (Date.now() >= deadline) throw new Error(`timed out waiting for model view lock ${lockRoot}`);
+        sleep(25);
+      }
+    }
     return operation();
   } finally {
     let currentOwner;
-    try {
-      currentOwner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(ownerPath, "utf8"));
-    } catch (error) {
-      if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ENOENT") throw error;
+    if (acquired) {
+      try {
+        currentOwner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(lockRoot, "utf8"));
+      } catch (error) {
+        if (!(error instanceof Error) || !Object.hasOwn(error, "code") || error.code !== "ENOENT") throw error;
+      }
+      if (currentOwner?.token === owner.token) fs.rmSync(lockRoot, { force: true });
     }
-    if (currentOwner?.token === owner.token) fs.rmSync(lockRoot, { recursive: true, force: true });
+    fs.rmSync(ownerPath, { force: true });
   }
 }
 
 export function reclaimAbandonedLock(lockRoot) {
   let owner;
   try {
-    owner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(path.join(lockRoot, LOCK_OWNER), "utf8"));
+    owner = Schema.decodeUnknownSync(LockOwnerJson)(fs.readFileSync(lockRoot, "utf8"));
   } catch (error) {
     if (error instanceof Error && Object.hasOwn(error, "code") && error.code === "ENOENT") return false;
     return false;
@@ -187,7 +188,7 @@ function selectVariant(skill, requestedProfile) {
   const exact = availableVariant(skill, requestedProfile);
   if (exact !== undefined) return { path: exact, profile: requestedProfile };
   const fallback = profiles
-    .filter((profile) => profile.family === requestedProfile.family)
+    .filter((profile) => profile.family === requestedProfile.family && compareVersions(profile.version, requestedProfile.version) <= 0)
     .sort((left, right) => compareVersions(right.version, left.version))
     .find((profile) => availableVariant(skill, profile) !== undefined);
   if (fallback === undefined) {
