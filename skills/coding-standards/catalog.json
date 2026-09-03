@@ -371,7 +371,7 @@
 		{
 			"id": "no-small-text",
 			"title": "No undersized or all-caps text",
-			"principle": "Text below the minimum size is hard to read, and all-caps copy is slower to read and mangled by screen readers. Use a shared typography token and sentence case, and mark a genuine exception in a comment.",
+			"principle": "Text below the minimum size is hard to read, arbitrary pixel sizes bypass the type scale, and all-caps copy is slower to read and mangled by screen readers. Use a shared typography token and sentence case, and mark a genuine exception in a comment.",
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-small-text.cjs",
 			"enforcement": {
@@ -390,8 +390,8 @@
 		},
 		{
 			"id": "no-wide-arbitrary-breakpoints",
-			"title": "No oversized ad-hoc breakpoints",
-			"principle": "A one-off breakpoint above the layout's widest named step splits responsive behaviour across two systems that no longer agree. Use a named responsive variant, and document a component-specific exception in a comment.",
+			"title": "No oversized or out-of-scale breakpoints",
+			"principle": "A one-off breakpoint above the layout's widest named step, or a named step beyond it, splits responsive behaviour across two systems that no longer agree. Use a named responsive variant within the shared scale, and document a component-specific exception in a comment.",
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-wide-arbitrary-breakpoints.cjs",
 			"enforcement": {

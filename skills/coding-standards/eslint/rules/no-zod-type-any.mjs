@@ -1734,7 +1734,7 @@ export default {
 		},
 		messages: {
 			noWeakZodType:
-				"Do not use weak Zod schema types like ZodTypeAny, ZodSchema, Schema, or bare ZodType. Prefer a precise schema type such as ZodType<unknown, ZodTypeDef, unknown>, or add a focused eslint-disable for a Zod library boundary exception.",
+				"Do not use weak Zod schema types like ZodTypeAny, ZodSchema, Schema, or bare ZodType. Prefer a precise schema type such as ZodType<unknown, ZodTypeDef, unknown>, or add a focused eslint-disable for a Zod library boundary exception. An exported weak type stays reported at the end of the file even when disabled.",
 		},
 	},
 	create(context) {

@@ -885,7 +885,7 @@ export default {
 	meta: {
 		type: "problem",
 		docs: {
-			description: "Disallow brittle exact CSS and computed-style assertions in ordinary tests",
+			description: "Disallow class, inline-style, CSS, and computed-style assertions in ordinary tests",
 		},
 		schema: [
 			{
