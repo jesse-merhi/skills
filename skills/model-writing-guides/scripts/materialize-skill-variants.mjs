@@ -10,6 +10,9 @@ import { fileURLToPath } from "node:url";
 const MARKER = ".skill-variant-view.json";
 const LOCK_TIMEOUT_MS = 5_000;
 const STALE_LOCK_MS = 30_000;
+const CLAUDE_AGENT_PROFILES = new Map([
+  ["opus-worker", "claude-opus-5"],
+]);
 const MarkerJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
   sourceRoot: Schema.NonEmptyString,
@@ -20,6 +23,9 @@ const HookInputJson = Schema.fromJsonString(Schema.Struct({
   model: Schema.optional(Schema.NonEmptyString),
   to_model: Schema.optional(Schema.NonEmptyString),
   session_id: Schema.optional(Schema.NonEmptyString),
+  agent_type: Schema.optional(Schema.NonEmptyString),
+  tool_name: Schema.optional(Schema.NonEmptyString),
+  tool_input: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 }));
 const SessionStateJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
@@ -126,6 +132,16 @@ function sessionStatePath(stateRoot, sessionId) {
   return path.join(path.resolve(stateRoot), `${key}.json`);
 }
 
+function claudeAliasName(profileId, skillName) {
+  return `model-variant-${profileId}--${skillName}`;
+}
+
+function aliasSkillDocument(skillFile, aliasName) {
+  const { frontmatter, body } = splitSkillDocument(skillFile);
+  const aliasedFrontmatter = frontmatter.replace(/^name:.*$/m, `name: ${aliasName}`);
+  return `---\n${aliasedFrontmatter}\ndisable-model-invocation: true\n---\n${body}`;
+}
+
 export function discoverSkills(sourceRoot) {
   const found = [];
   const visit = (directory) => {
@@ -171,6 +187,13 @@ function linkSharedEntries(skill, outputDirectory) {
   for (const entry of fs.readdirSync(skill.directory, { withFileTypes: true })) {
     if (["SKILL.md", "variants"].includes(entry.name)) continue;
     fs.symlinkSync(path.join(skill.directory, entry.name), path.join(outputDirectory, entry.name));
+  }
+}
+
+function copySharedEntries(skill, outputDirectory) {
+  for (const entry of fs.readdirSync(skill.directory, { withFileTypes: true })) {
+    if (["SKILL.md", "variants"].includes(entry.name)) continue;
+    fs.cpSync(path.join(skill.directory, entry.name), path.join(outputDirectory, entry.name), { recursive: true });
   }
 }
 
@@ -237,8 +260,8 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
         if (selection.profile.id !== profile.id) missing.push(skill.name);
         const skillOutput = path.join(stagingRoot, skill.name);
         fs.mkdirSync(skillOutput);
-        fs.symlinkSync(selection.path, path.join(skillOutput, "SKILL.md"));
-        linkSharedEntries(skill, skillOutput);
+        fs.copyFileSync(selection.path, path.join(skillOutput, "SKILL.md"));
+        copySharedEntries(skill, skillOutput);
       }
 
       fs.writeFileSync(
@@ -299,6 +322,18 @@ export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousS
         fs.symlinkSync(loader, path.join(skillOutput, ".model-variant-loader"));
         linkSharedEntries(skill, skillOutput);
       }
+      for (const profileId of new Set(CLAUDE_AGENT_PROFILES.values())) {
+        const profile = profiles.find((candidate) => candidate.id === profileId);
+        if (profile === undefined) throw new Error(`unknown Claude agent profile ${profileId}`);
+        for (const skill of skills) {
+          const aliasName = claudeAliasName(profile.id, skill.name);
+          const skillOutput = path.join(stagingRoot, aliasName);
+          fs.mkdirSync(skillOutput);
+          const selection = selectVariant(skill, profile);
+          fs.writeFileSync(path.join(skillOutput, "SKILL.md"), aliasSkillDocument(selection.path, aliasName));
+          linkSharedEntries(skill, skillOutput);
+        }
+      }
       fs.writeFileSync(
         path.join(stagingRoot, MARKER),
         `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: "claude-session" })}\n`,
@@ -310,7 +345,29 @@ export function materializeClaudeSessionView({ sourceRoot, outputRoot, previousS
     }
   });
   fs.mkdirSync(resolvedState, { recursive: true });
-  return { profile: "claude-session", skillCount: skills.length, stateRoot: resolvedState };
+  return {
+    profile: "claude-session",
+    routedSkillCount: skills.length * new Set(CLAUDE_AGENT_PROFILES.values()).size,
+    skillCount: skills.length,
+    stateRoot: resolvedState,
+  };
+}
+
+export function routeClaudeSkill({ sourceRoot, hook }) {
+  if (hook.tool_name !== "Skill" || hook.agent_type === undefined || hook.tool_input === undefined) return undefined;
+  const profileId = CLAUDE_AGENT_PROFILES.get(hook.agent_type);
+  const skillName = hook.tool_input.skill;
+  if (profileId === undefined || typeof skillName !== "string") return undefined;
+  const repoSkillNames = new Set(discoverSkills(fs.realpathSync(sourceRoot)).map((skill) => skill.name));
+  if (!repoSkillNames.has(skillName)) return undefined;
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "allow",
+      permissionDecisionReason: `Use the ${profileId} prompt selected for ${hook.agent_type}.`,
+      updatedInput: { ...hook.tool_input, skill: claudeAliasName(profileId, skillName) },
+    },
+  };
 }
 
 export function recordClaudeSession({ stateRoot, sessionId, model }) {
@@ -375,6 +432,12 @@ async function main() {
   const action = args.action ?? "materialize";
   const model = args.model ?? hook.to_model ?? hook.model;
   const sessionId = args.session ?? hook.session_id;
+  if (action === "route-skill") {
+    if (args.source === undefined) throw new Error("route-skill requires --source");
+    const result = routeClaudeSkill({ sourceRoot: args.source, hook });
+    if (result !== undefined) process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
   if (action === "claude-view") {
     if (args.source === undefined || args.output === undefined || args["state-root"] === undefined) {
       throw new Error("claude-view requires --source, --output, and --state-root");

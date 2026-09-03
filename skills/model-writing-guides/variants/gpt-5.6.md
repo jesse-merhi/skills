@@ -37,8 +37,9 @@ Variant file presence is the coverage record; do not add a per-skill manifest.
 4. Keep supporting scripts, references, assets, and `agents/openai.yaml` shared
    unless their runtime behavior truly differs by model.
 5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`. Static
-   harness views expose the selected file directly. Claude's stable loader uses
-   native dynamic context to inject the variant recorded for that session.
+   harness views expose a contained selected file directly. Claude's stable
+   loader uses native dynamic context for the main session, while a per-call
+   hook routes model-pinned subagents to hidden contained variants.
 6. Run the materializer test and exercise the changed skill independently with
    each affected model profile. Judge behavior, not prose shape.
 

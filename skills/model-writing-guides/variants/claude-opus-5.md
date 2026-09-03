@@ -49,8 +49,9 @@ For each skill change:
 4. Keep scripts, references, assets, and `agents/openai.yaml` shared unless
    runtime behavior differs. Keep root `SKILL.md` linked to
    `variants/gpt-5.6.md` for repository discovery. Static harness views expose
-   one variant directly; Claude's stable loader injects the session-recorded
-   variant through native dynamic context.
+   one contained variant directly; Claude's stable loader injects the main
+   session variant through native dynamic context, and a per-call hook routes
+   model-pinned subagents to hidden contained variants.
 5. Run the materializer test and one independent behavioral exercise for each
    changed profile. Do not add deterministic tests of prompt wording.
 

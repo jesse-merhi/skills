@@ -12,6 +12,7 @@ import {
   recordClaudeSession,
   renderClaudeSkill,
   resolveProfile,
+  routeClaudeSkill,
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
@@ -54,7 +55,7 @@ test("recognizes Claude Code family aliases as exact profiles", () => {
   assert.equal(opus.profile.id, "claude-opus-5");
 });
 
-test("materializes one direct variant and links shared resources", (t) => {
+test("materializes one contained static variant and its shared resources", (t) => {
   const current = fixture(t);
   const result = materializeSkillVariants({
     model: "gpt-5.6-sol",
@@ -70,8 +71,9 @@ test("materializes one direct variant and links shared resources", (t) => {
     skillCount: 2,
   });
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("gpt-5.6\n"), true);
+  assert.equal(fs.lstatSync(path.join(current.output, "alpha", "SKILL.md")).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(path.join(current.output, "beta", "references", "shared.md"), "utf8"), "shared\n");
-  assert.equal(fs.lstatSync(path.join(current.output, "beta", "references")).isSymbolicLink(), true);
+  assert.equal(fs.lstatSync(path.join(current.output, "beta", "references")).isSymbolicLink(), false);
   assert.equal(fs.existsSync(path.join(current.output, "alpha", "variants")), false);
 });
 
@@ -118,6 +120,49 @@ test("Claude loader injects the recorded session variant without mutating the sh
   assert.equal(rendered.status, 0, rendered.stderr);
   assert.equal(rendered.stdout, "claude-fable-5.1\n");
   assert.equal(fs.readFileSync(loaderSkill, "utf8"), loaderBefore);
+});
+
+test("routes an Opus worker to a contained model-qualified skill", (t) => {
+  const current = fixture(t);
+  const stateRoot = path.join(current.temporary, "sessions");
+  const result = materializeClaudeSessionView({ outputRoot: current.output, sourceRoot: current.source, stateRoot });
+  const alias = "model-variant-claude-opus-5--alpha";
+  const aliasSkill = path.join(current.output, alias, "SKILL.md");
+
+  assert.equal(result.routedSkillCount, 2);
+  assert.equal(fs.lstatSync(aliasSkill).isSymbolicLink(), false);
+  assert.match(fs.readFileSync(aliasSkill, "utf8"), new RegExp(`name: ${alias}`));
+  assert.match(fs.readFileSync(aliasSkill, "utf8"), /disable-model-invocation: true/);
+  assert.equal(fs.readFileSync(aliasSkill, "utf8").endsWith("claude-opus-5\n"), true);
+
+  const routed = routeClaudeSkill({
+    sourceRoot: current.source,
+    hook: {
+      agent_type: "opus-worker",
+      tool_input: { args: "keep this", skill: "alpha" },
+      tool_name: "Skill",
+    },
+  });
+  assert.deepEqual(routed?.hookSpecificOutput.updatedInput, { args: "keep this", skill: alias });
+  assert.equal(routeClaudeSkill({
+    sourceRoot: current.source,
+    hook: { agent_type: "opus-worker", tool_input: { skill: "third-party" }, tool_name: "Skill" },
+  }), undefined);
+  assert.equal(routeClaudeSkill({
+    sourceRoot: current.source,
+    hook: { agent_type: "Explore", tool_input: { skill: "alpha" }, tool_name: "Skill" },
+  }), undefined);
+
+  const cli = spawnSync(
+    process.execPath,
+    [materializer, "--action", "route-skill", "--source", current.source],
+    {
+      encoding: "utf8",
+      input: JSON.stringify({ agent_type: "opus-worker", tool_input: { skill: "alpha" }, tool_name: "Skill" }),
+    },
+  );
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.equal(JSON.parse(cli.stdout).hookSpecificOutput.updatedInput.skill, alias);
 });
 
 test("Claude hooks update only their session and retain it when model data is unavailable", (t) => {

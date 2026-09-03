@@ -151,8 +151,9 @@ Choose a view outside the target skills directory:
 | opencode | `~/.config/opencode/.skill-variants/jesse-merhi-skills` |
 | Pi | `~/.pi/agent/.skill-variants/jesse-merhi-skills` |
 
-For Codex, opencode, or Pi, build a static view containing the active model's
-complete variant:
+For Codex, opencode, Pi, or OpenClaw, build a static view containing the active
+model's copied `SKILL.md` and shared resources. This keeps the whole skill
+inside the view for harnesses that enforce path containment:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
@@ -170,7 +171,9 @@ another repository clone. If this repository moved, read the view's
 authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
 
 For Claude Code, build a stable session-aware view instead. It keeps one small
-loader at each `SKILL.md` and stores session model state outside the view:
+loader at each public `SKILL.md`, contained model-qualified prompts for routed
+subagents, links to shared repo resources, and session model state outside the
+view:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
@@ -186,7 +189,8 @@ native dynamic-context mechanism when a skill is invoked. The loader reads
 that session's recorded model and emits only its complete Fable or Opus prompt.
 This is a local shell command, not another model or network request. The view
 never changes during model switches, so concurrent sessions cannot change each
-other's skill prompts.
+other's skill prompts. The contained model-qualified prompts are hidden from
+model discovery and selected only by the hook below.
 
 Inspect the effective Claude settings before using this mode. If
 `disableSkillShellExecution` is `true`, stop and report that these session-aware
@@ -217,6 +221,18 @@ and hook handlers:
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --action record-session --state-root ~/.claude/.skill-variants/jesse-merhi-sessions
 ```
 
+Merge this command under `PreToolUse` with matcher `Skill`:
+
+```text
+node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs --action route-skill --source REPO/skills
+```
+
+The skill hook reads Claude's `agent_type`. For the repo-owned `opus-worker`, it
+rewrites that individual Skill call to the contained Opus variant while
+preserving its arguments. Other agents and third-party skills are unchanged.
+Because the selection belongs to the tool call, parallel parent and subagent
+invocations cannot overwrite each other.
+
 Both events pass their JSON input on stdin. `SessionStart` usually supplies
 `model`; `PostModelSwitch` supplies `to_model`. Claude can omit `model` from
 `SessionStart` after recovery or `/clear`, in which case the hook keeps that
@@ -232,12 +248,12 @@ The hook changes what later skill invocations load in that session. Skill
 instructions already present in its conversation remain there until a fresh
 session; do not claim that the hook removes them.
 
-Treat the materializer command as a repo-owned hook. Before adding it, remove
-older `SessionStart` or `PostModelSwitch` handlers whose command invokes
-`materialize-skill-variants.mjs` for this skill collection, then add the current
-command once to each event. On uninstall, remove those handlers. This makes
-reinstalling after a repository move idempotent without disturbing unrelated
-handlers.
+Treat both materializer commands as repo-owned hooks. Before adding them,
+remove older `SessionStart`, `PostModelSwitch`, or `PreToolUse` handlers whose
+command invokes `materialize-skill-variants.mjs` for this skill collection,
+then add each current command once to its documented events and matcher. On
+uninstall, remove those handlers. This makes reinstalling after a repository
+move idempotent without disturbing unrelated handlers.
 
 ## 8. Connect a running OpenClaw Gateway
 
@@ -332,7 +348,7 @@ Report:
 - Codex Default-mode question UI enabled, unsupported, or skipped
 - skills linked
 - selected model profile and whether it was an exact match or fallback
-- Claude Code SessionStart/PostModelSwitch hooks installed,
+- Claude Code SessionStart/PostModelSwitch and Skill-routing hooks installed,
   unsupported, or skipped
 - existing local skills preserved
 - third-party installs run or skipped

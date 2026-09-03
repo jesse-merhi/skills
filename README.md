@@ -57,12 +57,14 @@ Where the skills land, per harness:
 
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
-symlink into a generated view. Shared scripts and references still link back to
-this repo. Codex, opencode, Pi, and OpenClaw receive a static selected variant.
-Claude's stable loader injects the variant recorded for that session, so Fable
-and Opus sessions can run concurrently without changing each other's prompts.
-The loader is a local shell command, not another model request. Hand-written
-local skills are never replaced without asking.
+symlink into a generated view. Codex, opencode, Pi, and OpenClaw receive a
+contained static copy of the selected prompt and its shared resources. Claude
+keeps shared resources linked to this repo and uses a stable loader.
+The loader injects the variant recorded for that session, while a
+per-call hook routes the repo-owned Opus worker to a hidden contained Opus
+prompt. Concurrent sessions and subagents therefore never change each other's
+prompts. The loader is a local shell command, not another model request.
+Hand-written local skills are never replaced without asking.
 
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
 Fable keeps product, architecture, design direction, integration, and high-level
