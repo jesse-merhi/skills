@@ -58,12 +58,12 @@ prove a runtime improvement.
 Use this section when portfolio reduction is in scope. For scheduling-only work,
 preserve the test set and continue to **Balance parallel work**.
 
-Build the ownership map in [portfolio.md](portfolio.md), then remove equivalent
-duplicate journeys, ownerless assertions, and presentation or wiring checks
-that protect no stable contract. Consolidate distinct owners when they can
-share setup without hiding which regression each case protects. Remove
-test-only routes, fixtures, helpers, selectors, and duration entries that have
-no retained executable caller.
+Build the ownership map in [Test portfolio](../SKILL.md#test-portfolio), then
+remove equivalent duplicate journeys, ownerless assertions, and presentation
+or wiring checks that protect no stable contract. Consolidate distinct owners
+when they can share setup without hiding which regression each case protects.
+Remove test-only routes, fixtures, helpers, selectors, and duration entries
+that have no retained executable caller.
 
 After each cohesive reduction batch, re-run the ownership challenge. Account
 explicitly for every retained high-risk branch and valuable golden journey;

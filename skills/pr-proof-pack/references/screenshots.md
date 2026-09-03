@@ -115,12 +115,11 @@ requests that storage model.
 
 ## Bitbucket image upload
 
-For a Bitbucket Cloud PR, follow [bitbucket.md](bitbucket.md). TWG applies the
-complete description and provider-hosted images together with
-`twg bb pull-requests update`, `--description-file`, repeated `--image` and
-paired descriptive `--image-name` flags, and body placeholders such as
-`{{image}}`. A separate TWG or Atlassian skill is optional; use it when
-available and useful.
+For a Bitbucket Cloud PR, TWG applies the complete description and
+provider-hosted images together with `twg bb pull-requests update`,
+`--description-file`, repeated `--image` and paired descriptive `--image-name`
+flags, and body placeholders such as `{{image}}`. A separate TWG or Atlassian
+skill is optional; use it when available and useful.
 
 The TWG path supports images, not video. If still images would lose an essential
 motion or playback claim, stop with `blocked` evidence instead of publishing a
@@ -169,8 +168,8 @@ real bytes, a successful status, or the expected content type does not prove
 that its pixels or frames show the intended behavior or look presentable.
 
 For Bitbucket Cloud, TWG readback proves the stored PR description but not the
-rendered image. Follow [bitbucket.md](bitbucket.md) and inspect every finished
-image or diagram on the rendered PR in an authenticated interactive browser.
+rendered image. Inspect every finished image or diagram on the rendered PR in
+an authenticated interactive browser.
 
 ## Explanation diagrams
 
@@ -268,10 +267,10 @@ interaction.
 
 ## Recording edit
 
-Follow [video-editing.md](video-editing.md) before upload. Remove inactive
-lead-in, setup, and dead stretches; retain a short readable hold on the starting
-state, important transitions, and outcome. Keep the actual actions at normal
-speed. Preserve real waiting when duration or performance is itself the claim.
+Before upload, remove inactive lead-in, setup, and dead stretches; retain a
+short readable hold on the starting state, important transitions, and outcome.
+Keep the actual actions at normal speed. Preserve real waiting when duration or
+performance is itself the claim.
 
 Play the finished video once at 1× speed. Done when the flow is easy to follow,
 no informative state is rushed, and no long idle interval remains.
