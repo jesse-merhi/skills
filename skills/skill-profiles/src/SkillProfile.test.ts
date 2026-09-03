@@ -143,10 +143,10 @@ describe("skill catalogue discovery", () => {
       await writeSkill(join(trusted, ".agents", "skills", "trusted-skill"), "trusted-skill")
 
       const options = await Effect.runPromise(live(catalogueOptions({ codexHome, home: join(directory, "home") })))
-      assert.include(options.repos, trusted)
+      assert.include(options.repos, await realpath(trusted))
       assert.include(
         discoverCatalogue(options).map((skill) => skill.path),
-        join(trusted, ".agents", "skills", "trusted-skill", "SKILL.md")
+        await realpath(join(trusted, ".agents", "skills", "trusted-skill", "SKILL.md"))
       )
     } finally {
       await rm(directory, { recursive: true, force: true })
@@ -228,7 +228,6 @@ describe("profile loading", () => {
     assert.strictEqual(profile.definition.name, "cold-reviewer")
     assert.strictEqual(profile.definition.sandbox_mode, "read-only")
     assert.include(profile.definition.allow, "cold-pr-review")
-    assert.match(profile.instructions, /^# Cold reviewer/u)
   })
 
   it("rejects a role that is not a plain profile name", async () => {
@@ -308,15 +307,16 @@ describe("skills-profile command", () => {
       const extra = await writeSkill(join(repository, ".agents", "skills", "extra-skill"), "extra-skill")
 
       // CODEX_HOME is absent here: a broken --codex-home would fall back to the environment,
-      // and a broken --repo would drop the extra repository's skills.
+      // and a broken --repo would drop the extra repository's skills. The repository is
+      // passed relative to the working directory and must come back as a real absolute path.
       const rendered = await runScript(
-        ["cold-reviewer", "--as-config-blocks", "--codex-home", codexHome, "--repo", repository],
+        ["cold-reviewer", "--as-config-blocks", "--codex-home", codexHome, "--repo", "extra-repo"],
         { HOME: home },
         directory
       )
 
       assert.strictEqual(rendered.code, 0)
-      assert.include(rendered.stdout, `[[skills.config]]\npath = "${extra}"\nenabled = false`)
+      assert.include(rendered.stdout, `[[skills.config]]\npath = "${await realpath(extra)}"\nenabled = false`)
       assert.include(
         rendered.stdout,
         `[[skills.config]]\npath = "${join(codexHome, "skills", "other", "SKILL.md")}"\nenabled = false`

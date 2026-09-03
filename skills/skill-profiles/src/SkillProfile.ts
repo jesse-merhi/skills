@@ -210,10 +210,12 @@ export const catalogueOptions = Effect.fn("SkillProfile.catalogueOptions")(funct
   const git = yield* trustedExecutable("git", cwd)
   const repository = yield* checkedTrimmedText(git, ["rev-parse", "--show-toplevel"], { cwd }).pipe(Effect.option)
   const toplevel = Option.isSome(repository) && repository.value.length > 0 ? realPath(repository.value) : undefined
+  // Codex reports every repository root as a real absolute path, so extra and
+  // trusted repositories are normalised the same way before their skills are listed.
   const repos = [
     ...workingDirectoryRoots(cwd, toplevel),
-    ...trustedProjectPaths(codexHome),
-    ...(options?.repos ?? [])
+    ...trustedProjectPaths(codexHome).map(realPath),
+    ...(options?.repos ?? []).map(realPath)
   ]
   return { codexHome, home, repos: [...new Set(repos)] } satisfies CatalogueOptions
 })
