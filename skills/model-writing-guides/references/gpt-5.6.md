@@ -1,6 +1,6 @@
 # GPT-5.6 writing guidance
 
-Official guide: [Using GPT-5.6](https://developers.openai.com/api/docs/guides/latest-model)
+Official guide: [Using GPT-5.6](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6)
 
 Reviewed: 2026-09-03.
 
