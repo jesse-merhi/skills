@@ -55,7 +55,7 @@ test("recognizes Claude Code family aliases as exact profiles", () => {
   assert.equal(opus.profile.id, "claude-opus-5");
 });
 
-test("materializes one contained static variant and its shared resources", (t) => {
+test("materializes one contained static variant and links shared resources", (t) => {
   const current = fixture(t);
   const result = materializeSkillVariants({
     model: "gpt-5.6-sol",
@@ -73,7 +73,7 @@ test("materializes one contained static variant and its shared resources", (t) =
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("gpt-5.6\n"), true);
   assert.equal(fs.lstatSync(path.join(current.output, "alpha", "SKILL.md")).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(path.join(current.output, "beta", "references", "shared.md"), "utf8"), "shared\n");
-  assert.equal(fs.lstatSync(path.join(current.output, "beta", "references")).isSymbolicLink(), false);
+  assert.equal(fs.lstatSync(path.join(current.output, "beta", "references")).isSymbolicLink(), true);
   assert.equal(fs.existsSync(path.join(current.output, "alpha", "variants")), false);
 });
 

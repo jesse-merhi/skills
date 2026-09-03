@@ -58,8 +58,8 @@ Where the skills land, per harness:
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
 symlink into a generated view. Codex, opencode, Pi, and OpenClaw receive a
-contained static copy of the selected prompt and its shared resources. Claude
-keeps shared resources linked to this repo and uses a stable loader.
+contained static copy of the selected prompt. Shared executable resources stay
+linked to this repo so their dependencies resolve. Claude uses a stable loader.
 The loader injects the variant recorded for that session, while a
 per-call hook routes the repo-owned Opus worker to a hidden contained Opus
 prompt. Concurrent sessions and subagents therefore never change each other's

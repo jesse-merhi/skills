@@ -152,8 +152,8 @@ Choose a view outside the target skills directory:
 | Pi | `~/.pi/agent/.skill-variants/jesse-merhi-skills` |
 
 For Codex, opencode, Pi, or OpenClaw, build a static view containing the active
-model's copied `SKILL.md` and shared resources. This keeps the whole skill
-inside the view for harnesses that enforce path containment:
+model's copied `SKILL.md`. Shared executable resources remain linked to their
+repository dependency root:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
@@ -172,8 +172,7 @@ authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`
 
 For Claude Code, build a stable session-aware view instead. It keeps one small
 loader at each public `SKILL.md`, contained model-qualified prompts for routed
-subagents, links to shared repo resources, and session model state outside the
-view:
+subagents, linked shared resources, and session model state outside the view:
 
 ```sh
 node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \

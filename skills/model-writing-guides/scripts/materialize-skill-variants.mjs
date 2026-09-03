@@ -190,13 +190,6 @@ function linkSharedEntries(skill, outputDirectory) {
   }
 }
 
-function copySharedEntries(skill, outputDirectory) {
-  for (const entry of fs.readdirSync(skill.directory, { withFileTypes: true })) {
-    if (["SKILL.md", "variants"].includes(entry.name)) continue;
-    fs.cpSync(path.join(skill.directory, entry.name), path.join(outputDirectory, entry.name), { recursive: true });
-  }
-}
-
 function assertManagedOutput(outputRoot, sourceRoot, previousSourceRoot) {
   if (!fs.existsSync(outputRoot)) return;
   const markerPath = path.join(outputRoot, MARKER);
@@ -261,7 +254,7 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
         const skillOutput = path.join(stagingRoot, skill.name);
         fs.mkdirSync(skillOutput);
         fs.copyFileSync(selection.path, path.join(skillOutput, "SKILL.md"));
-        copySharedEntries(skill, skillOutput);
+        linkSharedEntries(skill, skillOutput);
       }
 
       fs.writeFileSync(
