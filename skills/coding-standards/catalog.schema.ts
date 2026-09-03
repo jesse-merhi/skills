@@ -21,14 +21,13 @@ const ScriptEnforcement = Schema.Struct({
 })
 
 const RuffEnforcement = Schema.Struct({
-  config: Schema.optionalKey(Schema.NonEmptyString),
   kind: Schema.Literal("ruff"),
-  select: Schema.Array(Schema.NonEmptyString)
+  select: Schema.NonEmptyArray(Schema.NonEmptyString)
 })
 
 const MypyEnforcement = Schema.Struct({
   kind: Schema.Literal("mypy"),
-  options: Schema.Record(Schema.NonEmptyString, Schema.Union([Schema.String, Schema.Boolean]))
+  options: Schema.Record(Schema.NonEmptyString, Schema.Boolean)
 })
 
 const SemgrepEnforcement = Schema.Struct({
@@ -83,7 +82,7 @@ const Baseline = Schema.Struct({
 })
 
 const Standard = Schema.Struct({
-  enforcement: Schema.Record(Schema.NonEmptyString, Schema.Array(Enforcement)),
+  enforcement: Schema.Record(Schema.NonEmptyString, Schema.NonEmptyArray(Enforcement)),
   id: Schema.NonEmptyString,
   origin: Schema.NonEmptyString,
   principle: Schema.NonEmptyString,

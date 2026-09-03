@@ -220,11 +220,20 @@ describe("coding standards catalog", () => {
       }
     }
   })
+
   it("rejects a preset or baseline whose applies names no condition", () => {
     const raw: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(
       readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
     )
     raw.presets.javascript.base.applies = {}
     assert.throws(() => decodeCatalog(JSON.stringify(raw)))
+  })
+
+  it("gives every standard a column for every ecosystem", () => {
+    for (const standard of catalog.standards) {
+      for (const ecosystem of Object.keys(catalog.ecosystems)) {
+        assert.property(standard.enforcement, ecosystem, `${standard.id} lacks a ${ecosystem} column`)
+      }
+    }
   })
 })

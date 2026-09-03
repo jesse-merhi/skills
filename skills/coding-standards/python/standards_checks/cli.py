@@ -80,7 +80,3 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(finding.format(str(path)))
             failed = True
     return 1 if failed else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
