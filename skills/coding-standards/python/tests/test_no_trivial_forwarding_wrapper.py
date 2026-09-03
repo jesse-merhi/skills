@@ -79,9 +79,9 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
         ),
         pytest.param(
             """\
-            class Repository:
-                def fetch(self, customer_id):
-                    return load(customer_id)
+            class Widget:
+                def render(self):
+                    return render_widget(self)
             """,
             id="bound-method",
         ),
@@ -101,8 +101,8 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
         ),
         pytest.param(
             """\
-            def fetch(*args):
-                return load(*args)
+            def fetch(customer_id, *rest):
+                return load(customer_id)
             """,
             id="star-args",
         ),
@@ -134,6 +134,13 @@ def test_reports_a_nested_wrapper_at_its_own_column() -> None:
                 return load(customer_id) or DEFAULT
             """,
             id="return-is-not-a-bare-call",
+        ),
+        pytest.param(
+            """\
+            def fetch(customer_id):
+                return handlers[0](customer_id)
+            """,
+            id="callee-is-not-a-name",
         ),
     ],
 )

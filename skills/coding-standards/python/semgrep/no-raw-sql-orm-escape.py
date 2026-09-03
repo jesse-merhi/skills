@@ -49,6 +49,11 @@ def cursor_executemany_with_format(cursor, table):
     cursor.executemany("INSERT INTO {} VALUES (?)".format(table), [])  # noqa: S608
 
 
+def cursor_execute_with_trailing_concatenation(cursor, where_clause):
+    # ruleid: no-raw-sql-orm-escape
+    cursor.execute(where_clause + " ORDER BY id")
+
+
 def orm_raw_parameterised(customer_id):
     # ok: no-raw-sql-orm-escape
     return Order.objects.raw("SELECT * FROM orders WHERE id = %s", [customer_id])
@@ -63,6 +68,16 @@ def sqlalchemy_text_bound(session, customer_id):
 def cursor_execute_parameterised(cursor, customer_id):
     # ok: no-raw-sql-orm-escape
     cursor.execute("SELECT * FROM orders WHERE id = %s", [customer_id])
+
+
+def sqlalchemy_text_inline_parameterised(session):
+    # ok: no-raw-sql-orm-escape
+    return session.execute(text("SELECT * FROM t WHERE id = :id"), {"id": 1})
+
+
+def cursor_executemany_parameterised(cursor, rows):
+    # ok: no-raw-sql-orm-escape
+    cursor.executemany("INSERT INTO t (a) VALUES (?)", rows)
 
 
 def orm_queryset(customer_id):

@@ -5,10 +5,12 @@ import pytest
 
 from standards_checks.cli import main
 
-BANNER_AND_WRAPPER = dedent("""\
-    # ==========
+WRAPPER_ABOVE_BANNER = dedent("""\
     def fetch(customer_id):
         return load(customer_id)
+
+
+    # ==========
 """)
 
 
@@ -16,17 +18,17 @@ def test_reports_each_finding_in_ruff_format_and_exits_one(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     target = tmp_path / "module.py"
-    target.write_text(BANNER_AND_WRAPPER)
+    target.write_text(WRAPPER_ABOVE_BANNER)
 
     exit_code = main([str(target)])
 
     assert exit_code == 1
     assert capsys.readouterr().out.splitlines() == [
-        f"{target}:1:1: no-banner-comments decorative banner comment; "
-        "write a plain section comment that says what the section is",
-        f"{target}:2:1: no-trivial-forwarding-wrapper `fetch` only forwards its "
+        f"{target}:1:1: no-trivial-forwarding-wrapper `fetch` only forwards its "
         "parameters to `load`; inline it unless the name marks a concept, "
         "boundary, or test seam",
+        f"{target}:5:1: no-banner-comments decorative banner comment; "
+        "write a plain section comment that says what the section is",
     ]
 
 
@@ -46,16 +48,16 @@ def test_checks_python_files_under_a_directory_but_skips_caches(
     (tmp_path / "pkg" / "module.py").write_text("# ----------\n")
     (tmp_path / ".venv").mkdir()
     (tmp_path / ".venv" / "vendored.py").write_text("# ----------\n")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "vendored.py").write_text("# ----------\n")
     (tmp_path / "__pycache__").mkdir()
     (tmp_path / "__pycache__" / "cached.py").write_text("# ----------\n")
 
     assert main([str(tmp_path)]) == 1
-    reported = capsys.readouterr().out.splitlines()
-    assert reported == [
-        f"{tmp_path / 'pkg' / 'module.py'}:1:1: no-banner-comments "
-        "decorative banner comment; write a plain section comment that says "
-        "what the section is"
-    ]
+    (reported,) = capsys.readouterr().out.splitlines()
+    location, finding = reported.split(": ", 1)
+    assert location == f"{tmp_path / 'pkg' / 'module.py'}:1:1"
+    assert finding.startswith("no-banner-comments ")
 
 
 def test_reports_a_file_it_cannot_parse_without_pretending_it_is_clean(

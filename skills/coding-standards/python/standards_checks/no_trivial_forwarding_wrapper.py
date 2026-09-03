@@ -78,7 +78,6 @@ def _forwarded_call(node: ast.FunctionDef) -> ast.Call | None:
 
 def check_source(source: str, filename: str) -> list[Finding]:
     """Report every function whose whole body forwards its parameters onward."""
-    del filename
     findings: list[Finding] = []
     for node in ast.walk(ast.parse(source)):
         if not isinstance(node, ast.FunctionDef):

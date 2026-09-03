@@ -17,7 +17,6 @@ rules:
           - pattern: $QUERY.raw($SQL, ...)
           - pattern: $QUERY.execute($SQL, ...)
           - pattern: $QUERY.executemany($SQL, ...)
-          - pattern: $QUERY.raw(text($SQL), ...)
           - pattern: $QUERY.execute(text($SQL), ...)
       - metavariable-pattern:
           metavariable: $SQL

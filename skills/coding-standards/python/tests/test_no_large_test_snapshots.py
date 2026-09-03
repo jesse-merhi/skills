@@ -62,9 +62,26 @@ def test_allows_an_assertion_on_the_specific_facts() -> None:
     assert check(source) == []
 
 
+def test_reports_a_snapshot_comparison_written_the_other_way_round() -> None:
+    source = """\
+    def test_report(snapshot) -> None:
+        assert snapshot == build_report()
+    """
+    (finding,) = check(source)
+    assert "syrupy snapshot assertion" in finding.message
+
+
 def test_ignores_an_unrelated_name_that_only_looks_like_the_fixture() -> None:
     source = """\
     def test_report(snapshotter) -> None:
         assert build_report() == snapshotter.value
+    """
+    assert check(source) == []
+
+
+def test_ignores_a_bare_name_that_is_not_the_fixture() -> None:
+    source = """\
+    def test_report(snapshotter) -> None:
+        assert build_report() == snapshotter
     """
     assert check(source) == []
