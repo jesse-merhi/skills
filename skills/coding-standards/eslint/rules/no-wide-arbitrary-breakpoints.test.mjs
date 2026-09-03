@@ -26,8 +26,24 @@ ruleTester.run("no-wide-arbitrary-breakpoints", rule, {
 			name: "allows documented exceptions",
 			code: '\n\t\t\tfunction Toolbar() {\n\t\t\t\t// @allow-wide-breakpoint print preview shell matches an embedded report width.\n\t\t\t\treturn <span className="min-[1200px]:inline 3xl:block">Publish</span>;\n\t\t\t}\n\t\t',
 		},
+		{
+			name: "allows a wider arbitrary breakpoint once maximumPx is raised",
+			code: '\n\t\t\tfunction Toolbar() {\n\t\t\t\treturn <span className="min-[1000px]:inline">Publish</span>;\n\t\t\t}\n\t\t',
+			options: [{ maximumPx: 1200 }],
+		},
+		{
+			name: "allows 3xl once it is removed from disallowedNamedBreakpoints",
+			code: '\n\t\t\tfunction Shell() {\n\t\t\t\treturn <nav className="flex 3xl:hidden">Menu</nav>;\n\t\t\t}\n\t\t',
+			options: [{ disallowedNamedBreakpoints: [] }],
+		},
 	],
 	invalid: [
+		{
+			name: "rejects a breakpoint above a lowered maximumPx",
+			code: '\n\t\t\tfunction Toolbar() {\n\t\t\t\treturn <span className="min-[900px]:inline">Publish</span>;\n\t\t\t}\n\t\t',
+			options: [{ maximumPx: 800 }],
+			errors: [{ messageId: "wideArbitraryBreakpoint" }],
+		},
 		{
 			name: "rejects oversized arbitrary min breakpoints",
 			code: '\n\t\t\tfunction Toolbar() {\n\t\t\t\treturn <span className="hidden min-[1000px]:inline">Publish</span>;\n\t\t\t}\n\t\t',

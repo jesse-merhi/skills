@@ -95,6 +95,8 @@ export default function react(options = {}) {
 				"jsx-a11y/role-supports-aria-props": "error",
 				"jsx-a11y/scope": "error",
 				"jsx-a11y/tabindex-no-positive": "error",
+				"react-hooks/rules-of-hooks": "error",
+				"react-hooks/exhaustive-deps": "warn",
 				"react-hooks/config": "error",
 				"react-hooks/error-boundaries": "error",
 				"react-hooks/gating": "error",

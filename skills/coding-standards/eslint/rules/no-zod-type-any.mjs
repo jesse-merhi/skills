@@ -104,7 +104,7 @@ function getSourceValue(source) {
 }
 
 function hasNoZodTypeAnyDisableComment(context, node) {
-	const sourceCode = context.getSourceCode();
+	const sourceCode = context.sourceCode;
 	const comments = [...sourceCode.getCommentsBefore(node), ...sourceCode.getCommentsAfter(node)];
 
 	return comments.some(
@@ -1768,7 +1768,7 @@ export default {
 				for (const escapedWeakExport of escapedWeakExports) {
 					context.report({
 						node: escapedWeakExport,
-						loc: { line: context.getSourceCode().lines.length + 1, column: 0 },
+						loc: { line: context.sourceCode.lines.length + 1, column: 0 },
 						messageId: "noWeakZodType",
 					});
 				}
@@ -1831,7 +1831,7 @@ export default {
 						hasNoZodTypeAnyDisableComment(context, node.declaration) ||
 						hasNoZodTypeAnyDisableCommentInRange(context, node.declaration)
 					) {
-						escapedWeakExports.add(context.getSourceCode().ast);
+						escapedWeakExports.add(context.sourceCode.ast);
 					}
 					return;
 				}
@@ -1856,7 +1856,7 @@ export default {
 							hasNoZodTypeAnyDisableComment(context, node) ||
 							hasNoZodTypeAnyDisableComment(context, specifier)
 						) {
-							escapedWeakExports.add(context.getSourceCode().ast);
+							escapedWeakExports.add(context.sourceCode.ast);
 						}
 
 						context.report({ node: specifier, messageId: "noWeakZodType" });

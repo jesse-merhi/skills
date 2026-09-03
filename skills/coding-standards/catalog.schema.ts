@@ -115,6 +115,6 @@ const CatalogSchema = Schema.Struct({
 
 export type Catalog = typeof CatalogSchema.Type
 
-const decode = Schema.decodeSync(Schema.fromJsonString(CatalogSchema))
+const decode = Schema.decodeSync(Schema.fromJsonString(CatalogSchema), { onExcessProperty: "error" })
 
 export const decodeCatalog = (text: string): Catalog => decode(text)

@@ -149,7 +149,7 @@ export default {
 		const options = context.options[0] || {};
 		const allowedFiles = options.allowedFiles || [];
 		const checkManualTypeChecks = options.checkManualTypeChecks === true;
-		const filename = context.getFilename();
+		const filename = context.filename;
 		const scopes = [];
 
 		if (allowedFiles.some((allowedFile) => filename.endsWith(allowedFile))) {

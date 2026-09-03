@@ -874,7 +874,7 @@ function hasAllowComment(context, node) {
 }
 
 function shouldSkipFile(context) {
-	return ALLOWED_TEST_FILE_PATTERN.test(normalizeFilename(context.getFilename()));
+	return ALLOWED_TEST_FILE_PATTERN.test(normalizeFilename(context.filename));
 }
 
 function reportUnlessAllowed(context, node, messageId) {

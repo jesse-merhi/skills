@@ -4,8 +4,14 @@
 
 set -euo pipefail
 
-PATTERN='^(//|#) [-=]{10,}'
-FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || git ls-files)
+PATTERN='^[[:space:]]*(//|#)[[:space:]]*[-=]{10,}[[:space:]]*$'
+
+# Default: every tracked file. `--staged` limits the scan to the files staged for commit.
+if [ "${1:-}" = "--staged" ]; then
+  FILES=$(git diff --cached --name-only --diff-filter=ACM)
+else
+  FILES=$(git ls-files)
+fi
 
 errors=0
 while IFS= read -r file; do

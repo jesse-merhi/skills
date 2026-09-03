@@ -627,6 +627,7 @@
 						"rules": [
 							"react-hooks/config",
 							"react-hooks/error-boundaries",
+							"react-hooks/exhaustive-deps",
 							"react-hooks/gating",
 							"react-hooks/globals",
 							"react-hooks/immutability",
@@ -634,6 +635,7 @@
 							"react-hooks/preserve-manual-memoization",
 							"react-hooks/purity",
 							"react-hooks/refs",
+							"react-hooks/rules-of-hooks",
 							"react-hooks/set-state-in-effect",
 							"react-hooks/set-state-in-render",
 							"react-hooks/static-components",
