@@ -33,6 +33,14 @@ describe("lintSkillsRoot", () => {
     assert.strictEqual(report.skillCount, 1)
   })))
 
+  it.effect("resolves a relative skills root before matching links to files", () => live(Effect.gen(function*() {
+    const path = yield* Path.Path
+    const report = yield* lintSkillsRoot(path.relative(process.cwd(), fixture("clean")))
+
+    assert.deepStrictEqual(report.findings, [])
+    assert.strictEqual(report.skillCount, 1)
+  })))
+
   it.effect("excludes upstream-license attribution files from the reference set", () => live(Effect.gen(function*() {
     const report = yield* lintSkillsRoot(fixture("clean"))
 

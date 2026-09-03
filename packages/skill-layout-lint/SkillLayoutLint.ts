@@ -200,9 +200,10 @@ export const formatFinding = (finding: Finding): string =>
 
 export const isError = (finding: Finding): boolean => finding.severity === "error"
 
-export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(function*(root: string) {
+export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(function*(requestedRoot: string) {
   const fileSystem = yield* FileSystem.FileSystem
   const path = yield* Path.Path
+  const root = path.resolve(requestedRoot)
   const entries = yield* fileSystem.readDirectory(root, { recursive: true })
   const files = entries
     .filter((entry) => !entry.split(path.sep).includes(vendorDirectoryName))
