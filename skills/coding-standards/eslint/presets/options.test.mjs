@@ -42,10 +42,23 @@ describe("preset option forwarding", () => {
 		assert.deepEqual(ruleOptions(configs, "jsx-a11y/control-has-associated-label").controlComponents, ["IconButton"]);
 	});
 
-	it("places tsconfigRootDir in the typescript preset's parser options", () => {
-		const [config] = typescript({ tsconfigRootDir: "/repo" });
-		assert.strictEqual(config.languageOptions.parserOptions.tsconfigRootDir, "/repo");
-		assert.isUndefined(typescript()[0].languageOptions.parserOptions.tsconfigRootDir);
+	it("enables the project service only when type-aware linting is requested", () => {
+		const [config] = typescript({ typeChecked: true, tsconfigRootDir: "/repo" });
+		assert.deepEqual(config.languageOptions.parserOptions, { projectService: true, tsconfigRootDir: "/repo" });
+		assert.deepEqual(typescript()[0].languageOptions.parserOptions, {});
+	});
+
+	it("turns the colour rule off for the palette module and nowhere else", () => {
+		const configs = reactNative({ colorModuleFiles: ["**/lib/colors.ts"] });
+		const override = configs.find((config) => config.rules?.["standards/no-raw-color-literals"] === "off");
+		assert.deepEqual(override?.files, ["**/lib/colors.ts"]);
+		assert.isUndefined(reactNative().find((config) => config.rules?.["standards/no-raw-color-literals"] === "off"));
+	});
+
+	it("forwards tokenModule, allowedAllCapsTerms, and the style-assertion options where the title claims", () => {
+		assert.deepEqual(ruleOptions(tailwind({ tokenModule: "@/ui/elevation" }), "standards/no-raw-elevation"), { tokenModule: "@/ui/elevation" });
+		assert.deepEqual(ruleOptions(reactNative({ allowedAllCapsTerms: ["NFC"] }), "standards/no-small-text"), { allowedAllCapsTerms: ["NFC"] });
+		assert.deepEqual(ruleOptions(playwright({ semanticClassTokens: ["card"], semanticClassValues: ["dark"] }), "standards/no-brittle-test-style-assertions"), { semanticClassTokens: ["card"], semanticClassValues: ["dark"] });
 	});
 
 	it("emits no option object keys the consumer did not set", () => {

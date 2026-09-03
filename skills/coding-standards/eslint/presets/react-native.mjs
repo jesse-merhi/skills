@@ -17,7 +17,7 @@ export default function reactNative(options = {}) {
 		colorOptions.message = options.colorMessage;
 	}
 
-	return [
+	const configs = [
 		{
 			files: options.files ?? DEFAULT_FILES,
 			languageOptions: {
@@ -37,4 +37,15 @@ export default function reactNative(options = {}) {
 			},
 		},
 	];
+
+	// The palette module is the one place raw colour literals belong.
+	if (options.colorModuleFiles !== undefined && options.colorModuleFiles.length > 0) {
+		configs.push({
+			files: options.colorModuleFiles,
+			plugins: { standards },
+			rules: { "standards/no-raw-color-literals": "off" },
+		});
+	}
+
+	return configs;
 }
