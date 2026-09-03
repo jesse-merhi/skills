@@ -15,7 +15,7 @@ behavior the product still promises. The default answer is not "add a test"; the
 default answer is "identify the product risk, then decide whether a test would
 catch a real future bug."
 
-There are three gates:
+There are four gates:
 
 1. **Coverage drift**: code changed, so related tests may need to change even if
    no test file changed.
@@ -23,6 +23,9 @@ There are three gates:
    failure worth catching.
 3. **Portfolio ownership**: every retained risk has one executable owner at the
    narrowest useful level, without equivalent duplicate coverage.
+4. **Execution cost**: code or tests changed, so discovered work, per-test
+   duration, runner cost, or parallel makespan may move even when nobody asked
+   for performance work.
 
 ## Workflow
 
@@ -42,22 +45,39 @@ There are three gates:
      package, or user flow.
    - Include deleted tests and changed test infrastructure even when no test
      file changed.
-3. Map test ownership with [Test portfolio](#test-portfolio).
+3. Check execution-cost impact for every audit.
+   - When the audit explicitly aims to reduce test runtime, runner cost, or
+     full-workflow makespan, read
+     [Suite execution cost and optimisation](references/expensive-suites.md)
+     and establish the applicable baseline even before a candidate change
+     exists.
+   - Otherwise inspect whether the change can alter test selection or count,
+     setup, retries, caching, fixtures, testability, test duration, sharding,
+     runner capacity, or scheduling.
+   - Trace a concrete mechanism from the current change to one of those
+     factors and judge whether the impact could be material. A suite already
+     known to be slow, costly, or sharded lowers the investigation threshold;
+     it is not sufficient by itself.
+   - When the traced mechanism could materially change total work, runner
+     cost, or full-workflow makespan, use the same workflow and establish the
+     applicable comparable baseline. Otherwise record `no material
+     execution-cost impact` and continue the portfolio audit.
+4. Map test ownership with [Test portfolio](#test-portfolio).
    - For each changed, deleted, or proposed test, and each nearby test used as
      a replacement or overlap comparison, determine whether it owns a reachable
      bug and at which boundary. For a retained or proposed owner, also name why
      adjacent coverage misses it and derive the expected result independently.
    - Inspect overlapping tests at other levels and any test infrastructure the
      changed tests own.
-4. Classify each test or assertion using [Classifications](#classifications).
-5. Apply the usefulness bar and signal lists in
+5. Classify each test or assertion using [Classifications](#classifications).
+6. Apply the usefulness bar and signal lists in
    [Usefulness bar](#usefulness-bar).
-6. Defend proposed keepers and deletions adversarially.
+7. Defend proposed keepers and deletions adversarially.
    - A keeper must catch a distinct bug that adjacent coverage would miss.
    - A deletion of a test that owns a promised regression must name an
      inspected executable replacement owner. Otherwise, name why the test owns
      no current regression and needs no replacement.
-7. Recommend focused changes:
+8. Recommend focused changes:
    - Remove or rewrite tests that only prove old fields are gone, old callbacks
      are absent, mocks were called in a specific order, tautological expected
      values are recomputed from the same logic as the implementation, or
@@ -78,14 +98,27 @@ There are three gates:
      or state that matters after finding it.
    - Prefer one test that exercises the user/API contract over several tests
      that assert internals.
+   - Before recommending a test or test-infrastructure change, repeat the
+     execution-cost gate for the proposal. For a material proposal, use the
+     same workflow and report the cost mechanism, expected effect, and
+     available evidence or measurement limitation even when implementation is
+     not authorized. When editing is authorized, capture the applicable
+     baseline before editing.
    - Prefer known-good literals, worked examples, specs, or fixtures for
      expected values. Do not compute the expected value the same way production
      code does.
-8. Edit tests only when implementation is authorized. After edits:
+9. Edit tests only when implementation is authorized. After edits:
    - Run the focused test file or package test script.
    - Run typecheck/lint when test helpers, fixtures, route contracts, or shared
      types changed.
-9. Report using the buckets in [Output](#output).
+   - Repeat the execution-cost gate against the final diff. For every material
+     signal, compare the final candidate with its baseline and report the raw
+     values or measurement limitation.
+10. Report using the buckets in [Output](#output). Include each
+    execution-cost decision: `no material execution-cost impact`, or the
+    material mechanism with observed or modelled values and limitations. For
+    an unimplemented proposal, report its expected cost direction and the
+    evidence or limitation supporting it.
 
 ## Required judgment
 
