@@ -1,3 +1,5 @@
+import { findVariable } from "./lib/find-variable.mjs";
+
 function getTypeReferenceName(typeName) {
 	if (!typeName) {
 		return null;
@@ -621,7 +623,8 @@ function getIndexedAccessKeyNames(indexType, weakZodIndexKeyNames) {
 			return [];
 		}
 
-		const aliasKeyNames = weakZodIndexKeyNames.get(indexType.typeName.name) ?? [];
+		const variable = findVariable(weakZodIndexKeyNames.context, indexType.typeName);
+		const aliasKeyNames = weakZodIndexKeyNames.bindings.get(variable) ?? [];
 		const typeArgumentKeyNames =
 			getTypeArguments(indexType).flatMap((type) => getIndexedAccessKeyNames(type, weakZodIndexKeyNames)) ?? [];
 		return [...aliasKeyNames, ...typeArgumentKeyNames];
@@ -1163,9 +1166,11 @@ function visitNode(node, visitor) {
 	}
 }
 
-function addIndexKeyAlias(indexKeyAliases, name, keyNames) {
+function addIndexKeyAlias(indexKeyAliases, identifier, keyNames) {
+	const variable = findVariable(indexKeyAliases.context, identifier);
+	if (!variable) return false;
 	const uniqueKeyNames = [...new Set(keyNames)];
-	const existingKeyNames = indexKeyAliases.get(name) ?? [];
+	const existingKeyNames = indexKeyAliases.bindings.get(variable) ?? [];
 	if (
 		existingKeyNames.length === uniqueKeyNames.length &&
 		existingKeyNames.every((keyName, index) => keyName === uniqueKeyNames[index])
@@ -1173,7 +1178,7 @@ function addIndexKeyAlias(indexKeyAliases, name, keyNames) {
 		return false;
 	}
 
-	indexKeyAliases.set(name, uniqueKeyNames);
+	indexKeyAliases.bindings.set(variable, uniqueKeyNames);
 	return true;
 }
 
@@ -1188,7 +1193,7 @@ function collectZodIndexKeyAlias(node, zodIndexKeyAliases) {
 
 	const keyNames = getIndexedAccessKeyNames(node.typeAnnotation, zodIndexKeyAliases);
 	if (keyNames.length > 0) {
-		return addIndexKeyAlias(zodIndexKeyAliases, node.id.name, keyNames);
+		return addIndexKeyAlias(zodIndexKeyAliases, node.id, keyNames);
 	}
 
 	return false;
@@ -1743,7 +1748,7 @@ export default {
 		const zodTypeNames = new Set();
 		const zodNamespaceNames = new Set();
 		const zodNamespaceTypeScopes = new Map();
-		const zodIndexKeyAliases = new Map();
+		const zodIndexKeyAliases = { bindings: new Map(), context };
 		const anyTypeNames = new Set();
 		const genericZodTypeNames = new Set();
 		const escapedWeakExports = new Set();

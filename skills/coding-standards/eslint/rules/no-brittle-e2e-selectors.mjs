@@ -58,21 +58,26 @@ function isLocatorCall(node) {
 }
 
 function getSelectorMessageIds(selector) {
+	const syntax = selector.replace(/(["'])(?:\\.|(?!\1).)*\1/g, "");
+	const parts = syntax.split(">>");
+	if (parts.length > 1) return parts.flatMap((part) => getSelectorMessageIds(part));
+	const engine = syntax.trim().match(/^\*?([\w-]+)=/)?.[1] ?? (/^\s*\(*\/\//.test(syntax) ? "xpath" : "css");
+	if (engine !== "css" && engine !== "xpath") return [];
 	const messageIds = [];
 
-	if (selector.includes(":nth-child")) {
+	if (engine === "css" && syntax.includes(":nth-child")) {
 		messageIds.push("nthChild");
 	}
 
-	if (selector.includes(">")) {
+	if (engine === "css" && syntax.includes(">")) {
 		messageIds.push("domPath");
 	}
 
-	if (/\[class[*^$|~]?=/.test(selector) || /xpath=.*class/i.test(selector)) {
+	if (/\[class[*^$|~]?=/.test(syntax) || (engine === "xpath" && /@class\b/.test(syntax))) {
 		messageIds.push("classAttribute");
 	}
 
-	if (TAILWIND_CLASS_SELECTOR_PATTERN.test(selector)) {
+	if (engine === "css" && TAILWIND_CLASS_SELECTOR_PATTERN.test(syntax)) {
 		messageIds.push("utilityClass");
 	}
 
