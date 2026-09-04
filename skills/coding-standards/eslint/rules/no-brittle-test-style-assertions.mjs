@@ -612,17 +612,31 @@ function getObjectPropertyExpressions(context, node, propertyName, visitedVariab
 	return [];
 }
 
-function getFunctionSourceExpressions(context, node) {
-	const variable = findVariable(context, node);
-	if (!variable) return [];
+function getFunctionSourceExpressions(context, node, visitedSources = new Set()) {
+	const expression = unwrapExpression(node);
+	if (!expression || visitedSources.has(expression)) return [];
+	visitedSources.add(expression);
+	if (["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"].includes(expression.type)) {
+		return [expression];
+	}
+	if (expression.type === "MemberExpression") {
+		return getMemberSourceExpressions(context, expression).flatMap((source) =>
+			getFunctionSourceExpressions(context, source, new Set(visitedSources)),
+		);
+	}
+	if (expression.type !== "Identifier") return [];
+	const variable = findVariable(context, expression);
+	if (!variable || visitedSources.has(variable)) return [];
+	visitedSources.add(variable);
 
 	return variable.defs.flatMap((definition) => {
 		if (
 			definition.type === "Variable" &&
-			definition.parent.kind === "const" &&
-			["ArrowFunctionExpression", "FunctionExpression"].includes(definition.node.init?.type)
+			definition.parent.kind === "const"
 		) {
-			return [definition.node.init];
+			return getConstSourceExpressions(context, expression).flatMap((source) =>
+				getFunctionSourceExpressions(context, source, new Set(visitedSources)),
+			);
 		}
 		if (definition.type === "FunctionName" && definition.node.type === "FunctionDeclaration") {
 			return [definition.node];
@@ -972,11 +986,12 @@ export default {
 
 				const expectation = getExpectationCall(node);
 				const matcherName = getMatcherName(node);
-				if (expectation && isClassDerivedAssertion(expectation.arguments[0], context)) {
-					reportUnlessAllowed(context, node, "classAssertion");
-					return;
-				}
-				if (expectation && containsClassSelectorExpression(expectation.arguments[0], context)) {
+				const receivedExpressions = isExpectPollCall(expectation)
+					? getFunctionSourceExpressions(context, expectation.arguments[0]).flatMap(getFunctionReturnExpressions)
+					: expectation ? [expectation.arguments[0]] : [];
+				if (receivedExpressions.some((received) =>
+					isClassDerivedAssertion(received, context) || containsClassSelectorExpression(received, context),
+				)) {
 					reportUnlessAllowed(context, node, "classAssertion");
 					return;
 				}
