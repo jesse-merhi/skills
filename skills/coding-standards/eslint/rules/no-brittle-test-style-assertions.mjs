@@ -569,7 +569,35 @@ function getConstSourceExpressions(context, node, visitedVariables = new Set()) 
 
 	const declaration = definition.parent;
 	const loop = declaration.parent;
-	return loop?.type === "ForOfStatement" && loop.left === declaration ? [loop.right] : [];
+	if (loop?.type !== "ForOfStatement" || loop.left !== declaration) return [];
+	return getArrayElementSources(context, loop.right, visitedVariables).flatMap((row) =>
+		getBindingSourceExpressions(context, definition.node.id, row, definition.name, visitedVariables),
+	);
+}
+
+function getArrayElementSources(context, node, visitedSources = new Set()) {
+	const expression = unwrapExpression(node);
+	if (!expression || visitedSources.has(expression)) return [];
+	const nextVisitedSources = new Set([...visitedSources, expression]);
+	if (expression.type === "ArrayExpression") {
+		return expression.elements.flatMap((element) => element?.type === "SpreadElement"
+			? getArrayElementSources(context, element.argument, nextVisitedSources)
+			: element ? [element] : []);
+	}
+	if (expression.type === "Identifier") {
+		const variable = findVariable(context, expression);
+		if (!variable || nextVisitedSources.has(variable)) return [];
+		nextVisitedSources.add(variable);
+		return getConstSourceExpressions(context, expression, nextVisitedSources).flatMap((source) =>
+			getArrayElementSources(context, source, nextVisitedSources),
+		);
+	}
+	if (expression.type === "MemberExpression") {
+		return getMemberSourceExpressions(context, expression).flatMap((source) =>
+			getArrayElementSources(context, source, nextVisitedSources),
+		);
+	}
+	return [];
 }
 
 function getMemberSourceExpressions(context, node) {
