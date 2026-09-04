@@ -53,9 +53,9 @@ optional, and context-sensitive decisions remain local agent guidance.
     the same names as `ecosystems`. `script` is the one exception: it holds the
     shell twin of a rule, for file types no ecosystem linter parses. Each
     column admits only its ecosystem's kinds. Never empty in this schema.
-    Existing `not-applicable` entries also include unavailable analysis; read
-    their reasons rather than copying that label into a target adoption. There,
-    an unavailable check is uncovered or guidance, not automatically irrelevant.
+    The catalog supplies Node/JavaScript implementations and shell helpers;
+    other stacks receive target-owned mappings during adoption, not placeholder
+    columns or prebuilt language packages here.
 
 ## Enforcement kinds
 
@@ -64,29 +64,20 @@ optional, and context-sensitive decisions remain local agent guidance.
 | `rule` | `rule`, `presets` | a custom ESLint rule under `eslint/rules`, enabled by the named presets |
 | `plugin` | `package`, `rules`, `presets` | rule ids from an installed ESLint plugin |
 | `script` | `file`, `languages` | a shell script covering file types ESLint does not parse |
-| `ruff` | `select` | ruff rule codes |
-| `mypy` | `options` | mypy option names to values |
-| `semgrep` | `file` | a semgrep rule configuration |
-| `check` | `module`, `file` | a Python check module exposing `check_source` |
-| `not-applicable` | `reason` | existing placeholder for no supplied implementation; inspect the reason for actual applicability |
 
 ## Invariants
 
 `catalog.schema.ts` rejects on decode:
 
-- an empty `enforcement.<ecosystem>` array, so a column with no supplied
-  implementation carries a reasoned `not-applicable` entry rather than `[]`, and a kind in
-  the wrong column: `ruff` under `javascript`, `rule` under `python`.
+- an empty enforcement array or a kind in the wrong column, such as a shell
+  script under `javascript`.
 - an ecosystem with no `detect` files.
-- an `applies` naming no condition, and a `ruff` `select` entry
-  that is empty.
-- any key an enforcement kind does not define, and any value of the wrong type:
-  `mypy` `options` are booleans, not the strings a config file writes.
+- an `applies` naming no condition.
+- any key an enforcement kind does not define, and any value of the wrong type.
 
 `catalog.test.ts` enforces:
 
-- every `rule`, `script.file`, `check`/`semgrep` `file`, and
-  every preset and baseline `file` resolves on disk.
+- every `rule`, `script.file`, preset and baseline `file` resolves on disk.
 - every file in `eslint/rules` is catalogued exactly once.
 - every preset id named by a `rule` or `plugin` entry exists in that
   ecosystem preset column.
@@ -97,24 +88,9 @@ optional, and context-sensitive decisions remain local agent guidance.
   declares.
 - every standard carries a column for every ecosystem in `ecosystems`.
 
-`python/tests/test_catalog.py` enforces:
-
-- `python/ruff.toml` `lint.extend-select` equals the union of every python
-  `ruff` `select`, with no duplicates.
-- `python/mypy.ini` equals the union of every python `mypy` `options`.
-- every `check` `module` imports, and the file it loads from is the `file` the
-  same entry names.
-- every `check` module `CHECK_ID` equals the id of the standard it enforces.
-- the set of `check` modules equals what `standards_checks.cli` runs.
-- every python preset `packages` pin equals the version that installs it:
-  `ruff` and `mypy` against the `python/pyproject.toml` dev group, `semgrep`
-  against the `semgrep@<version>` in the root `package.json` `validate:python`
-  script. Semgrep is not a project dependency — the host provides it at run
-  time through `uvx` — so that command line is the only pin it has.
-
 ## Adding an entry
 
-Add the enforcement and the file it names in the same change: both test suites
+Add the enforcement and the file it names in the same change: the catalog tests
 treat a catalog row with no file, and a rule file with no catalog row, as a
-failure. Adding a `ruff` or `mypy` entry also means editing `python/ruff.toml`
-or `python/mypy.ini`, because the union tests compare the two directly.
+failure. Non-Node adoption belongs in the target repository and does not
+require extending this schema or adding another language package.

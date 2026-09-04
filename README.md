@@ -107,9 +107,11 @@ partial coverage, gaps, and exceptions in `lint/standards/ADOPTION.md`. When a
 stack is not represented in the catalog, it translates the principles on
 demand and continues; no new shared language column or custom checker is
 required. `sync` reconciles active checks and guidance as well as vendored
-files, preserving local decisions. Bundled ESLint and Python implementations
-remain optional building blocks. Standalone `translate` proposes a mapping;
-contributing it to the shared catalog is a separate, explicit request.
+files, preserving local decisions. The bundled Node/ESLint rules are concrete
+examples: for non-Node repositories, agents find or build equivalent checks
+in the target repository, asking before installing dependencies. This catalog
+does not need a bundled linter for every language. Standalone `translate`
+proposes a mapping; shared-catalog changes require a separate explicit request.
 
 ## The loop
 
@@ -278,9 +280,7 @@ bun run validate:effect
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
 TypeScript helpers. `bun run validate:effect` is lint, the skill layout lint
-(`bun run lint:skills`), typecheck, Effect diagnostics, Vitest, and the Python
-validation command. `bun run validate:python` runs Ruff, mypy, catalog metadata
-tests, and the Python/Semgrep checkers against repository source. CI runs the
+(`bun run lint:skills`), typecheck, Effect diagnostics, and Vitest. CI runs the
 same set.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:

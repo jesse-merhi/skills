@@ -67,7 +67,7 @@ records provenance of files copied from the catalog.
    the gap rather than loading an unresolvable configuration.
 
    Add imports and scoped config entries for newly selected presets. Reconcile
-   copied settings in target-owned files, such as Ruff codes or mypy options;
+   copied settings in target-owned files, such as rule selections or options;
    replacing a reference fragment does not update those settings. Preserve
    unrelated options and resolve conflicting owner choices explicitly. Keep the
    selected checks wired into the target's normal command and CI, when present.

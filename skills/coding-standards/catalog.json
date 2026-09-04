@@ -9,12 +9,6 @@
 				"eslint": "9.39.2"
 			},
 			"presets": "javascript"
-		},
-		"python": {
-			"detect": [
-				"pyproject.toml"
-			],
-			"presets": "python"
 		}
 	},
 	"presets": {
@@ -140,42 +134,6 @@
 					]
 				}
 			}
-		},
-		"python": {
-			"ruff": {
-				"file": "python/ruff.toml",
-				"packages": {
-					"ruff": "0.16.5"
-				},
-				"applies": {
-					"always": true
-				}
-			},
-			"mypy": {
-				"file": "python/mypy.ini",
-				"packages": {
-					"mypy": "2.3.1"
-				},
-				"applies": {
-					"always": true
-				}
-			},
-			"semgrep": {
-				"file": "python/semgrep",
-				"packages": {
-					"semgrep": "1.173.0"
-				},
-				"applies": {
-					"always": true
-				}
-			},
-			"checks": {
-				"file": "python/standards_checks",
-				"packages": {},
-				"applies": {
-					"always": true
-				}
-			}
 		}
 	},
 	"baselines": {
@@ -233,13 +191,6 @@
 							"sh"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "check",
-						"module": "standards_checks.no_banner_comments",
-						"file": "python/standards_checks/no_banner_comments.py"
-					}
 				]
 			}
 		},
@@ -257,13 +208,6 @@
 						"presets": [
 							"base"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "check",
-						"module": "standards_checks.no_trivial_forwarding_wrapper",
-						"file": "python/standards_checks/no_trivial_forwarding_wrapper.py"
 					}
 				]
 			}
@@ -285,13 +229,6 @@
 							"playwright"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "check",
-						"module": "standards_checks.no_large_test_snapshots",
-						"file": "python/standards_checks/no_large_test_snapshots.py"
-					}
 				]
 			}
 		},
@@ -308,15 +245,6 @@
 						"rule": "eslint/rules/no-broad-rule-disable.mjs",
 						"presets": [
 							"zod"
-						]
-					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"PGH003",
-							"PGH004"
 						]
 					}
 				]
@@ -337,18 +265,6 @@
 							"prisma"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"S608"
-						]
-					},
-					{
-						"kind": "semgrep",
-						"file": "python/semgrep/no-raw-sql-orm-escape.yaml"
-					}
 				]
 			}
 		},
@@ -366,12 +282,6 @@
 						"presets": [
 							"react-native"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Colour literals belong to stylesheets and design tokens, not Python source."
 					}
 				]
 			}
@@ -391,12 +301,6 @@
 							"zod"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Zod-specific. The Python analogue is a schema typed as Any, which strict-types already forbids through mypy disallow_any_explicit and ruff ANN401."
-					}
 				]
 			}
 		},
@@ -414,12 +318,6 @@
 						"presets": [
 							"zod"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Deciding that an isinstance chain guards untyped input, and that a pydantic TypeAdapter belongs at that boundary, needs type-aware analysis that ruff and semgrep do not have; candidate for a future check."
 					}
 				]
 			}
@@ -439,12 +337,6 @@
 							"tailwind"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Tailwind theme concern; Python source carries no light or dark colour variants."
-					}
 				]
 			}
 		},
@@ -462,12 +354,6 @@
 						"presets": [
 							"tailwind"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Shadow and elevation tokens are a CSS design-system concern."
 					}
 				]
 			}
@@ -488,12 +374,6 @@
 							"tailwind"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Type-scale rule enforced on stylesheets and JSX class names."
-					}
 				]
 			}
 		},
@@ -512,12 +392,6 @@
 							"tailwind"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "Tailwind arbitrary breakpoint syntax does not exist in Python source."
-					}
 				]
 			}
 		},
@@ -535,12 +409,6 @@
 						"presets": [
 							"playwright"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "No bundled Python selector checker. This principle applies to Playwright and Selenium tests written in Python; prefer stable role, label, text or test-id locators as local guidance."
 					}
 				]
 			}
@@ -561,12 +429,6 @@
 							"jest",
 							"playwright"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "No bundled Python style-assertion checker. This principle applies to Python browser tests; keep user-visible behavior assertions as local guidance and reserve exact styles for deliberate visual coverage."
 					}
 				]
 			}
@@ -592,14 +454,6 @@
 							"base"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"I"
-						]
-					}
 				]
 			}
 		},
@@ -621,16 +475,6 @@
 						],
 						"presets": [
 							"base"
-						]
-					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"F401",
-							"F811",
-							"PLW0406"
 						]
 					}
 				]
@@ -656,15 +500,6 @@
 						],
 						"presets": [
 							"base"
-						]
-					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"ASYNC",
-							"RUF006"
 						]
 					}
 				]
@@ -698,18 +533,6 @@
 						],
 						"presets": [
 							"base"
-						]
-					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"B",
-							"RET",
-							"SIM103",
-							"PLW0120",
-							"S110"
 						]
 					}
 				]
@@ -751,12 +574,6 @@
 							"typescript"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "typescript-eslint's recommended baseline is TypeScript-specific; Python's equivalent correctness baseline is already selected through import-hygiene (F401, F811) and control-flow-correctness (B, RET)."
-					}
 				]
 			}
 		},
@@ -777,22 +594,6 @@
 						],
 						"presets": [
 							"typescript"
-						]
-					}
-				],
-				"python": [
-					{
-						"kind": "mypy",
-						"options": {
-							"strict": true,
-							"disallow_any_explicit": true,
-							"warn_return_any": true
-						}
-					},
-					{
-						"kind": "ruff",
-						"select": [
-							"ANN401"
 						]
 					}
 				]
@@ -831,12 +632,6 @@
 							"react"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "React-specific."
-					}
 				]
 			}
 		},
@@ -866,12 +661,6 @@
 							"react"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "React-specific."
-					}
 				]
 			}
 		},
@@ -892,12 +681,6 @@
 						"presets": [
 							"react"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "React Fast Refresh is a bundler concern with no Python counterpart."
 					}
 				]
 			}
@@ -950,12 +733,6 @@
 							"react"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "ARIA and semantic-markup rules apply to JSX and HTML, not Python source."
-					}
 				]
 			}
 		},
@@ -983,12 +760,6 @@
 							"react-native"
 						]
 					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "React Native accessibility props have no Python counterpart."
-					}
 				]
 			}
 		},
@@ -1014,12 +785,6 @@
 						"presets": [
 							"tanstack-query"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "TanStack Query key and cache conventions are client-side and JavaScript-only."
 					}
 				]
 			}
@@ -1109,14 +874,6 @@
 						],
 						"typeChecked": true
 					}
-				],
-				"python": [
-					{
-						"kind": "ruff",
-						"select": [
-							"PT"
-						]
-					}
 				]
 			}
 		},
@@ -1166,12 +923,6 @@
 						"presets": [
 							"playwright"
 						]
-					}
-				],
-				"python": [
-					{
-						"kind": "not-applicable",
-						"reason": "No ruff or semgrep coverage of playwright-python locators and expect() assertions; enforcing web-first assertions needs a Playwright-aware checker."
 					}
 				]
 			}

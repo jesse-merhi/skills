@@ -48,20 +48,15 @@ const javascriptPresets = catalog.presets.javascript ?? {}
 
 const enforcements = catalog.standards.flatMap((standard) => [
   ...standard.enforcement.javascript,
-  ...standard.enforcement.python,
   ...(standard.enforcement.script ?? [])
 ])
 
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
-const pythonFileEntries = enforcements.flatMap((entry) =>
-  entry.kind === "check" || entry.kind === "semgrep" ? [entry] : []
-)
 const referencedPaths = [
   ...ruleEntries.map((entry) => entry.rule),
   ...scriptEntries.map((entry) => entry.file),
   ...Object.values(catalog.baselines).map((baseline) => baseline.file),
-  ...pythonFileEntries.map((entry) => entry.file),
   ...Object.values(catalog.presets).flatMap((family) => Object.values(family).map((preset) => preset.file))
 ]
 
@@ -120,50 +115,31 @@ const isEnabled = (setting: typeof RuleSetting.Type): boolean => {
 }
 
 interface MutableStandard {
-  enforcement: { javascript: Array<Record<string, unknown>>; python: Array<Record<string, unknown>> }
+  enforcement: { javascript: Array<Record<string, unknown>> }
 }
-
-const pythonEntries = (standards: ReadonlyArray<MutableStandard>): ReadonlyArray<Record<string, unknown>> =>
-  standards.flatMap((standard) => standard.enforcement.python)
 
 // The schema, not a test, is what has to reject a hand-edited catalog, so each
 // mutation below is one way that editing goes wrong.
 const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandard>) => void]> = [
   [
-    "a standard whose python column is empty",
+    "a standard whose javascript column is empty",
     (standards) => {
-      for (const standard of standards) standard.enforcement.python = []
-    }
-  ],
-  [
-    "a ruff entry selecting no rule codes",
-    (standards) => {
-      for (const entry of pythonEntries(standards)) if (entry.kind === "ruff") entry.select = []
-    }
-  ],
-  [
-    "a mypy option written as the string a config file holds",
-    (standards) => {
-      for (const entry of pythonEntries(standards)) if (entry.kind === "mypy") entry.options = { strict: "True" }
+      for (const standard of standards) standard.enforcement.javascript = []
     }
   ],
   [
     "an enforcement entry carrying a key its kind does not define",
     (standards) => {
-      for (const entry of pythonEntries(standards)) entry.severity = "error"
+      for (const standard of standards) {
+        for (const entry of standard.enforcement.javascript) entry.severity = "error"
+      }
     }
   ],
   [
-    "a ruff entry pasted into the javascript column",
-    (standards) => {
-      for (const standard of standards) standard.enforcement.javascript.push({ kind: "ruff", select: ["S608"] })
-    }
-  ],
-  [
-    "an ESLint rule entry pasted into the python column",
+    "a shell script entry pasted into the javascript column",
     (standards) => {
       for (const standard of standards) {
-        standard.enforcement.python.push({ kind: "rule", presets: ["base"], rule: "r.mjs" })
+        standard.enforcement.javascript.push({ kind: "script", file: "check.sh", languages: ["sh"] })
       }
     }
   ]
@@ -174,7 +150,7 @@ const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
-  it("resolves every referenced rule, script, check, baseline, and preset file", () => {
+  it("resolves every referenced rule, script, baseline, and preset file", () => {
     for (const path of referencedPaths) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
@@ -279,8 +255,8 @@ describe("coding standards catalog", () => {
     const presets: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(source)
     presets.presets.javascript.base.applies = {}
     assert.throws(() => decodeCatalog(JSON.stringify(presets)))
-    const ecosystems: { ecosystems: { python: { detect: unknown } } } = JSON.parse(source)
-    ecosystems.ecosystems.python.detect = []
+    const ecosystems: { ecosystems: { javascript: { detect: unknown } } } = JSON.parse(source)
+    ecosystems.ecosystems.javascript.detect = []
     assert.throws(() => decodeCatalog(JSON.stringify(ecosystems)))
   })
 

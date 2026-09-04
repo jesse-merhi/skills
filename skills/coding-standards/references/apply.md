@@ -66,7 +66,9 @@ names another. An existing adoption belongs on the sync path.
    shadows it. Scope checks to real source, excluding generated output and
    vendored files. Reuse the target's task runner and existing lint/check
    command, including its CI invocation when present. Do not refactor target
-   source, change runtime dependencies, or add a new checker in this step.
+   source or change runtime dependencies. Implement a selected target-owned
+   check here when the shared adoption policy supports it; reuse the target's
+   extension or scripting approach instead of building a lint framework.
 
    For ordinary native tools, follow their installed configuration mechanism.
    When selecting bundled assets, use the implementation notes below. Copy
@@ -93,7 +95,7 @@ names another. An existing adoption belongs on the sync path.
 
    Inspect effective settings for representative real source files and run each
    selected command. Use the tool's own config/reporting support, such as
-   `eslint --print-config <source>` or `ruff check --show-settings <source>`.
+   `eslint --print-config <source>` or the target tool's equivalent command.
    Confirm the normal task command and CI actually invoke the selected checks.
    A successful command alone does not prove a particular rule is enabled.
 
@@ -138,45 +140,6 @@ Factories import shared rules and `standards-plugin.mjs`. When using a bundled
 JavaScript factory, vendor the tracked `eslint/` runtime tree under
 `lint/standards/eslint/`, excluding `*.test.mjs`. Unused files are inert, not
 enforced coverage; only imported factories belong in `manifest.presets`.
-
-### Python
-
-Select Ruff, mypy, Semgrep, or existing custom checks individually. Copy only
-the selected `presets.python.*.file` roots and their runtime dependencies.
-Exclude `python/tests`, test/build environment files, caches, and the Semgrep
-`.py` fixtures; those fixtures test the catalog, not the target. Check Python
-version compatibility before selecting the bundled checks.
-
-For a selected Ruff fragment, extend the config Ruff actually reads. Do not
-create `ruff.toml` beside an active `[tool.ruff]` merely for convenience. If the
-target sets `lint.select` or legacy `select`, merge the chosen codes into its
-own `extend-select`; a child `select` can reset inherited selections. Otherwise
-use Ruff's `extend` mechanism without discarding an existing inheritance chain.
-Merge only chosen codes, not every catalog code regardless of coverage.
-
-Mypy has no config inheritance: merge selected options into its active config.
-Use TOML booleans in `pyproject.toml`. Preserve stricter settings and ask before
-overriding an explicit local choice. Add the vendor directory to the target's
-Ruff and mypy exclusions without removing existing exclusions. Record copied
-settings and their active locations so sync can update more than the reference
-fragments.
-
-Use only the selected commands, through the target's runner:
-
-```sh
-ruff check <source directories>
-mypy <source directories>
-semgrep --error --config lint/standards/python/semgrep <source directories>
-PYTHONPATH=lint/standards/python python -m standards_checks --select <standard-id> <source directories>
-```
-
-Repeat `--select` for each selected custom check; omit it only when all checks
-are selected.
-The environment assignment precedes the runner, for example
-`PYTHONPATH=lint/standards/python uv run python -m standards_checks ...`.
-Semgrep needs `--error` for findings to fail the command. If the target has no
-task runner, choose a simple native command entrypoint instead of introducing
-a task framework. Guidance does not require one.
 
 ### Baselines and scripts
 

@@ -8,6 +8,9 @@ description: 'Apply personal engineering standards with existing tools and repos
 Adopt the owner's standards through reliable checks already suited to the
 target, short local agent guidance, and a record of actual coverage. Complete
 the requested adoption work without turning it into a lint framework project.
+The bundled Node checks are examples for equivalent enforcement in other
+stacks. Find or build checks in the target repository; do not add a shared
+language package to make that adoption work.
 
 ## Source and mode
 
@@ -48,9 +51,9 @@ separate, explicitly requested work governed by
   continue other authorized work.
 - Preserve existing checks, source, configuration, and explicit exceptions.
   Do not silently remove enforcement to adopt this workflow.
-- Do not create or port custom checkers, or build an exhaustive language
-  matrix, to fill native-tool gaps. Use guidance or an uncovered disposition.
-  A new checker needs a separate, bounded implementation request.
+- During apply, create a small target-owned check when existing tools cannot
+  express a selected, reliable mechanical requirement. Bound that work with
+  the shared adoption policy; retain guidance for judgment-dependent standards.
 - Existing bundled checkers are optional. Select one only when its observed
   behavior fits the target and justifies maintaining it.
 - Keep optional investigation and delegation out of this bounded task. Resolve

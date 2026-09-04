@@ -20,45 +20,8 @@ const ScriptEnforcement = Schema.Struct({
   languages: Schema.Array(Schema.NonEmptyString)
 })
 
-const RuffEnforcement = Schema.Struct({
-  kind: Schema.Literal("ruff"),
-  select: Schema.NonEmptyArray(Schema.NonEmptyString)
-})
-
-const MypyEnforcement = Schema.Struct({
-  kind: Schema.Literal("mypy"),
-  options: Schema.Record(Schema.NonEmptyString, Schema.Boolean)
-})
-
-const SemgrepEnforcement = Schema.Struct({
-  file: Schema.NonEmptyString,
-  kind: Schema.Literal("semgrep")
-})
-
-const CheckEnforcement = Schema.Struct({
-  file: Schema.NonEmptyString,
-  kind: Schema.Literal("check"),
-  module: Schema.NonEmptyString
-})
-
-const NotApplicableEnforcement = Schema.Struct({
-  kind: Schema.Literal("not-applicable"),
-  reason: Schema.NonEmptyString
-})
-
-// Each column admits only its own ecosystem's kinds, so a ruff entry pasted
-// into the javascript column is rejected instead of claiming a code nothing enables.
 const Enforcement = Schema.Struct({
   javascript: Schema.NonEmptyArray(Schema.Union([PluginEnforcement, RuleEnforcement])),
-  python: Schema.NonEmptyArray(
-    Schema.Union([
-      CheckEnforcement,
-      MypyEnforcement,
-      NotApplicableEnforcement,
-      RuffEnforcement,
-      SemgrepEnforcement
-    ])
-  ),
   script: Schema.optionalKey(Schema.NonEmptyArray(ScriptEnforcement))
 })
 

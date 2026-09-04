@@ -9,6 +9,9 @@ Apply the owner's standards to the target repository with working checks and
 short, repository-specific guidance. Do not turn the task into building a lint
 framework. Enforce a principle only where a reliable check exists; record the
 rest as guidance, partial coverage, an uncovered requirement, or an exception.
+Use the bundled Node rules as examples. For non-Node repositories, find or
+build equivalent checks in that repository instead of adding another language
+package to the shared catalog.
 
 ## Workflow
 
@@ -52,9 +55,9 @@ contracts rather than sending the agent through another chain of documents.
   continue the remaining authorized work.
 - Preserve existing checks, source, configuration, and explicit exceptions.
   Do not silently disable current enforcement to adopt this workflow.
-- Missing native coverage is not a request for a new checker. Leave guidance
-  or an honest gap instead. Creating or porting a checker requires a separate,
-  bounded implementation request.
+- During apply, create a small target-owned check for a selected, reliable
+  mechanical requirement only when existing tooling cannot express it. Follow
+  the shared adoption policy. Leave judgment calls as guidance.
 - An existing bundled checker is optional. Use it only after establishing that
   its actual behavior fits this target and justifies its maintenance cost.
 

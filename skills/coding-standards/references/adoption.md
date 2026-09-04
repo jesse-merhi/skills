@@ -37,12 +37,15 @@ Examples of the distinction:
 - An unavailable linter is an uncovered requirement, not evidence that its
   underlying standard is irrelevant to the language.
 
-Do not port rules, create AST walkers, or generate exhaustive language matrices
-to fill gaps. A new custom check is separate implementation work. Existing
-custom checks may be retained or selected when they enforce a clear local
-contract reliably; otherwise keep the principle as guidance without importing
-that checker. Do not remove an already-active checker without the user's
-decision.
+The Node implementations show concrete enforcement intent for other stacks.
+During apply, if existing tools cannot express a selected mechanical check,
+implement a small equivalent in the target repository using its established
+extension or scripting approach. Explain why native options are insufficient,
+keep the check's scope explicit, and verify actual passing and failing cases.
+Ask before dependency changes. Do not mechanically port AST code, approximate
+judgment with syntax bans, or create a shared language package. If reliable
+enforcement needs a larger project, propose it and record the gap rather than
+expanding adoption. Keep existing checks unless the user decides otherwise.
 
 Done when every relevant principle has a defensible disposition and no coverage
 claim depends only on a similarly named rule or a green command.
@@ -96,7 +99,7 @@ decisions or native config written in place:
 ```
 
 List the actual target ecosystems, including locally translated ones. Preset
-lists contain only active bundled factories or Python bundles; native rules
+lists contain only active bundled factories; native rules
 configured directly are described in `ADOPTION.md` instead.
 
 For each copied file, key `files` by its target-relative path and record

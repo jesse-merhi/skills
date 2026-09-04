@@ -33,9 +33,6 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-
       - name: Install Node dependencies
         run: bun ci
 

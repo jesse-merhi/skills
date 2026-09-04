@@ -16,8 +16,8 @@ is unspecified, resolve it before making repository-specific decisions.
 
    Inspect manifests, source directories, existing configuration, dependencies,
    and the commands the repository already uses. Read the catalog principles
-   before looking for analogous rules. Existing JavaScript and Python mappings
-   are examples of approaches, not the definition of the standard.
+   before looking for analogous rules. The Node/JavaScript implementations
+   show concrete examples, not a language-independent definition of the rule.
 
    Done when the target stack and each relevant principle are understood. An
    absent catalog column is not a reason to stop; an unidentified target is.
@@ -30,8 +30,10 @@ is unspecified, resolve it before making repository-specific decisions.
    dependency approval in apply. Do not install anything in this mapping step.
 
    Do not assume a native rule covers a whole principle because its name sounds
-   related. Record exactly what it checks. Do not create or port a custom
-   checker to fill the remainder; that requires a separate implementation task.
+   related. Record exactly what it checks. If no existing tool can express a
+   reliable mechanical requirement, propose a small target-owned check under
+   the shared adoption policy, not a package for this catalog. Implement it
+   when returning to apply; standalone translation does not write checkers.
 
    Done when every proposed check has a supported meaning and every missing
    mapping has a reason, without speculative tools or fabricated rule ids.
@@ -46,8 +48,8 @@ is unspecified, resolve it before making repository-specific decisions.
    Specify the config location, source scope, and normal command for proposed
    checks. Reuse the repository's runner; do not build an adapter framework.
 
-   Done when the mapping can be applied using existing tooling and ordinary
-   configuration, and every relevant principle has a truthful disposition.
+   Done when the mapping names existing tooling, ordinary configuration or a
+   bounded local check, and every relevant principle has a truthful disposition.
 
 4. **Return to the caller.**
 

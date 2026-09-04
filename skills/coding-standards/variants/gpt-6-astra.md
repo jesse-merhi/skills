@@ -8,7 +8,9 @@ description: 'Apply personal engineering standards with existing tools and repos
 Bring the owner's engineering standards into the target repository through
 reliable existing checks, concise local guidance, and an honest coverage
 record. The catalog defines principles; its implementation entries are
-candidates, not proof that a preset enforces every principle.
+candidates, not proof that a preset enforces every principle. Use the bundled
+Node checks as examples for finding or building equivalent checks in non-Node
+targets, not for expanding this catalog with language-specific packages.
 
 ## Establish the target and source
 
@@ -51,9 +53,9 @@ contribution needs its own explicit request; consult
   replacing, or upgrading dependencies. Record declined tools as gaps.
 - Preserve existing checks, source, configuration, and user exceptions. Do not
   silently weaken enforcement to fit this adoption model.
-- Missing native coverage does not authorize a new checker, a port of another
-  language's rules, or an exhaustive language matrix. Record guidance or a gap.
-  New custom checks require a separately requested, bounded implementation.
+- During apply, implement a small check in the target when existing tooling
+  cannot express a selected, reliable mechanical requirement. Use the shared
+  adoption policy to bound that work; keep judgment calls as guidance.
 - Existing bundled checkers are optional. Establish that their actual behavior
   fits the target and adds reliable coverage worth maintaining before use.
 

@@ -13,7 +13,9 @@ cross-language lint framework.
 `catalog.json` supplies the standards' ids, titles, and principles. Its
 enforcement entries and bundled presets are implementation candidates, not a
 requirement to install everything or proof of equivalent coverage. Translate
-the principle, not the syntax of its JavaScript checker.
+the principle, not the syntax of its JavaScript checker. The bundled Node
+checks are concrete examples for finding or building equivalent checks in
+non-Node targets, not a mandate to add language packages to this catalog.
 
 ## Start
 
@@ -53,9 +55,9 @@ catalog translation is separate work, done only when explicitly requested;
   replacing, or upgrading dependencies. Declined tools become recorded gaps.
 - Preserve existing checks, source code, configuration, and user exceptions.
   Do not silently weaken enforcement to fit the new adoption model.
-- Do not write or port a custom checker merely because native coverage is
-  missing. Guidance or an explicit gap is a valid outcome. A new checker needs
-  a separately requested, bounded implementation task.
+- During apply, create a small target-owned check when existing tooling cannot
+  express a selected, reliable mechanical requirement. Follow the shared
+  adoption policy; judgment calls remain guidance, not syntax checks.
 - Existing bundled checkers are optional: use one only when its actual
   behavior fits the target and adds reliable coverage worth maintaining.
 
