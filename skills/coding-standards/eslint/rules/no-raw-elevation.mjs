@@ -1,7 +1,5 @@
-import { getCvaClassNodes } from "./lib/static-node-values.mjs";
+import { CLASS_FUNCTION_NAMES, getCvaClassNodes, getImportedClassFunctionName } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
-
-const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "classNames", "cva", "twMerge"]);
 
 function getStaticName(node) {
 	if (node?.type === "Identifier" || node?.type === "JSXIdentifier") {
@@ -49,23 +47,6 @@ function getClassFunctionName(node, classFunctionBindings, identifierBindings) {
 		const propertyName = getStaticName(node.property);
 		return CLASS_FUNCTION_NAMES.has(propertyName) ? propertyName : undefined;
 	}
-	return undefined;
-}
-
-function getImportedClassFunctionName(specifier) {
-	if (specifier.type === "ImportSpecifier") {
-		const importedName = getStaticName(specifier.imported);
-		return CLASS_FUNCTION_NAMES.has(importedName) ? importedName : undefined;
-	}
-	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") {
-		return undefined;
-	}
-
-	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	if (sourceName === "class-variance-authority") return "cva";
-	if (sourceName === "clsx") return "clsx";
-	if (sourceName === "classnames") return "classNames";
-	if (sourceName === "tailwind-merge") return "twMerge";
 	return undefined;
 }
 

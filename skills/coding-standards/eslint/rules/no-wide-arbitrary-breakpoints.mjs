@@ -82,7 +82,7 @@ function checkNode(context, reportNode, valueNode, options) {
 		return;
 	}
 
-	const snippets = extractStringSnippets(valueNode);
+	const snippets = extractStringSnippets(valueNode, false, context);
 	for (const snippet of snippets) {
 		for (const token of snippet.split(/\s+/).filter(Boolean)) {
 			const wideBreakpoint = getWideArbitraryBreakpoint(token, options.maximumPx);

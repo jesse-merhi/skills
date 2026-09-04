@@ -1,4 +1,41 @@
-export function extractStringSnippets(node, classMap = false) {
+import { findVariable } from "./find-variable.mjs";
+
+export const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "classNames", "cva", "twMerge"]);
+
+export function getImportedClassFunctionName(specifier) {
+	if (specifier.type === "ImportSpecifier") {
+		const importedName = getStaticPropertyName(specifier.imported);
+		return CLASS_FUNCTION_NAMES.has(importedName) ? importedName : undefined;
+	}
+	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") return undefined;
+	const sourceName = specifier.parent.source.value;
+	if (sourceName === "class-variance-authority") return "cva";
+	if (sourceName === "clsx") return "clsx";
+	if (sourceName === "classnames") return "classNames";
+	if (sourceName === "tailwind-merge") return "twMerge";
+	return undefined;
+}
+
+export function resolveClassFunctionName(node, context, visitedVariables = new Set()) {
+	if (node?.type === "MemberExpression" && !node.computed) {
+		const name = getStaticPropertyName(node.property);
+		return CLASS_FUNCTION_NAMES.has(name) ? name : undefined;
+	}
+	if (node?.type !== "Identifier") return undefined;
+	const variable = context && findVariable(context, node);
+	if (!variable) return CLASS_FUNCTION_NAMES.has(node.name) ? node.name : undefined;
+	if (visitedVariables.has(variable)) return undefined;
+	visitedVariables.add(variable);
+	return variable.defs.map((definition) => {
+		if (definition.type === "ImportBinding") return getImportedClassFunctionName(definition.node);
+		if (definition.type === "Variable" && definition.parent.kind === "const") {
+			return resolveClassFunctionName(definition.node.init, context, visitedVariables);
+		}
+		return undefined;
+	}).find(Boolean);
+}
+
+export function extractStringSnippets(node, classMap = false, context) {
 	if (!node) {
 		return [];
 	}
@@ -9,39 +46,42 @@ export function extractStringSnippets(node, classMap = false) {
 		case "TemplateLiteral":
 			return [
 				...node.quasis.map((quasi) => quasi.value.cooked ?? "").filter(Boolean),
-				...node.expressions.flatMap((expression) => extractStringSnippets(expression, classMap)),
+				...node.expressions.flatMap((expression) => extractStringSnippets(expression, classMap, context)),
 			];
 		case "JSXExpressionContainer":
-			return extractStringSnippets(node.expression, classMap);
+			return extractStringSnippets(node.expression, classMap, context);
 		case "ConditionalExpression":
-			return [...extractStringSnippets(node.consequent, classMap), ...extractStringSnippets(node.alternate, classMap)];
+			return [...extractStringSnippets(node.consequent, classMap, context), ...extractStringSnippets(node.alternate, classMap, context)];
 		case "LogicalExpression":
-			return [...extractStringSnippets(node.left, classMap), ...extractStringSnippets(node.right, classMap)];
+			return [...extractStringSnippets(node.left, classMap, context), ...extractStringSnippets(node.right, classMap, context)];
 		case "BinaryExpression":
 			if (node.operator !== "+") return [];
-			return [...extractStringSnippets(node.left, classMap), ...extractStringSnippets(node.right, classMap)];
+			return [...extractStringSnippets(node.left, classMap, context), ...extractStringSnippets(node.right, classMap, context)];
 		case "ArrayExpression":
-			return node.elements.flatMap((element) => extractStringSnippets(element, classMap));
+			return node.elements.flatMap((element) => extractStringSnippets(element, classMap, context));
 		case "ObjectExpression":
 			return node.properties.flatMap((property) => {
-				if (property.type === "SpreadElement") return extractStringSnippets(property.argument, classMap);
+				if (property.type === "SpreadElement") return extractStringSnippets(property.argument, classMap, context);
 				if (property.type !== "Property") return [];
-				if (!classMap) return extractStringSnippets(property.value);
+				if (!classMap) return extractStringSnippets(property.value, false, context);
 				if (property.value.type === "Literal" && !property.value.value) return [];
-				if (property.computed) return extractStringSnippets(property.key);
+				if (property.computed) return extractStringSnippets(property.key, false, context);
 				const key = getStaticPropertyName(property.key);
 				return key === null ? [] : [key];
 			});
-		case "CallExpression":
-			if (node.callee.type === "Identifier" && node.callee.name === "cva") {
-				return getCvaClassNodes(node).flatMap((value) => extractStringSnippets(value, true));
+		case "CallExpression": {
+			const functionName = resolveClassFunctionName(node.callee, context);
+			if (functionName === "cva") {
+				return getCvaClassNodes(node).flatMap((value) => extractStringSnippets(value, true, context));
 			}
 			return node.arguments.flatMap((argument) =>
 				extractStringSnippets(
 					argument,
-					node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name),
+					["cn", "clsx", "classNames"].includes(functionName),
+					context,
 				),
 			);
+		}
 		default:
 			return [];
 	}

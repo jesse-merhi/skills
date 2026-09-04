@@ -109,7 +109,9 @@ function getTaintedNameFromExpression(node, taintedVariables, context) {
 	}
 
 	if (node.type === "Identifier") {
-		return taintedVariables.has(findVariable(context, node)) ? node.name : null;
+		const variable = findVariable(context, node);
+		return taintedVariables.has(variable) || variable?.defs.some((definition) => isBoundaryTypeAnnotation(definition.name))
+			? node.name : null;
 	}
 
 	if (node.type === "MemberExpression") {

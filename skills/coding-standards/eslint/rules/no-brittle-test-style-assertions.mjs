@@ -139,6 +139,13 @@ function getStaticText(node, context, visitedVariables = new Set(), parameterBin
 		nextVisitedVariables.add(variable);
 		return getStaticText(initializer, context, nextVisitedVariables, parameterBindings);
 	}
+	if (expression.type === "MemberExpression" && context) {
+		if (visitedVariables.has(expression)) return null;
+		const nextVisitedVariables = new Set([...visitedVariables, expression]);
+		const texts = getMemberSourceExpressions(context, expression, nextVisitedVariables, parameterBindings)
+			.map((source) => getStaticText(source, context, nextVisitedVariables, parameterBindings));
+		return texts.length && texts.every((text) => text === texts[0]) ? texts[0] : null;
+	}
 	if (expression.type === "TemplateLiteral") {
 		let value = expression.quasis[0]?.value.cooked ?? "";
 		for (let index = 0; index < expression.expressions.length; index += 1) {
@@ -520,6 +527,8 @@ function containsClassSelectorExpression(node, context, visitedVariables = new S
 	}
 
 	if (expression.type === "MemberExpression") {
+		if (visitedVariables.has(expression)) return false;
+		visitedVariables.add(expression);
 		const memberSources = getMemberSourceExpressions(context, expression);
 		if (memberSources.length > 0) {
 			return memberSources.some((source) =>
@@ -600,12 +609,13 @@ function getArrayElementSources(context, node, visitedSources = new Set()) {
 	return [];
 }
 
-function getMemberSourceExpressions(context, node) {
+function getMemberSourceExpressions(context, node, visitedVariables = new Set(), parameterBindings = new Map()) {
 	const expression = unwrapExpression(node);
 	if (expression?.type !== "MemberExpression") return [];
-	const propertyName = expression.computed ? getStaticText(expression.property, context) : getPropertyName(expression.property);
+	const propertyName = expression.computed
+		? getStaticText(expression.property, context, visitedVariables, parameterBindings) : getPropertyName(expression.property);
 	if (!propertyName) return [];
-	return getObjectPropertyExpressions(context, expression.object, propertyName);
+	return getObjectPropertyExpressions(context, expression.object, propertyName, visitedVariables);
 }
 
 function getObjectPropertyExpressions(context, node, propertyName, visitedVariables = new Set()) {

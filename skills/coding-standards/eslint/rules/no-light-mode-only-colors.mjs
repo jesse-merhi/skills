@@ -1,4 +1,4 @@
-import { extractStringSnippets, getStaticPropertyName } from "./lib/static-node-values.mjs";
+import { extractStringSnippets, getStaticPropertyName, resolveClassFunctionName } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
 const LIGHT_ONLY_CLASS_PATTERN =
@@ -73,7 +73,7 @@ function getStaticConcatenationValue(node) {
 	return null;
 }
 
-function extractClassSnippets(node, { unconditionalOnly = false, classMap = false } = {}) {
+function extractClassSnippets(context, node, { unconditionalOnly = false, classMap = false } = {}) {
 	if (!node) {
 		return [];
 	}
@@ -88,25 +88,25 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 		case "TemplateElement":
 			return node.value.cooked ? [node.value.cooked] : [];
 		case "JSXExpressionContainer":
-			return extractClassSnippets(node.expression, { unconditionalOnly, classMap });
+			return extractClassSnippets(context, node.expression, { unconditionalOnly, classMap });
 		case "ConditionalExpression":
 			if (unconditionalOnly) {
 				const branches = [node.consequent, node.alternate].map((branch) =>
-					extractClassSnippets(branch, { unconditionalOnly: true, classMap }).join(" "));
+					extractClassSnippets(context, branch, { unconditionalOnly: true, classMap }).join(" "));
 				return [getClassTokens(branches[0]).filter((token) => branches.every((branch) =>
 					getClassTokens(branch).includes(token) ||
 					(splitTailwindSegments(token).includes("dark") && hasExplicitDarkCounterpart(branch, token)),
 				)).join(" ")];
 			}
 			return [
-				...extractClassSnippets(node.consequent, { classMap }),
-				...extractClassSnippets(node.alternate, { classMap }),
+				...extractClassSnippets(context, node.consequent, { classMap }),
+				...extractClassSnippets(context, node.alternate, { classMap }),
 			];
 		case "LogicalExpression":
 			if (unconditionalOnly) return [];
-			return [...extractClassSnippets(node.left, { classMap }), ...extractClassSnippets(node.right, { classMap })];
+			return [...extractClassSnippets(context, node.left, { classMap }), ...extractClassSnippets(context, node.right, { classMap })];
 		case "ObjectExpression": {
-			if (!classMap) return unconditionalOnly ? [] : extractStringSnippets(node);
+			if (!classMap) return unconditionalOnly ? [] : extractStringSnippets(node, false, context);
 			const properties = node.properties.filter((property) =>
 				property.type === "Property" &&
 				(property.value.type === "Literal" ? Boolean(property.value.value) : !unconditionalOnly),
@@ -121,11 +121,11 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 				conditions.set(condition, grouped);
 			}
 			const direct = [...conditions.values()].map((grouped) =>
-				extractStringSnippets({ ...node, properties: grouped }, true).join(" "),
+				extractStringSnippets({ ...node, properties: grouped }, true, context).join(" "),
 			);
 			const spreads = node.properties
 				.filter((property) => property.type === "SpreadElement")
-				.flatMap((property) => extractClassSnippets(property.argument, { unconditionalOnly, classMap }));
+				.flatMap((property) => extractClassSnippets(context, property.argument, { unconditionalOnly, classMap }));
 			return [...direct, ...spreads];
 		}
 		case "ArrayExpression":
@@ -134,7 +134,7 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 		case "CallExpression": {
 			if (node.type === "BinaryExpression" && node.operator !== "+") return [];
 			const maps = node.type === "CallExpression"
-				? node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name)
+				? ["cn", "clsx", "classNames"].includes(resolveClassFunctionName(node.callee, context))
 				: classMap;
 			const values = node.type === "TemplateLiteral"
 				? [...node.quasis, ...node.expressions]
@@ -142,19 +142,19 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 				: node.type === "BinaryExpression" ? [node.left, node.right] : node.arguments;
 			const children = maps ? values.flatMap(expandClassMapEntries) : values;
 			const shared = children
-				.flatMap((child) => extractClassSnippets(child, { unconditionalOnly: true, classMap: maps }))
+				.flatMap((child) => extractClassSnippets(context, child, { unconditionalOnly: true, classMap: maps }))
 				.join(" ");
 			if (unconditionalOnly) return shared ? [shared] : [];
 			const guardedSnippets = new Map();
 			for (const child of children) {
 				const guard = getLogicalIdentifierGuard(child);
 				if (guard === undefined) continue;
-				const snippets = extractClassSnippets(child.right, { unconditionalOnly: true, classMap: maps });
+				const snippets = extractClassSnippets(context, child.right, { unconditionalOnly: true, classMap: maps });
 				guardedSnippets.set(guard, `${guardedSnippets.get(guard) ?? ""} ${snippets.join(" ")}`);
 			}
 			return children.flatMap((child) => {
 				const guarded = guardedSnippets.get(getLogicalIdentifierGuard(child)) ?? "";
-				return extractClassSnippets(child, { classMap: maps })
+				return extractClassSnippets(context, child, { classMap: maps })
 					.map((snippet) => `${shared} ${guarded} ${snippet}`);
 			});
 		}
@@ -184,7 +184,7 @@ export default {
 					return;
 				}
 
-				const snippets = extractClassSnippets(node.value);
+				const snippets = extractClassSnippets(context, node.value);
 				const reportedTokens = new Set();
 				for (const snippet of snippets) {
 					if (!reportedTokens.has("prose") && hasBareProseWithoutDarkCounterpart(snippet)) {

@@ -1,4 +1,4 @@
-import { extractStringSnippets, getStaticPropertyName } from "./lib/static-node-values.mjs";
+import { extractStringSnippets, getStaticPropertyName, resolveClassFunctionName } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
 const DEFAULT_MINIMUM_FONT_SIZE_PX = 14;
@@ -88,12 +88,12 @@ function getStaticPropertyValue(value) {
 	return null;
 }
 
-function isClassNameCall(node) {
+function isClassNameCall(node, context) {
 	if (!node || node.type !== "CallExpression") {
 		return false;
 	}
 
-	return node.callee.type === "Identifier" && ["classNames", "clsx", "cn", "cva"].includes(node.callee.name);
+	return Boolean(resolveClassFunctionName(node.callee, context));
 }
 
 function isClassSnippetVariableName(node) {
@@ -261,23 +261,23 @@ export default {
 
 				const attributeName = node.name.name;
 				if (TEXT_CLASS_PROP_NAMES.has(attributeName)) {
-					checkClassSnippets(node, extractStringSnippets(node.value));
+					checkClassSnippets(node, extractStringSnippets(node.value, false, context));
 					return;
 				}
 			},
 			CallExpression(node) {
-				if (!isClassNameCall(node) || isInsideClassAttribute(node)) {
+				if (!isClassNameCall(node, context) || isInsideClassAttribute(node)) {
 					return;
 				}
 
-				checkClassSnippets(node, extractStringSnippets(node));
+				checkClassSnippets(node, extractStringSnippets(node, false, context));
 			},
 			VariableDeclarator(node) {
 				if (!isClassSnippetVariableName(node.id)) {
 					return;
 				}
 
-				checkClassSnippets(node, extractStringSnippets(node.init));
+				checkClassSnippets(node, extractStringSnippets(node.init, false, context));
 			},
 			Property(node) {
 				checkFontSizeProperty(node);
