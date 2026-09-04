@@ -199,6 +199,8 @@ function getRawElevationUtility(token) {
 
 function reportRawElevation(context, node, value, classFunctionBindings, identifierBindings, tokenModule) {
 	const ancestors = context.sourceCode.getAncestors(node);
+	if (ancestors.some((ancestor) => ancestor.type === "Property" &&
+		ancestor.value.type === "Literal" && !ancestor.value.value)) return;
 	const cvaCall = ancestors.findLast((ancestor) => ancestor.type === "CallExpression" &&
 		getClassFunctionName(ancestor.callee, classFunctionBindings, identifierBindings) === "cva");
 	if (cvaCall && !getCvaClassNodes(cvaCall).some((valueNode) => valueNode === node || ancestors.includes(valueNode))) return;

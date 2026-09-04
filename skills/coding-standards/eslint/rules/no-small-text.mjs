@@ -29,7 +29,7 @@ function parseFontSizePx(value) {
 	}
 
 	const trimmedValue = value.trim();
-	const numericMatch = trimmedValue.match(/^(-?\d+(?:\.\d+)?)(px|rem|em)?$/);
+	const numericMatch = trimmedValue.match(/^([+-]?(?:\d+(?:\.\d+)?|\.\d+))(px|rem|em)?$/);
 	if (!numericMatch) {
 		return null;
 	}
