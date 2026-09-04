@@ -171,6 +171,24 @@ function getStaticText(node, context, visitedVariables = new Set(), parameterBin
 
 function getStaticTexts(node, context, visitedVariables = new Set()) {
 	const expression = unwrapExpression(node);
+	if (expression?.type === "Identifier" && context) {
+		const variable = findVariable(context, expression);
+		if (!variable || visitedVariables.has(variable)) return [];
+		const nextVisitedVariables = new Set([...visitedVariables, variable]);
+		return getConstSourceExpressions(context, expression).flatMap((source) =>
+			getStaticTexts(source, context, nextVisitedVariables),
+		);
+	}
+	if (expression?.type === "MemberExpression" && context) {
+		if (visitedVariables.has(expression)) return [];
+		const nextVisitedVariables = new Set([...visitedVariables, expression]);
+		return getMemberSourceExpressions(context, expression).flatMap((source) =>
+			getStaticTexts(source, context, nextVisitedVariables),
+		);
+	}
+	if (expression?.type === "SpreadElement") {
+		return getStaticTexts(expression.argument, context, visitedVariables);
+	}
 	if (expression?.type === "ArrayExpression") {
 		return expression.elements.flatMap((element) => getStaticTexts(element, context, visitedVariables));
 	}
