@@ -14,39 +14,18 @@ function hasBareProseWithoutDarkCounterpart(snippet) {
 }
 
 function hasExplicitDarkCounterpart(snippet, token) {
-	if (
-		token === "bg-white" ||
-		token === "bg-slate-50" ||
-		token === "bg-blue-50" ||
-		token === "bg-blue-100" ||
-		token === "bg-blue-600"
-	) {
-		return /\bdark:bg-[^\s'"]+/.test(snippet);
-	}
-
-	if (
-		token === "hover:bg-white" ||
-		token === "hover:bg-gray-50" ||
-		token === "hover:bg-blue-100" ||
-		token === "hover:bg-blue-600" ||
-		token === "hover:bg-blue-700"
-	) {
-		return /\bdark:hover:bg-[^\s'"]+/.test(snippet);
-	}
-
-	if (/^text-blue-\d+$/.test(token)) {
-		return /\bdark:text-blue-\d+\b/.test(snippet);
-	}
-
-	if (token === "ring-blue-500" || token === "focus:ring-blue-500") {
-		return /\bdark:ring-[^\s'"]+/.test(snippet);
-	}
-
-	if (/^border-blue-\d+$/.test(token)) {
-		return /\bdark:border-blue-\d+\b/.test(snippet);
-	}
-
-	return false;
+	const modifiers = token.split(":");
+	const family = `${modifiers.pop().split("-")[0]}-`;
+	return getClassTokens(snippet).some((candidate) => {
+		const candidateModifiers = candidate.split(":");
+		const utility = candidateModifiers.pop();
+		return (
+			utility.startsWith(family) &&
+			candidateModifiers.includes("dark") &&
+			candidateModifiers.length === modifiers.length + 1 &&
+			modifiers.every((modifier) => candidateModifiers.includes(modifier))
+		);
+	});
 }
 
 function extractClassSnippets(node) {

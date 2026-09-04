@@ -1,3 +1,5 @@
+import { findVariable } from "./lib/find-variable.mjs";
+
 const TYPEOF_COMPARISON_OPERATORS = new Set(["==", "===", "!=", "!=="]);
 const MANUAL_CHECK_OPERATORS = new Set(["==", "===", "!=", "!==", "instanceof"]);
 
@@ -101,21 +103,21 @@ function getArrayIsArrayOperand(node) {
 	return node.arguments[0];
 }
 
-function getTaintedNameFromExpression(node, taintedNames) {
+function getTaintedNameFromExpression(node, taintedVariables, context) {
 	if (!node) {
 		return null;
 	}
 
 	if (node.type === "Identifier") {
-		return taintedNames.has(node.name) ? node.name : null;
+		return taintedVariables.has(findVariable(context, node)) ? node.name : null;
 	}
 
 	if (node.type === "MemberExpression") {
-		return getTaintedNameFromExpression(node.object, taintedNames);
+		return getTaintedNameFromExpression(node.object, taintedVariables, context);
 	}
 
 	if (node.type === "ChainExpression") {
-		return getTaintedNameFromExpression(node.expression, taintedNames);
+		return getTaintedNameFromExpression(node.expression, taintedVariables, context);
 	}
 
 	return null;
@@ -156,21 +158,22 @@ export default {
 			return {};
 		}
 
-		function currentTaintedNames() {
+		function currentTaintedVariables() {
 			return scopes[scopes.length - 1] ?? null;
 		}
 
 		function enterFunction(node) {
-			const taintedNames = new Set();
+			const taintedVariables = new Set();
 
 			for (const param of node.params) {
 				const name = getIdentifierName(param);
 				if (name && isBoundaryTypeAnnotation(param)) {
-					taintedNames.add(name);
+					const variable = findVariable(context, param);
+					if (variable) taintedVariables.add(variable);
 				}
 			}
 
-			scopes.push(taintedNames);
+			scopes.push(taintedVariables);
 		}
 
 		function exitFunction() {
@@ -185,8 +188,8 @@ export default {
 			ArrowFunctionExpression: enterFunction,
 			"ArrowFunctionExpression:exit": exitFunction,
 			VariableDeclarator(node) {
-				const taintedNames = currentTaintedNames();
-				if (!taintedNames) {
+				const taintedVariables = currentTaintedVariables();
+				if (!taintedVariables) {
 					return;
 				}
 
@@ -195,18 +198,19 @@ export default {
 					return;
 				}
 
-				if (isBoundaryTypeAnnotation(node.id) || getTaintedNameFromExpression(node.init, taintedNames)) {
-					taintedNames.add(name);
+				if (isBoundaryTypeAnnotation(node.id) || getTaintedNameFromExpression(node.init, taintedVariables, context)) {
+					const variable = findVariable(context, node.id);
+					if (variable) taintedVariables.add(variable);
 				}
 			},
 			BinaryExpression(node) {
-				const taintedNames = currentTaintedNames();
-				if (!taintedNames) {
+				const taintedVariables = currentTaintedVariables();
+				if (!taintedVariables) {
 					return;
 				}
 
 				const operand = checkManualTypeChecks ? getManualCheckOperand(node) : isTypeofStringComparison(node);
-				const taintedName = getTaintedNameFromExpression(operand, taintedNames);
+				const taintedName = getTaintedNameFromExpression(operand, taintedVariables, context);
 				if (!taintedName) {
 					return;
 				}
@@ -222,13 +226,13 @@ export default {
 					return;
 				}
 
-				const taintedNames = currentTaintedNames();
-				if (!taintedNames) {
+				const taintedVariables = currentTaintedVariables();
+				if (!taintedVariables) {
 					return;
 				}
 
 				const operand = getArrayIsArrayOperand(node);
-				const taintedName = getTaintedNameFromExpression(operand, taintedNames);
+				const taintedName = getTaintedNameFromExpression(operand, taintedVariables, context);
 				if (!taintedName) {
 					return;
 				}

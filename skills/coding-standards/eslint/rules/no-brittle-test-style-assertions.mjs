@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { findVariable } from "./lib/find-variable.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
 const ALLOWED_TEST_FILE_PATTERN = /\.(?:visual|contrast|layout)\.(?:spec|test)\.[cm]?[jt]sx?$/;
@@ -70,16 +71,6 @@ function getPropertyName(node) {
 	if (!node) return null;
 	if (node.type === "Identifier") return node.name;
 	if (node.type === "Literal" && typeof node.value === "string") return node.value;
-	return null;
-}
-
-function findVariable(context, node) {
-	let scope = context.sourceCode.getScope(node);
-	while (scope) {
-		const variable = scope.set.get(node.name);
-		if (variable) return variable;
-		scope = scope.upper;
-	}
 	return null;
 }
 
@@ -670,10 +661,19 @@ function isClassNamedCallExpression(node) {
 	);
 }
 
-function isLikelyDomExpression(node) {
+function isLikelyDomExpression(node, context, visitedVariables = new Set()) {
 	const expression = unwrapExpression(node);
 	if (!expression) return false;
 	if (expression.type === "Identifier") {
+		if (context) {
+			const variable = findVariable(context, expression);
+			if (visitedVariables.has(variable)) return false;
+			const initializer = variable?.defs.find((definition) => definition.type === "Variable")?.node.init;
+			if (initializer) {
+				visitedVariables.add(variable);
+				return isLikelyDomExpression(initializer, context, visitedVariables);
+			}
+		}
 		return /^(?:body|container|currentTarget|documentElement|el|element|html|node|root|target)$/i.test(
 			expression.name,
 		);
@@ -682,11 +682,11 @@ function isLikelyDomExpression(node) {
 		return (
 			["body", "current", "currentTarget", "documentElement", "target"].includes(
 				getPropertyName(expression.property),
-			) || isLikelyDomExpression(expression.object)
+			) || isLikelyDomExpression(expression.object, context, visitedVariables)
 		);
 	}
 	if (expression.type === "CallExpression") {
-		return /^(?:closest|getBy\w+|getElementBy\w+|querySelector|querySelectorAll)$/i.test(
+		return /^(?:closest|createElement|getBy\w+|getElementBy\w+|querySelector|querySelectorAll)$/i.test(
 			getPropertyName(expression.callee.property ?? expression.callee) ?? "",
 		);
 	}
@@ -1009,7 +1009,9 @@ export default {
 				if (calleeName === "getComputedStyle") reportUnlessAllowed(context, node, "computedStyle");
 			},
 			MemberExpression(node) {
-				if (getPropertyName(node.property) === "style") reportUnlessAllowed(context, node, "elementStyle");
+				if (getPropertyName(node.property) === "style" && isLikelyDomExpression(node.object, context)) {
+					reportUnlessAllowed(context, node, "elementStyle");
+				}
 			},
 		};
 	},
