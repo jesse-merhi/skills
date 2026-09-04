@@ -237,7 +237,7 @@ function reportRawElevation(context, node, value, classFunctionBindings, identif
 	const directClassContext = isDirectClassContext(node, classFunctionBindings, identifierBindings);
 	if (!directClassContext && attribute && !isClassName(getStaticName(attribute.name))) return;
 	const trimmedValue = value.trim();
-	if (!directClassContext && trimmedValue === "drop-shadow") {
+	if (!directClassContext && ["shadow", "drop-shadow"].includes(trimmedValue)) {
 		return;
 	}
 	if (!directClassContext && !isLikelyClassValue(value)) {

@@ -1,3 +1,4 @@
+import { extractStringSnippets } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
 const LIGHT_ONLY_CLASS_PATTERN =
@@ -39,7 +40,7 @@ function hasExplicitDarkCounterpart(snippet, token) {
 	});
 }
 
-function extractClassSnippets(node, unconditionalOnly = false) {
+function extractClassSnippets(node, { unconditionalOnly = false, classMap = false } = {}) {
 	if (!node) {
 		return [];
 	}
@@ -50,19 +51,52 @@ function extractClassSnippets(node, unconditionalOnly = false) {
 		case "TemplateLiteral":
 			return node.quasis.map((quasi) => quasi.value.cooked ?? "").filter(Boolean);
 		case "JSXExpressionContainer":
-			return extractClassSnippets(node.expression, unconditionalOnly);
+			return extractClassSnippets(node.expression, { unconditionalOnly, classMap });
 		case "ConditionalExpression":
 			if (unconditionalOnly) return [];
-			return [...extractClassSnippets(node.consequent), ...extractClassSnippets(node.alternate)];
+			return [
+				...extractClassSnippets(node.consequent, { classMap }),
+				...extractClassSnippets(node.alternate, { classMap }),
+			];
 		case "LogicalExpression":
 			if (unconditionalOnly) return [];
-			return [...extractClassSnippets(node.left), ...extractClassSnippets(node.right)];
+			return [...extractClassSnippets(node.left, { classMap }), ...extractClassSnippets(node.right, { classMap })];
+		case "ObjectExpression": {
+			if (!classMap) return unconditionalOnly ? [] : extractStringSnippets(node);
+			const properties = node.properties.filter((property) =>
+				property.type === "Property" &&
+				(property.value.type === "Literal" ? Boolean(property.value.value) : !unconditionalOnly),
+			);
+			const conditions = new Map();
+			for (const property of properties) {
+				const condition = property.value.type === "Literal"
+					? true
+					: property.value.type === "Identifier" ? property.value.name : property.value;
+				const grouped = conditions.get(condition) ?? [];
+				grouped.push(property);
+				conditions.set(condition, grouped);
+			}
+			const direct = [...conditions.values()].map((grouped) =>
+				extractStringSnippets({ ...node, properties: grouped }, true).join(" "),
+			);
+			const spreads = node.properties
+				.filter((property) => property.type === "SpreadElement")
+				.flatMap((property) => extractClassSnippets(property.argument, { unconditionalOnly, classMap }));
+			return [...direct, ...spreads];
+		}
 		case "ArrayExpression":
 		case "CallExpression": {
 			const children = node.type === "ArrayExpression" ? node.elements : node.arguments;
-			const shared = children.flatMap((child) => extractClassSnippets(child, true)).join(" ");
+			const maps = node.type === "CallExpression"
+				? node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name)
+				: classMap;
+			const shared = children
+				.flatMap((child) => extractClassSnippets(child, { unconditionalOnly: true, classMap: maps }))
+				.join(" ");
 			if (unconditionalOnly) return shared ? [shared] : [];
-			return children.flatMap((child) => extractClassSnippets(child)).map((snippet) => `${shared} ${snippet}`);
+			return children
+				.flatMap((child) => extractClassSnippets(child, { classMap: maps }))
+				.map((snippet) => `${shared} ${snippet}`);
 		}
 		default:
 			return [];

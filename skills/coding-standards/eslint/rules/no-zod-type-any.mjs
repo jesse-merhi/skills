@@ -269,11 +269,14 @@ function isRestrictedZodRuntimeReference(node, zodNamespaceNames, namespaceOnly 
 		return zodNamespaceNames.has(node.name);
 	}
 
-	if (node.type === "MemberExpression") {
-		const name = node.computed ? getSourceValue(node.property) : getRuntimePropertyName(node.property);
+	if (node.type === "MemberExpression" || node.type === "TSQualifiedName") {
+		const name = node.type === "TSQualifiedName"
+			? node.right.name
+			: node.computed ? getSourceValue(node.property) : getRuntimePropertyName(node.property);
+		const receiver = node.type === "TSQualifiedName" ? node.left : node.object;
 		return (
 			(isZodNamespaceExportName(name) || (!namespaceOnly && isWeakZodExportName(name))) &&
-			isRestrictedZodRuntimeReference(node.object, zodNamespaceNames, true)
+			isRestrictedZodRuntimeReference(receiver, zodNamespaceNames, true)
 		);
 	}
 
@@ -559,11 +562,13 @@ function isZodNamespaceTypeQuery(node, zodNamespaceNames) {
 	}
 
 	if (node.exprName.type === "TSImportType") {
-		return isZodSource(node.exprName.argument);
+		return (
+			isZodSource(node.exprName.argument) &&
+			(!node.exprName.qualifier || isRestrictedZodRuntimeReference(node.exprName.qualifier, new Set(["z", "default"]), true))
+		);
 	}
 
-	const rootName = getQualifiedRootName(node.exprName);
-	return rootName !== null && zodNamespaceNames.has(rootName);
+	return isRestrictedZodRuntimeReference(node.exprName, zodNamespaceNames, true);
 }
 
 function isZodNamespaceExportIndex(
@@ -964,6 +969,7 @@ function containsWeakZodTypeAnnotation(
 	weakZodIndexKeyNames,
 	anyTypeNames,
 	genericZodTypeNames = new Set(),
+	skipFunctionBodies = false,
 ) {
 	let containsWeakType = false;
 	visitNode(node, (child) => {
@@ -1002,7 +1008,7 @@ function containsWeakZodTypeAnnotation(
 		) {
 			containsWeakType = true;
 		}
-	});
+	}, skipFunctionBodies);
 
 	return containsWeakType;
 }
@@ -1137,7 +1143,7 @@ function isScopedTypeZodNamespaceName(name, node, zodNamespaceNames, zodNamespac
 	return true;
 }
 
-function visitNode(node, visitor) {
+function visitNode(node, visitor, skipFunctionBodies = false) {
 	if (!node || typeof node !== "object") {
 		return;
 	}
@@ -1145,18 +1151,22 @@ function visitNode(node, visitor) {
 	visitor(node);
 
 	for (const [key, value] of Object.entries(node)) {
-		if (key === "parent") {
+		if (
+			key === "parent" ||
+			(skipFunctionBodies && key === "body" &&
+				["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"].includes(node.type))
+		) {
 			continue;
 		}
 
 		if (Array.isArray(value)) {
 			for (const child of value) {
-				visitNode(child, visitor);
+				visitNode(child, visitor, skipFunctionBodies);
 			}
 			continue;
 		}
 
-		visitNode(value, visitor);
+		visitNode(value, visitor, skipFunctionBodies);
 	}
 }
 
@@ -1822,6 +1832,7 @@ export default {
 						zodIndexKeyAliases,
 						anyTypeNames,
 						genericZodTypeNames,
+						true,
 					)
 				) {
 					if (
