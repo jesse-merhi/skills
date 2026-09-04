@@ -4,6 +4,33 @@ Shared instructions for every coding harness (Claude Code, Codex,
 opencode, Pi). Keep this file harness-agnostic. Anything Claude-specific belongs
 in `CLAUDE.md`, which imports this file and layers on top of it.
 
+## Review responsibilities
+
+Assign review duties by the task, not by whether an agent is a subagent.
+
+- The coordinator owns the review loop, findings registry, approval requests,
+  authorized fixes, validation, commits, publication, handoffs, and user-facing
+  summary. A subagent assigned an until-clean workflow is a coordinator for
+  that workflow; it is not a findings-only reviewer.
+- A findings-only reviewer is assigned to inspect and report, not to run the
+  fix-and-rerun workflow. Use a findings-only reviewer preset when the harness
+  exposes one; never select it for an until-clean coordinator. Give it the
+  target, neutral checklist, and requested evidence without implementation
+  rationale or prior findings. It uses
+  `finding-discipline` as the authority for finding eligibility, severity, and
+  reporting, and consults relevant domain skills while retaining the mandatory
+  review lenses below. Keep those policies in their owning skills rather than
+  copying them into role instructions.
+- The reviewer returns findings with their rating evidence, rejected candidates,
+  verification limits, and requested coverage evidence to the coordinator. It
+  does not edit code, write the findings registry, manage fixes or reruns,
+  publish, or run writing and handoff workflows for its internal report. The coordinator records the
+  returned evidence, obtains CLI-derived severity and disposition, and handles
+  user-facing presentation and delivery gates.
+- Reading a skill does not expand the assignment or authorize its workflow.
+  Safety, security, permission boundaries, and applicable repository constraints
+  remain binding on every agent; role instructions are not a sandbox.
+
 ## Communication
 
 - Lead with the outcome, then explain what changed and why.
@@ -16,7 +43,7 @@ in `CLAUDE.md`, which imports this file and layers on top of it.
     observable effect.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
-- Immediately before every final response, load `speak-fking-english`.
+- Immediately before a user-facing final response, load `speak-fking-english`.
 - Stay concise while preserving the explanation needed to understand the work.
 - When user input is genuinely required, use the harness's native structured
   question UI when it is available, including outside planning-only modes. Do

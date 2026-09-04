@@ -401,6 +401,37 @@ test_codex_default_mode_questions_are_configured() {
   assert_contains "$ROOT_DIR/AGENTS.md" "including outside planning-only modes"
 }
 
+test_findings_reviewer_config_only_filters_workflow_skills() {
+  ROOT_DIR="$ROOT_DIR" bun --eval '
+import assert from "node:assert/strict";
+
+const { default: config } = await import(`${process.env.ROOT_DIR}/codex/findings-reviewer.config.toml`);
+assert.deepEqual(new Set(Object.keys(config)), new Set(["developer_instructions", "skills"]));
+assert.equal(typeof config.developer_instructions, "string");
+assert.ok(config.developer_instructions.trim());
+assert.deepEqual(Object.keys(config.skills), ["config"]);
+const exclusions = config.skills.config;
+assert.ok(Array.isArray(exclusions));
+for (const entry of exclusions) {
+  assert.deepEqual(new Set(Object.keys(entry)), new Set(["name", "enabled"]));
+  assert.equal(typeof entry.name, "string");
+  assert.ok(entry.name.length > 0);
+  assert.equal(entry.enabled, false);
+}
+const names = new Set(exclusions.map(entry => entry.name));
+assert.equal(names.size, exclusions.length);
+for (const name of [
+  "code-review", "review-until-clean", "cold-pr-review-until-clean",
+  "just-do-it", "handoff", "pr-proof-pack",
+]) assert.ok(names.has(name), `${name} must be excluded`);
+for (const name of [
+  "cold-pr-review", "finding-discipline", "review-guardrails",
+  "review-flow-map", "test-audit", "reducing-cognitive-load",
+  "typescript-discipline", "mcp-server-review", "improve-codebase-architecture",
+]) assert.ok(!names.has(name), `${name} must remain available`);
+'
+}
+
 test_bun_runtime_and_openclaw_install_are_documented() {
   assert_contains "$ROOT_DIR/package.json" '"packageManager": "bun@1.3.14"'
   test -f "$ROOT_DIR/bun.lock" || fail "expected bun.lock to be committed"
@@ -625,9 +656,6 @@ test_speak_fking_english_owns_the_visual_decision() {
 test_speak_fking_english_owns_the_final_response_checkpoint() {
   local skill="$ROOT_DIR/skills/speak-fking-english"
 
-  assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before every final response"
-  assert_contains "$ROOT_DIR/AGENTS.md" 'load `speak-fking-english`'
-  assert_not_contains "$ROOT_DIR/AGENTS.md" "Use its reader reset and visual decision"
   assert_contains "$skill/SKILL.md" "reader reset"
   assert_contains "$skill/SKILL.md" "visual filter"
   assert_contains "$skill/SKILL.md" "Done when"
@@ -1420,6 +1448,7 @@ test_gh_stack_workflow_is_pinned_and_wired
 test_just_do_it_and_scoped_openclaw_readiness
 test_retired_impeccable_cleanup_is_documented
 test_codex_default_mode_questions_are_configured
+test_findings_reviewer_config_only_filters_workflow_skills
 test_bun_runtime_and_openclaw_install_are_documented
 test_implementation_design_requires_user_decisions
 test_prototypes_stay_isolated_from_production

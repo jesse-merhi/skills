@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 // Executable-level compatibility tests intentionally exercise Node process boundaries.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
@@ -152,20 +153,32 @@ esac
     }))
   })
 
-  it("discovers a master base and writes the environment output path", async () => {
+  it.each([
+    { profile: false, customHome: true, reviewFails: false },
+    { profile: true, customHome: true, reviewFails: false },
+    { profile: true, customHome: false, reviewFails: false },
+    { profile: true, customHome: true, reviewFails: true }
+  ])("runs native review with installed profile=$profile, custom home=$customHome, failure=$reviewFails", async ({ profile, customHome, reviewFails }) => {
     const directory = await mkdtemp(join(tmpdir(), "codex-review-output-"))
     const repository = join(directory, "repo")
     const bin = join(directory, "bin")
     const output = join(directory, "output", "review.txt")
+    const home = join(directory, "home")
+    const codexHome = customHome ? join(directory, "codex-home") : join(home, ".codex")
+    const calls = join(directory, "calls")
     try {
       await mkdir(bin)
       await mkdir(repository)
+      await mkdir(codexHome, { recursive: true })
+      if (profile) await writeFile(join(codexHome, "findings-reviewer.config.toml"), await readFile(join(root, "codex/findings-reviewer.config.toml")))
       await writeFile(join(bin, "codex"), `#!/bin/sh
+printf '%s\\n' "$*" >> "${calls}"
+if [ "$1" = "--profile" ]; then shift 2; fi
 case "$1" in
   login) exit 0 ;;
   doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
   exec) printf 'ok\\n' ;;
-  review) printf 'reviewed master\\n' ;;
+  review) printf 'reviewed master\\n'; exit ${reviewFails ? 8 : 0} ;;
   *) exit 7 ;;
 esac
 `, { mode: 0o700 })
@@ -176,9 +189,25 @@ esac
       await writeFile(join(repository, "file.txt"), "base\n")
       await execFile("git", ["add", "file.txt"], { cwd: repository })
       await execFile("git", ["commit", "-m", "base"], { cwd: repository })
-      // @effect-diagnostics-next-line processEnv:off
-      await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
-      assert.strictEqual(await readFile(output, "utf8"), "reviewed master\n")
+      let failed = false
+      try {
+        // @effect-diagnostics-next-line processEnv:off
+        const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, env: { ...process.env, HOME: home, CODEX_HOME: customHome ? codexHome : "", PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
+        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review --base master`)
+      } catch {
+        failed = true
+      }
+      assert.strictEqual(failed, reviewFails)
+      const recorded = (await readFile(calls, "utf8")).trim().split("\n")
+      assert.strictEqual(recorded[0], "login status")
+      assert.strictEqual(recorded[1], "doctor --json")
+      assert.match(recorded[2] ?? "", /^exec --ephemeral /u)
+      assert.deepStrictEqual(recorded.slice(3), [`${profile ? "--profile findings-reviewer " : ""}review --base master`])
+      if (reviewFails) {
+        assert.isFalse(await Effect.runPromise(live(FileSystem.FileSystem.pipe(Effect.flatMap((fs) => fs.exists(output))))))
+      } else {
+        assert.strictEqual(await readFile(output, "utf8"), "reviewed master\n")
+      }
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
