@@ -1,0 +1,57 @@
+{
+	"$schema": "https://react.doctor/schema/config.json",
+	"blocking": "error",
+	"supplyChain": {
+		"severity": "warning"
+	},
+	"categories": {
+		"Security": "warn",
+		"Bugs": "warn",
+		"Performance": "warn",
+		"Accessibility": "warn",
+		"Maintainability": "warn"
+	},
+	"rules": {
+		"deslop/circular-dependency": "error",
+		"deslop/unused-export": "error",
+		"react-doctor/no-adjust-state-on-prop-change": "error",
+		"react-doctor/prefer-module-scope-pure-function": "error",
+		"react-doctor/no-react19-deprecated-apis": "error",
+		"react-doctor/js-tosorted-immutable": "error",
+		"react-doctor/jsx-no-constructed-context-values": "error",
+		"react-doctor/rerender-memo-with-default-value": "error",
+		"react-doctor/rerender-lazy-ref-init": "error",
+		"react-doctor/rerender-lazy-state-init": "error",
+		"react-doctor/rerender-state-only-in-handlers": "warn",
+		"react-doctor/client-passive-event-listeners": "warn",
+		"react-doctor/no-inline-prop-on-memo-component": "error",
+		"deslop/unused-dependency": "error",
+		"deslop/unused-dev-dependency": "error",
+		"react-doctor/rn-no-falsy-and-render": "error",
+		"react-doctor/rn-no-raw-text": "error",
+		"react-doctor/role-has-required-aria-props": "error"
+	},
+	"surfaces": {
+		"ciFailure": {
+			"excludeCategories": ["Security", "Bugs", "Performance", "Accessibility", "Maintainability"],
+			"includeRules": [
+				"deslop/circular-dependency",
+				"deslop/unused-export",
+				"react-doctor/no-adjust-state-on-prop-change",
+				"react-doctor/prefer-module-scope-pure-function",
+				"react-doctor/no-react19-deprecated-apis",
+				"react-doctor/js-tosorted-immutable",
+				"react-doctor/jsx-no-constructed-context-values",
+				"react-doctor/rerender-memo-with-default-value",
+				"react-doctor/rerender-lazy-ref-init",
+				"react-doctor/rerender-lazy-state-init",
+				"react-doctor/no-inline-prop-on-memo-component",
+				"deslop/unused-dependency",
+				"deslop/unused-dev-dependency",
+				"react-doctor/rn-no-falsy-and-render",
+				"react-doctor/rn-no-raw-text",
+				"react-doctor/role-has-required-aria-props"
+			]
+		}
+	}
+}
