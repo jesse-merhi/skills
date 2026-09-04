@@ -27,10 +27,25 @@ CHECKS: tuple[CheckSource, ...] = (
     no_trivial_forwarding_wrapper.check_source,
 )
 
-# The directory names ruff's default exclude skips, minus the dot-prefixed
-# ones, which are skipped as a class.
 IGNORED_DIRECTORY_NAMES = frozenset(
     {
+        ".bzr",
+        ".direnv",
+        ".eggs",
+        ".git",
+        ".git-rewrite",
+        ".hg",
+        ".ipynb_checkpoints",
+        ".mypy_cache",
+        ".nox",
+        ".pants.d",
+        ".pyenv",
+        ".pytest_cache",
+        ".pytype",
+        ".ruff_cache",
+        ".svn",
+        ".tox",
+        ".venv",
         "__pycache__",
         "__pypackages__",
         "_build",
@@ -44,9 +59,7 @@ IGNORED_DIRECTORY_NAMES = frozenset(
 
 
 def _is_searchable(path: Path) -> bool:
-    return not any(
-        part in IGNORED_DIRECTORY_NAMES or part.startswith(".") for part in path.parts
-    )
+    return not IGNORED_DIRECTORY_NAMES.intersection(path.parts)
 
 
 def python_files(paths: Iterable[str]) -> Iterator[Path]:
@@ -63,7 +76,8 @@ def python_files(paths: Iterable[str]) -> Iterator[Path]:
 
 def check_file(path: Path) -> list[Finding]:
     """Run every check over one file, ordered by position."""
-    source = path.read_text(encoding="utf-8-sig")
+    with tokenize.open(path) as source_file:
+        source = source_file.read()
     findings = [finding for check in CHECKS for finding in check(source, str(path))]
     return sorted(findings, key=lambda finding: (finding.line, finding.col))
 

@@ -540,7 +540,7 @@
 				"python": [
 					{
 						"kind": "not-applicable",
-						"reason": "CSS and test-id selectors live in browser E2E suites, not in Python source."
+						"reason": "No bundled Python selector checker. This principle applies to Playwright and Selenium tests written in Python; prefer stable role, label, text or test-id locators as local guidance."
 					}
 				]
 			}
@@ -566,7 +566,7 @@
 				"python": [
 					{
 						"kind": "not-applicable",
-						"reason": "Targets DOM and component-testing assertion styles that have no Python equivalent."
+						"reason": "No bundled Python style-assertion checker. This principle applies to Python browser tests; keep user-visible behavior assertions as local guidance and reserve exact styles for deliberate visual coverage."
 					}
 				]
 			}
