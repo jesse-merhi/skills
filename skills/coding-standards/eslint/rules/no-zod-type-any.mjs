@@ -186,7 +186,7 @@ function containsAnyKeyword(node, anyTypeNames, skipFunctionBodies = false) {
 		if (
 			child.type === "TSAnyKeyword" ||
 			(child.type === "TSTypeReference" && child.typeName.type === "Identifier" &&
-				anyTypeNames.has(child.typeName.name))
+				anyTypeNames.bindings.has(findVariable(anyTypeNames.context, child.typeName)))
 		) {
 			containsAny = true;
 		}
@@ -1210,10 +1210,10 @@ const TYPE_PARAMETER_OWNER_TYPES = new Set([
 	"TSTypeAliasDeclaration",
 ]);
 
-function collectAnyTypeParameterNames(node, anyTypeNames) {
-	const typeParameterNames = new Set();
+function collectAnyTypeParameterBindings(node, anyTypeNames) {
+	const typeParameterBindings = new Set();
 	if (!TYPE_PARAMETER_OWNER_TYPES.has(node.type)) {
-		return typeParameterNames;
+		return typeParameterBindings;
 	}
 
 	for (const typeParameter of node.typeParameters?.params ?? []) {
@@ -1222,18 +1222,19 @@ function collectAnyTypeParameterNames(node, anyTypeNames) {
 			(containsAnyKeyword(typeParameter.default, anyTypeNames) ||
 				containsAnyKeyword(typeParameter.constraint, anyTypeNames))
 		) {
-			typeParameterNames.add(typeParameter.name.name);
+			const variable = findVariable(anyTypeNames.context, typeParameter.name);
+			if (variable) typeParameterBindings.add(variable);
 		}
 	}
 
-	return typeParameterNames;
+	return typeParameterBindings;
 }
 
 function getScopedAnyTypeNames(node, anyTypeNames) {
-	const scopedAnyTypeNames = new Set(anyTypeNames);
-	for (let parent = node.parent; parent; parent = parent.parent) {
-		for (const typeParameterName of collectAnyTypeParameterNames(parent, scopedAnyTypeNames)) {
-			scopedAnyTypeNames.add(typeParameterName);
+	const scopedAnyTypeNames = { ...anyTypeNames, bindings: new Set(anyTypeNames.bindings) };
+	for (let parent = node; parent; parent = parent.parent) {
+		for (const variable of collectAnyTypeParameterBindings(parent, scopedAnyTypeNames)) {
+			scopedAnyTypeNames.bindings.add(variable);
 		}
 	}
 
@@ -1292,18 +1293,25 @@ function collectWeakZodTypeParameterNames(
 	return typeParameterNames;
 }
 
+function addAnyTypeDeclaration(node, anyTypeNames) {
+	let changed = false;
+	for (const variable of anyTypeNames.context.sourceCode.getDeclaredVariables(node)) {
+		if (variable.name === node.id.name) {
+			changed = addName(anyTypeNames.bindings, variable) || changed;
+		}
+	}
+	return changed;
+}
+
 function collectAnyTypeAlias(node, anyTypeNames) {
 	if (node.type !== "TSTypeAliasDeclaration") {
 		return false;
 	}
 
-	const localAnyTypeNames = new Set(anyTypeNames);
-	for (const typeParameterName of collectAnyTypeParameterNames(node, anyTypeNames)) {
-		localAnyTypeNames.add(typeParameterName);
-	}
+	const localAnyTypeNames = getScopedAnyTypeNames(node, anyTypeNames);
 
 	if (containsAnyKeyword(node.typeAnnotation, localAnyTypeNames)) {
-		return addName(anyTypeNames, node.id.name);
+		return addAnyTypeDeclaration(node, anyTypeNames);
 	}
 
 	return false;
@@ -1315,7 +1323,7 @@ function collectAnyInterfaceOrClass(node, anyTypeNames) {
 	}
 
 	if (containsAnyKeyword(node, anyTypeNames, true)) {
-		return addName(anyTypeNames, node.id.name);
+		return addAnyTypeDeclaration(node, anyTypeNames);
 	}
 
 	return false;
@@ -1337,10 +1345,7 @@ function collectWeakZodTypeAlias(
 		return false;
 	}
 
-	const localAnyTypeNames = new Set(anyTypeNames);
-	for (const typeParameterName of collectAnyTypeParameterNames(node, anyTypeNames)) {
-		localAnyTypeNames.add(typeParameterName);
-	}
+	const localAnyTypeNames = getScopedAnyTypeNames(node, anyTypeNames);
 
 	const localWeakZodTypeNames = new Set(weakZodTypeNames);
 	for (const typeParameterName of collectWeakZodTypeParameterNames(
@@ -1744,7 +1749,7 @@ export default {
 		const zodNamespaceNames = { bindings: new Set(), context };
 		const zodNamespaceTypeScopes = new Map();
 		const zodIndexKeyAliases = { bindings: new Map(), context };
-		const anyTypeNames = new Set();
+		const anyTypeNames = { bindings: new Set(), context };
 		const genericZodTypeNames = new Set();
 		const escapedWeakExports = new Set();
 

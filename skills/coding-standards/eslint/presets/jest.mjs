@@ -2,7 +2,10 @@ import jestPlugin from "eslint-plugin-jest";
 
 import { standards } from "../standards-plugin.mjs";
 
-const DEFAULT_FILES = ["**/*.{test,spec}.{ts,tsx,js,jsx,mts,mjs}"];
+const DEFAULT_FILES = [
+	"**/__tests__/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+	"**/*.{test,spec}.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+];
 
 export default function jest(options = {}) {
 	const brittleStyleOptions = {};
@@ -25,7 +28,7 @@ export default function jest(options = {}) {
 				"jest/no-disabled-tests": "error",
 				"jest/no-done-callback": "error",
 				"jest/no-duplicate-hooks": "error",
-				"jest/no-error-equal": "error",
+				"jest/no-error-equal": options.typeChecked ? "error" : "off",
 				"jest/no-export": "error",
 				"jest/no-focused-tests": "error",
 				"jest/no-identical-title": "error",
@@ -40,7 +43,7 @@ export default function jest(options = {}) {
 				"jest/valid-describe-callback": "error",
 				"jest/valid-expect": "error",
 				"jest/valid-expect-in-promise": "error",
-				"jest/valid-expect-with-promise": "error",
+				"jest/valid-expect-with-promise": options.typeChecked ? "error" : "off",
 				"jest/valid-title": "error",
 				"standards/no-brittle-test-style-assertions": ["error", brittleStyleOptions],
 				"standards/no-large-test-snapshots": "error",
