@@ -20,21 +20,21 @@ function getTypeReferenceName(typeName) {
 	return null;
 }
 
-function getQualifiedRootName(typeName) {
+function getQualifiedRoot(typeName) {
 	if (!typeName) {
 		return null;
 	}
 
 	if (typeName.type === "Identifier") {
-		return typeName.name;
+		return typeName;
 	}
 
 	if (typeName.type === "TSQualifiedName") {
-		return getQualifiedRootName(typeName.left);
+		return getQualifiedRoot(typeName.left);
 	}
 
 	if (typeName.type === "MemberExpression") {
-		return getQualifiedRootName(typeName.object);
+		return getQualifiedRoot(typeName.object);
 	}
 
 	return null;
@@ -72,8 +72,9 @@ function isZodNamespaceExportName(name) {
 	return name === "z" || name === "default";
 }
 
-function hasZodNamespaceName(names, name, node) {
-	return typeof name === "string" && names.bindings.has(findVariable(names.context, node, name));
+function hasZodNamespaceReference(names, node) {
+	const root = getQualifiedRoot(node);
+	return root !== null && names.bindings.has(findVariable(names.context, root));
 }
 
 function addZodNamespaceBinding(names, identifier) {
@@ -170,8 +171,7 @@ function isWeakZodAliasReference(
 		return false;
 	}
 
-	const rootName = getQualifiedRootName(typeName);
-	return hasZodNamespaceName(zodNamespaceNames, rootName, typeName);
+	return hasZodNamespaceReference(zodNamespaceNames, typeName);
 }
 
 function isBareZodTypeReference(node, zodTypeNames, zodNamespaceNames) {
@@ -201,8 +201,7 @@ function isZodTypeReference(typeName, zodTypeNames, zodNamespaceNames) {
 		return false;
 	}
 
-	const rootName = getQualifiedRootName(typeName);
-	return hasZodNamespaceName(zodNamespaceNames, rootName, typeName);
+	return hasZodNamespaceReference(zodNamespaceNames, typeName);
 }
 
 function isZodTypeReferenceWithAnyTypeArgument(node, zodTypeNames, zodNamespaceNames, anyTypeNames) {
@@ -234,7 +233,7 @@ function isZodTypeRuntimeReference(node, zodTypeNames, zodNamespaceNames) {
 	}
 
 	if (node.type === "MemberExpression") {
-		return getTypeReferenceName(node) === "ZodType" && hasZodNamespaceName(zodNamespaceNames, getQualifiedRootName(node), node);
+		return getTypeReferenceName(node) === "ZodType" && hasZodNamespaceReference(zodNamespaceNames, node);
 	}
 
 	return false;
@@ -254,7 +253,7 @@ function isRestrictedZodRuntimeReference(node, zodNamespaceNames, namespaceOnly 
 	}
 
 	if (node.type === "Identifier") {
-		return hasZodNamespaceName(zodNamespaceNames, node.name, node);
+		return hasZodNamespaceReference(zodNamespaceNames, node);
 	}
 
 	if (node.type === "MemberExpression" || node.type === "TSQualifiedName") {
@@ -272,7 +271,7 @@ function isRestrictedZodRuntimeReference(node, zodNamespaceNames, namespaceOnly 
 }
 
 function isDirectZodNamespaceRuntimeReference(node, zodNamespaceNames) {
-	return node?.type === "Identifier" && hasZodNamespaceName(zodNamespaceNames, node.name, node);
+	return node?.type === "Identifier" && hasZodNamespaceReference(zodNamespaceNames, node);
 }
 
 function containsDirectZodNamespaceRuntimeReference(node, zodNamespaceNames) {
@@ -1113,16 +1112,16 @@ function visitNode(node, visitor, skipFunctionBodies = false) {
 function addIndexKeyAlias(indexKeyAliases, identifier, keyNames) {
 	const variable = findVariable(indexKeyAliases.context, identifier);
 	if (!variable) return false;
-	const uniqueKeyNames = [...new Set(keyNames)];
+	const uniqueKeyNames = new Set(keyNames);
 	const existingKeyNames = indexKeyAliases.bindings.get(variable) ?? [];
 	if (
-		existingKeyNames.length === uniqueKeyNames.length &&
-		existingKeyNames.every((keyName, index) => keyName === uniqueKeyNames[index])
+		existingKeyNames.length === uniqueKeyNames.size &&
+		existingKeyNames.every((keyName) => uniqueKeyNames.has(keyName))
 	) {
 		return false;
 	}
 
-	indexKeyAliases.bindings.set(variable, uniqueKeyNames);
+	indexKeyAliases.bindings.set(variable, [...uniqueKeyNames]);
 	return true;
 }
 
