@@ -56,6 +56,12 @@ function writeLock(lockRoot, owner) {
 }
 
 test("recognizes supported model identifiers and same-family fallbacks", () => {
+  assert.equal(resolveProfile("astra").profile.id, "gpt-6-astra");
+  assert.equal(resolveProfile("openai/gpt-6-astra").exact, true);
+  assert.equal(resolveProfile("gpt-6.1").profile.id, "gpt-6-astra");
+  assert.equal(resolveProfile("opus").profile.id, "claude-opus-5");
+  assert.equal(resolveProfile("anthropic/claude-opus-5").exact, true);
+  assert.equal(resolveProfile("claude-opus-5.1").profile.id, "claude-opus-5");
   const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
   const configuredFable = resolveProfile("claude-fable-5[1m]");
   const futureFable = resolveProfile("claude-fable-5.2");
@@ -70,6 +76,16 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
     [gpt.profile.id, gpt.exact, futureGpt.profile.id, futureGpt.exact],
     ["gpt-5.6", true, "gpt-5.6", false],
   );
+});
+
+test("required exact coverage rejects missing model prompts without changing the view", (t) => {
+  const current = fixture(t);
+  materializeSkillVariants({ model: "gpt-5.6", outputRoot: current.output, sourceRoot: current.source });
+  const previous = fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8");
+  assert.throws(() => materializeSkillVariants({
+    model: "astra", outputRoot: current.output, sourceRoot: current.source, requireExact: true,
+  }), /complete exact skill coverage/);
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), previous);
 });
 
 test("materializes one contained static variant and links shared resources", (t) => {
@@ -90,7 +106,6 @@ test("materializes one contained static variant and links shared resources", (t)
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("gpt-5.6\n"), true);
   assert.equal(fs.lstatSync(path.join(current.output, "alpha", "SKILL.md")).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(path.join(current.output, "beta", "references", "shared.md"), "utf8"), "shared\n");
-  assert.equal(fs.lstatSync(path.join(current.output, "beta", "references")).isSymbolicLink(), true);
   assert.equal(fs.existsSync(path.join(current.output, "alpha", "variants")), false);
 
   const fable = materializeSkillVariants({
@@ -100,6 +115,10 @@ test("materializes one contained static variant and links shared resources", (t)
   });
   assert.equal(fable.profile, "claude-fable-5.1");
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("claude-fable-5.1\n"), true);
+  assert.equal(
+    fs.readFileSync(`${current.output}/beta/references/../SKILL.md`, "utf8"),
+    fs.readFileSync(path.join(current.source, "group", "beta", "variants", "claude-fable-5.1.md"), "utf8"),
+  );
 });
 
 test("does not reclaim a live lock based on its age", (t) => {
@@ -305,9 +324,11 @@ test("materializes the repository corpus and keeps installed links stable across
     fs.readFileSync(path.join(repositorySkills, "diagnose", "variants", "gpt-5.6.md"), "utf8"),
   );
 
-  materializeSkillVariants({ model: "claude-fable-5.1", outputRoot: current.output, sourceRoot: repositorySkills });
-  assert.equal(
-    fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),
-    fs.readFileSync(path.join(repositorySkills, "diagnose", "variants", "claude-fable-5.1.md"), "utf8"),
-  );
+  for (const model of ["gpt-6-astra", "claude-fable-5.1", "claude-opus-5"]) {
+    materializeSkillVariants({ model, outputRoot: current.output, sourceRoot: repositorySkills, requireExact: true });
+    assert.equal(
+      fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),
+      fs.readFileSync(path.join(repositorySkills, "diagnose", "variants", `${model}.md`), "utf8"),
+    );
+  }
 });

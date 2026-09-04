@@ -9,9 +9,11 @@ Treat every document an agent consumes as part of one instruction system:
 skills, `AGENTS.md`, `CLAUDE.md`, and documents reached through pointers all use
 the same levers to make the agent's process predictable.
 
-When the target is a skill, also read
-[SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation metadata, splitting,
-and router skills. The upstream MIT notice is in
+When the target is a skill, load `model-writing-guides` before drafting and
+read [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation metadata and
+splitting. Follow the supported-profile list in `model-writing-guides`; produce
+complete variants preserving the same outcome, permissions, exact commands,
+and evidence requirements. The upstream MIT notice is in
 [upstream-license.md](references/upstream-license.md).
 
 ## Context pointers

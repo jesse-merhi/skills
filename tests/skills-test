@@ -1132,7 +1132,7 @@ test_claude_fable_orchestration_is_repo_owned() {
   local reviewer="$agents/codex-reviewer.md"
 
   assert_contains "$orchestrator" "name: fable-orchestrator"
-  assert_contains "$orchestrator" 'model: "claude-fable-5[1m]"'
+  assert_contains "$orchestrator" 'model: inherit'
   assert_contains "$orchestrator" "Use \`codex-reviewer\` for an ad hoc code-centric review"
   assert_contains "$orchestrator" "Keep high-level review here"
   assert_contains "$orchestrator" "explicitly select Codex as its review engine"
@@ -1160,7 +1160,8 @@ test_skill_cleaner_uses_current_model_configuration() {
 }
 
 test_model_skill_variant_materializer() {
-  node --test "$ROOT_DIR/skills/model-writing-guides/scripts/materialize-skill-variants.test.mjs"
+  node --test "$ROOT_DIR/skills/model-writing-guides/scripts/materialize-skill-variants.test.mjs" \
+    "$ROOT_DIR/skills/model-writing-guides/scripts/install-skills.test.mjs"
 }
 
 test_external_teach_install_is_pinned() {

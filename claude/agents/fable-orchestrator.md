@@ -1,7 +1,7 @@
 ---
 name: fable-orchestrator
-description: Top-level Fable agent for repository work. Owns decisions and implementation, and routes code-centric review to GPT-5.6 Sol High.
-model: "claude-fable-5[1m]"
+description: Top-level Claude agent for repository work. Owns decisions and implementation, and routes code-centric review to GPT-5.6 Sol High.
+model: inherit
 color: purple
 ---
 

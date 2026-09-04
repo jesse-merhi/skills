@@ -29,16 +29,29 @@ export const profiles = [
     matches: /^(?:openai\/)?gpt-5\.6(?:-(?:sol|terra|luna))?(?:-\d{4}-\d{2}-\d{2})?$/i,
   },
   {
+    id: "gpt-6-astra",
+    family: "openai-gpt",
+    version: [6, 0],
+    matches: /^(?:gpt-6-astra(?:-\d{4}-\d{2}-\d{2})?|astra)$/i,
+  },
+  {
     id: "claude-fable-5.1",
     family: "anthropic-fable",
     version: [5, 1],
     matches: /^(?:(?:anthropic\/)?claude-fable-5(?:(?:[.-]1)(?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
+  },
+  {
+    id: "claude-opus-5",
+    family: "anthropic-opus",
+    version: [5, 0],
+    matches: /^(?:claude-opus-5(?:-\d{8})?|opus)$/i,
   },
 ];
 
 function modelFamily(model) {
   const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase();
   if (/^(?:(?:anthropic\/)?claude-)?fable(?:[-.]\d|\[)/.test(normalized)) return "anthropic-fable";
+  if (/^(?:claude-)?opus[-.]\d/.test(normalized)) return "anthropic-opus";
   if (/^(?:openai\/)?gpt-\d/.test(normalized)) return "openai-gpt";
   return undefined;
 }
@@ -50,7 +63,7 @@ function modelVersion(model, family) {
     return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
   }
   if (normalized === "fable[1m]" || normalized === "claude-fable-5[1m]") return [5, 1];
-  const match = normalized.match(/^(?:claude-)?fable-(\d+)(?:[.-](\d+))?/);
+  const match = normalized.match(/^(?:claude-)?(?:fable|opus)-(\d+)(?:[.-](\d+))?/);
   return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
 }
 
@@ -198,7 +211,7 @@ function availableVariant(skill, profile) {
   return fs.existsSync(candidate) ? candidate : undefined;
 }
 
-function selectVariant(skill, requestedProfile) {
+export function selectVariant(skill, requestedProfile) {
   const exact = availableVariant(skill, requestedProfile);
   if (exact !== undefined) return { path: exact, profile: requestedProfile };
   const fallback = profiles
@@ -211,14 +224,20 @@ function selectVariant(skill, requestedProfile) {
   return { path: availableVariant(skill, fallback), profile: fallback };
 }
 
-function linkSharedEntries(skill, outputDirectory) {
+function materializeSharedEntries(skill, outputDirectory) {
   for (const entry of fs.readdirSync(skill.directory, { withFileTypes: true })) {
     if (["SKILL.md", "variants"].includes(entry.name)) continue;
-    fs.symlinkSync(path.join(skill.directory, entry.name), path.join(outputDirectory, entry.name));
+    const source = path.join(skill.directory, entry.name);
+    const destination = path.join(outputDirectory, entry.name);
+    if (entry.name === "references") {
+      fs.cpSync(source, destination, { recursive: true, dereference: true });
+    } else {
+      fs.symlinkSync(source, destination);
+    }
   }
 }
 
-function assertManagedOutput(outputRoot, sourceRoot, previousSourceRoot) {
+export function assertManagedOutput(outputRoot, sourceRoot, previousSourceRoot) {
   if (!fs.existsSync(outputRoot)) return;
   const markerPath = path.join(outputRoot, MARKER);
   if (!fs.existsSync(markerPath)) {
@@ -264,32 +283,37 @@ function noticeOnce({ notice, outputRoot, sessionId }) {
   return notice;
 }
 
-export function materializeSkillVariants({ sourceRoot, outputRoot, model, previousSourceRoot, sessionId }) {
+export function planSkillVariants({ sourceRoot, model, requireExact = false }) {
   const resolvedSource = fs.realpathSync(sourceRoot);
-  const resolvedOutput = path.resolve(outputRoot);
   const { exact, profile } = resolveProfile(model);
-  const skills = discoverSkills(resolvedSource);
-  const fallbackSkills = withOutputLock(resolvedOutput, () => {
+  const skills = discoverSkills(resolvedSource).map((skill) => ({ ...skill, selection: selectVariant(skill, profile) }));
+  const fallbackSkills = skills.filter((skill) => skill.selection.profile.id !== profile.id).map((skill) => skill.name);
+  if (requireExact && (!exact || fallbackSkills.length > 0)) {
+    throw new Error(`complete exact skill coverage is required for ${model}`);
+  }
+  return { exact, profile, skills, fallbackSkills, sourceRoot: resolvedSource };
+}
+
+export function materializeSkillVariants({ sourceRoot, outputRoot, model, previousSourceRoot, sessionId, requireExact = false }) {
+  const { exact, profile, skills, fallbackSkills, sourceRoot: resolvedSource } = planSkillVariants({ sourceRoot, model, requireExact });
+  const resolvedOutput = path.resolve(outputRoot);
+  withOutputLock(resolvedOutput, () => {
     assertManagedOutput(resolvedOutput, resolvedSource, previousSourceRoot);
     const stagingRoot = `${resolvedOutput}.staging-${process.pid}`;
     fs.rmSync(stagingRoot, { recursive: true, force: true });
     fs.mkdirSync(stagingRoot, { recursive: true });
     try {
-      const missing = [];
       for (const skill of skills) {
-        const selection = selectVariant(skill, profile);
-        if (selection.profile.id !== profile.id) missing.push(skill.name);
         const skillOutput = path.join(stagingRoot, skill.name);
         fs.mkdirSync(skillOutput);
-        fs.copyFileSync(selection.path, path.join(skillOutput, "SKILL.md"));
-        linkSharedEntries(skill, skillOutput);
+        fs.copyFileSync(skill.selection.path, path.join(skillOutput, "SKILL.md"));
+        materializeSharedEntries(skill, skillOutput);
       }
       fs.writeFileSync(
         path.join(stagingRoot, MARKER),
         `${JSON.stringify({ schemaVersion: 1, sourceRoot: resolvedSource, profile: profile.id })}\n`,
       );
       publishView(stagingRoot, resolvedOutput);
-      return missing;
     } catch (error) {
       fs.rmSync(stagingRoot, { recursive: true, force: true });
       throw error;

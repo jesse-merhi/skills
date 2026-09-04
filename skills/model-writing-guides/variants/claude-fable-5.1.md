@@ -16,8 +16,10 @@ targeted to the requested skill set and model profiles.
 ## Supported profiles
 
 - GPT-5.6: [gpt-5.6.md](references/gpt-5.6.md)
+- GPT-6 Astra: [gpt-6-astra.md](references/gpt-6-astra.md)
 - Claude Fable 5.1:
   [claude-fable-5.1.md](references/claude-fable-5.1.md)
+- Claude Opus 5: [claude-opus-5.md](references/claude-opus-5.md)
 
 Batch those independent guide reads. The exact matchers and fallback order are
 in [`scripts/materialize-skill-variants.mjs`](scripts/materialize-skill-variants.mjs).
@@ -36,6 +38,10 @@ Files under `variants/` record coverage; there is no per-skill manifest.
      execution.
    - Fable 5.1 gets literal steps, bounded scope and rewrites, useful batching,
      and progress guidance for long work.
+   - Astra gets evidence-led routine choices, clear instruction precedence,
+     existing authorization, and proportional verification.
+   - Opus 5 gets bounded optional work and document length, consolidated generic
+     self-checks, and complete candidate discovery before filtering.
 5. Share scripts, references, assets, and `agents/openai.yaml` unless their
    runtime behavior differs. Point root `SKILL.md` at
    `variants/gpt-5.6.md` for repository discovery. Harness views expose one
@@ -45,6 +51,16 @@ Files under `variants/` record coverage; there is no per-skill manifest.
 
 Done when every supported profile has one complete prompt, behavior is
 equivalent across them, and each invocation loads only the chosen variant.
+
+## Install or switch
+
+Run `./install-skills --harness codex --model astra` or
+`./install-skills --harness claude --model opus` from the repository root.
+Add `--require-exact` when every skill must match the requested model.
+Add `--dry-run` to inspect the installation without changing it. Re-run with
+another model to switch that installation. Use separate `--root` values for
+concurrent model installations. Select the actual model in the harness too;
+the script does not change its model or erase already-loaded instructions.
 
 ## New model
 

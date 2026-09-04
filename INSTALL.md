@@ -21,15 +21,12 @@ Figure out which harness you're running in:
 If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
-Also resolve the model identifier used by the installed harness. Do not infer
-it from writing style. For Claude Code, use the exact Fable model pinned by
-`fable-orchestrator`, even when the installer is currently running under a
-different Claude model; that pin becomes active in the next session. For other
-harnesses, use the exact active model identifier. The model selects which
-complete skill variant is installed. This repository supports GPT-5.6 and
-Claude Fable 5.1. A newer model in either known family uses that family's newest
-variant and produces one informational update notice. Installation stops on an
-unknown family.
+Resolve the intended model from the user's request or the harness's actual
+configuration, not from writing style. This repository supports GPT-5.6,
+GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
+uses its nearest preceding variant and produces an informational update notice.
+Installation stops on an unknown family. `--require-exact` also rejects any
+fallback, including a missing variant in one skill.
 
 ## 2. Link global instructions
 
@@ -64,7 +61,8 @@ step when installing only into OpenClaw.
 For Claude Code, this repo owns two user-level agents under
 `REPO/claude/agents/`:
 
-- `fable-orchestrator` is the default main agent;
+- `fable-orchestrator` is the default main agent, retaining its existing name
+  but inheriting the selected Claude model rather than pinning Fable;
 - `codex-reviewer` relays code-centric review to GPT-5.6 Sol High.
 
 Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
@@ -85,8 +83,9 @@ replacing it. Then validate the agent directory:
 claude plugin validate ~/.claude/agents
 ```
 
-The default main agent takes effect in the next Claude Code session. Skip this
-step for other harnesses.
+The default main agent takes effect in the next Claude Code session. Preserve
+the user's selected model and install its matching skills. Switching skill
+files does not switch the model. Skip this step for other harnesses.
 
 ## 4. Configure Codex interaction
 
@@ -145,16 +144,63 @@ the repo in step 8.
 
 ## 7. Materialize and link model-aware skills
 
-For Claude Code, Codex, opencode, or Pi, keep the target skills directory real
+### Codex and Claude Code
+
+From `REPO`, use the repository's installer after the prerequisites above:
+
+```sh
+./install-skills --harness codex --model astra
+./install-skills --harness codex --model gpt-5.6
+./install-skills --harness claude --model fable
+./install-skills --harness claude --model opus
+```
+
+Run the one command matching the requested installation. Full model IDs work
+too. `--dry-run --json` previews coverage and link changes without writing;
+`--require-exact` requires an exact variant for every skill. The command
+materializes the view, installs stable per-skill links, and retires only obsolete
+links owned by that view. It refuses local-file or foreign-link collisions
+before changing installed prompts. It does not edit model settings, global
+instructions, personal agents, authentication, or third-party skills.
+
+Defaults are `CODEX_HOME` or `~/.codex` for Codex, and `CLAUDE_CONFIG_DIR` or
+`~/.claude` for Claude. Override with `--root ABSOLUTE_CONFIG_DIRECTORY`; this is
+the harness configuration root, not its `skills/` subdirectory. To use separate
+roots concurrently, configure and launch each harness with its matching
+`CODEX_HOME` or `CLAUDE_CONFIG_DIR`. The installer does not copy credentials or
+create an authenticated harness configuration.
+
+Re-run with another model to switch that installation. Sessions using one root
+share its files, and prompts already loaded remain in conversation history.
+Start a fresh session for a clean switch. There is no automatic model-switch
+hook. Re-run after every repository update, even if the model is unchanged.
+
+Fallback notices are deduplicated when `--session ID`, `CODEX_THREAD_ID`, or
+`CLAUDE_SESSION_ID` identifies the session. Without a session identifier, each
+invocation reports its own fallback; show the user at most once in the current
+conversation. To transfer a generated view from another clone, inspect its
+`.skill-variant-view.json`, verify the old `sourceRoot`, then pass
+`--previous-source OLD_REPO/skills`. Never use that flag to claim an unrelated
+directory.
+
+For Claude Code, remove older `SessionStart`, `PostModelSwitch`, or
+`PreToolUse` handlers whose command invokes
+`materialize-skill-variants.mjs` for this skill collection. They belong to the
+retired automatic loader. Preserve unrelated handlers. Continue at step 8;
+the manual procedure below is for other link-based harnesses.
+
+### opencode and Pi
+
+For opencode or Pi, keep the target skills directory real
 and retain one per-skill symlink. Point those links at a generated view, not at
-`REPO/skills` directly. Shared scripts and references remain linked to the repo.
+`REPO/skills` directly. Copy shared references beside the selected prompt so
+their backlinks stay inside that model's view. Executable resources remain
+linked to the repo so their dependencies resolve.
 
 Choose a view outside the target skills directory:
 
 | Harness | View root |
 | --- | --- |
-| Claude Code | `~/.claude/.skill-variants/jesse-merhi-skills` |
-| Codex | `~/.codex/.skill-variants/jesse-merhi-skills` |
 | opencode | `~/.config/opencode/.skill-variants/jesse-merhi-skills` |
 | Pi | `~/.pi/agent/.skill-variants/jesse-merhi-skills` |
 
@@ -169,9 +215,7 @@ node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
   --format json
 ```
 
-For Claude Code, `INSTALL_MODEL_ID` is the exact Fable identifier from
-`fable-orchestrator`, not necessarily the model running the installation. For
-other harnesses it is the active model identifier resolved in step 1.
+`INSTALL_MODEL_ID` is the model identifier resolved in step 1.
 
 Read the JSON result. If `notice` is present and no earlier model-profile
 notice appeared in this installation task, show it once and continue. The
@@ -187,9 +231,7 @@ view; configure separate harness roots and view roots when that is required. A
 static view does not detect later model changes. Rerun the materializer after
 every pull or other update to this repository before starting the next session,
 even when the selected model is unchanged; copied `SKILL.md` files and linked
-resources must come from the same repository revision. The repo-owned Claude
-main agent is pinned to Fable 5.1, so its view does not need runtime model
-routing.
+resources must come from the same repository revision.
 
 Then:
 
@@ -209,11 +251,6 @@ Then:
    - Leave an identical link unchanged.
    - Ask before replacing a real directory with user-authored changes or a
      symlink owned elsewhere.
-
-For Claude Code, remove older `SessionStart`, `PostModelSwitch`, or
-`PreToolUse` handlers whose command invokes
-`materialize-skill-variants.mjs` for this skill collection. They belong to the
-retired multi-Claude-model loader. Preserve unrelated handlers.
 
 ## 8. Connect a running OpenClaw Gateway
 

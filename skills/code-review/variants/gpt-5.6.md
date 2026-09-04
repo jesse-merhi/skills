@@ -44,7 +44,7 @@ unless the current user explicitly requests that exact cross-harness session.
 2. Select the review engine.
 
    Use the harness-native engine unless the user explicitly names another:
-   Codex in Codex, Claude in Claude Code. Treat an explicit request for Fable
+   Codex in Codex, Claude in Claude Code. Treat a named Claude model
    as selecting Claude. Do not ask about or validate the unselected engine.
    When Codex is selected, confirm the current runtime identity can resolve and
    authenticate the standalone Codex CLI before review.

@@ -45,11 +45,27 @@ those skills by frontmatter `name`, reconciles third-party skills from
 [`external.md`](external.md), and runs the tests. It asks before touching
 anything it did not put there.
 
+To install or switch just this repo's skills, run one command from the clone:
+
+```sh
+./install-skills --harness codex --model astra
+./install-skills --harness codex --model gpt-5.6
+./install-skills --harness claude --model fable
+./install-skills --harness claude --model opus
+```
+
+Each command installs all 44 skills for that model. Add `--require-exact` to
+reject missing model coverage, or `--dry-run` to inspect without writing.
+The command preserves other skills and harness settings; it does not select
+the model for you. Start a fresh session for a clean prompt switch. Use separate
+`--root` harness configuration directories for concurrent different-model
+sessions; sessions sharing a root share its installed skills.
+
 Where the skills land, per harness:
 
 | Harness | Skills directory | Global instructions | Personal agents |
 | --- | --- | --- | --- |
-| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | Fable orchestrator, Codex reviewer |
+| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | Claude orchestrator, Codex reviewer |
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
@@ -58,14 +74,14 @@ Where the skills land, per harness:
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
 symlink into a generated view. Codex, opencode, Pi, and OpenClaw receive a
-contained static copy of the selected prompt. Shared executable resources stay
-linked to this repo so their dependencies resolve. Claude's main agent is pinned
-to Fable 5.1 and receives the Fable view directly. Hand-written local skills
-are never replaced without asking.
+contained static copy of the selected prompt, as does Claude. Shared executable
+resources stay linked to this repo so their dependencies resolve. The command
+refuses to replace hand-written local skills or links owned elsewhere.
 
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
-Fable owns product, architecture, design, implementation, integration, and
-high-level review. It delegates code-centric review to GPT-5.6 Sol High.
+The existing agent name is unchanged, but it now inherits your selected Claude
+model instead of forcing Fable. It owns implementation and high-level review,
+and delegates code-centric review to GPT-5.6 Sol High.
 
 **Honesty about harness coverage:** the installer handles four link-based
 harnesses plus a locally running OpenClaw Gateway. The skills themselves were
@@ -102,7 +118,8 @@ Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
-Every skill currently has full GPT-5.6 and Claude Fable 5.1 variants. Selection
+Every skill has full GPT-5.6, GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5
+variants. Selection
 happens locally before the model sees the workflow, so there is no router turn
 or unused prompt in context. Harness views expose the selected prompt directly.
 A newer model in a supported family falls back to the newest family variant and
@@ -292,8 +309,9 @@ PRs are welcome.
 - Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
-- Give every skill a complete prompt in `variants/gpt-5.6.md` and
-  `variants/claude-fable-5.1.md`. Preserve one
+- Give every skill a complete prompt in `variants/gpt-5.6.md`,
+  `variants/gpt-6-astra.md`, `variants/claude-fable-5.1.md`, and
+  `variants/claude-opus-5.md`. Preserve one
   behavior contract while following each model's official prompting guide. The
   [`model-writing-guides`](skills/model-writing-guides/SKILL.md) skill owns the
   guide links, selector, fallback order, and new-model workflow.

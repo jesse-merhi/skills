@@ -163,4 +163,4 @@ facts, and remove sections that do not help the reader.
 The library was informed by GOV.UK content patterns, WCAG reflow guidance,
 MDN live examples, Distill, Tufte CSS, Observable Plot, and a review of
 `ThariqS/html-effectiveness`. The full research and source links live in
-[`research/html-explanation-patterns.md`](../../research/html-explanation-patterns.md).
+[`html-explanation-patterns.md`](references/html-explanation-patterns.md).
