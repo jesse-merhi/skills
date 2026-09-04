@@ -2,7 +2,7 @@ import vitestPlugin from "@vitest/eslint-plugin";
 
 import { standards } from "../standards-plugin.mjs";
 
-const DEFAULT_FILES = ["**/*.{test,spec}.{ts,tsx,js,jsx,mts,mjs}"];
+const DEFAULT_FILES = ["**/*.{test,spec}.?(c|m)[jt]s?(x)"];
 
 export default function vitest(options = {}) {
 	const brittleStyleOptions = {};
