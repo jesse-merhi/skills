@@ -2,14 +2,24 @@
 
 Trace each changed flow end to end. For every meaningful flow, identify:
 
+- intended outcome and preserved obligations from the review basis
 - first executable entrypoint
 - changed symbols in the diff
 - callers and callees affected by those symbols
 - data/state/control that crosses file boundaries
 - runtime boundary where external input or side effects enter
+- error or recovery paths, permission/data boundaries, and existing abstractions
+  whose behavior or current maintenance cost changes
 - tests or checks that should cover the path
 - for rendered frontend UI, screenshots, layout audit, console check, or trace
   needed to prove the changed viewport/state
+
+Match proof to the expectation: name a representative input or state and the
+observable result that would satisfy or contradict it. Inspect what existing
+tests actually assert and whether supplied evidence applies to the reviewed
+content. Keep missing, stale, or unexecuted validation distinct from observed
+failure. The owning review workflow decides whether a finding or test change is
+justified.
 
 Read full files only when the diff hunk is not enough. Prefer targeted context:
 
