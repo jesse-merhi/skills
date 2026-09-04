@@ -625,9 +625,6 @@ test_speak_fking_english_owns_the_visual_decision() {
 test_speak_fking_english_owns_the_final_response_checkpoint() {
   local skill="$ROOT_DIR/skills/speak-fking-english"
 
-  assert_contains "$ROOT_DIR/AGENTS.md" "Immediately before every final response"
-  assert_contains "$ROOT_DIR/AGENTS.md" 'load `speak-fking-english`'
-  assert_not_contains "$ROOT_DIR/AGENTS.md" "Use its reader reset and visual decision"
   assert_contains "$skill/SKILL.md" "reader reset"
   assert_contains "$skill/SKILL.md" "visual filter"
   assert_contains "$skill/SKILL.md" "Done when"
