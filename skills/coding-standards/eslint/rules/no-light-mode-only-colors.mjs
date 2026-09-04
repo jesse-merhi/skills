@@ -1,4 +1,4 @@
-import { extractStringSnippets } from "./lib/static-node-values.mjs";
+import { extractStringSnippets, getStaticPropertyName } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
 const LIGHT_ONLY_CLASS_PATTERN =
@@ -50,6 +50,17 @@ function getLogicalIdentifierGuard(node) {
 	return node?.type === "LogicalExpression" && node.left.type === "Identifier"
 		? `${node.operator}:${node.left.name}`
 		: undefined;
+}
+
+function expandClassMapEntries(node) {
+	if (node?.type !== "ObjectExpression") return [node];
+	return node.properties.flatMap((property) => {
+		if (property.type === "SpreadElement") return expandClassMapEntries(property.argument);
+		if (property.type !== "Property") return [];
+		const key = property.computed ? property.key : { type: "Literal", value: getStaticPropertyName(property.key) };
+		if (property.value.type === "Literal") return property.value.value ? [key] : [];
+		return [{ type: "LogicalExpression", operator: "&&", left: property.value, right: key }];
+	});
 }
 
 function getStaticConcatenationValue(node) {
@@ -122,13 +133,14 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 		case "BinaryExpression":
 		case "CallExpression": {
 			if (node.type === "BinaryExpression" && node.operator !== "+") return [];
-			const children = node.type === "TemplateLiteral"
-				? [...node.quasis, ...node.expressions]
-				: node.type === "ArrayExpression" ? node.elements
-				: node.type === "BinaryExpression" ? [node.left, node.right] : node.arguments;
 			const maps = node.type === "CallExpression"
 				? node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name)
 				: classMap;
+			const values = node.type === "TemplateLiteral"
+				? [...node.quasis, ...node.expressions]
+				: node.type === "ArrayExpression" ? node.elements
+				: node.type === "BinaryExpression" ? [node.left, node.right] : node.arguments;
+			const children = maps ? values.flatMap(expandClassMapEntries) : values;
 			const shared = children
 				.flatMap((child) => extractClassSnippets(child, { unconditionalOnly: true, classMap: maps }))
 				.join(" ");

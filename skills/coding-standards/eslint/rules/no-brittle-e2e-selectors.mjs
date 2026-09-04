@@ -78,7 +78,7 @@ function getSelectorMessageIds(selector) {
 		messageIds.push("domPath");
 	}
 
-	if (/\[class[*^$|~]?=/.test(syntax) || (engine === "xpath" && /@class\b/.test(syntax))) {
+	if (/\[\s*class\s*[*^$|~]?=/.test(syntax) || (engine === "xpath" && /@class\b/.test(syntax))) {
 		messageIds.push("classAttribute");
 	}
 

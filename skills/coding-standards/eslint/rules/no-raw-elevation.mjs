@@ -36,44 +36,46 @@ function createIdentifierBindings(sourceCode) {
 	return identifierBindings;
 }
 
-function isClassFunctionReference(node, classFunctionBindings, identifierBindings) {
+function getClassFunctionName(node, classFunctionBindings, identifierBindings) {
 	if (node?.type === "Identifier") {
 		const binding = identifierBindings.get(node);
 		if (binding) {
-			return classFunctionBindings.has(binding);
+			return classFunctionBindings.get(binding);
 		}
-		return CLASS_FUNCTION_NAMES.has(node.name);
+		return CLASS_FUNCTION_NAMES.has(node.name) ? node.name : undefined;
 	}
 	if (node?.type === "MemberExpression" && !node.computed) {
 		const propertyName = getStaticName(node.property);
-		return propertyName !== null && CLASS_FUNCTION_NAMES.has(propertyName);
+		return CLASS_FUNCTION_NAMES.has(propertyName) ? propertyName : undefined;
 	}
-	return false;
+	return undefined;
 }
 
-function isCanonicalClassFunctionImport(specifier) {
+function getImportedClassFunctionName(specifier) {
 	if (specifier.type === "ImportSpecifier") {
 		const importedName = getStaticName(specifier.imported);
-		return importedName !== null && CLASS_FUNCTION_NAMES.has(importedName);
+		return CLASS_FUNCTION_NAMES.has(importedName) ? importedName : undefined;
 	}
 	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") {
-		return false;
+		return undefined;
 	}
 
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return ["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName);
+	if (sourceName === "class-variance-authority") return "cva";
+	if (sourceName === "clsx") return "clsx";
+	if (sourceName === "tailwind-merge") return "twMerge";
+	return undefined;
 }
 
 function seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, identifierBindings) {
 	const variables = (sourceCode.scopeManager?.scopes ?? []).flatMap((scope) => scope.variables);
 
 	for (const variable of variables) {
-		if (
-			variable.defs.some(
-				(definition) => definition.type === "ImportBinding" && isCanonicalClassFunctionImport(definition.node),
-			)
-		) {
-			classFunctionBindings.add(variable);
+		const imported = variable.defs.find(
+			(definition) => definition.type === "ImportBinding" && getImportedClassFunctionName(definition.node),
+		);
+		if (imported) {
+			classFunctionBindings.set(variable, getImportedClassFunctionName(imported.node));
 		}
 	}
 
@@ -84,14 +86,14 @@ function seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, id
 			if (classFunctionBindings.has(variable)) {
 				continue;
 			}
-			const isDeclaredAlias = variable.defs.some(
+			const classFunctionName = variable.defs.map(
 				(definition) =>
 					definition.type === "Variable" &&
 					definition.node.type === "VariableDeclarator" &&
-					isClassFunctionReference(definition.node.init, classFunctionBindings, identifierBindings),
-			);
-			if (isDeclaredAlias) {
-				classFunctionBindings.add(variable);
+					getClassFunctionName(definition.node.init, classFunctionBindings, identifierBindings),
+			).find(Boolean);
+			if (classFunctionName) {
+				classFunctionBindings.set(variable, classFunctionName);
 				changed = true;
 			}
 		}
@@ -107,7 +109,7 @@ function isDirectClassContext(node, classFunctionBindings, identifierBindings, v
 			(currentNode.type === "BinaryExpression" && currentNode.operator !== "+")
 		) return false;
 		if (currentNode.type === "CallExpression") {
-			if (isClassFunctionReference(currentNode.callee, classFunctionBindings, identifierBindings)) {
+			if (getClassFunctionName(currentNode.callee, classFunctionBindings, identifierBindings)) {
 				return true;
 			}
 			if (currentNode.arguments.includes(previousNode)) {
@@ -193,7 +195,30 @@ function getRawElevationUtility(token) {
 	return null;
 }
 
+function getCvaClassNodes(call) {
+	const classNodes = [call.arguments[0]];
+	for (const option of call.arguments[1]?.properties ?? []) {
+		if (getStaticName(option.key) === "variants") {
+			for (const variant of option.value?.properties ?? []) {
+				for (const choice of variant.value?.properties ?? []) classNodes.push(choice.value);
+			}
+		}
+		if (getStaticName(option.key) === "compoundVariants") {
+			for (const compound of option.value?.elements ?? []) {
+				for (const property of compound?.properties ?? []) {
+					if (["class", "className"].includes(getStaticName(property.key))) classNodes.push(property.value);
+				}
+			}
+		}
+	}
+	return classNodes;
+}
+
 function reportRawElevation(context, node, value, classFunctionBindings, identifierBindings, tokenModule) {
+	const ancestors = context.sourceCode.getAncestors(node);
+	const cvaCall = ancestors.findLast((ancestor) => ancestor.type === "CallExpression" &&
+		getClassFunctionName(ancestor.callee, classFunctionBindings, identifierBindings) === "cva");
+	if (cvaCall && !getCvaClassNodes(cvaCall).some((valueNode) => valueNode === node || ancestors.includes(valueNode))) return;
 	if (!isDirectClassContext(node, classFunctionBindings, identifierBindings)) {
 		return;
 	}
@@ -237,16 +262,16 @@ export default {
 		const tokenModule = context.options[0]?.tokenModule;
 		const { sourceCode } = context;
 		const identifierBindings = createIdentifierBindings(sourceCode);
-		const classFunctionBindings = new Set();
+		const classFunctionBindings = new Map();
 		seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, identifierBindings);
 
-		function updateClassFunctionBinding(identifier, isClassFunction) {
+		function updateClassFunctionBinding(identifier, classFunctionName) {
 			const binding = identifierBindings.get(identifier);
 			if (!binding) {
 				return;
 			}
-			if (isClassFunction) {
-				classFunctionBindings.add(binding);
+			if (classFunctionName) {
+				classFunctionBindings.set(binding, classFunctionName);
 			} else {
 				classFunctionBindings.delete(binding);
 			}
@@ -254,19 +279,8 @@ export default {
 
 		return {
 			ImportDeclaration(node) {
-				const sourceName = typeof node.source.value === "string" ? node.source.value : "";
 				for (const specifier of node.specifiers) {
-					if (specifier.type === "ImportSpecifier") {
-						const importedName = getStaticName(specifier.imported);
-						if (importedName !== null && CLASS_FUNCTION_NAMES.has(importedName)) {
-							updateClassFunctionBinding(specifier.local, true);
-						}
-					} else if (
-						specifier.type === "ImportDefaultSpecifier" &&
-						["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName)
-					) {
-						updateClassFunctionBinding(specifier.local, true);
-					}
+					updateClassFunctionBinding(specifier.local, getImportedClassFunctionName(specifier));
 				}
 			},
 			Property(node) {
@@ -299,7 +313,7 @@ export default {
 				if (node.id.type === "Identifier") {
 					updateClassFunctionBinding(
 						node.id,
-						isClassFunctionReference(node.init, classFunctionBindings, identifierBindings),
+						getClassFunctionName(node.init, classFunctionBindings, identifierBindings),
 					);
 				}
 			},
@@ -309,7 +323,7 @@ export default {
 				}
 				updateClassFunctionBinding(
 					node.left,
-					isClassFunctionReference(node.right, classFunctionBindings, identifierBindings),
+					getClassFunctionName(node.right, classFunctionBindings, identifierBindings),
 				);
 			},
 		};
