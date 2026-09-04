@@ -1668,6 +1668,34 @@ export default {
 		const genericZodTypeNames = new Set();
 		const escapedWeakExports = new Set();
 
+		function checkExportedDeclaration(node) {
+			if (!node.declaration) return false;
+			if (isZodNamespaceExportDeclaration(node.declaration, zodNamespaceNames)) {
+				context.report({ node: node.declaration, messageId: "noWeakZodType" });
+				return true;
+			}
+			if (!containsWeakZodTypeAnnotation(
+				node.declaration,
+				weakZodTypeNames,
+				weakZodTypeScopes,
+				zodTypeNames,
+				zodNamespaceNames,
+				zodNamespaceTypeScopes,
+				zodIndexKeyAliases,
+				anyTypeNames,
+				genericZodTypeNames,
+				true,
+			)) return false;
+			if (
+				hasNoZodTypeAnyDisableComment(context, node) ||
+				hasNoZodTypeAnyDisableComment(context, node.declaration) ||
+				hasNoZodTypeAnyDisableCommentInRange(context, node.declaration)
+			) {
+				escapedWeakExports.add(context.sourceCode.ast);
+			}
+			return true;
+		}
+
 		return {
 			Program(node) {
 				collectZodBindings(
@@ -1724,35 +1752,7 @@ export default {
 				}
 			},
 			ExportNamedDeclaration(node) {
-				if (node.declaration && isZodNamespaceExportDeclaration(node.declaration, zodNamespaceNames)) {
-					context.report({ node: node.declaration, messageId: "noWeakZodType" });
-					return;
-				}
-
-				if (
-					node.declaration &&
-					containsWeakZodTypeAnnotation(
-						node.declaration,
-						weakZodTypeNames,
-						weakZodTypeScopes,
-						zodTypeNames,
-						zodNamespaceNames,
-						zodNamespaceTypeScopes,
-						zodIndexKeyAliases,
-						anyTypeNames,
-						genericZodTypeNames,
-						true,
-					)
-				) {
-					if (
-						hasNoZodTypeAnyDisableComment(context, node) ||
-						hasNoZodTypeAnyDisableComment(context, node.declaration) ||
-						hasNoZodTypeAnyDisableCommentInRange(context, node.declaration)
-					) {
-						escapedWeakExports.add(context.sourceCode.ast);
-					}
-					return;
-				}
+				if (checkExportedDeclaration(node)) return;
 
 				for (const specifier of node.specifiers) {
 					const exportsWeakZodType =
@@ -1782,6 +1782,7 @@ export default {
 				}
 			},
 			ExportDefaultDeclaration(node) {
+				if (checkExportedDeclaration(node)) return;
 				if (isRestrictedZodRuntimeReference(node.declaration, zodNamespaceNames)) {
 					context.report({ node, messageId: "noWeakZodType" });
 				}

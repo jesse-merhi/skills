@@ -58,8 +58,8 @@ function normalizeFilename(filename) {
 
 function getFunctionParameterVariable(context, functionNode, parameter) {
 	if (parameter.type !== "Identifier") return null;
-	const functionScope = context.sourceCode.scopeManager?.acquire(functionNode);
-	return functionScope?.set.get(parameter.name) ?? null;
+	const functionScope = context.sourceCode.getScope(functionNode);
+	return functionScope.set.get(parameter.name) ?? null;
 }
 
 function getPropertyName(node) {
