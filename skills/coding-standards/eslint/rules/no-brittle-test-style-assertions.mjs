@@ -112,7 +112,7 @@ function unwrapExpression(node) {
 			current.type === "ChainExpression" ||
 			current.type === "AwaitExpression")
 	) {
-		current = current.expression;
+		current = current.type === "AwaitExpression" ? current.argument : current.expression;
 	}
 	return current;
 }
@@ -445,11 +445,13 @@ function containsClassSelectorExpression(node, context, visitedVariables = new S
 			if (memberSources.length > 0) {
 				return (
 					memberSources.some((source) => {
+						if (visitedVariables.has(source)) return false;
+						const visitedSources = new Set([...visitedVariables, source]);
 						if (!["ArrowFunctionExpression", "FunctionExpression"].includes(source.type)) {
 							return containsClassSelectorExpression(
 								source,
 								context,
-								new Set(visitedVariables),
+								visitedSources,
 								parameterBindings,
 							);
 						}
@@ -466,7 +468,7 @@ function containsClassSelectorExpression(node, context, visitedVariables = new S
 							containsClassSelectorExpression(
 								returnedExpression,
 								context,
-								new Set(visitedVariables),
+								new Set(visitedSources),
 								helperBindings,
 							),
 						);

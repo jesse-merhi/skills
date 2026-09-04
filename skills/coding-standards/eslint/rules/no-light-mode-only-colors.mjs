@@ -1,3 +1,5 @@
+import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
+
 const LIGHT_ONLY_CLASS_PATTERN =
 	/\b(?:bg-(?:white|gray|slate)-(?:50|100|200|300)|text-(?:gray|slate)-(?:400|500|600|700|800|900)|border-(?:gray|slate)-(?:100|200|300)|from-(?:gray|slate)-(?:50|100|200)|to-(?:gray|slate)-(?:100|200|300)|hover:bg-white|hover:bg-gray-50|bg-slate-50|bg-blue-(?:50|100|600)|text-blue-(?:500|600|700|800)|border-blue-(?:200|300|700)|hover:bg-blue-(?:100|600|700)|ring-blue-500|focus:ring-blue-500)\b/g;
 
@@ -14,11 +16,11 @@ function hasBareProseWithoutDarkCounterpart(snippet) {
 }
 
 function hasExplicitDarkCounterpart(snippet, token) {
-	const modifiers = token.split(":");
-	const family = `${modifiers.pop().split("-")[0]}-`;
+	const modifiers = splitTailwindSegments(token);
+	const family = `${modifiers.pop().replace(/^!/, "").split("-")[0]}-`;
 	return getClassTokens(snippet).some((candidate) => {
-		const candidateModifiers = candidate.split(":");
-		const utility = candidateModifiers.pop();
+		const candidateModifiers = splitTailwindSegments(candidate);
+		const utility = candidateModifiers.pop().replace(/^!/, "");
 		return (
 			utility.startsWith(family) &&
 			candidateModifiers.includes("dark") &&
@@ -87,10 +89,9 @@ export default {
 						continue;
 					}
 
-					const matches = snippet.match(LIGHT_ONLY_CLASS_PATTERN);
-					if (!matches) {
-						continue;
-					}
+					const matches = getClassTokens(snippet).filter(
+						(token) => !splitTailwindSegments(token).includes("dark") && token.match(LIGHT_ONLY_CLASS_PATTERN),
+					);
 
 					for (const token of new Set(matches)) {
 						if (hasExplicitDarkCounterpart(snippet, token)) {
