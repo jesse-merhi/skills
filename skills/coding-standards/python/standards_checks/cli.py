@@ -58,10 +58,6 @@ IGNORED_DIRECTORY_NAMES = frozenset(
 )
 
 
-def _is_searchable(path: Path) -> bool:
-    return not IGNORED_DIRECTORY_NAMES.intersection(path.parts)
-
-
 def python_files(paths: Iterable[str]) -> Iterator[Path]:
     """Yield the Python files named directly, plus those under named directories."""
     for raw in paths:
@@ -69,9 +65,13 @@ def python_files(paths: Iterable[str]) -> Iterator[Path]:
         if not path.is_dir():
             yield path
             continue
-        for candidate in sorted(path.rglob("*.py")):
-            if _is_searchable(candidate.relative_to(path)):
-                yield candidate
+        for directory, directory_names, filenames in path.walk():
+            directory_names[:] = sorted(
+                name for name in directory_names if name not in IGNORED_DIRECTORY_NAMES
+            )
+            for filename in sorted(filenames):
+                if filename.endswith(".py"):
+                    yield directory / filename
 
 
 def check_file(path: Path) -> list[Finding]:
