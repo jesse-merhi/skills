@@ -167,9 +167,11 @@ Use only the selected commands, through the target's runner:
 ruff check <source directories>
 mypy <source directories>
 semgrep --error --config lint/standards/python/semgrep <source directories>
-PYTHONPATH=lint/standards/python python -m standards_checks <source directories>
+PYTHONPATH=lint/standards/python python -m standards_checks --select <standard-id> <source directories>
 ```
 
+Repeat `--select` for each selected custom check; omit it only when all checks
+are selected.
 The environment assignment precedes the runner, for example
 `PYTHONPATH=lint/standards/python uv run python -m standards_checks ...`.
 Semgrep needs `--error` for findings to fail the command. If the target has no

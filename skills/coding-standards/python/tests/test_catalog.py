@@ -157,4 +157,4 @@ def test_every_check_module_is_wired_into_the_cli() -> None:
     from standards_checks.cli import CHECKS
 
     claimed = {entry["module"] for entry in entries_of_kind("check")}
-    assert {check.__module__ for check in CHECKS} == claimed
+    assert {check.__module__ for check in CHECKS.values()} == claimed

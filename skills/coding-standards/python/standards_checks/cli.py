@@ -1,4 +1,4 @@
-"""Run every check over the given files and directories.
+"""Run selected checks over the given files and directories.
 
 Output is one finding per line in ruff's shape, so editors and CI already know
 how to read it::
@@ -21,11 +21,11 @@ from standards_checks.finding import Finding
 
 CheckSource = Callable[[str, str], list[Finding]]
 
-CHECKS: tuple[CheckSource, ...] = (
-    no_banner_comments.check_source,
-    no_large_test_snapshots.check_source,
-    no_trivial_forwarding_wrapper.check_source,
-)
+CHECKS: dict[str, CheckSource] = {
+    no_banner_comments.CHECK_ID: no_banner_comments.check_source,
+    no_large_test_snapshots.CHECK_ID: no_large_test_snapshots.check_source,
+    no_trivial_forwarding_wrapper.CHECK_ID: no_trivial_forwarding_wrapper.check_source,
+}
 
 IGNORED_DIRECTORY_NAMES = frozenset(
     {
@@ -80,11 +80,12 @@ def python_files(paths: Iterable[str]) -> Iterator[Path]:
                     yield directory / filename
 
 
-def check_file(path: Path) -> list[Finding]:
-    """Run every check over one file, ordered by position."""
+def check_file(path: Path, selected: Sequence[str] | None = None) -> list[Finding]:
+    """Run selected checks over one file, ordered by position."""
     with tokenize.open(path) as source_file:
         source = source_file.read()
-    findings = [finding for check in CHECKS for finding in check(source, str(path))]
+    checks = (CHECKS[name] for name in dict.fromkeys(selected or CHECKS))
+    findings = [finding for check in checks for finding in check(source, str(path))]
     return sorted(findings, key=lambda finding: (finding.line, finding.col))
 
 
@@ -94,13 +95,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Report coding-standards violations that no ruff rule covers.",
     )
     parser.add_argument("paths", nargs="+", help="files or directories to check")
+    parser.add_argument("--select", action="append", choices=CHECKS)
     arguments = parser.parse_args(argv)
 
     failed = False
     try:
         for path in python_files(arguments.paths):
             try:
-                findings = check_file(path)
+                findings = check_file(path, arguments.select)
             except (
                 OSError,
                 SyntaxError,
