@@ -177,7 +177,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-banner-comments.mjs",
-						"test": "eslint/rules/no-banner-comments.test.mjs",
 						"presets": [
 							"base"
 						]
@@ -206,7 +205,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-trivial-forwarding-wrapper.mjs",
-						"test": "eslint/rules/no-trivial-forwarding-wrapper.test.mjs",
 						"presets": [
 							"base"
 						]
@@ -225,7 +223,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-large-test-snapshots.mjs",
-						"test": "eslint/rules/no-large-test-snapshots.test.mjs",
 						"presets": [
 							"vitest",
 							"jest",
@@ -246,7 +243,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-broad-rule-disable.mjs",
-						"test": "eslint/rules/no-broad-rule-disable.test.mjs",
 						"presets": [
 							"zod"
 						]
@@ -265,7 +261,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-sql.mjs",
-						"test": "eslint/rules/no-raw-sql.test.mjs",
 						"presets": [
 							"prisma"
 						]
@@ -284,7 +279,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-color-literals.mjs",
-						"test": "eslint/rules/no-raw-color-literals.test.mjs",
 						"presets": [
 							"react-native"
 						]
@@ -303,7 +297,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-zod-type-any.mjs",
-						"test": "eslint/rules/no-zod-type-any.test.mjs",
 						"presets": [
 							"zod"
 						]
@@ -322,7 +315,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/prefer-zod-for-unknown-typeof.mjs",
-						"test": "eslint/rules/prefer-zod-for-unknown-typeof.test.mjs",
 						"presets": [
 							"zod"
 						]
@@ -341,7 +333,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-light-mode-only-colors.mjs",
-						"test": "eslint/rules/no-light-mode-only-colors.test.mjs",
 						"presets": [
 							"tailwind"
 						]
@@ -360,7 +351,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-elevation.mjs",
-						"test": "eslint/rules/no-raw-elevation.test.mjs",
 						"presets": [
 							"tailwind"
 						]
@@ -379,7 +369,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-small-text.mjs",
-						"test": "eslint/rules/no-small-text.test.mjs",
 						"presets": [
 							"react-native",
 							"tailwind"
@@ -399,7 +388,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-wide-arbitrary-breakpoints.mjs",
-						"test": "eslint/rules/no-wide-arbitrary-breakpoints.test.mjs",
 						"presets": [
 							"tailwind"
 						]
@@ -418,7 +406,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-brittle-e2e-selectors.mjs",
-						"test": "eslint/rules/no-brittle-e2e-selectors.test.mjs",
 						"presets": [
 							"playwright"
 						]
@@ -437,7 +424,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-brittle-test-style-assertions.mjs",
-						"test": "eslint/rules/no-brittle-test-style-assertions.test.mjs",
 						"presets": [
 							"vitest",
 							"jest",

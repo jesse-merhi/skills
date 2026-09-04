@@ -64,7 +64,7 @@ explicit before calling the plan ready:
 ## Update context inline
 
 When a project-specific term is resolved, update the external project context
-`CONTEXT.md` right away using [context-format.md](context-format.md).
+`CONTEXT.md` right away.
 
 `CONTEXT.md` is a glossary. Keep implementation details, specs, scratch notes,
 and implementation decisions out of it.
@@ -82,4 +82,4 @@ Offer to create an ADR only when all three are true:
 2. A future reader would be surprised without the context.
 3. The decision came from a real trade-off.
 
-If any of those is missing, skip the ADR. Use [adr-format.md](adr-format.md).
+If any of those is missing, skip the ADR.

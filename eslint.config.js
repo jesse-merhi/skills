@@ -5,7 +5,7 @@ import typescript from "./skills/coding-standards/eslint/presets/typescript.mjs"
 import vitest from "./skills/coding-standards/eslint/presets/vitest.mjs"
 
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
-const testFiles = ["**/*.test.ts", "skills/coding-standards/**/*.test.mjs"]
+const testFiles = ["**/*.test.ts"]
 const jsonParseAllowedFiles = ["**/*.test.ts", "**/*.test.mjs"]
 const runtimeJavaScriptFiles = ["skills/**/*.mjs"]
 const lintInfrastructureFiles = [

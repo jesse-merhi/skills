@@ -28,8 +28,8 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
 
 3. Make the hold with the mechanism for the current harness.
 
-   Codex: read [references/codex.md](references/codex.md).
-   Claude Code: read [references/claude-code.md](references/claude-code.md).
+   Codex: follow [Codex hold mechanisms](#codex-hold-mechanisms).
+   Claude Code: follow [Claude Code hold mechanisms](#claude-code-hold-mechanisms).
    Another harness: prefer a completion notification or callback. Otherwise,
    use one blocking wait sized to the expected work and tool limit.
 
@@ -40,6 +40,144 @@ Hold the wait. Return for completion, an actionable state, or the deadline.
    Restarting the work discards the elapsed run and pays for it twice.
 
    Done when the work reached a terminal state and was never restarted.
+
+## Codex hold mechanisms
+
+Use the capabilities exposed by the current Codex host; do not pin behavior to
+a historical CLI version.
+
+### Shell commands
+
+Keep the command and every resume inside one code-mode cell. Set the cell and
+command yields to the expected duration, capped by the current tool schema.
+
+```js
+// @exec: {"yield_time_ms": <expected-ms>, "max_output_tokens": 10000}
+const yieldMs = <expected-ms>;
+const maxOutputTokens = 10000;
+let result = await tools.exec_command({
+  cmd: "<command>",
+  yield_time_ms: yieldMs,
+  max_output_tokens: maxOutputTokens
+});
+const output = [result.output];
+let originalTokens = result.original_token_count ?? 0;
+while (result.session_id) {
+  result = await tools.write_stdin({
+    session_id: result.session_id,
+    chars: "",
+    yield_time_ms: yieldMs,
+    max_output_tokens: maxOutputTokens
+  });
+  output.push(result.output);
+  originalTokens += result.original_token_count ?? 0;
+}
+text(output.filter(Boolean).join(""));
+if (originalTokens > maxOutputTokens) {
+  throw new Error("command output exceeded the safe result budget; inspect its persisted artifact");
+}
+if (result.exit_code !== 0) {
+  throw new Error(`command exited with code ${result.exit_code ?? "unknown"}`);
+}
+```
+
+An empty `write_stdin` resumes the same process and returns when it exits or the
+ceiling is reached. Set `<expected-ms>` before writing the cell: take the
+duration named in Hold step 1, express the whole expected run in milliseconds,
+and cap it at the maximum the current tool schema accepts. The `@exec` header
+is JSON and cannot read `yieldMs`, so type the same number in both places;
+without the header the cell yields at the exec tool's own default, which is far
+shorter than most waits, no matter what the calls ask for. A sample value copied
+from a template is the common failure: it returns with the work still running
+and buys another round trip for nothing.
+
+Accumulate each terminal result inside the cell so output received before the
+final wait is not lost. Make any command behind a review or validation gate
+persist its full artifact to a run-owned file. When a terminal result reports
+more original tokens than its output budget, fail the gate and inspect that
+artifact rather than classifying truncated output.
+
+If the outer cell yields before the process finishes, resume that same cell with
+`functions.wait`. Do not restart the command, call `notify`, or use
+`yield_control` for unchanged progress.
+
+### Subagents
+
+Finish useful independent work after dispatch. Once blocked on a result, call
+`wait_agent` with a deadline sized to the task and capped by the tool schema; it
+returns when mailbox activity arrives. Wait again only when the required agent
+is still running after an unrelated event or the deadline.
+
+Call the agent wait directly unless the current host exposes it inside an exec
+cell. When it does run inside a cell, give that cell the same
+`// @exec: {"yield_time_ms": <expected-ms>}` header sized to the deadline;
+without the header the cell yields at the exec tool's own default regardless of
+the timeout the call itself asks for.
+
+Keep the parent turn active until every required agent reaches a terminal state.
+Reach for a further `wait_agent` rather than `list_agents`, a short repeated
+wait, a sleep, or a status heartbeat. `notify` is not a replacement: it cannot
+start a new parent turn after that turn has ended.
+
+### Independent calls
+
+Nested calls inside one cell are the only batching Codex code mode offers, and
+independent read-only calls belong in a single `Promise.all`. This applies to
+the reads that surround a wait as much as to the wait itself.
+
+## Claude Code hold mechanisms
+
+Use capabilities exposed by the current Claude Code host; do not pin behavior
+to a historical release.
+
+Claude Code re-invokes the agent when harness-tracked work finishes, so the
+cheapest hold is usually no wait at all.
+
+### One notification when work finishes
+
+Run the work with `Bash` and `run_in_background: true`, using a command that
+exits when the condition is true:
+
+```sh
+until grep -q "Ready in" dev.log; do sleep 0.5; done
+```
+
+The completion notification arrives on its own. Continue with other work in the
+meantime, and reach for `BashOutput` only when the notification names something
+that needs inspecting.
+
+### One notification per occurrence
+
+Use `Monitor`, whose every stdout line becomes a notification. Filter to the
+lines worth acting on, and cover failure states as well as success. A filter
+matching only the success marker stays silent through a crash, and silence reads
+as "still running".
+
+```sh
+tail -f run.log | grep -E --line-buffered "elapsed_steps=|Traceback|FAILED|Killed|OOM"
+```
+
+Set `persistent: true` for a session-length watch; otherwise `timeout_ms` caps
+it at one hour.
+
+### Blocking in the foreground
+
+Use the current foreground `Bash` ceiling when a completion notification is not
+available. Express work completion as a condition rather than a polling loop
+that returns to the model.
+
+### Subagents
+
+Subagents run in the background and report on completion. Continue with
+independent work and let the notification arrive; use `SendMessage` when a
+running agent needs new information.
+
+### Scheduled wake-ups
+
+`ScheduleWakeup` fits external state the harness cannot observe, such as a CI
+run or a remote queue, sized to how fast that state actually changes. For
+harness-tracked work, the completion notification already arrives, so a wake-up
+scheduled to check on it is a wasted round trip.
 
 ## Report
 
@@ -65,13 +203,10 @@ Done when one call spanned the whole requested delay.
 
 ## Subagents
 
-Use the harness's event-driven agent wait. In Codex, call `wait_agent` with a
-timeout long enough for the expected task, up to the tool's limit. It returns
-when the reviewer sends an update or finishes.
-
-After a non-terminal update or timeout, resume the event wait without a
-status-list call. Inspect agent status only for an explicit error or repeated
-timeouts. Keep the coordinator active until it receives the result.
+Use the harness's event-driven agent wait. After a non-terminal update or
+timeout, resume the event wait without a status-list call. Inspect agent status
+only for an explicit error or repeated timeouts. Keep the coordinator active
+until it receives the result.
 
 ## GitHub Actions
 

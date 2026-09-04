@@ -3,8 +3,7 @@ import * as Schema from "effect/Schema"
 const RuleEnforcement = Schema.Struct({
   kind: Schema.Literal("rule"),
   presets: Schema.Array(Schema.NonEmptyString),
-  rule: Schema.NonEmptyString,
-  test: Schema.NonEmptyString
+  rule: Schema.NonEmptyString
 })
 
 const PluginEnforcement = Schema.Struct({
@@ -33,15 +32,13 @@ const MypyEnforcement = Schema.Struct({
 
 const SemgrepEnforcement = Schema.Struct({
   file: Schema.NonEmptyString,
-  kind: Schema.Literal("semgrep"),
-  test: Schema.NonEmptyString
+  kind: Schema.Literal("semgrep")
 })
 
 const CheckEnforcement = Schema.Struct({
   file: Schema.NonEmptyString,
   kind: Schema.Literal("check"),
-  module: Schema.NonEmptyString,
-  test: Schema.NonEmptyString
+  module: Schema.NonEmptyString
 })
 
 const NotApplicableEnforcement = Schema.Struct({

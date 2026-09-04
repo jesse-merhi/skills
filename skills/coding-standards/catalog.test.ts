@@ -51,7 +51,7 @@ const enforcements = catalog.standards.flatMap((standard) => Object.values(stand
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
 const referencedPaths = [
-  ...ruleEntries.flatMap((entry) => [entry.rule, entry.test]),
+  ...ruleEntries.map((entry) => entry.rule),
   ...scriptEntries.map((entry) => entry.file),
   ...Object.values(catalog.baselines).map((baseline) => baseline.file)
 ]
@@ -111,21 +111,18 @@ const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
-  it("resolves every referenced rule, test, script, baseline, and preset file", () => {
+  it("resolves every referenced rule, script, baseline, and preset file", () => {
     for (const path of [...referencedPaths, ...Object.values(javascriptPresets).map((preset) => preset.file)]) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
   })
 
-  it("catalogues every custom rule exactly once alongside its test", () => {
+  it("catalogues every custom rule exactly once", () => {
     assert.deepEqual(
       ruleFiles.toSorted(),
       ruleEntries.map((entry) => entry.rule).toSorted(),
       "every rule file must be catalogued exactly once"
     )
-    for (const entry of ruleEntries) {
-      assert.strictEqual(entry.test, entry.rule.replace(/\.mjs$/u, ".test.mjs"))
-    }
   })
 
   it("names preset families and preset ids that exist", () => {

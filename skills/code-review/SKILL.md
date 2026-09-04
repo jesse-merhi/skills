@@ -102,7 +102,11 @@ unless the current user explicitly requests that exact cross-harness session.
 
 4. Run one-time setup for the current target.
 
-   Read [references/setup-and-lenses.md](references/setup-and-lenses.md). Done
+   Read [references/setup-and-lenses.md](references/setup-and-lenses.md). If
+   its flow map identifies at least three substantially independent runtime
+   flows, also read
+   [references/large-diff-slices.md](references/large-diff-slices.md) once
+   before Phase 1; do not slice a diff merely because it has many files. Done
    when the changed flows are mapped, required lenses have run, conditional
    lenses have run or been marked not applicable, the Fowler smell baseline has
    been considered on the Standards path, the neutral cold-review risk checklist
