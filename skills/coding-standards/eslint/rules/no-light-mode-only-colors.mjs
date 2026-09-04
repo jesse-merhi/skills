@@ -17,8 +17,10 @@ function hasBareProseWithoutDarkCounterpart(snippet) {
 }
 
 function isColorUtility(utility, family) {
+	utility = utility.replace(/!$/, "");
 	if (!utility.startsWith(family)) return false;
-	const value = utility.slice(family.length).replace(/!$/, "");
+	const value = utility.slice(family.length);
+	if (/^\((?:color:)?--[^)]+\)(?:\/.*)?$/.test(value)) return true;
 	if (/^(?:\d+(?:\.\d+)?(?:%|\/.*)?|\[|\()/.test(value)) {
 		return /^\[(?:color:|#|(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix)\()/.test(value);
 	}
@@ -48,8 +50,8 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 	switch (node.type) {
 		case "Literal":
 			return typeof node.value === "string" ? [node.value] : [];
-		case "TemplateLiteral":
-			return node.quasis.map((quasi) => quasi.value.cooked ?? "").filter(Boolean);
+		case "TemplateElement":
+			return node.value.cooked ? [node.value.cooked] : [];
 		case "JSXExpressionContainer":
 			return extractClassSnippets(node.expression, { unconditionalOnly, classMap });
 		case "ConditionalExpression":
@@ -85,8 +87,11 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 			return [...direct, ...spreads];
 		}
 		case "ArrayExpression":
+		case "TemplateLiteral":
 		case "CallExpression": {
-			const children = node.type === "ArrayExpression" ? node.elements : node.arguments;
+			const children = node.type === "TemplateLiteral"
+				? [...node.quasis, ...node.expressions]
+				: node.type === "ArrayExpression" ? node.elements : node.arguments;
 			const maps = node.type === "CallExpression"
 				? node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name)
 				: classMap;

@@ -180,38 +180,18 @@ function isBareZodTypeReference(node, zodTypeNames, zodNamespaceNames) {
 	return getTypeArguments(node).length === 0 && isZodTypeReference(node.typeName, zodTypeNames, zodNamespaceNames);
 }
 
-function containsAnyKeyword(node, anyTypeNames) {
-	if (!node || typeof node !== "object") {
-		return false;
-	}
-
-	if (node.type === "TSAnyKeyword") {
-		return true;
-	}
-
-	if (
-		node.type === "TSTypeReference" &&
-		node.typeName.type === "Identifier" &&
-		anyTypeNames.has(node.typeName.name)
-	) {
-		return true;
-	}
-
-	for (const [key, value] of Object.entries(node)) {
-		if (key === "parent") {
-			continue;
+function containsAnyKeyword(node, anyTypeNames, skipFunctionBodies = false) {
+	let containsAny = false;
+	visitNode(node, (child) => {
+		if (
+			child.type === "TSAnyKeyword" ||
+			(child.type === "TSTypeReference" && child.typeName.type === "Identifier" &&
+				anyTypeNames.has(child.typeName.name))
+		) {
+			containsAny = true;
 		}
-
-		if (Array.isArray(value) && value.some((child) => containsAnyKeyword(child, anyTypeNames))) {
-			return true;
-		}
-
-		if (containsAnyKeyword(value, anyTypeNames)) {
-			return true;
-		}
-	}
-
-	return false;
+	}, skipFunctionBodies);
+	return containsAny;
 }
 
 function isZodTypeReference(typeName, zodTypeNames, zodNamespaceNames) {
@@ -1334,7 +1314,7 @@ function collectAnyInterfaceOrClass(node, anyTypeNames) {
 		return false;
 	}
 
-	if (containsAnyKeyword(node, anyTypeNames)) {
+	if (containsAnyKeyword(node, anyTypeNames, true)) {
 		return addName(anyTypeNames, node.id.name);
 	}
 
