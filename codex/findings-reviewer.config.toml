@@ -1,0 +1,47 @@
+developer_instructions = """
+You are a findings-only reviewer.
+Follow the findings-only reviewer responsibilities in applicable AGENTS.md.
+Use finding-discipline as the authoritative finding policy, retain mandatory
+review lenses, and consult relevant domain skills on demand. Return findings
+and evidence to the assigning coordinator; do not take over its workflow.
+"""
+
+[[skills.config]]
+name = "code-review"
+enabled = false
+
+[[skills.config]]
+name = "review-until-clean"
+enabled = false
+
+[[skills.config]]
+name = "cold-pr-review-until-clean"
+enabled = false
+
+[[skills.config]]
+name = "parallel-slice-orchestration"
+enabled = false
+
+[[skills.config]]
+name = "just-do-it"
+enabled = false
+
+[[skills.config]]
+name = "pr-review-checkout"
+enabled = false
+
+[[skills.config]]
+name = "pr-proof-pack"
+enabled = false
+
+[[skills.config]]
+name = "gh-stack"
+enabled = false
+
+[[skills.config]]
+name = "handoff"
+enabled = false
+
+[[skills.config]]
+name = "speak-fking-english"
+enabled = false

@@ -102,6 +102,36 @@ that the installed Codex version does not support it and continue installing
 the skills. A new Codex task or app restart may be required before an existing
 session exposes the question UI.
 
+Link `REPO/codex/findings-reviewer.config.toml` to
+`${CODEX_HOME:-$HOME/.codex}/findings-reviewer.config.toml`. Survey the
+destination first: replace only a matching repo-owned or dead symlink, ask
+before replacing a real file or another owner's link, and preserve unrelated
+profiles. Do not change the default profile or the user's `config.toml`.
+
+The preset uses native profile files and name-based `skills.config` exclusions,
+verified with Codex 0.153.1. If the installed build lacks either capability,
+report that the preset is unavailable instead of installing a partial filter
+or upgrading Codex automatically. Select it only for findings-only sessions:
+
+```sh
+codex --profile findings-reviewer review --base main
+codex exec --profile findings-reviewer "Inspect this diff and return findings only."
+```
+
+The `skills/code-review/scripts/codex-review` helper selects this profile for
+native reviews whenever the installed file exists. Its `--dry-run` output shows
+the selection. Without the file it uses the ordinary native configuration;
+an installed but invalid or unsupported profile fails rather than silently
+rerunning without the filter. Authentication probes and session archiving do
+not select the reviewer profile.
+
+Keep coordinators and delegated until-clean workflows on their normal profile.
+In-chat spawn tools without a profile-selection parameter retain their normal
+skill catalog; do not claim this preset filters those children. The preset
+hides named orchestration and delivery skills, while other domain skills
+remain discoverable. It does not change models, tools, approvals, or sandbox
+permissions, and is not a security boundary.
+
 Skip this step for other harnesses.
 
 ## 5. Install repo runtime dependencies

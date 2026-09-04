@@ -11,7 +11,7 @@ these originals. Keep their text unchanged when updating the model variants.
 ## Provenance
 
 - The 43 skills already on main come from commit
-  `12e6aa3aa17087410a907ed2a73bc2ca38e47b82`, the model-conversion PR's base.
+  `12e6aa3aa17087410a907ed2a73bc2ca38e47b82`, the pre-conversion main snapshot.
 - [`model-writing-guides/SKILL.md`](model-writing-guides/SKILL.md) was added on
   the feature branch. Its source is commit
   `1943d066fac0a629472106867270d715ce3d8128`, the last version before its standalone
