@@ -94,6 +94,10 @@ something this repo proves.
 
 ## What a skill actually is
 
+The [original skill prompts](originals/README.md) are kept verbatim in `originals/`
+with their source commits. They are reference copies, separate from the maintained
+model variants, and are never included in model-specific installations.
+
 A skill is a directory with complete prompts under `variants/`. Its root
 `SKILL.md` points at the GPT-5.6 variant so ordinary repository discovery still
 works. Installation selects one variant as the harness-visible `SKILL.md`; the
