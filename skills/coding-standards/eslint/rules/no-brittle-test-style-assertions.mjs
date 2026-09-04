@@ -112,13 +112,18 @@ function unwrapExpression(node) {
 	return current;
 }
 
+function getRegexText(pattern) {
+	return pattern?.replace(/\(\?(?::|[=!]|<[=!]|<[A-Za-z_$][\w$]*>)/g, "(")
+		.replace(/\[(?:\\[sfnrtv]| )+\]|\\[bBsSfnrtv]/g, " ") ?? null;
+}
+
 function getStaticText(node, context, visitedVariables = new Set(), parameterBindings = new Map()) {
 	const expression = unwrapExpression(node);
 	if (!expression) return null;
 	if (expression.type === "Literal" && ["boolean", "number", "string"].includes(typeof expression.value)) {
 		return String(expression.value);
 	}
-	if (expression.type === "Literal" && expression.regex) return expression.regex.pattern;
+	if (expression.type === "Literal" && expression.regex) return getRegexText(expression.regex.pattern);
 	if (expression.type === "Identifier" && context) {
 		const variable = findVariable(context, expression);
 		if (variable && parameterBindings.has(variable)) {
@@ -159,7 +164,7 @@ function getStaticText(node, context, visitedVariables = new Set(), parameterBin
 		getPropertyName(expression.callee) === "RegExp" &&
 		expression.arguments.length > 0
 	) {
-		return getStaticText(expression.arguments[0], context, visitedVariables, parameterBindings);
+		return getRegexText(getStaticText(expression.arguments[0], context, visitedVariables, parameterBindings));
 	}
 	return null;
 }
@@ -552,7 +557,7 @@ function getConstSourceExpressions(context, node, visitedVariables = new Set()) 
 function getMemberSourceExpressions(context, node) {
 	const expression = unwrapExpression(node);
 	if (expression?.type !== "MemberExpression") return [];
-	const propertyName = getPropertyName(expression.property);
+	const propertyName = expression.computed ? getStaticText(expression.property, context) : getPropertyName(expression.property);
 	if (!propertyName) return [];
 	return getObjectPropertyExpressions(context, expression.object, propertyName);
 }
