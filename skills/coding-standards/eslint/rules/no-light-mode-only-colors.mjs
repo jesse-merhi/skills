@@ -32,7 +32,7 @@ function isColorUtility(utility, family) {
 }
 
 function hasExplicitDarkCounterpart(snippet, token) {
-	const modifiers = splitTailwindSegments(token);
+	const modifiers = splitTailwindSegments(token).filter((modifier) => modifier !== "dark");
 	const family = `${modifiers.pop().replace(/^!/, "").split("-")[0]}-`;
 	return getClassTokens(snippet).some((candidate) => {
 		const candidateModifiers = splitTailwindSegments(candidate);
@@ -79,7 +79,14 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 		case "JSXExpressionContainer":
 			return extractClassSnippets(node.expression, { unconditionalOnly, classMap });
 		case "ConditionalExpression":
-			if (unconditionalOnly) return [];
+			if (unconditionalOnly) {
+				const branches = [node.consequent, node.alternate].map((branch) =>
+					extractClassSnippets(branch, { unconditionalOnly: true, classMap }).join(" "));
+				return [getClassTokens(branches[0]).filter((token) => branches.every((branch) =>
+					getClassTokens(branch).includes(token) ||
+					(splitTailwindSegments(token).includes("dark") && hasExplicitDarkCounterpart(branch, token)),
+				)).join(" ")];
+			}
 			return [
 				...extractClassSnippets(node.consequent, { classMap }),
 				...extractClassSnippets(node.alternate, { classMap }),

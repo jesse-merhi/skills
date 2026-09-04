@@ -152,7 +152,7 @@ export default {
 		const allowedFiles = options.allowedFiles || [];
 		const checkManualTypeChecks = options.checkManualTypeChecks === true;
 		const filename = context.filename;
-		const scopes = [];
+		const scopes = [new Set()];
 
 		if (allowedFiles.some((allowedFile) => filename.endsWith(allowedFile))) {
 			return {};
@@ -165,7 +165,8 @@ export default {
 		function enterFunction(node) {
 			const taintedVariables = new Set(currentTaintedVariables() ?? []);
 
-			for (const param of node.params) {
+			for (const parameter of node.params) {
+				const param = parameter.type === "AssignmentPattern" ? parameter.left : parameter;
 				const name = getIdentifierName(param);
 				if (name && isBoundaryTypeAnnotation(param)) {
 					const variable = findVariable(context, param);

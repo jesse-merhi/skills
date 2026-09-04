@@ -1043,6 +1043,7 @@ function isWeakZodHeritage(
 		typeArguments: typeArguments.length > 0 ? { params: typeArguments } : undefined,
 	};
 	return (
+		isBareZodTypeReference(typeReference, zodTypeNames, zodNamespaceNames) ||
 		isZodTypeReferenceWithAnyTypeArgument(typeReference, zodTypeNames, zodNamespaceNames, anyTypeNames) ||
 		isGenericZodTypeAliasReferenceWithAnyTypeArgument(typeReference, genericZodTypeNames, anyTypeNames)
 	);

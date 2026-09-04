@@ -102,6 +102,10 @@ function isDirectClassContext(node, classFunctionBindings, identifierBindings, v
 	let previousNode = node;
 	let currentNode = node.parent;
 	for (let depth = 0; currentNode && depth < 10; depth += 1) {
+		if (
+			(currentNode.type === "ConditionalExpression" && currentNode.test === previousNode) ||
+			(currentNode.type === "BinaryExpression" && currentNode.operator !== "+")
+		) return false;
 		if (currentNode.type === "CallExpression") {
 			if (isClassFunctionReference(currentNode.callee, classFunctionBindings, identifierBindings)) {
 				return true;
@@ -264,6 +268,10 @@ export default {
 						updateClassFunctionBinding(specifier.local, true);
 					}
 				}
+			},
+			Property(node) {
+				if (node.computed || node.key.type !== "Identifier") return;
+				reportRawElevation(context, node.key, node.key.name, classFunctionBindings, identifierBindings, tokenModule);
 			},
 			Literal(node) {
 				if (typeof node.value === "string") {
