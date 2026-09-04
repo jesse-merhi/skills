@@ -163,7 +163,7 @@ const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandar
     "an ESLint rule entry pasted into the python column",
     (standards) => {
       for (const standard of standards) {
-        standard.enforcement.python.push({ kind: "rule", presets: ["base"], rule: "r.mjs", test: "r.test.mjs" })
+        standard.enforcement.python.push({ kind: "rule", presets: ["base"], rule: "r.mjs" })
       }
     }
   ]

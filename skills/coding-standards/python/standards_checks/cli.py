@@ -58,6 +58,10 @@ IGNORED_DIRECTORY_NAMES = frozenset(
 )
 
 
+def _raise_scan_error(error: OSError) -> None:
+    raise error
+
+
 def python_files(paths: Iterable[str]) -> Iterator[Path]:
     """Yield the Python files named directly, plus those under named directories."""
     for raw in paths:
@@ -65,7 +69,9 @@ def python_files(paths: Iterable[str]) -> Iterator[Path]:
         if not path.is_dir():
             yield path
             continue
-        for directory, directory_names, filenames in path.walk():
+        for directory, directory_names, filenames in path.walk(
+            on_error=_raise_scan_error
+        ):
             directory_names[:] = sorted(
                 name for name in directory_names if name not in IGNORED_DIRECTORY_NAMES
             )
@@ -91,19 +97,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
 
     failed = False
-    for path in python_files(arguments.paths):
-        try:
-            findings = check_file(path)
-        except (
-            OSError,
-            SyntaxError,
-            UnicodeDecodeError,
-            tokenize.TokenError,
-        ) as error:
-            print(f"{path}: cannot read: {error}", file=sys.stderr)
-            failed = True
-            continue
-        for finding in findings:
-            print(finding.format(str(path)))
-            failed = True
+    try:
+        for path in python_files(arguments.paths):
+            try:
+                findings = check_file(path)
+            except (
+                OSError,
+                SyntaxError,
+                UnicodeDecodeError,
+                tokenize.TokenError,
+            ) as error:
+                print(f"{path}: cannot read: {error}", file=sys.stderr)
+                failed = True
+                continue
+            for finding in findings:
+                print(finding.format(str(path)))
+                failed = True
+    except OSError as error:
+        print(f"cannot scan: {error}", file=sys.stderr)
+        return 1
     return 1 if failed else 0
