@@ -15,6 +15,7 @@ Anything that could carry meaning on its own is skipped:
   holds no ``yield``),
 * defaults, ``*args``, ``**kwargs``, keyword-only parameters (the signature
   adapts rather than forwards),
+* ``TypeGuard`` and ``TypeIs`` return annotations (the predicate narrows types),
 * functions taking no parameters, which forward nothing and are usually a
   factory or an accessor,
 * module-level functions named in ``__all__``, the Python analogue of the
@@ -34,6 +35,8 @@ from standards_checks.finding import Finding
 CHECK_ID = "no-trivial-forwarding-wrapper"
 BOUND_FIRST_PARAMETERS = frozenset({"self", "cls"})
 EXPORT_LIST = "__all__"
+NARROWING_TYPES = frozenset({"TypeGuard", "TypeIs"})
+TYPING_MODULES = frozenset({"typing", "typing_extensions"})
 
 
 def _callee_name(func: ast.expr) -> str | None:
@@ -57,7 +60,43 @@ def _forwards_parameters_verbatim(node: ast.FunctionDef, call: ast.Call) -> bool
     )
 
 
-def _has_adapting_signature(node: ast.FunctionDef) -> bool:
+def _narrowing_type_names(module: ast.Module) -> set[str]:
+    names = set(NARROWING_TYPES)
+    names.update(
+        f"{module_name}.{name}"
+        for module_name in TYPING_MODULES
+        for name in NARROWING_TYPES
+    )
+    for statement in ast.walk(module):
+        if isinstance(statement, ast.ImportFrom) and statement.module in TYPING_MODULES:
+            names.update(
+                alias.asname or alias.name
+                for alias in statement.names
+                if alias.name in NARROWING_TYPES
+            )
+        elif isinstance(statement, ast.Import):
+            names.update(
+                f"{alias.asname or alias.name}.{name}"
+                for alias in statement.names
+                if alias.name in TYPING_MODULES
+                for name in NARROWING_TYPES
+            )
+    return names
+
+
+def _has_narrowing_return(annotation: ast.expr | None, names: set[str]) -> bool:
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        try:
+            annotation = ast.parse(annotation.value, mode="eval").body
+        except SyntaxError:
+            return False
+    return (
+        isinstance(annotation, ast.Subscript)
+        and _callee_name(annotation.value) in names
+    )
+
+
+def _has_adapting_signature(node: ast.FunctionDef, narrowing_names: set[str]) -> bool:
     arguments = node.args
     return bool(
         arguments.defaults
@@ -65,6 +104,7 @@ def _has_adapting_signature(node: ast.FunctionDef) -> bool:
         or arguments.kwonlyargs
         or arguments.vararg
         or arguments.kwarg
+        or _has_narrowing_return(node.returns, narrowing_names)
     )
 
 
@@ -112,12 +152,13 @@ def check_source(source: str, filename: str) -> list[Finding]:
     findings: list[Finding] = []
     module = ast.parse(source)
     exported = _exported_names(module)
+    narrowing_names = _narrowing_type_names(module)
     for node in ast.walk(module):
         if not isinstance(node, ast.FunctionDef):
             continue
         if (
             node.decorator_list
-            or _has_adapting_signature(node)
+            or _has_adapting_signature(node, narrowing_names)
             or _is_bound_method(node)
             or (node in module.body and node.name in exported)
         ):
