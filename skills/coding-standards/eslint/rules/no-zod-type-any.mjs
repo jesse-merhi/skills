@@ -93,7 +93,7 @@ function isWeakLocalZodExport(
 	const localName = getExportLocalName(specifier);
 	return (
 		localName !== null &&
-		(isScopedName(localName, specifier, weakZodTypeNames, weakZodTypeScopes, typeDeclarationScopes) ||
+		(isScopedName(localName, specifier, weakZodTypeNames, weakZodTypeScopes) ||
 			isZodTypeReference(specifier.local, zodTypeNames, zodNamespaceNames) ||
 			isScopedTypeZodNamespaceName(localName, specifier, zodNamespaceNames, zodNamespaceTypeScopes))
 	);
@@ -164,7 +164,7 @@ function isWeakZodAliasReference(
 	}
 
 	if (typeName.type === "Identifier") {
-		return isScopedName(typeName.name, typeName, weakZodTypeNames, weakZodTypeScopes, typeDeclarationScopes);
+		return isScopedName(typeName.name, typeName, weakZodTypeNames, weakZodTypeScopes);
 	}
 
 	const name = getTypeReferenceName(typeName);
@@ -1077,9 +1077,14 @@ function getAliasScope(node) {
 }
 
 function addScopedName(names, scopes, name, node) {
-	const changedName = addName(names, name);
-	const changedScope = addNameScope(scopes, name, node);
-	return changedName || changedScope;
+	let changed = addName(names, name);
+	const variables = scopes.context.sourceCode.getDeclaredVariables(node).filter((variable) => variable.name === name);
+	const reference = findVariable(scopes.context, node, name);
+	if (reference) variables.push(reference);
+	for (const variable of variables) {
+		changed = addName(scopes.bindings, variable) || changed;
+	}
+	return changed;
 }
 
 function addNameScope(scopes, name, node) {
@@ -1095,31 +1100,8 @@ function addNameScope(scopes, name, node) {
 	return changedScope;
 }
 
-function isScopedName(name, node, names, scopes, declarationScopes = new Map()) {
-	if (!names.has(name)) {
-		return false;
-	}
-
-	const nameScopes = scopes.get(name);
-	if (!nameScopes) {
-		return true;
-	}
-
-	for (let current = node; current; current = current.parent) {
-		if (current.type !== "BlockStatement" && current.type !== "TSModuleBlock" && current.type !== "Program") {
-			continue;
-		}
-
-		if (nameScopes.has(current)) {
-			return true;
-		}
-
-		if (declarationScopes.get(name)?.has(current)) {
-			return false;
-		}
-	}
-
-	return false;
+function isScopedName(name, node, names, scopes) {
+	return names.has(name) && scopes.bindings.has(findVariable(scopes.context, node, name));
 }
 
 function isScopedTypeZodNamespaceName(name, node, zodNamespaceNames, zodNamespaceTypeScopes) {
@@ -1241,7 +1223,7 @@ function getScopedAnyTypeNames(node, anyTypeNames) {
 	return scopedAnyTypeNames;
 }
 
-function collectWeakZodTypeParameterNames(
+function collectWeakZodTypeParameterBindings(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
@@ -1253,7 +1235,7 @@ function collectWeakZodTypeParameterNames(
 	anyTypeNames,
 	genericZodTypeNames,
 ) {
-	const typeParameterNames = new Set();
+	const typeParameterBindings = new Set();
 	for (const typeParameter of node.typeParameters?.params ?? []) {
 		if (!typeParameter.name?.name) {
 			continue;
@@ -1286,11 +1268,12 @@ function collectWeakZodTypeParameterNames(
 			);
 
 		if (isWeakZodTypeParameter) {
-			typeParameterNames.add(typeParameter.name.name);
+			const variable = findVariable(weakZodTypeScopes.context, typeParameter.name);
+			if (variable) typeParameterBindings.add(variable);
 		}
 	}
 
-	return typeParameterNames;
+	return typeParameterBindings;
 }
 
 function addAnyTypeDeclaration(node, anyTypeNames) {
@@ -1348,7 +1331,8 @@ function collectWeakZodTypeAlias(
 	const localAnyTypeNames = getScopedAnyTypeNames(node, anyTypeNames);
 
 	const localWeakZodTypeNames = new Set(weakZodTypeNames);
-	for (const typeParameterName of collectWeakZodTypeParameterNames(
+	const localWeakZodTypeScopes = { ...weakZodTypeScopes, bindings: new Set(weakZodTypeScopes.bindings) };
+	for (const variable of collectWeakZodTypeParameterBindings(
 		node,
 		weakZodTypeNames,
 		weakZodTypeScopes,
@@ -1360,14 +1344,15 @@ function collectWeakZodTypeAlias(
 		anyTypeNames,
 		genericZodTypeNames,
 	)) {
-		localWeakZodTypeNames.add(typeParameterName);
+		localWeakZodTypeNames.add(variable.name);
+		localWeakZodTypeScopes.bindings.add(variable);
 	}
 
 	if (
 		containsWeakZodTypeAnnotation(
 			node.typeAnnotation,
 			localWeakZodTypeNames,
-			weakZodTypeScopes,
+			localWeakZodTypeScopes,
 			typeDeclarationScopes,
 			zodTypeNames,
 			zodNamespaceNames,
@@ -1743,7 +1728,7 @@ export default {
 	},
 	create(context) {
 		const weakZodTypeNames = new Set();
-		const weakZodTypeScopes = new Map();
+		const weakZodTypeScopes = { bindings: new Set(), context };
 		const typeDeclarationScopes = new Map();
 		const zodTypeNames = { bindings: new Set(), context };
 		const zodNamespaceNames = { bindings: new Set(), context };

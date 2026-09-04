@@ -163,7 +163,7 @@ export default {
 		}
 
 		function enterFunction(node) {
-			const taintedVariables = new Set();
+			const taintedVariables = new Set(currentTaintedVariables() ?? []);
 
 			for (const param of node.params) {
 				const name = getIdentifierName(param);

@@ -1011,7 +1011,8 @@ export default {
 				if (calleeName === "getComputedStyle") reportUnlessAllowed(context, node, "computedStyle");
 			},
 			MemberExpression(node) {
-				if (getPropertyName(node.property) === "style" && isLikelyDomExpression(node.object, context)) {
+				const propertyName = node.computed ? getStaticText(node.property, context) : getPropertyName(node.property);
+				if (propertyName === "style" && isLikelyDomExpression(node.object, context)) {
 					reportUnlessAllowed(context, node, "elementStyle");
 				}
 			},

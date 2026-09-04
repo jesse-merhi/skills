@@ -21,8 +21,12 @@ function isColorUtility(utility, family) {
 	if (!utility.startsWith(family)) return false;
 	const value = utility.slice(family.length);
 	if (/^\((?:color:)?--[^)]+\)(?:\/.*)?$/.test(value)) return true;
+	const arbitraryName = /^\[([a-zA-Z]+)\](?:\/.*)?$/.exec(value)?.[1];
+	if (arbitraryName) {
+		return !/^(?:auto|none|cover|contain|top|right|bottom|left|center|small|medium|large|smaller|larger|thin|thick)$/.test(arbitraryName);
+	}
 	if (/^(?:\d+(?:\.\d+)?(?:%|\/.*)?|\[|\()/.test(value)) {
-		return /^\[(?:color:|#|(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix)\()/.test(value);
+		return /^\[(?:color:|#|var\(--|(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix)\()/.test(value);
 	}
 	return !/^(?:text-(?:xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)(?:\/.*)?|bg-(?:auto|cover|contain|none|fixed|local|scroll)|(?:bg-(?:clip|origin|repeat|blend|gradient|linear|radial|conic|position|size)|text-(?:opacity|shadow)|border-(?:opacity|spacing|solid|dashed|dotted|double|hidden|none|[trblsexy])|ring-(?:offset|inset))(?:-.*)?|bg-(?:top|right|bottom|left|center)(?:-.*)?)$/.test(utility);
 }
@@ -145,7 +149,10 @@ export default {
 					}
 
 					const matches = getClassTokens(snippet).filter(
-						(token) => !splitTailwindSegments(token).includes("dark") && token.match(LIGHT_ONLY_CLASS_PATTERN),
+						(token) => {
+							const segments = splitTailwindSegments(token);
+							return !segments.includes("dark") && segments.at(-1).match(LIGHT_ONLY_CLASS_PATTERN);
+						},
 					);
 
 					for (const token of new Set(matches)) {

@@ -7,7 +7,10 @@ export function extractStringSnippets(node, classMap = false) {
 		case "Literal":
 			return typeof node.value === "string" ? [node.value] : [];
 		case "TemplateLiteral":
-			return node.quasis.map((quasi) => quasi.value.cooked ?? "").filter(Boolean);
+			return [
+				...node.quasis.map((quasi) => quasi.value.cooked ?? "").filter(Boolean),
+				...node.expressions.flatMap((expression) => extractStringSnippets(expression, classMap)),
+			];
 		case "JSXExpressionContainer":
 			return extractStringSnippets(node.expression, classMap);
 		case "ConditionalExpression":
