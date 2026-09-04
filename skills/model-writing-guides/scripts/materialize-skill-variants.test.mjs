@@ -247,7 +247,9 @@ test("rejects unsupported families and older same-family models", () => {
   assert.throws(() => resolveProfile("gpt-oss-120b"), /unsupported model family/);
   assert.throws(() => resolveProfile("gpt-4.1"), /older than the earliest supported/);
   assert.throws(() => resolveProfile("gpt-5.5"), /older than the earliest supported/);
+  assert.throws(() => resolveProfile("gpt-5-2025-08-07"), /older than the earliest supported/);
   assert.throws(() => resolveProfile("claude-fable-5.0"), /older than the earliest supported/);
+  assert.throws(() => resolveProfile("claude-fable-5-20260801"), /older than the earliest supported/);
 });
 
 test("selects the newest profile not newer than an inexact request", (t) => {

@@ -57,7 +57,8 @@ function modelFamily(model) {
 }
 
 function modelVersion(model, family) {
-  const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase();
+  const snapshotSuffix = family === "openai-gpt" ? /-\d{4}-\d{2}-\d{2}$/ : /-\d{8}$/;
+  const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase().replace(snapshotSuffix, "");
   if (family === "openai-gpt") {
     const match = normalized.match(/^gpt-(\d+)(?:[.-](\d+))?/);
     return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
