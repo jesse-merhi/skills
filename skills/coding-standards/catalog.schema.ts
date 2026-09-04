@@ -10,7 +10,8 @@ const PluginEnforcement = Schema.Struct({
   kind: Schema.Literal("plugin"),
   package: Schema.NonEmptyString,
   presets: Schema.Array(Schema.NonEmptyString),
-  rules: Schema.Array(Schema.NonEmptyString)
+  rules: Schema.Array(Schema.NonEmptyString),
+  typeChecked: Schema.optionalKey(Schema.Literal(true))
 })
 
 const ScriptEnforcement = Schema.Struct({

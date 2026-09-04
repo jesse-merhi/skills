@@ -842,7 +842,6 @@
 							"jest/no-disabled-tests",
 							"jest/no-done-callback",
 							"jest/no-duplicate-hooks",
-							"jest/no-error-equal",
 							"jest/no-export",
 							"jest/no-focused-tests",
 							"jest/no-identical-title",
@@ -857,12 +856,23 @@
 							"jest/valid-describe-callback",
 							"jest/valid-expect",
 							"jest/valid-expect-in-promise",
-							"jest/valid-expect-with-promise",
 							"jest/valid-title"
 						],
 						"presets": [
 							"jest"
 						]
+					},
+					{
+						"kind": "plugin",
+						"package": "eslint-plugin-jest",
+						"rules": [
+							"jest/no-error-equal",
+							"jest/valid-expect-with-promise"
+						],
+						"presets": [
+							"jest"
+						],
+						"typeChecked": true
 					}
 				]
 			}
