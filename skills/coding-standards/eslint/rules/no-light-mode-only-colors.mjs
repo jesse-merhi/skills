@@ -46,6 +46,12 @@ function hasExplicitDarkCounterpart(snippet, token) {
 	});
 }
 
+function getLogicalIdentifierGuard(node) {
+	return node?.type === "LogicalExpression" && node.left.type === "Identifier"
+		? `${node.operator}:${node.left.name}`
+		: undefined;
+}
+
 function extractClassSnippets(node, { unconditionalOnly = false, classMap = false } = {}) {
 	if (!node) {
 		return [];
@@ -103,9 +109,18 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 				.flatMap((child) => extractClassSnippets(child, { unconditionalOnly: true, classMap: maps }))
 				.join(" ");
 			if (unconditionalOnly) return shared ? [shared] : [];
-			return children
-				.flatMap((child) => extractClassSnippets(child, { classMap: maps }))
-				.map((snippet) => `${shared} ${snippet}`);
+			const guardedSnippets = new Map();
+			for (const child of children) {
+				const guard = getLogicalIdentifierGuard(child);
+				if (guard === undefined) continue;
+				const snippets = extractClassSnippets(child.right, { unconditionalOnly: true, classMap: maps });
+				guardedSnippets.set(guard, `${guardedSnippets.get(guard) ?? ""} ${snippets.join(" ")}`);
+			}
+			return children.flatMap((child) => {
+				const guarded = guardedSnippets.get(getLogicalIdentifierGuard(child)) ?? "";
+				return extractClassSnippets(child, { classMap: maps })
+					.map((snippet) => `${shared} ${guarded} ${snippet}`);
+			});
 		}
 		default:
 			return [];
