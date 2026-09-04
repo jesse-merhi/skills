@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+import { runInstaller } from "./skills/model-writing-guides/scripts/install-skills.mjs";
+
+runInstaller();

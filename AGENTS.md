@@ -69,6 +69,9 @@ Assign review duties by the task, not by whether an agent is a subagent.
 - Make architectural decisions for the long term. Do not implement a stopgap
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
+- Before creating or changing any skill, load `writing-for-agents` and
+  `model-writing-guides`. Update the complete prompt for every supported model;
+  variant file presence is the coverage record.
 
 ## Dependency-first implementation
 

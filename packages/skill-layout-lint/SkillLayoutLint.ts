@@ -33,6 +33,7 @@ const maximumBodyLines = 500
 
 const skillFileName = "SKILL.md"
 const referencesDirectoryName = "references"
+const variantsDirectoryName = "variants"
 const attributionPrefix = "upstream-license"
 const vendorDirectoryName = "node_modules"
 
@@ -169,8 +170,8 @@ const fanOutFindings = (path: Path.Path, skillDirectory: string, skillPath: stri
   }))
 }
 
-const undisclosedFindings = (path: Path.Path, skill: SkillSource): Array<Finding> => {
-  const lines = splitLines(skill.content)
+const undisclosedFindings = (path: Path.Path, skill: SkillSource, promptPath: string, content: string): Array<Finding> => {
+  const lines = splitLines(content)
   const fenced = fenceMask(lines)
   const linked = new Set<string>()
   lines.forEach((line, index) => {
@@ -179,19 +180,28 @@ const undisclosedFindings = (path: Path.Path, skill: SkillSource): Array<Finding
   })
   return skill.references.filter((reference) => !linked.has(reference.path)).map((reference) => ({
     line: undefined,
-    message: `${path.relative(skill.directory, reference.path)} is not linked from ${skillFileName}; link every reference from ${skillFileName} or delete it`,
+    message: `${path.relative(skill.directory, reference.path)} is not linked from ${path.relative(skill.directory, promptPath)}; link every reference from every skill prompt or delete it`,
     path: reference.path,
     severity: "error"
   }))
 }
 
+const promptFindings = (path: Path.Path, skill: SkillSource, promptPath: string, content: string): Array<Finding> => [
+  ...bodyFindings(promptPath, content),
+  ...undisclosedFindings(path, skill, promptPath, content),
+  ...fanOutFindings(path, skill.directory, promptPath, content)
+]
+
+const referenceFindings = (path: Path.Path, skill: SkillSource): Array<Finding> => {
+  const skillPath = path.join(skill.directory, skillFileName)
+  return skill.references.flatMap((reference) => chainFindings(path, skill, skillPath, reference))
+}
+
 export const analyzeSkill = (path: Path.Path, skill: SkillSource): Array<Finding> => {
   const skillPath = path.join(skill.directory, skillFileName)
   return [
-    ...bodyFindings(skillPath, skill.content),
-    ...skill.references.flatMap((reference) => chainFindings(path, skill, skillPath, reference)),
-    ...undisclosedFindings(path, skill),
-    ...fanOutFindings(path, skill.directory, skillPath, skill.content)
+    ...promptFindings(path, skill, skillPath, skill.content),
+    ...referenceFindings(path, skill)
   ]
 }
 
@@ -215,13 +225,22 @@ export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(functi
   for (const skillPath of skillPaths) {
     const directory = path.dirname(skillPath)
     const referencesDirectory = path.join(directory, referencesDirectoryName)
+    const variantsDirectory = path.join(directory, variantsDirectoryName)
     const referencePaths = files.filter((file) =>
       isWithin(path, referencesDirectory, file) && file.endsWith(".md") && !path.basename(file).startsWith(attributionPrefix))
+    const variantPaths = files.filter((file) => path.dirname(file) === variantsDirectory && file.endsWith(".md"))
     const content = yield* fileSystem.readFileString(skillPath)
     const references = yield* Effect.forEach(referencePaths, (referencePath) =>
       Effect.map(fileSystem.readFileString(referencePath), (referenceContent) => ({ content: referenceContent, path: referencePath })))
     referenceCount += references.length
-    findings.push(...analyzeSkill(path, { content, directory, references, root }))
+    const skill = { content, directory, references, root }
+    if (variantPaths.length === 0) findings.push(...analyzeSkill(path, skill))
+    else {
+      findings.push(...referenceFindings(path, skill))
+      const variants = yield* Effect.forEach(variantPaths, (variantPath) =>
+        Effect.map(fileSystem.readFileString(variantPath), (variantContent) => ({ content: variantContent, path: variantPath })))
+      for (const variant of variants) findings.push(...promptFindings(path, skill, variant.path, variant.content))
+    }
   }
   const report: LintReport = { findings, referenceCount, skillCount: skillPaths.length }
   return report
