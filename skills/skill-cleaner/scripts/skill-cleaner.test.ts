@@ -1,5 +1,5 @@
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path";
@@ -12,6 +12,7 @@ import {
   plainLogSkillReads,
   referencedSkillPaths,
   usageEvidence,
+  walkFiles,
 } from "./skill-cleaner.ts";
 
 const temporaryDirectories: string[] = [];
@@ -37,6 +38,17 @@ describe("skill-cleaner", () => {
 
     expect(discoverRoots(temporary, [isolatedRoot], true)).toEqual([isolatedRoot]);
     expect(discoverRoots(temporary, [isolatedRoot], false)).toEqual([...defaultRoots, isolatedRoot].sort());
+  });
+
+  it("discovers a SKILL.md symlink to a model variant", () => {
+    const temporary = mkdtempSync(join(tmpdir(), "skill-cleaner-symlink-"));
+    temporaryDirectories.push(temporary);
+    const skill = join(temporary, "demo");
+    mkdirSync(join(skill, "variants"), { recursive: true });
+    writeFileSync(join(skill, "variants/gpt-5.6.md"), "---\nname: demo\ndescription: fixture\n---\n");
+    symlinkSync("variants/gpt-5.6.md", join(skill, "SKILL.md"));
+
+    expect(walkFiles(temporary, (file) => file.endsWith("/SKILL.md"))).toEqual([join(skill, "SKILL.md")]);
   });
 
   it("parses Codex skill roots and model-visible lines", () => {

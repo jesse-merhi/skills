@@ -2,7 +2,7 @@
 
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
-This repo is my working set of agent skills: 43 Markdown workflows that coding
+This repo is my working set of agent skills: 44 Markdown workflows that coding
 agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
 [`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
 
@@ -39,32 +39,62 @@ Read INSTALL.md and install these skills for your harness.
 ```
 
 [`INSTALL.md`](INSTALL.md) is the authoritative installer and is written *to the
-agent*, not to you. It detects the harness, links the global instruction
-files, surveys what is already in your skills directory, symlinks each repo
-skill in by its frontmatter `name`, reconciles third-party skills from
+agent*, not to you. It detects the harness and active model, builds a lightweight
+view that delivers one complete model-specific prompt per invocation, links
+those skills by frontmatter `name`, reconciles third-party skills from
 [`external.md`](external.md), and runs the tests. It asks before touching
 anything it did not put there.
+
+To install or switch just this repo's skills, run one command from the clone:
+
+```sh
+./install-skills --harness codex --model astra
+./install-skills --harness codex --model gpt-5.6
+./install-skills --harness claude --model fable
+./install-skills --harness claude --model opus
+```
+
+Each command installs all 44 skills for that model. Add `--require-exact` to
+reject missing model coverage, or `--dry-run` to inspect without writing.
+The command preserves other skills and harness settings; it does not select
+the model for you. Start a fresh session for a clean prompt switch. Use separate
+`--root` harness configuration directories for concurrent different-model
+sessions; sessions sharing a root share its installed skills.
 
 Where the skills land, per harness:
 
 | Harness | Skills directory | Global instructions | Personal agents |
 | --- | --- | --- | --- |
-| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | Fable orchestrator, Opus worker, Codex reviewer |
+| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | Claude orchestrator, Codex reviewer |
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
-| OpenClaw | `REPO/skills` via `skills.load.extraDirs` | not linked | not linked |
+| OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
 
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
-symlink inside it. OpenClaw watches `REPO/skills` directly instead. So you can
-pull, diff, and update this repo like any other, and nothing turns into a
-mystery tree. Hand-written local skills are never replaced without asking.
+symlink into a generated view. Codex, opencode, Pi, and OpenClaw receive a
+contained static copy of the selected prompt, as does Claude. Shared executable
+resources stay linked to this repo so their dependencies resolve. The command
+refuses to replace hand-written local skills or links owned elsewhere.
 
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
-Fable keeps product, architecture, design direction, integration, and high-level
-review; it delegates settled implementation and UI to Opus 5 and code-centric
-review to GPT-5.6 Sol High.
+The existing agent name is unchanged, but it now inherits your selected Claude
+model instead of forcing Fable. It owns implementation and high-level review,
+and delegates code-centric review to GPT-5.6 Sol High.
+
+Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
+sessions. After installation, use `codex --profile findings-reviewer review
+--base main`, or the normal `skills/code-review/scripts/codex-review` helper,
+which selects the preset automatically when its file is installed in
+`CODEX_HOME` (default `~/.codex`). Without that file the helper keeps native
+review's normal configuration; `--dry-run` shows the selected command. It hides
+a short list of coordination, publication, and handoff
+skills by name, while keeping domain skills discoverable on demand and
+`finding-discipline` authoritative. Coordinators and delegated until-clean
+workflows keep their normal profile; in-chat spawn tools without profile
+selection are not filtered. This is a relevance filter, not a permission
+boundary, and it does not override the selected model or sandbox.
 
 **Honesty about harness coverage:** the installer handles four link-based
 harnesses plus a locally running OpenClaw Gateway. The skills themselves were
@@ -77,10 +107,15 @@ something this repo proves.
 
 ## What a skill actually is
 
-A skill is a directory with a `SKILL.md` inside it. The frontmatter carries a
-`name` and a one-line `description`; the body is the workflow: steps, rules,
-stop conditions, and pointers to reference files that only get read when they
-are needed.
+The [original skill prompts](originals/README.md) are kept verbatim in `originals/`
+with their source commits. They are reference copies, separate from the maintained
+model variants, and are never included in model-specific installations.
+
+A skill is a directory with complete prompts under `variants/`. Its root
+`SKILL.md` points at the GPT-5.6 variant so ordinary repository discovery still
+works. Installation selects one variant as the harness-visible `SKILL.md`; the
+frontmatter carries a `name` and one-line `description`, and the body contains
+the workflow, constraints, stop conditions, and reference pointers.
 
 Two ways one gets used:
 
@@ -99,6 +134,13 @@ Two ways one gets used:
 Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
+
+Every skill has full GPT-5.6, GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5
+variants. Selection
+happens locally before the model sees the workflow, so there is no router turn
+or unused prompt in context. Harness views expose the selected prompt directly.
+A newer model in a supported family falls back to the newest family variant and
+produces one update notice during materialization.
 
 ## The loop
 
@@ -210,6 +252,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | Skill | What it does |
 | --- | --- |
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Runs a compact clarity and voice pass before every final response, then adds the full AI-tells catalogue when the user invokes the skill explicitly. |
+| [`model-writing-guides`](skills/model-writing-guides/SKILL.md) | Maintains complete model-specific skill prompts, official writing-guide references, local selection, fallback, and stale-profile notices. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
 ### Meta and operations
@@ -283,13 +326,18 @@ PRs are welcome.
 - Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
-- One skill per directory, `SKILL.md` at its root, `name` unique across the
-  repo. Keep the body short. Put anything every use needs inline; put
-  conditional or advanced detail in `references/`, linked one hop from
-  `SKILL.md` only. A reference file must not link to another reference; the
-  only file under `skills/` it may link to is its own `SKILL.md`. A skill that
-  runs on every turn is a single file; `speak-fking-english` is the one
-  outstanding exception and is being restructured separately.
+- Give every skill a complete prompt in `variants/gpt-5.6.md`,
+  `variants/gpt-6-astra.md`, `variants/claude-fable-5.1.md`, and
+  `variants/claude-opus-5.md`. Preserve one
+  behavior contract while following each model's official prompting guide. The
+  [`model-writing-guides`](skills/model-writing-guides/SKILL.md) skill owns the
+  guide links, selector, fallback order, and new-model workflow.
+- One skill per directory, root `SKILL.md` linked to the GPT-5.6 variant, and
+  `name` unique across the repo. Keep each complete variant short. Put anything
+  every use needs inline; put conditional or advanced detail in `references/`,
+  linked one hop from the variant only. A reference file must not link to
+  another reference; the only file under `skills/` it may link to is its own
+  root `SKILL.md`.
 - `bun run lint:skills` enforces the hop and length rules, requires every
   reference to be linked from `SKILL.md`, and warns when one reference is
   linked from both a workflow step and a `Context pointers` section, so you

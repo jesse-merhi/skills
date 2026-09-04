@@ -1,0 +1,4 @@
+interface:
+  display_name: "Model Writing Guides"
+  short_description: "Maintain complete model-specific skill prompts"
+  default_prompt: "Use $model-writing-guides to add or update every model variant for this skill."
