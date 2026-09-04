@@ -5,33 +5,18 @@ description: 'Establish intended behavior and map changed runtime flows to contr
 
 # Review flow map
 
-Build the evidence-backed basis for a review before writing findings: what the
-change is meant to achieve, what must remain true, and which flows and observations
-would show whether it succeeds. A written specification is optional.
+Produce the evidence map that a review needs before it can make findings:
+intended and changed behavior, runtime entrypoints, contracts, side effects,
+risks, and checks that can prove the behavior. A written specification is optional.
 
-## Workflow
-
-1. Resolve the review target with [target-resolution.md](references/target-resolution.md).
-2. Establish the review basis below from the available task and repository
-   evidence. Keep material uncertainty visible instead of turning it into a
-   requirement.
-3. Classify changed files by behavior category using
-   [categories.md](references/categories.md).
-4. Trace each changed flow end to end. Read context selectively with
-   [context-reading.md](references/context-reading.md).
-5. Return the map using [output.md](references/output.md). Distinguish evidence
-   already checked from validation still needed.
-
-Done when each meaningful changed flow has a supported expected outcome or an
-explicit unresolved question, its affected contracts and risks, and a concrete
-way to check it. The map guides the owning review; it is not a clean verdict.
+Resolve the target with [target-resolution.md](references/target-resolution.md).
 
 ## Review basis
 
-Record the requested outcome and preserved obligations, with the source of each
-material expectation. Use the current task, relevant issues or PR description,
-repository instructions, docs, callers, tests, and base behavior as available;
-do not require every source or ask for a spec merely because none exists.
+Record the requested outcome and preserved obligations. Source each material
+expectation from the current task, relevant issues or PR description, repository
+instructions, docs, callers, tests, or base behavior as available. Do not require
+every source or ask for a spec merely because none exists.
 
 Distinguish explicit requirements, evidence-backed inferences, and unresolved
 questions. The changed implementation shows what it does, not independently what
@@ -40,32 +25,28 @@ authorization. Base behavior and tests may be obsolete when a current explicit
 requirement intentionally changes them; identify that change instead of reporting
 every difference as a regression.
 
-When sources conflict, check their relevance and currency and keep any unresolved
-alternatives visible. Ask the smallest question only when the answer would
-materially change whether behavior is correct or what work is authorized.
-Continue reviewing unaffected flows; do not promote the uncertain expectation
-into a finding or silently choose a product policy.
+Check conflicting sources for relevance and currency. Preserve unresolved
+alternatives; ask the smallest question only when it changes correctness or
+authorized scope. Continue unaffected flows without turning uncertainty into a
+finding or selecting unstated product policy.
 
-Use the basis to trace intended behavior, safe operation, current codebase costs,
-and proof. These are questions to investigate, not quotas for findings, refactors,
-or new tests. Describe the input or state, expected observable result, and why the
-available check exercises it. A green suite is evidence only for the behavior it
-actually covers; a missing check is a validation gap, not by itself a proven bug.
+## Map and proof
 
-## Required discipline
+Classify files by behavior using [categories.md](references/categories.md), then
+trace each changed flow across its callers and consumers. Use
+[context-reading.md](references/context-reading.md) to read the necessary context,
+including safe operation and current codebase costs.
 
-- Start from behavior and contracts, not file count.
-- Do not review all files equally; small contract files can matter more than
-  large generated diffs.
-- Keep suspected issues separate from confirmed findings.
-- Hand finding leads to the owning review's actionability and test-portfolio
-  gates; this map does not authorize fixes or new tests.
+Judge significance by contracts and behavior. A small boundary file may matter
+more than a large generated diff. Keep suspected defects separate from confirmed
+findings until the relevant flow and intended contract are understood.
 
-## Context pointers
+Return the map in [output.md](references/output.md) before writing findings.
+Every listed risk should point to the flow it affects and a relevant proof target.
+Name the check's input/state and expected observable result, distinguishing what
+was checked from missing, stale, or unexecuted proof. Green tests prove only
+covered behavior; missing validation is not by itself a proven bug.
 
-- Use [target-resolution.md](references/target-resolution.md) for PR and git
-  range commands.
-- Use [categories.md](references/categories.md) for changed-file classification.
-- Use [context-reading.md](references/context-reading.md) for targeted context
-  commands and flow-tracing fields.
-- Use [output.md](references/output.md) for the review map shape and discipline.
+Done when each meaningful flow has a supported expectation or explicit question
+and each risk has its flow and proof target. The map is not a clean verdict or
+authority to fix code or add tests; the owning review's finding and test gates apply.

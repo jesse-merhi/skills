@@ -5,27 +5,30 @@ description: 'Establish intended behavior and map changed runtime flows to contr
 
 # Review flow map
 
-Before writing findings, establish what the change should achieve and map the
-affected flows to evidence that can check it. Do this with the available context;
-a written specification is optional. Return a review map, not a clean verdict.
+Map the changed runtime behavior and its intended contract before reporting
+defects. A written specification is optional.
 
-## Workflow
+1. Resolve the requested PR or Git range using
+   [target-resolution.md](references/target-resolution.md).
+2. Establish the review basis below from available context.
+3. Classify the changed files with [categories.md](references/categories.md).
+   Use behavior and contract changes to decide where to spend attention; file
+   count and diff size alone do not establish importance.
+4. Trace each changed path from entrypoint through contracts, consumers, and
+   side effects, including safe operation and current codebase costs. Batch
+   independent searches. Follow [context-reading.md](references/context-reading.md)
+   for targeted reads.
+5. Tie every listed risk to its affected flow and a relevant proof target. Name
+   each check's input/state and expected observable result. Separate performed
+   checks from missing, stale, or unexecuted proof; a green suite proves only
+   covered behavior and missing validation is not itself a proven defect.
+6. Return the map using [output.md](references/output.md), then let the owning
+   review proceed to findings. Mapping does not authorize fixes or new tests;
+   the owning review's finding and test gates apply.
 
-1. Resolve the target with [target-resolution.md](references/target-resolution.md).
-2. Establish the review basis below. Record the requested outcome, preserved
-   obligations, supporting sources, and material uncertainty.
-3. Classify changed files using [categories.md](references/categories.md).
-4. Trace each meaningful changed flow end to end. Use the targeted reads in
-   [context-reading.md](references/context-reading.md). Batch independent reads
-   when possible; keep a long user-facing investigation understandable with brief
-   progress updates.
-5. Return the complete map using [output.md](references/output.md). Separate checks
-   already performed from checks still needed. Continue through unaffected flows
-   even when another flow has an unresolved question.
-
-Done when every meaningful changed flow has a supported expected outcome or an
-explicit unresolved question, its affected contracts and risks, and a concrete
-way to check it. Complete the map without asking again for work already authorized.
+Done when each meaningful flow has a supported expectation or explicit question
+and each risk has its flow and proof target. Return a map, not a clean verdict.
+Finish unaffected flows without asking again for work already authorized.
 
 ## Review basis
 
@@ -43,29 +46,11 @@ Check whether a current explicit requirement intentionally replaces a test or
 base behavior. Identify the changed contract rather than treating every
 difference from the base as a regression.
 
-If sources disagree, check their relevance and currency. Keep unresolved
-alternatives visible. Ask the smallest question only when its answer would
-materially change correctness or authorized scope. Review the unaffected flows
-in the meantime. Do not turn an uncertain expectation into a finding or choose
-an unstated product policy.
+If sources disagree, check their relevance and currency. Preserve unresolved
+alternatives and ask the smallest question only when it changes correctness or
+authorized scope. Do not turn uncertainty into a finding or choose product policy.
 
-Trace intended behavior, safe operation, current codebase costs, and proof.
-These are investigation questions, not a requirement to produce findings,
-refactors, or new tests. For a proposed check, state its input or state, expected
-observable result, and why it exercises the contract. Passing tests establish
-only the behavior they cover. Missing validation is a gap, not a proven bug.
-
-## Required discipline
-
-- Start from behavior and contracts, not file count.
-- Prioritize consequential contracts over large generated diffs.
-- Keep suspected issues separate from confirmed findings.
-- Hand leads to the owning review's actionability and test-portfolio gates.
-  Mapping does not authorize fixes or new tests.
-
-## Context pointers
-
-- [target-resolution.md](references/target-resolution.md): PR and git range commands.
-- [categories.md](references/categories.md): changed-file classification.
-- [context-reading.md](references/context-reading.md): targeted context and flow tracing.
-- [output.md](references/output.md): review-map shape and evidence status.
+A small contract file can outweigh a large generated diff. Keep suspicions
+separate from confirmed findings; do not call a path broken before tracing enough
+of it to establish the intended behavior. During large investigations, report
+useful discoveries or blockers in plain language.

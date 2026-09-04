@@ -16,7 +16,8 @@ Use short sections:
 - `Contracts`: schemas, types, env vars, permissions, APIs, or persistence rules
   touched.
 - `Risk Areas`: places likely to hide bugs, including stale state,
-  permissions, concurrency, migrations, retries, cleanup, or external IO.
+  permissions, concurrency, migrations, retries, cleanup, or external IO. Tie
+  each risk to its affected flow and a relevant validation target below.
 - `Validation Targets`: focused commands, tests, UI validation proof, or manual
   checks for the important flows, tied to an input/state and expected observable
   result. Say what was actually checked and what remains missing, stale, or
