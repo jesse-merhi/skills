@@ -43,7 +43,9 @@ function fixture(t) {
 }
 
 function processStartIdentity(pid) {
-  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+    encoding: "utf8", env: { ...process.env, TZ: "UTC", LC_ALL: "C" },
+  });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
 }
@@ -129,6 +131,27 @@ test("does not reclaim a live lock based on its age", (t) => {
 
   assert.equal(reclaimAbandonedLock(lockRoot), false);
   assert.equal(fs.existsSync(lockRoot), true);
+});
+
+test("preserves a held lock when another process uses a different timezone", (t) => {
+  const current = fixture(t);
+  const lockRoot = current.output + ".lock";
+  const contender = `
+    import { reclaimAbandonedLock } from ${JSON.stringify(new URL("./materialize-skill-variants.mjs", import.meta.url).href)};
+    process.stdout.write(String(reclaimAbandonedLock(process.argv[1])));
+  `;
+  withOutputLock(current.output, () => {
+    const ownerFiles = fs.readdirSync(lockRoot);
+    for (const timezone of ["UTC", "Australia/Sydney"]) {
+      const result = spawnSync(process.execPath, ["--input-type=module", "-e", contender, lockRoot], {
+        encoding: "utf8",
+        env: { ...process.env, TZ: timezone, LC_ALL: "C" },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout, "false", timezone);
+      assert.deepEqual(fs.readdirSync(lockRoot), ownerFiles);
+    }
+  });
 });
 
 test("reclaims a lock whose owning process has exited", (t) => {

@@ -100,7 +100,9 @@ function sleep(milliseconds) {
 }
 
 function processStartIdentity(pid) {
-  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+    encoding: "utf8", env: { ...process.env, TZ: "UTC", LC_ALL: "C" },
+  });
   if (result.status !== 0 || result.stdout.trim().length === 0) return undefined;
   return result.stdout.trim();
 }
