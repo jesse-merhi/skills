@@ -85,7 +85,6 @@ function isWeakLocalZodExport(
 	specifier,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -156,7 +155,6 @@ function isWeakZodAliasReference(
 	typeName,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodNamespaceNames,
 ) {
 	if (!typeName) {
@@ -577,7 +575,6 @@ function isZodNamespaceExportIndex(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	if (node?.type !== "TSIndexedAccessType") {
 		return false;
@@ -590,14 +587,12 @@ function isZodNamespaceExportIndex(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		) ||
 			isZodModuleNamespaceObjectType(
 				node.objectType,
 				zodNamespaceNames,
 				weakZodIndexKeyNames,
 				zodNamespaceTypeScopes,
-				typeDeclarationScopes,
 			))
 	);
 }
@@ -658,7 +653,6 @@ function isZodModuleNamespaceObjectType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	if (objectType?.type === "TSTypeReference") {
 		return (
@@ -681,7 +675,6 @@ function isZodModuleNamespaceObjectType(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		)
 	);
 }
@@ -691,7 +684,6 @@ function isZodNamespaceObjectType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	return (
 		isZodModuleNamespaceObjectType(
@@ -699,14 +691,12 @@ function isZodNamespaceObjectType(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		) ||
 		isZodNamespaceExportIndex(
 			objectType,
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		)
 	);
 }
@@ -727,7 +717,6 @@ function isZodNamespaceKeyofType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	return (
 		indexType?.type === "TSTypeOperator" &&
@@ -737,14 +726,12 @@ function isZodNamespaceKeyofType(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		) ||
 			containsZodModuleNamespaceObjectType(
 				indexType.typeAnnotation,
 				zodNamespaceNames,
 				weakZodIndexKeyNames,
 				zodNamespaceTypeScopes,
-				typeDeclarationScopes,
 			))
 	);
 }
@@ -754,7 +741,6 @@ function containsZodNamespaceKeyofType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	let containsKeyof = false;
 	visitNode(node, (child) => {
@@ -764,7 +750,6 @@ function containsZodNamespaceKeyofType(
 				zodNamespaceNames,
 				weakZodIndexKeyNames,
 				zodNamespaceTypeScopes,
-				typeDeclarationScopes,
 			)
 		) {
 			containsKeyof = true;
@@ -804,7 +789,6 @@ function isWeakZodNamespaceUtilityType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	if (node?.type !== "TSTypeReference" || node.typeName.type !== "Identifier") {
 		return false;
@@ -819,7 +803,6 @@ function isWeakZodNamespaceUtilityType(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		);
 	}
 
@@ -829,14 +812,12 @@ function isWeakZodNamespaceUtilityType(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		) ||
 		containsZodModuleNamespaceObjectType(
 			firstArgument,
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		);
 
 	if (!hasZodNamespaceObject) {
@@ -852,7 +833,6 @@ function isWeakZodNamespaceUtilityType(
 				zodNamespaceNames,
 				weakZodIndexKeyNames,
 				zodNamespaceTypeScopes,
-				typeDeclarationScopes,
 			)
 		);
 	}
@@ -865,7 +845,6 @@ function isWeakZodIndexedAccessType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	const keyNames = getIndexedAccessKeyNames(node.indexType, weakZodIndexKeyNames);
 	const hasDirectZodNamespaceObject = isZodNamespaceObjectType(
@@ -873,14 +852,12 @@ function isWeakZodIndexedAccessType(
 		zodNamespaceNames,
 		weakZodIndexKeyNames,
 		zodNamespaceTypeScopes,
-		typeDeclarationScopes,
 	);
 	const hasWrappedZodNamespaceObject = containsZodModuleNamespaceObjectType(
 		node.objectType,
 		zodNamespaceNames,
 		weakZodIndexKeyNames,
 		zodNamespaceTypeScopes,
-		typeDeclarationScopes,
 	);
 	return (
 		(hasDirectZodNamespaceObject || hasWrappedZodNamespaceObject) &&
@@ -891,7 +868,6 @@ function isWeakZodIndexedAccessType(
 					zodNamespaceNames,
 					weakZodIndexKeyNames,
 					zodNamespaceTypeScopes,
-					typeDeclarationScopes,
 				)) ||
 			(keyNames.length === 0 && containsTypeReference(node.indexType)))
 	);
@@ -901,7 +877,6 @@ function isWeakZodTypeAnnotation(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -926,7 +901,6 @@ function isWeakZodTypeAnnotation(
 				node.typeName,
 				weakZodTypeNames,
 				weakZodTypeScopes,
-				typeDeclarationScopes,
 				zodNamespaceNames,
 			) ||
 			isBareZodTypeReference(node, zodTypeNames, zodNamespaceNames) ||
@@ -937,7 +911,6 @@ function isWeakZodTypeAnnotation(
 				zodNamespaceNames,
 				weakZodIndexKeyNames,
 				zodNamespaceTypeScopes,
-				typeDeclarationScopes,
 			)
 		);
 	}
@@ -952,7 +925,6 @@ function isWeakZodTypeAnnotation(
 			zodNamespaceNames,
 			weakZodIndexKeyNames,
 			zodNamespaceTypeScopes,
-			typeDeclarationScopes,
 		);
 	}
 
@@ -963,7 +935,6 @@ function containsWeakZodTypeAnnotation(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -979,7 +950,6 @@ function containsWeakZodTypeAnnotation(
 				child,
 				weakZodTypeNames,
 				weakZodTypeScopes,
-				typeDeclarationScopes,
 				zodTypeNames,
 				zodNamespaceNames,
 				zodNamespaceTypeScopes,
@@ -1000,7 +970,6 @@ function containsWeakZodTypeAnnotation(
 				child,
 				weakZodTypeNames,
 				weakZodTypeScopes,
-				typeDeclarationScopes,
 				zodTypeNames,
 				zodNamespaceNames,
 				anyTypeNames,
@@ -1018,7 +987,6 @@ function isWeakZodHeritage(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	anyTypeNames,
@@ -1029,7 +997,6 @@ function isWeakZodHeritage(
 			node.expression,
 			weakZodTypeNames,
 			weakZodTypeScopes,
-			typeDeclarationScopes,
 			zodNamespaceNames,
 		)
 	) {
@@ -1228,7 +1195,6 @@ function collectWeakZodTypeParameterBindings(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -1247,7 +1213,6 @@ function collectWeakZodTypeParameterBindings(
 				typeParameter.default,
 				weakZodTypeNames,
 				weakZodTypeScopes,
-				typeDeclarationScopes,
 				zodTypeNames,
 				zodNamespaceNames,
 				zodNamespaceTypeScopes,
@@ -1259,7 +1224,6 @@ function collectWeakZodTypeParameterBindings(
 				typeParameter.constraint,
 				weakZodTypeNames,
 				weakZodTypeScopes,
-				typeDeclarationScopes,
 				zodTypeNames,
 				zodNamespaceNames,
 				zodNamespaceTypeScopes,
@@ -1317,7 +1281,6 @@ function collectWeakZodTypeAlias(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -1337,7 +1300,6 @@ function collectWeakZodTypeAlias(
 		node,
 		weakZodTypeNames,
 		weakZodTypeScopes,
-		typeDeclarationScopes,
 		zodTypeNames,
 		zodNamespaceNames,
 		zodNamespaceTypeScopes,
@@ -1354,7 +1316,6 @@ function collectWeakZodTypeAlias(
 			node.typeAnnotation,
 			localWeakZodTypeNames,
 			localWeakZodTypeScopes,
-			typeDeclarationScopes,
 			zodTypeNames,
 			zodNamespaceNames,
 			zodNamespaceTypeScopes,
@@ -1390,7 +1351,6 @@ function collectWeakZodHeritageAlias(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -1407,7 +1367,6 @@ function collectWeakZodHeritageAlias(
 			node,
 			weakZodTypeNames,
 			weakZodTypeScopes,
-			typeDeclarationScopes,
 			zodTypeNames,
 			zodNamespaceNames,
 			zodNamespaceTypeScopes,
@@ -1444,14 +1403,13 @@ function containsZodModuleNamespaceObjectType(
 	zodNamespaceNames,
 	weakZodIndexKeyNames,
 	zodNamespaceTypeScopes = new Map(),
-	typeDeclarationScopes = new Map(),
 ) {
 	let containsNamespace = false;
 	visitNode(node, (child) => {
 		if (child.type === "TSTypeReference" && child.typeName.type === "Identifier" &&
 			["Pick", "Omit", "Partial", "Readonly", "Required"].includes(child.typeName.name)) {
 			containsNamespace = isWeakZodNamespaceUtilityType(
-				child, zodNamespaceNames, weakZodIndexKeyNames, zodNamespaceTypeScopes, typeDeclarationScopes,
+				child, zodNamespaceNames, weakZodIndexKeyNames, zodNamespaceTypeScopes,
 			) || containsNamespace;
 			return false;
 		}
@@ -1465,7 +1423,6 @@ function containsZodModuleNamespaceObjectType(
 				zodNamespaceNames,
 				weakZodIndexKeyNames,
 				zodNamespaceTypeScopes,
-				typeDeclarationScopes,
 			)
 		) {
 			containsNamespace = true;
@@ -1508,35 +1465,10 @@ function collectZodNamespaceValueAlias(node, zodNamespaceNames) {
 	return false;
 }
 
-function collectTypeDeclarationScopes(node, typeDeclarationScopes) {
-	visitNode(node, (child) => {
-		if (child.type === "TSTypeAliasDeclaration") {
-			addNameScope(typeDeclarationScopes, child.id.name, child);
-		}
-
-		if ((child.type === "TSInterfaceDeclaration" || child.type === "ClassDeclaration") && child.id?.name) {
-			addNameScope(typeDeclarationScopes, child.id.name, child);
-		}
-
-		if (child.type === "TSImportEqualsDeclaration") {
-			addNameScope(typeDeclarationScopes, child.id.name, child);
-		}
-
-		if (child.type === "ImportDeclaration") {
-			for (const specifier of child.specifiers) {
-				if (child.importKind === "type" || specifier.importKind === "type") {
-					addNameScope(typeDeclarationScopes, specifier.local.name, specifier);
-				}
-			}
-		}
-	});
-}
-
 function collectAliases(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -1552,7 +1484,6 @@ function collectAliases(
 					child,
 					weakZodTypeNames,
 					weakZodTypeScopes,
-					typeDeclarationScopes,
 					zodTypeNames,
 					zodNamespaceNames,
 				) || changed;
@@ -1571,7 +1502,6 @@ function collectAliases(
 					child,
 					weakZodTypeNames,
 					weakZodTypeScopes,
-					typeDeclarationScopes,
 					zodTypeNames,
 					zodNamespaceNames,
 					zodNamespaceTypeScopes,
@@ -1592,7 +1522,6 @@ function collectAliases(
 					child,
 					weakZodTypeNames,
 					weakZodTypeScopes,
-					typeDeclarationScopes,
 					zodTypeNames,
 					zodNamespaceNames,
 					zodNamespaceTypeScopes,
@@ -1642,7 +1571,6 @@ function collectZodImportEqualsDeclaration(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 ) {
@@ -1655,7 +1583,6 @@ function collectZodImportEqualsDeclaration(
 			node.moduleReference,
 			weakZodTypeNames,
 			weakZodTypeScopes,
-			typeDeclarationScopes,
 			zodNamespaceNames,
 		)
 	) {
@@ -1673,7 +1600,6 @@ function collectZodBindings(
 	node,
 	weakZodTypeNames,
 	weakZodTypeScopes,
-	typeDeclarationScopes,
 	zodTypeNames,
 	zodNamespaceNames,
 	zodNamespaceTypeScopes,
@@ -1681,7 +1607,7 @@ function collectZodBindings(
 	anyTypeNames,
 	genericZodTypeNames,
 ) {
-	collectTypeDeclarationScopes(node, typeDeclarationScopes);
+
 
 	for (const statement of node.body) {
 		if (statement.type === "ImportDeclaration") {
@@ -1699,7 +1625,6 @@ function collectZodBindings(
 				statement,
 				weakZodTypeNames,
 				weakZodTypeScopes,
-				typeDeclarationScopes,
 				zodTypeNames,
 				zodNamespaceNames,
 			);
@@ -1712,7 +1637,6 @@ function collectZodBindings(
 			node,
 			weakZodTypeNames,
 			weakZodTypeScopes,
-			typeDeclarationScopes,
 			zodTypeNames,
 			zodNamespaceNames,
 			zodNamespaceTypeScopes,
@@ -1737,7 +1661,6 @@ export default {
 	create(context) {
 		const weakZodTypeNames = new Set();
 		const weakZodTypeScopes = { bindings: new Set(), context };
-		const typeDeclarationScopes = new Map();
 		const zodTypeNames = { bindings: new Set(), context };
 		const zodNamespaceNames = { bindings: new Set(), context };
 		const zodNamespaceTypeScopes = new Map();
@@ -1752,7 +1675,6 @@ export default {
 					node,
 					weakZodTypeNames,
 					weakZodTypeScopes,
-					typeDeclarationScopes,
 					zodTypeNames,
 					zodNamespaceNames,
 					zodNamespaceTypeScopes,
@@ -1814,7 +1736,6 @@ export default {
 						node.declaration,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						zodNamespaceTypeScopes,
@@ -1844,7 +1765,6 @@ export default {
 								specifier,
 								weakZodTypeNames,
 								weakZodTypeScopes,
-								typeDeclarationScopes,
 								zodTypeNames,
 								zodNamespaceNames,
 								zodNamespaceTypeScopes,
@@ -1888,7 +1808,6 @@ export default {
 						node.moduleReference,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodNamespaceNames,
 					)
 				) {
@@ -1908,7 +1827,6 @@ export default {
 						node,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						zodNamespaceTypeScopes,
@@ -1927,7 +1845,6 @@ export default {
 						node,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						scopedAnyTypeNames,
@@ -1944,7 +1861,6 @@ export default {
 						node,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						scopedAnyTypeNames,
@@ -1961,7 +1877,6 @@ export default {
 						node,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						scopedAnyTypeNames,
@@ -1978,7 +1893,6 @@ export default {
 						node,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						zodNamespaceTypeScopes,
@@ -1997,7 +1911,6 @@ export default {
 						node,
 						weakZodTypeNames,
 						weakZodTypeScopes,
-						typeDeclarationScopes,
 						zodTypeNames,
 						zodNamespaceNames,
 						zodNamespaceTypeScopes,
