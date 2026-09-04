@@ -97,13 +97,14 @@ same tree.
 
 ## After clean: try for diamond
 
-Read [rank-up.md](references/rank-up.md) and apply its post-clean decision. If
-it selects an author-controlled improvement, increment `diamond_attempts`
-before the mutation, reset `consecutive_clean` and `phase_iterations`, and
-return to the loop for another clean-convergence phase. After that phase, use
-the newest result to decide whether to stop or spend another attempt. Preserve
-`diamond_attempts` across any caller-driven resume so the workflow can never
-start a fourth rank-up cycle.
+Read [rank-up.md](references/rank-up.md) and
+[rating-rubric.md](references/rating-rubric.md), then apply the post-clean
+decision. If it selects an author-controlled improvement, increment
+`diamond_attempts` before the mutation, reset `consecutive_clean` and
+`phase_iterations`, and return to the loop for another clean-convergence phase.
+After that phase, use the newest result to decide whether to stop or spend
+another attempt. Preserve `diamond_attempts` across any caller-driven resume so
+the workflow can never start a fourth rank-up cycle.
 
 This step finishes as `already-diamond-or-better`, `diamond-achieved`, or
 `platinum-with-explanation`. A platinum result must name the concrete evidence,
@@ -138,5 +139,7 @@ unchanged review merely in hope of a different rating.
 - Use [rank-up.md](references/rank-up.md) only after the first clean
   platinum-or-better baseline, for the bounded diamond attempts and their
   stopping explanation.
+- Use [rating-rubric.md](references/rating-rubric.md) with rank-up.md to read
+  the awarded label, tiers, and rank-up moves.
 - Use [reporting.md](references/reporting.md) for iteration narration, final
   report fields, hard rules, and common mistakes.

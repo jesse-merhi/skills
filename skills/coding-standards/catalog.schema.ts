@@ -3,8 +3,7 @@ import * as Schema from "effect/Schema"
 const RuleEnforcement = Schema.Struct({
   kind: Schema.Literal("rule"),
   presets: Schema.Array(Schema.NonEmptyString),
-  rule: Schema.NonEmptyString,
-  test: Schema.NonEmptyString
+  rule: Schema.NonEmptyString
 })
 
 const PluginEnforcement = Schema.Struct({
@@ -32,15 +31,13 @@ const MypyEnforcement = Schema.Struct({
 
 const SemgrepEnforcement = Schema.Struct({
   file: Schema.NonEmptyString,
-  kind: Schema.Literal("semgrep"),
-  test: Schema.NonEmptyString
+  kind: Schema.Literal("semgrep")
 })
 
 const CheckEnforcement = Schema.Struct({
   file: Schema.NonEmptyString,
   kind: Schema.Literal("check"),
-  module: Schema.NonEmptyString,
-  test: Schema.NonEmptyString
+  module: Schema.NonEmptyString
 })
 
 const NotApplicableEnforcement = Schema.Struct({
@@ -48,22 +45,30 @@ const NotApplicableEnforcement = Schema.Struct({
   reason: Schema.NonEmptyString
 })
 
-const Enforcement = Schema.Union([
-  CheckEnforcement,
-  MypyEnforcement,
-  NotApplicableEnforcement,
-  PluginEnforcement,
-  RuffEnforcement,
-  RuleEnforcement,
-  ScriptEnforcement,
-  SemgrepEnforcement
-])
-
-const Applies = Schema.Struct({
-  always: Schema.optionalKey(Schema.Boolean),
-  dependencies: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
-  devDependencies: Schema.optionalKey(Schema.Array(Schema.NonEmptyString))
+// Each column admits only its own ecosystem's kinds, so a ruff entry pasted
+// into the javascript column is rejected instead of claiming a code nothing enables.
+const Enforcement = Schema.Struct({
+  javascript: Schema.NonEmptyArray(Schema.Union([PluginEnforcement, RuleEnforcement])),
+  python: Schema.NonEmptyArray(
+    Schema.Union([
+      CheckEnforcement,
+      MypyEnforcement,
+      NotApplicableEnforcement,
+      RuffEnforcement,
+      SemgrepEnforcement
+    ])
+  ),
+  script: Schema.optionalKey(Schema.NonEmptyArray(ScriptEnforcement))
 })
+
+const PackageNames = Schema.NonEmptyArray(Schema.NonEmptyString)
+
+// Every shape names at least one condition, so an empty object cannot mean "never applies".
+const Applies = Schema.Union([
+  Schema.Struct({ always: Schema.Literal(true) }),
+  Schema.Struct({ dependencies: PackageNames, devDependencies: Schema.optionalKey(PackageNames) }),
+  Schema.Struct({ dependencies: Schema.optionalKey(PackageNames), devDependencies: PackageNames })
+])
 
 const Preset = Schema.Struct({
   applies: Applies,
@@ -79,7 +84,7 @@ const Baseline = Schema.Struct({
 })
 
 const Standard = Schema.Struct({
-  enforcement: Schema.Record(Schema.NonEmptyString, Schema.NonEmptyArray(Enforcement)),
+  enforcement: Enforcement,
   id: Schema.NonEmptyString,
   origin: Schema.NonEmptyString,
   principle: Schema.NonEmptyString,
@@ -99,7 +104,7 @@ const Standard = Schema.Struct({
 })
 
 const Ecosystem = Schema.Struct({
-  detect: Schema.Array(Schema.NonEmptyString),
+  detect: Schema.NonEmptyArray(Schema.NonEmptyString),
   packages: Schema.optionalKey(Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)),
   presets: Schema.NonEmptyString
 })

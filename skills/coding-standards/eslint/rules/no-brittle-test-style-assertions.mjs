@@ -89,7 +89,7 @@ function isCanonicalClassFunctionImport(specifier) {
 	}
 	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") return false;
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return ["class-variance-authority", "clsx", "cn", "tailwind-merge"].includes(sourceName);
+	return ["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName);
 }
 
 function isClassFunctionReference(node, context, visitedVariables = new Set()) {
@@ -874,7 +874,7 @@ function hasAllowComment(context, node) {
 }
 
 function shouldSkipFile(context) {
-	return ALLOWED_TEST_FILE_PATTERN.test(normalizeFilename(context.getFilename()));
+	return ALLOWED_TEST_FILE_PATTERN.test(normalizeFilename(context.filename));
 }
 
 function reportUnlessAllowed(context, node, messageId) {
@@ -885,7 +885,7 @@ export default {
 	meta: {
 		type: "problem",
 		docs: {
-			description: "Disallow brittle exact CSS and computed-style assertions in ordinary tests",
+			description: "Disallow class, inline-style, CSS, and computed-style assertions in ordinary tests",
 		},
 		schema: [
 			{

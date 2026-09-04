@@ -24,7 +24,6 @@ def _is_banner(body: str) -> bool:
 
 def check_source(source: str, filename: str) -> list[Finding]:
     """Report every comment that is only a run of banner characters."""
-    del filename
     findings: list[Finding] = []
     tokens = tokenize.generate_tokens(io.StringIO(source).readline)
     for token in tokens:

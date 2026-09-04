@@ -100,14 +100,16 @@ Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
-One skill is mostly not prose. `coding-standards` carries a catalog of
-language-agnostic standards — the principle behind each one, and the ESLint
-rules and Python ruff, mypy, semgrep, and AST-checker entries that enforce it,
-so the standard is a failing command instead of a review comment. `apply`
-bootstraps that enforcement into a repository, from detecting the ecosystem
-through a lint command CI actually runs. `sync` reconciles a repository's
-vendored copy against the catalog without clobbering local edits. `translate`
-adds a new language column to the catalog itself.
+`coding-standards` brings personal engineering standards to a repository
+without turning every judgment call into a linter. `apply` prefers existing
+tools for reliable checks, writes concise local agent guidance, and records
+partial coverage, gaps, and exceptions in `lint/standards/ADOPTION.md`. When a
+stack is not represented in the catalog, it translates the principles on
+demand and continues; no new shared language column or custom checker is
+required. `sync` reconciles active checks and guidance as well as vendored
+files, preserving local decisions. Bundled ESLint and Python implementations
+remain optional building blocks. Standalone `translate` proposes a mapping;
+contributing it to the shared catalog is a separate, explicit request.
 
 ## The loop
 
@@ -189,7 +191,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`improve-codebase-architecture`](skills/improve-codebase-architecture/SKILL.md) | An architectural lens over module depth, interfaces, locality, and testability. Proposes the smallest structural change, not a refactor. |
-| [`coding-standards`](skills/coding-standards/SKILL.md) | Applies the standards catalog to a repository as real ESLint and Python enforcement, syncs a vendored copy against it, or translates it to a new language. |
+| [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
 
 ### Planning, context, and handoff
 
@@ -275,8 +277,11 @@ bun run validate:effect
 
 These check skill frontmatter, the handoff tmux helper, the `review-findings`
 CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
-TypeScript helpers. `bun run validate:effect` is lint, typecheck, Effect
-diagnostics, and Vitest. CI runs the same set.
+TypeScript helpers. `bun run validate:effect` is lint, the skill layout lint
+(`bun run lint:skills`), typecheck, Effect diagnostics, Vitest, and the Python
+validation command. `bun run validate:python` runs Ruff, mypy, catalog metadata
+tests, and the Python/Semgrep checkers against repository source. CI runs the
+same set.
 
 The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
 [`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
@@ -293,7 +298,16 @@ PRs are welcome.
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
 - One skill per directory, `SKILL.md` at its root, `name` unique across the
-  repo. Keep the body short and push detail into `references/`.
+  repo. Keep the body short. Put anything every use needs inline; put
+  conditional or advanced detail in `references/`, linked one hop from
+  `SKILL.md` only. A reference file must not link to another reference; the
+  only file under `skills/` it may link to is its own `SKILL.md`. A skill that
+  runs on every turn is a single file; `speak-fking-english` is the one
+  outstanding exception and is being restructured separately.
+- `bun run lint:skills` enforces the hop and length rules, requires every
+  reference to be linked from `SKILL.md`, and warns when one reference is
+  linked from both a workflow step and a `Context pointers` section, so you
+  can decide whether to inline it.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

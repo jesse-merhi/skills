@@ -4,10 +4,14 @@ rules:
       - python
     severity: ERROR
     message: >-
-      SQL built by string formatting is handed to a raw-query escape hatch.
-      Ruff's S608 does not see through `.raw(...)`, `text(...)` and
-      `cursor.execute(...)`, and neither does the ORM: the interpolated value
-      reaches the database as SQL. Pass the value as a query parameter instead.
+      SQL built by string formatting is handed to a raw-query escape hatch,
+      so the interpolated value reaches the database as SQL. Pass the value as
+      a query parameter instead. Ruff's S608 flags most formatted SQL literals;
+      this rule covers the escape hatches it misses, such as a concatenated
+      suffix on `.raw(...)`, `text(...)`, or `cursor.execute(...)`. The
+      receiver is unconstrained, so a non-SQL `.execute(f"...")` — a GraphQL
+      client, say — matches too; mark that call
+      `# nosemgrep: no-raw-sql-orm-escape`.
     metadata:
       standard: no-raw-sql
       category: security
@@ -17,13 +21,22 @@ rules:
           - pattern: $QUERY.raw($SQL, ...)
           - pattern: $QUERY.execute($SQL, ...)
           - pattern: $QUERY.executemany($SQL, ...)
-          - pattern: $QUERY.raw(text($SQL), ...)
-          - pattern: $QUERY.execute(text($SQL), ...)
+          - pattern: $QUERY.executescript($SQL, ...)
+          - pattern: $QUERY.exec_driver_sql($SQL, ...)
+          # Qualified so semgrep's import resolution also matches `sa.text`
+          # and `sqlalchemy.text`, not only a bare imported `text`.
+          - pattern: $QUERY.execute(sqlalchemy.text($SQL), ...)
+          - pattern: $QUERY.scalar(sqlalchemy.text($SQL), ...)
+          - pattern: $QUERY.scalars(sqlalchemy.text($SQL), ...)
       - metavariable-pattern:
           metavariable: $SQL
           pattern-either:
             - pattern: f"..."
             - pattern: '"..." % $VALUES'
             - pattern: '"...".format(...)'
-            - pattern: '"..." + $VALUE'
-            - pattern: $VALUE + "..."
+            # `+` is associative to semgrep, so `"..." + "..."` matches a chain
+            # made only of string literals however many pieces it has. Any
+            # other operand anywhere in the chain is a value reaching the SQL.
+            - patterns:
+                - pattern: $LEFT + $RIGHT
+                - pattern-not: '"..." + "..."'

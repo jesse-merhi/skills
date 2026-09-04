@@ -104,7 +104,7 @@ function getSourceValue(source) {
 }
 
 function hasNoZodTypeAnyDisableComment(context, node) {
-	const sourceCode = context.getSourceCode();
+	const sourceCode = context.sourceCode;
 	const comments = [...sourceCode.getCommentsBefore(node), ...sourceCode.getCommentsAfter(node)];
 
 	return comments.some(
@@ -113,8 +113,7 @@ function hasNoZodTypeAnyDisableComment(context, node) {
 }
 
 function hasNoZodTypeAnyDisableCommentInRange(context, node) {
-	return context
-		.getSourceCode()
+	return context.sourceCode
 		.getAllComments()
 		.some((comment) => {
 			return (
@@ -1734,7 +1733,7 @@ export default {
 		},
 		messages: {
 			noWeakZodType:
-				"Do not use weak Zod schema types like ZodTypeAny, ZodSchema, Schema, or bare ZodType. Prefer a precise schema type such as ZodType<unknown, ZodTypeDef, unknown>, or add a focused eslint-disable for a Zod library boundary exception.",
+				"Do not use weak Zod schema types like ZodTypeAny, ZodSchema, Schema, or bare ZodType. Prefer a precise schema type such as ZodType<unknown, ZodTypeDef, unknown>, or add a focused eslint-disable for a Zod library boundary exception. An exported weak type stays reported at the end of the file even when disabled.",
 		},
 	},
 	create(context) {
@@ -1768,7 +1767,7 @@ export default {
 				for (const escapedWeakExport of escapedWeakExports) {
 					context.report({
 						node: escapedWeakExport,
-						loc: { line: context.getSourceCode().lines.length + 1, column: 0 },
+						loc: { line: context.sourceCode.lines.length + 1, column: 0 },
 						messageId: "noWeakZodType",
 					});
 				}
@@ -1831,7 +1830,7 @@ export default {
 						hasNoZodTypeAnyDisableComment(context, node.declaration) ||
 						hasNoZodTypeAnyDisableCommentInRange(context, node.declaration)
 					) {
-						escapedWeakExports.add(context.getSourceCode().ast);
+						escapedWeakExports.add(context.sourceCode.ast);
 					}
 					return;
 				}
@@ -1856,7 +1855,7 @@ export default {
 							hasNoZodTypeAnyDisableComment(context, node) ||
 							hasNoZodTypeAnyDisableComment(context, specifier)
 						) {
-							escapedWeakExports.add(context.getSourceCode().ast);
+							escapedWeakExports.add(context.sourceCode.ast);
 						}
 
 						context.report({ node: specifier, messageId: "noWeakZodType" });

@@ -6,6 +6,14 @@ export default function tailwind(options = {}) {
 		elevationOptions.tokenModule = options.tokenModule;
 	}
 
+	const smallTextOptions = {};
+	if (options.minimumFontSizePx !== undefined) {
+		smallTextOptions.minimumFontSizePx = options.minimumFontSizePx;
+	}
+	if (options.allowedAllCapsTerms !== undefined) {
+		smallTextOptions.allowedAllCapsTerms = options.allowedAllCapsTerms;
+	}
+
 	const breakpointOptions = {};
 	if (options.maximumPx !== undefined) {
 		breakpointOptions.maximumPx = options.maximumPx;
@@ -14,16 +22,28 @@ export default function tailwind(options = {}) {
 		breakpointOptions.disallowedNamedBreakpoints = options.disallowedNamedBreakpoints;
 	}
 
-	return [
+	const configs = [
 		{
 			...(options.files === undefined ? {} : { files: options.files }),
 			plugins: { standards },
 			rules: {
 				"standards/no-light-mode-only-colors": "error",
 				"standards/no-raw-elevation": ["error", elevationOptions],
-				"standards/no-small-text": "error",
+				"standards/no-small-text": ["error", smallTextOptions],
 				"standards/no-wide-arbitrary-breakpoints": ["error", breakpointOptions],
 			},
 		},
 	];
+
+	// The module that defines the elevation tokens is the one place raw shadow
+	// utilities belong, so the preset turns the rule off there.
+	if (options.elevationModuleFiles !== undefined && options.elevationModuleFiles.length > 0) {
+		configs.push({
+			files: options.elevationModuleFiles,
+			plugins: { standards },
+			rules: { "standards/no-raw-elevation": "off" },
+		});
+	}
+
+	return configs;
 }

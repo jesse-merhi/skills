@@ -27,7 +27,20 @@ CHECKS: tuple[CheckSource, ...] = (
     no_trivial_forwarding_wrapper.check_source,
 )
 
-IGNORED_DIRECTORY_NAMES = frozenset({"__pycache__", "node_modules"})
+# The directory names ruff's default exclude skips, minus the dot-prefixed
+# ones, which are skipped as a class.
+IGNORED_DIRECTORY_NAMES = frozenset(
+    {
+        "__pycache__",
+        "__pypackages__",
+        "_build",
+        "buck-out",
+        "dist",
+        "node_modules",
+        "site-packages",
+        "venv",
+    }
+)
 
 
 def _is_searchable(path: Path) -> bool:
@@ -50,7 +63,7 @@ def python_files(paths: Iterable[str]) -> Iterator[Path]:
 
 def check_file(path: Path) -> list[Finding]:
     """Run every check over one file, ordered by position."""
-    source = path.read_text(encoding="utf-8")
+    source = path.read_text(encoding="utf-8-sig")
     findings = [finding for check in CHECKS for finding in check(source, str(path))]
     return sorted(findings, key=lambda finding: (finding.line, finding.col))
 

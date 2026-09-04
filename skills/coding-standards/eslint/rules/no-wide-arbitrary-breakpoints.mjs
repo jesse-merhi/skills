@@ -116,7 +116,7 @@ export default {
 	meta: {
 		type: "suggestion",
 		docs: {
-			description: "Disallow oversized arbitrary Tailwind breakpoint variants",
+			description: "Disallow oversized arbitrary Tailwind breakpoint variants and disallowed named breakpoints",
 		},
 		schema: [
 			{

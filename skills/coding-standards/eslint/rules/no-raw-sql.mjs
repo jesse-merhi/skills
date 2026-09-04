@@ -15,8 +15,8 @@ export default {
 						items: {
 							type: "object",
 							properties: {
-								object: { type: "string" },
-								property: { type: "string" },
+								object: { type: "string", pattern: "^[A-Za-z_$][\\w$]*$" },
+								property: { type: "string", pattern: "^[A-Za-z_$][\\w$]*$" },
 							},
 							required: ["object", "property"],
 							additionalProperties: false,

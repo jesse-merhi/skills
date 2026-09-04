@@ -3,7 +3,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import reactEffect from "eslint-plugin-react-you-might-not-need-an-effect";
 
-const DEFAULT_FILES = ["**/*.{jsx,tsx}"];
+const DEFAULT_FILES = ["**/*.{js,jsx,ts,tsx}"];
 const DEFAULT_COMPONENTS = {
 	Button: "button",
 	Checkbox: "input",
@@ -15,11 +15,14 @@ const DEFAULT_COMPONENTS = {
 };
 const DEFAULT_CONTROL_COMPONENTS = ["Checkbox", "Input", "Select", "SelectTrigger", "Switch", "Textarea"];
 const DEFAULT_LABEL_COMPONENTS = ["Label"];
+// Components that render a control which must carry its own accessible label.
+const DEFAULT_CONTROLS_REQUIRING_LABEL = ["Button", "SelectTrigger"];
 
 export default function react(options = {}) {
 	const components = options.a11y?.components ?? DEFAULT_COMPONENTS;
 	const controlComponents = options.a11y?.controlComponents ?? DEFAULT_CONTROL_COMPONENTS;
 	const labelComponents = options.a11y?.labelComponents ?? DEFAULT_LABEL_COMPONENTS;
+	const controlsRequiringLabel = options.a11y?.controlsRequiringLabel ?? DEFAULT_CONTROLS_REQUIRING_LABEL;
 
 	return [
 		{
@@ -54,7 +57,7 @@ export default function react(options = {}) {
 				"jsx-a11y/control-has-associated-label": [
 					"error",
 					{
-						controlComponents: ["Button", "SelectTrigger"],
+						controlComponents: controlsRequiringLabel,
 						depth: 3,
 						ignoreElements: ["audio", "canvas", "embed", "input", "textarea", "tr", "video"],
 						ignoreRoles: [
@@ -95,6 +98,8 @@ export default function react(options = {}) {
 				"jsx-a11y/role-supports-aria-props": "error",
 				"jsx-a11y/scope": "error",
 				"jsx-a11y/tabindex-no-positive": "error",
+				"react-hooks/rules-of-hooks": "error",
+				"react-hooks/exhaustive-deps": "warn",
 				"react-hooks/config": "error",
 				"react-hooks/error-boundaries": "error",
 				"react-hooks/gating": "error",

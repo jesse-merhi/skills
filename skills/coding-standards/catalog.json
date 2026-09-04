@@ -219,7 +219,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-banner-comments.mjs",
-						"test": "eslint/rules/no-banner-comments.test.mjs",
 						"presets": [
 							"base"
 						]
@@ -239,8 +238,7 @@
 					{
 						"kind": "check",
 						"module": "standards_checks.no_banner_comments",
-						"file": "python/standards_checks/no_banner_comments.py",
-						"test": "python/tests/test_no_banner_comments.py"
+						"file": "python/standards_checks/no_banner_comments.py"
 					}
 				]
 			}
@@ -256,7 +254,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-trivial-forwarding-wrapper.mjs",
-						"test": "eslint/rules/no-trivial-forwarding-wrapper.test.mjs",
 						"presets": [
 							"base"
 						]
@@ -266,8 +263,7 @@
 					{
 						"kind": "check",
 						"module": "standards_checks.no_trivial_forwarding_wrapper",
-						"file": "python/standards_checks/no_trivial_forwarding_wrapper.py",
-						"test": "python/tests/test_no_trivial_forwarding_wrapper.py"
+						"file": "python/standards_checks/no_trivial_forwarding_wrapper.py"
 					}
 				]
 			}
@@ -283,7 +279,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-large-test-snapshots.mjs",
-						"test": "eslint/rules/no-large-test-snapshots.test.mjs",
 						"presets": [
 							"vitest",
 							"jest",
@@ -295,8 +290,7 @@
 					{
 						"kind": "check",
 						"module": "standards_checks.no_large_test_snapshots",
-						"file": "python/standards_checks/no_large_test_snapshots.py",
-						"test": "python/tests/test_no_large_test_snapshots.py"
+						"file": "python/standards_checks/no_large_test_snapshots.py"
 					}
 				]
 			}
@@ -304,7 +298,7 @@
 		{
 			"id": "no-broad-rule-disable",
 			"title": "No blanket disables of protected rules",
-			"principle": "A file- or block-level disable silently turns a rule off for everything below it, including code written later. Disable a protected rule on the single line that needs the exception, so the next reader sees exactly what was excused and why.",
+			"principle": "A file- or block-level disable silently turns a rule off for everything below it, including code written later. Disable a protected rule on the single line that needs the exception, so the next reader sees exactly what was excused and why. A bare eslint-disable with no rule name is invisible to ESLint itself, so pair this rule with a repository-wide grep for it.",
 			"scope": "any",
 			"origin": "uplinked eslint-rules/no-zod-type-any-block-disable.cjs",
 			"enforcement": {
@@ -312,7 +306,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-broad-rule-disable.mjs",
-						"test": "eslint/rules/no-broad-rule-disable.test.mjs",
 						"presets": [
 							"zod"
 						]
@@ -340,7 +333,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-sql.mjs",
-						"test": "eslint/rules/no-raw-sql.test.mjs",
 						"presets": [
 							"prisma"
 						]
@@ -355,8 +347,7 @@
 					},
 					{
 						"kind": "semgrep",
-						"file": "python/semgrep/no-raw-sql-orm-escape.yaml",
-						"test": "python/semgrep/no-raw-sql-orm-escape.py"
+						"file": "python/semgrep/no-raw-sql-orm-escape.yaml"
 					}
 				]
 			}
@@ -372,7 +363,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-color-literals.mjs",
-						"test": "eslint/rules/no-raw-color-literals.test.mjs",
 						"presets": [
 							"react-native"
 						]
@@ -397,7 +387,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-zod-type-any.mjs",
-						"test": "eslint/rules/no-zod-type-any.test.mjs",
 						"presets": [
 							"zod"
 						]
@@ -422,7 +411,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/prefer-zod-for-unknown-typeof.mjs",
-						"test": "eslint/rules/prefer-zod-for-unknown-typeof.test.mjs",
 						"presets": [
 							"zod"
 						]
@@ -447,7 +435,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-light-mode-only-colors.mjs",
-						"test": "eslint/rules/no-light-mode-only-colors.test.mjs",
 						"presets": [
 							"tailwind"
 						]
@@ -472,7 +459,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-raw-elevation.mjs",
-						"test": "eslint/rules/no-raw-elevation.test.mjs",
 						"presets": [
 							"tailwind"
 						]
@@ -489,7 +475,7 @@
 		{
 			"id": "no-small-text",
 			"title": "No undersized or all-caps text",
-			"principle": "Text below the minimum size is hard to read, and all-caps copy is slower to read and mangled by screen readers. Use a shared typography token and sentence case, and mark a genuine exception in a comment.",
+			"principle": "Text below the minimum size is hard to read, arbitrary pixel sizes bypass the type scale, and all-caps copy is slower to read and mangled by screen readers. Use a shared typography token and sentence case, and mark a genuine exception in a comment.",
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-small-text.cjs",
 			"enforcement": {
@@ -497,7 +483,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-small-text.mjs",
-						"test": "eslint/rules/no-small-text.test.mjs",
 						"presets": [
 							"react-native",
 							"tailwind"
@@ -514,8 +499,8 @@
 		},
 		{
 			"id": "no-wide-arbitrary-breakpoints",
-			"title": "No oversized ad-hoc breakpoints",
-			"principle": "A one-off breakpoint above the layout's widest named step splits responsive behaviour across two systems that no longer agree. Use a named responsive variant, and document a component-specific exception in a comment.",
+			"title": "No oversized or out-of-scale breakpoints",
+			"principle": "A one-off breakpoint above the layout's widest named step, or a named step beyond it, splits responsive behaviour across two systems that no longer agree. Use a named responsive variant within the shared scale, and document a component-specific exception in a comment.",
 			"scope": "tailwind",
 			"origin": "uplinked eslint-rules/no-wide-arbitrary-breakpoints.cjs",
 			"enforcement": {
@@ -523,7 +508,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-wide-arbitrary-breakpoints.mjs",
-						"test": "eslint/rules/no-wide-arbitrary-breakpoints.test.mjs",
 						"presets": [
 							"tailwind"
 						]
@@ -548,7 +532,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-brittle-e2e-selectors.mjs",
-						"test": "eslint/rules/no-brittle-e2e-selectors.test.mjs",
 						"presets": [
 							"playwright"
 						]
@@ -573,7 +556,6 @@
 					{
 						"kind": "rule",
 						"rule": "eslint/rules/no-brittle-test-style-assertions.mjs",
-						"test": "eslint/rules/no-brittle-test-style-assertions.test.mjs",
 						"presets": [
 							"vitest",
 							"jest",
@@ -830,6 +812,7 @@
 						"rules": [
 							"react-hooks/config",
 							"react-hooks/error-boundaries",
+							"react-hooks/exhaustive-deps",
 							"react-hooks/gating",
 							"react-hooks/globals",
 							"react-hooks/immutability",
@@ -837,6 +820,7 @@
 							"react-hooks/preserve-manual-memoization",
 							"react-hooks/purity",
 							"react-hooks/refs",
+							"react-hooks/rules-of-hooks",
 							"react-hooks/set-state-in-effect",
 							"react-hooks/set-state-in-render",
 							"react-hooks/static-components",

@@ -1,74 +1,93 @@
-# Sync
+# Sync an adoption
 
-Bring standards already vendored in a target repository up to the current
-catalog, without discarding anything the target changed on purpose.
-
-Requires `lint/standards/manifest.json`. Without it the repository was never
-bootstrapped by this skill, and there is no record of what the vendored files
-started as — use `apply` instead.
+Reconcile the target's active standards and guidance with the current catalog
+without discarding local decisions. Updating copied files is only part of sync.
+The source of the target's choices is `lint/standards/ADOPTION.md`; the manifest
+records provenance of files copied from the catalog.
 
 ## Steps
 
-1. **Read the manifest.**
+1. **Read the current adoption and actual configuration.**
 
-   Done when the source repository, source commit, vendored preset list, and
-   file table are recovered, and the source commit is compared against the
-   catalog commit recorded in the shared locate step.
+   Read the adoption record, `lint/standards/manifest.json`, agent-instruction
+   pointer, lint commands, and effective configuration. Inspect installed tools
+   and the present stack. Compare the manifest source with the resolved catalog
+   source; do not silently switch repositories.
 
-2. **Classify every file in `files` by three hashes.**
+   If no manifest exists, use apply rather than guessing copied-file history.
+   If an existing adoption has only a manifest, establish its actual checks
+   from the target before writing the record. Do not infer active coverage from
+   preset files being present, or silently remove its existing checkers.
 
-   - **catalog:** sha256 of the entry `source` path in the resolved catalog
-     directory now.
-   - **manifest:** the entry `sha256`, recorded when it was vendored.
-   - **local:** sha256 of the file in the target now.
+   Done when current enforcement, guidance, exceptions, and provenance are
+   understood from the repository rather than reconstructed from filenames.
 
-   | catalog vs manifest | local vs manifest | class |
+2. **Reconsider the mapping, not the owner's choices.**
+
+   Follow the shared adoption policy loaded by the entrypoint for changed principles and newly relevant
+   parts of the stack. Translate unrepresented ecosystems with
+   the translation workflow loaded by the entrypoint. Existing exceptions remain decisions; new
+   catalog coverage does not revoke them.
+
+   Show the proposed changes to active rules, configuration, guidance, and gaps.
+   A newly applicable bundled preset is an option, not an automatic import.
+   Inspect what an updated preset enables before adopting its new contents.
+
+   Done when the update plan names effective behavior changes and distinguishes
+   them from file-only changes. Ask before replacing tools, changing dependencies,
+   weakening existing checks, or overriding a local decision.
+
+3. **Reconcile copied files.**
+
+   For each manifest entry compare its recorded `sha256` with the current
+   catalog `source` bytes and local target bytes:
+
+   | Catalog vs recorded | Local vs recorded | Action |
    | --- | --- | --- |
-   | same | same | unchanged |
-   | differs | same | upstream-changed |
-   | same | differs | locally-modified |
-   | differs | differs | both |
+   | Same | Same | Leave unchanged. |
+   | Different | Same | Update when included in the adoption plan. |
+   | Same | Different | Preserve the local modification. |
+   | Different | Different | Show both changes and ask before replacing local work. |
 
-   A manifest entry whose `source` is gone from the catalog was removed
-   upstream; one with no file in the target was deleted locally. Report each
-   rather than guessing which side is right.
+   Report upstream removals and local deletions instead of recreating or
+   deleting them automatically. Find new runtime dependencies of selected
+   bundled files using apply's vendoring rules; compare catalog-relative paths
+   with manifest `source` values, not target-path keys. Never overwrite an
+   existing untracked target file just because its path is new to the manifest.
 
-   Done when every manifest entry carries exactly one class.
+   Done when accepted file changes include their runtime dependencies and local
+   modifications remain protected. Files created by target translation and the
+   adoption record are target-owned; do not replace them with catalog bytes.
 
-3. **Apply the upstream changes.**
+4. **Update the active integration.**
 
-   Overwrite each `upstream-changed` file with the catalog content. Leave every
-   `locally-modified` file alone. For each `both`, show what changed upstream,
-   what changed locally, and ask which to keep. Never overwrite a local
-   modification silently — the target edited it for a reason the catalog cannot
-   see.
+   Reuse apply's dependency approval and configuration wiring. Check versions
+   and package requirements for existing integrations as well as new ones.
+   If an installation is declined, leave dependent updates unapplied and record
+   the gap rather than loading an unresolvable configuration.
 
-   Done when every `upstream-changed` file matches the catalog byte for byte,
-   and every `both` file has an explicit decision from the user.
+   Add imports and scoped config entries for newly selected presets. Reconcile
+   copied settings in target-owned files, such as Ruff codes or mypy options;
+   replacing a reference fragment does not update those settings. Preserve
+   unrelated options and resolve conflicting owner choices explicitly. Keep the
+   selected checks wired into the target's normal command and CI, when present.
 
-4. **Offer newly applicable presets.**
+   Done when the accepted plan is reflected in active configuration, not merely
+   in the vendor directory. Preserve pre-sync violation counts for comparison.
 
-   Re-run the `applies` evaluation from apply step 3 against the target current
-   dependencies. Dependencies added since vendoring can make presets apply that
-   did not before.
+5. **Verify and update the records.**
 
-   Done when every preset that now applies but is absent from the manifest is
-   either vendored, with permission asked for its packages, or declined and
-   recorded.
+   Follow apply's verification step. Show effective rule settings and behavior
+   on representative source; report newly enforced coverage, changed violation
+   counts, and remaining guidance or gaps. Do not auto-fix target source or add
+   suppressions to buy a clean run.
 
-5. **Update the manifest.**
+   Update the adoption record and its guidance pointer. Record only active
+   bundled presets in the manifest, add actual catalog copies with their source
+   paths, and update hashes only for content accepted from the catalog. Preserve
+   the old upstream hash for files kept as local modifications. Advance the
+   source commit without implying that declined changes were installed; name
+   those decisions in the adoption record.
 
-   Write the new source commit, and update each entry `sha256` to the sha256 of
-   the catalog content that path was synced from, leaving its `source`
-   unchanged. Leave the old hash on any file kept as a local modification:
-   setting it to the local bytes would make the next run read that file as
-   pristine and overwrite it.
-
-   Done when re-running step 2 classes every file `unchanged`, apart from the
-   files deliberately kept as local modifications, which still class as
-   `locally-modified` or `both`.
-
-6. **Rerun the lint commands and report the delta.**
-
-   Done when each command shows its new violation count beside the count from
-   before the sync, and every rule id that newly fires is named.
+   Done when the records match observed enforcement, local choices remain
+   intact, and a later sync can distinguish remaining gaps from completed work.

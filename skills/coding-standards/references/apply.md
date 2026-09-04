@@ -1,283 +1,189 @@
-# Apply
+# Apply to a repository
 
-Bootstrap the catalog standards into a target repository. The target is the
-current repository unless the user names another.
-
-This mode adds a layer of enforcement and wires it to a command. It never takes
-over what the target already runs: no existing config file is deleted or
-replaced, only extended.
+Leave working checks using existing tools, short local agent guidance, and an
+honest adoption record. The current repository is the target unless the user
+names another. An existing adoption belongs on the sync path.
 
 ## Steps
 
-1. **Detect the ecosystems.**
+1. **Inspect the target, including unrepresented stacks.**
 
-   Look at the target root for each `ecosystems.<name>.detect` file in the
-   catalog.
+   Read manifests, source directories, subprojects, existing agent guidance,
+   tool configuration, dependency versions, normal check commands, and CI.
+   Identify generated and vendored paths that are not target source.
 
-   Done when every detected ecosystem is named. When nothing is detected, stop
-   and report that — do not infer an ecosystem from file extensions, because a
-   repository with no manifest has nowhere to record dependencies or scripts.
+   The catalog's `ecosystems.*.detect` entries are hints, not an exhaustive
+   language detector. Use repository evidence to identify other stacks. For
+   each unrepresented ecosystem, follow the translation workflow loaded by the entrypoint and bring
+   its proposed mapping back here. Do not stop at a missing catalog column or
+   modify the catalog as a prerequisite. If there is genuinely no code or
+   identifiable target, report that limitation instead of inventing a stack.
 
-2. **Survey the enforcement already there.**
+   Done when the actual stack and existing checks are understood, including
+   their scope and any local decisions the adoption must preserve.
 
-   Survey only the ecosystems step 1 detected.
+2. **Choose checks and guidance by principle.**
 
-   For JavaScript: the ESLint config (a legacy `.eslintrc*` means ESLint 8, a
-   flat `eslint.config.*` means ESLint 9), any `oxlint` or `biome` setup, the
-   prettier config, the tsconfig files, the `package.json` lint scripts, the CI
-   jobs that run lint, and what is not source: the output directories
-   `.gitignore` names, and the generated files in the tree (`*.gen.ts`,
-   `routeTree.gen.ts`, `*.d.ts` a tool emits), which is where step 6 gets the
-   contents of its `ignores`. For Python: `ruff`, `mypy`, or `flake8` settings
-   in `pyproject.toml` or their own files, the task runner the target drives
-   its own commands with, and pre-commit hooks.
+   Read the shared adoption policy loaded by the entrypoint. Build the mapping from the catalog principles
+   to this target's tools and local guidance. Prefer a native check already
+   provided by the repository or its dependencies. Treat broad architectural
+   and test-quality judgments as guidance rather than syntax prohibitions.
 
-   State the finding before writing anything, then answer the questions
-   belonging to each detected ecosystem.
+   Bundled presets are optional candidates. Their `applies` fields suggest
+   relevance; they do not select an entire preset on the user's behalf. Inspect
+   every rule a proposed preset enables. Use the whole preset only when its
+   rules fit the adoption; otherwise configure selected dependency-owned rules
+   directly. Do not write a preset-filtering framework or load a custom checker
+   just because it exists. Keep already-active checks unless the user chooses
+   to change them.
 
-   JavaScript:
+   Show the proposed checks, guidance, partial coverage, gaps, and exceptions.
+   Done when every relevant principle has a disposition and proposed changes
+   are grounded in the target rather than a default toolchain.
 
-   - **Legacy `.eslintrc*`:** the catalog presets are flat config, so adopting
-     them requires an ESLint 9 upgrade. That is a dependency change — stop and
-     ask.
-   - **`oxlint` or `biome` present:** neither can run the custom rules in
-     `eslint/rules`, so they stay where they are and ESLint runs alongside
-     them. Say so and continue.
-   - **Existing flat config:** add the presets to it. Never replace it.
+3. **Get permission for dependency changes.**
 
-   Python:
+   Inspect installed versions first. Ask before installing, upgrading, or
+   replacing any tool, with exact packages and versions, why they are needed,
+   and their important maintenance, security, licensing, runtime, and size
+   trade-offs. Use the target's package manager and dependency layout.
 
-   - **Existing ruff, mypy, or flake8 config:** extend it where the tool
-     supports extension and merge the catalog options into it where the tool
-     does not. Never replace it.
+   For a selected bundle, its catalog package pins describe the supported
+   versions; include runtime tooling it needs, such as ESLint itself. Do not
+   install packages belonging to unselected presets. For an existing native
+   integration, use that version's supported settings rather than forcing a
+   catalog pin. No dependency change means no installation question is needed.
 
-   Done when the survey is stated and every question of every detected
-   ecosystem has an answer for this target — the three JavaScript questions
-   only when JavaScript was detected, the Python question only when Python was.
+   If a proposal is declined, leave dependent config inactive and record the
+   gap. Continue with the checks and guidance that can be applied safely.
 
-3. **Select the presets.**
+   Done when every dependency change has a decision and no proposed active
+   config imports an unavailable package.
 
-   Evaluate `presets.<ecosystem>[*].applies` against the target `package.json`
-   `dependencies` and `devDependencies`. A preset with `applies.always` applies
-   whenever its ecosystem was detected.
+4. **Wire only the selected checks.**
 
-   Show a table: preset, why it applies, and which of its `packages` are not
-   already installed at the pinned version.
+   Extend the active configuration; do not create a competing config that
+   shadows it. Scope checks to real source, excluding generated output and
+   vendored files. Reuse the target's task runner and existing lint/check
+   command, including its CI invocation when present. Do not refactor target
+   source, change runtime dependencies, or add a new checker in this step.
 
-   Done when every preset in each detected ecosystem is either selected with
-   its reason or excluded with the dependency it was waiting for.
+   For ordinary native tools, follow their installed configuration mechanism.
+   When selecting bundled assets, use the implementation notes below. Copy
+   only tracked catalog content needed at runtime, not tests or tool caches.
+   Source files or configs written by translation are target-owned, not
+   upstream catalog copies.
 
-4. **Ask before installing anything.**
+   Done when selected tools are resolvable, their config reaches the intended
+   source, and the target's normal command runs them. A guidance-only adoption
+   can legitimately add no tool or runnable check; state that explicitly.
 
-   The install list is `ecosystems.<name>.packages` plus the `packages` of
-   every preset selected in step 3, minus what the target already has at that
-   exact version. The ecosystem entry carries tooling no preset names —
-   `javascript` carries `eslint` itself — so a target whose preset packages are
-   already satisfied can still be missing the linter.
+5. **Leave the guidance and records.**
 
-   Pin every version exactly. A range lets the target drift off the version the
-   catalog checked its rule ids against, and the config then fails on rules
-   that no longer exist. Use the form for the target package manager, chosen by
-   lockfile:
+   Write `lint/standards/ADOPTION.md` and the scoped agent-instruction pointer
+   described in the shared adoption policy loaded by the entrypoint. Record proposed checks as unverified
+   until the next step establishes coverage. Write the provenance manifest
+   defined by the shared adoption policy, even when no catalog files were copied. Preserve existing guidance
+   and user decisions rather than replacing them with the entire catalog.
 
-   ```
-   bun add -d --exact <pkg>@<version>
-   npm i -D --save-exact <pkg>@<version>
-   pnpm add -D --save-exact <pkg>@<version>
-   yarn add -D --exact <pkg>@<version>
-   uv add --dev <pkg>==<version>
-   ```
+   Done when future agents can discover the judgment guidance and the record
+   separates active tools, proposed checks, gaps, and exceptions.
 
-   Show the exact command with every package and version in it. Then wait.
+6. **Verify behavior and report.**
 
-   Done when the user has answered. A refusal is not a blocker: continue to
-   vendor, but leave every preset whose packages are missing out of the config
-   in step 6 — ESLint refuses the whole config when one import fails to
-   resolve — and carry the blocked presets forward so steps 9 and 10 report
-   them as blocked rather than clean.
+   Inspect effective settings for representative real source files and run each
+   selected command. Use the tool's own config/reporting support, such as
+   `eslint --print-config <source>` or `ruff check --show-settings <source>`.
+   Confirm the normal task command and CI actually invoke the selected checks.
+   A successful command alone does not prove a particular rule is enabled.
 
-5. **Vendor the files into `<target>/lint/standards/`.**
+   Where effective settings do not establish the claimed behavior, use a
+   bounded clean/violating example through the real tool, without changing
+   target source or committing a fixture suite. Do not write tests of skill
+   prose or add custom-linter test infrastructure as part of adoption.
 
-   Copy only files the catalog repository tracks. Take the list from
-   `git -C <catalog dir> ls-files <paths>` rather than walking the directory:
-   the catalog is a working repository and carries `__pycache__`, `.venv`, and
-   tool caches from its own test runs, and a wholesale directory copy drags
-   them into the target.
+   Report baseline violation counts from tool output. Existing source
+   violations are a baseline, not permission to auto-fix, add suppressions, or
+   weaken selected rules. Diagnose tool, parse, or configuration errors before
+   continuing; leave affected coverage unverified rather than claiming success.
+   Update the record from observed results. If the target has no CI, say so.
 
-   - JavaScript: `eslint/` — rules, presets, and the standards plugin — minus
-     every `*.test.mjs`. The rule tests import vitest, which the target has no
-     reason to install. Vendoring all of `eslint/` deliberately brings presets
-     this target did not select: the config never imports them, so they are
-     inert until their packages exist, and holding them under the manifest lets
-     `sync` keep them current so enabling one later is a single import line.
-   - Python: `python/ruff.toml`, `python/mypy.ini`, `python/semgrep/`, and
-     `python/standards_checks/`. Not `python/tests`, `pyproject.toml`, or
-     `uv.lock`; those test and build the catalog itself and mean nothing in a
-     target.
-   - Every baseline in `catalog.baselines` whose `applies` matches the target,
-     evaluated exactly as the presets in step 3: copy its `file` to the
-     `target` path it names, and only when nothing is there already.
+   Done when selected checks run with observed coverage, or are explicitly
+   blocked; local guidance is discoverable; and every partial, uncovered, or
+   excepted requirement remains visible. Offer source cleanup separately.
 
-   The `tsconfig-strict` baseline lands at
-   `lint/standards/tsconfig.strict.json` and then goes into the `extends` of
-   every tsconfig that compiles something — one that lists `files` or
-   `include`. A tsconfig's own `compilerOptions` override what it extends, so
-   an option the target already sets equal or stricter needs no change, and a
-   looser one is the target's choice to keep or drop: report it rather than
-   silently overriding it. A solution-style `tsconfig.json` holding
-   `files: []` and `references` compiles nothing, so extend the configs it
-   references instead. Any JSON config the target keeps may carry comments,
-   tsconfig files especially; edit it as text rather than parsing and
-   rewriting it as JSON, which strips the comments.
+## Optional bundled implementations
 
-   A baseline is never worth installing its tool for. When the dependency its
-   `applies` names is absent, leave the file out and name it in the report as
-   available once the target adopts the tool.
+These are wiring notes for assets selected in step 2, not a list to install.
+If the target's own tool already supplies the needed behavior, configure that
+tool instead. Do not add ESLint alongside another linter merely to reproduce
+every catalog rule.
 
-   Done when every path above exists in the target, no file that was already
-   there was overwritten, and nothing the catalog repository does not track was
-   copied.
+### ESLint
 
-6. **Write the config.**
+Bundled factories use flat config. Ask before migrating a legacy configuration
+or changing the installed ESLint version. Add imports and entries to the
+existing flat config rather than creating another one. Each factory's own
+options are the authoritative interface; there is no preset index.
 
-   JavaScript: `eslint.config.mjs` importing each selected preset factory from
-   its own file, `./lint/standards/eslint/presets/<name>.mjs`, and
-   `./lint/standards/eslint/standards-plugin.mjs` only when the config needs
-   the plugin object itself. There is no index to import.
+Use a standalone global `ignores` entry for generated output and
+`lint/standards/**`. Scope each selected factory with `files`. Supply compiling
+tsconfigs to the base resolver, not a solution-only config with `files: []`.
+Keep type-aware parsing opt-in and configure its project scope when selected.
+Use the preset's existing token-module exemptions where the target defines
+its design tokens. Do not replace context-sensitive guidance with custom
+syntax checks merely to make the preset count complete.
 
-   Make the first config object `{ ignores: [...] }` on its own — an `ignores`
-   key sharing an object with other keys filters only that entry, while an
-   object holding nothing else applies to the whole run. Name in it the build
-   output the survey found (`dist`, `build`, `out`, `.next`, `coverage`),
-   `node_modules`, the generated files the survey found, and
-   `lint/standards/**`.
+Factories import shared rules and `standards-plugin.mjs`. When using a bundled
+JavaScript factory, vendor the tracked `eslint/` runtime tree under
+`lint/standards/eslint/`, excluding `*.test.mjs`. Unused files are inert, not
+enforced coverage; only imported factories belong in `manifest.presets`.
 
-   Scope every preset, `base` included, with `files` naming the real source
-   directories. Inspect the tree to find them — `**/*` is wrong in any
-   repository that has `dist`, `build`, or generated output, because it turns
-   vendored and generated code into violations nobody will fix.
+### Python
 
-   `base` also takes `tsconfigPaths`: pass the same compiling tsconfigs step 5
-   found. Its default `./tsconfig.json` is a solution file that compiles nothing
-   in a Vite-style repository, so the import resolver resolves nothing. `base`
-   takes `internalPattern` too, for a repository whose path aliases are
-   something other than `@/`, `~/`, or `#`.
+Select Ruff, mypy, Semgrep, or existing custom checks individually. Copy only
+the selected `presets.python.*.file` roots and their runtime dependencies.
+Exclude `python/tests`, test/build environment files, caches, and the Semgrep
+`.py` fixtures; those fixtures test the catalog, not the target. Check Python
+version compatibility before selecting the bundled checks.
 
-   When the target already has a flat config, add the imports and entries to
-   that file instead of creating a second one. When the survey found `oxlint`
-   or `biome`, add `lint/standards` to that tool's ignore configuration as
-   well — oxlint's `ignorePatterns` in `.oxlintrc.json`, biome's `files` ignore
-   setting — so the tool that cannot run these rules also stops reporting on
-   the files that hold them. Edit those configs as text for the reason step 5
-   gives.
+For a selected Ruff fragment, extend the config Ruff actually reads. Do not
+create `ruff.toml` beside an active `[tool.ruff]` merely for convenience. If the
+target sets `lint.select` or legacy `select`, merge the chosen codes into its
+own `extend-select`; a child `select` can reset inherited selections. Otherwise
+use Ruff's `extend` mechanism without discarding an existing inheritance chain.
+Merge only chosen codes, not every catalog code regardless of coverage.
 
-   Python: point the target ruff config at the vendored one with
-   `extend = "lint/standards/python/ruff.toml"`, creating `ruff.toml` if the
-   target has none. mypy has no equivalent — no mypy config file can extend
-   another — so write the options from `lint/standards/python/mypy.ini` into
-   the target's `[tool.mypy]` table in `pyproject.toml`, or into `[mypy]` in
-   the mypy config file the target already has. The vendored file stays as the
-   manifest-tracked reference the options were copied from, which is what lets
-   `sync` show that they drifted.
+Mypy has no config inheritance: merge selected options into its active config.
+Use TOML booleans in `pyproject.toml`. Preserve stricter settings and ask before
+overriding an explicit local choice. Add the vendor directory to the target's
+Ruff and mypy exclusions without removing existing exclusions. Record copied
+settings and their active locations so sync can update more than the reference
+fragments.
 
-   Then define four commands, each run through the target's own runner:
-   prefixed with `uv run` in a uv project, bare where the target manages its
-   own environment.
+Use only the selected commands, through the target's runner:
 
-   ```
-   ruff check <src dirs>
-   mypy <src dirs>
-   semgrep --config lint/standards/python/semgrep <src dirs>
-   PYTHONPATH=lint/standards/python python -m standards_checks <src dirs>
-   ```
+```sh
+ruff check <source directories>
+mypy <source directories>
+semgrep --error --config lint/standards/python/semgrep <source directories>
+PYTHONPATH=lint/standards/python python -m standards_checks <source directories>
+```
 
-   Put them where the target already keeps tasks — package scripts, a `just`
-   recipe, a `make` target — and follow that runner's naming. When the target
-   has no task runner at all, add a `Makefile` with a `lint` target; a make
-   target name cannot contain a colon, so the Python entry point there is
-   `lint-python`, not `lint:python`.
+The environment assignment precedes the runner, for example
+`PYTHONPATH=lint/standards/python uv run python -m standards_checks ...`.
+Semgrep needs `--error` for findings to fail the command. If the target has no
+task runner, choose a simple native command entrypoint instead of introducing
+a task framework. Guidance does not require one.
 
-   A wired entry point stops at the first command that fails, so step 9 runs
-   each command separately to get every count.
+### Baselines and scripts
 
-   Done when each detected ecosystem has config naming real source directories,
-   the mypy options live in a file mypy itself reads, and the Python commands
-   exist in the form the target already uses for its own tasks.
+Catalog baselines and `enforcement.script` files are also optional. Copy a
+selected baseline only when the target has no equivalent active configuration;
+check alternate filenames and embedded package settings first. Never install
+a tool just to adopt its baseline. Extend compiling tsconfigs when choosing
+the strict baseline, preserving their local options and comments.
 
-7. **Write the manifest `lint/standards/manifest.json`.**
-
-   ```json
-   {
-     "source": { "repository": "<git remote url>", "commit": "<sha>" },
-     "catalogVersion": 1,
-     "ecosystems": ["javascript", "python"],
-     "presets": { "javascript": ["base", "typescript"], "python": ["ruff"] },
-     "files": {
-       "lint/standards/eslint/presets/base.mjs": {
-         "source": "eslint/presets/base.mjs",
-         "sha256": "<sha256>"
-       }
-     }
-   }
-   ```
-
-   `presets` uses the same ecosystem names as `catalog.ecosystems`.
-
-   `files` lists every file step 5 vendored, baselines included. It does not
-   list the target's own files apply edited in place — tsconfigs,
-   `.oxlintrc.json`, `package.json` — because those belong to the target
-   rather than being catalog content `sync` can update.
-
-   Each key is a path relative to the target root, and its `source` is where
-   that content came from, relative to the catalog directory:
-   `eslint/presets/base.mjs` for a plain vendored file,
-   `prettier/prettierrc.json` for a baseline that lands under another name.
-   Three baselines are renamed on the way in, and without `source` `sync` has
-   no way back to the catalog file to hash. Each `sha256` is the hash of the
-   catalog content vendored to that path, which stays true even after someone
-   edits the target copy — that is what lets `sync` tell an upstream change
-   from a local one.
-
-   Done when every file step 5 wrote has an entry. `sync` can only see what the
-   manifest lists, so an omitted file silently stops receiving updates.
-
-8. **Wire the commands.**
-
-   Add or extend the target `lint` script, plus the Python entry point step 6
-   named when Python was detected, so the new enforcement runs from the command
-   the target already uses. Then check the CI workflows: confirm an existing lint job
-   picks the script up, or add the step.
-
-   Done when one command the target already documents runs every new check, and
-   either CI runs that command or the report records that the target has no CI.
-
-9. **Run and report the baseline.**
-
-   Run each configured command on its own, not through the entry point that
-   chains them, and report violation counts grouped by rule id. Chained
-   commands stop at the first failure, and every command after it goes
-   uncounted. Take the counts from machine output rather than by eye:
-   `eslint . -f json` piped through `jq` grouping `.[].messages[].ruleId`, and
-   ruff's `--output-format json` or its `--statistics`.
-
-   Do not auto-fix, add disables, or edit target source to make lint pass. The
-   baseline is the finding, and a clean run bought with disables hides it. List
-   the highest-count rules and offer to work through them as a follow-up.
-
-   Done when every configured command has run and its count is reported, or is
-   named as blocked on a dependency the user declined in step 4.
-
-10. **Prove the config reaches the code.**
-
-    A config is real only when it is explicit, resolvable, reaching the target
-    source files, and wired to a command CI runs. Report these three facts with
-    the output that shows each:
-
-    - `eslint --print-config <a real source file>` lists `standards/*` rules and
-      the rules of the selected presets. For Python, run each command against a
-      real source file and show that it inspected it.
-    - the lint script exists and runs those commands.
-    - CI runs that script, or the target has no CI.
-
-    Done when all three are stated from observed output rather than from what
-    the config was meant to do.
+A selected script needs its interpreter, source scope, runnable command, and
+observed behavior recorded just like any other check. Copy and wire it rather
+than treating its presence in the catalog as enforcement.

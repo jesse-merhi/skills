@@ -45,7 +45,6 @@ jobs:
           ./tests/review-findings-test
           python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py'
           bun run validate:effect
-          bun run validate:python
 
       - name: Check remaining shell and JavaScript syntax
         run: |

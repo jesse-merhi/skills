@@ -45,9 +45,12 @@ const repositoryPackages = join(standardsDirectory, "../../node_modules")
 const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "catalog.json"), "utf8"))
 
 const javascriptPresets = catalog.presets.javascript ?? {}
-const pythonPresets = catalog.presets.python ?? {}
 
-const enforcements = catalog.standards.flatMap((standard) => Object.values(standard.enforcement).flat())
+const enforcements = catalog.standards.flatMap((standard) => [
+  ...standard.enforcement.javascript,
+  ...standard.enforcement.python,
+  ...(standard.enforcement.script ?? [])
+])
 
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
@@ -55,12 +58,11 @@ const pythonFileEntries = enforcements.flatMap((entry) =>
   entry.kind === "check" || entry.kind === "semgrep" ? [entry] : []
 )
 const referencedPaths = [
-  ...ruleEntries.flatMap((entry) => [entry.rule, entry.test]),
+  ...ruleEntries.map((entry) => entry.rule),
   ...scriptEntries.map((entry) => entry.file),
   ...Object.values(catalog.baselines).map((baseline) => baseline.file),
-  ...pythonFileEntries.flatMap((entry) => [entry.file, entry.test]),
-  ...Object.values(javascriptPresets).map((preset) => preset.file),
-  ...Object.values(pythonPresets).map((preset) => preset.file)
+  ...pythonFileEntries.map((entry) => entry.file),
+  ...Object.values(catalog.presets).flatMap((family) => Object.values(family).map((preset) => preset.file))
 ]
 
 const bareSpecifier = (specifier: string): string => {
@@ -113,26 +115,73 @@ const isEnabled = (setting: typeof RuleSetting.Type): boolean => {
   return severity !== "off" && severity !== 0
 }
 
+interface MutableStandard {
+  enforcement: { javascript: Array<Record<string, unknown>>; python: Array<Record<string, unknown>> }
+}
+
+const pythonEntries = (standards: ReadonlyArray<MutableStandard>): ReadonlyArray<Record<string, unknown>> =>
+  standards.flatMap((standard) => standard.enforcement.python)
+
+// The schema, not a test, is what has to reject a hand-edited catalog, so each
+// mutation below is one way that editing goes wrong.
+const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandard>) => void]> = [
+  [
+    "a standard whose python column is empty",
+    (standards) => {
+      for (const standard of standards) standard.enforcement.python = []
+    }
+  ],
+  [
+    "a ruff entry selecting no rule codes",
+    (standards) => {
+      for (const entry of pythonEntries(standards)) if (entry.kind === "ruff") entry.select = []
+    }
+  ],
+  [
+    "a mypy option written as the string a config file holds",
+    (standards) => {
+      for (const entry of pythonEntries(standards)) if (entry.kind === "mypy") entry.options = { strict: "True" }
+    }
+  ],
+  [
+    "an enforcement entry carrying a key its kind does not define",
+    (standards) => {
+      for (const entry of pythonEntries(standards)) entry.severity = "error"
+    }
+  ],
+  [
+    "a ruff entry pasted into the javascript column",
+    (standards) => {
+      for (const standard of standards) standard.enforcement.javascript.push({ kind: "ruff", select: ["S608"] })
+    }
+  ],
+  [
+    "an ESLint rule entry pasted into the python column",
+    (standards) => {
+      for (const standard of standards) {
+        standard.enforcement.python.push({ kind: "rule", presets: ["base"], rule: "r.mjs", test: "r.test.mjs" })
+      }
+    }
+  ]
+]
+
 const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .filter((entry) => entry.endsWith(".mjs") && !entry.endsWith(".test.mjs"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
-  it("resolves every referenced rule, test, script, check, baseline, and preset file", () => {
+  it("resolves every referenced rule, script, check, baseline, and preset file", () => {
     for (const path of referencedPaths) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
   })
 
-  it("catalogues every custom rule exactly once alongside its test", () => {
+  it("catalogues every custom rule exactly once", () => {
     assert.deepEqual(
       ruleFiles.toSorted(),
       ruleEntries.map((entry) => entry.rule).toSorted(),
       "every rule file must be catalogued exactly once"
     )
-    for (const entry of ruleEntries) {
-      assert.strictEqual(entry.test, entry.rule.replace(/\.mjs$/u, ".test.mjs"))
-    }
   })
 
   it("names preset families and preset ids that exist", () => {
@@ -202,6 +251,35 @@ describe("coding standards catalog", () => {
       }
       assert.deepEqual([...enabled].toSorted(), [...claimedRuleIds(name)].toSorted(), `${name} catalog claims`)
     }
+  })
+  it("keys every preset family by a known ecosystem and claims every rule in a preset", () => {
+    const families = new Set(Object.values(catalog.ecosystems).map((ecosystem) => ecosystem.presets))
+    for (const family of Object.keys(catalog.presets)) {
+      assert.isTrue(families.has(family), `preset family ${family} belongs to no ecosystem`)
+    }
+    for (const entry of enforcements) {
+      if (entry.kind === "rule" || entry.kind === "plugin") {
+        assert.isNotEmpty(entry.presets, `${entry.kind === "rule" ? entry.rule : entry.package} is claimed by no preset`)
+      }
+    }
+  })
+
+  it("rejects an applies naming no condition and an ecosystem detecting nothing", () => {
+    const source = readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
+    const presets: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(source)
+    presets.presets.javascript.base.applies = {}
+    assert.throws(() => decodeCatalog(JSON.stringify(presets)))
+    const ecosystems: { ecosystems: { python: { detect: unknown } } } = JSON.parse(source)
+    ecosystems.ecosystems.python.detect = []
+    assert.throws(() => decodeCatalog(JSON.stringify(ecosystems)))
+  })
+
+  it.each(rejectedMutations)("rejects %s", (_, mutate) => {
+    const raw: { standards: Array<MutableStandard> } = JSON.parse(
+      readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
+    )
+    mutate(raw.standards)
+    assert.throws(() => decodeCatalog(JSON.stringify(raw)))
   })
 
   it("gives every standard a column for every ecosystem", () => {

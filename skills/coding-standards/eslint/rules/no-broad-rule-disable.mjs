@@ -17,8 +17,9 @@ function disabledProtectedRule(comment, protectedRules) {
 		return null;
 	}
 
-	// All-rule disables suppress this rule before it can report, so only named
-	// rules are visible here. A repository-wide scan is the tool for the rest.
+	// A bare eslint-disable suppresses this rule before it can report, so only
+	// named rules are visible here. Catch bare disables with a repository-wide
+	// grep in CI; ESLint itself cannot see them.
 	return (
 		stripEslintDescription(directiveMatch[1])
 			.split(/[,\s]+/)

@@ -2,15 +2,17 @@ import playwrightPlugin from "eslint-plugin-playwright";
 
 import { standards } from "../standards-plugin.mjs";
 
-const DEFAULT_FILES = ["**/tests/e2e/**/*.{ts,tsx}"];
-const DEFAULT_CHECKS = ["domPath"];
-
+// Common Playwright layouts, helpers and page objects included; pass `files` when specs live elsewhere.
+const DEFAULT_FILES = ["**/e2e/**/*.{ts,tsx}", "**/playwright/**/*.{ts,tsx}", "**/*.e2e.{spec,test}.{ts,tsx}"];
 export default function playwright(options = {}) {
-	const brittleSelectorOptions = { checks: options.checks ?? DEFAULT_CHECKS };
+	const brittleSelectorOptions = options.checks === undefined ? {} : { checks: options.checks };
 
 	const brittleStyleOptions = {};
 	if (options.semanticClassTokens !== undefined) {
 		brittleStyleOptions.semanticClassTokens = options.semanticClassTokens;
+	}
+	if (options.semanticClassValues !== undefined) {
+		brittleStyleOptions.semanticClassValues = options.semanticClassValues;
 	}
 
 	return [
