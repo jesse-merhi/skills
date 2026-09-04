@@ -13,8 +13,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
   summary. A subagent assigned an until-clean workflow is a coordinator for
   that workflow; it is not a findings-only reviewer.
 - A findings-only reviewer is assigned to inspect and report, not to run the
-  fix-and-rerun workflow. Give it the target, neutral checklist, and requested
-  evidence without implementation rationale or prior findings. It uses
+  fix-and-rerun workflow. Use a findings-only reviewer preset when the harness
+  exposes one; never select it for an until-clean coordinator. Give it the
+  target, neutral checklist, and requested evidence without implementation
+  rationale or prior findings. It uses
   `finding-discipline` as the authority for finding eligibility, severity, and
   reporting, and consults relevant domain skills while retaining the mandatory
   review lenses below. Keep those policies in their owning skills rather than

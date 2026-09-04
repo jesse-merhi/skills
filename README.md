@@ -66,6 +66,19 @@ Fable keeps product, architecture, design direction, integration, and high-level
 review; it delegates settled implementation and UI to Opus 5 and code-centric
 review to GPT-5.6 Sol High.
 
+Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
+sessions. After installation, use `codex --profile findings-reviewer review
+--base main`, or the normal `skills/code-review/scripts/codex-review` helper,
+which selects the preset automatically when its file is installed in
+`CODEX_HOME` (default `~/.codex`). Without that file the helper keeps native
+review's normal configuration; `--dry-run` shows the selected command. It hides
+a short list of coordination, publication, and handoff
+skills by name, while keeping domain skills discoverable on demand and
+`finding-discipline` authoritative. Coordinators and delegated until-clean
+workflows keep their normal profile; in-chat spawn tools without profile
+selection are not filtered. This is a relevance filter, not a permission
+boundary, and it does not override the selected model or sandbox.
+
 **Honesty about harness coverage:** the installer handles four link-based
 harnesses plus a locally running OpenClaw Gateway. The skills themselves were
 written and exercised almost entirely on Codex and Claude Code, and several
