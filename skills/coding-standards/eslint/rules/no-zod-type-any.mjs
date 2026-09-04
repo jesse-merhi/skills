@@ -84,7 +84,7 @@ function isWeakLocalZodExport(
 	return (
 		localName !== null &&
 		(isScopedName(localName, specifier, weakZodTypeNames, weakZodTypeScopes, typeDeclarationScopes) ||
-			zodTypeNames.has(localName) ||
+			isZodTypeReference(specifier.local, zodTypeNames, zodNamespaceNames) ||
 			zodNamespaceNames.has(localName))
 	);
 }
@@ -167,21 +167,7 @@ function isWeakZodAliasReference(
 }
 
 function isBareZodTypeReference(node, zodTypeNames, zodNamespaceNames) {
-	if (getTypeArguments(node).length > 0) {
-		return false;
-	}
-
-	const typeName = node.typeName;
-	if (typeName.type === "Identifier") {
-		return zodTypeNames.has(typeName.name);
-	}
-
-	if (getTypeReferenceName(typeName) !== "ZodType") {
-		return false;
-	}
-
-	const rootName = getQualifiedRootName(typeName);
-	return rootName !== null && zodNamespaceNames.has(rootName);
+	return getTypeArguments(node).length === 0 && isZodTypeReference(node.typeName, zodTypeNames, zodNamespaceNames);
 }
 
 function containsAnyKeyword(node, anyTypeNames) {
@@ -220,7 +206,7 @@ function containsAnyKeyword(node, anyTypeNames) {
 
 function isZodTypeReference(typeName, zodTypeNames, zodNamespaceNames) {
 	if (typeName.type === "Identifier") {
-		return zodTypeNames.has(typeName.name);
+		return zodTypeNames.bindings.has(findVariable(zodTypeNames.context, typeName));
 	}
 
 	if (getTypeReferenceName(typeName) !== "ZodType") {
@@ -256,7 +242,7 @@ function isZodTypeRuntimeReference(node, zodTypeNames, zodNamespaceNames) {
 	}
 
 	if (node.type === "Identifier") {
-		return zodTypeNames.has(node.name);
+		return isZodTypeReference(node, zodTypeNames, zodNamespaceNames);
 	}
 
 	if (node.type === "MemberExpression") {
@@ -1065,6 +1051,11 @@ function addName(names, name) {
 	return true;
 }
 
+function addZodTypeBinding(zodTypeNames, identifier) {
+	const variable = findVariable(zodTypeNames.context, identifier);
+	return variable ? addName(zodTypeNames.bindings, variable) : false;
+}
+
 function getAliasScope(node) {
 	for (let current = node; current; current = current.parent) {
 		if (current.type === "BlockStatement" || current.type === "TSModuleBlock" || current.type === "Program") {
@@ -1635,7 +1626,7 @@ function collectZodImportDeclaration(node, weakZodTypeNames, weakZodTypeScopes, 
 		}
 
 		if (importedName === "ZodType") {
-			addName(zodTypeNames, specifier.local.name);
+			addZodTypeBinding(zodTypeNames, specifier.local);
 			continue;
 		}
 
@@ -1670,7 +1661,7 @@ function collectZodImportEqualsDeclaration(
 	}
 
 	if (isZodTypeReference(node.moduleReference, zodTypeNames, zodNamespaceNames)) {
-		return addName(zodTypeNames, node.id.name);
+		return addZodTypeBinding(zodTypeNames, node.id);
 	}
 
 	return false;
@@ -1745,7 +1736,7 @@ export default {
 		const weakZodTypeNames = new Set();
 		const weakZodTypeScopes = new Map();
 		const typeDeclarationScopes = new Map();
-		const zodTypeNames = new Set();
+		const zodTypeNames = { bindings: new Set(), context };
 		const zodNamespaceNames = new Set();
 		const zodNamespaceTypeScopes = new Map();
 		const zodIndexKeyAliases = { bindings: new Map(), context };
@@ -1800,7 +1791,7 @@ export default {
 					}
 
 					if (importedName === "ZodType") {
-						zodTypeNames.add(specifier.local.name);
+						addZodTypeBinding(zodTypeNames, specifier.local);
 						continue;
 					}
 
@@ -1903,7 +1894,7 @@ export default {
 				}
 
 				if (isZodTypeReference(node.moduleReference, zodTypeNames, zodNamespaceNames)) {
-					zodTypeNames.add(node.id.name);
+					addZodTypeBinding(zodTypeNames, node.id);
 				}
 			},
 			TSTypeReference(node) {
