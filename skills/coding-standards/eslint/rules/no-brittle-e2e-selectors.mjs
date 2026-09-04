@@ -1,7 +1,12 @@
+import { STANDALONE_TAILWIND_UTILITIES } from "./lib/tailwind-token-utils.mjs";
+
 const ALLOW_MARKER = "@allow-brittle-e2e-selector";
 const DEFAULT_CHECKS = ["nthChild", "domPath", "classAttribute", "utilityClass"];
 const TAILWIND_CLASS_SELECTOR_PATTERN =
 	/\.(?:bg|text|border|rounded|flex|min-w|max-w|truncate|overflow|whitespace|shadow|grid|hidden|block|inline|px|py|pt|pb|pl|pr|p|m|w|h)-[A-Za-z0-9_[\]/:%.-]+/;
+const STANDALONE_CLASS_SELECTOR_PATTERN = new RegExp(
+	`\\.(?:${[...STANDALONE_TAILWIND_UTILITIES].join("|")})(?![\\w-])`,
+);
 
 function getPropertyName(node) {
 	if (!node) {
@@ -77,7 +82,7 @@ function getSelectorMessageIds(selector) {
 		messageIds.push("classAttribute");
 	}
 
-	if (engine === "css" && TAILWIND_CLASS_SELECTOR_PATTERN.test(syntax)) {
+	if (engine === "css" && (TAILWIND_CLASS_SELECTOR_PATTERN.test(syntax) || STANDALONE_CLASS_SELECTOR_PATTERN.test(syntax))) {
 		messageIds.push("utilityClass");
 	}
 

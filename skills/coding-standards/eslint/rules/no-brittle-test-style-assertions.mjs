@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { findVariable } from "./lib/find-variable.mjs";
-import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
+import { splitTailwindSegments, STANDALONE_TAILWIND_UTILITIES } from "./lib/tailwind-token-utils.mjs";
 
 const ALLOWED_TEST_FILE_PATTERN = /\.(?:visual|contrast|layout)\.(?:spec|test)\.[cm]?[jt]sx?$/;
 const ALLOW_MARKER = "@allow-brittle-test-style-assertion";
@@ -24,11 +24,6 @@ const DEFAULT_SEMANTIC_CLASS_TOKENS = [];
 
 // Keep this list deliberately small. These forms are recognizable as utility classes
 // without trying to model all of Tailwind or guess at product-specific class names.
-const STANDALONE_TAILWIND_UTILITIES = new Set(
-	"absolute block border flex grid hidden inline inline-block inline-flex inline-grid invisible not-sr-only relative rounded shadow sr-only sticky transition truncate visible whitespace-nowrap".split(
-		" ",
-	),
-);
 const TAILWIND_UTILITY_PATTERN =
 	/^(?:\[[^\]]+\]|aspect-(?:auto|square|video|\[[^\]]+\])|(?:h|w|m[trblxyse]?|p[trblxyse]?|inset(?:-[xy])?|top|right|bottom|left|z|min-[hw]|max-[hw]|gap(?:-[xy])?|space-[xy])-(?:\d+(?:\.\d+)?(?:\/\d+)?|px|full|auto|fit|min|max|screen|\[[^\]]+\])|(?:bg|border)-(?:[a-z]+-\d+|\[[^\]]+\])(?:\/(?:\d+|\[[^\]]+\]))?|text-(?:(?:[a-z]+-\d+|\[[^\]]+\])(?:\/(?:\d+|\[[^\]]+\]))?|xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|ellipsis|clip|wrap|nowrap|balance|pretty)|font-(?:sans|serif|mono|thin|extralight|light|normal|medium|semibold|bold|extrabold|black|\[[^\]]+\])|(?:items|content|justify|self)-(?:normal|start|end|center|between|around|evenly|baseline|stretch|auto|\[[^\]]+\])|place-(?:content|items|self)-(?:start|end|center|between|around|evenly|baseline|stretch|auto|\[[^\]]+\])|flex-(?:1|auto|initial|none|row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|\[[^\]]+\])|(?:grid-cols|grid-rows)-(?:none|subgrid|\d+|\[[^\]]+\])|(?:col|row)-(?:auto|span-(?:full|\d+)|start-(?:auto|\d+)|end-(?:auto|\d+)|\[[^\]]+\])|rounded(?:-[trblse](?:[trblse])?)?-(?:none|sm|md|lg|xl|2xl|3xl|full|\[[^\]]+\])|opacity-(?:\d+|\[[^\]]+\])|leading-(?:none|tight|snug|normal|relaxed|loose|\d+|\[[^\]]+\])|tracking-(?:tighter|tight|normal|wide|wider|widest|\[[^\]]+\])|order-(?:first|last|none|\d+|\[[^\]]+\])|(?:duration|delay|scale|rotate)-(?:none|\d+|\[[^\]]+\])|skew-[xy]-(?:\d+|\[[^\]]+\])|origin-(?:center|top(?:-right|-left)?|right|bottom(?:-right|-left)?|left|\[[^\]]+\])|animate-(?:none|spin|ping|pulse|bounce|\[[^\]]+\])|ease-(?:linear|in|out|in-out|\[[^\]]+\])|shadow-(?:2xs|xs|sm|md|lg|xl|2xl|inner|none|\[[^\]]+\])|outline-(?:none|hidden|dashed|dotted|double|\d+|\[[^\]]+\])|ring-offset-(?:\d+|\[[^\]]+\])|(?:cursor|overflow(?:-[xy])?|pointer-events|select|shrink|grow|ring|size|justify-self)-(?:[a-z0-9]+|\[[^\]]+\])|divide-[xy](?:-\d+)?|translate-[xy]-(?:\d+|[a-z]+|\[[^\]]+\]))$/;
 const COMMON_TAILWIND_UTILITY_PATTERN =
@@ -711,10 +706,13 @@ function isLikelyDomExpression(node, context, visitedVariables = new Set()) {
 		if (context) {
 			const variable = findVariable(context, expression);
 			if (visitedVariables.has(variable)) return false;
-			const initializer = variable?.defs.find((definition) => definition.type === "Variable")?.node.init;
-			if (initializer) {
+			const definition = variable?.defs.find((candidate) => candidate.type === "Variable");
+			const sources = definition?.node.init
+				? getBindingSourceExpressions(context, definition.node.id, definition.node.init, definition.name, visitedVariables)
+				: [];
+			if (sources.length) {
 				visitedVariables.add(variable);
-				return isLikelyDomExpression(initializer, context, visitedVariables);
+				return sources.some((source) => isLikelyDomExpression(source, context, new Set(visitedVariables)));
 			}
 		}
 		return /^(?:body|container|currentTarget|documentElement|el|element|html|node|root|target)$/i.test(
