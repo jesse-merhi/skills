@@ -15,7 +15,8 @@ const TEXT_CLASS_PROP_NAMES = new Set([
 ]);
 
 function normalizeTailwindUtility(token) {
-	return (splitTailwindSegments(token).at(-1) ?? token).replace(/^!/, "");
+	const utility = (splitTailwindSegments(token).at(-1) ?? token).replace(/^!|!$/g, "");
+	return splitTailwindSegments(utility, "/")[0];
 }
 
 function parseFontSizePx(value) {

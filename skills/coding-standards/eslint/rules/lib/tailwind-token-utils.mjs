@@ -1,4 +1,4 @@
-export function splitTailwindSegments(token) {
+export function splitTailwindSegments(token, delimiter = ":") {
 	const segments = [];
 	let bracketDepth = 0;
 	let segmentStart = 0;
@@ -9,7 +9,7 @@ export function splitTailwindSegments(token) {
 			bracketDepth += 1;
 		} else if (character === "]") {
 			bracketDepth = Math.max(0, bracketDepth - 1);
-		} else if (character === ":" && bracketDepth === 0) {
+		} else if (character === delimiter && bracketDepth === 0) {
 			segments.push(token.slice(segmentStart, index));
 			segmentStart = index + 1;
 		}
