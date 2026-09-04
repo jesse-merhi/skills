@@ -42,3 +42,23 @@ This is a temporary exception for those exact versions: all nine configured
 checks were exercised on ESLint 9.39.2, and npm resolution passed a dry-run.
 Revalidate before changing either pin. Remove the override when adopting an
 upstream release whose peer range supports the chosen ESLint version.
+
+## React Native grid roles
+
+The pinned accessibility plugin rejects `accessibilityRole="grid"`, even though
+React Native supports it. On React Native versions that support the `role` prop,
+use the framework's grid role on a scroll or list component:
+
+```jsx
+<ScrollView role="grid" />
+```
+
+React Native documents `role="grid"` for `ScrollView`, `VirtualizedList`,
+`FlatList`, and `SectionList` in its [accessibility reference](https://reactnative.dev/docs/accessibility#role).
+This needs no custom validator, dependency patch, or disabled rule; all nine
+preset checks remain enabled. The plugin does not validate the newer `role`
+prop, so a lint pass alone does not prove its value is valid or the UI accessible.
+
+Existing `accessibilityRole="grid"` usage still triggers the upstream false
+positive. The bundle leaves that validator unchanged; revisit this limitation
+when updating the dependency.
