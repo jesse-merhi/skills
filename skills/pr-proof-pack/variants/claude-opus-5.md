@@ -5,341 +5,116 @@ description: Create or check concise reviewer-visible PR context and practical p
 
 # PR proof pack
 
-Outcome: leave a PR with concise reviewer-visible context and practical proof
-that still matches its current head. A proof check asks whether the existing PR
-tells the truth; refresh only stale or missing evidence.
+Deliver concise, current reviewer-visible context and practical proof. Start
+with a freshness decision and change only stale claims/evidence. Keep both PR
+body and handoff proportionate, preserving required capture and rendered readback
+without optional reviewers or extra self-check rounds.
 
-This skill never grants publication authority. The calling workflow must obtain
-that authority before pushing a branch, editing a PR, or uploading evidence.
-Local edits, local commits, review findings, and targeted tests stay local and
-do not trigger this workflow.
+Publication authority belongs to the caller. Local edits/commits/rebases,
+findings, and tests do not trigger publication. Check proof for PR creation,
+publishing, reopening, conversion, readiness, authorized pushed updates, and
+merge preparation. A push triggers a check, not automatic rewriting. Each stacked
+layer needs its own direct-base proof, position, and adjacent dependencies.
 
-## Trigger branches
+## Read the actual final change
 
-- Creating, publishing, reopening, converting, or marking a PR ready: check the
-  final proof and refresh it when stale.
-- Publishing an authorized branch update: check proof against the final net
-  diff; refresh only claims or evidence affected by that update.
-- Preparing a PR or stack for merge: require a current proof result even when
-  no refresh is needed.
-- Creating or updating a stacked PR: scope proof to that layer's direct base,
-  state its stack position and adjacent dependencies, and check every affected
-  layer separately.
+Resolve `<skill-dir>`, provider hostname, exact PR/head/base, and existing proof.
+GitHub uses `gh pr view --json number,url,body,title,baseRefName,headRefName,headRefOid`;
+stacks load `gh-stack` and inspect `gh stack view --json`. Bitbucket uses
+[bitbucket.md](references/bitbucket.md)'s explicit workspace/repo/PR and TWG reads.
+Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally scoped. Supply
+Bitbucket's resolved destination/source hashes through `--base`/`--head`.
+Use direct-base-to-final-head net changes, excluding branch-only churn. Retain
+exact nonoverlapping reviewer-meaningful `+LOC`/`-LOC` rows for large/multi-part
+PRs, counting each file once and reconciling totals.
 
-A commit, rebase, or local branch change is not reviewer-visible and does not
-trigger proof work. A push triggers a freshness check, not an automatic rewrite.
+Classify current when title, opening problem/fix context, claims, reproduction,
+important states, and evidence format still match; stale when important premises/
+behavior/states/viewports/workflow/reproduction/claims changed, required proof/
+diagram is missing, or simpler evidence would be clearer; blocked when unverifiable.
+Commit count/SHA/churn/push alone does not make evidence stale. A current result
+leaves the PR untouched and reports why.
 
-## Freshness rule
+## Capture the necessary proof
 
-Keep both the PR body and chat handoff proportionate. Refresh only stale claims, preserving required evidence and rendered readback; do not surround the proof procedure with optional reviewers or extra self-check rounds.
+For github.com check `gh auth status --active --hostname github.com`; visual
+refresh needs gh ≥2.99.0 and rendered-media verification needs curl ≥8.4 for
+size limits without Content-Length. Let the verifier enforce its preflight.
+Resolve actual capture browser/device and rendered-client needs, not blanket
+browser requirements for native uploads/headless checks. Text proof needs no
+attachments. Bitbucket follows its reference and live TWG help, with optional
+TWG/Atlassian skills; visual readback requires an interactive browser, text does not.
+Stop on a required capability failure and state what the human must restore.
 
-Classify proof as:
+Use [proof-selection.md](references/proof-selection.md),
+[screenshots.md](references/screenshots.md) for visuals, and
+[video-editing.md](references/video-editing.md) for recordings. Capture stale
+claims only and retain useful current evidence. Textual input/output/traces/
+requests/responses/state stay copyable. Reproducible bugs need matched
+`Before: direct base` / `After: PR` outcomes. Static UI needs actual product
+screenshots against meaningful reproducible baselines; motion/timing/gestures/
+manual interaction need concise edited recordings; mixed claims need both.
+Without a meaningful baseline, explain and show actual entrypoint/outcome.
+Textual labels/accessibility output use text when pixels are not the claim.
+Inspect selected visuals, choose deliberate rendered sizes, and group related
+comparisons. Tests/CI support rather than replace real observed behavior.
 
-- `current`: the existing title, concise opening context, behavior claims,
-  reproduction steps, and appropriately formatted practical evidence still
-  match the final pushed net diff;
-- `stale`: an important behavior, state, viewport, workflow, reproduction step,
-  evidence claim, or reader premise changed; a required workflow diagram or
-  practical proof is missing; or the evidence format makes the result harder
-  to understand than a simpler form;
-- `blocked`: freshness or required practical evidence cannot be verified.
+A new/materially changed system/workflow also needs one explanatory diagram
+through `design-technical-diagrams`. Define one cold-reader end-to-end question;
+show recognizable trigger, real actors/systems, atomic ordered actions, decisions,
+handoff state/artifacts, and outcome/feedback. Number ordered steps, orient with
+icons, define terms in labels, and avoid file/function buckets or overloaded
+boxes. Export a static PR-sized image and inspect whole frame, destination size,
+close detail, and export. Read [mermaid.md](references/mermaid.md) for a small
+Mermaid option. Keep explanation separate from practical before/after proof.
+A changed diagram product proves its own pixels, never the system it depicts.
 
-Commit count, commit SHA, code churn, and a push by themselves do not make proof
-stale. When proof is current, report the no-op decision and leave the PR
-untouched.
+## Update once and inspect the published result
 
-For a bug fix with reproducible direct-base behavior, proof is stale when the
-reviewer cannot compare the broken and fixed outcomes. A screenshot of textual
-output is stale when the same result would be clearer as short copyable text.
+Use [plain-language.md](references/plain-language.md) and
+[body-shape.md](references/body-shape.md). The reader has no private agent context.
+Preserve true sections; draft only necessary title/body/caption/reproduction/
+evidence corrections. First two sentences cover break/importance, next two fix/
+outcome. Include reconciled breakdown and respect the body budget or justify
+exceptions. Review title/commit subjects and run `speak-fking-english` immediately
+before saving the complete reviewer-facing draft, using its compact pass unless
+explicitly invoked for the artifact.
 
-For a UI change, proof is stale when it lacks actual product evidence for the
-changed visual behavior. Static appearance, layout, or rendered-state changes
-require actual screenshots, matched against the direct base when that baseline
-is meaningful and reproducible. Motion, timing, gesture, or manual interaction
-requires a concise recording. A change with both static and interactive claims
-requires both forms. An explanatory technical diagram never satisfies practical
-UI proof. When rendered diagram or export output is itself the changed product,
-capture that actual output as visual proof of its own pixels; it still does not
-prove that the system depicted by the diagram ran.
+Confirm existing caller authority. Read [screenshots.md](references/screenshots.md)
+before uploading any diagram or visual evidence. For GitHub include all local selected media
+refs, then immediately reread head/body; changed values restart freshness instead
+of overwriting concurrent work. Use the resolved full URL:
 
-## Hard gates for a refresh
+```sh
+gh pr edit <full-PR-URL-resolved-in-step-2> \
+  --body-file <draft-markdown-path> \
+  --attach <first-media-path> \
+  --attach <second-media-path>
+```
 
-- **Practical evidence:** Exercise the changed behavior working in practice.
-  Automated validation remains supporting information and never replaces the
-  observed before/after result when the baseline is meaningful and reproducible.
-  Without one, show the actual entry point and PR outcome.
-- **UI proof:** For an appearance, layout, responsive, or rendered-state claim,
-  show actual product pixels. Use matched screenshots when the direct base is
-  meaningful and reproducible; otherwise state the constraint and show the
-  actual product entry point and outcome. Use a concise edited recording for
-  motion, timing, gesture, or manual interaction. Use both forms when both kinds
-  of claim changed. For labels, accessibility output, or textual state where
-  appearance is not the claim, use copyable text instead. If required capture
-  cannot be completed, classify the proof as `blocked`.
-- **Workflow explanation:** When the PR introduces or materially changes a
-  system or workflow, include one diagram that explains the end-to-end flow to
-  a cold reviewer. The diagram explains the change; it never replaces actual
-  product screenshots, recordings, or other observed practical evidence.
-- **Evidence fit:** Use copyable text for textual inputs, outputs, traces,
-  requests, responses, and state. Use visual evidence only when text would lose
-  an important fact about appearance, layout, motion, interaction, rendering,
-  or playback.
-- **Provider-hosted attachments:** Upload selected media through the provider's
-  supported path. On `github.com`, use GitHub CLI's native `--attach` support.
-  On Bitbucket Cloud, use TWG's coupled PR-body and image update;
-  a separate TWG or Atlassian skill is optional, not required.
-- **Rendered proof:** Check the rendered result headlessly by default. Use an
-  interactive browser only when client-side rendering, literal page appearance,
-  or playback must be inspected.
-- **Readable history:** Review the title and commit subjects before publishing.
+Repeat attachments for every file; keep hosted media in the main body, not detached
+comments. Partial failures retry from the live body with only remaining local
+refs. Never re-upload successful items, and remove broken refs or restore the
+last fully hosted body before blocked handoff. Bitbucket couples full
+`--description-file`, each `--image`, and descriptive `--image-name` in one
+`twg bb pull-requests update`; images only, no video. Text needs no upload.
 
-If any gate cannot be completed, stop. Tell the human which capability failed
-and what they must restore.
+Inspect GitHub title/body and run with resolved URL/SHA:
 
-## Reviewer boundary
+```sh
+<skill-dir>/scripts/github-verify-rendered-proof --pr <full-PR-URL-resolved-in-step-2> --head <final-head-SHA-resolved-in-step-2>
+```
 
-Assume the reviewer has not seen the agent thread, planning notes, decision log,
-local branch history, or private chat. Every claim must be understandable from
-the direct-base net diff, linked repo-visible context, or the PR body itself.
+Require expected-head stability, status/type/nonempty bytes for every rendered
+asset, and exact new-upload byte sizes. The verifier reads `body_html` without
+printing signed URLs and fetches without forwarding gh tokens. Use interactive
+inspection for Mermaid/client content, literal layout/pixels, percentage sizing,
+table composition, or playback. The diagram's local export and fetched pixels
+both need visual inspection. Bitbucket needs full TWG head/title/body/embed
+readback plus interactive rendered-media inspection. Remove stale proof.
 
-## Workflow
-
-1. Resolve the skill directory.
-
-   Resolve `<skill-dir>` to the directory containing this `SKILL.md`.
-
-   Done when every relative script and reference path resolves from that
-   directory.
-
-2. Resolve the PR and direct base.
-
-   Use read-only provider metadata. On GitHub, inspect
-   `gh pr view --json number,url,body,title,baseRefName,headRefName,headRefOid`. For a stack,
-   load `gh-stack`, inspect `gh stack view --json`, and record the current
-   layer's position and adjacent dependencies. On Bitbucket Cloud, read
-   [references/bitbucket.md](references/bitbucket.md), resolve the workspace,
-   repository, and PR ID explicitly, and use its read-only TWG inspection path.
-
-   Done when the exact PR, provider hostname, final head, direct base, and
-   existing proof are known.
-
-3. Gather the current proof and net diff.
-
-   Run `<skill-dir>/scripts/pr-net-diff --markdown`, optionally with narrow file
-   paths. Base every claim on the direct-base-to-final-`HEAD` net diff, not the
-   latest commit or chat memory. Remove branch-only churn with no net diff from
-   consideration. When the PR spans multiple meaningful parts, keep the
-   generated `+LOC` and `-LOC` breakdown. Split implementation into clearer
-   product areas only when the paths support exact, non-overlapping totals.
-   For Bitbucket Cloud, pass the destination and source commit hashes resolved
-   in [references/bitbucket.md](references/bitbucket.md) as `--base` and
-   `--head`; do not let local checkout state choose either side of the diff.
-
-   Done when the final behavior and existing reviewer-visible claims can be
-   compared, and any claim that the PR is large has a direct-base breakdown
-   whose rows reconcile to the total.
-
-4. Make the freshness decision.
-
-   Compare the final behavior, opening problem/fix context, reproduction steps,
-   important states, required workflow explanation, verification evidence,
-   title, and existing attachments. Check whether each evidence item uses the
-   required form for its claim, including actual screenshots for static UI and
-   a recording for motion or manual interaction. Do not count a technical
-   diagram as practical evidence. Apply the freshness rule above. If proof is
-   `current`, report why and stop without any PR mutation.
-
-   Done when the result is `current`, `stale`, or `blocked`, with the affected
-   claim or evidence named.
-
-5. Pass the refresh preflight for stale proof.
-
-   For a `github.com` PR, confirm
-   `gh auth status --active --hostname github.com` and require `gh` 2.99.0 or
-   newer before a visual refresh. Identify whether
-   practical capture needs a browser or device and whether the finished body
-   requires client-side inspection, such as a Mermaid diagram. When
-   rendered-media verification will run, require curl 8.4 or newer so download
-   limits apply even when a server omits `Content-Length`; the repository
-   verifier preflights this and stops with an upgrade instruction. Do not make
-   an interactive browser a prerequisite for `github.com` upload or ordinary
-   rendered-body checks, and do not require attachment or browser capabilities
-   for text-only proof.
-
-   For Bitbucket Cloud, follow the preflight in
-   [references/bitbucket.md](references/bitbucket.md). Treat live TWG help as
-   the final command contract. When a TWG or Atlassian skill is already
-   available, load it if it improves current provider or authentication
-   guidance. Keep it optional so this public skill still works with the CLI
-   alone. A visual refresh also requires an interactive browser for the
-   finished rendered-media check; a text-only refresh does not.
-
-   Done when provider authentication and repository access work and every
-   browser or device capability genuinely needed later in the refresh is
-   available, or the workflow has stopped with a concrete repair request.
-
-6. Capture only the changed practical evidence.
-
-   Read [references/proof-selection.md](references/proof-selection.md).
-   Reproduce the changed behavior and replace only evidence made stale by the
-   final net diff. Read [references/screenshots.md](references/screenshots.md)
-   only when visual evidence is selected; for a recording, also read
-   [references/video-editing.md](references/video-editing.md). Preserve current
-   evidence that remains useful.
-
-   Done when every changed important behavior has concise reviewer-checkable
-   evidence, reproducible bugs have matched broken/fixed outcomes, static UI
-   changes have actual screenshots matched to every meaningful reproducible
-   baseline, motion or manual interactions have concise recordings, changes
-   with both kinds of UI claim have both forms,
-   every selected visual has passed model inspection for content and
-   presentation, each image has a deliberate rendered size, related visuals
-   are grouped when that makes comparison easier, and unchanged useful evidence
-   is left alone.
-
-7. Explain a new or changed system or workflow.
-
-   When the final net diff introduces or materially changes a system or
-   workflow, load `design-technical-diagrams` and create exactly one diagram by
-   default. Treat the PR body as the destination and the direct-base net diff,
-   relevant repository context, and changed behavior as the brief. Define the
-   one system-flow question the diagram must answer before drawing it. Keep the
-   diagram outside practical proof: it cannot occupy a before/after evidence
-   slot or replace actual product screenshots or recordings.
-
-   Start from an event or person the reviewer recognizes. Show the real actors
-   and systems, their atomic actions in order, important decisions, the
-   artifacts or state passed between them, and the final outcome or feedback
-   path. Number the primary steps when order matters. Use icons as orientation
-   anchors and labels that define necessary project terms in place. Do not turn
-   file names, functions, implementation buckets, or several actions hidden in
-   one box into the explanation.
-
-   Export a static image sized for the PR body. Follow the diagram skill's
-   required whole-frame, destination-size, magnified-detail, and exported-file
-   visual passes. A successful render or clean geometry check is not enough.
-   Read [references/mermaid.md](references/mermaid.md) if Mermaid is considered
-   for a small flow.
-   Skip this step when the PR does not introduce or materially change a system
-   or workflow.
-
-   Done when a cold reviewer can follow the new or changed workflow from
-   trigger to outcome without source-code context, the current rendered pixels
-   have passed every visual pass, and the diagram is clearly presented as an
-   explanation rather than runtime proof.
-
-8. Draft the smallest accurate PR update.
-
-   Read [references/plain-language.md](references/plain-language.md) and
-   [references/body-shape.md](references/body-shape.md). Keep current sections
-   that remain true. Draft only the title, body, caption, reproduction, or
-   evidence changes needed to restore accuracy. Load `speak-fking-english`
-   immediately before saving the complete draft, and tell it the draft is
-   reviewer-facing text. Unless the user explicitly invoked that skill for this
-   artifact, its compact natural-writing pass applies.
-
-   Done when the first two sentences explain what broke and why it matters, the
-   next two explain the fix and outcome, a multi-part or unusually large PR has
-   a compact change breakdown, the body reads clearly and naturally, the body
-   stays within the default size budget or justifies each exception, and the
-   draft is self-contained.
-
-9. Confirm authority and upload provider-hosted attachments.
-
-   Reconfirm that the calling workflow authorizes the PR mutation. Follow
-   [references/screenshots.md](references/screenshots.md) when a diagram or
-   visual evidence was selected. On `github.com`, reference every selected
-   local image or video in the complete draft, then update the body and upload
-   all files in one native command. Immediately before the write, re-read
-   `headRefOid` and `body`; compare both with the snapshot from step 2. If
-   either changed, restart the freshness decision instead of overwriting a
-   concurrent push or human edit.
-
-   ```sh
-   gh pr edit <full-PR-URL-resolved-in-step-2> \
-     --body-file <draft-markdown-path> \
-     --attach <first-media-path> \
-     --attach <second-media-path>
-   ```
-
-   Repeat `--attach` for every selected file. GitHub CLI rewrites each matching
-   local Markdown reference to its provider-hosted URL. Keep media in the main
-   PR body, never in a detached comment, and use a table when it makes a small
-   related group or comparison easier to scan. If upload fails, use the live
-   body as the retry draft, attach only files whose local references remain,
-   and do not re-upload successful files. Before returning `blocked`, remove
-   every broken local reference from the live body or restore the last fully
-   provider-hosted body. On Bitbucket Cloud, follow the single
-   `twg bb pull-requests update` operation in
-   [references/bitbucket.md](references/bitbucket.md): pass the complete draft
-   with `--description-file`, each selected image with `--image`, and a paired
-   descriptive `--image-name`. TWG images are supported; video is not. Text
-   evidence needs no attachment.
-
-   Done when every selected diagram and visual is provider-hosted and every
-   text proof is present in the main body; an authority failure stopped before
-   mutation; or a partial upload failure left the live body with no broken local
-   references.
-
-10. Inspect the finished PR headlessly by default.
-
-   Follow the rendered-verification path in
-   [references/screenshots.md](references/screenshots.md). On GitHub, inspect
-   the title and Markdown body, then run
-   `<skill-dir>/scripts/github-verify-rendered-proof --pr <full-PR-URL-resolved-in-step-2> --head <final-head-SHA-resolved-in-step-2>`.
-   The verifier reads `body_html` without printing signed asset URLs, checks
-   that the PR head stays on the expected final SHA, checks every rendered image
-   and video, and fetches each resolved asset without forwarding the `gh` token.
-   Require its status, content type, and non-empty byte checks for all assets,
-   plus exact byte size for evidence uploaded during this refresh. Use an interactive browser when the body includes client-rendered
-   content such as Mermaid or when the proof depends on literal page layout,
-   pixel appearance, percentage image sizing, table composition, or playback.
-   Remove stale proof rather than accumulating it.
-
-   On Bitbucket Cloud, follow the readback and verification contract in
-   [references/bitbucket.md](references/bitbucket.md). Re-read the full PR with
-   TWG and confirm the expected head, title, body, and embeds. For a diagram or
-   image, inspect the rendered PR interactively and inspect the rendered pixels;
-   TWG readback alone does not prove that Bitbucket rendered the media.
-
-   Done when the rendered PR accurately describes the final pushed net diff,
-   with browser inspection completed for every case headless checks cannot
-   prove.
-
-11. Hand the result back to the caller.
-
-    Return `current`, `refreshed`, or `blocked`, with the affected PRs. Before
-    readiness, human sign-off, or merge, remind the caller to apply the Review
-    gate and Sign-off gate from `AGENTS.md` to every PR. The Review gate must
-    cover the exact head; Sign-off persists for the PR across later heads.
-    Proof-pack does not count as review.
-
-    Done when the caller knows whether proof changed and which PRs still need
-    an exact-head review decision or human sign-off.
-
-## Done means
-
-- Every workflow step meets its `Done when` criterion.
-- A `current` result made no reviewer-visible mutation.
-- A `refreshed` result changed only stale claims and evidence.
-- Every affected PR explains the break and fix quickly, then proves final
-  direct-base behavior in the simplest format that preserves the claim.
-- Reviewer-facing text reads clearly and naturally, and matched proof is
-  labeled `Before: direct base` and `After: PR`.
-- A multi-part or unusually large PR shows exact direct-base `+LOC` and `-LOC`
-  by reviewer-meaningful part, with every file counted once and totals reconciled.
-- Textual behavior uses copyable text. Visual behavior uses provider-hosted
-  media verified headlessly or, where required, through an interactive browser.
-- Static UI changes use actual product screenshots, matched to the direct base
-  when that baseline is meaningful and reproducible. Motion, timing, gesture,
-  and manual interaction use concise edited recordings. Changes with both
-  static and interactive claims include both.
-- Every required workflow diagram is provider-hosted and its local export and
-  fetched rendered asset both passed visual inspection, but it is presented
-  only as explanation and never counted as practical evidence.
-- Reproducible bug fixes show matched broken and fixed outcomes.
-- A PR that introduces or materially changes a system or workflow includes one
-  visually inspected diagram that explains its trigger, ordered actions,
-  ownership, handoffs, and outcome without pretending to prove runtime behavior.
-- The workflow did not infer publication authority from branch or PR state.
-- The caller knows proof does not satisfy the exact-head review gate.
+Return current/refreshed/blocked with affected PRs and remaining capability limits.
+Before readiness, sign-off, or merge remind the caller to apply every layer's
+exact-head Review and PR-persistent Sign-off gates. Proof does not count as review.
+Completion is accurate net-diff claims and required hosted/rendered practical
+evidence, not a polished body with missing proof.

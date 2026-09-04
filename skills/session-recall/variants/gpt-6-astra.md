@@ -5,39 +5,15 @@ description: Find prior local Codex or Claude sessions; keep contents local and 
 
 # Session recall
 
-Outcome: recover the right prior full session with minimal token load. Use
-`agent-session-find` first when previous agent work may answer the current
-question.
+Use local evidence to recover the prior session that answers the user's question.
+Choose terms from their clues and metadata instead of asking them to repeat
+information already available. Keep session contents local and never upload or
+paste whole logs into external tools.
 
-Keep session contents local. Do not upload session contents or paste whole
-session logs into external tools.
+## Find candidates before reading transcripts
 
-## Workflow
-
-Choose search terms from the user’s clues and widen the bounded search as specified. Do not ask the user to repeat clues available in local cards or metadata; retain the local-only and cards-before-logs boundaries.
-
-1. Confirm the command setup in [command-setup.md](references/command-setup.md).
-2. Start with a recent, bounded fuzzy query:
-   `agent-session-find --index-since 14d --max-sources 80 "<query>"`.
-3. Add repo or cwd context when the project is known:
-   `agent-session-find --cwd "<repo-name>" --since 30d "<query>"`.
-4. Search one source when the likely harness is known:
-   `agent-session-find --source codex "<query>"` or
-   `agent-session-find --source claude "<query>"`.
-5. If the user mentions a handoff, worker, subagent, delegated implementation,
-   reviewer pass, branch, commit, or PR opened by another agent, retry with
-   `--workers`.
-6. If nothing matches, widen gradually: increase `--index-since`, remove
-   `--cwd`, try synonyms, then omit `--max-sources` for a fuller local refresh.
-7. If running several follow-up searches against the same index, add
-   `--no-refresh` after the first successful refresh.
-8. Use [query-strategy.md](references/query-strategy.md) for search terms.
-9. Inspect low-token result cards first, then use
-   [result-handling.md](references/result-handling.md) before opening logs.
-
-## Defaults
-
-Use these defaults unless the task suggests otherwise:
+Read [command-setup.md](references/command-setup.md), then use
+`agent-session-find` as the first recall step. Default to:
 
 ```sh
 agent-session-find --index-since 14d --max-sources 80 "<query>"
@@ -45,15 +21,21 @@ agent-session-find --cwd "<repo-name>" --since 30d "<query>"
 agent-session-find --limit 5 "<query>"
 ```
 
-For stale or long-running projects, prefer `--index-since 90d` over an
-unbounded first pass. Run `agent-session-find status` when you need to see index
-size before widening.
+Apply known repo/cwd context and `--source codex` or `--source claude` when the
+harness is known. Use `--index-since 90d` for stale or long-running projects
+rather than starting unbounded. If the clue involves a handoff, worker, subagent,
+delegation, reviewer pass, or another agent's branch, commit, or PR, retry with
+`--workers` before concluding that the session is absent.
 
-## Context pointers
+## Widen only while the evidence is missing
 
-- Use [command-setup.md](references/command-setup.md) for binary, wrapper,
-  privacy, database, and parallel-refresh rules.
-- Use [query-strategy.md](references/query-strategy.md) for query terms and
-  widening strategy.
-- Use [result-handling.md](references/result-handling.md) for interpreting
-  result cards and deciding when to open local JSONL.
+Use [query-strategy.md](references/query-strategy.md). Increase `--index-since`,
+remove `--cwd`, try synonyms, then omit `--max-sources` for a fuller refresh.
+Check `agent-session-find status` when index size affects that choice. After the
+first successful refresh use `--no-refresh` for searches against the same index,
+following the setup reference's refresh rules.
+
+Inspect result cards before opening logs. Apply
+[result-handling.md](references/result-handling.md) before reading local JSONL.
+Stop when the relevant session supports the answer; return exact identifiers
+and only the necessary evidence.

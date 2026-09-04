@@ -5,221 +5,77 @@ description: "Evidence-backed user corrections or self-detected mistakes reveali
 
 # Feedback hardening
 
-Complete the current authorized phase, not a later approval-gated phase. Batch
-independent evidence reads and keep useful work moving while the recommendation
-worker runs. Report a new result, changed evidence, or blocker during long
-work. Keep the immutable target baseline unchanged. Update the separate current
-checkpoint after every authorized in-scope change and before a handoff.
-Recommendation authority never becomes implementation authority; wait for the
-named approval before editing. Use the one required cold recommendation worker.
-After approval, use implementation workers only when the target workflow
-requires them.
+Use these five steps to repair a reusable agent failure. Keep the source conversation in charge. Immediate task repair and approval of a systemic change are separate decisions.
 
-Turn evidence of reusable agent failure into one durable repair without
-derailing the current task.
+## 1. Record the failure and target
 
-## 1. Qualify and capture the failure
+1. Check the trigger. Use this workflow for an evidence-backed user correction or self-detected action that violates an invariant across tasks, sessions, repositories, or users. A typo, expected review finding, ordinary debugging discovery, changed objective, factual clarification, vague criticism, or preference for one deliverable stays task-local unless it exposes such an invariant.
+2. Acknowledge user feedback briefly. Fix the immediate result only under existing task authority. Capture redacted observed behavior, desired invariant, concrete evidence, affected surface, task state, permissions, and likely Git or managed target.
+3. Before the first recommendation, check that the Git target is clean. Record the canonical worktree root, absolute `--git-common-dir`, `HEAD`, and evidence that index, tracked files, and untracked scope are clean. Stop this workflow visibly if the initial target is dirty. Keep that baseline immutable.
+4. Once approved implementation starts, record a separate checkpoint: phase; evidence and recommendation IDs; approval and selected option; frozen scope; current `HEAD`; exact status; state checksum with the command and hash algorithm that reproduce it; validation; and next action. For managed targets, retain the original revision or ETag separately from the current approved state.
+5. Keep one active workflow per source conversation. Add same-invariant evidence to it. Queue distinct direct or relayed invariants until it closes.
 
-Use this workflow when:
+Continue when the invariant is observable and the immediate task is safe to continue.
 
-- the user corrects how the agent worked and the evidence reveals a missing
-  reusable guard or a failure likely to recur; or
-- the agent independently finds that its action violated a reusable invariant
-  across tasks, sessions, repositories, or users.
+## 2. Dispatch and receive one recommendation
 
-Handle trivial typos, expected review findings, ordinary debugging discoveries,
-changed objectives, factual clarifications, vague criticism, and one-deliverable
-preferences in the current task unless they expose that reusable invariant.
+Spawn one cold recommendation-only worker. Use Codex `spawn_agent` with `fork_turns: "none"`, OpenClaw isolated context without a transcript fork, or another harness's no-history equivalent. Do not send conversation history or coordinator approvals.
 
-Acknowledge user feedback briefly. Repair the immediate user-facing result only
-when existing task authority allows it. Capture and redact:
+Send these fields together:
 
-- the observed behavior and desired invariant;
-- concrete evidence and affected surface;
-- current task state and permissions;
-- the likely Git repository or host-managed target.
-
-Before the first recommendation, require a clean Git target and record an
-immutable baseline: its canonical worktree root, absolute `--git-common-dir`,
-`HEAD` and evidence that the index, tracked tree and untracked scope were clean.
-A dirty target is a visible blocker. Once approved implementation begins, keep
-that baseline and record the current implementation checkpoint separately:
-phase, evidence and recommendation IDs, approval state, selected option, frozen
-scope, current `HEAD`, exact status, a state checksum with the command and hash
-algorithm used to produce it, validation and next action. For managed targets,
-use the same split between the original revision or ETag and the current
-approved state.
-
-Keep one active hardening workflow per source conversation. Same-invariant
-evidence refreshes it; a distinct direct or relayed invariant waits until the
-active workflow closes. This step is complete when the immediate task is safe
-to continue and the failure is stated as an observable invariant.
-
-## 2. Delegate one recommendation
-
-The source conversation remains the coordinator. Spawn one cold native
-subagent, or the harness's equivalent isolated worker, solely to produce the
-recommendation. In Codex, use `spawn_agent` with
-`fork_turns: "none"`; in OpenClaw, use isolated context without a
-transcript fork; elsewhere, use the harness's no-history equivalent.
-
-Give it a compact redacted brief containing:
-
-- an opaque workflow ID and evidence version;
-- the captured failure, invariant, evidence, and coordinator-owned constraints;
-- the immutable target baseline and current implementation checkpoint or its
-  explicit absence;
+- opaque workflow ID and evidence version;
+- captured failure, invariant, evidence, and coordinator-owned constraints;
+- immutable baseline and current implementation checkpoint, or an explicit statement that no checkpoint exists;
 - `role: feedback-hardening-recommendation`;
-- `authority: recommendation-only`, with no coordinator approvals;
-- an instruction to load `$feedback-hardening`, start at step 3, and return a
-  closed envelope with the workflow ID, evidence version, target identity,
-  reproducible state checksum, outcome, and no-mutation attestation.
-  `recommended` requires a recommendation ID and options; `retargeted` requires
-  the proposed target and evidence; `blocked` requires the actionable blocker.
+- `authority: recommendation-only`;
+- instruction to load `$feedback-hardening` and start at step 3;
+- required closed response envelope: workflow ID, evidence version, target identity, reproducible state checksum, outcome, and no-mutation attestation. For `recommended`, require recommendation ID and options. For `retargeted`, require the new target and evidence. For `blocked`, require an actionable blocker.
 
-The recommendation phase makes no state changes. Use a harness-enforced
-read-only profile when available. Otherwise state that this is an
-instruction-only boundary and tell the worker not to edit files, create or
-update pull requests, post externally, or delegate implementation.
+Apply an enforced read-only profile if the harness supplies one. Otherwise label the boundary instruction-only. Prohibit file edits, PR creation or updates, external posts, and implementation delegation. Never grant this worker approval or mutation authority or reuse it for implementation.
 
-Retain the returned child handle. Complete independent immediate work, then use
-the harness's event-driven wait or yield mechanism. Accept a brief only with the
-retained handle's host-authenticated terminal `Completed` event, never
-an interim message. Fail closed unless every required envelope field matches
-and the no-mutation attestation is true. Surface a host-authenticated terminal
-failure even when it lacks model-authored fields.
+Retain the child handle. Continue independent immediate work, then use the harness's event-driven wait. Accept the recommendation only after the retained handle emits a host-authenticated terminal `Completed` event. An interim message is not completion. Check all envelope fields and a true no-mutation attestation. Fail closed if any required field is missing or mismatched. Report host-authenticated terminal failure even if the worker supplied no envelope.
 
-After a wait timeout, inspect only the retained handle. Recover and authenticate
-its terminal result when available; otherwise report the exact delivery or
-worker blocker. On abandonment or unrecoverable delivery failure, use a
-harness-supported terminalization mechanism and wait for authenticated settled
-status before releasing the slot. Codex V2 interruption is not terminalization;
-without a terminal event, report an unreleasable blocker and keep the slot.
-Do not search unrelated sessions. The recommendation worker never receives
-approval or mutation authority and is never reused for implementation.
+If waiting times out, inspect only that handle. Recover its authenticated terminal result if available; otherwise report the exact worker or delivery blocker. For abandonment or unrecoverable delivery, terminalize through a supported harness mechanism and wait for authenticated settled status before releasing the slot. Codex V2 interruption alone is not terminalization. If no terminal event is available, keep the slot and report an unreleasable blocker. Do not search unrelated sessions.
 
-This step is complete when the coordinator has one authenticated recommendation
-brief, or the user sees the actionable launch or delivery blocker.
+### If a full-session handoff is needed
 
-### Hand off an active workflow
+1. Settle the recommendation worker first. Treat handles as coordinator-local unless the harness proves otherwise. Do not hand off unresolved work or use handoff to release its slot.
+2. Refresh the checkpoint after authorized work. Preserve exact workflow/evidence IDs, baseline, authenticated recommendation, and current checkpoint or its absence. Put them in the handoff's current state, evidence, blockers, suggested skills, and next concrete actions. Suggest `feedback-hardening`.
+3. Have the successor revalidate baseline and compare current state to the checkpoint. A match confirms carried state only; it does not grant approval, widen authority, or replace judgment. Expected dirty changes inside frozen scope are valid. Base drift, checkpoint mismatch, out-of-scope changes, or new evidence require a fresh recommendation under step 4.
+4. Retain source ownership until a harness-delivered acknowledgement proves successor adoption. If adoption cannot be verified, keep the workflow active and report the transfer blocker.
 
-Settle the retained recommendation worker before handing the source
-conversation to another full session. Worker handles are coordinator-local
-unless the harness proves otherwise, so do not transfer an unresolved worker
-or release its execution slot through a handoff.
+## 3. Produce the recommendation
 
-Use the handoff document's current state, evidence, blockers, suggested skills
-and next concrete actions sections to carry the workflow ID and evidence
-version, immutable target baseline, authenticated recommendation, and the
-current implementation checkpoint or its explicit absence. Name
-`feedback-hardening` as a suggested skill.
+This step is for the recommendation-only worker. Reconstruct the failure, find its producer or lifecycle owner, and assess prevention in this order:
 
-The successor revalidates the baseline, inspects the current repository state
-against the checkpoint, and decides how to continue the recorded next action.
-An exact checkpoint match confirms that the carried state is intact; it does
-not replace the successor's judgment, infer approval or widen authority.
-Expected changes inside the frozen scope do not become invalid merely because
-the worktree is dirty. Base drift, a checkpoint mismatch, out-of-scope changes
-or new evidence requires a fresh recommendation under step 4. Refresh the
-checkpoint after authorized work before another handoff.
+1. Eliminate the invalid choice through architecture, data structures, types, schemas, APIs, ownership, or lifecycle design.
+2. Enforce the invariant with a focused test, lint rule, type or schema check, CI gate, or deterministic verifier.
+3. Encode necessary judgment in the narrowest existing skill or scoped agent instruction.
+4. Rely on human review only if stronger enforcement is unsuitable.
 
-Keep ownership with the source coordinator until a harness-delivered successor
-acknowledgement verifies adoption. If the harness cannot verify adoption,
-report the transfer blocker and keep the workflow active.
+Lead with one recommendation. For each credible option, name the mechanism, owner, affected surfaces, recurrence prevented, proof plan, implementation scope, material risks, and why stronger layers are unsuitable. Prefer existing mechanisms. Do not hardcode only the user's phrasing or the reported example.
 
-## 3. Recommend the systemic fix
+If the target or evidence changes, return `retargeted` with the new target and evidence. The coordinator must update the evidence version and target state and request a fresh recommendation. Do not recommend against stale context.
 
-The recommendation worker reconstructs the failure, locates the producer or
-lifecycle owner, and ranks credible prevention options:
+If an existing skill caused or failed to prevent the failure, report that fact. Do not edit it or delegate again. After this worker terminates, the coordinator applies the harness-owned skill-repair policy and `writing-for-agents`. Higher-priority harness policy wins; disclose any immediate repair and leave additional systemic work awaiting approval.
 
-1. eliminate the invalid choice through architecture, data structures, types,
-   schemas, APIs, ownership, or lifecycle design;
-2. enforce the invariant with a focused test, lint rule, type or schema check,
-   CI gate, or deterministic verifier;
-3. encode reusable judgment in the narrowest existing skill or scoped agent
-   instruction;
-4. rely on human review only when stronger enforcement is unsuitable.
+Return the closed envelope from step 2, with the ranked brief bound to the final evidence version and target state.
 
-Lead with one recommendation. For each credible option, state its mechanism,
-owner and affected surfaces, recurrence prevented, proof plan, implementation
-scope, material risks, and why stronger layers are unsuitable. Prefer existing
-abstractions and skills over parallel mechanisms. Avoid hardcoding the user's
-wording or reported example.
+## 4. Get approval, then implement
 
-If the investigation identifies a different target or changed evidence, return
-that fact instead of recommending against stale context. The coordinator updates
-the evidence version and target state, then runs a fresh recommendation.
+1. Validate the envelope against exact current target state. Request a fresh recommendation if it does not match.
+2. Present ranked options. Freeze recommendation ID, selected option, evidence version, final target identity/state, and the complete mutation scope and mechanism.
+3. Wait for explicit approval of a named option. It authorizes reversible changes on the frozen target only. It does not carry to new evidence or bypass authority for public writes, publication, merges, deployment, destructive actions, protected schema/protocol changes, spending, or access expansion.
+4. If declined, skip implementation, record `declined`, settle the worker, release the slot, and offer the next queued invariant.
+5. If approved, implement through the target's normal workflow. Use implementation workers when that workflow requires them, but never reuse the recommendation worker.
+6. Before Git edits, match immutable root, common directory, and baseline `HEAD`, then match current state to the bound checkpoint. The initial checkpoint is clean; a refreshed recommendation can bind intentionally dirty approved work. Run every operation in that worktree and within frozen scope. For managed targets, bind original revision/ETag and current approved state and use the appropriate revision for conditional writes.
+7. Refresh the checkpoint after authorized in-scope changes. A pre-action mismatch, base drift, out-of-scope change, new evidence about this invariant, or retargeting invalidates approval and requires a fresh recommendation. A distinct invariant queues without changing the approved work.
+8. Implementation workers that find qualifying evidence must stop affected mutation and report to the source coordinator, not launch nested hardening.
 
-When an existing skill caused or failed to prevent the behavior, report it to
-the coordinator without repair or nested delegation. The coordinator applies
-the harness-owned skill-repair policy and `writing-for-agents` after the worker
-terminates. Higher-priority harness policy wins; disclose any immediate repair
-and keep additional systemic work pending approval.
+Finish this step with the approved repair implemented and verified, or a precise permission, state, or product blocker.
 
-This step is complete when the coordinator receives a ranked brief tied to the
-final evidence version and target state.
+## 5. Report and settle
 
-## 4. Approve and implement
+In the source conversation, report original behavior and root cause; approved option, owner, and prevention layer; changed files, checks, skills, or rules; before-and-after proof; remaining authority requests or recurrence risks; and the recommendation brief or worker link.
 
-Validate the closed envelope and require its target state to equal the current
-target exactly; otherwise run a fresh recommendation. Present the ranked brief.
-Before requesting approval, freeze:
-
-- the recommendation ID and selected option;
-- the evidence version;
-- the final target identity and state;
-- the complete mutation scope and mechanism.
-
-Wait for explicit approval of a named option. Approval covers only reversible
-changes on the frozen, bound target. It does not carry to later evidence or bypass gates
-for public writes, publication, merges, deployment, destructive actions,
-protected schema or protocol changes, spending, or access expansion.
-If the user declines, skip implementation, record `declined`, release the slot
-after worker settlement, and offer the next queued invariant.
-
-After approval, the source coordinator implements through the target
-repository's or mechanism's normal workflow. It may use implementation workers
-required by that workflow, but the recommendation worker remains retired.
-
-For Git, require the immutable root, `--git-common-dir` and baseline `HEAD` to
-match, then require the current state to equal the recommendation's bound
-checkpoint before editing. The initial checkpoint is clean; a refreshed
-recommendation during approved implementation may bind an intentionally dirty
-checkpoint. Continue only within the frozen scope, root every operation in that
-worktree, and refresh the checkpoint after authorized changes. For a
-host-managed surface, bind both the original revision or ETag and the current
-approved state, and use the appropriate revision as a conditional-write
-precondition.
-
-Any pre-action mismatch, base drift, out-of-scope change, new same-invariant
-evidence or retargeting invalidates approval and returns to a fresh
-recommendation. Changes made within the frozen scope update the implementation
-checkpoint without requiring another recommendation. A distinct invariant
-queues for later without changing the approved work.
-
-Implementation workers that find qualifying evidence stop affected mutation
-and report it directly to the source coordinator. They do not start another
-feedback-hardening workflow.
-
-This step is complete when the approved repair is implemented and verified, or
-the exact permission, state, or product blocker is visible.
-
-## 5. Close the workflow
-
-Return to the source conversation and report:
-
-- the original behavior and root cause;
-- the approved option, owner, and prevention layer;
-- files, checks, skills, or rules changed;
-- before-and-after evidence;
-- remaining authorization requests or recurrence risks;
-- the recommendation brief or worker link.
-
-Record `completed`, `declined`, `failed`, or
-`abandoned`, release the active slot, and offer the next queued
-invariant. Do not release a slot while its recommendation result is unresolved
-or an implementation worker is still running.
-
-This step is complete when the user can verify the outcome and why the same
-intervention should no longer be necessary, or sees the terminal
-non-implementation result.
+Record `completed`, `declined`, `failed`, or `abandoned`. Do not release the slot until the recommendation is resolved and implementation workers are settled. Then offer the next queued invariant. State the verified result or the reason no implementation occurred.

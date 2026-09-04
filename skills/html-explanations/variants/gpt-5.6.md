@@ -5,156 +5,68 @@ description: 'Create standalone HTML for complex explanations, code walkthroughs
 
 # HTML explanations
 
-Use this skill when the user needs to understand something and prose would
-become a wall of text. Produce a standalone `.html` file that the user can open
-locally.
+Make one complex question easier to understand in a local standalone HTML page.
+Use for comparisons, code/architecture/bug explanations, PR walkthroughs,
+plans/status/incidents/handoffs, research, lessons, and useful interactive demos.
+Explaining a PR is not authority to review it.
 
-Good fits:
+Choose the reader's question and reasoning structure from
+[html-effectiveness-patterns.md](references/html-effectiveness-patterns.md).
+Use `assets/explanation-template.html` or the closest of seven
+`assets/patterns/` structures, replace sample facts, and remove unhelpful sections.
+Create one `.html` with inline CSS/JavaScript, no build or remote runtime dependency.
+The pattern research is in [html-explanation-patterns.md](references/html-explanation-patterns.md).
 
-- Comparing options, tradeoffs, or approaches
-- Explaining code flow, architecture, data flow, or a bug cause
-- Explaining a PR, branch, commit, or diff without doing a code review
-- Turning implementation plans, status updates, incident reports, or handoffs into visual reports
-- Teaching a concept with diagrams, timelines, examples, or controls
-- Turning research notes into a scannable explainer
-- Making a small interactive demo that clarifies behavior
+## Page contract
 
-## Workflow
+Lead with the answer: headline, optional nonrepeating summary, then visual body.
+The first viewport explains the decision/bug/concept without requiring code or
+internal vocabulary. For explicit code/PR reading, reach the real changed flow
+or code in that viewport after one concise outcome. Put dense mechanics, long
+code, and caveats lower or in `<details>`. Use everyday terms before specialist
+names and concrete task labels, files, functions, APIs, states, events, dates,
+and decisions. Summary rows name the changed behavior/boundary or promised outcome
+before test machinery; remove labels that merely restate their descriptions.
 
-1. Decide the one thing the page should help the user understand.
-2. Pick a reader question and format from
-   [html-effectiveness-patterns.md](references/html-effectiveness-patterns.md).
-3. Create a local standalone HTML file. Use
-   `assets/explanation-template.html` for a small starter or copy the closest
-   repo-owned pattern from `assets/patterns/`.
-4. Keep the final chat reply short: what file you created, an absolute
-   Markdown link to open it, what it covers, and how it was verified.
+Keep primary prose around 70–75 characters per line. Prefer compact tables,
+flows, timelines, comparisons, or consequence-revealing controls to long prose.
+A short sequence is one ordered list with rows/separators; cards are for genuinely
+independent concepts. Every section is optional: remove repeated summaries,
+process narration, dashboards, metrics, and orientation unrelated to understanding.
+Interaction must let the reader test a claim, change an assumption, inspect state,
+or check understanding.
 
-## Output rules
+Use self-contained high-contrast syntax token markup/CSS or a small inline
+highlighter, not remote scripts or colors on every identifier. Attach editorial
+explanations between relevant code segments, visibly separate and labeled as
+explanation, never disguised as source comments. Keep exact file/symbol evidence.
+Reset inline-code background/border/padding/radius/font sizing in a dedicated
+`pre code` rule so pill styles cannot leak into block code.
 
-- Use one self-contained `.html` file with inline CSS and inline JavaScript.
-- Do not add a build step or remote runtime dependency.
-- Put the answer first in the page: a short headline, a brief summary when it
-  adds information, then the visual/interactive body. Do not preserve a
-  summary slot when the headline or first visual already says the same thing.
-- The first screen must be understandable without reading code. Explain
-  the decision, bug, or concept in plain English before showing
-  implementation details. Put code, dense mechanics, and caveats in
-  lower sections or `<details>` blocks unless the user's explicit goal
-  is code or PR reading. For code and PR reading, reach the changed flow or
-  real code in the first viewport after one concise outcome statement.
-- Assume the reader knows the desired behavior, not the repository's internal
-  vocabulary. Use everyday words before technical names.
-- Do not make acronyms or specialist terms carry the explanation. Prefer
-  "exactly one of these fields" over "XOR," and "reads both saved transcript
-  formats" over naming storage implementations. Keep exact terms in filenames,
-  code, or secondary evidence when they help someone inspect the change.
-- In summary cards, state the user-visible promise or failure being checked.
-  Describe the test machinery only after that promise is clear.
-- Use real labels from the task: filenames, functions, API names, states, events, dates, and decisions.
-- Keep primary prose near 70–75 characters per line.
-- Prefer compact sections, tables, flow diagrams, timelines, comparisons, and
-  controls that reveal consequences over long paragraphs or repeated cards.
-- Present a short sequence or summary of changes as one compact ordered list
-  with rows and separators. Use separate cards only when the items are
-  independent concepts that benefit from spatial grouping; do not turn every
-  step in a flow into its own card.
-- Make every summary row one concrete statement that names the changed file,
-  symbol, behavior, or boundary. Delete generic process labels such as
-  "Validate," "Translate," "Handle safely," or "How it works" when the
-  adjacent sentence contains the actual information. Do not add a short title
-  that merely restates its description.
-- Default to the smallest page that answers the reader's question. Treat every
-  section as optional. Remove review-process narration, repeated summaries,
-  dashboards, metrics, and orientation that do not help the reader understand
-  what changed, where it changed, or how it works.
-- Use interaction only when it lets the reader test a claim, change an
-  assumption, inspect a state, or check their understanding.
-- Put long code snippets inside `<details>` blocks or side-by-side panels.
-- Syntax-highlight code excerpts with self-contained token markup and CSS or a
-  small inline highlighter. Do not use remote scripts or runtime dependencies.
-  Use a small, high-contrast token palette rather than coloring every
-  identifier.
-- Attach code explanations to the lines they describe. Prefer compact,
-  GitHub-style editorial boxes between highlighted code segments over a
-  separate annotation column. Clearly label these boxes as explanation,
-  visually separate them from the source lines, and never disguise editorial
-  text as a source-code comment.
-- If styling inline `<code>` and block `<pre><code>`, add a dedicated
-  `pre code` rule that resets inline-code backgrounds, borders, padding,
-  radius, and font sizing inside code blocks. Inline code pill styles must
-  never leak into block code, because they create unreadable pale strips on
-  dark code panels.
-- If the page explains code, link or label the exact files and symbols used as evidence.
-- If the page includes user data or secrets from local files, keep it local and do not add external scripts, fonts, analytics, or image URLs.
-- Make it readable on mobile and desktop.
-- At 320 CSS pixels, reflow into one column without page-level horizontal
-  scrolling. Let wide tables and code blocks scroll inside their own
-  containers.
-- Use color and a text label or shape together for status.
-- Give interactive controls visible labels, keyboard behavior, visible focus,
-  and comfortable touch targets.
-- Honor `prefers-reduced-motion` and include print styles that remove controls
-  and decorative backgrounds without removing the argument.
+Reflow at 320 CSS pixels into one column without page-level horizontal scroll;
+wide code/tables scroll internally. Status uses colour plus text/shape. Controls
+need visible labels, keyboard support, focus, and comfortable touch targets.
+Honor reduced motion and print styles that remove controls/decorations but retain
+the argument. Keep pages containing local personal data/secrets local without
+external fonts, scripts, analytics, or image URLs.
 
-## Page shapes
+## Choose the useful shape and verify it
 
-Use these as starting points:
+Use entrypoint→functions→state→result for code; options/matrix/recommendation for
+comparison; definition/example/diagram for concepts; nodes/calls/ownership for
+architecture; failure/evidence/cause/fix/proof for bugs; and appropriate phases,
+blockers, decisions, or incident timeline for reports. PR/diff pages require
+[pr-diff-walkthrough.md](references/pr-diff-walkthrough.md) and
+`assets/patterns/annotated-diff.html` for the complete annotated direct-base diff.
+Describe faithfully and judge only on explicit review authority.
 
-- **Code flow**: entrypoint -> important functions -> state/data movement -> result -> risk points.
-- **Comparison**: option cards, decision matrix, when-to-use labels, final recommendation.
-- **Concept explainer**: short definition, concrete example, diagram, edge cases, small interactive control.
-- **Architecture map**: modules as nodes, arrows for calls/data/events, notes on ownership boundaries.
-- **Bug explanation**: broken behavior, evidence, cause, smallest fix, verification.
-- **PR change walkthrough**: changed behavior, optional stack navigation, complete annotated direct-base diff, optional proof and rollout notes.
-- **Plan/report**: goal or current state, phases or timeline, blockers, risks, checks, decisions needed, next actions.
-- **Incident report**: impact, timeline, trigger, cause, fix, follow-ups, evidence.
+Plans/status/incidents/handoffs need the chosen report shape, plainly marked
+unknowns, absolute dates when material, actionable-only checklists, and command/
+result evidence where available. Say in the page and reply if verification did not run.
 
-## PR and diff pages
-
-Read [pr-diff-walkthrough.md](references/pr-diff-walkthrough.md) and use
-`assets/patterns/annotated-diff.html`. This is an explanation, not a code
-review: describe the changed behavior and source faithfully, and judge it only
-when the user explicitly asks for review.
-
-## Plans, reports, incidents, and handoffs
-
-- Pick the report shape first: plan, status, incident, or handoff.
-- Mark unknowns plainly; do not let the visual format make uncertain plans look more certain.
-- Use absolute dates when timing matters.
-- Use checklists only for actionable items.
-- If local commands support the report, include the command and result.
-- If no verification ran, say that in the page and final reply.
-
-## Verification
-
-Before saying the work is done:
-
-- Open the HTML file in a browser when browser tools are available.
-- Check the console for errors if the page has JavaScript.
-- Visually inspect every `<pre><code>` block after CSS is applied.
-  Confirm code text has strong contrast and is not inheriting inline
-  code pill backgrounds, borders, padding, or rounded boxes.
-- Read the first viewport as if you are the target user. If it is not
-  clear what the recommendation or explanation is before any code
-  block, rewrite the top of the page.
-- Check at least one narrow viewport if the page is meant to be read on mobile.
-- Check for page-level horizontal overflow at both wide and 320px viewports.
-- Print-preview or otherwise inspect print CSS when the page is a report,
-  handoff, plan, or lesson likely to be saved.
-- Report anything you did not verify.
-- Always include a clickable absolute local-file Markdown link in the final
-  reply, using the file path format supported by the current harness.
-
-## Pattern library
-
-Read [html-effectiveness-patterns.md](references/html-effectiveness-patterns.md)
-before choosing a page shape.
-The seven examples in `assets/patterns/` are intentionally different reasoning
-structures, not visual themes. Copy the closest structure, replace all sample
-facts, and remove sections that do not help the reader.
-
-The library was informed by GOV.UK content patterns, WCAG reflow guidance,
-MDN live examples, Distill, Tufte CSS, Observable Plot, and a review of
-`ThariqS/html-effectiveness`. The full research and source links live in
-[`html-explanation-patterns.md`](references/html-explanation-patterns.md).
+Open the file in a browser when available; check JavaScript console errors,
+every styled code block's contrast/reset, first-viewport clarity, wide and 320px
+overflow, and a narrow viewport for mobile. Inspect print CSS/preview for reports,
+handoffs, plans, or lessons likely to be saved. Rewrite an unclear opening;
+report unverified areas. Finish with a short explanation of file, coverage,
+verification, and an absolute clickable local-file Markdown link.

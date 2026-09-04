@@ -5,54 +5,28 @@ description: 'Audit PR diffs for unrelated artifacts, noisy comments, deletions,
 
 # PR rubbish audit
 
-Outcome: leave a coherent PR with no unrelated artifacts, noisy churn, or
-accidental deletions. Preserve the real behavior, tests, docs, and compatibility
-the feature needs; minimal size is not the goal.
+Assess whether the PR is coherent and free of unrelated artifacts, noisy churn,
+and accidental deletion. Preserve behavior, tests, docs, and compatibility the
+feature needs; shrinking the diff is not the objective.
 
-## Workflow
+Identify feature intent, head, and base, usually `origin/main`. Ask only when
+intent is too unclear to classify safely. Capture `git diff --name-status`,
+`git diff --stat`, and the largest additions/deletions. Classify every changed
+file with [classifications.md](references/classifications.md), then inspect
+suspicious hunks against the old code. Prefer `git diff origin/main -- <file>`
+and targeted `git show origin/main:<file>` reads, substituting the actual base.
 
-1. Establish the intended feature and base.
-   - Identify the PR/head branch and base branch, usually `origin/main`.
-   - Ask only if the feature intent is unclear enough that you cannot classify
-     hunks safely.
-   - Capture `git diff --name-status`, `git diff --stat`, and the largest
-     add/delete files.
-2. Classify every changed file using
-   [classifications.md](references/classifications.md).
-3. Inspect hunks, not just files. For each suspicious file, compare old and new
-   code. Prefer `git diff origin/main -- <file>` plus targeted reads from
-   `git show origin/main:<file>`.
-4. Preserve behavior unless proven unnecessary. Use
-   [rubbish-signals.md](references/rubbish-signals.md) for common risks.
-5. Produce a cleanup plan before editing:
-   - files/hunks to keep and why
-   - files/hunks to revert and why
-   - tests/docs to add or restore
-   - validation to run
-6. Stop after the cleanup plan unless the user authorized implementation.
-   When authorized, apply focused cleanup surgically without touching unrelated
-   user changes.
-7. After authorized edits, validate with focused tests, typecheck/lint/format gates
-   available in the repo, and a final diff/stat check. If a repo wrapper
-   deadlocks or cannot run, run its constituent commands and state the caveat.
-8. Report using [output.md](references/output.md).
+Apply [rubbish-signals.md](references/rubbish-signals.md). Preserve behavior until
+shown unnecessary. Prefer reverting unrelated behavior-preserving refactors.
+Keep an adjacent bug fix only if required for the feature or explicitly flag it
+as extra scope. Intentional behavior removal needs absence tests only when a
+current compatibility, privacy, migration, or security contract requires them.
 
-## Required judgment
+Before edits, present a plan: keep/revert hunks and reasons, tests/docs to add or
+restore, and validation. Stop there unless implementation was authorized. If it
+was, make focused surgical edits while preserving unrelated user changes.
 
-- Do not remove functionality just to shrink the diff.
-- If a hunk might be behavior-preserving refactor but does not help the feature,
-  prefer reverting it.
-- If a hunk fixes a real adjacent bug, keep it only when it is necessary for the
-  feature or explicitly call it out as extra scope.
-- When the feature intentionally removes behavior, do not require tests that
-  only prove the old behavior is gone unless a current compatibility, privacy,
-  migration, or security contract requires that absence.
-
-## Context pointers
-
-- Use [classifications.md](references/classifications.md) for required,
-  suspicious, rubbish, and dangerous-removal labels.
-- Use [rubbish-signals.md](references/rubbish-signals.md) for hunk-level smells
-  and dangerous-removal checks.
-- Use [output.md](references/output.md) for required report shape and subagent
-  splitting.
+Validate authorized edits with focused tests, available typecheck/lint/format
+gates, and a final diff/stat check. If a wrapper deadlocks or cannot run, execute
+its constituent commands and disclose the caveat. Report via
+[output.md](references/output.md), which also defines subagent splitting.

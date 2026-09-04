@@ -5,53 +5,33 @@ description: 'Investigate technical or product questions against primary sources
 
 # Research
 
-Outcome: return a cited conclusion grounded in the primary sources that own the
-claim, and preserve substantive discoveries in the project notes. Do the work
-in the current session; a research request does not authorize a subagent.
-
-Use this when the answer depends on documentation, source code, standards,
-first-party APIs, release behavior, or evidence outside the conversation.
+Produce a cited answer to the stated question and preserve substantive findings
+in the project's Obsidian notes. The scope is this investigation, carried out
+in the current session without research subagents.
 
 ## Evidence
 
-Stop when the actual research question is answered. Keep the conclusion and one topic note concise, with facts, inferences, and uncertainty distinguished; do not produce a vendor manual or delegate the research.
+Use the owner of a claim as the primary source: official documentation,
+specifications, repository source, release notes, first-party APIs, and project
+notes. Secondary material may locate that evidence or provide a clearly labelled
+outside interpretation. Date version-sensitive findings and separate sourced
+facts from inference and uncertainty.
 
-Prefer the source that owns the claim: official documentation, specifications,
-repository source, release notes, first-party APIs, and project-owned notes.
-Use secondary material only to find a primary source or to present a clearly
-labelled outside interpretation.
+Stop expanding the investigation once the question is answered with sufficient
+evidence. The final answer needs the conclusion, supporting citations, material
+limits, and any implication for the decision; it does not need a search diary.
 
-Record versions and dates when behavior can change. Separate sourced facts,
-inferences, and unresolved questions.
+## One durable note
 
-## Obsidian notes
+Follow the vault's conventions to update one topic or task note. Preserve the
+question and decision, answer, cited findings, version and date, uncertainty and
+stale risks, effect on the current plan, and outstanding questions. Keep it
+concise enough to use later rather than reproducing a vendor manual. Never save
+credentials, raw environment files, personal data, or large copied passages.
 
-Preserve substantive discoveries in the user's Obsidian-backed project notes
-so a later session can recover the evidence. Update one topic or task note
-rather than creating a file for every lookup.
+Without a connector or known vault, return the answer in chat and disclose that
+it was not saved. A repo Markdown file or arbitrary local note is not a fallback.
+Name or link a saved note in the answer and in a later handoff.
 
-A useful note contains:
-
-- the question and the decision it supports;
-- the short answer;
-- cited findings with URLs or source paths;
-- version, date, uncertainty, and stale-risk notes;
-- the effect on the current plan or implementation;
-- open questions worth carrying forward.
-
-Follow the vault's existing project folder and naming convention. When an
-Obsidian connector or known vault is unavailable, keep the findings in chat and
-report that they were not persisted. Do not fall back to a repository Markdown
-file or an arbitrary local note. Never store credentials, raw environment
-files, personal data, or large copied source passages.
-
-## Return
-
-Lead with the conclusion, cite the evidence near each claim, and link or name
-the Obsidian note when one was updated. A later handoff should include that note
-as durable context.
-
-This skill is a repository-owned fork of Matt Pocock's MIT-licensed `research`
-workflow. The local fork performs research in the current session and stores
-durable findings in Obsidian instead of spawning a background agent or writing
-notes into the repository.
+This is an MIT-licensed repository fork of Matt Pocock's `research` skill with
+in-session execution and Obsidian-backed persistence.

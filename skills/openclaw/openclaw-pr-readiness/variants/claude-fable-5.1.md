@@ -5,90 +5,40 @@ description: 'Prepare or assess openclaw/openclaw PRs for exact-head proof, revi
 
 # OpenClaw PR readiness
 
-Finish every authorized readiness gate on the same exact head. Batch independent
-PR, review, proof, and CI checks. During long waits or repair work, report a new
-gate result, changed evidence, or blocker. Verify current OpenClaw behavior from
-source. Keep fixes and tests limited to accepted findings and use targeted
-edits.
+Bring every authorized readiness gate to the same PR state. Keep the bot's
+rating separate from review, proof, CI, maintainer approval, and human sign-off.
 
-Make an `openclaw/openclaw` PR genuinely easy to merge. Prepare the strongest
-honest review packet, delegate ClawSweeper convergence and rating improvement to
-`clawsweeper-until-clean`, and finish only when every required gate describes
-the same PR state.
+1. Verify that the PR base repository is exactly `openclaw/openclaw`. Otherwise
+   return `not-applicable` and stop without loading the remaining workflow.
+2. Establish the caller's publication authority. This skill grants none itself.
+   Authorized pushes/PR updates allow the exact machine comment required by
+   `clawsweeper-until-clean`, not prose comments, manual rating labels, reactions,
+   merge/automerge, deployment, or unrelated cleanup.
+3. Prepare a focused patch. Resolve actionable correctness/security findings
+   with repo-owned behavior and focused regression proof. Distinguish pinned
+   merge-base-to-head PR changes from base drift; do not call an endpoint
+   comparison the PR diff. Use normal non-force base alignment and exact-head
+   checks. Put product/compatibility decisions to the owner instead of widening
+   scope for a better score. Verify unfamiliar current behavior from source.
+4. Load `pr-proof-pack` and refresh stale proof for the current head. Show direct
+   observed behavior at the changed boundary. Keep text copyable; use screenshots
+   or recordings only for visual/interactive claims and linked artifacts only
+   for real inspectable evidence. Runtime/auth/network/security/lifecycle claims
+   need diagnostics, traces, logs, or live output. Tests, mocks, and CI are supporting proof.
+5. Load `clawsweeper-until-clean`. Let it own the exact comment, three-clean
+   streak, bot-owned platinum-or-better label, three diamond attempts, and the
+   explanation if platinum remains. Do not reimplement that rating workflow.
+6. After it returns, rerun gates its fixes/rank-up changes made stale. Batch
+   independent gate checks. If head or judged reviewer-visible proof changes,
+   resume ClawSweeper with `diamond_attempts` preserved, never exceeding three
+   across the workflow. Do not retrigger the bot for unchanged state.
+7. Stop when one PR state simultaneously has current exact-head `code-review`,
+   proof, required CI, repo gates, and a terminal successful ClawSweeper outcome
+   (`already-diamond-or-better`, `diamond-achieved`, or `platinum-with-explanation`).
+   No push may follow the final counted review.
 
-## Scope and authority
-
-First verify the PR's base repository is exactly `openclaw/openclaw`. If it is
-not, return `not-applicable` without loading the rest of this workflow. This is
-the only repository whose policy this skill encodes.
-
-This skill does not grant publication authority by itself. The calling request
-or workflow must already authorize PR updates and pushes. When that authority
-exists, it also permits the exact machine-command comment required by
-`clawsweeper-until-clean`; it does not permit prose PR comments, manual rating
-labels, reactions, merge, automerge, deployment, or unrelated cleanup.
-
-ClawSweeper is an OpenClaw-specific readiness signal, not a substitute for the
-exact-head `code-review` workflow, current proof, required CI, maintainer
-approval, or Jesse's sign-off reaction.
-
-## Prepare the strongest honest review packet
-
-1. Make the patch boring to trust.
-
-   Keep the diff focused and coherent. Resolve every actionable correctness or
-   security finding. Use repository-owned behavior and focused regression tests.
-   Make ownership unambiguous: distinguish the pinned merge-base-to-head changes
-   introduced by this PR from drift on the base branch, and do not claim an
-   endpoint comparison as the PR diff.
-   Bring the branch to the expected base through the repository's normal
-   non-force flow, and finish the relevant exact-head checks. If a product or
-   compatibility decision belongs to an owner, state it plainly instead of
-   hiding it or expanding the PR to chase a higher score.
-
-2. Prove the changed behavior, not just the test harness.
-
-   Load `pr-proof-pack` and refresh stale proof against the current head. Prefer
-   direct observed behavior at the changed boundary. Keep textual behavior as
-   copyable text. Use a screenshot or recording only when the claim is
-   genuinely visual or interactive, and use a linked artifact only when it
-   contains real inspectable evidence. For browser-runtime, auth, network,
-   security, or lifecycle claims, include the relevant diagnostics, trace,
-   logs, or live output; a clean-looking screenshot cannot prove those claims.
-   Tests, mocks, and CI support real-behavior proof but do not replace it.
-
-## Run the scoped ClawSweeper gate
-
-Load `clawsweeper-until-clean`. It owns the exact machine-command comment, the
-three-clean streak, the bot-owned platinum-or-better label, the three-attempt
-diamond budget, and the concrete explanation when platinum remains.
-Do not duplicate or reinterpret that rating workflow here.
-
-ClawSweeper fixes or rank-up work can make earlier code review, proof, CI, and
-repository evidence stale. After `clawsweeper-until-clean` returns, rerun every
-gate its changes invalidated. If that work changes the head or reviewer-visible
-proof that ClawSweeper judged, re-enter `clawsweeper-until-clean` with its
-`diamond_attempts` state preserved. The resumed run may reconverge and spend
-remaining attempts but may never exceed three across the complete workflow.
-
-Repeat only until one PR state simultaneously holds current code review, proof,
-required CI, repository gates, and the final ClawSweeper result. An unchanged
-rerun is not a reason to trigger the bot again.
-
-## Completion
-
-Call the OpenClaw gate ready only when:
-
-- the base repository is `openclaw/openclaw`;
-- `clawsweeper-until-clean` returned `already-diamond-or-better`,
-  `diamond-achieved`, or `platinum-with-explanation` for the current PR state;
-- no push followed the final review;
-- the separate code-review, proof, required CI, and repository gates are also
-  current, or the caller explicitly records which of them still blocks overall
-  PR readiness.
-
-Report the PR URL, exact head SHA, delegated ClawSweeper outcome, awarded label,
-final three-clean evidence, review, proof, CI, repository gates, and anything
-still waiting on an owner. Include the ClawSweeper explanation when the result
-is platinum. Distinguish "OpenClaw gate passed" from "PR is ready," and never
-describe a merely high-scoring PR as merged or approved.
+Report URL, exact head, bot outcome and label, final three-clean evidence,
+review/proof/CI/repo gates, and owner blockers. Include the platinum explanation.
+Say "OpenClaw gate passed" separately from "PR is ready" when other gates block.
+A high score is not approval or merge. During long work, report new gate results,
+evidence changes, or blockers.

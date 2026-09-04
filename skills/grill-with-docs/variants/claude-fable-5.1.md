@@ -5,68 +5,33 @@ description: 'Ground a plan in repo docs, code, Obsidian notes, ADRs, specs, and
 
 # Grill with docs
 
-Batch independent grounding reads and verify unfamiliar or current claims from
-their source. Mark copied source wording as quotation. Report once when the
-grounding changes the questions. Then ask the complete settled frontier and
-wait for the user's decisions; do not invent answers merely to finish the
-session.
+Use current project evidence to prepare and conduct a `grilling` session.
+The interview must settle the user's decisions, not replace them with guesses.
 
-Run a `grilling` session after grounding the plan in project context.
-`grilling` is the interview workflow; this skill adds docs, code, and Obsidian
-context before the questioning starts.
+1. Before judging the plan, search the sources in
+   [grounding.md](references/grounding.md). Batch independent docs, code, and
+   Obsidian reads. Verify unfamiliar or current claims from their source.
+   Mark copied wording as a quotation and separate it from your interpretation.
+2. List the plan's concepts, system names, state changes, user outcomes, and
+   implied invariants. Compare them with existing code and documentation.
+   Prefer established terms and flag invented or overloaded names and domain gaps.
+3. Load `grilling`. Map the decision tree and ask its complete settled frontier
+   in numbered rounds. Recommend an answer for each question, dispatch background
+   fact-finding as that skill requires, and wait for the user's decisions.
+4. Use [session-behavior.md](references/session-behavior.md) throughout: challenge
+   glossary gaps, sharpen vague language, test concrete scenarios, cross-check
+   code claims, assess UI readiness, update context, and offer warranted ADRs.
+   Ask which ADR supports a choice, which code path proves feasibility, what
+   the first tracer-bullet ticket does, what assumption could fail, and which
+   acceptance criteria cannot yet be tested. For UI, establish design direction,
+   viewport states, and expected `frontend-ui-validation` proof.
+5. If the subject cannot fit a useful session, suggest splitting it into explicit
+   decisions or tickets. Otherwise continue until executable and user-confirmed.
+   Report a grounding change when it changes the questions or recommendations.
+6. Return the tightened plan, assumptions, and first ticket, or concise blockers
+   if it remains unready. Use Grounding, What Holds Up, Gaps, Tightened Plan, and
+   Next Round only where useful. When the plan is ready, stop asking new questions;
+   make any outstanding confirmation the next round before proceeding.
 
-## Workflow
-
-1. Locate project context before judging or questioning the plan. Use
-   [grounding.md](references/grounding.md) for the search targets.
-2. Extract the plan's nouns and verbs: product concepts, system names, state
-   transitions, user-visible outcomes, and implied invariants.
-3. Compare those terms against existing docs and code. Prefer existing
-   vocabulary. Flag invented terms, overloaded names, and domain gaps.
-4. Run `grilling`: map the decision tree, ask the whole settled frontier in a
-   numbered round, provide a recommended answer for each question, dispatch
-   background fact-finding, and put decisions to the user.
-5. Use these prompts as useful pressure points during grilling:
-   - Which existing decision or ADR does this rely on?
-   - Which code path proves the plan is implementable?
-   - What behavior is the first tracer-bullet ticket?
-   - What assumption would make the plan fail?
-   - Which acceptance criterion is still vague or untestable?
-   - If the plan changes rendered UI, what design direction, viewport states,
-     and `frontend-ui-validation` proof will review require?
-6. Apply the session behaviors in
-   [session-behavior.md](references/session-behavior.md): glossary challenges,
-   fuzzy-language sharpening, concrete scenarios, code cross-checks, UI
-   readiness, context updates, and ADR offers.
-7. If the work is too large or foggy for one session, point the user to
-   break it into explicit decisions or tickets instead of forcing the whole
-   journey through one grill.
-8. Continue until the plan is clear enough to execute and the user confirms the
-   shared understanding.
-9. Return either a tightened plan with assumptions and first ticket made clear,
-   or a short set of blockers/questions if the plan is not ready.
-
-## Output shape
-
-Prefer short sections:
-
-- `Grounding`: docs/code/notes inspected
-- `What Holds Up`: parts supported by evidence
-- `Gaps`: unclear terms, missing decisions, weak assumptions
-- `Tightened Plan`: revised plan or first ticket
-- `Next Round`: the settled frontier the user should answer next
-
-When the plan is ready, stop asking and give the tightened plan. If the user has
-not confirmed the shared understanding, make the confirmation request the next
-round instead of proceeding.
-
-## Context pointers
-
-- Use [grounding.md](references/grounding.md) for project context search
-  targets.
-- Use [session-behavior.md](references/session-behavior.md) for how to
-  challenge terminology, code claims, scenarios, and UI readiness.
-- Use [context-format.md](references/context-format.md) when writing or
-  proposing a project glossary note.
-- Use [adr-format.md](references/adr-format.md) when an ADR is genuinely
-  warranted.
+Use [context-format.md](references/context-format.md) for a glossary note and
+[adr-format.md](references/adr-format.md) for an ADR that is genuinely warranted.

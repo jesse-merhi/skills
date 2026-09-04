@@ -5,49 +5,39 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 # Ask Claude
 
-Outcome: return an independently produced Claude result from one full ACP
-session. This is not a subagent; use the external session workflow below.
+An explicit request to ask Claude authorizes this full-session workflow.
+A reference to the skill or an ordinary review, planning, delegation, or
+implementation request does not. Do not launch it automatically.
 
-Authority: invoke this skill only when the current user explicitly asks to run
-`$ask-claude` or explicitly says to ask Claude. Never auto-select it for review,
-planning, a second opinion, delegation, or implementation. Mentioning,
-discussing, or linking this skill is not authorization to run it.
+## Prepare and launch the authorized request
 
-## Workflow
+Resolve `<skill-dir>` to this skill's directory. Use the request and checkout
+to build a brief containing the objective, relevant files, constraints, expected
+output, owned scope, write permission, and temporary-session cleanup obligation.
+Resolve routine briefing details from available evidence; ask only if an
+unresolved user decision changes the permitted work.
 
-Use the explicit invocation to resolve the permitted read or write mode and start the full session. Ask again only if a material scope decision remains unresolved.
+Choose the matching wrapper:
 
-1. Resolve `<skill-dir>` to this skill's directory.
-2. Give Claude a self-contained brief: objective, checkout, relevant files,
-   constraints, expected output, whether writes are authorized, and the
-   requirement to close its own temporary external session before finishing.
-3. For advice, review, or planning, run the read-only wrapper:
+```sh
+# Advice, planning, or review
+<skill-dir>/scripts/ask-claude read "<self-contained prompt>"
+# Implementation explicitly authorized for the scope in the brief
+<skill-dir>/scripts/ask-claude write "<self-contained prompt>"
+```
 
-   ```sh
-   <skill-dir>/scripts/ask-claude read "<self-contained prompt>"
-   ```
+Keep the current Claude model configuration. Use one fresh full ACP session via
+`acpx ... claude exec`, never an in-chat substitute. Persistent `prompt` mode is
+reserved for an explicitly requested ongoing cross-harness conversation.
 
-4. Use write mode only when the user authorized implementation and the brief
-   names the owned scope:
+## Capture the result and finish the session
 
-   ```sh
-   <skill-dir>/scripts/ask-claude write "<self-contained prompt>"
-   ```
+Inspect Claude's evidence and validate any edits in the originating session.
+Carry the request through cleanup without a second permission round: require
+the temporary session to close itself, verify closure, and close any exact
+remaining ACP ID even after failure, cancellation, timeout, or early stop.
+For a requested persistent session, close it when the user ends the conversation.
 
-5. Treat the result as another full session's work. Inspect its evidence and
-   validate any edits in the originating session before reporting completion.
-6. A one-shot ACP session is temporary. Require the spawned Claude session to
-   close itself before finishing, then verify no persistent session was left
-   behind. The wrapper must stay on `acpx ... claude exec`; never switch to the
-   persistent `prompt` mode unless the user explicitly requests an ongoing
-   cross-harness conversation. On failure, cancellation, timeout, or early
-   stop, close any exact session ID returned by ACP and report cleanup failure
-   instead of silently leaving the session behind.
-
-The wrapper uses the current Claude configuration; do not hard-code a model.
-Use a fresh one-shot ACP session by default. Continue a persistent named session
-only when the user explicitly asks for an ongoing cross-harness conversation.
-Close that named session when the user ends the conversation.
-
-If ACP or Claude authentication fails, report the exact failure. Do not silently
-replace the requested Claude session with a subagent or self-answer.
+Report the supported result and any validation or cleanup limits. ACP and
+authentication failures must remain visible; do not silently answer yourself or
+replace Claude with a subagent.

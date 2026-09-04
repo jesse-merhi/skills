@@ -5,99 +5,54 @@ description: 'Run authorized native reviews and fixes until two fresh passes are
 
 # Review until clean
 
-Outcome: reach two consecutive clean runs from the harness's native review
-engine on the same tree. When a run surfaces actionable findings, fix only
-those findings and review again.
+Run one selected native review engine until two consecutive fresh clean passes
+cover the same tree. Fix only accepted actionable findings. This loop requires
+an explicit until-clean request or selection as `code-review`'s native phase.
+A plain `codex review`, `/review`, or `/code-review` request runs once, read-only
+unless edits are separately authorized.
 
-Stop after the selected engine produces **two consecutive clean runs** on the
-same reviewed tree. This gives the native review loop one confirmation pass
-after the first clean result without returning to the old unbounded streak.
+## Preflight
 
-This skill is separate from `cold-pr-review-until-clean`: the source of truth is
-the harness's native review mode, not a custom prompt, `cold-pr-review`, a
-repo-specific review command, or an ad hoc subagent.
+Read [engine-selection.md](references/engine-selection.md), then the selected
+[codex-engine.md](references/codex-engine.md) or
+[claude-engine.md](references/claude-engine.md). Confirm an exact committed branch
+against its base or a commit SHA, the intended fix checkout, engine availability,
+and verification commands. Refuse staged, unstaged, or untracked changes.
+Load `review-guardrails`, inherit the persisted scope baseline, and confirm it
+with `scope-status` before fixing.
 
-Do not use this skill for a one-off read-only review. A plain `codex review`,
-`/review`, or `/code-review`-style request should run once and report findings
-without editing unless the user explicitly asks for the until-clean loop or
-`code-review` has selected this as its native review phase.
+Load `wait-efficiently` and [loop.md](references/loop.md). Read
+[fixing-and-reporting.md](references/fixing-and-reporting.md) before edits/reporting.
 
-## Non-negotiables
+## Execute and record the loop
 
-```yaml
-review_tool: must invoke the selected engine's bare built-in review; do not substitute a self-review or ad hoc subagent
-prompt_policy: pass only the review target; never reveal prior findings, checklists, desired verdicts, or rationale before the engine returns
-fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
-state_store: keep findings, commands, open queue, and stop reason in the findings CLI
-scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
-stop_condition: two consecutive runs with zero actionable findings
-counter_reset: any actionable finding resets consecutive_clean to 0
-no_early_exit: do not stop before a fresh engine run returns clean
-no_self_review: do not decide the tree is clean without a fresh engine run
-same_tree_for_clean_target: do not edit, stage, unstage, commit, or otherwise change the reviewed tree between clean passes
-same_engine_for_clean_target: do not switch review engines during the loop
-consult_findings: consult-worthy findings go to the consult queue; keep fixing other findings instead of waiting
-queue_matched_passes: a pass whose only findings match the open consult queue counts toward the clean target but can never produce a final clean verdict
-fixed_point: when the clean target is met and the consult queue is non-empty, suspend as blocked-on-consult; never keep re-running the engine on an unchanged tree
-```
+Use only the selected engine's bare built-in review and pass only the target.
+Never supply checklists, output prompts, prior findings, rationale, or desired
+verdicts. Do not substitute custom review prompts, self-review, cold review,
+repo-specific review commands, or ad hoc subagents. `ask-codex`/`ask-claude` are
+not fallbacks unless the current user explicitly requested that exact session.
 
-## Workflow
+Maintain `iterations`, `consecutive_clean`, and `required_clean = 2`. Triage
+returned candidates with `finding-discipline`. Record findings, commands, fixes,
+validation, consult changes, open queue, and stop reason in the findings CLI.
+Apply targeted accepted fixes directly or through the repository's fix workflow.
+Run `scope-check` after every accepted fix and stop immediately on non-zero.
+Validate affected behavior and commit one pass's accepted fixes together before
+the next review. Review the updated target, not an old immutable commit.
 
-1. Pick one review engine.
+Actionable findings reset the clean counter to zero. A rejected finding is not
+a fresh clean engine pass. Keep one engine throughout and do not edit, stage,
+unstage, commit, or otherwise change the tree between clean passes.
 
-   Read [references/engine-selection.md](references/engine-selection.md). If
-   the selected engine is Codex, also read
-   [references/codex-engine.md](references/codex-engine.md). If it is Claude,
-   read [references/claude-engine.md](references/claude-engine.md).
+Queue consult-worthy findings without silently fixing or rejecting them; continue
+other authorized fixes. Passes containing only matches to the open consult queue
+may count toward the target, but cannot yield final clean. At the target with
+an open queue, stop `blocked-on-consult` instead of repeating unchanged reviews.
 
-2. Pre-flight the target.
+## Closeout
 
-   Confirm the target: a clean committed branch against its base, or a commit
-   SHA. Refuse staged, unstaged, or untracked changes. Check engine
-   availability, load `review-guardrails`, confirm the persisted scope budget
-   with `scope-status`, and identify verification commands. Done when fixes
-   will land in the intended checkout, the scope budget is ready, and no review
-   checklist or implementation rationale will be fed to the engine.
-
-3. Run the until-clean loop.
-
-   Load `wait-efficiently`, then read [references/loop.md](references/loop.md).
-   Maintain `consecutive_clean`, `iterations`, and `required_clean = 2`. Run the
-   selected engine's bare review, triage with `finding-discipline`, fix
-   actionable findings, record state in the findings CLI, and rerun until the
-   clean target or an honest stop condition is reached.
-
-4. Fix and verify findings.
-
-   Read [references/fixing-and-reporting.md](references/fixing-and-reporting.md)
-   before editing or reporting. Done when every fix maps to an actionable
-   finding, affected validation has run, invalid findings are recorded with
-   evidence, and final reporting includes the stop reason and review state path.
-
-## Done means
-
-- The selected engine's bare built-in review ran for each iteration.
-- No custom prompt, output-format prompt, desired verdict, or prior rationale
-  was passed to the engine.
-- The required clean passes were met on the reviewed tree, or the loop stopped
-  honestly with `blocked-on-consult`, `budget-expired`, or `ambiguous-review`.
-- Findings, fixes, validation commands, consult-queue changes, and stop
-  conditions are recorded in the findings CLI.
-- Every accepted fix is followed by a passing `scope-check`, and the final scope
-  status is not missing or blocked.
-- Accepted fixes from one pass are committed together before the next review.
-- No code was edited between clean passes.
-- No final clean verdict is reported while the consult queue has open entries.
-
-## Avoid
-
-- invoking `ask-codex` or `ask-claude` as a review engine or fallback unless
-  the current user explicitly requested that exact cross-harness session;
-- replacing the engine's review with `spawn_agent`, `cold-pr-review`, a
-  repo-specific review command, or manual judgment;
-- switching engines mid-loop;
-- reviewing staged, unstaged, or untracked changes;
-- re-reviewing an old immutable commit after fixes;
-- counting your own rejection of a finding as a clean pass;
-- silently fixing or rejecting consult-worthy findings;
-- running more reviews on an unchanged tree beyond the clean target.
+Report clean only after two fresh qualifying passes on the same tree, no open
+consults, and a present unblocked final scope status. Otherwise report the honest
+stop: `blocked-on-consult`, `budget-expired`, or `ambiguous-review`. Include review
+state path, findings/fixes, validation, and stop reason. Do not stop early or
+extend the loop past its fixed point with discretionary verification.

@@ -5,87 +5,45 @@ description: 'Validate web UI with Playwright screenshots, layout checks, respon
 
 # Frontend UI validation
 
-Complete the visual gate for every requested state and viewport. Batch
-independent screenshots and layout checks. During a long run, report new visual
-evidence, a changed direction, or a blocker. Keep validation and any authorized
-fixes inside the changed UI; prefer targeted edits and do not add unrelated
-states or tests.
+Validate the changed interface in the rendered app. Cover the requested states
+and widths, not just a desktop happy-path screenshot. This workflow is ad-hoc;
+use project testing skills for persistent Playwright specs.
 
-This is a visual gate, not a vibe check. A screenshot by itself is not
-validation.
-
-Use this to prove that rendered UI has no obvious layout failures: horizontal
-overflow, clipped text, sibling overlap, tiny tap targets, console errors,
-broken responsive states, weak hierarchy, generic visual filler, or
-mismatch with the intended design direction.
-
-This skill is for ad-hoc validation during a task. Persistent Playwright specs
-belong in project testing skills.
-
-## Workflow
-
-1. Start the app with the repo's normal dev command.
-
-2. Open the changed page in a real browser.
-
-3. Check the page at these widths unless the task gives better targets:
-
-   - 390 x 844
-   - 768 x 1024
-   - 1440 x 900
-
-4. At each width, run the bundled layout audit script through Playwright:
+1. Start the app with its normal repository dev command and open the changed
+   page in a real browser. Unless the task gives better targets, use 390×844,
+   768×1024, and 1440×900. Include reachable empty, error, and loading states.
+2. At each width run:
 
    ```bash
    node <skill-dir>/scripts/audit-layout.mjs <url>
    ```
 
-   Read [references/browser-layout-audit.md](references/browser-layout-audit.md)
-   for what the script catches and how to treat warnings.
+   Read [browser-layout-audit.md](references/browser-layout-audit.md). Inspect
+   each warning's element, text, and box values before judging it.
+3. Use direct checks from [mcp-browser-checks.md](references/mcp-browser-checks.md)
+   when available. Batch independent screenshots and measurements. Inspect
+   overflow, clipped text, overlap, tiny tap targets, console errors, responsive
+   failures, hierarchy, generic filler, and design-direction mismatch. Zoom or
+   crop details when needed, retaining whole-page context.
+4. For native React Native/Expo screens, follow
+   [native-expo.md](references/native-expo.md) and capture simulator proof from
+   the mobile app. Use browser checks only for web-rendered screens. For Figma,
+   mockup, reference, theme, density, auth, or operational-app comparisons,
+   read [design-specific-checks.md](references/design-specific-checks.md).
+5. Report every real error and warning. If fixes are authorized, edit source
+   and rerun the affected viewport and state. Do not repair by mutating the live
+   DOM. For validation-only work, return evidence and a recommendation without edits.
+6. Show counts, console status, screenshot paths, and reasons for retained issues:
 
-5. Use direct browser/MCP checks when available.
+   ```text
+   390x844: 0 errors, 0 warnings
+   768x1024: 0 errors, 1 warning intentionally left: <reason>
+   1440x900: 0 errors, 0 warnings
+   Console: 0 errors
+   Screenshots: <paths>
+   ```
 
-   Read [references/mcp-browser-checks.md](references/mcp-browser-checks.md)
-   for screenshot, bounding-box, console, and computed-style checks.
-
-6. For native React Native / Expo screens, switch to native proof.
-
-   Read [references/native-expo.md](references/native-expo.md). Browser checks
-   still apply to web-rendered screens, but native screens need simulator proof
-   from the mobile app itself.
-
-7. For Figma, mockup, reference, theme, density, auth, or operational-app
-   comparisons, read
-   [references/design-specific-checks.md](references/design-specific-checks.md).
-
-8. Report every real `error` and `warning`. If implementation is authorized,
-   fix each finding and re-run the same viewport and state. Otherwise, return
-   the evidence and recommended fix without editing source.
-
-## Done means
-
-Final response must include evidence like:
-
-```text
-390x844: 0 errors, 0 warnings
-768x1024: 0 errors, 1 warning intentionally left: <reason>
-1440x900: 0 errors, 0 warnings
-Console: 0 errors
-Screenshots: <paths>
-```
-
-If the audit script could not run, say that and report which MCP checks or
-manual checks replaced it.
-
-For native Expo screens, replace browser-width audit lines with the native
-evidence from `references/native-expo.md`. Do not claim browser layout audit
-coverage for a screen that only rendered in the simulator.
-
-## Avoid
-
-- checking only desktop width;
-- saying "looks fine" without audit counts and screenshot paths;
-- ignoring script warnings without inspecting the element, text, and box values;
-- fixing by mutating the live DOM through browser automation instead of editing
-  source files;
-- checking only the happy state when empty/error/loading states are reachable.
+If the script cannot run, say so and identify replacement MCP/manual checks.
+For native Expo, use the native reference's evidence instead of browser-width
+lines. Do not claim browser coverage for a simulator-only screen. During long
+work, report new visual evidence, a changed direction, or a blocker.

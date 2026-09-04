@@ -5,34 +5,19 @@ description: 'Map changed runtime flows through contracts and side effects to ri
 
 # Review flow map
 
-Outcome: build an evidence-backed review map before writing findings: what changed, where
-execution starts, what contracts move between files, and which checks would
-actually prove the change.
+Produce the evidence map that a review needs before it can make findings:
+changed behavior, runtime entrypoints, contracts, side effects, risks, and checks
+that can prove the behavior.
 
-## Workflow
+Resolve the target with [target-resolution.md](references/target-resolution.md).
+Classify files by behavior using [categories.md](references/categories.md), then
+trace each changed flow across its callers and consumers. Use
+[context-reading.md](references/context-reading.md) to read the necessary context
+without treating every file as equally important.
 
-1. Resolve the review target with [target-resolution.md](references/target-resolution.md).
-2. Classify changed files by behavior category using
-   [categories.md](references/categories.md).
-3. Trace each changed flow end to end.
-4. Read context selectively with the search patterns in
-   [context-reading.md](references/context-reading.md).
-5. Produce the map before findings, using [output.md](references/output.md).
+Judge significance by contracts and behavior. A small boundary file may matter
+more than a large generated diff. Keep suspected defects separate from confirmed
+findings until the relevant flow and intended contract are understood.
 
-## Required discipline
-
-- Start from behavior and contracts, not file count.
-- Do not review all files equally; small contract files can matter more than
-  large generated diffs.
-- Keep suspected issues separate from confirmed findings.
-- Do not call something a bug until the relevant flow has been traced enough
-  to know the intended contract.
-
-## Context pointers
-
-- Use [target-resolution.md](references/target-resolution.md) for PR and git
-  range commands.
-- Use [categories.md](references/categories.md) for changed-file classification.
-- Use [context-reading.md](references/context-reading.md) for targeted context
-  commands and flow-tracing fields.
-- Use [output.md](references/output.md) for the review map shape and discipline.
+Return the map in [output.md](references/output.md) before writing findings.
+Every listed risk should point to the flow it affects and a relevant proof target.

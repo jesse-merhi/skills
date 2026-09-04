@@ -5,51 +5,28 @@ description: 'Cold-review a PR, branch, or feature with neutral context, changed
 
 # Cold PR review
 
-Run the complete independent review without implementation context. Batch
-independent reads and checks. For a long inspection, report only a change in
-evidence or direction. Verify unfamiliar or version-sensitive behavior from
-current sources. Return actionable, evidence-backed findings; do not edit the
-target.
+Review the work product independently. The reviewer must not receive the story
+of how it was implemented or the result you hope to get.
 
-Run an independent review subagent with zero implementation context. The
-reviewer sees only the work product, not your reasoning, decisions, or prior
-findings. This avoids anchoring bias where knowing why a decision was made
-prevents questioning whether it was correct.
+1. Read [dispatch.md](references/dispatch.md) and dispatch a separate reviewer
+   subagent using the supported harness route.
+2. Give only the review target and neutral checklist from
+   [checklist.md](references/checklist.md), using
+   [prompt-template.md](references/prompt-template.md). Add domain-specific topics
+   only when they are neutral and visible from the target.
+3. Exclude your rationale, decisions, implementation approach, prior findings,
+   attempted fixes, CI status, and desired verdict. Do not carry implementation
+   history into the reviewer session.
+4. Have the reviewer inspect the complete scope, batch independent reads/checks,
+   and verify unfamiliar or version-sensitive behavior from current sources.
+   For long reviews, report changed evidence or direction without exposing prior
+   implementation context.
+5. Require `finding-discipline`. Return concrete actionable defects tied to
+   changed code/contracts. Put rejected candidates in a separate compact audit
+   record with failed gate and evidence rationale. Do not present nits, vague
+   risks, or audit-only rejections as suggestions, fixes, or tests.
 
-## Workflow
-
-1. Dispatch a separate reviewer subagent by default. Use
-   [dispatch.md](references/dispatch.md) for harness-specific options and the
-   self-review fallback.
-2. Give the reviewer only what to review and a neutral checklist.
-3. Do not give your reasoning, design decisions, prior findings, fixes attempted,
-   implementation approach, or CI status.
-4. Use the neutral checklist in [checklist.md](references/checklist.md).
-5. Use the prompt template in [prompt-template.md](references/prompt-template.md)
-   and add domain-specific checklist items only when they are neutral and visible
-   from the review target.
-6. Require `finding-discipline`: report only concrete actionable findings tied
-   to changed code or contracts, not style nits or vague risks. Keep candidates
-   that fail its gates out of the finding list, but return a compact audit-only
-   rejection with the failed gate and evidence rationale.
-
-## Required discipline
-
-- Prefer a separate subagent. A cold review loses most of its value if the same
-  context that implemented the change also performs the review.
-- Give the reviewer the work product, not the story of the work.
-- Do not leak prior review outcomes or desired verdicts.
-- Keep audit-only rejections separate from findings so they remain measurable
-  without becoming suggestions, fixes, or tests.
-- If a separate reviewer is unavailable, say so explicitly and perform a fresh
-  self-review after deliberately discarding the implementation rationale.
-
-## Context pointers
-
-- Use [dispatch.md](references/dispatch.md) for Codex, Claude Code, other
-  harnesses, and self-review fallback.
-- Use [checklist.md](references/checklist.md) for neutral review lenses.
-- Use [prompt-template.md](references/prompt-template.md) for the cold reviewer
-  prompt.
-- Use [why-it-works.md](references/why-it-works.md) for anchoring risks and
-  common mistakes.
+If an independent reviewer is unavailable, explicitly disclose the fallback
+and perform a fresh self-review after discarding implementation rationale.
+The result is not independent. Read [why-it-works.md](references/why-it-works.md)
+for anchoring risks and common mistakes when needed. Keep this review read-only.

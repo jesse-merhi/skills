@@ -5,69 +5,38 @@ description: Query Jira, JPD, and Confluence through local Rovo Dev MCP, includi
 
 # Atlassian via Rovo Dev
 
-Outcome: answer or perform the requested Atlassian operation through the user's
-authenticated Rovo Dev gateway. Name the intended site explicitly so the CLI
-cannot inherit an unrelated Jira site.
+Return the requested Atlassian answer or perform the specifically authorized
+mutation through authenticated Rovo Dev. Keep routine discovery in this session,
+request only needed fields, and avoid a running account of each lookup.
 
-## Choose the gateway
+Resolve the site and project, issue, space, or page. Scope every query to one
+explicit site, including multi-site requests. Prefer an exposed local Rovo-backed
+Atlassian MCP bridge; otherwise use:
 
-1. Prefer a harness-provided local Rovo-backed Atlassian MCP bridge when it is
-   available. It is the same authentication path with less agent overhead.
-2. Otherwise run the bundled read-only launcher:
+```sh
+<skill-dir>/scripts/rovodev-atlassian \
+  --site https://<workspace>.atlassian.net \
+  "Search <project-key> with JQL and summarize the five newest issues"
+```
 
-   ```sh
-   <skill-dir>/scripts/rovodev-atlassian \
-     --site https://<workspace>.atlassian.net \
-     "Search <project-key> with JQL and summarize the five newest issues"
-   ```
+This launcher accepts one validated `--site https://*.atlassian.net` and a
+plain-language read request, forces read-only behavior, prints no credentials,
+and has no write mode. Use `acli rovodev legacy` directly only for an expressly
+authorized write or a request the launcher cannot express, naming the exact site
+and mutation. Do not use anonymous browsing for private content.
 
-3. Use `acli rovodev legacy` directly only for an explicitly authorized write
-   or when the launcher cannot express the request. Put the exact site and
-   mutation in the prompt.
+For reads, use Jira JQL or Confluence CQL and verify the tenant before accepting
+an empty result. JPD `/ideas/view/...` URLs identify views, not issues: derive
+the project key and use JQL instead of `get_jira_issue`. For writes, state the
+exact site, key, and change, retaining required action-time confirmation. Drafting
+never authorizes comments, issue creation, or field edits.
 
-Do not fall back to anonymous browsing for private Atlassian content.
+Fold failure checks into the lookup: a board-as-issue error calls for project
+JQL; no issues calls for checking `site_url` before changing JQL; discovery `429`
+calls for one wait or an already exposed bridge, not repeated retries. Ignore
+unrelated optional MCP failures if Atlassian tools started. Diagnose missing or
+unauthenticated `acli rovodev` with read-only help/auth checks; report the problem
+without scraping cookies or tokens.
 
-## Read workflow
-
-Keep routine discovery in this session and request only the fields needed for the answer. Return the result and useful query evidence without narrating each lookup.
-
-1. Extract the site URL and project, issue, space, or page identifiers from the
-   request. If the user supplies more than one site, keep each query scoped to
-   one explicit site.
-2. For Jira lists, use JQL. For Confluence lists, use CQL. Ask the gateway to
-   return only the fields needed for the task.
-3. Treat Jira Product Discovery board-view URLs as views, not issues. Derive the
-   project key from the URL and search it with JQL; never pass `/ideas/view/...`
-   to `get_jira_issue`.
-4. Verify the tool input or result names the intended site before trusting an
-   empty result. A successful query against the wrong tenant is still wrong.
-5. Report whether the answer came from live Jira/Confluence and include the JQL
-   or CQL when it helps the user reproduce the lookup.
-
-## Writes
-
-Keep discovery read-only unless the user clearly asks for a mutation. Before a
-write, resolve and state the exact site, issue/page key, and change. Never post
-comments, create issues, or edit fields merely because the user asked for a
-draft. Use the harness's normal action-time confirmation when it is required.
-
-## Failure recovery
-
-- If the gateway says a board-view URL is not a Jira issue, switch to JQL using
-  the project key.
-- If a query returns no issues, inspect the actual `site_url` before changing
-  the JQL. Rovo Dev can inherit a different site from local config.
-- If Atlassian MCP tool discovery returns `429`, stop retrying in a loop. Wait
-  once or use an already-exposed local Rovo-backed bridge.
-- Ignore failure of an unrelated optional MCP server when the Atlassian MCP
-  tools themselves started successfully.
-- If `acli rovodev` is missing or unauthenticated, run its read-only help/auth
-  diagnostics and report the concrete setup problem. Do not scrape browser
-  cookies or tokens.
-
-## Launcher contract
-
-`scripts/rovodev-atlassian` accepts one `--site https://*.atlassian.net` and a
-plain-language read request. It validates the site, forces read-only behavior,
-and invokes the Rovo Dev Atlassian MCP gateway without printing credentials.
-It intentionally has no write mode.
+Finish with a concise result, whether live Jira/Confluence was consulted, and
+useful reproducible JQL/CQL. Do not add unrelated mutations or a verifier team.

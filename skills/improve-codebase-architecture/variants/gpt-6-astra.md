@@ -5,63 +5,39 @@ description: 'Review architecture for module depth, interfaces, locality, depend
 
 # Improve codebase architecture
 
-Use this as an architectural review lens. Do not refactor by default; first
-identify the smallest structural change that improves the work the user actually
-asked for.
+Turn the user's architectural concern into evidence-backed, scoped options.
+Resolve investigative choices from the repository; implementation still requires
+user authority.
 
-Use the vocabulary in [language.md](references/language.md). For deepening
-candidates, read [deepening.md](references/deepening.md). When the user wants
-alternative interfaces for a chosen candidate, read
-[deepening.md](references/deepening.md) for its dependency categories, then
+## Locate the pressure
+
+Use the stated module, subsystem, pain point, or direction. If unspecified,
+inspect roughly 20 recent commit messages and prioritize repeatedly changed
+code. Widen only if those changes yield no useful hotspot. Read current code,
+tests, and available user-provided Obsidian notes to establish domain language
+and settled decisions.
+
+Apply [language.md](references/language.md) and
+[questions-and-moves.md](references/questions-and-moves.md). For deepening,
+read [deepening.md](references/deepening.md); when alternate interfaces were
+requested, use its dependency categories and
 [interface-design.md](references/interface-design.md).
 
-## Workflow
+## Make the recommendation concrete
 
-Resolve the scope from the stated hotspot and repository evidence. Return the required concrete options without asking about ordinary investigative choices; remain read-only until implementation is authorized.
+Show files and symbols, explain the behavior or change pressure, then name the
+smell. Select one or two small structural changes that improve the requested
+work. Give their migration path, likely touched files, and behavior-preserving
+verification. Do not ask the user to choose routine read paths or test mechanics.
+Do ask before edits spanning more than a handful of files unless that scope
+was already authorized.
 
-1. Scope before scanning. If the user names a module, subsystem, pain point, or
-   direction, focus there. Otherwise inspect roughly the last 20 commit messages
-   and weight the review toward code that changes repeatedly. Widen the scan
-   only when recent changes show no useful hotspot.
-2. Read the current code and tests in that scope before proposing structure.
-3. Load user-provided project notes when available so domain language and prior
-   decisions come from Obsidian instead of repo-local scratch docs.
-4. Identify the behavior or change pressure causing the architectural concern.
-5. Describe the current shape with concrete files and symbols.
-6. Name the architectural smell only after showing evidence.
-7. Propose one or two scoped changes, not a rewrite.
-8. Explain the migration path and what tests would preserve behavior.
-9. Ask before cross-cutting edits that touch more than a handful of files unless
-   the user already requested that scope.
+## Deliver and store appropriately
 
-## Storage
-
-Product repo files are read sources. Durable architecture notes, glossary terms,
-ADR-style decisions, and planning notes belong in the user's Obsidian-backed
-project notes when available.
-
-Do not create or edit product-repo `CONTEXT.md`, `docs/adr/`, or architecture
-report files unless the user explicitly asks for repo-local docs. If Obsidian
-write access or the target path is unclear, return the note body and proposed
-Obsidian path.
-
-## Output
-
-Lead with findings and concrete paths. Include:
-
-- current shape
-- pressure or risk
-- recommended change
-- files likely touched
-- verification strategy
-- durable note path when something should be stored in Obsidian
-
-## Context pointers
-
-- Use [language.md](references/language.md) for architecture vocabulary and
-  principles.
-- Use [questions-and-moves.md](references/questions-and-moves.md) for review
-  questions and useful moves.
-- Use [deepening.md](references/deepening.md) for deepening candidates.
-- Use [interface-design.md](references/interface-design.md) for alternate
-  interface designs.
+Lead with findings and concrete paths, covering current shape, risk/pressure,
+change, touched files, and verification. Durable architecture, glossary, ADR,
+and planning notes use available Obsidian project notes. Product-repo
+`CONTEXT.md`, `docs/adr/`, and architecture reports need an explicit request.
+If Obsidian destination or access is unresolved, return the completed note body
+and proposed path rather than blocking the review or writing elsewhere. Report
+the durable note path for both saved and proposed notes.

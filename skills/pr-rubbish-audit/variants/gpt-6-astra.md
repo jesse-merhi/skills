@@ -5,56 +5,36 @@ description: 'Audit PR diffs for unrelated artifacts, noisy comments, deletions,
 
 # PR rubbish audit
 
-Outcome: leave a coherent PR with no unrelated artifacts, noisy churn, or
-accidental deletions. Preserve the real behavior, tests, docs, and compatibility
-the feature needs; minimal size is not the goal.
+Separate necessary feature work from unrelated artifacts, churn, and accidental
+removal. Resolve routine classifications from the target and hunk evidence,
+while preserving real behavior, tests, docs, and compatibility.
 
-## Workflow
+## Establish the intended change
 
-Use the requested target and hunk evidence to settle ordinary classification questions. If cleanup is already authorized, make the required plan and proceed; the plan is not another approval gate.
+Identify feature intent, PR/head, and base, usually `origin/main`. Ask only when
+unclear intent prevents safe classification. Capture `git diff --name-status`,
+`git diff --stat`, and the largest additions/deletions. Classify every file using
+[classifications.md](references/classifications.md), then compare suspicious
+hunks to the old implementation with `git diff origin/main -- <file>` and
+`git show origin/main:<file>`, adjusted to the actual base.
 
-1. Establish the intended feature and base.
-   - Identify the PR/head branch and base branch, usually `origin/main`.
-   - Ask only if the feature intent is unclear enough that you cannot classify
-     hunks safely.
-   - Capture `git diff --name-status`, `git diff --stat`, and the largest
-     add/delete files.
-2. Classify every changed file using
-   [classifications.md](references/classifications.md).
-3. Inspect hunks, not just files. For each suspicious file, compare old and new
-   code. Prefer `git diff origin/main -- <file>` plus targeted reads from
-   `git show origin/main:<file>`.
-4. Preserve behavior unless proven unnecessary. Use
-   [rubbish-signals.md](references/rubbish-signals.md) for common risks.
-5. Produce a cleanup plan before editing:
-   - files/hunks to keep and why
-   - files/hunks to revert and why
-   - tests/docs to add or restore
-   - validation to run
-6. Stop after the cleanup plan unless the user authorized implementation.
-   When authorized, apply focused cleanup surgically without touching unrelated
-   user changes.
-7. After authorized edits, validate with focused tests, typecheck/lint/format gates
-   available in the repo, and a final diff/stat check. If a repo wrapper
-   deadlocks or cannot run, run its constituent commands and state the caveat.
-8. Report using [output.md](references/output.md).
+Apply [rubbish-signals.md](references/rubbish-signals.md). Do not discard behavior
+without evidence it is unnecessary. Prefer removing unrelated behavior-preserving
+refactors. An adjacent bug fix must be necessary or named as extra scope.
+Intentional removals need tests of absence only for a current compatibility,
+privacy, migration, or security contract.
 
-## Required judgment
+## Match action to authority
 
-- Do not remove functionality just to shrink the diff.
-- If a hunk might be behavior-preserving refactor but does not help the feature,
-  prefer reverting it.
-- If a hunk fixes a real adjacent bug, keep it only when it is necessary for the
-  feature or explicitly call it out as extra scope.
-- When the feature intentionally removes behavior, do not require tests that
-  only prove the old behavior is gone unless a current compatibility, privacy,
-  migration, or security contract requires that absence.
+Write the cleanup plan first: retained/reverted hunks and reasons, tests/docs
+to add or restore, and validation. A read-only audit stops at that plan. An
+already-authorized cleanup proceeds without turning the plan into another approval
+gate. Make surgical changes and preserve unrelated user edits.
 
-## Context pointers
+## Verify the actual cleanup
 
-- Use [classifications.md](references/classifications.md) for required,
-  suspicious, rubbish, and dangerous-removal labels.
-- Use [rubbish-signals.md](references/rubbish-signals.md) for hunk-level smells
-  and dangerous-removal checks.
-- Use [output.md](references/output.md) for required report shape and subagent
-  splitting.
+Run focused tests, available typecheck/lint/format gates, and a final diff/stat
+check. If a wrapper deadlocks or cannot run, use its constituent commands and
+report the caveat. Use [output.md](references/output.md) for reporting and
+subagent-splitting guidance. Finish with a coherent diff, not a smaller one at
+the expense of required behavior.

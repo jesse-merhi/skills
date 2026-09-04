@@ -5,61 +5,43 @@ description: 'Maintain complete model-specific skill variants and add coverage w
 
 # Model writing guides
 
-Outcome: every repo skill has a complete prompt written for every supported
-model, while each invocation receives only its selected workflow.
+Maintain a complete skill prompt for every supported model while installing only
+one selected workflow per invocation. Variant files are the coverage record;
+there is no per-skill manifest or runtime model-routing hop.
 
-## Supported profiles
+Read the applicable guide references and fetch current official guidance before
+changing those profiles:
 
-- GPT-5.6: read [gpt-5.6.md](references/gpt-5.6.md).
-- GPT-6 Astra: read [gpt-6-astra.md](references/gpt-6-astra.md).
-- Claude Fable 5.1: read
-  [claude-fable-5.1.md](references/claude-fable-5.1.md).
-- Claude Opus 5: read [claude-opus-5.md](references/claude-opus-5.md).
+- [GPT-5.6](references/gpt-5.6.md)
+- [GPT-6 Astra](references/gpt-6-astra.md)
+- [Claude Fable 5.1](references/claude-fable-5.1.md)
+- [Claude Opus 5](references/claude-opus-5.md)
 
-The profile definitions and same-family fallback order live in
-[`scripts/materialize-skill-variants.mjs`](scripts/materialize-skill-variants.mjs).
-Variant file presence is the coverage record; do not add a per-skill manifest.
+Before drafting, inspect existing variants/shared references and preserve the
+behavior, permissions, ordered invariants, completion criteria, commands, and
+evidence. Rewrite the complete `variants/<profile>.md` for every supported model:
+lean outcome/constraints/proof for GPT-5.6; literal ordered, scoped execution for
+Fable; context-led routine decisions, clear authority, and proportional checks
+for Astra; bounded optional work/output, consolidated generic checks, and full
+candidate discovery before filtering for Opus. Keep official links and review
+dates in guide references instead of copying vendor manuals.
 
-## Create or update a skill
+Share scripts, references, assets, and `agents/openai.yaml` unless runtime behavior
+actually differs. Root SKILL.md points to `variants/gpt-5.6.md`; a harness view
+contains the selected full file. Run the materializer test and independently
+exercise each affected profile, judging behavior rather than heading/prose shape.
+Done means complete equivalent coverage and a single directly loaded prompt.
 
-1. Read the current variants and shared references. Freeze the behavior,
-   permissions, completion criteria, exact commands, and evidence requirements
-   that must remain equivalent across models.
-2. Fetch the current official prompting guide for every supported model whose
-   variant will change. Keep links and review dates in the references above;
-   do not copy whole vendor manuals.
-3. Write a complete `variants/<profile>.md` for every supported profile:
-   - GPT-5.6: state the outcome, constraints, evidence, completion criteria, and
-     output shape once; leave routine execution choices open.
-   - Fable 5.1: use literal, explicit steps; bound scope and rewrites; name
-     batching, progress, and current-source lookup when they matter.
-   - Astra: resolve routine choices from evidence, honor existing authority,
-     reconcile conflicting guidance, and keep verification proportional.
-   - Opus 5: bound optional work and document length, consolidate generic
-     self-checks, and separate complete candidate discovery from filtering.
-4. Keep supporting scripts, references, assets, and `agents/openai.yaml` shared
-   unless their runtime behavior truly differs by model.
-5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`.
-   Harness views expose one contained selected file directly.
-6. Run the materializer test and exercise the changed skill independently with
-   each affected model profile. Judge behavior, not prose shape.
+For installation/switching from the repo root use
+`./install-skills --harness codex --model astra` or
+`./install-skills --harness claude --model opus`. `--require-exact` requires full
+coverage; `--dry-run` inspects without writing. Rerun with another model to switch
+that installation; use separate `--root` values for concurrent model installations.
+The script changes skills, not the harness model or already-loaded history.
 
-Done when all supported variants preserve one behavior contract, each model's
-prompt removes guidance it does not need, and the installed skill loads one
-complete variant with no model or network routing hop.
-
-## Install or switch
-
-Run `./install-skills --harness codex --model astra` or
-`./install-skills --harness claude --model opus` from the repository root.
-Use `--require-exact` to require complete model coverage and `--dry-run` to
-inspect the installation first. Re-running with another model switches that
-installation. Use a separate `--root` for concurrent model installations.
-The command changes skills, not the harness model or conversation history.
-
-## Add a new model
-
-Add its exact matcher and same-family rank to the materializer, add its official
-guide reference, and add a complete variant to every skill. Until that work is
-complete, the materializer selects the newest available family variant and
-emits one stale-profile notice per session. Keep the requested skill running.
+For a new model, add its exact matcher and same-family rank in
+[scripts/materialize-skill-variants.mjs](scripts/materialize-skill-variants.mjs),
+its official guide reference, and a full variant of every skill. Until covered,
+the materializer chooses the newest available same-family variant and emits one
+stale-profile notice per session. Keep the requested skill running; runtime
+prompts do not own fallback reporting.

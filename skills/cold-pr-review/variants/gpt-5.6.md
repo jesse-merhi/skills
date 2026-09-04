@@ -5,46 +5,24 @@ description: 'Cold-review a PR, branch, or feature with neutral context, changed
 
 # Cold PR review
 
-Outcome: return an independent, evidence-backed review from a subagent with zero
-implementation context. The
-reviewer sees only the work product, not your reasoning, decisions, or prior
-findings. This avoids anchoring bias where knowing why a decision was made
-prevents questioning whether it was correct.
+Obtain an independent evidence-backed review of the work product without
+implementation context. Prefer a separate reviewer subagent; use
+[dispatch.md](references/dispatch.md) for the harness route and fallback.
 
-## Workflow
+Give the reviewer only the target and a neutral checklist. Read
+[checklist.md](references/checklist.md) and use
+[prompt-template.md](references/prompt-template.md). Additional domain topics
+must be neutral and visible from the target. Exclude implementation rationale,
+design decisions, earlier findings, attempted fixes, implementation approach,
+CI status, and desired verdicts.
 
-1. Dispatch a separate reviewer subagent by default. Use
-   [dispatch.md](references/dispatch.md) for harness-specific options and the
-   self-review fallback.
-2. Give the reviewer only what to review and a neutral checklist.
-3. Do not give your reasoning, design decisions, prior findings, fixes attempted,
-   implementation approach, or CI status.
-4. Use the neutral checklist in [checklist.md](references/checklist.md).
-5. Use the prompt template in [prompt-template.md](references/prompt-template.md)
-   and add domain-specific checklist items only when they are neutral and visible
-   from the review target.
-6. Require `finding-discipline`: report only concrete actionable findings tied
-   to changed code or contracts, not style nits or vague risks. Keep candidates
-   that fail its gates out of the finding list, but return a compact audit-only
-   rejection with the failed gate and evidence rationale.
+Require `finding-discipline`. Findings must be concrete actionable defects tied
+to changed code or contracts, not style nits or vague risks. Return failed-gate
+candidates separately as compact audit-only rejections naming the gate and
+evidence rationale; do not turn them into suggestions, fixes, or tests.
 
-## Required discipline
-
-- Prefer a separate subagent. A cold review loses most of its value if the same
-  context that implemented the change also performs the review.
-- Give the reviewer the work product, not the story of the work.
-- Do not leak prior review outcomes or desired verdicts.
-- Keep audit-only rejections separate from findings so they remain measurable
-  without becoming suggestions, fixes, or tests.
-- If a separate reviewer is unavailable, say so explicitly and perform a fresh
-  self-review after deliberately discarding the implementation rationale.
-
-## Context pointers
-
-- Use [dispatch.md](references/dispatch.md) for Codex, Claude Code, other
-  harnesses, and self-review fallback.
-- Use [checklist.md](references/checklist.md) for neutral review lenses.
-- Use [prompt-template.md](references/prompt-template.md) for the cold reviewer
-  prompt.
-- Use [why-it-works.md](references/why-it-works.md) for anchoring risks and
-  common mistakes.
+If no independent reviewer is available, disclose that limitation and perform
+a fresh self-review after deliberately discarding implementation rationale.
+Do not describe that fallback as independent. Use
+[why-it-works.md](references/why-it-works.md) when anchoring risks or common
+mistakes need explanation. Return the review evidence without editing the target.

@@ -5,55 +5,31 @@ description: 'Investigate technical or product questions against primary sources
 
 # Research
 
-Complete the research question from current primary sources. Batch independent
-searches and reads. During a long investigation, report new evidence, a changed
-conclusion, or a blocker. Mark copied source wording as quotation and separate
-it from paraphrase and inference. Keep note edits to the one relevant topic or
-task note.
+Complete the requested investigation in this session and return a cited answer.
+Do not create a research subagent.
 
-Research questions whose answer depends on documentation, source code,
-standards, first-party APIs, release behavior, or other evidence outside the
-current conversation. Do the work in the current session. A research request
-does not create a subagent.
+1. Identify the question and the decision it supports. Use the conversation and
+   existing project notes to establish scope.
+2. Retrieve the sources that own the claims: official documentation, specs,
+   repository code, release notes, first-party APIs, or project-owned notes.
+   Batch independent lookups. Use secondary material to locate primary evidence
+   or clearly identify it as an outside interpretation.
+3. Record applicable dates and versions. Quote copied wording as a quotation;
+   keep paraphrases and your inferences distinct. Look up current or unfamiliar
+   facts rather than filling gaps from memory.
+4. Resolve the actual question. During a long investigation, report a changed
+   conclusion, useful evidence, or a blocker. Do not narrate every search.
+5. Save substantive findings in one Obsidian topic or task note using the vault's
+   established conventions. Include the question, answer, sources, version/date,
+   uncertainty and stale risk, implementation implications, and open questions.
+   Keep credentials, raw environment files, personal data, and long copied
+   passages out of that note.
+6. Return the conclusion with citations near each claim and the updated note's
+   link or name. Carry that note into a later handoff when relevant.
 
-## Evidence
+If no connector or known vault is available, give the findings in chat and say
+that they were not persisted. Do not create a substitute note in the repo or
+another local directory.
 
-Prefer the source that owns the claim: official documentation, specifications,
-repository source, release notes, first-party APIs, and project-owned notes.
-Use secondary material only to find a primary source or to present a clearly
-labelled outside interpretation.
-
-Record versions and dates when behavior can change. Separate sourced facts,
-inferences, and unresolved questions.
-
-## Obsidian notes
-
-Preserve substantive discoveries in the user's Obsidian-backed project notes
-so a later session can recover the evidence. Update one topic or task note
-rather than creating a file for every lookup.
-
-A useful note contains:
-
-- the question and the decision it supports;
-- the short answer;
-- cited findings with URLs or source paths;
-- version, date, uncertainty, and stale-risk notes;
-- the effect on the current plan or implementation;
-- open questions worth carrying forward.
-
-Follow the vault's existing project folder and naming convention. When an
-Obsidian connector or known vault is unavailable, keep the findings in chat and
-report that they were not persisted. Do not fall back to a repository Markdown
-file or an arbitrary local note. Never store credentials, raw environment
-files, personal data, or large copied source passages.
-
-## Return
-
-Lead with the conclusion, cite the evidence near each claim, and link or name
-the Obsidian note when one was updated. A later handoff should include that note
-as durable context.
-
-This skill is a repository-owned fork of Matt Pocock's MIT-licensed `research`
-workflow. The local fork performs research in the current session and stores
-durable findings in Obsidian instead of spawning a background agent or writing
-notes into the repository.
+This MIT-licensed fork of Matt Pocock's `research` workflow uses current-session
+execution and Obsidian storage in place of background research and repo notes.

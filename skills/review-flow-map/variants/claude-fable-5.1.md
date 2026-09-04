@@ -5,40 +5,21 @@ description: 'Map changed runtime flows through contracts and side effects to ri
 
 # Review flow map
 
-Map the complete changed runtime flow before findings are written. Batch
-independent file, contract, and call-site reads. During a long inspection,
-report only a change in evidence or direction. Verify unfamiliar framework or
-dependency behavior from current source. Return the map and proof targets; do
-not edit the product.
+Map the changed runtime behavior before reporting defects.
 
-Use this skill before writing findings. Build a review map: what changed, where
-execution starts, what contracts move between files, and which checks would
-actually prove the change.
+1. Resolve the requested PR or Git range using
+   [target-resolution.md](references/target-resolution.md).
+2. Classify the changed files with [categories.md](references/categories.md).
+   Use behavior and contract changes to decide where to spend attention; file
+   count and diff size alone do not establish importance.
+3. Trace each changed path from entrypoint through contracts, consumers, and
+   side effects. Batch independent searches. Follow
+   [context-reading.md](references/context-reading.md) for targeted reads.
+4. Name the risks and the checks that would demonstrate each changed behavior.
+   Keep an unconfirmed suspicion separate from a proven defect.
+5. Return the map using [output.md](references/output.md), then let the review
+   proceed to findings.
 
-## Workflow
-
-1. Resolve the review target with [target-resolution.md](references/target-resolution.md).
-2. Classify changed files by behavior category using
-   [categories.md](references/categories.md).
-3. Trace each changed flow end to end.
-4. Read context selectively with the search patterns in
-   [context-reading.md](references/context-reading.md).
-5. Produce the map before findings, using [output.md](references/output.md).
-
-## Required discipline
-
-- Start from behavior and contracts, not file count.
-- Do not review all files equally; small contract files can matter more than
-  large generated diffs.
-- Keep suspected issues separate from confirmed findings.
-- Do not call something a bug until the relevant flow has been traced enough
-  to know the intended contract.
-
-## Context pointers
-
-- Use [target-resolution.md](references/target-resolution.md) for PR and git
-  range commands.
-- Use [categories.md](references/categories.md) for changed-file classification.
-- Use [context-reading.md](references/context-reading.md) for targeted context
-  commands and flow-tracing fields.
-- Use [output.md](references/output.md) for the review map shape and discipline.
+A small contract file can outweigh a large generated diff. Do not call a path
+broken before tracing enough of it to establish the intended behavior. During
+large investigations, report useful discoveries or blockers in plain language.

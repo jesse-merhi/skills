@@ -5,88 +5,38 @@ description: 'Create or refine architecture, lifecycle, sequence, trust-boundary
 
 # Design technical diagrams
 
-Complete the requested diagram and its rendered verification. Batch independent
-source reads and geometry checks. During long rendering work, report only a
-change in evidence or direction. Use literal labels and short explanatory
-sentences. Keep edits and generated assets limited to the requested diagram.
+Create a picture that explains one system relationship clearly at its destination
+size. A technical diagram is explanation, not proof that a product ran or that
+its UI works. Keep actual screenshots, recordings, requests/responses, and runtime
+observations separate. Label the diagram `What this explains`, never `What this proves`.
 
-Make one system relationship easier to understand as a picture. Inspect the
-rendered artifact to prove that the diagram itself communicates at its
-destination size; source validity and geometry checks only support that claim.
+1. State the claim, reader, destination size and medium, current/target state,
+   required facts, and details that can stay in prose. Default to one diagram.
+   Ask before creating multiple views that answer different questions.
+2. Trace real actors, subsystems, inputs, stores, decisions, changes of state,
+   outputs, authority boundaries, and feedback. Batch independent source reads.
+   Give each primary step one actor's action or decision and group it under its owner.
+3. Read [visual-system.md](references/visual-system.md). Sketch two or three
+   low-detail layouts with different spatial arrangements. Select the clearest
+   central relationship at thumbnail size. Use equal boxes only for equal roles.
+4. Render a wireframe with realistic node proportions, real short labels,
+   correct arrow directions, and icon space. Inspect it. Redesign if the start,
+   focal system, decisions, feedback, or outcome is hard to locate.
+5. Load `speak-fking-english` before freezing visible copy. Use concrete actors,
+   actions, and objects, defining necessary technical terms in place. Add body
+   copy only for facts not conveyed by position, grouping, or connector labels.
+6. Use product typography/palette where available. Search repo assets and
+   installed icon packages before drawing. Pair icons/colour with text, leave
+   open connector gutters, and add chrome or a legend only if the destination needs it.
+7. Read [quality-gate.md](references/quality-gate.md). Inspect the whole frame,
+   destination size, zoomed detail, required responsive widths, and every export.
+   Use optional [svg-linting.md](references/svg-linting.md) for dense hand-authored
+   SVG only after composition works. Geometry checks do not replace the picture.
+8. Convert feedback to observable checks, edit source, rerender, and repeat
+   affected visual passes. Finish when all checks pass or the user accepts an exception.
 
-## Evidence boundary
-
-A technical diagram explains actors, systems, decisions, handoffs, state, or
-sequence. It does not prove that the depicted system ran or that a user
-interface looks or behaves correctly. Never use a diagram, wireframe, or mockup
-in place of actual product screenshots, recordings, requests, responses, or
-observed runtime state. When a PR needs both a system explanation and practical
-proof, deliver them as separate artifacts and label the diagram as
-`What this explains`, never `What this proves`.
-
-## Workflow
-
-1. Define the diagram contract.
-
-   Record the claim, reader, destination size and medium, current or target
-   state, facts that must appear, and details that can remain prose. Default to
-   one diagram. Ask before producing a set whose views answer different
-   questions.
-
-2. Trace the real system.
-
-   Identify actors, subsystems, inputs, stores, decisions, state changes,
-   outputs, authority boundaries, and feedback. A primary step should express
-   one actor performing one action or decision. Group related steps inside the
-   system or phase that owns them.
-
-3. Choose topology before styling.
-
-   Read [visual-system.md](references/visual-system.md). Sketch two or three
-   low-detail arrangements that differ spatially, then choose the one that makes
-   the central relationship obvious at thumbnail size. Equal boxes imply equal
-   roles; use them only when that is true.
-
-4. Render a wireframe.
-
-   Use realistic node proportions, short real labels, actual connector
-   directions, and reserved icon space. Inspect the picture. Redesign if the
-   start, focal system, decisions, feedback, or outcome is hard to locate.
-
-5. Write for the named reader.
-
-   Load `speak-fking-english` before freezing visible copy. Name concrete
-   actors, actions, and objects. Define technical terms in place when the reader
-   must learn them. Use body copy only for facts position, grouping, and route
-   labels cannot carry.
-
-6. Apply the visual system.
-
-   Use the product's type and palette when available. Search repository assets
-   and installed icon packages before drawing new icons. Pair icons and colour
-   with text. Reserve open gutters for simple, correctly directed connectors.
-   Add page chrome or a legend only when the destination genuinely needs it.
-
-7. Validate the current render.
-
-   Read [quality-gate.md](references/quality-gate.md). Inspect the whole frame,
-   destination size, magnified detail, required responsive widths, and every
-   export. For dense hand-authored SVG, optionally use
-   [svg-linting.md](references/svg-linting.md) after the visual composition
-   works.
-
-8. Resolve feedback against fresh evidence.
-
-   Translate each comment into an observable acceptance check, fix the source,
-   rerender, and repeat the affected visual passes. Finish only when the current
-   render passes every check or the user accepts an exception.
-
-## Deliver
-
-Lead with the diagram or export. Name the claim, source, destination-size proof,
-responsive/export checks, and any open visual limitation. Do not present a zero
-linter count as evidence that the diagram communicates well.
-
-Copy [diagram-page.html](assets/diagram-page.html) only for an explicitly
-requested standalone page. Do not inherit its sample topology or surrounding
-chrome for embedded diagrams.
+Lead with the diagram/export and give the claim, source, destination-size evidence,
+responsive/export checks, and remaining visual limits. During long work, report
+changed evidence or direction. Copy [diagram-page.html](assets/diagram-page.html)
+only for an explicitly requested standalone page; do not reuse its sample layout
+or surrounding chrome for an embedded diagram.

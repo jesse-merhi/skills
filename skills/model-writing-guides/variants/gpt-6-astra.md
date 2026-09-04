@@ -5,63 +5,49 @@ description: 'Maintain complete model-specific skill variants and add coverage w
 
 # Model writing guides
 
-Outcome: every repo skill has a complete prompt written for every supported
-model, while each invocation receives only its selected workflow.
+Keep each supported model's complete skill prompt aligned with its official
+writing guide. An invocation receives one materialized prompt, not a routing
+instruction. Resolve routine rewrite choices from the preserved contract and
+source guidance; keep real authority boundaries intact.
 
-## Supported profiles
+## Establish the common contract and current guidance
 
-- GPT-5.6: read [gpt-5.6.md](references/gpt-5.6.md).
-- GPT-6 Astra: read [gpt-6-astra.md](references/gpt-6-astra.md).
-- Claude Fable 5.1: read
-  [claude-fable-5.1.md](references/claude-fable-5.1.md).
-- Claude Opus 5: read [claude-opus-5.md](references/claude-opus-5.md).
+Read existing variants and shared references before drafting. Preserve behavior,
+permissions, ordered invariants, completion criteria, exact commands, and evidence.
+Read and refresh official sources for each changed supported profile:
+[GPT-5.6](references/gpt-5.6.md), [Astra](references/gpt-6-astra.md),
+[Fable 5.1](references/claude-fable-5.1.md), and
+[Opus 5](references/claude-opus-5.md). Store links/review dates in those references;
+do not copy whole vendor manuals.
 
-The profile definitions and same-family fallback order live in
-[`scripts/materialize-skill-variants.mjs`](scripts/materialize-skill-variants.mjs).
-Variant file presence is the coverage record; do not add a per-skill manifest.
+## Author the complete selected workflows
 
-## Create or update a skill
+Write `variants/<profile>.md` for every supported model. GPT-5.6 gets one lean
+outcome/constraint/evidence/completion/output contract. Fable gets literal steps,
+bounded scope/rewrites, batching, and useful long-work updates. Astra gets context-
+led routine decisions, reconciled instructions, preserved existing authorization,
+and proportional verification. Opus gets bounded optional work and document
+length, consolidated generic self-checks, and full candidate discovery before
+filtering. Apply advice to the workflow, without new permission gates or blanket
+delegation authority.
 
-Make concrete workflow edits for each model’s observed behavior. Resolve routine rewrite choices from the preserved contract and current guide; do not turn model-specific advice into extra permission gates or blanket delegation authority.
+Share scripts, references, assets, and `agents/openai.yaml` unless runtime behavior
+truly differs. Root SKILL.md links `variants/gpt-5.6.md`; harness views expose the
+selected complete file. File presence is coverage, not a reason for a separate
+manifest. Run the materializer test and independent exercises for each affected
+profile. Complete when contracts remain equivalent and one full prompt loads directly.
 
-1. Read the current variants and shared references. Freeze the behavior,
-   permissions, completion criteria, exact commands, and evidence requirements
-   that must remain equivalent across models.
-2. Fetch the current official prompting guide for every supported model whose
-   variant will change. Keep links and review dates in the references above;
-   do not copy whole vendor manuals.
-3. Write a complete `variants/<profile>.md` for every supported profile:
-   - GPT-5.6: state the outcome, constraints, evidence, completion criteria, and
-     output shape once; leave routine execution choices open.
-   - Fable 5.1: use literal, explicit steps; bound scope and rewrites; name
-     batching, progress, and current-source lookup when they matter.
-   - Astra: resolve routine choices from evidence, honor existing authority,
-     reconcile conflicting guidance, and keep verification proportional.
-   - Opus 5: bound optional work and document length, consolidate generic
-     self-checks, and separate complete candidate discovery from filtering.
-4. Keep supporting scripts, references, assets, and `agents/openai.yaml` shared
-   unless their runtime behavior truly differs by model.
-5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`.
-   Harness views expose one contained selected file directly.
-6. Run the materializer test and exercise the changed skill independently with
-   each affected model profile. Judge behavior, not prose shape.
+## Install, switch, and extend coverage
 
-Done when all supported variants preserve one behavior contract, each model's
-prompt removes guidance it does not need, and the installed skill loads one
-complete variant with no model or network routing hop.
+Use `./install-skills --harness codex --model astra` or
+`./install-skills --harness claude --model opus` from the repo root. Use
+`--require-exact` for complete exact coverage, `--dry-run` to inspect, and separate
+`--root` values for concurrent models. Rerunning switches that installation's
+skills; it does not select the harness model or erase already-loaded history.
 
-## Install or switch
-
-Run `./install-skills --harness codex --model astra` or
-`./install-skills --harness claude --model opus` from the repository root.
-Use `--require-exact` to require complete model coverage and `--dry-run` to
-inspect the installation first. Re-running with another model switches that
-installation. Use a separate `--root` for concurrent model installations.
-The command changes skills, not the harness model or conversation history.
-
-## Add a new model
-
-Add its exact matcher and same-family rank to the materializer, add its official
-guide reference, and add a complete variant to every skill. Until that work is
-complete, the materializer selects the newest available family variant and
-emits one stale-profile notice per session. Keep the requested skill running.
+For a new model, add exact matcher and same-family rank in
+[scripts/materialize-skill-variants.mjs](scripts/materialize-skill-variants.mjs),
+an official guide reference, and full variants for all skills. Pending coverage,
+the materializer uses the newest available same-family fallback and warns once
+per session. Continue the requested skill; fallback reporting belongs to the
+materializer, not repeated runtime prompt messages.

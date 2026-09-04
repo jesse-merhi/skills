@@ -5,73 +5,45 @@ description: 'Transfer the current work to a fresh full agent session, placing r
 
 # Handoff
 
-Outcome: create or prepare a full independent session with enough evidence and
-state to continue the work. Never use a subagent, delegated in-chat worker, or
-background agent for any part of a handoff.
+Deliver one compact handoff document and a verified fresh full-session launch,
+or the exact limitation preventing it. Use no subagent, delegated in-chat worker,
+or background agent anywhere in the handoff.
 
-## Prepare context
+Write the document in the OS temporary directory. Include objective, state,
+evidence, touched files and commands, blockers, validation, Obsidian research
+links, suggested skills, and next actions. Link artifacts instead of copying
+them; redact secrets and unnecessary personal data. Keep the saved handoff
+focused on what the next session needs.
 
-Write one compact handoff document in the operating system's temporary
-directory. Include the objective, current state, evidence, files and commands
-already touched, blockers, validation, durable Obsidian research links,
-suggested skills, and next concrete actions. Link existing artifacts rather
-than copying them. Redact secrets and unnecessary personal data.
+Classify same-objective, feature, investigation, review, or implementation work
+as `continuation`; classify a separate user-introduced objective as `aside`.
+Default direct follow-on work to continuation, even if it can run independently.
 
-Classify the relationship:
+Limit environment discovery to choosing and verifying the full-session route.
+Run `scripts/detect-handoff-surface`, read [session-routing.md](references/session-routing.md),
+and use the first verified option: explicit destination, current tmux pane,
+current app session, supported running app, fresh terminal or ACPX session.
+Process ancestry and native markers establish the current session before global
+process discovery; tmux elsewhere is insufficient.
 
-- `continuation`: the new session advances the same objective, feature,
-  investigation, review, or implementation;
-- `aside`: the user introduced a separate objective during the conversation.
+Before launch, read [worktree-isolation.md](references/worktree-isolation.md)
+for edit, repair, commit, or PR work and
+[repair-pr-handoffs.md](references/repair-pr-handoffs.md) for repairs/PRs.
+Designate the worktree and add required boundaries, skills, and publication
+authority to the receiving brief. Apply the chosen placement:
 
-Default to `continuation` when the handoff directly continues the current work.
-Do not classify work as an aside merely because it can run independently.
+- tmux uses [tmux-placement.md](references/tmux-placement.md): new pane in the
+  current window for continuation, new window in the current session for an aside.
+- Codex app uses a fresh same-project task for continuation, projectless or the
+  matching other project for an aside, and a worktree for edits when required.
+- Claude uses a fresh named or tmux-launched interactive session, never a
+  background agent.
+- Other harnesses targeting Codex prefer a verified app task API. Otherwise
+  use a fresh named ACPX or interactive session and disclose the non-app route.
 
-## Detect the working surface
+Fork only when raw conversation history is genuinely necessary.
 
-Keep environment discovery limited to selecting and verifying the full-session
-route.
-
-Run `scripts/detect-handoff-surface`. Read
-[session-routing.md](references/session-routing.md), then use the first verified
-route:
-
-1. the user's explicit destination;
-2. the current verified tmux pane;
-3. the current verified app session;
-4. a supported app already running;
-5. a fresh full terminal or ACPX session.
-
-A tmux process elsewhere on the machine does not make the current session a
-tmux session. App and CLI detection uses current process ancestry and native
-session markers before global process discovery.
-
-## Launch the full session
-
-- In tmux, read [tmux-placement.md](references/tmux-placement.md). A
-  continuation opens a new pane in the current window. An aside opens a new
-  window in the current tmux session.
-- In the Codex app, create a fresh task in the same project for a continuation.
-  Use a projectless task or the matching different project for an aside. Use a
-  Codex worktree for editing when the repository requires isolation.
-- In Claude, use a fresh named Claude session or a tmux-launched interactive
-  Claude session. Do not use Claude background agents.
-- From another harness targeting Codex, prefer a verified Codex app task API
-  when available. Otherwise use a fresh named ACPX or interactive Codex
-  session and report that it is not an app task.
-
-Use a fork only when the new full session genuinely needs raw conversation
-history. A continuation does not automatically require a fork because the
-handoff document carries its working context.
-
-Read [worktree-isolation.md](references/worktree-isolation.md) before an edit,
-repair, commit, or PR handoff. Read
-[repair-pr-handoffs.md](references/repair-pr-handoffs.md) for repair and PR
-work.
-
-## Completion
-
-Report the handoff document path, relationship, detected surface and evidence,
-session placement, isolation, and verified launch status. A queued worktree or
-requested launch is not a started session. If the selected app has no verified
-task-creation path, stop and report that exact limitation instead of silently
-substituting a subagent.
+Completion evidence is the document path, relationship, surface and detection
+proof, placement, isolation, and launch status. Queued is not started. If the
+selected app lacks a verified creation path, stop with that limitation. Do not
+add a verifier worker or silently substitute one for the full session.

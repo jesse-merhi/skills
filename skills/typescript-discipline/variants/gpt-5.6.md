@@ -5,35 +5,25 @@ description: 'Write or review TypeScript with shared types, boundary validation,
 
 # TypeScript discipline
 
-Outcome: make TypeScript model and verify the real contract. Prefer named types, validated
-boundaries, and compiler-checked narrowing over casts or informal object shapes.
+Express the real domain contract in types and prove it at runtime boundaries.
+Reuse exported domain, schema, client, route, and module types before inventing
+local shapes. Put shared concepts at their owning boundary; keep small private
+implementation types local.
 
-## Workflow
+Use [type-boundaries.md](references/type-boundaries.md) for type placement,
+derivation, and data modeling. Keep data structured until an explicit
+serialization boundary. Apply [unsafe-types.md](references/unsafe-types.md):
+validate or narrow `unknown`, prove casts, and replace non-null assertions with
+guards or corrected upstream types. `any` requires user approval; suppression
+comments require a user request and an explanation. Stricter repo rules still
+apply.
 
-1. Reuse existing exported domain, schema, API/client, route, and module
-   contract types before creating local ones.
-2. Place types at the boundary where the concept belongs.
-3. Apply the boundary and data-shape rules in
-   [type-boundaries.md](references/type-boundaries.md).
-4. Avoid unsafe typing using [unsafe-types.md](references/unsafe-types.md).
-5. Before writing library/framework code, check installed versions and use
-   current docs for that version. Prefer the remote Context7 workflow in
-   [context7.md](references/context7.md) when its tools are available.
-6. Verify with repo scripts using [verification.md](references/verification.md).
+Before using a library, inspect its installed version and the corresponding
+official docs or source. If remote Context7 tools are available, follow
+[context7.md](references/context7.md); a configuration entry alone is not proof
+of availability, and no local helper or credentials should be installed.
 
-## Required discipline
-
-- Do not use `any` without asking the user first.
-- Do not add `@ts-ignore` or `@ts-expect-error` unless the user asks, and explain
-  why in the comment.
-- Model structured data first. Serialize strings, cache keys, and protocol
-  values only at an explicit boundary.
-
-## Context pointers
-
-- Use [type-boundaries.md](references/type-boundaries.md) for shared/local type
-  placement and data modeling.
-- Use [unsafe-types.md](references/unsafe-types.md) for `any`, `unknown`,
-  non-null assertions, casts, and TS comments.
-- Use [verification.md](references/verification.md) for return types, package
-  scripts, and monorepo checks.
+Use the repository's checks through [verification.md](references/verification.md),
+including monorepo build prerequisites and public return types. Report the
+contract change and verification, or actionable review findings when editing
+was not requested.

@@ -5,138 +5,86 @@ description: 'Publish and inspect temporary OpenClaw Control UI previews through
 
 # OpenClaw staging test
 
-Outcome: publish and verify a temporary reviewer-testable Control UI without
-exposing an authenticated OpenClaw Gateway, browser proxy, or operator
-credentials.
+Carry the authorized mock preview through local proof, guarded publication,
+fresh-user public proof, and cleanup. Prepare mock/local evidence before any
+genuinely unresolved publication decision; do not add generic approval gates
+to an already-authorized preview.
 
-## Workflow
+## Establish the safe origin
 
-Complete mock preparation and local checks before any genuinely required publication question. For an already-authorized preview, carry the documented guarded sequence through without hypothetical-risk approval additions.
+Ensure helper availability:
 
-1. Ensure the helper is available on `PATH`:
+```bash
+install -m 755 \
+  skills/openclaw/openclaw-stg-test/scripts/openclaw-stg-test \
+  ~/.local/bin/openclaw-stg-test
+```
 
-   ```bash
-   install -m 755 \
-     skills/openclaw/openclaw-stg-test/scripts/openclaw-stg-test \
-     ~/.local/bin/openclaw-stg-test
-   ```
+Use the intended checkout's Control UI and owned E2E mock Gateway on loopback.
+Keep synthetic non-sensitive scenarios in uncommitted
+`.artifacts/openclaw-stg-test/`. Read [preview-contract.md](references/preview-contract.md)
+and serve its attestation from the same origin. Exercise the changed behavior
+locally; every request must stay with the mock and avoid real Gateways, proxies,
+credentials, or private endpoints. Publish only after this check:
 
-2. Prepare a loopback-only preview from the intended checkout.
+```bash
+openclaw-stg-test --url http://127.0.0.1:<preview-port> --ttl 4h
+```
 
-   Reuse the checkout's Control UI and repository-owned E2E mock Gateway. Keep
-   scenario files under `.artifacts/openclaw-stg-test/` so proof setup files are
-   not committed. Serve the required safety attestation from the same origin.
-   Read [references/preview-contract.md](references/preview-contract.md) for the
-   contract and Vite middleware example.
+The helper refuses non-loopback origins, known Gateway/local-test ports,
+missing/unsafe attestations, and leases over 24 hours, and waits for the public
+attestation before returning the URL.
 
-3. Verify the scenario locally before publishing it.
+## Prove a fresh public user can complete the scenario
 
-   Exercise the changed behavior through the local preview. Confirm the browser
-   uses only the mock Gateway and that no request targets a real Gateway,
-   browser proxy, credential, or private endpoint.
+Repeat the complete interaction at the `trycloudflare.com` URL. In OpenClaw,
+use its browser tool or CLI and inspect available state:
 
-4. Start the leased Quick Tunnel:
+```bash
+openclaw browser --json status
+openclaw browser profiles
+```
 
-   ```bash
-   openclaw-stg-test --url http://127.0.0.1:<preview-port> --ttl 4h
-   ```
+Choose a unique run-owned 1–64-character profile: lowercase letter/digit first,
+then lowercase letters/digits/hyphens only. Do not reuse an existing disposable
+or authenticated profile. On the browser-owning host run:
 
-   The helper refuses non-loopback origins, known OpenClaw Gateway and
-   `openclaw-local-test` ports, missing or unsafe attestations, and leases over
-   24 hours. It waits for the public attestation before returning the URL.
+```bash
+openclaw browser create-profile --name <unique-fresh-profile>
+openclaw browser --browser-profile <unique-fresh-profile> open <public-url>
+# Perform the full public walkthrough.
+openclaw browser delete-profile --name <unique-fresh-profile>
+```
 
-5. Verify the public URL as a fresh browser user.
+Profile creation creates immediate cleanup ownership. Remove any temporary
+run-owned allowlist entry and delete this profile before terminal handoff on
+every exit, including failure/interruption/blockage/needs-user. Remote proxies
+reject persistent-profile creation/deletion; run those commands on the browser
+node and add only this profile temporarily to `nodeHost.browserProxy.allowProfiles`
+when configured. Keep the proxy loopback-only/outside the tunnel. Report exact
+leftovers on cleanup failure rather than touching unrelated state.
 
-   Repeat the changed interaction through the `trycloudflare.com` URL. Treat
-   this as behavioral proof, not merely a reachability check. When running
-   inside OpenClaw, use its browser tool or `openclaw browser`. Discover the
-   current browser state and available profiles with:
+## Keep publication authentication separate
 
-   ```bash
-   openclaw browser --json status
-   openclaw browser profiles
-   ```
+For requested GitHub proof publication, use the persistent managed `github`
+profile under the `openclaw` service user:
 
-   Choose a unique, run-owned profile name of 1–64 characters. It must begin
-   with a lowercase letter or digit and contain only lowercase letters, digits,
-   and hyphens. Never reuse an existing disposable or authenticated profile. On
-   the host that owns the browser, create the profile, run the public
-   walkthrough through it, then delete only that run-owned profile:
+```bash
+env HOME=/var/lib/openclaw \
+  /var/lib/openclaw/.local/bin/openclaw browser \
+  --browser-profile github status --json
+```
 
-   ```bash
-   openclaw browser create-profile --name <unique-fresh-profile>
-   openclaw browser --browser-profile <unique-fresh-profile> open <public-url>
-   # Run the complete public walkthrough before cleanup.
-   openclaw browser delete-profile --name <unique-fresh-profile>
-   ```
+Preserve `/var/lib/openclaw/.openclaw/browser/github/user-data` across lifecycle
+operations. Verify authentication from a rendered GitHub page/final URL. Check
+readiness, controller ownership, and state-database health before inferring
+logout from a failed command; start the existing stopped profile, never replace
+it or reset login. Keep this client, CDP, cookies, and user data outside the tunnel.
 
-   As soon as the profile is created, treat profile deletion and any temporary
-   allowlist entry as cleanup obligations on every exit path. On success,
-   walkthrough failure, interruption, a blocked state, or a needs-user stop,
-   remove the run-owned allowlist entry and delete the run-owned profile before
-   the terminal handoff. If cleanup fails, do not delete unrelated profiles or
-   allowlist entries; include the exact leftover profile or entry in the
-   terminal handoff.
-
-   A remote node browser proxy rejects persistent profile creation and deletion.
-   For a proxied browser, run those lifecycle commands on the browser node and
-   temporarily expose the new profile through
-   `nodeHost.browserProxy.allowProfiles` when that allowlist is configured.
-   Remove that run-owned entry as part of the required cleanup. Keep the browser
-   proxy loopback-only and outside the tunnel.
-
-6. When publishing proof to GitHub, use the persistent managed `github`
-   browser profile owned by the `openclaw` service user:
-
-   ```bash
-   env HOME=/var/lib/openclaw \
-     /var/lib/openclaw/.local/bin/openclaw browser \
-     --browser-profile github status --json
-   ```
-
-   The login persists in
-   `/var/lib/openclaw/.openclaw/browser/github/user-data`; stopping or starting
-   the named profile must preserve it. Confirm authentication from a rendered
-   GitHub page and its final URL. If a browser command fails, check profile
-   readiness, controller ownership, and OpenClaw state-database health before
-   concluding that GitHub signed out. Start the existing named profile when it
-   is stopped; do not replace it with a temporary profile or reset its auth.
-
-7. Report the public URL, tested route, scenario, lease expiry, local checkout,
-   and commands for lifecycle control:
-
-   ```bash
-   openclaw-stg-test --status
-   openclaw-stg-test --stop
-   ```
-
-   Return the result in the originating session. If the workflow stops early,
-   becomes blocked, or needs a user decision, report that state with one
-   concrete next action or question.
-
-## Done means
-
-- The preview runs from the intended checkout and demonstrates the changed
-  behavior with a browser-side mock or static fixture.
-- The origin's attestation passes and the public URL serves the same
-  attestation.
-- A fresh remote browser can complete the intended interaction.
-- GitHub proof publication, when requested, uses the persistent managed
-  `github` profile and is verified from a rendered signed-in page.
-- The handoff names the scenario, route, expiry, and stop command.
-- No live Gateway, browser proxy, credentials, private data, or private
-  endpoint values crossed the tunnel.
-
-## Guardrails
-
-- Use `openclaw-local-test` for authenticated local testing; keep it loopback
-  only.
-- Use a bounded lease. Start a new lease when more review time is needed.
-- Put synthetic, non-sensitive data in the mock scenario.
-- Stop the tunnel immediately when the proof is complete or its safety posture
-  becomes uncertain.
-- Keep the managed `github` profile, its CDP endpoint, cookies, and user-data
-  directory outside the tunnel. Use it only as the authenticated publication
-  client.
-- Never point this helper, another tunnel, or a reverse proxy at port `18789`,
-  an `openclaw-local-test` Gateway/browser proxy, or any authenticated Gateway.
+Return URL, tested route/scenario, checkout, expiry, attestation/walkthrough status,
+and `openclaw-stg-test --status` / `openclaw-stg-test --stop` in the originating
+session. For early stop report the state and one concrete action/question. Stop
+the tunnel when proof completes or safety is uncertain; use a new bounded lease
+for more time. Use loopback-only `openclaw-local-test` for authenticated testing.
+No helper, tunnel, or reverse proxy may expose port `18789`, a local-test Gateway/
+proxy, or any authenticated Gateway.

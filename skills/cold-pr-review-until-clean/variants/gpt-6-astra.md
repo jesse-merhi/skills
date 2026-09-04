@@ -5,103 +5,49 @@ description: 'Repeat fresh cold reviews and fixes until the configured clean sto
 
 # Cold PR review until clean
 
-Outcome: reach one fresh independent cold-review pass with zero actionable
-findings. When a pass finds actionable issues, fix only those issues and
-dispatch a new cold reviewer.
+Carry the authorized cold-review loop through one fresh independent pass with
+zero actionable findings. In `code-review`, this follows native Codex review
+unless unavailable or explicitly skipped. The reviewer workflow is `cold-pr-review`,
+not OpenClaw review or Clawsweeper.
 
-Stop after **one fresh cold review invocation** completes with **zero actionable
-findings**.
+## Establish the governed target
 
-This skill is the normal-PR final independent review loop. In `code-review`, run
-it after the Codex review phase unless Codex review is unavailable or explicitly
-skipped. The source of truth here is `cold-pr-review`, not an OpenClaw-specific
-review workflow or Clawsweeper. Fixes are handled directly by the implementing
-agent unless a repo-specific fix workflow applies.
+Resolve the PR/URL/branch/range and exact committed `HEAD`. Refuse staged,
+unstaged, and untracked changes. Load `review-guardrails`, identify validation,
+inherit the persisted scope baseline, and confirm `scope-status` before fixing.
+Reuse the orchestrator's budget, consult queue, and matching rules when present.
+Read `wait-efficiently`, [subagent-dispatch.md](references/subagent-dispatch.md),
+[loop.md](references/loop.md), [clean-criteria.md](references/clean-criteria.md),
+and [fixing-and-reporting.md](references/fixing-and-reporting.md) before their stages.
 
-## Non-negotiables
+## Obtain independent evidence and act on it
 
-```yaml
-review_tool: must invoke cold-pr-review through an independent subagent whenever the harness supports subagents
-review_context: subagent gets only the target and neutral review checklist; no prior rationale or findings
-fix_tool: apply targeted fixes directly, or use the repo-specific fix workflow when one exists
-state_store: keep findings, commands, open queue, and stop reason in the findings CLI
-scope_gate: inherit the persisted scope baseline; run scope-check after every accepted fix and stop immediately on non-zero
-stop_condition: one cold review run with zero actionable findings
-counter_reset: any actionable finding resets consecutive_clean to 0
-no_early_exit: do not stop before a fresh cold review returns clean
-no_self_review: do not substitute the implementer's judgement for a cold review
-fresh_reviewer: use a new isolated subagent for each review pass whenever the harness supports it
-consult_findings: consult-worthy findings go to the consult queue; keep fixing other findings instead of waiting
-queue_matched_passes: a pass whose only findings match the open consult queue counts toward the clean target but can never produce a final clean verdict
-fixed_point: when the clean target is met and the consult queue is non-empty, suspend as blocked-on-consult; never keep re-running reviews on an unchanged tree
-```
+Dispatch the required fresh isolated reviewer directly for each pass whenever
+subagents are supported. Give only the target and neutral checklist. Prior flow,
+rubbish, TypeScript, architecture, cognitive-load, frontend, or finding-discipline
+results may become neutral topics, never leaked outcomes. Exclude rationale,
+prior findings, fixes attempted, CI confidence, and desired verdicts. Use the
+native event-driven wait and match candidates to the registry only after return.
 
-## Workflow
+Maintain `iterations` and `consecutive_clean`. Triage and fix only accepted findings,
+directly or with the repo's fix workflow. Run `scope-check` after every accepted
+fix and stop on non-zero. Validate affected behavior and commit a pass's accepted
+fixes together before the next fresh review. Record findings, commands, fixes,
+validation, consult changes, queue, and stop reason in the findings CLI.
 
-Dispatch the required fresh reviewer directly. Continue independent authorized work around a queued consult until the defined fixed point; do not ask for permission on every iteration.
+Continue under existing loop authority without asking on each iteration.
+Consult-worthy issues stay in the user-decision queue; continue independent
+fixes instead of waiting, and do not silently fix or reject consults.
 
-1. Pre-flight the target.
+## Stop at the actual fixed point
 
-   Confirm the PR number, URL, branch, or git range and the exact committed
-   `HEAD`. Refuse staged, unstaged, or untracked changes. Load
-   `review-guardrails` and identify required verification commands. If running
-   inside `code-review`, inherit the orchestrator's persisted scope budget,
-   consult queue, and queue-matching rules. Confirm it with `scope-status`
-   before fixing anything.
+Actionable findings reset the clean counter. A fresh reviewer result, not the
+implementer's judgment, determines the pass; make no code changes between clean
+passes. Queue-only matched results can count toward the target but never give
+final clean. At the target with an open queue, suspend `blocked-on-consult` rather
+than re-reviewing unchanged code.
 
-2. Build neutral reviewer context.
-
-   If `code-review` already ran `review-flow-map`, `pr-rubbish-audit`,
-   `typescript-discipline`, `improve-codebase-architecture`,
-   `reducing-cognitive-load`, `frontend-ui-validation`, or
-   `finding-discipline`, do not pass those results to the reviewer. Convert
-   them only into neutral checklist topics.
-
-3. Dispatch a fresh independent reviewer.
-
-   Load `wait-efficiently`, then read
-   [references/subagent-dispatch.md](references/subagent-dispatch.md). Done when
-   a fresh isolated reviewer receives only the target and neutral review
-   checklist, and the coordinator uses the native event-driven wait for its
-   result. Match candidates against the findings registry only after the pass.
-
-4. Run the until-clean loop.
-
-   Read [references/loop.md](references/loop.md). Maintain
-   `consecutive_clean` and `iterations`. Triage findings, fix actionable
-   findings, record state in the findings CLI, and rerun with fresh reviewers
-   until the clean target or an honest stop condition is reached.
-
-5. Classify clean and report.
-
-   Read [references/clean-criteria.md](references/clean-criteria.md) before
-   counting a pass clean. Read
-   [references/fixing-and-reporting.md](references/fixing-and-reporting.md)
-   before editing or reporting.
-
-## Done means
-
-- Every review pass used a fresh isolated reviewer whenever the harness
-  supported one.
-- The reviewer did not receive prior findings, fixes already attempted, design
-  rationale, CI confidence signals, desired verdicts, or earlier `code-review`
-  results.
-- One fresh cold review run completed with zero actionable findings on the
-  reviewed tree, or the loop stopped honestly with `blocked-on-consult` or
-  `budget-expired`.
-- Findings, fixes, validation commands, consult-queue changes, and stop
-  conditions are recorded in the findings CLI.
-- Every accepted fix is followed by a passing `scope-check`, and the final scope
-  status is not missing or blocked.
-- Accepted fixes from one pass are committed together before the next reviewer.
-- No code was edited between clean passes.
-- No final clean verdict is reported while the consult queue has open entries.
-
-## Avoid
-
-- substituting the implementer's judgment for a cold review;
-- leaking prior findings or implementation rationale into reviewer prompts;
-- reviewing staged, unstaged, or untracked changes;
-- stopping without a fresh clean cold-review pass;
-- silently fixing or rejecting consult-worthy findings;
-- running more reviews on an unchanged tree beyond the clean target.
+Clean needs one fresh qualifying pass, no open consults, and present unblocked
+scope status. Otherwise report `blocked-on-consult` or `budget-expired`, with
+state path, fixes, validation, queue, and reason. Preserve the mandatory fresh
+pass without adding discretionary reviews after completion.

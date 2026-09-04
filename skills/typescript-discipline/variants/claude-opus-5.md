@@ -5,37 +5,31 @@ description: 'Write or review TypeScript with shared types, boundary validation,
 
 # TypeScript discipline
 
-Outcome: make TypeScript model and verify the real contract. Prefer named types, validated
-boundaries, and compiler-checked narrowing over casts or informal object shapes.
+Deliver the requested TypeScript work with one accurate domain contract. Keep
+unrelated type cleanup outside the assignment.
 
-## Workflow
+## Contract and boundaries
 
-Work at the changed type and validation boundary. Keep explanations concise and avoid new abstractions, broad rewrites, extra tests, or verifier agents that are not required by the requested workflow.
+Reuse existing exported domain, schema, client, route, and module types. Put a
+cross-module concept at its owner and retain tiny private types locally.
+[type-boundaries.md](references/type-boundaries.md) covers derivation and modeling;
+keep structured data intact until an explicit serialization boundary.
 
-1. Reuse existing exported domain, schema, API/client, route, and module
-   contract types before creating local ones.
-2. Place types at the boundary where the concept belongs.
-3. Apply the boundary and data-shape rules in
-   [type-boundaries.md](references/type-boundaries.md).
-4. Avoid unsafe typing using [unsafe-types.md](references/unsafe-types.md).
-5. Before writing library/framework code, check installed versions and use
-   current docs for that version. Prefer the remote Context7 workflow in
-   [context7.md](references/context7.md) when its tools are available.
-6. Verify with repo scripts using [verification.md](references/verification.md).
+Use [unsafe-types.md](references/unsafe-types.md) for uncertain values. Runtime
+validation and narrowing must establish `unknown` values before normal app code
+uses them. Prefer guards to non-null assertions and prove any narrowing cast.
+`any` needs approval; suppression comments need a user request and a reason.
+Honor stronger repository constraints.
 
-## Required discipline
+## API evidence and completion
 
-- Do not use `any` without asking the user first.
-- Do not add `@ts-ignore` or `@ts-expect-error` unless the user asks, and explain
-  why in the comment.
-- Model structured data first. Serialize strings, cache keys, and protocol
-  values only at an explicit boundary.
+Check the installed dependency version and its actual API before coding. Use
+[context7.md](references/context7.md) only with callable remote tools; otherwise
+read official docs or installed source. Do not install a documentation helper
+or copy its credentials.
 
-## Context pointers
-
-- Use [type-boundaries.md](references/type-boundaries.md) for shared/local type
-  placement and data modeling.
-- Use [unsafe-types.md](references/unsafe-types.md) for `any`, `unknown`,
-  non-null assertions, casts, and TS comments.
-- Use [verification.md](references/verification.md) for return types, package
-  scripts, and monorepo checks.
+The repository checks in [verification.md](references/verification.md) provide
+the required compiler, lint, build, and test evidence, including monorepo
+prerequisites. Avoid additional generic verification rounds. In review mode,
+collect genuine contract defects before filtering the report; do not silently
+fix them. Keep the result focused on the contract and evidence.

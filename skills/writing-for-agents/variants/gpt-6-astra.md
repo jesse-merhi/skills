@@ -5,121 +5,50 @@ description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs w
 
 # Writing for agents
 
-Treat every document an agent consumes as part of one instruction system:
-skills, `AGENTS.md`, `CLAUDE.md`, and documents reached through pointers all use
-the same levers to make the agent's process predictable.
+Make the combined instruction system predictable across skills, AGENTS.md,
+CLAUDE.md, and linked documents. Resolve contradictions at the owning instruction
+before adding another rule. Ordinary execution should proceed from clear criteria;
+genuine user decisions and permissions stay explicit.
 
-When the target is a skill, load `model-writing-guides` before drafting and
-read [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation metadata and
-splitting. Follow the supported-profile list in `model-writing-guides`; produce
-complete variants preserving the same outcome, permissions, exact commands,
-and evidence requirements. The upstream MIT notice is in
-[upstream-license.md](references/upstream-license.md).
+## Establish the contract and owner
 
-## Context pointers
+For a skill, load `model-writing-guides` and
+[SKILL-MECHANICS.md](SKILL-MECHANICS.md) before drafting. Produce a complete prompt
+for every supported profile while preserving outcome, permissions, exact commands,
+and evidence. Keep each meaning in one authoritative place and co-locate its
+definition, rules, and caveats. Preserve [upstream-license.md](references/upstream-license.md).
 
-A context pointer is text already in the agent's context that names material
-outside it and says when to load that material. A skill description is one. An
-`AGENTS.md` line naming another document is the same object.
+## Put the right information in context
 
-Write the pointer so its condition is unmistakable. Its wording, rather than
-the target's quality, decides whether the agent reaches the material.
+Steps are ordered actions; references are definitions, rules, examples, and facts.
+Keep steps and every-path reference inline. Put conditional or advanced reference
+one hop from SKILL.md; reference files cannot chain to other references and may
+link only to their own SKILL.md within `skills/`. Keep SKILL.md at most 500 lines
+and every-turn skills in one file. Each extra read costs another model return.
 
-A pointer does two jobs: state what the material is and name each distinct
-branch that should trigger it.
+A context pointer controls retrieval, whether it is a description or an AGENTS
+line. Front-load a familiar leading word and state both what is behind it and
+all distinct trigger branches. Collapse synonyms and omit target identity already
+obvious there. Balance always-loaded token/attention cost against the human
+burden of remembering unlinked material. Automate reliable retrieval and preserve
+human judgment where it is actually needed.
 
-- Front-load the leading word that should trigger retrieval.
-- Use one trigger per real branch. Collapse synonyms for the same branch.
-- Remove identity or explanation the target already carries.
+## Define completion that supports action
 
-## The two loads
+End every step with a clear demanding criterion that distinguishes done from
+unfinished. Require exhaustive accounting where appropriate, not vague artifact
+requests. Sharpen the criterion before adding process. If premature completion
+is observed and criteria cannot be made sharper, split the sequence across a
+real context boundary so later steps cannot distract from unfinished work.
 
-Budget two different costs:
+Use learned anchor words such as tight, frontier, or red, repeating the anchor
+rather than its explanation. State desired behavior positively; pair necessary
+hard prohibitions with the allowed alternative. Do not use redundant caution to
+create extra permission rounds for already-authorized work.
 
-- **Context load**: tokens and attention spent on instructions loaded every
-  turn, whether or not they apply.
-- **Cognitive load**: what the human must remember about which documents or
-  skills exist and when to reach for them.
+## Prune against the real environment
 
-Material behind a pointer escapes most context load but still spends the
-pointer's line. Material with no pointer spends cognitive load because the
-human becomes its index. Spend cognitive load where human judgment matters;
-remove it where reliable automatic retrieval is better.
-
-## Information hierarchy
-
-Separate two content types:
-
-- **Steps**: ordered actions the agent performs.
-- **Reference**: definitions, rules, examples, and facts consulted on demand.
-
-Place them on this hierarchy:
-
-1. In-file steps.
-2. In-file reference needed by every path.
-3. Disclosed reference behind a context pointer.
-
-Use progressive disclosure to move branch-specific reference down the ladder.
-Too little disclosure creates sprawl; too much hides instructions the agent
-needs on every run. Every file the agent opens is one more model call that
-re-sends the whole conversation, so put anything every use needs inline in
-`SKILL.md` and put conditional or advanced detail in `references/`, linked one
-hop from `SKILL.md` only. A reference file must not link to another reference;
-the only file under `skills/` it may link to is its own `SKILL.md`. Keep the
-`SKILL.md` body at most 500 lines. House rule: a skill that runs on every turn
-is a single file.
-
-Co-locate a concept's definition, rules, and caveats under one heading. Grouped
-material reads like documentation; scattered material makes the agent rebuild
-the concept from fragments.
-
-## Steps and completion criteria
-
-Resolve conflicting or ambiguous instructions at their owner before adding more rules. Keep genuine user decisions explicit and make ordinary completion criteria executable without another permission round.
-
-End every step with a completion criterion that is both clear and demanding:
-
-- **Clarity** lets the agent distinguish done from not done.
-- **Demand** determines the legwork required before done is true.
-
-Prefer checkable, exhaustive criteria such as "every modified model accounted
-for" over vague output requests such as "produce a change list." Sharpen the
-criterion before adding more process.
-
-Visible later steps can pull attention toward being finished and cause
-premature completion. When a criterion cannot be made sharper and the rush is
-observed, split the sequence across a real context boundary so later steps are
-not loaded yet.
-
-## Leading words
-
-Use a leading word: a compact concept already present in model pretraining that
-anchors behavior. Repeat the token, not its full definition.
-
-A leading word anchors execution in the body and invocation in a pointer. Use
-words that already carry the desired shape, such as _tight_, _frontier_, or
-_red_, before inventing a new term that needs its own explanation.
-
-State the positive target behavior. Negation repeats the unwanted behavior and
-makes it more available. Keep a prohibition only for a hard guardrail that
-cannot be expressed positively, and pair it with what to do instead.
-
-## Pruning
-
-Keep each meaning in one authoritative place. Repeating a meaning creates
-duplication; repeating a leading word creates a useful anchor.
-
-Treat the environment as a source of truth. Scripts, configuration, directory
-layout, and `--help` output already document facts an agent can cheaply inspect.
-A prose copy is a cache, and it earns its load only when the lookup is costly.
-Cache unwritten conventions, reasons, and gotchas; leave cheap mechanical facts
-in the environment where they cannot drift.
-
-Review every line with three tests:
-
-1. **Relevance**: does it still bear on this document's job?
-2. **Single source**: is this meaning authoritative here and nowhere else?
-3. **No-op**: does it change behavior compared with the model's default?
-
-Delete a sentence that fails. Continually adding without pruning produces
-sediment: stale layers that obscure the live instructions.
+Scripts, config, directory layout, and `--help` are live sources. Prose should
+cache costly lookups, unwritten conventions, reasons, or gotchas rather than cheap
+mechanical facts. Test every line for relevance, unique ownership, and actual
+behavioral effect beyond model defaults. Delete failures and stale sediment.

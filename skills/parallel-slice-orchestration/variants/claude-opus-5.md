@@ -5,100 +5,41 @@ description: 'Implement specs with parallel agents, disjoint ownership, integrat
 
 # Parallel slice orchestration
 
-Outcome: implement an existing spec or slice plan through disjoint vertical
-slices, then integrate and verify the whole result. The orchestrator owns
-decomposition, dependency order, integration, and final verification; workers
-own their assigned slices.
+Deliver a verified implementation of an existing spec through a small number of
+substantial independent vertical slices. Keep the critical path local. Preserve
+required workers/checkpoints, but do not add a discretionary verifier team.
 
-Load `tdd` for behavior-changing implementation slices. A worker may use a
-named docs, configuration, or generated-artifact exception when no executable
-behavior changes. Load the relevant repo/domain skill before decomposition.
+Delegation requires the user's explicit request for subagents, delegation, or
+parallel agent work. Without it, provide the slice plan and ask before spawning.
+If the harness lacks subagents, run the same plan sequentially and say so.
 
-Only spawn subagents when the user has explicitly asked for subagents,
-delegation, or parallel agent work. Otherwise, produce the slice plan and ask
-before spawning. If subagents are unavailable in the current harness, run the
-same slice plan sequentially and say that parallel execution was not available.
+Read the spec/notes/issue/plan, repo instructions, and domain skill. Use
+[decomposition.md](references/decomposition.md) to identify observable behaviors,
+acceptance criteria, and dependencies. Choose delivery before edits: one cohesive
+unit in one PR; strict chains of at least two review units in `gh-stack`; independent
+paths in separate PRs/stacks. Plan stack names/order, keep each layer buildable
+against its direct base, and put dependencies in the same or lower layer.
 
-## Orchestrator workflow
+Load `tdd` for behavior changes; a named docs/config/generated-artifact exception
+must change no executable behavior. Slice UI→API→storage, command→effect, or
+similar end-to-end behavior rather than layers. Resolve shared types/schemas/API
+foundation locally or with exactly one worker before consumers. Assign disjoint
+files, migrations, generated clients, routes, types, and fixtures. Group tiny
+related tasks instead of multiplying workers.
 
-Use fewer substantial independent slices and keep the critical path local. Group tiny tasks instead of multiplying workers; required integration and named review workers remain, but do not add a discretionary verifier team.
+Use [worker-contract.md](references/worker-contract.md) and preserve `AFK`/`HITL`
+under [hitl-checkpoints.md](references/hitl-checkpoints.md). HITL requires the
+named stop and evidence before continuation. Rendered UI uses `design` production
+guidance, interaction guidance when material, and `frontend-ui-validation`.
 
-1. Read the spec, slice notes, issue, or plan plus the relevant repo
-   instructions.
-2. Identify externally meaningful behaviors and acceptance criteria.
-3. Build a dependency map using [decomposition.md](references/decomposition.md).
-4. Choose the PR delivery shape before implementation using
-   [decomposition.md](references/decomposition.md). Load `gh-stack` when one
-   story has two or more dependency-ordered review units.
-5. Convert implementation work into vertical slices, not architectural layers.
-6. Do blocking foundation work locally or assign exactly one worker to it.
-7. Spawn workers only for independent slices with disjoint write ownership.
-   Keep the immediate critical-path task local.
-8. Give each worker the assignment contract in
-   [worker-contract.md](references/worker-contract.md).
-9. Preserve `AFK` and `HITL` modes. Use
-   [hitl-checkpoints.md](references/hitl-checkpoints.md) for review stops.
-10. Review each worker result before integrating, using the checklist in
-   [integration.md](references/integration.md).
-11. Resolve integration issues locally, then run the feature's relevant package
-    verification commands.
-12. When publication is authorized under `AGENTS.md`, publish the chosen
-    delivery shape. Otherwise stop at a verified local checkpoint. For a stack,
-    keep foundation at the bottom, dependent behavior above it, and run the
-    `pr-proof-pack` freshness check separately for every PR layer.
-13. Before readiness or merge, apply the Review gate and Sign-off gate from
-    `AGENTS.md` to every PR layer. The Review gate must cover the exact head;
-    Sign-off persists for the PR across later heads.
+The orchestrator reads every worker result using [integration.md](references/integration.md),
+checks ownership and TDD/valid exception, resolves integration issues locally,
+and runs relevant verification on the integrated tree. These are the completion
+checks; extra review teams are not implied.
 
-## Slice rules
-
-- Parallelize independent behavior slices, not architectural layers.
-- A good slice crosses the real behavior path: UI to API to persistence, command
-  to side effect, event to stored state, or equivalent.
-- Do not assign two workers to the same files, migrations, generated clients,
-  route definitions, shared types, or shared test fixtures.
-- If a shared type/schema/API contract is needed, land that foundation first,
-  then parallelize consumers.
-- Prefer fewer well-scoped workers over many tiny workers that create
-  integration overhead.
-
-## PR delivery shape
-
-- Use one PR when the result is one cohesive review unit.
-- Use one `gh-stack` stack when two or more independently reviewable concerns
-  form a strict dependency chain. Plan branch names and order before editing.
-- Keep independent parallel slices as standalone PRs or separate stacks.
-  GitHub stacks are linear; do not serialize independent work merely to put it
-  in one stack.
-- Keep each stacked PR buildable and reviewable against the branch directly
-  below it. Put a dependency in the same layer or a lower layer, never above.
-- Have the orchestrator own stack submission and per-layer proof. Workers return
-  scoped changes and evidence; they do not independently publish branches from
-  a shared stack.
-
-## Completion criteria
-
-- Every worker result has been read before integration.
-- Changed files match assigned ownership.
-- `tdd` was followed, or the worker stated a valid
-  docs/config/generated-code exception.
-- Rendered UI slices used `design` in production-UI mode for visual direction,
-  interaction mode when interaction craft was material, and
-  `frontend-ui-validation` before reporting done.
-- HITL slices stopped at named checkpoints and returned evidence before
-  continuation.
-- Final verification ran in the integrated tree.
-- The delivery shape matches the dependency map, and every stacked layer has
-  its own focused `pr-proof-pack` evidence.
-- Every ready PR satisfies both `AGENTS.md` gates before merge.
-
-## Context pointers
-
-- Use [decomposition.md](references/decomposition.md) for dependency mapping and
-  vertical slicing.
-- Use [worker-contract.md](references/worker-contract.md) for required worker
-  prompt fields and the prompt template.
-- Use [hitl-checkpoints.md](references/hitl-checkpoints.md) for `AFK` and `HITL`
-  handling.
-- Use [integration.md](references/integration.md) for worker-result review,
-  verification, and anti-patterns.
+Publish only under AGENTS authority or deliver a verified local checkpoint.
+The orchestrator owns stack submission and focused `pr-proof-pack` freshness/proof
+for each layer; workers return edits/evidence, not independently published shared
+branches. Apply exact-head Review and persistent PR Sign-off gates to every layer
+before readiness/merge. Report integrated outcome, verification, and real blockers
+concisely, with delivery shape matching the dependency graph.

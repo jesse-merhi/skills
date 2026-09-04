@@ -5,75 +5,46 @@ description: 'Transfer the current work to a fresh full agent session, placing r
 
 # Handoff
 
-Complete the exact handoff the user requested. Batch independent context and
-state reads. During long preparation, report a change in evidence, destination,
-or readiness. Preserve exact constraints, identifiers, decisions, and open
-work. Add new handoff context without rewriting prior conversation history.
+Create or prepare a fresh full session. Never use a subagent, in-chat worker,
+or background agent for any part of this workflow.
 
-A handoff always creates or prepares a full independent session. Never use a
-subagent, delegated in-chat worker, or background agent for any part of a
-handoff.
+1. Gather current state and evidence, batching independent reads. Write one
+   compact handoff document in the OS temporary directory. Include the objective,
+   touched files and commands, blockers, validation, durable Obsidian research
+   links, suggested skills, and next actions. Preserve exact constraints, names,
+   identifiers, decisions, and unfinished work. Link existing artifacts, redact
+   secrets and unnecessary personal data, and do not rewrite prior session history.
+2. Classify the relationship. `continuation` advances the same objective,
+   feature, investigation, review, or implementation; `aside` is a separate
+   objective introduced by the user. Default direct follow-on work to continuation.
+   Independence of execution alone does not make an aside.
+3. Run `scripts/detect-handoff-surface`. Read
+   [session-routing.md](references/session-routing.md). Prefer, in order, the
+   explicit destination, verified current tmux pane, verified current app session,
+   supported running app, then a fresh terminal or ACPX session. Use current
+   process ancestry and native markers before global discovery. A tmux process
+   elsewhere does not identify this session.
+4. Before launching edit, repair, commit, or PR work, read
+   [worktree-isolation.md](references/worktree-isolation.md), and for repair/PR
+   work also [repair-pr-handoffs.md](references/repair-pr-handoffs.md). Designate
+   the worktree and add the required boundaries, skills, and publication
+   authority to the receiving session's brief. Then launch through the verified route:
+   - tmux: follow [tmux-placement.md](references/tmux-placement.md). Put a
+     continuation in a new pane of the current window and an aside in a new
+     window of the current session.
+   - Codex app: create a fresh same-project task for continuation, or a
+     projectless/matching other-project task for an aside. Isolate edits in a
+     worktree when required by the repo.
+   - Claude: use a fresh named or tmux-launched interactive session, not a
+     Claude background agent.
+   - Other harness to Codex: prefer a verified app task API. Otherwise use a
+     fresh named ACPX or interactive session and say that it is not an app task.
+5. Fork only when raw history is needed; a continuation does
+   not automatically need it because the document carries context.
+6. Verify launch. Report document path, relationship, detected surface and its
+   evidence, placement, isolation, and status. A queued worktree or launch request
+   is not a started session. If the selected app has no verified creation path,
+   stop with that exact limitation. Do not substitute a subagent.
 
-## Prepare context
-
-Write one compact handoff document in the operating system's temporary
-directory. Include the objective, current state, evidence, files and commands
-already touched, blockers, validation, durable Obsidian research links,
-suggested skills, and next concrete actions. Link existing artifacts rather
-than copying them. Redact secrets and unnecessary personal data.
-
-Classify the relationship:
-
-- `continuation`: the new session advances the same objective, feature,
-  investigation, review, or implementation;
-- `aside`: the user introduced a separate objective during the conversation.
-
-Default to `continuation` when the handoff directly continues the current work.
-Do not classify work as an aside merely because it can run independently.
-
-## Detect the working surface
-
-Run `scripts/detect-handoff-surface`. Read
-[session-routing.md](references/session-routing.md), then use the first verified
-route:
-
-1. the user's explicit destination;
-2. the current verified tmux pane;
-3. the current verified app session;
-4. a supported app already running;
-5. a fresh full terminal or ACPX session.
-
-A tmux process elsewhere on the machine does not make the current session a
-tmux session. App and CLI detection uses current process ancestry and native
-session markers before global process discovery.
-
-## Launch the full session
-
-- In tmux, read [tmux-placement.md](references/tmux-placement.md). A
-  continuation opens a new pane in the current window. An aside opens a new
-  window in the current tmux session.
-- In the Codex app, create a fresh task in the same project for a continuation.
-  Use a projectless task or the matching different project for an aside. Use a
-  Codex worktree for editing when the repository requires isolation.
-- In Claude, use a fresh named Claude session or a tmux-launched interactive
-  Claude session. Do not use Claude background agents.
-- From another harness targeting Codex, prefer a verified Codex app task API
-  when available. Otherwise use a fresh named ACPX or interactive Codex
-  session and report that it is not an app task.
-
-Use a fork only when the new full session genuinely needs raw conversation
-history. A continuation does not automatically require a fork because the
-handoff document carries its working context.
-
-Read [worktree-isolation.md](references/worktree-isolation.md) before an edit,
-repair, commit, or PR handoff. Read
-[repair-pr-handoffs.md](references/repair-pr-handoffs.md) for repair and PR
-work.
-
-## Completion
-
-Report the handoff document path, relationship, detected surface and evidence,
-session placement, isolation, and verified launch status. A queued worktree or
-requested launch is not a started session. If the selected app has no verified
-task-creation path, stop and report that exact limitation instead of silently
-substituting a subagent.
+During long preparation, report a meaningful change in destination, evidence,
+or readiness. Complete the authorized handoff rather than merely promising it.

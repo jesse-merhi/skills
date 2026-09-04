@@ -5,36 +5,24 @@ description: 'Map changed runtime flows through contracts and side effects to ri
 
 # Review flow map
 
-Outcome: build an evidence-backed review map before writing findings: what changed, where
-execution starts, what contracts move between files, and which checks would
-actually prove the change.
+Deliver one compact map of the scoped change: runtime paths, contracts, effects,
+risks, and proving checks. Complete the flow coverage before filtering potential
+issues into findings.
 
-## Workflow
+## Scope and trace
 
-Keep the map scoped to changed runtime flows and their proof targets. Retain all genuine suspected issues for later triage without expanding into a repository-wide architecture report or treating suspects as findings.
+Use [target-resolution.md](references/target-resolution.md) to establish the
+review range and [categories.md](references/categories.md) to classify behavior.
+Trace each changed path end to end, selecting context with
+[context-reading.md](references/context-reading.md). Follow significant contract
+edges rather than reading every changed file with equal weight.
 
-1. Resolve the review target with [target-resolution.md](references/target-resolution.md).
-2. Classify changed files by behavior category using
-   [categories.md](references/categories.md).
-3. Trace each changed flow end to end.
-4. Read context selectively with the search patterns in
-   [context-reading.md](references/context-reading.md).
-5. Produce the map before findings, using [output.md](references/output.md).
+## Map to return
 
-## Required discipline
+Apply [output.md](references/output.md). Include each relevant flow and its proof
+target, distinguishing confirmed behavior from suspected defects. A short map
+must not omit a consequential boundary just because its diff is small.
 
-- Start from behavior and contracts, not file count.
-- Do not review all files equally; small contract files can matter more than
-  large generated diffs.
-- Keep suspected issues separate from confirmed findings.
-- Do not call something a bug until the relevant flow has been traced enough
-  to know the intended contract.
-
-## Context pointers
-
-- Use [target-resolution.md](references/target-resolution.md) for PR and git
-  range commands.
-- Use [categories.md](references/categories.md) for changed-file classification.
-- Use [context-reading.md](references/context-reading.md) for targeted context
-  commands and flow-tracing fields.
-- Use [output.md](references/output.md) for the review map shape and discipline.
+End when changed-flow coverage and proof targets are recorded. Avoid extending
+mapping into unrelated architecture work or adding a separate generic verifier.
+A bug claim still requires enough evidence to establish the intended contract.

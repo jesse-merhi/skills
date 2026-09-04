@@ -5,47 +5,33 @@ description: 'Turn a plan or spec into tracer-bullet Obsidian tickets with block
 
 # To tickets
 
-Outcome: break a settled plan or spec into a set of tickets: tracer-bullet
-vertical slices, each declaring the tickets that block it. Publish tickets to
-Obsidian `Issues/`.
+Deliver an approved set of behavior-focused Obsidian tickets with real blockers
+and cohesive PR groups. Keep each note short enough to execute without losing
+acceptance criteria or its ordered work phases.
 
-## Workflow
+## Plan from evidence
 
-Keep tickets compact and independently executable, with real acceptance and dependency evidence. Avoid many tiny tickets, speculative prefactoring projects, or publication before the required graph and grouping approval.
+Read the supplied spec or note in full and use relevant conversation, code,
+glossary, ADRs, and project notes. Consider necessary prefactoring as part of
+the plan. Use [ticket-design.md](references/ticket-design.md) for end-to-end
+slicing, wide refactors, and blocker validation. A ticket without blockers is
+ready to start.
 
-1. Gather context from whatever is already in the conversation. If the user
-   passes a spec path or Obsidian note, fetch it and read the full body.
-2. Explore the codebase if needed. Ticket titles and descriptions should use
-   the project's glossary vocabulary and respect ADRs or Obsidian decisions in
-   the area you are touching.
-3. Look for opportunities to prefactor the code to make implementation easier:
-   make the change easy, then make the easy change.
-4. Draft tracer-bullet tickets using [ticket-design.md](references/ticket-design.md).
-   Give each ticket its blocking edges. A ticket with no blockers can start
-   immediately.
-5. Derive PR delivery groups from the ticket graph using
-   [ticket-design.md](references/ticket-design.md). Preserve an approved spec
-   shape unless the detailed blocker graph disproves it. Load `gh-stack` for a
-   strict dependency chain of two or more review groups. Keep independent graph
-   paths as standalone PRs or separate stacks.
-6. Mark each ticket `AFK` or `HITL`.
-7. Present the proposed breakdown as a numbered list. For each ticket, show:
-   title, blocked by, mode, PR group/delivery, what it delivers, covered
-   acceptance criteria, and any frontend validation state/viewport.
-8. Ask the user whether the granularity, blocking edges, and PR grouping feel
-   right, and whether any tickets or review groups should be merged or split.
-9. Iterate until the user approves both the ticket graph and PR delivery map.
-10. Publish the approved tickets to Obsidian `Issues/` using
-   [note-template.md](references/note-template.md) and
-   [naming.md](references/naming.md). If write access is missing, return the
-   Markdown bodies and proposed paths.
-11. Do not close or modify any parent spec unless the user explicitly asks.
+Derive PR groups independently from ticket count. Preserve the approved spec's
+delivery shape unless the detailed graph disproves it. A strict chain of at
+least two review groups uses `gh-stack`; independent paths use separate PRs or
+stacks. Do not force parallel work into a linear chain.
 
-## Context pointers
+## Approval and notes
 
-- Use [ticket-design.md](references/ticket-design.md) for tracer-bullet rules,
-  wide refactors, and blocker checks.
-- Use [execution-contract.md](references/execution-contract.md) for the ordered
-  todo contract.
-- Use [note-template.md](references/note-template.md) for the ticket note body.
-- Use [naming.md](references/naming.md) for vault-relative note paths.
+Present one numbered breakdown containing each title, blockers, `AFK`/`HITL`,
+PR group/delivery, outcome, acceptance criteria, and any UI state/viewport.
+Ask the user to settle granularity, dependencies, and grouping, including merges
+or splits. Publish only after both graph and delivery map are approved.
+
+Use [note-template.md](references/note-template.md),
+[naming.md](references/naming.md), and
+[execution-contract.md](references/execution-contract.md) for Obsidian `Issues/`.
+If write access is missing, return the Markdown bodies and proposed paths.
+Leave the parent spec unchanged unless asked. End with the delivered set and
+any actual blocker, without an additional verification team or filler report.

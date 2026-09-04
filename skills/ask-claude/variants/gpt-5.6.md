@@ -5,47 +5,33 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 # Ask Claude
 
-Outcome: return an independently produced Claude result from one full ACP
-session. This is not a subagent; use the external session workflow below.
+Return Claude's independent answer through a full ACP session. Run this only
+when the user explicitly invokes `$ask-claude` or asks you to ask Claude.
+A mention, link, review request, or desire for another opinion is insufficient.
 
-Authority: invoke this skill only when the current user explicitly asks to run
-`$ask-claude` or explicitly says to ask Claude. Never auto-select it for review,
-planning, a second opinion, delegation, or implementation. Mentioning,
-discussing, or linking this skill is not authorization to run it.
+Resolve `<skill-dir>` to this skill's directory. Prepare a self-contained brief
+with the objective, checkout, relevant files, constraints, output, write scope,
+and the requirement to close the temporary session before finishing.
 
-## Workflow
+For advice, review, or planning:
 
-1. Resolve `<skill-dir>` to this skill's directory.
-2. Give Claude a self-contained brief: objective, checkout, relevant files,
-   constraints, expected output, whether writes are authorized, and the
-   requirement to close its own temporary external session before finishing.
-3. For advice, review, or planning, run the read-only wrapper:
+```sh
+<skill-dir>/scripts/ask-claude read "<self-contained prompt>"
+```
 
-   ```sh
-   <skill-dir>/scripts/ask-claude read "<self-contained prompt>"
-   ```
+For explicitly authorized implementation, name the owned scope and use:
 
-4. Use write mode only when the user authorized implementation and the brief
-   names the owned scope:
+```sh
+<skill-dir>/scripts/ask-claude write "<self-contained prompt>"
+```
 
-   ```sh
-   <skill-dir>/scripts/ask-claude write "<self-contained prompt>"
-   ```
+Use the current Claude configuration without hard-coding a model. The default
+is one fresh `acpx ... claude exec` session, not an in-chat subagent. Use persistent
+`prompt` mode only for an explicitly requested ongoing cross-harness conversation;
+close that named session when the user ends it.
 
-5. Treat the result as another full session's work. Inspect its evidence and
-   validate any edits in the originating session before reporting completion.
-6. A one-shot ACP session is temporary. Require the spawned Claude session to
-   close itself before finishing, then verify no persistent session was left
-   behind. The wrapper must stay on `acpx ... claude exec`; never switch to the
-   persistent `prompt` mode unless the user explicitly requests an ongoing
-   cross-harness conversation. On failure, cancellation, timeout, or early
-   stop, close any exact session ID returned by ACP and report cleanup failure
-   instead of silently leaving the session behind.
-
-The wrapper uses the current Claude configuration; do not hard-code a model.
-Use a fresh one-shot ACP session by default. Continue a persistent named session
-only when the user explicitly asks for an ongoing cross-harness conversation.
-Close that named session when the user ends the conversation.
-
-If ACP or Claude authentication fails, report the exact failure. Do not silently
-replace the requested Claude session with a subagent or self-answer.
+Inspect the returned evidence and validate edits in the originating session.
+Require temporary-session self-cleanup and verify it. On success, failure,
+cancellation, timeout, or early stop, close any exact remaining ACP session ID.
+Report cleanup failures. If ACP or authentication fails, report the actual
+failure; do not substitute another agent or your own answer for Claude's.

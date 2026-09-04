@@ -5,18 +5,18 @@ description: 'Stress-test a plan, decision, or idea through relentless questions
 
 # Grilling
 
-Outcome: reach a user-confirmed shared understanding with every decision branch
-visited and no material assumption left implicit. Map the subject as a design
-tree.
+Build a shared understanding of the entire decision tree and obtain the user's
+confirmation before acting. This workflow deliberately puts every decision to
+the user; routine-autonomy guidance must not silently decide interview branches.
 
-Work the tree in rounds. The frontier is every decision whose prerequisites are
-already settled. Ask the questions you can ask now without guessing at answers
-you have not heard yet. Ask the whole frontier in one numbered round, with a
-concise recommended answer for every question. Then wait for the user's
-answers before continuing.
+Own the factual investigation. If an environmental fact is needed, dispatch a
+background subagent to establish it while you continue with independent questions.
+Only questions downstream of that unknown fact wait.
 
-Format each round with a horizontal rule between questions so the recommendations
-do not run together:
+Own the question order. The next round contains the whole frontier whose
+prerequisites are already settled. Do not ask a dependent question as though an
+answer earlier in the same round were known. For each frontier question give a
+concise recommendation, use the format below, and wait for the user's answers.
 
 ```markdown
 ❓ **Q1**. **<question title>**: <question body or choices>
@@ -30,16 +30,7 @@ do not run together:
 ➡️ <recommended answer>
 ```
 
-Each answer reshapes the tree. Recompute the frontier after every round. A
-question that depends on another question still open in this round belongs to a
-later round.
-
-Finding facts is your job. When a frontier question needs a fact from the
-environment, dispatch a background subagent to find it. Keep asking the rest of
-the frontier while that exploration runs; only questions downstream of the
-unsettled fact wait. Decisions belong to the user. Put each one to them and wait
-for their answer.
-
-The session is done when the frontier is empty. Every branch has been visited
-and nothing is left silently assumed. Do not act on the result until the user
-confirms you have reached a shared understanding.
+After each round, apply the answers and recompute the frontier. Continue until
+every branch has been visited and no decision or material assumption is left
+implicit. An empty frontier ends the questioning; the user's confirmation of
+shared understanding is still required before action.

@@ -5,64 +5,37 @@ description: 'Build or fix behavior test-first through a red-green-refactor loop
 
 # Test-driven development
 
-Outcome: deliver observable behavior through one vertical red-green-refactor
-cycle at a time, leaving tests that remain useful when implementation details
-change.
+Deliver the accepted behavior through vertical red-green-refactor cycles and
+leave a focused test portfolio. Completion includes the explicit cycle checks
+and broader relevant suite, not an additional verifier agent or speculative tests.
 
-## Choose the seam
+Choose the proof before adding it. Load `test-audit` and state the seam,
+observable outcome, external dependencies, distinct reachable regression, and
+nearest existing coverage. Prefer an existing stable public boundary—CLI,
+HTTP, exported function, component interaction, or adapter—with the narrowest
+useful proof, an independent expectation, and no equivalent owner left behind.
+Only material architecture, cost, or product choices need a user question.
+Durable internal pure logic is suitable for focused tests when larger-boundary
+coverage obscures failures or costs needlessly more. Read
+[tests.md](references/tests.md) and [mocking.md](references/mocking.md).
 
-Keep the portfolio focused on accepted current behavior and report completed behavioral cycles briefly. Do not generate extra tests or verifier agents; the explicit red, green, refactor, and affected-suite executions remain mandatory.
+For each behavior, keep the loop ordered:
 
-A seam is the stable boundary through which a caller experiences behavior: a
-CLI command, HTTP request, exported function, component interaction, adapter,
-or another durable interface.
+- Red: write one focused test, execute it, and establish that missing behavior
+  caused the failure rather than the test, fixture, or environment.
+- Green: implement the smallest complete passing solution. Do not use knowingly
+  temporary, duplicated, or awkward structure as a shortcut.
+- Refactor: while green, improve names, duplication, control flow, module depth,
+  and interfaces without adding behavior. Execute the affected test again.
 
-Before the first test, load `test-audit` and apply its test-portfolio policy.
-State the proposed seam, observable outcome, external dependencies, distinct
-reachable regression, and nearest existing coverage. Prefer an existing public
-boundary. Done when the proposed test has the narrowest useful proof level, an
-independent expected result, and no equivalent owner will remain after the
-change. Ask the user only when the choice would materially change architecture,
-testing cost, or product behavior.
+Run the affected test at all three stages and the broader relevant suite when
+the slice is stable. Let each cycle inform the next instead of writing all
+imagined tests first. Keep reports to completed behaviors, evidence, and blockers.
 
-Prefer tests at stable behavioral boundaries. Focused tests of internal pure
-logic are appropriate when that logic has a durable contract and exercising it
-through a larger boundary would obscure failures or make the suite needlessly
-slow.
+Use one behavior per test, allowing jointly necessary assertions. Derive expected
+results independently. Avoid private-method and incidental call-order assertions;
+prefer real internal collaborators and mock impractical external boundaries.
 
-Read [tests.md](references/tests.md) for examples and
-[mocking.md](references/mocking.md) for boundary guidance.
-
-## Red-green-refactor
-
-1. **Red:** Write one focused behavior test. Run it and confirm it fails because
-   the behavior is missing, not because the test, fixture, or environment is
-   broken.
-2. **Green:** Implement the smallest complete solution that passes. Small does
-   not mean knowingly temporary, duplicated, or awkward.
-3. **Refactor:** While the suite remains green, improve names, remove
-   duplication, simplify control flow, deepen useful modules, and repair
-   awkward interfaces. Do not add new behavior during refactoring.
-4. Repeat for the next behavior, letting the previous cycle inform the next
-   test.
-
-Run the affected test after red, green, and refactor. Run the broader relevant
-suite when the slice is stable.
-
-## Test quality
-
-- Test behavior users or callers care about, not private methods or incidental
-  call order.
-- Keep one behavior per test. Use multiple assertions when they jointly prove
-  that behavior.
-- Derive expected results independently from the implementation.
-- Mock external boundaries when a real boundary is impractical. Prefer real
-  repository modules and collaborators inside the system.
-- Avoid horizontal slicing in which every imagined test is written before any
-  implementation. Each test should teach the next implementation move.
-
-This skill intentionally forks Matt Pocock's MIT-licensed `tdd` workflow. The
-upstream version currently excludes refactoring from the loop; this fork keeps
-a bounded refactor after every green pass so the implementation is left simple
-while the cycle's design context is still fresh. It also softens upstream's
-absolute rules about pre-agreed seams and internal tests.
+This forks Matt Pocock's MIT-licensed `tdd` workflow: bounded refactoring remains
+after each green pass, unlike the upstream version that excludes it, and seam
+selection and internal-test rules are evidence-led rather than absolute.

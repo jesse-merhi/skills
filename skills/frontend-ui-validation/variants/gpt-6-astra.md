@@ -5,61 +5,43 @@ description: 'Validate web UI with Playwright screenshots, layout checks, respon
 
 # Frontend UI validation
 
-Outcome: prove that the rendered UI works and communicates at the required
-states and viewport sizes. A screenshot alone is not validation; inspect for
-horizontal
-overflow, clipped text, sibling overlap, tiny tap targets, console errors,
-broken responsive states, weak hierarchy, generic visual filler, or
-mismatch with the intended design direction.
+Establish whether the changed rendered UI works and communicates at the required
+states and viewport sizes. Resolve routine test targets from the request and
+repository; keep source edits within existing implementation authority.
 
-This skill is for ad-hoc validation during a task. Persistent Playwright specs
-belong in project testing skills.
+## Choose the real rendering surface
 
-## Workflow
+Start the app normally and open the changed page in a browser. Default to
+390×844, 768×1024, and 1440×900 unless the task provides better targets. Include
+reachable empty, error, and loading states. Native React Native/Expo screens
+instead require mobile-app simulator proof under
+[native-expo.md](references/native-expo.md); browser proof covers web-rendered
+screens only. Apply [design-specific-checks.md](references/design-specific-checks.md)
+for Figma, mockup, reference, theme, density, auth, and operational-app comparisons.
 
-1. Start the app with the repo's normal dev command.
+## Establish and resolve findings
 
-2. Open the changed page in a real browser.
+At each browser width, run the bundled Playwright layout audit:
 
-3. Check the page at these widths unless the task gives better targets:
+```bash
+node <skill-dir>/scripts/audit-layout.mjs <url>
+```
 
-   - 390 x 844
-   - 768 x 1024
-   - 1440 x 900
+Read [browser-layout-audit.md](references/browser-layout-audit.md) for interpretation
+and [mcp-browser-checks.md](references/mcp-browser-checks.md) for direct screenshots,
+boxes, console, and styles. Inspect warning elements, text, and box values.
+Check overflow, clipping, sibling overlap, small tap targets, console errors,
+responsive states, hierarchy, filler, and design-direction mismatch.
 
-4. At each width, run the bundled layout audit script through Playwright:
+Report all real errors and warnings. If implementation was requested, fix the
+source and rerun the affected state/width without a redundant permission question.
+If not, provide evidence and recommendations without editing. Live DOM mutation
+is not a source fix.
 
-   ```bash
-   node <skill-dir>/scripts/audit-layout.mjs <url>
-   ```
+## Finish with observable evidence
 
-   Read [references/browser-layout-audit.md](references/browser-layout-audit.md)
-   for what the script catches and how to treat warnings.
-
-5. Use direct browser/MCP checks when available.
-
-   Read [references/mcp-browser-checks.md](references/mcp-browser-checks.md)
-   for screenshot, bounding-box, console, and computed-style checks.
-
-6. For native React Native / Expo screens, switch to native proof.
-
-   Read [references/native-expo.md](references/native-expo.md). Browser checks
-   still apply to web-rendered screens, but native screens need simulator proof
-   from the mobile app itself.
-
-7. For Figma, mockup, reference, theme, density, auth, or operational-app
-   comparisons, read
-   [references/design-specific-checks.md](references/design-specific-checks.md).
-
-8. Report every real `error` and `warning`. If implementation is authorized,
-   fix each finding and re-run the same viewport and state. Otherwise, return
-   the evidence and recommended fix without editing source.
-   Finish once required states and viewports are covered and every finding is
-   resolved or reported; broaden validation only for a remaining concern.
-
-## Done means
-
-Final response must include evidence like:
+Show per-viewport error/warning counts, console status, screenshot paths, and
+reasons for any retained warning. For example:
 
 ```text
 390x844: 0 errors, 0 warnings
@@ -69,18 +51,8 @@ Console: 0 errors
 Screenshots: <paths>
 ```
 
-If the audit script could not run, say that and report which MCP checks or
-manual checks replaced it.
-
-For native Expo screens, replace browser-width audit lines with the native
-evidence from `references/native-expo.md`. Do not claim browser layout audit
-coverage for a screen that only rendered in the simulator.
-
-## Avoid
-
-- checking only desktop width;
-- saying "looks fine" without audit counts and screenshot paths;
-- ignoring script warnings without inspecting the element, text, and box values;
-- fixing by mutating the live DOM through browser automation instead of editing
-  source files;
-- checking only the happy state when empty/error/loading states are reachable.
+Disclose an unavailable script and its replacement MCP/manual checks. Native
+Expo evidence replaces browser-width audit claims. Complete the required matrix
+and resolve or report every finding; expand checks only for a remaining concern.
+This ad-hoc workflow does not create persistent Playwright specs, and a screenshot
+alone is insufficient proof.

@@ -5,49 +5,27 @@ description: 'Cold-review a PR, branch, or feature with neutral context, changed
 
 # Cold PR review
 
-Outcome: return an independent, evidence-backed review from a subagent with zero
-implementation context. The
-reviewer sees only the work product, not your reasoning, decisions, or prior
-findings. This avoids anchoring bias where knowing why a decision was made
-prevents questioning whether it was correct.
+Return an independent review with actionable findings and a separate compact
+rejection audit. Use one fresh reviewer of the work product; do not add recursive
+verifier workers or an optional final sweep.
 
-## Workflow
+Follow [dispatch.md](references/dispatch.md) to select the separate subagent
+route. Build its brief from the target, [checklist.md](references/checklist.md),
+and the scope/evidence requirements of
+[prompt-template.md](references/prompt-template.md). Omit the template's additional
+sweep: completion is full changed-flow coverage and the verdict. Request discovery
+of every genuine scoped candidate before applying actionability filters.
 
-1. Dispatch a separate reviewer subagent by default. Use
-   [dispatch.md](references/dispatch.md) for harness-specific options and the
-   self-review fallback.
-2. Give the reviewer only what to review and a neutral checklist.
-3. Do not give your reasoning, design decisions, prior findings, fixes attempted,
-   implementation approach, or CI status.
-4. Use the neutral checklist in [checklist.md](references/checklist.md).
-5. Build the neutral brief from the scope and evidence requirements in
-   [prompt-template.md](references/prompt-template.md). Request every genuine
-   scoped candidate before actionability filtering. End after complete
-   changed-flow coverage and the verdict; omit the template's additional sweep
-   and do not add recursive verifier workers. Add domain-specific checklist
-   items only when they are neutral and visible from the review target.
-6. Require `finding-discipline`: report only concrete actionable findings tied
-   to changed code or contracts, not style nits or vague risks. Keep candidates
-   that fail its gates out of the finding list, but return a compact audit-only
-   rejection with the failed gate and evidence rationale.
+Keep context neutral. Domain checklist additions must be visible from the target.
+Exclude implementation rationale, design decisions, approach, prior findings,
+attempted fixes, CI status, and desired verdicts. Do not edit the target.
 
-## Required discipline
+Apply `finding-discipline` after discovery. Report concrete actionable defects
+tied to changed code/contracts. Put failed-gate candidates in a compact separate
+audit with the gate and evidence rationale. Nits and vague risks do not become
+findings, and audit-only rejections do not become suggestions, fixes, or tests.
 
-- Prefer a separate subagent. A cold review loses most of its value if the same
-  context that implemented the change also performs the review.
-- Give the reviewer the work product, not the story of the work.
-- Do not leak prior review outcomes or desired verdicts.
-- Keep audit-only rejections separate from findings so they remain measurable
-  without becoming suggestions, fixes, or tests.
-- If a separate reviewer is unavailable, say so explicitly and perform a fresh
-  self-review after deliberately discarding the implementation rationale.
-
-## Context pointers
-
-- Use [dispatch.md](references/dispatch.md) for Codex, Claude Code, other
-  harnesses, and self-review fallback.
-- Use [checklist.md](references/checklist.md) for neutral review lenses.
-- Use [prompt-template.md](references/prompt-template.md) for the cold reviewer
-  prompt.
-- Use [why-it-works.md](references/why-it-works.md) for anchoring risks and
-  common mistakes.
+If a separate reviewer is unavailable, disclose the limitation and use the
+fresh self-review fallback after deliberately discarding implementation rationale.
+Do not claim that fallback is independent. See
+[why-it-works.md](references/why-it-works.md) for anchoring risks and common mistakes.

@@ -5,63 +5,43 @@ description: 'Maintain complete model-specific skill variants and add coverage w
 
 # Model writing guides
 
-Outcome: every repo skill has a complete prompt written for every supported
-model, while each invocation receives only its selected workflow.
+Deliver complete model-specific workflows with equivalent behavior and one
+selected prompt per installed invocation. Adapt the actual instructions rather
+than adding a generic prefix. Bound optional work and saved text while retaining
+required proof and permissions.
 
-## Supported profiles
+Start from the current variants/shared references and preserve outcome,
+permissions, ordered invariants, completion criteria, exact commands, and evidence.
+Read the four supported guide references and refresh each changed model's
+current official source: [GPT-5.6](references/gpt-5.6.md),
+[Astra](references/gpt-6-astra.md), [Fable 5.1](references/claude-fable-5.1.md),
+and [Opus 5](references/claude-opus-5.md). Retain source links and review dates,
+not copied vendor manuals.
 
-- GPT-5.6: read [gpt-5.6.md](references/gpt-5.6.md).
-- GPT-6 Astra: read [gpt-6-astra.md](references/gpt-6-astra.md).
-- Claude Fable 5.1: read
-  [claude-fable-5.1.md](references/claude-fable-5.1.md).
-- Claude Opus 5: read [claude-opus-5.md](references/claude-opus-5.md).
+Author every full `variants/<profile>.md` around its model: lean outcome/constraints/
+proof/completion for GPT-5.6; literal ordered bounded execution and relevant
+batching/progress for Fable; evidence-led ordinary choices, clear authority and
+proportional checks for Astra; bounded optional investigation/output, integrated
+generic confirmation, and complete discovery before filtering for Opus. Do not
+remove domain-required review passes or evidence when reducing redundant checks.
 
-The profile definitions and same-family fallback order live in
-[`scripts/materialize-skill-variants.mjs`](scripts/materialize-skill-variants.mjs).
-Variant file presence is the coverage record; do not add a per-skill manifest.
+Share supporting scripts, references, assets, and `agents/openai.yaml` unless
+runtime behavior differs. Point root SKILL.md at `variants/gpt-5.6.md` and expose
+one contained selected file in harness views. Variant presence records coverage;
+no per-skill manifest or runtime routing hop is needed. Run the materializer test
+and independently exercise each affected profile, judging behavior and contract
+preservation rather than prose shape. Finish when all supported workflows are
+complete and load directly.
 
-## Create or update a skill
+Install/switch from the repo root with `./install-skills --harness codex --model astra`
+or `./install-skills --harness claude --model opus`. Use `--require-exact` for
+complete coverage, `--dry-run` for inspection, and separate `--root` values for
+concurrent models. Re-running changes installed skills only, not harness model
+selection or already-loaded history.
 
-Adapt the relevant workflow steps rather than attaching a generic prefix. Distinguish redundant self-check scaffolding from required proof, bound optional work and document length, and preserve complete candidate discovery before filtering.
-
-1. Read the current variants and shared references. Freeze the behavior,
-   permissions, completion criteria, exact commands, and evidence requirements
-   that must remain equivalent across models.
-2. Fetch the current official prompting guide for every supported model whose
-   variant will change. Keep links and review dates in the references above;
-   do not copy whole vendor manuals.
-3. Write a complete `variants/<profile>.md` for every supported profile:
-   - GPT-5.6: state the outcome, constraints, evidence, completion criteria, and
-     output shape once; leave routine execution choices open.
-   - Fable 5.1: use literal, explicit steps; bound scope and rewrites; name
-     batching, progress, and current-source lookup when they matter.
-   - Astra: resolve routine choices from evidence, honor existing authority,
-     reconcile conflicting guidance, and keep verification proportional.
-   - Opus 5: bound optional work and document length, consolidate generic
-     self-checks, and separate complete candidate discovery from filtering.
-4. Keep supporting scripts, references, assets, and `agents/openai.yaml` shared
-   unless their runtime behavior truly differs by model.
-5. Point the skill's root `SKILL.md` symlink at `variants/gpt-5.6.md`.
-   Harness views expose one contained selected file directly.
-6. Run the materializer test and exercise the changed skill independently with
-   each affected model profile. Judge behavior, not prose shape.
-
-Done when all supported variants preserve one behavior contract, each model's
-prompt removes guidance it does not need, and the installed skill loads one
-complete variant with no model or network routing hop.
-
-## Install or switch
-
-Run `./install-skills --harness codex --model astra` or
-`./install-skills --harness claude --model opus` from the repository root.
-Use `--require-exact` to require complete model coverage and `--dry-run` to
-inspect the installation first. Re-running with another model switches that
-installation. Use a separate `--root` for concurrent model installations.
-The command changes skills, not the harness model or conversation history.
-
-## Add a new model
-
-Add its exact matcher and same-family rank to the materializer, add its official
-guide reference, and add a complete variant to every skill. Until that work is
-complete, the materializer selects the newest available family variant and
-emits one stale-profile notice per session. Keep the requested skill running.
+New coverage requires an exact matcher and same-family rank in
+[scripts/materialize-skill-variants.mjs](scripts/materialize-skill-variants.mjs),
+an official reference, and a full variant for every skill. Until available,
+materialization chooses the newest same-family prompt and emits one stale-profile
+notice per session. Keep the requested skill running and leave fallback reporting
+with the materializer rather than duplicating runtime warnings.

@@ -5,20 +5,14 @@ description: 'Stress-test a plan, decision, or idea through relentless questions
 
 # Grilling
 
-Ask the whole settled frontier with concise recommendations. Group related environmental facts in one bounded background assignment where possible; do not add verifier workers or continue asking after the decision tree is settled.
+Settle every branch of the user's decision tree through question rounds, then
+obtain confirmation of shared understanding. The deliverable is the settled
+understanding, not implementation of it.
 
-Outcome: reach a user-confirmed shared understanding with every decision branch
-visited and no material assumption left implicit. Map the subject as a design
-tree.
-
-Work the tree in rounds. The frontier is every decision whose prerequisites are
-already settled. Ask the questions you can ask now without guessing at answers
-you have not heard yet. Ask the whole frontier in one numbered round and give
-your recommended answer for every question. Then wait for the user's answers
-before continuing.
-
-Format each round with a horizontal rule between questions so the recommendations
-do not run together:
+Map the subject and identify the full frontier: questions with settled
+prerequisites. Ask that frontier together and recommend an answer for each.
+Do not include questions whose answer depends on an unresolved question in the
+same round. Keep each recommendation short enough to compare.
 
 ```markdown
 ❓ **Q1**. **<question title>**: <question body or choices>
@@ -32,16 +26,13 @@ do not run together:
 ➡️ <recommended answer>
 ```
 
-Each answer reshapes the tree. Recompute the frontier after every round. A
-question that depends on another question still open in this round belongs to a
-later round.
+Wait for the answers, update the tree, and repeat. Environmental facts are your
+responsibility: dispatch a bounded background subagent when a question needs
+one, grouping related facts where possible. Continue with independent frontier
+questions during the investigation. Do not add verifier workers around factual
+results. Decisions remain the user's; never omit a branch because the answer
+seems obvious or the interview is getting long.
 
-Finding facts is your job. When a frontier question needs a fact from the
-environment, dispatch a background subagent to find it. Keep asking the rest of
-the frontier while that exploration runs; only questions downstream of the
-unsettled fact wait. Decisions belong to the user. Put each one to them and wait
-for their answer.
-
-The session is done when the frontier is empty. Every branch has been visited
-and nothing is left silently assumed. Do not act on the result until the user
-confirms you have reached a shared understanding.
+Stop asking when every branch has been visited and the frontier is empty.
+Summarize the settled understanding concisely and wait for user confirmation
+before acting on it.

@@ -5,50 +5,34 @@ description: 'Ask Codex from a non-Codex harness through a full ACP session for 
 
 # Ask Codex
 
-Outcome: return an independently produced Codex result from one full ACP
-session. This is not a subagent; use the external session workflow below.
+Obtain an independent Codex result from a full ACP session, then archive the
+temporary task. Run only for an explicit `$ask-codex` invocation or a request
+to ask Codex. Mentioning or linking this skill, or requesting review, planning,
+delegation, or implementation, does not by itself authorize it.
 
-Authority: invoke this skill only when the current user explicitly asks to run
-`$ask-codex` or explicitly says to ask Codex. Never auto-select it for review,
-planning, a second opinion, delegation, or implementation. Mentioning,
-discussing, or linking this skill is not authorization to run it.
+Resolve `<skill-dir>` to this skill's directory. Give Codex a self-contained
+brief with objective, checkout, relevant files, constraints, expected output,
+write permission and owned scope, and a requirement to archive its task before
+finishing. Use the current Codex configuration without fixing a model.
 
-## Workflow
+```sh
+# Advice, planning, or review
+<skill-dir>/scripts/ask-codex read "<self-contained prompt>"
+# Explicitly authorized implementation in the named scope
+<skill-dir>/scripts/ask-codex write "<self-contained prompt>"
+```
 
-1. Resolve `<skill-dir>` to this skill's directory.
-2. Give Codex a self-contained brief: objective, checkout, relevant files,
-   constraints, expected output, whether writes are authorized, and the
-   requirement to archive its own external task before finishing.
-3. For advice, review, or planning, run the read-only wrapper:
+Record the created task/session ID. Inspect its evidence and validate edits in
+the originating session. Use a fresh one-shot ACP session rather than an in-chat
+subagent. An explicitly requested ongoing cross-harness conversation may use a
+persistent named session until the user ends it.
 
-   ```sh
-   <skill-dir>/scripts/ask-codex read "<self-contained prompt>"
-   ```
+Require Codex to self-archive using `set_thread_archived`. After capturing its
+result, verify archival. Guaranteed caller cleanup must archive the exact task
+on success, failure, cancellation, timeout, or early stop when self-cleanup did
+not happen: use `set_thread_archived` if available, otherwise `codex archive <id>`.
+Archive a requested persistent session when its conversation ends. Report any
+failed archival with its exact ID.
 
-4. Use write mode only when the user authorized implementation and the brief
-   names the owned scope:
-
-   ```sh
-   <skill-dir>/scripts/ask-codex write "<self-contained prompt>"
-   ```
-
-5. Record the created Codex task or session ID, treat the result as another
-   full session's work, inspect its evidence, and validate any edits in the
-   originating session before reporting completion.
-6. A one-shot session is temporary. Require the spawned Codex session to
-   archive itself with `set_thread_archived` before it finishes. After its
-   result has been captured, verify that it is archived. If self-cleanup did
-   not happen, archive the exact task in guaranteed caller cleanup on success,
-   failure, cancellation, timeout, or early stop. Use `set_thread_archived`
-   when the Codex app tool is available; otherwise run `codex archive <id>`.
-   If archival fails, report the exact ID instead of silently leaving the task
-   behind.
-
-The wrapper uses the current Codex configuration; do not hard-code a model.
-Use a fresh one-shot ACP session by default. Continue a persistent named session
-only when the user explicitly asks for an ongoing cross-harness conversation.
-Keep that session while the conversation is active, then archive it when the
-user ends the conversation.
-
-If ACP or Codex authentication fails, report the exact failure. Do not silently
-replace the requested Codex session with a subagent or self-answer.
+Report ACP or authentication failures as failures; do not replace Codex with a
+subagent or your own answer.

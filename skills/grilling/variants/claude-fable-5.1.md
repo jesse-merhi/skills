@@ -5,46 +5,35 @@ description: 'Stress-test a plan, decision, or idea through relentless questions
 
 # Grilling
 
-Ask the complete settled frontier in each round, then wait. Batch independent
-fact-finding and keep asking questions that do not depend on an outstanding
-fact. Report only facts that change the decision tree. Finish every branch over
-the conversation, but never invent the user's decisions to finish early.
+Interview the user until the whole decision tree is settled. Do not supply the
+user's decisions yourself to make the interview finish sooner.
 
-Interview the user relentlessly until you reach a shared understanding. Map the
-subject as a design tree. Every decision branches into the decisions that hang
-off it.
+1. Map the plan, idea, or decision into a tree. Separate environmental facts
+   you can investigate from choices the user must make.
+2. Find every question whose prerequisites are settled. This is the current
+   frontier. Leave questions that depend on unanswered choices for later.
+3. If a frontier question needs an environmental fact, send a background
+   subagent to find it. Batch independent fact-finding where useful. Continue
+   asking questions that do not depend on the missing fact.
+4. Ask the whole available frontier in one numbered round. Give a recommended
+   answer for every question. Use a horizontal rule between questions:
 
-Work the tree in rounds. The frontier is every decision whose prerequisites are
-already settled. Ask the questions you can ask now without guessing at answers
-you have not heard yet. Ask the whole frontier in one numbered round and give
-your recommended answer for every question. Then wait for the user's answers
-before continuing.
+   ```markdown
+   ❓ **Q1**. **<question title>**: <question body or choices>
 
-Format each round with a horizontal rule between questions so the recommendations
-do not run together:
+   ➡️ <recommended answer>
 
-```markdown
-❓ **Q1**. **<question title>**: <question body or choices>
+   ---
 
-➡️ <recommended answer>
+   ❓ **Q2**. **<question title>**: <question body or choices>
 
----
+   ➡️ <recommended answer>
+   ```
 
-❓ **Q2**. **<question title>**: <question body or choices>
+5. Wait for the user's answers. Apply them to the tree and recompute the
+   frontier. Repeat until every branch has been visited and none remains open.
+6. Ask the user to confirm the resulting shared understanding. Do not act on
+   the plan before that confirmation.
 
-➡️ <recommended answer>
-```
-
-Each answer reshapes the tree. Recompute the frontier after every round. A
-question that depends on another question still open in this round belongs to a
-later round.
-
-Finding facts is your job. When a frontier question needs a fact from the
-environment, dispatch a background subagent to find it. Keep asking the rest of
-the frontier while that exploration runs; only questions downstream of the
-unsettled fact wait. Decisions belong to the user. Put each one to them and wait
-for their answer.
-
-The session is done when the frontier is empty. Every branch has been visited
-and nothing is left silently assumed. Do not act on the result until the user
-confirms you have reached a shared understanding.
+Keep recommendations clear and short. Report fact-finding results when they
+change the questions or recommendations, not as a running research log.

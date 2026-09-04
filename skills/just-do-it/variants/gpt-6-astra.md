@@ -5,151 +5,70 @@ description: 'Take one well-defined, cohesive change from its current implementa
 
 # Just Do It
 
-Outcome: take one small, well-defined change from its verified checkpoint to a
-non-draft PR that is ready for Jesse to inspect. Resume correct existing work
-and make ordinary in-scope implementation and delivery decisions without
-intermediate approval.
+On explicit invocation, continue one small, well-defined cohesive change to a
+non-draft PR ready for Jesse. Use the verified checkpoint and existing grant to
+make ordinary implementation/delivery decisions without repeat approval questions.
 
-Invoking this skill grants bounded authority to create a feature branch, make
-local commits, make normal pushes to that branch, create or update one PR, edit
-its title and body, upload required proof, change its draft/ready state, and run the full
-`code-review` workflow. It does not authorize force-push, merge, deployment,
-manual labels, PR reactions, prose comments, destructive operations, new
-dependencies, breaking changes, or work outside the requested change.
+## Know the bounded grant
 
-## Fit check
+This workflow authorizes a feature branch, local commits, normal feature-branch
+pushes, one PR's creation/update/title/body, proof uploads, draft/ready transitions,
+and full `code-review`. It does not permit force-push, merge, deployment, labels,
+reactions, prose comments, destructive actions, new dependencies, breaking changes,
+or unrelated scope. Missing product decisions, security disclosure, production
+mutation, breaking changes, dependencies, or multi-PR delivery need a user decision
+when material. Repo validation/delivery gates apply but do not enlarge scope.
 
-Use this workflow only when the requested outcome and acceptance behavior are
-already clear and the work belongs in one cohesive PR. Stop and ask before
-continuing when a missing product decision, breaking change, new
-dependency, security disclosure, production mutation, or multi-PR delivery
-shape would materially change the assignment. Do not squeeze larger work into
-this workflow merely because the skill was invoked.
+## Resume the first unfinished checkpoint
 
-Repository instructions remain authoritative. Apply their project-specific
-validation and delivery gates without copying them into this skill. A
-repository gate may make the PR harder to finish, but it does not
-expand the requested implementation scope.
+Inspect worktree/branch/base/net diff/commits, PR metadata/authorship/remote head,
+review closeout, proof, CI, and repo gates. Classify current/incomplete/stale/not
+applicable from evidence tied to the current tree/head, not chat or task status.
+Preserve correct implementation, existing PR, and current review/proof. If a new
+change invalidates readiness, return the PR to draft and resume from that earliest
+stale checkpoint; a current ready PR need not be recreated or reset.
 
-## Resume rule
+## Complete implementation and delivery under that authority
 
-Use the existing invocation and verified checkpoint to continue authorized work. Do not re-ask about commits, normal pushes, draft PR creation, or required review already granted here; preserve the actual scope and external-action exclusions.
+Read instructions, code, and installed dependencies. Reproduce/record baseline
+if implementation remains, or verify existing acceptance behavior. Confirm the
+dedicated worktree, non-default feature branch, current intended base, one-PR
+shape, validation targets, and before/after scope. Before GitHub writes verify
+`jesse-merhi` is active and any existing PR is Jesse-authored. Preserve unrelated edits.
 
-Treat this workflow as a resumable checkpoint chain, not a mandatory restart.
-Inspect the local and remote evidence before acting: worktree, branch, base,
-net diff, commits, PR metadata and authorship, remote head, review closeout,
-proof, required checks, and repository-specific gates. Classify each workflow
-step as current, incomplete, stale, or not applicable. A chat claim, task
-status, or old passing result is not evidence unless it still matches the
-current tree or exact remote head.
+Reuse repo utilities/dependencies/components for a smallest complete fix and
+narrow practical contract proof. If it is already correct, exercise and keep it.
+Run sufficient local validation; the first test error requires diagnosis before
+continuing. Do not pad the diff with cleanup or speculative work.
 
-Resume at the earliest incomplete or stale step. Preserve every current
-checkpoint: do not reimplement an already-correct scoped change, open a
-duplicate PR, or rerun current exact-head review or proof. Keep an existing
-ready PR ready only while all exact-head readiness evidence remains current.
-When new work invalidates later evidence, return the PR to draft, resume at the
-earliest invalidated step, and continue forward. This invocation grants the
-same bounded authority regardless of where the workflow resumes.
+Audit and commit scoped changes with readable subjects. Return a ready PR to
+draft before pushing a head that invalidates review/proof. Push normally to the
+feature branch and create one truthful draft or update its verified Jesse-authored
+PR. Confirm remote/local head and branch/base; default-branch push and unverified
+authorship/destination are outside the grant.
 
-## Workflow
+When exact-head full review is missing/stale, load `code-review` and complete/
+resume both until-clean phases, accepted fixes, final validation, closeout, and
+final authorized push. Do not ask whether to run it: this invocation is the
+review decision. Do not substitute CI, proof, ad hoc reviewers, repo bots, or
+`autoreview`. Require persisted clean exact-tree evidence and remote inclusion
+of accepted fixes.
 
-1. Discover the current checkpoint and freeze the delivery target.
+Use `pr-proof-pack` for final direct-base proof, refreshing only stale/missing
+claims and inspecting practical broken/fixed evidence where reproducible. Mark
+ready when proof and context work for a cold reader. Monitor required CI/repo
+gates; code/generated/base/head changes invalidate only affected evidence and
+restart the earliest stale checkpoint. Failed/blocked gates return to draft
+before diagnosis/reporting. Use normal non-force base alignment.
 
-   Read the applicable instructions, inspect the relevant code and installed
-   dependencies, and recover the existing implementation and delivery state.
-   Reproduce the problem or record the observable baseline when implementation
-   is still needed; otherwise verify the existing diff against the acceptance
-   behavior. Confirm the worktree is dedicated, the feature branch is not the
-   default branch, the intended base is current, and one PR is the right
-   delivery shape. Before any GitHub mutation, verify the active account is
-   `jesse-merhi` and any existing PR is Jesse-authored. Preserve unrelated local
-   changes.
+## Verify the actual handoff
 
-   Done when the before behavior, expected after behavior, scope boundary,
-   validation targets, branch, base, single-PR shape, and current/stale status
-   of every later checkpoint are concrete.
+Require final non-draft/no-conflict metadata, exact-head review, current proof,
+passing required CI, and repo gates simultaneously. Do not add discretionary
+checks after completion, but do not waive a required gate for brevity. Jesse owns
+approval and the required `jesse-merhi` thumbs-up; never merge, enable automerge,
+label/react, or call a blocked PR ready.
 
-2. Complete or verify the smallest complete fix.
-
-   Reuse repository utilities, dependencies, and shared components before
-   adding custom behavior. Add or update the narrow test that proves the bug or
-   contract when that is practical. If the requested behavior is already
-   implemented, inspect the net diff, exercise it directly, and keep it without
-   rewriting it. Run the smallest sufficient local validation. Stop on the
-   first test failure and diagnose it before continuing.
-
-   Done when the requested behavior works in practice, focused validation
-   passes, and the diff contains no unrelated cleanup or speculative work.
-
-3. Create or update the reviewable PR when needed.
-
-   Audit the net diff and commit only the requested change with a readable
-   subject. Before pushing a new head, return an existing ready PR to draft when
-   review or proof will become stale. Then make a normal push to the feature
-   branch. Create one draft PR when none exists, or update the existing
-   Jesse-authored PR for that branch. Preserve its ready state only while every later
-   exact-head checkpoint remains current. Give a new draft a truthful title and
-   enough initial problem/fix context for review. Never push to the default
-   branch or take over a PR whose destination or authorship cannot be verified.
-
-   Done when the PR points at the intended branch and base, its remote
-   head matches the local commit, and no unrelated work was published with it.
-
-4. Run or resume the full code review automatically.
-
-   Load `code-review` when no current exact-head closeout proves the full review
-   is complete. Complete or resume both of its until-clean phases, accepted
-   fixes, final validation, exact-head closeout, and authorized final push. This
-   explicit `just-do-it` invocation is the user's review decision: do not pause
-   to ask whether to run `code-review`, and do not replace it with an ad hoc
-   review, CI, a proof pack, a repository bot, or `autoreview`.
-
-   Done when `code-review` is clean on the exact PR tree, every accepted fix is
-   included in the remote head, and its persisted closeout can identify that
-   reviewed tree without relying on chat history.
-
-5. Build or refresh the final proof pack.
-
-   Load `pr-proof-pack` against the final direct-base net diff. Refresh the PR
-   only when its proof is stale or missing; otherwise preserve the current proof.
-   Show the observed broken and fixed behavior for a reproducible bug,
-   use the simplest evidence format that preserves the claim, and inspect the
-   rendered result. Then mark the PR ready for review if it is still a draft.
-
-   Done when the non-draft PR explains what broke and how it was fixed, its
-   reviewer-visible proof matches the current head, and the rendered evidence is usable
-   by someone who never saw the implementation thread.
-
-6. Converge remote and repository gates.
-
-   Monitor required CI and apply every repository-specific readiness gate from
-   the applicable instructions. Treat these as an exact-head fixed point: any
-   code change, generated change, base update, or push makes earlier review,
-   proof, CI, and repository-gate evidence stale where applicable. Return to
-   the earliest invalidated step and run forward again. Use the repository's
-   normal non-force update flow if the branch must be brought up to date. If a
-   gate fails or blocks, return the PR to draft before diagnosing or reporting
-   the blocker.
-
-   Done when the non-draft PR's current head simultaneously has exact-head
-   code-review evidence, current proof, passing required checks, and every
-   applicable repository-specific gate.
-
-7. Verify the handoff state.
-
-   Inspect the final PR metadata and current head. Require a non-draft PR, no
-   merge conflict, a current review closeout, current proof, passing required
-   checks, and all repository-specific gates. Leave human approval and the
-   required `jesse-merhi` thumbs-up reaction to Jesse. Do not merge, enable
-   automerge, add labels, create reactions, or describe a blocked PR as ready.
-
-   Done when the PR is genuinely ready for Jesse's review or the final report
-   names the exact external blocker and preserves the safest completed state.
-
-## Final report
-
-Lead with the PR URL and whether it is ready. Include the exact final head,
-what changed in plain language, the observed before/after proof, the full
-`code-review` outcome and fixes, required CI, repository-specific gate results,
-and anything still waiting on Jesse. Distinguish a ready-for-review PR from a
-merged or maintainer-approved PR.
+Report URL/readiness, exact head, changed behavior, observed before/after proof,
+full review findings/fixes, CI/repo status, and owner needs. Distinguish reviewer-
+ready from approved/merged and name an exact blocker when stopping.

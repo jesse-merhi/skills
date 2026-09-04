@@ -5,36 +5,35 @@ description: 'Debug bugs, failing tests, regressions, flakiness, or unexpected b
 
 # Diagnose
 
-Outcome: establish a reproducible cause, then make the smallest authorized fix
-and prove it against the original failure.
+Use the request and existing evidence to decide the endpoint: explain the cause,
+or repair it and prove the repair. An already-authorized fix does not need a
+second permission question. A request to investigate does not authorize
+implementing a repair; temporary targeted instrumentation remains available.
 
-## Workflow
+## Establish the failure
 
-1. State the symptom in one sentence and establish the fastest deterministic
-   feedback loop.
-2. Reproduce the failure before editing production code.
-3. Rank hypotheses by evidence and name the observation that would confirm or
-   falsify each one.
-4. Instrument only where it answers a specific question.
-5. For diagnosis-only work, stop with the established cause and recommended
-   fix. When repair is already authorized, apply the smallest proven fix
-   without another permission round and add or update regression coverage for
-   real behavior.
-6. Verify with the original failing command and the affected broader command
-   set, then report using [reporting.md](references/reporting.md).
+Choose a short deterministic feedback loop from the actual symptom. See
+[feedback-loop.md](references/feedback-loop.md) for tests, commands, manual
+flows, and instrumentation. Capture a reproduction before production edits.
+If it cannot be reproduced, report the attempted conditions and select the
+next probe that distinguishes the remaining explanations.
 
-## Required discipline
+## Establish the cause
 
-- If you cannot reproduce the failure, say what you tried and narrow the next
-  probe.
-- Remove temporary instrumentation before completion.
-- Do not patch around an unknown cause.
-- If a proposed fix is speculative, label it as such and keep digging.
+Order hypotheses by evidence and test a confirming or falsifying observation
+for each. Instrument a specific uncertainty rather than collecting broad logs.
+Use [guardrails.md](references/guardrails.md) to keep environmental explanations
+and proposed fixes tied to observations. Continue the investigation while the
+cause remains speculative.
 
-## Context pointers
+## Reach the requested endpoint
 
-- Use [feedback-loop.md](references/feedback-loop.md) for reproduction and
-  instrumentation options.
-- Use [guardrails.md](references/guardrails.md) for what not to claim or change
-  without evidence.
-- Use [reporting.md](references/reporting.md) for final output shape.
+For diagnosis, return the established cause and recommendation. For repair,
+apply the smallest causal change and add or update a regression check. Remove
+temporary instrumentation, rerun the reproduction, and complete the affected
+broader checks. Expand verification only when the change, a failure, or an
+unresolved concern justifies it.
+
+Use [reporting.md](references/reporting.md) for the final evidence. Say plainly
+what is proved and what remains unknown; do not turn an incomplete diagnosis
+into a success claim or an offer to do work already requested.

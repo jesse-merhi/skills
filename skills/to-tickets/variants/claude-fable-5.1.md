@@ -5,51 +5,29 @@ description: 'Turn a plan or spec into tracer-bullet Obsidian tickets with block
 
 # To tickets
 
-Complete the draft ticket graph from current project evidence. Batch independent
-repository, spec, and note reads. Report when new evidence changes a ticket or
-dependency. Mark copied source wording as quotation. Present the full proposal,
-then wait for approval; do not publish or invent the user's decisions merely to
-finish the task.
+Draft the whole ticket graph, obtain approval of its dependencies and PR groups,
+then publish the approved notes to Obsidian `Issues/`.
 
-Break a plan, spec, or conversation into a set of tickets: tracer-bullet
-vertical slices, each declaring the tickets that block it. Publish tickets to
-Obsidian `Issues/`.
+1. Read a supplied spec or note completely. Gather relevant conversation, code,
+   glossary, ADR, and project-note context; batch independent reads. Consider
+   prefactoring that makes the implementation easier without performing it.
+2. Build thin end-to-end slices with
+   [ticket-design.md](references/ticket-design.md). Declare every blocker; a
+   blocker-free ticket can begin immediately. Use its expand-contract rules
+   when a wide mechanical refactor cannot be vertically sliced.
+3. Derive cohesive PR groups from the ticket graph. Preserve an approved spec
+   shape unless the detailed graph disproves it. Use `gh-stack` for a strict
+   chain of two or more review groups; keep independent or forked paths separate.
+4. Show a numbered proposal with title, blockers, `AFK`/`HITL`, PR group and
+   delivery, outcome, acceptance criteria, and any frontend state/viewport.
+5. Ask whether the granularity, blocking edges, and PR grouping are right and
+   whether groups or tickets should merge or split. Revise until the user
+   approves both the ticket graph and delivery map. Do not publish early.
+6. Create the approved notes using [note-template.md](references/note-template.md)
+   and [naming.md](references/naming.md). Retain the ordered todos and blocked
+   phase rules in [execution-contract.md](references/execution-contract.md).
+   If write access is unavailable, return the bodies and proposed paths.
 
-## Workflow
-
-1. Gather context from whatever is already in the conversation. If the user
-   passes a spec path or Obsidian note, fetch it and read the full body.
-2. Explore the codebase if needed. Ticket titles and descriptions should use
-   the project's glossary vocabulary and respect ADRs or Obsidian decisions in
-   the area you are touching.
-3. Look for opportunities to prefactor the code to make implementation easier:
-   make the change easy, then make the easy change.
-4. Draft tracer-bullet tickets using [ticket-design.md](references/ticket-design.md).
-   Give each ticket its blocking edges. A ticket with no blockers can start
-   immediately.
-5. Derive PR delivery groups from the ticket graph using
-   [ticket-design.md](references/ticket-design.md). Preserve an approved spec
-   shape unless the detailed blocker graph disproves it. Load `gh-stack` for a
-   strict dependency chain of two or more review groups. Keep independent graph
-   paths as standalone PRs or separate stacks.
-6. Mark each ticket `AFK` or `HITL`.
-7. Present the proposed breakdown as a numbered list. For each ticket, show:
-   title, blocked by, mode, PR group/delivery, what it delivers, covered
-   acceptance criteria, and any frontend validation state/viewport.
-8. Ask the user whether the granularity, blocking edges, and PR grouping feel
-   right, and whether any tickets or review groups should be merged or split.
-9. Iterate until the user approves both the ticket graph and PR delivery map.
-10. Publish the approved tickets to Obsidian `Issues/` using
-   [note-template.md](references/note-template.md) and
-   [naming.md](references/naming.md). If write access is missing, return the
-   Markdown bodies and proposed paths.
-11. Do not close or modify any parent spec unless the user explicitly asks.
-
-## Context pointers
-
-- Use [ticket-design.md](references/ticket-design.md) for tracer-bullet rules,
-  wide refactors, and blocker checks.
-- Use [execution-contract.md](references/execution-contract.md) for the ordered
-  todo contract.
-- Use [note-template.md](references/note-template.md) for the ticket note body.
-- Use [naming.md](references/naming.md) for vault-relative note paths.
+Use literal titles describing behavior, not implementation layers. Leave the
+parent spec unchanged unless the user requested a change. Finish by reporting
+the approved notes and any remaining publication limitation.

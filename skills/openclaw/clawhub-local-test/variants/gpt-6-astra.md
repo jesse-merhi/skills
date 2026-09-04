@@ -5,74 +5,37 @@ description: Run a guarded local ClawHub test instance with development Convex d
 
 # ClawHub local test
 
-Outcome: give the user a ready-to-test local ClawHub instance with a development Convex
-deployment populated from a production snapshot. The Convex target may be a
-local loopback deployment or the worktree's named cloud `dev:` deployment. It
-must never be production.
+Carry the requested guarded local setup through a ready-to-test ClawHub instance.
+Resolve routine snapshot/port choices from the documented defaults. The Convex
+import boundary stays local/anonymous or the worktree's named cloud `dev:` target;
+production, staging, preview, and unrecognized deployments are forbidden.
 
-## Workflow
+## Launch through the owned helper
 
-An explicit local-test request authorizes this guarded helper workflow. Use the documented snapshot and port defaults where applicable, preserving non-production import checks and all lease and cleanup requirements.
+Keep the launcher's Effect tree intact and ensure PATH availability:
 
-1. Ensure the helper exists on `PATH`:
+```bash
+mkdir -p ~/.local/bin
+ln -sfn "${CODEX_HOME:-$HOME/.codex}/skills/clawhub-local-test/scripts/clawhub-local-test" ~/.local/bin/clawhub-local-test
+clawhub-local-test --repo <clawhub-checkout-or-worktree>
+```
 
-   ```bash
-   mkdir -p ~/.local/bin
-   ln -sfn "${CODEX_HOME:-$HOME/.codex}/skills/clawhub-local-test/scripts/clawhub-local-test" ~/.local/bin/clawhub-local-test
-   ```
+Do not copy just the launcher. Omit `--repo` only inside the intended checkout.
+Read [options.md](references/options.md) for snapshot, port, browser, fixture,
+lease, status, and stop controls. Existing local-test authority covers this
+helper workflow, not bypassing its deployment guard.
 
-   The symlink preserves the launcher's Effect module tree. Do not copy the
-   launcher by itself.
+## Resolve readiness from evidence
 
-2. Start ClawHub with a prod-like development Convex database:
+Use [helper-behavior.md](references/helper-behavior.md) for setup, target safety,
+export/import, fixture, state, and TTL questions; [local-admin.md](references/local-admin.md)
+for local dev-auth/admin persona/wrench/cloud `dev:` secret sync; and
+[troubleshooting.md](references/troubleshooting.md) for startup, import, auth,
+abuse-fixture, or persona failures.
 
-   ```bash
-   clawhub-local-test --repo <clawhub-checkout-or-worktree>
-   ```
-
-   When already inside the intended ClawHub checkout, omit `--repo`. Read
-   [references/options.md](references/options.md) for snapshot, port, browser,
-   fixture, lease, status, and stop options.
-
-3. Report only useful test details:
-
-   - local URL
-   - ClawHub repo/worktree path
-   - Convex URL, deployment marker, and import target
-   - snapshot path and whether it was reused or freshly exported
-   - whether dev-auth fixtures were applied
-   - whether publisher-abuse fixtures were applied
-   - log paths
-   - lease expiry
-   - `clawhub-local-test --status`
-   - `clawhub-local-test --stop`
-
-## Context pointers
-
-- Read [references/helper-behavior.md](references/helper-behavior.md) when you
-  need to explain setup, Convex target safety, production export/import,
-  fixture seeding, state paths, or TTL behavior.
-- Read [references/local-admin.md](references/local-admin.md) when testing or
-  repairing local dev-auth, the admin persona, the wrench, or cloud `dev:`
-  secret sync.
-- Read [references/troubleshooting.md](references/troubleshooting.md) when
-  startup, import, dev auth, abuse fixtures, or local persona behavior fails.
-
-## Done means
-
-- The helper path is installed or already present.
-- The instance uses the intended ClawHub checkout/worktree.
-- The Convex target is local/anonymous or `dev:`, never prod/staging/preview.
-- The report includes URL, repo path, Convex target, snapshot/import state,
-  fixture state, log paths, lease expiry, and stop/status commands.
-- Secrets, raw `.env.local`, production rows, and generated local secrets were
-  not pasted into chat.
-
-## Avoid
-
-- importing production snapshots into prod, staging, preview, or unrecognized
-  deployments;
-- committing or pasting production snapshot contents;
-- overriding the helper's deployment safety guard;
-- using remote/prod data details as chat evidence when a local summary is
-  enough.
+Finish with the helper available, correct checkout, and permitted development
+Convex target. Report local URL, repo path, Convex URL/deployment marker/import
+target, snapshot path and reused/fresh state, both dev-auth and publisher-abuse
+fixture states, logs, expiry, `clawhub-local-test --status`, and
+`clawhub-local-test --stop`. Never paste secrets, raw `.env.local`, production
+rows, snapshot contents, or generated local secrets; do not commit snapshots.

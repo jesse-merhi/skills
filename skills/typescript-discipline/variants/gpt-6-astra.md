@@ -5,37 +5,34 @@ description: 'Write or review TypeScript with shared types, boundary validation,
 
 # TypeScript discipline
 
-Outcome: make TypeScript model and verify the real contract. Prefer named types, validated
-boundaries, and compiler-checked narrowing over casts or informal object shapes.
+Use the existing domain model to make the requested TypeScript change precise.
+Resolve ordinary type and documentation choices from repository evidence. Keep
+a review read-only unless the user also requested a repair.
 
-## Workflow
+## Model at the owner
 
-Resolve installed APIs, existing domain types, and safe adapters from repository evidence before asking about routine implementation choices. Run the required compiler and affected checks; do not widen testing without a concrete concern.
+Search exported domain, schema, client, route, and module contracts first.
+Apply [type-boundaries.md](references/type-boundaries.md) to choose shared versus
+local ownership and derive related shapes. Preserve structured values until
+serialization is actually required.
 
-1. Reuse existing exported domain, schema, API/client, route, and module
-   contract types before creating local ones.
-2. Place types at the boundary where the concept belongs.
-3. Apply the boundary and data-shape rules in
-   [type-boundaries.md](references/type-boundaries.md).
-4. Avoid unsafe typing using [unsafe-types.md](references/unsafe-types.md).
-5. Before writing library/framework code, check installed versions and use
-   current docs for that version. Prefer the remote Context7 workflow in
-   [context7.md](references/context7.md) when its tools are available.
-6. Verify with repo scripts using [verification.md](references/verification.md).
+## Prove uncertain values
 
-## Required discipline
+Follow [unsafe-types.md](references/unsafe-types.md). Narrow or validate
+`unknown`, establish a cast's claim before using it, and fix a missing guard or
+upstream type instead of asserting non-null. User approval is required for
+`any`; suppression comments require a user request and an explanation. These
+exceptions do not override a stricter repository rule.
 
-- Do not use `any` without asking the user first.
-- Do not add `@ts-ignore` or `@ts-expect-error` unless the user asks, and explain
-  why in the comment.
-- Model structured data first. Serialize strings, cache keys, and protocol
-  values only at an explicit boundary.
+## Use and verify the installed API
 
-## Context pointers
+Inspect the dependency version before implementing its calls. Retrieve matching
+official docs or source; [context7.md](references/context7.md) describes the
+optional remote route and its no-local-helper boundary. Do not mistake a
+configured integration for an available tool.
 
-- Use [type-boundaries.md](references/type-boundaries.md) for shared/local type
-  placement and data modeling.
-- Use [unsafe-types.md](references/unsafe-types.md) for `any`, `unknown`,
-  non-null assertions, casts, and TS comments.
-- Use [verification.md](references/verification.md) for return types, package
-  scripts, and monorepo checks.
+Complete the relevant repository checks in
+[verification.md](references/verification.md), including dependent package builds
+when needed. Broaden checks only for changed behavior or an unresolved concern.
+Return the contract change, evidence, and remaining limitation without another
+approval question for work already authorized.

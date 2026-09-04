@@ -5,34 +5,27 @@ description: 'Route UI design work among production visual design, interaction a
 
 # Design
 
-Stay in the selected mode and produce the requested result. Do not turn uncertainty into unsolicited prototype directions. In motion review, discover genuine interaction problems before filtering the actionable report.
+Deliver the requested UI result, interaction, motion review, or explicitly
+requested set of alternatives. Keep the work and report within that mode.
 
-Choose the design mode that matches the requested outcome, then read only that
-mode's references:
+Select the applicable reference set:
 
-- **Production UI:** layout, hierarchy, typography, colour, components,
-  responsive states, or implementation. Read
-  [frontend.md](references/frontend.md).
-- **Interaction and motion:** transitions, gestures, springs, easing, timing,
-  interruption, or component feel. Read [motion.md](references/motion.md).
-  For motion opportunities, also read
-  [motion-opportunity-audit.md](references/motion-opportunity-audit.md); for
-  complex gestures, [gesture-design.md](references/gesture-design.md); when the
-  effect is hard to name,
-  [animation-vocabulary.md](references/animation-vocabulary.md).
-- **Motion review:** read-only findings about existing animation or motion code.
-  Read [motion-review.md](references/motion-review.md), then
-  [motion-review-standards.md](references/motion-review-standards.md) before
-  finalizing findings.
-- **Prototype:** several deliberately different UI directions for comparison.
-  Read [prototype.md](references/prototype.md) and
-  [prototype-picker.md](references/prototype-picker.md) for the picker
-  contract. Prototype only when the user explicitly requests alternatives,
-  variants, or a prototype.
+| Result | Guidance |
+| --- | --- |
+| Production layout, hierarchy, typography, colour, components, responsive UI | [frontend.md](references/frontend.md) |
+| Transitions, gestures, springs, easing, timing, interruption, component feel | [motion.md](references/motion.md) |
+| Read-only review of existing motion | [motion-review.md](references/motion-review.md), then [motion-review-standards.md](references/motion-review-standards.md) before final findings |
+| Explicitly requested alternatives, variants, or prototype | [prototype.md](references/prototype.md) and [prototype-picker.md](references/prototype-picker.md) |
 
-Combine production UI and interaction guidance when both materially affect the
-same result. Keep motion review read-only unless the user also requests fixes.
-Do not prototype merely because a design decision is difficult.
+For interaction work, add [motion-opportunity-audit.md](references/motion-opportunity-audit.md)
+when finding opportunities, [gesture-design.md](references/gesture-design.md)
+for complex gestures, or [animation-vocabulary.md](references/animation-vocabulary.md)
+to identify an effect. Load only relevant guidance. Production UI and motion
+may be combined for the same result.
 
-Use `frontend-ui-validation` or the repository's native rendered-UI workflow to
-verify implemented UI before reporting completion.
+Do not turn difficult design choices into unsolicited prototypes, or a review
+into implementation. In motion review, discover genuine interaction problems
+before filtering the actionable findings. For implementation, make rendered
+proof part of completion through `frontend-ui-validation` or the repository's
+native UI workflow. Preserve the selected mode's required checks without
+adding an optional verification team or unrelated final sweep.

@@ -5,37 +5,31 @@ description: 'Debug bugs, failing tests, regressions, flakiness, or unexpected b
 
 # Diagnose
 
-Outcome: establish a reproducible cause, then make the smallest authorized fix
-and prove it against the original failure.
+Deliver a supported explanation of the reported failure and, when authorized,
+a narrowly scoped repair. Keep the investigation on that failure.
 
-## Workflow
+## Evidence to obtain
 
-Keep one evidence trail from reproduction to cause to the authorized endpoint. Do not turn a narrow investigation into opportunistic repairs or repeat passing checks without a relevant edit, failure, or unresolved concern.
+Start with a repeatable failing command, test, or manual flow before production
+edits. Choose the shortest useful loop with
+[feedback-loop.md](references/feedback-loop.md). Rank candidate causes and
+identify the observation that distinguishes each from its alternatives.
+Temporary instrumentation must answer one of those questions.
 
-1. State the symptom in one sentence and establish the fastest deterministic
-   feedback loop.
-2. Reproduce the failure before editing production code.
-3. Rank hypotheses by evidence and name the observation that would confirm or
-   falsify each one.
-4. Instrument only where it answers a specific question.
-5. If implementation is authorized, fix the smallest proven cause and add or
-   update regression coverage for real behavior. Otherwise, stop with the
-   established cause and recommended fix.
-6. Verify with the original failing command and the affected broader command
-   set, then report using [reporting.md](references/reporting.md).
+Use [guardrails.md](references/guardrails.md) throughout. A race, stale build,
+cache problem, or environmental cause needs evidence. If the failure cannot be
+reproduced, report the attempts and next probe instead of inventing a cause.
 
-## Required discipline
+## Authorized result
 
-- If you cannot reproduce the failure, say what you tried and narrow the next
-  probe.
-- Remove temporary instrumentation before completion.
-- Do not patch around an unknown cause.
-- If a proposed fix is speculative, label it as such and keep digging.
+An explanation-only request ends with the cause and recommended fix. A repair
+request includes the smallest proven change, regression coverage for the real
+behavior, removal of temporary instrumentation, and the original reproduction
+plus affected broader checks. Treat speculative fixes as further investigation.
 
-## Context pointers
+Those checks supply the verification; add work only for a relevant failure,
+edit, or unresolved concern. Do not append opportunistic repairs or a generic
+second investigation after the evidence is complete.
 
-- Use [feedback-loop.md](references/feedback-loop.md) for reproduction and
-  instrumentation options.
-- Use [guardrails.md](references/guardrails.md) for what not to claim or change
-  without evidence.
-- Use [reporting.md](references/reporting.md) for final output shape.
+Return a short evidence trail using [reporting.md](references/reporting.md):
+reproduction, cause, any repair, verification, and any unresolved limit.

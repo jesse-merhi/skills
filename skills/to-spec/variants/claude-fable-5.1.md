@@ -5,52 +5,29 @@ description: 'Turn a resolved conversation into an Obsidian spec with testing se
 
 # To spec
 
-Complete one executable spec from settled conversation and current project
-evidence. Batch independent repository, note, and issue reads. During long
-grounding, report new evidence or a changed specification decision. Mark copied
-source wording as quotation. Keep publication to one requested Obsidian spec;
-do not invent unresolved user decisions.
+Produce the spec from the decisions already settled in this conversation.
+Do not interview the user again about resolved choices.
 
-This skill takes the current conversation context and codebase understanding and
-produces a spec. Do not interview the user; synthesize what has already been
-discussed.
+1. Read the relevant code, glossary, ADRs, and Obsidian specs or notes. Batch
+   independent reads. Use the project's terminology and existing folder rules.
+2. Propose testing seams from current interfaces. Prefer existing seams, the
+   highest stable seam possible, and a small number of seams. Ask the user to
+   confirm choices that have not already been agreed.
+3. For a frontend feature, apply
+   [frontend-spec.md](references/frontend-spec.md): capture design direction,
+   important states and viewports, and the rendered proof expected during
+   implementation and review.
+4. Record the PR delivery shape. Keep one cohesive review unit together. Load
+   `gh-stack` for a strict dependency chain of at least two review groups;
+   independent paths belong in separate PRs or stacks. If delivery was not
+   settled, list it as an open question rather than inventing an order.
+5. Write the full spec with [note-template.md](references/note-template.md).
+   Keep acceptance criteria concrete. Avoid path inventories and incidental
+   code; a linked prototype excerpt is appropriate when it captures a decision
+   more exactly than prose.
+6. Publish to Obsidian `Specs/` following [naming.md](references/naming.md).
+   If the vault, destination, or write access is unavailable, return the Markdown
+   and proposed path. Write into the product repo only when explicitly asked.
 
-Publish specs to Obsidian. If the vault is unavailable or the target path is
-unclear, return the Markdown body and proposed `Specs/` path.
-
-## Workflow
-
-1. Explore the repo to understand the current state of the codebase, if you
-   have not already. Use the project's glossary vocabulary throughout the spec,
-   and respect ADRs or Obsidian decisions in the area you are touching.
-2. Search/read related Obsidian specs, issues, and notes when available so
-   terminology, prior decisions, and folder conventions match the vault.
-3. Sketch out the seams at which the feature will be tested. Existing seams
-   should be preferred to new ones. Use the highest seam possible. If new seams
-   are needed, propose them at the highest point you can. The fewer seams across
-   the codebase, the better; the ideal number is one.
-4. Check with the user that these seams match their expectations when the seam
-   choice is not already settled.
-5. For frontend UI work, capture the design direction and rendered validation
-   bar from [frontend-spec.md](references/frontend-spec.md) before publishing.
-6. Choose the PR delivery shape before implementation. Keep one cohesive review
-   unit in one PR. When the outcome needs two or more independently reviewable
-   units on a strict dependency path, load `gh-stack` and record the logical
-   groups bottom-to-top. Keep independent work in standalone PRs or separate
-   stacks. If the shape was not settled in the conversation, record it as an
-   open question instead of inventing an order.
-7. Write the spec using [note-template.md](references/note-template.md).
-8. Publish to Obsidian `Specs/` using [naming.md](references/naming.md). If
-   write access is missing, return the Markdown body and proposed path.
-9. Do not write specs into the product repo unless the user explicitly asks for
-   repo-local docs.
-10. Avoid brittle file-path inventories and code snippets. Exception: if a
-   prototype produced a snippet that encodes a decision more precisely than
-   prose can, inline the decision-rich part and name or link the prototype.
-
-## Context pointers
-
-- Use [note-template.md](references/note-template.md) for the spec note body.
-- Use [frontend-spec.md](references/frontend-spec.md) for rendered UI design and
-  validation requirements.
-- Use [naming.md](references/naming.md) for vault-relative note paths.
+Complete the available drafting work before raising an unresolved decision.
+Report the resulting spec and any open questions in direct, readable language.
