@@ -7,7 +7,7 @@ const ALLOWED_TEST_FILE_PATTERN = /\.(?:visual|contrast|layout)\.(?:spec|test)\.
 const ALLOW_MARKER = "@allow-brittle-test-style-assertion";
 const CLASS_ASSERTION_MATCHERS = new Set(["toBe", "toEqual", "toStrictEqual", "toContain", "toMatch"]);
 const EXACT_CLASS_ASSERTION_MATCHERS = new Set(["toBe", "toEqual", "toStrictEqual"]);
-const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "cva", "twMerge"]);
+const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "classNames", "cva", "twMerge"]);
 const CLASS_NORMALIZATION_METHOD_NAMES = new Set([
 	"replace",
 	"replaceAll",
@@ -75,7 +75,7 @@ function isCanonicalClassFunctionImport(specifier) {
 	}
 	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") return false;
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return ["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName);
+	return ["class-variance-authority", "clsx", "classnames", "tailwind-merge"].includes(sourceName);
 }
 
 function isClassFunctionReference(node, context, visitedVariables = new Set()) {

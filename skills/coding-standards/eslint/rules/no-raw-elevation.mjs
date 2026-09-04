@@ -1,6 +1,7 @@
+import { getCvaClassNodes } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
-const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "cva", "twMerge"]);
+const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "classNames", "cva", "twMerge"]);
 
 function getStaticName(node) {
 	if (node?.type === "Identifier" || node?.type === "JSXIdentifier") {
@@ -63,6 +64,7 @@ function getImportedClassFunctionName(specifier) {
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
 	if (sourceName === "class-variance-authority") return "cva";
 	if (sourceName === "clsx") return "clsx";
+	if (sourceName === "classnames") return "classNames";
 	if (sourceName === "tailwind-merge") return "twMerge";
 	return undefined;
 }
@@ -193,25 +195,6 @@ function getRawElevationUtility(token) {
 	}
 
 	return null;
-}
-
-function getCvaClassNodes(call) {
-	const classNodes = [call.arguments[0]];
-	for (const option of call.arguments[1]?.properties ?? []) {
-		if (getStaticName(option.key) === "variants") {
-			for (const variant of option.value?.properties ?? []) {
-				for (const choice of variant.value?.properties ?? []) classNodes.push(choice.value);
-			}
-		}
-		if (getStaticName(option.key) === "compoundVariants") {
-			for (const compound of option.value?.elements ?? []) {
-				for (const property of compound?.properties ?? []) {
-					if (["class", "className"].includes(getStaticName(property.key))) classNodes.push(property.value);
-				}
-			}
-		}
-	}
-	return classNodes;
 }
 
 function reportRawElevation(context, node, value, classFunctionBindings, identifierBindings, tokenModule) {
