@@ -271,14 +271,14 @@ function publishView(stagingRoot, outputRoot) {
 function noticeOnce({ notice, outputRoot, sessionId }) {
   if (notice === undefined || sessionId === undefined || sessionId === "") return notice;
   const noticeRoot = path.join(path.dirname(outputRoot), ".skill-variant-notices");
-  fs.mkdirSync(noticeRoot, { recursive: true });
   const safeSessionId = sessionId.replace(/[^a-zA-Z0-9._-]/g, "_");
   const marker = path.join(noticeRoot, safeSessionId);
   try {
+    fs.mkdirSync(noticeRoot, { recursive: true });
     fs.writeFileSync(marker, "notified\n", { flag: "wx" });
   } catch (error) {
-    if (error instanceof Error && Object.hasOwn(error, "code") && error.code === "EEXIST") return undefined;
-    throw error;
+    if (error instanceof Error && error.code === "EEXIST" && error.path === marker) return undefined;
+    // Notice deduplication must not fail an already-published installation.
   }
   return notice;
 }

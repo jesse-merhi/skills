@@ -111,3 +111,26 @@ test("restores migrated and retired links when view publication fails", (t) => {
   assert.equal(fs.readlinkSync(retired), path.join(first.viewRoot, "retired"));
   assert.equal(fs.readFileSync(path.join(first.viewRoot, "alpha", "SKILL.md"), "utf8"), "selected:gpt-5.6\n");
 });
+
+test("keeps published prompts and links when the fallback notice cannot be saved", (t) => {
+  const current = fixture(t);
+  const first = installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  const alpha = path.join(current.root, "skills", "alpha");
+  fs.unlinkSync(alpha);
+  fs.symlinkSync(path.join(current.sourceRoot, "alpha"), alpha);
+  const retired = path.join(current.root, "skills", "retired");
+  fs.symlinkSync(path.join(first.viewRoot, "retired"), retired);
+  const originalWrite = fs.writeFileSync;
+  t.mock.method(fs, "writeFileSync", (file, ...args) => {
+    if (file.includes(".skill-variant-notices")) throw new Error("injected notice write failure");
+    return originalWrite(file, ...args);
+  });
+  const result = installSkills({ ...current, harness: "codex", model: "gpt-6.1", sessionId: "notice-failure" });
+  assert.equal(result.profile, "gpt-6-astra");
+  assert.match(result.notice, /gpt-6.1/);
+  assert.equal(fs.readlinkSync(alpha), path.join(first.viewRoot, "alpha"));
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:gpt-6-astra\n");
+  }
+  assert.equal(fs.lstatSync(retired, { throwIfNoEntry: false }), undefined);
+});
