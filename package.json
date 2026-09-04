@@ -13,7 +13,7 @@
     "lint:skills": "bun packages/skill-layout-lint/lint.ts",
     "test": "vitest run",
     "validate:effect": "bun run lint && bun run lint:skills && bun run check && bun run diagnostics && bun run test && bun run validate:python",
-    "validate:python": "cd skills/coding-standards/python && uv sync --frozen && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy standards_checks tests && uv run --frozen pytest -q && uv run --frozen python -m standards_checks standards_checks && uvx semgrep@1.173.0 --metrics=off --error --config semgrep/ standards_checks/"
+    "validate:python": "cd skills/coding-standards/python && uv sync --frozen && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy standards_checks tests && uv run --frozen pytest -q && uv run --frozen python -m standards_checks standards_checks tests && uvx semgrep@1.173.0 --metrics=off --error --config semgrep/ standards_checks/"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-beta.107",

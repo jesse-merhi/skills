@@ -70,15 +70,24 @@ def _is_pytest_snapshot_call(node: ast.Call) -> bool:
     )
 
 
+def _is_syrupy_comparison(node: ast.Compare) -> bool:
+    left = node.left
+    for operator, right in zip(node.ops, node.comparators, strict=True):
+        if isinstance(operator, ast.Eq) and (
+            _is_syrupy_snapshot(left) or _is_syrupy_snapshot(right)
+        ):
+            return True
+        left = right
+    return False
+
+
 def check_source(source: str, filename: str) -> list[Finding]:
     """Report syrupy and pytest-snapshot assertions outside snapshot-only files."""
     if not _is_test_file(filename) or _is_snapshot_allowed(filename):
         return []
     findings: list[Finding] = []
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Compare) and any(
-            _is_syrupy_snapshot(operand) for operand in (node.left, *node.comparators)
-        ):
+        if isinstance(node, ast.Compare) and _is_syrupy_comparison(node):
             findings.append(
                 Finding(
                     check_id=CHECK_ID,
