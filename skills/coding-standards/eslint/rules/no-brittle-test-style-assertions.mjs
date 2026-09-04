@@ -70,7 +70,7 @@ function getFunctionParameterVariable(context, functionNode, parameter) {
 function getPropertyName(node) {
 	if (!node) return null;
 	if (node.type === "Identifier") return node.name;
-	if (node.type === "Literal" && typeof node.value === "string") return node.value;
+	if (node.type === "Literal" && ["string", "number"].includes(typeof node.value)) return String(node.value);
 	return null;
 }
 
@@ -514,13 +514,40 @@ function containsClassSelectorExpression(node, context, visitedVariables = new S
 	return false;
 }
 
-function getConstSourceExpressions(context, node) {
+function getBindingSourceExpressions(context, pattern, source, binding, visitedVariables = new Set()) {
+	if (!pattern) return [];
+	if (pattern === binding) return source ? [source] : [];
+	if (pattern.type === "AssignmentPattern") {
+		return getBindingSourceExpressions(context, pattern.left, source ?? pattern.right, binding, visitedVariables);
+	}
+	const selectProperty = (childPattern, propertyName) => {
+		if (propertyName === null) return [];
+		const values = getObjectPropertyExpressions(context, source, propertyName, visitedVariables);
+		return (values.length ? values : [undefined]).flatMap((value) =>
+			getBindingSourceExpressions(context, childPattern, value, binding, visitedVariables),
+		);
+	};
+	if (pattern.type === "ObjectPattern") {
+		return pattern.properties.flatMap((property) => {
+			if (property.type !== "Property" || (property.computed && property.key.type !== "Literal")) return [];
+			return selectProperty(property.value, getPropertyName(property.key));
+		});
+	}
+	if (pattern.type === "ArrayPattern") {
+		return pattern.elements.flatMap((element, index) => selectProperty(element, String(index)));
+	}
+	return [];
+}
+
+function getConstSourceExpressions(context, node, visitedVariables = new Set()) {
 	const definition = findVariable(context, node)?.defs.find(
 		(candidate) =>
 			candidate.type === "Variable" && candidate.name.type === "Identifier" && candidate.parent.kind === "const",
 	);
 	if (!definition) return [];
-	if (definition.node.init) return [definition.node.init];
+	if (definition.node.init) {
+		return getBindingSourceExpressions(context, definition.node.id, definition.node.init, definition.name, visitedVariables);
+	}
 
 	const declaration = definition.parent;
 	const loop = declaration.parent;
@@ -544,18 +571,30 @@ function getObjectPropertyExpressions(context, node, propertyName, visitedVariab
 		if (!variable || visitedVariables.has(variable)) return [];
 		const nextVisitedVariables = new Set(visitedVariables);
 		nextVisitedVariables.add(variable);
-		return getConstSourceExpressions(context, expression).flatMap((source) =>
+		return getConstSourceExpressions(context, expression, nextVisitedVariables).flatMap((source) =>
 			getObjectPropertyExpressions(context, source, propertyName, nextVisitedVariables),
 		);
 	}
 
+	if (expression.type === "ArrayExpression" && /^(?:0|[1-9]\d*)$/.test(propertyName)) {
+		const index = Number(propertyName);
+		if (expression.elements.slice(0, index + 1).some((element) => element?.type === "SpreadElement")) return [];
+		const element = expression.elements[index];
+		return element ? [element] : [];
+	}
+
 	if (expression.type === "ObjectExpression") {
-		return expression.properties.flatMap((property) => {
+		for (const property of [...expression.properties].reverse()) {
 			if (property.type === "SpreadElement") {
-				return getObjectPropertyExpressions(context, property.argument, propertyName, visitedVariables);
+				const values = getObjectPropertyExpressions(context, property.argument, propertyName, visitedVariables);
+				if (values.length) return values;
+				continue;
 			}
-			return getPropertyName(property.key) === propertyName ? [property.value] : [];
-		});
+			if ((!property.computed || property.key.type === "Literal") && getPropertyName(property.key) === propertyName) {
+				return [property.value];
+			}
+		}
+		return [];
 	}
 
 	if (expression.type === "ConditionalExpression") {
@@ -636,7 +675,9 @@ function getConstInitializer(context, node) {
 		(candidate) =>
 			candidate.type === "Variable" && candidate.name.type === "Identifier" && candidate.parent.kind === "const",
 	);
-	return definition?.node.init ?? null;
+	if (!definition?.node.init) return null;
+	const sources = getBindingSourceExpressions(context, definition.node.id, definition.node.init, definition.name);
+	return sources.length === 1 ? sources[0] : null;
 }
 
 function isClassMemberExpression(node) {

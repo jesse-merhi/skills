@@ -7,6 +7,8 @@ plugin, rule, and helper imports remain intact.
 
 For query return-value checks, compose `typescript({ typeChecked: true })` with
 `tanstackQuery({ typeChecked: true })`; the files must belong to a tsconfig.
+Typed Jest checks default to TypeScript tests. If your typed parser also covers
+JavaScript, pass matching `typeCheckedFiles` globs to `jest({ typeChecked: true })`.
 
 ## React Native with npm
 

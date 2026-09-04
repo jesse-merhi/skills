@@ -52,9 +52,23 @@ function getLogicalIdentifierGuard(node) {
 		: undefined;
 }
 
+function getStaticConcatenationValue(node) {
+	if (node.type === "Literal" && ["string", "number"].includes(typeof node.value)) return node.value;
+	if (node.type === "BinaryExpression" && node.operator === "+") {
+		const left = getStaticConcatenationValue(node.left);
+		const right = getStaticConcatenationValue(node.right);
+		if (left !== null && right !== null) return left + right;
+	}
+	return null;
+}
+
 function extractClassSnippets(node, { unconditionalOnly = false, classMap = false } = {}) {
 	if (!node) {
 		return [];
+	}
+	if (node.type === "BinaryExpression") {
+		const value = getStaticConcatenationValue(node);
+		if (typeof value === "string") return [value];
 	}
 
 	switch (node.type) {
@@ -98,10 +112,13 @@ function extractClassSnippets(node, { unconditionalOnly = false, classMap = fals
 		}
 		case "ArrayExpression":
 		case "TemplateLiteral":
+		case "BinaryExpression":
 		case "CallExpression": {
+			if (node.type === "BinaryExpression" && node.operator !== "+") return [];
 			const children = node.type === "TemplateLiteral"
 				? [...node.quasis, ...node.expressions]
-				: node.type === "ArrayExpression" ? node.elements : node.arguments;
+				: node.type === "ArrayExpression" ? node.elements
+				: node.type === "BinaryExpression" ? [node.left, node.right] : node.arguments;
 			const maps = node.type === "CallExpression"
 				? node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name)
 				: classMap;
