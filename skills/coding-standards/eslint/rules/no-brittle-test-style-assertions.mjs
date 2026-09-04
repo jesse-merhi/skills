@@ -1048,7 +1048,10 @@ export default {
 				}
 
 				const calleeName = getPropertyName(node.callee.property ?? node.callee);
-				if (calleeName === "toHaveCSS" || calleeName === "toHaveStyle") {
+				const styleAttribute = getStaticText(node.arguments[0], context) === "style" &&
+					((expectation && matcherName === "toHaveAttribute") ||
+						(node.callee.type === "MemberExpression" && calleeName === "getAttribute"));
+				if (calleeName === "toHaveCSS" || calleeName === "toHaveStyle" || styleAttribute) {
 					reportUnlessAllowed(context, node, "cssMatcher");
 					return;
 				}

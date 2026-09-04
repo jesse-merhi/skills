@@ -102,10 +102,11 @@ function seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, id
 	}
 }
 
-function isDirectClassContext(node, classFunctionBindings, identifierBindings, visitedVariables = new Set()) {
+function isDirectClassContext(node, classFunctionBindings, identifierBindings, { visitedVariables = new Set(), classMapKey = false } = {}) {
 	let previousNode = node;
 	let currentNode = node.parent;
 	for (let depth = 0; currentNode && depth < 10; depth += 1) {
+		if (currentNode.type === "MemberExpression" && (classMapKey || currentNode.property === previousNode)) return false;
 		if (
 			(currentNode.type === "ConditionalExpression" && currentNode.test === previousNode) ||
 			(currentNode.type === "BinaryExpression" && currentNode.operator !== "+")
@@ -119,10 +120,10 @@ function isDirectClassContext(node, classFunctionBindings, identifierBindings, v
 			}
 		}
 
-		if (currentNode.type === "JSXAttribute" && isClassName(getStaticName(currentNode.name))) {
+		if (!classMapKey && currentNode.type === "JSXAttribute" && isClassName(getStaticName(currentNode.name))) {
 			return true;
 		}
-		if (currentNode.type === "VariableDeclarator" && isClassName(getStaticName(currentNode.id))) {
+		if (!classMapKey && currentNode.type === "VariableDeclarator" && isClassName(getStaticName(currentNode.id))) {
 			return true;
 		}
 		const assigned = currentNode.type === "VariableDeclarator"
@@ -133,22 +134,24 @@ function isDirectClassContext(node, classFunctionBindings, identifierBindings, v
 			visitedVariables.add(variable);
 			if (variable.references.some((reference) =>
 				reference.isRead() &&
-				isDirectClassContext(reference.identifier, classFunctionBindings, identifierBindings, new Set(visitedVariables)),
+				isDirectClassContext(reference.identifier, classFunctionBindings, identifierBindings, {
+					visitedVariables: new Set(visitedVariables), classMapKey,
+				}),
 			)) {
 				return true;
 			}
 		}
-		if (currentNode.type === "Property" && isClassName(getStaticName(currentNode.key))) {
+		if (!classMapKey && currentNode.type === "Property" && isClassName(getStaticName(currentNode.key))) {
 			return true;
 		}
 		if (
-			(currentNode.type === "FunctionDeclaration" || currentNode.type === "FunctionExpression") &&
+			!classMapKey && (currentNode.type === "FunctionDeclaration" || currentNode.type === "FunctionExpression") &&
 			isClassName(getStaticName(currentNode.id))
 		) {
 			return true;
 		}
 		if (
-			currentNode.type === "AssignmentExpression" &&
+			!classMapKey && currentNode.type === "AssignmentExpression" &&
 			(currentNode.left.type === "Identifier"
 				? isClassName(currentNode.left.name)
 				: currentNode.left.type === "MemberExpression" && isClassName(getStaticName(currentNode.left.property)))
@@ -204,7 +207,9 @@ function reportRawElevation(context, node, value, classFunctionBindings, identif
 	const cvaCall = ancestors.findLast((ancestor) => ancestor.type === "CallExpression" &&
 		getClassFunctionName(ancestor.callee, classFunctionBindings, identifierBindings) === "cva");
 	if (cvaCall && !getCvaClassNodes(cvaCall).some((valueNode) => valueNode === node || ancestors.includes(valueNode))) return;
-	if (!isDirectClassContext(node, classFunctionBindings, identifierBindings)) {
+	const property = ancestors.findLast((ancestor) => ancestor.type === "Property");
+	const classMapKey = property !== undefined && (property.key === node || ancestors.includes(property.key));
+	if (!isDirectClassContext(node, classFunctionBindings, identifierBindings, { classMapKey })) {
 		return;
 	}
 
