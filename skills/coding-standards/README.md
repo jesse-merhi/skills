@@ -10,6 +10,9 @@ For query return-value checks, compose `typescript({ typeChecked: true })` with
 Typed Jest checks default to TypeScript tests. If your typed parser also covers
 JavaScript, pass matching `typeCheckedFiles` globs to `jest({ typeChecked: true })`.
 
+Playwright defaults cover `tests/`, `e2e/`, `playwright/`, and `*.e2e.{spec,test}.*`.
+For mixed-runner projects, pass `files` scoped to your Playwright suite.
+
 ## React Native with npm
 
 The React Native preset retains seven accessibility checks plus the shared

@@ -4,6 +4,7 @@ import { standards } from "../standards-plugin.mjs";
 
 // Common Playwright layouts, helpers and page objects included; pass `files` when specs live elsewhere.
 const DEFAULT_FILES = [
+	"**/tests/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}",
 	"**/e2e/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}",
 	"**/playwright/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}",
 	"**/*.e2e.{spec,test}.{js,jsx,mjs,cjs,ts,tsx,mts,cts}",
