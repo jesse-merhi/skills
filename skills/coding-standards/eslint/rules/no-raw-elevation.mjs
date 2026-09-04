@@ -98,7 +98,7 @@ function seedDeclaredClassFunctionBindings(sourceCode, classFunctionBindings, id
 	}
 }
 
-function isDirectClassContext(node, classFunctionBindings, identifierBindings) {
+function isDirectClassContext(node, classFunctionBindings, identifierBindings, visitedVariables = new Set()) {
 	let previousNode = node;
 	let currentNode = node.parent;
 	for (let depth = 0; currentNode && depth < 10; depth += 1) {
@@ -116,6 +116,19 @@ function isDirectClassContext(node, classFunctionBindings, identifierBindings) {
 		}
 		if (currentNode.type === "VariableDeclarator" && isClassName(getStaticName(currentNode.id))) {
 			return true;
+		}
+		const assigned = currentNode.type === "VariableDeclarator"
+			? currentNode.id
+			: currentNode.type === "AssignmentExpression" ? currentNode.left : null;
+		const variable = assigned?.type === "Identifier" ? identifierBindings.get(assigned) : null;
+		if (variable && !visitedVariables.has(variable)) {
+			visitedVariables.add(variable);
+			if (variable.references.some((reference) =>
+				reference.isRead() &&
+				isDirectClassContext(reference.identifier, classFunctionBindings, identifierBindings, new Set(visitedVariables)),
+			)) {
+				return true;
+			}
 		}
 		if (currentNode.type === "Property" && isClassName(getStaticName(currentNode.key))) {
 			return true;
@@ -176,71 +189,8 @@ function getRawElevationUtility(token) {
 	return null;
 }
 
-function isLikelyClassValue(value) {
-	const proseWords = new Set([
-		"a",
-		"an",
-		"and",
-		"are",
-		"as",
-		"at",
-		"be",
-		"because",
-		"but",
-		"by",
-		"can",
-		"do",
-		"does",
-		"for",
-		"from",
-		"has",
-		"have",
-		"if",
-		"in",
-		"into",
-		"is",
-		"it",
-		"of",
-		"on",
-		"only",
-		"or",
-		"should",
-		"that",
-		"the",
-		"their",
-		"this",
-		"to",
-		"use",
-		"used",
-		"uses",
-		"using",
-		"when",
-		"where",
-		"which",
-		"while",
-		"with",
-		"without",
-	]);
-	const tokens = value.split(/\s+/).filter(Boolean);
-
-	return (
-		tokens.length > 0 &&
-		!tokens.some((token) => {
-			const proseCandidate = token.replace(/^[("'`]+|[)"'`.,!?;:]+$/g, "");
-			return proseWords.has(proseCandidate.toLowerCase());
-		})
-	);
-}
-
 function reportRawElevation(context, node, value, classFunctionBindings, identifierBindings, tokenModule) {
-	const attribute = context.sourceCode.getAncestors(node).findLast((ancestor) => ancestor.type === "JSXAttribute");
-	if (attribute && !isClassName(getStaticName(attribute.name))) return;
-	const directClassContext = isDirectClassContext(node, classFunctionBindings, identifierBindings);
-	const trimmedValue = value.trim();
-	if (!directClassContext && trimmedValue === "drop-shadow") {
-		return;
-	}
-	if (!directClassContext && !isLikelyClassValue(value)) {
+	if (!isDirectClassContext(node, classFunctionBindings, identifierBindings)) {
 		return;
 	}
 

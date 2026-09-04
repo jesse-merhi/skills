@@ -1,7 +1,8 @@
+import { extractStringSnippets } from "./lib/static-node-values.mjs";
 import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
 
 const LIGHT_ONLY_CLASS_PATTERN =
-	/\b(?:bg-(?:white|gray|slate)-(?:50|100|200|300)|text-(?:gray|slate)-(?:400|500|600|700|800|900)|border-(?:gray|slate)-(?:100|200|300)|from-(?:gray|slate)-(?:50|100|200)|to-(?:gray|slate)-(?:100|200|300)|hover:bg-white|hover:bg-gray-50|bg-slate-50|bg-blue-(?:50|100|600)|text-blue-(?:500|600|700|800)|border-blue-(?:200|300|700)|hover:bg-blue-(?:100|600|700)|ring-blue-500|focus:ring-blue-500)\b/g;
+	/\b(?:bg-white|bg-(?:gray|slate)-(?:50|100|200|300)|text-(?:gray|slate)-(?:400|500|600|700|800|900)|border-(?:gray|slate)-(?:100|200|300)|from-(?:gray|slate)-(?:50|100|200)|to-(?:gray|slate)-(?:100|200|300)|hover:bg-white|hover:bg-gray-50|bg-slate-50|bg-blue-(?:50|100|600)|text-blue-(?:500|600|700|800)|border-blue-(?:200|300|700)|hover:bg-blue-(?:100|600|700)|ring-blue-500|focus:ring-blue-500)\b/g;
 
 const STATUS_CHIP_PATTERN =
 	/\bborder-(?:green|emerald|red|rose|yellow|amber|sky|blue)-\d+\b[\s\S]*\bbg-(?:green|emerald|red|rose|yellow|amber|sky|blue)-\d+\b[\s\S]*\btext-(?:green|emerald|red|rose|yellow|amber|sky|blue)-\d+\b/;
@@ -15,6 +16,17 @@ function hasBareProseWithoutDarkCounterpart(snippet) {
 	return tokens.includes("prose") && !tokens.includes("dark:prose-invert") && !tokens.includes("prose-invert");
 }
 
+function isColorUtility(utility, family) {
+	utility = utility.replace(/!$/, "");
+	if (!utility.startsWith(family)) return false;
+	const value = utility.slice(family.length);
+	if (/^\((?:color:)?--[^)]+\)(?:\/.*)?$/.test(value)) return true;
+	if (/^(?:\d+(?:\.\d+)?(?:%|\/.*)?|\[|\()/.test(value)) {
+		return /^\[(?:color:|#|(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix)\()/.test(value);
+	}
+	return !/^(?:text-(?:xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)(?:\/.*)?|bg-(?:auto|cover|contain|none|fixed|local|scroll)|(?:bg-(?:clip|origin|repeat|blend|gradient|linear|radial|conic|position|size)|text-(?:opacity|shadow)|border-(?:opacity|spacing|solid|dashed|dotted|double|hidden|none|[trblsexy])|ring-(?:offset|inset))(?:-.*)?|bg-(?:top|right|bottom|left|center)(?:-.*)?)$/.test(utility);
+}
+
 function hasExplicitDarkCounterpart(snippet, token) {
 	const modifiers = splitTailwindSegments(token);
 	const family = `${modifiers.pop().replace(/^!/, "").split("-")[0]}-`;
@@ -22,7 +34,7 @@ function hasExplicitDarkCounterpart(snippet, token) {
 		const candidateModifiers = splitTailwindSegments(candidate);
 		const utility = candidateModifiers.pop().replace(/^!/, "");
 		return (
-			utility.startsWith(family) &&
+			isColorUtility(utility, family) &&
 			candidateModifiers.includes("dark") &&
 			candidateModifiers.length === modifiers.length + 1 &&
 			modifiers.every((modifier) => candidateModifiers.includes(modifier))
@@ -30,7 +42,7 @@ function hasExplicitDarkCounterpart(snippet, token) {
 	});
 }
 
-function extractClassSnippets(node) {
+function extractClassSnippets(node, { unconditionalOnly = false, classMap = false } = {}) {
 	if (!node) {
 		return [];
 	}
@@ -38,18 +50,59 @@ function extractClassSnippets(node) {
 	switch (node.type) {
 		case "Literal":
 			return typeof node.value === "string" ? [node.value] : [];
-		case "TemplateLiteral":
-			return node.quasis.map((quasi) => quasi.value.cooked ?? "").filter(Boolean);
+		case "TemplateElement":
+			return node.value.cooked ? [node.value.cooked] : [];
 		case "JSXExpressionContainer":
-			return extractClassSnippets(node.expression);
+			return extractClassSnippets(node.expression, { unconditionalOnly, classMap });
 		case "ConditionalExpression":
-			return [...extractClassSnippets(node.consequent), ...extractClassSnippets(node.alternate)];
+			if (unconditionalOnly) return [];
+			return [
+				...extractClassSnippets(node.consequent, { classMap }),
+				...extractClassSnippets(node.alternate, { classMap }),
+			];
 		case "LogicalExpression":
-			return [...extractClassSnippets(node.left), ...extractClassSnippets(node.right)];
+			if (unconditionalOnly) return [];
+			return [...extractClassSnippets(node.left, { classMap }), ...extractClassSnippets(node.right, { classMap })];
+		case "ObjectExpression": {
+			if (!classMap) return unconditionalOnly ? [] : extractStringSnippets(node);
+			const properties = node.properties.filter((property) =>
+				property.type === "Property" &&
+				(property.value.type === "Literal" ? Boolean(property.value.value) : !unconditionalOnly),
+			);
+			const conditions = new Map();
+			for (const property of properties) {
+				const condition = property.value.type === "Literal"
+					? true
+					: property.value.type === "Identifier" ? property.value.name : property.value;
+				const grouped = conditions.get(condition) ?? [];
+				grouped.push(property);
+				conditions.set(condition, grouped);
+			}
+			const direct = [...conditions.values()].map((grouped) =>
+				extractStringSnippets({ ...node, properties: grouped }, true).join(" "),
+			);
+			const spreads = node.properties
+				.filter((property) => property.type === "SpreadElement")
+				.flatMap((property) => extractClassSnippets(property.argument, { unconditionalOnly, classMap }));
+			return [...direct, ...spreads];
+		}
 		case "ArrayExpression":
-			return node.elements.flatMap((element) => extractClassSnippets(element));
-		case "CallExpression":
-			return node.arguments.flatMap((argument) => extractClassSnippets(argument));
+		case "TemplateLiteral":
+		case "CallExpression": {
+			const children = node.type === "TemplateLiteral"
+				? [...node.quasis, ...node.expressions]
+				: node.type === "ArrayExpression" ? node.elements : node.arguments;
+			const maps = node.type === "CallExpression"
+				? node.callee.type === "Identifier" && ["cn", "clsx", "classNames"].includes(node.callee.name)
+				: classMap;
+			const shared = children
+				.flatMap((child) => extractClassSnippets(child, { unconditionalOnly: true, classMap: maps }))
+				.join(" ");
+			if (unconditionalOnly) return shared ? [shared] : [];
+			return children
+				.flatMap((child) => extractClassSnippets(child, { classMap: maps }))
+				.map((snippet) => `${shared} ${snippet}`);
+		}
 		default:
 			return [];
 	}
@@ -77,8 +130,10 @@ export default {
 				}
 
 				const snippets = extractClassSnippets(node.value);
+				const reportedTokens = new Set();
 				for (const snippet of snippets) {
-					if (hasBareProseWithoutDarkCounterpart(snippet)) {
+					if (!reportedTokens.has("prose") && hasBareProseWithoutDarkCounterpart(snippet)) {
+						reportedTokens.add("prose");
 						context.report({
 							node,
 							messageId: "bareProse",
@@ -94,10 +149,11 @@ export default {
 					);
 
 					for (const token of new Set(matches)) {
-						if (hasExplicitDarkCounterpart(snippet, token)) {
+						if (reportedTokens.has(token) || hasExplicitDarkCounterpart(snippet, token)) {
 							continue;
 						}
 
+						reportedTokens.add(token);
 						context.report({
 							node,
 							messageId: "lightOnly",

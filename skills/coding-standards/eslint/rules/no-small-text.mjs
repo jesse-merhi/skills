@@ -15,7 +15,8 @@ const TEXT_CLASS_PROP_NAMES = new Set([
 ]);
 
 function normalizeTailwindUtility(token) {
-	return (splitTailwindSegments(token).at(-1) ?? token).replace(/^!/, "");
+	const utility = (splitTailwindSegments(token).at(-1) ?? token).replace(/^!|!$/g, "");
+	return splitTailwindSegments(utility, "/")[0];
 }
 
 function parseFontSizePx(value) {
@@ -269,10 +270,7 @@ export default {
 					return;
 				}
 
-				checkClassSnippets(
-					node,
-					node.arguments.flatMap((argument) => extractStringSnippets(argument)),
-				);
+				checkClassSnippets(node, extractStringSnippets(node));
 			},
 			VariableDeclarator(node) {
 				if (!isClassSnippetVariableName(node.id)) {

@@ -731,7 +731,7 @@ function isClassExpression(node, context, visitedIdentifiers = new Set(), allowS
 
 	if (expression.type === "MemberExpression") {
 		return (
-			(isClassMemberExpression(expression) && isLikelyDomExpression(expression.object)) ||
+			(isClassMemberExpression(expression) && isLikelyDomExpression(expression.object, context)) ||
 			isClassExpression(expression.object, context, visitedIdentifiers, allowStaticClassValue)
 		);
 	}

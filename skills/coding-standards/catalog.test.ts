@@ -86,24 +86,28 @@ const pluginRuleNames = async (packageName: string): Promise<ReadonlySet<string>
   return new Set(Object.keys(pluginModule.default?.rules ?? pluginModule.rules ?? {}))
 }
 
-const presetConfigs = async (name: string, presetFile: string): Promise<typeof PresetConfigs.Type> => {
+const presetConfigs = async (
+  name: string,
+  presetFile: string,
+  typeChecked = false
+): Promise<typeof PresetConfigs.Type> => {
   const loaded: unknown = await import(pathToFileURL(join(standardsDirectory, presetFile)).href)
   const { default: factory } = decodePresetModule(loaded)
   if (!Predicate.isFunction(factory)) throw new Error(`${name} must default-export a factory`)
-  const configs = decodePresetConfigs(factory())
+  const configs = decodePresetConfigs(factory({ typeChecked }))
   assert.isNotEmpty(configs, `${name} must emit at least one config`)
   return configs
 }
 
 // A `rule` entry claims the plugin rule named after its file; a `plugin` entry
 // claims the ids it lists.
-const claimedRuleIds = (presetName: string): ReadonlySet<string> => {
+const claimedRuleIds = (presetName: string, typeChecked: boolean): ReadonlySet<string> => {
   const claimed = new Set<string>()
   for (const entry of enforcements) {
     if (entry.kind === "rule" && entry.presets.includes(presetName)) {
       claimed.add(`standards/${basename(entry.rule, ".mjs")}`)
     }
-    if (entry.kind === "plugin" && entry.presets.includes(presetName)) {
+    if (entry.kind === "plugin" && entry.presets.includes(presetName) && (!entry.typeChecked || typeChecked)) {
       for (const ruleId of entry.rules) claimed.add(ruleId)
     }
   }
@@ -243,13 +247,19 @@ describe("coding standards catalog", () => {
 
   it("claims exactly the rules each preset enables", { timeout: 60_000 }, async () => {
     for (const [name, preset] of Object.entries(javascriptPresets)) {
-      const enabled = new Set<string>()
-      for (const config of await presetConfigs(name, preset.file)) {
-        for (const [ruleId, setting] of Object.entries(config.rules ?? {})) {
-          if (isEnabled(setting)) enabled.add(ruleId)
+      for (const typeChecked of [false, true]) {
+        const enabled = new Set<string>()
+        for (const config of await presetConfigs(name, preset.file, typeChecked)) {
+          for (const [ruleId, setting] of Object.entries(config.rules ?? {})) {
+            if (isEnabled(setting)) enabled.add(ruleId)
+          }
         }
+        assert.deepEqual(
+          [...enabled].toSorted(),
+          [...claimedRuleIds(name, typeChecked)].toSorted(),
+          `${name} catalog claims (typeChecked=${typeChecked})`
+        )
       }
-      assert.deepEqual([...enabled].toSorted(), [...claimedRuleIds(name)].toSorted(), `${name} catalog claims`)
     }
   })
   it("keys every preset family by a known ecosystem and claims every rule in a preset", () => {
