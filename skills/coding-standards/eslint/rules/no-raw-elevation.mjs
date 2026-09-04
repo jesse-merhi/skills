@@ -234,8 +234,8 @@ function isLikelyClassValue(value) {
 
 function reportRawElevation(context, node, value, classFunctionBindings, identifierBindings, tokenModule) {
 	const attribute = context.sourceCode.getAncestors(node).findLast((ancestor) => ancestor.type === "JSXAttribute");
-	if (attribute && !isClassName(getStaticName(attribute.name))) return;
 	const directClassContext = isDirectClassContext(node, classFunctionBindings, identifierBindings);
+	if (!directClassContext && attribute && !isClassName(getStaticName(attribute.name))) return;
 	const trimmedValue = value.trim();
 	if (!directClassContext && trimmedValue === "drop-shadow") {
 		return;

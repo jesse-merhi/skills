@@ -269,10 +269,7 @@ export default {
 					return;
 				}
 
-				checkClassSnippets(
-					node,
-					node.arguments.flatMap((argument) => extractStringSnippets(argument)),
-				);
+				checkClassSnippets(node, extractStringSnippets(node));
 			},
 			VariableDeclarator(node) {
 				if (!isClassSnippetVariableName(node.id)) {

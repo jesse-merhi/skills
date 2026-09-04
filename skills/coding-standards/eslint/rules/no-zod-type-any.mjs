@@ -252,7 +252,7 @@ function isZodTypeRuntimeReference(node, zodTypeNames, zodNamespaceNames) {
 	return false;
 }
 
-function isZodNamespaceRuntimeReference(node, zodNamespaceNames) {
+function isRestrictedZodRuntimeReference(node, zodNamespaceNames, namespaceOnly = false) {
 	if (!node) {
 		return false;
 	}
@@ -262,7 +262,7 @@ function isZodNamespaceRuntimeReference(node, zodNamespaceNames) {
 		node.type === "TSSatisfiesExpression" ||
 		node.type === "TSNonNullExpression"
 	) {
-		return isZodNamespaceRuntimeReference(node.expression, zodNamespaceNames);
+		return isRestrictedZodRuntimeReference(node.expression, zodNamespaceNames, namespaceOnly);
 	}
 
 	if (node.type === "Identifier") {
@@ -270,8 +270,11 @@ function isZodNamespaceRuntimeReference(node, zodNamespaceNames) {
 	}
 
 	if (node.type === "MemberExpression") {
-		const rootName = getQualifiedRootName(node);
-		return rootName !== null && zodNamespaceNames.has(rootName);
+		const name = node.computed ? getSourceValue(node.property) : getRuntimePropertyName(node.property);
+		return (
+			(isZodNamespaceExportName(name) || (!namespaceOnly && isWeakZodExportName(name))) &&
+			isRestrictedZodRuntimeReference(node.object, zodNamespaceNames, true)
+		);
 	}
 
 	return false;
@@ -1859,12 +1862,12 @@ export default {
 				}
 			},
 			ExportDefaultDeclaration(node) {
-				if (isZodNamespaceRuntimeReference(node.declaration, zodNamespaceNames)) {
+				if (isRestrictedZodRuntimeReference(node.declaration, zodNamespaceNames)) {
 					context.report({ node, messageId: "noWeakZodType" });
 				}
 			},
 			TSExportAssignment(node) {
-				if (isZodNamespaceRuntimeReference(node.expression, zodNamespaceNames)) {
+				if (isRestrictedZodRuntimeReference(node.expression, zodNamespaceNames)) {
 					context.report({ node, messageId: "noWeakZodType" });
 				}
 			},
