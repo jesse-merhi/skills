@@ -5,6 +5,9 @@ Select the presets your project needs and install their packages alongside the
 ecosystem packages. Copy the entire `eslint/` directory together so preset,
 plugin, rule, and helper imports remain intact.
 
+For query return-value checks, compose `typescript({ typeChecked: true })` with
+`tanstackQuery({ typeChecked: true })`; the files must belong to a tsconfig.
+
 ## React Native with npm
 
 The React Native preset retains seven accessibility checks plus the shared

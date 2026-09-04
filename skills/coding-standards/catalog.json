@@ -779,12 +779,22 @@
 							"@tanstack/query/infinite-query-property-order",
 							"@tanstack/query/mutation-property-order",
 							"@tanstack/query/no-rest-destructuring",
-							"@tanstack/query/no-unstable-deps",
-							"@tanstack/query/no-void-query-fn"
+							"@tanstack/query/no-unstable-deps"
 						],
 						"presets": [
 							"tanstack-query"
 						]
+					},
+					{
+						"kind": "plugin",
+						"package": "@tanstack/eslint-plugin-query",
+						"rules": [
+							"@tanstack/query/no-void-query-fn"
+						],
+						"presets": [
+							"tanstack-query"
+						],
+						"typeChecked": true
 					}
 				]
 			}

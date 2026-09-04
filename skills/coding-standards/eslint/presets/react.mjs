@@ -6,11 +6,9 @@ import reactEffect from "eslint-plugin-react-you-might-not-need-an-effect";
 const DEFAULT_FILES = ["**/*.{js,jsx,ts,tsx}"];
 const DEFAULT_COMPONENTS = {
 	Button: "button",
-	Checkbox: "input",
 	Input: "input",
 	Label: "label",
 	SelectTrigger: "button",
-	Switch: "input",
 	Textarea: "textarea",
 };
 const DEFAULT_CONTROL_COMPONENTS = ["Checkbox", "Input", "Select", "SelectTrigger", "Switch", "Textarea"];
