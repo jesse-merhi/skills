@@ -1121,7 +1121,7 @@ function visitNode(node, visitor, skipFunctionBodies = false) {
 		return;
 	}
 
-	visitor(node);
+	if (visitor(node) === false) return;
 
 	for (const [key, value] of Object.entries(node)) {
 		if (
@@ -1448,6 +1448,13 @@ function containsZodModuleNamespaceObjectType(
 ) {
 	let containsNamespace = false;
 	visitNode(node, (child) => {
+		if (child.type === "TSTypeReference" && child.typeName.type === "Identifier" &&
+			["Pick", "Omit", "Partial", "Readonly", "Required"].includes(child.typeName.name)) {
+			containsNamespace = isWeakZodNamespaceUtilityType(
+				child, zodNamespaceNames, weakZodIndexKeyNames, zodNamespaceTypeScopes, typeDeclarationScopes,
+			) || containsNamespace;
+			return false;
+		}
 		if (child === node) {
 			return;
 		}

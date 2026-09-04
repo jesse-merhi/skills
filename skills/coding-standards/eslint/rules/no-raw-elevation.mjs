@@ -173,7 +173,7 @@ function getRawElevationUtility(token) {
 	}
 
 	const normalizedUtility = utility.replace(/^!/, "").replace(/!$/, "");
-	if (normalizedUtility === "shadow-none" || normalizedUtility === "drop-shadow-none") {
+	if (/^(?:inset-|drop-)?shadow-none$/.test(normalizedUtility)) {
 		return null;
 	}
 
@@ -186,14 +186,7 @@ function getRawElevationUtility(token) {
 		return utility;
 	}
 
-	if (normalizedUtility === "shadow" || /^shadow-(?:[A-Za-z0-9][A-Za-z0-9_/-]*|\[.+\])$/.test(normalizedUtility)) {
-		return utility;
-	}
-
-	if (
-		normalizedUtility === "drop-shadow" ||
-		/^drop-shadow-(?:[A-Za-z0-9][A-Za-z0-9_/-]*|\[.+\])$/.test(normalizedUtility)
-	) {
+	if (/^(?:inset-|drop-)?shadow(?:-(?:[A-Za-z0-9][A-Za-z0-9_/-]*|\[.+\]))?$/.test(normalizedUtility)) {
 		return utility;
 	}
 
