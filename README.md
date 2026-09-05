@@ -80,8 +80,8 @@ refuses to replace hand-written local skills or links owned elsewhere.
 
 Claude Code uses its normal main session and your selected model, without
 custom main or reviewer agents. Shared owner and worker policy lives in
-`AGENTS.md`. `wait-efficiently` owns bounded mechanical workers, while `handoff`
-transfers work to a fresh full session.
+`AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
+`handoff` transfers work to a fresh full session.
 
 Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
 sessions. After installation, use `codex --profile findings-reviewer review

@@ -1,17 +1,9 @@
 ---
 name: wait-efficiently
-description: 'Hold commands, CI, agents, and delays efficiently; delegate sustained mechanical phases when worthwhile.'
+description: 'Manage CI monitoring, prolonged commands, timed delays, and pending agents with bounded waits.'
 ---
 
 # Wait efficiently
-
-Before starting a sustained phase of repeated CI observations, established
-checks, log collection, or packaging approved evidence, read
-[mechanical-worker.md](references/mechanical-worker.md) when its compact brief
-saves owner work. Keep one command already
-held until completion local. Once a worker owns the phase, the owner waits for
-its terminal event; do not also inspect CI or poll the worker. Implementation,
-failure diagnosis, and review judgment remain with the capable owner.
 
 Choose the next useful observation and hold the existing operation until then. Resolve the expected duration from the task and available history; do not ask the user to choose routine wait intervals. Every return to the model resends context, so unchanged progress should remain inside the wait.
 
