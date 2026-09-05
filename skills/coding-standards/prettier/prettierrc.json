@@ -1,0 +1,17 @@
+{
+	"useTabs": true,
+	"singleQuote": false,
+	"trailingComma": "all",
+	"semi": true,
+	"tabWidth": 4,
+	"printWidth": 120,
+	"overrides": [
+		{
+			"files": ["**/*.yml", "**/*.yaml"],
+			"options": {
+				"useTabs": false,
+				"tabWidth": 2
+			}
+		}
+	]
+}
