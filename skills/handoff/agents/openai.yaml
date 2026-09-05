@@ -1,4 +1,4 @@
 interface:
   display_name: "Handoff"
   short_description: "Transfer work to a fresh full session"
-  default_prompt: "Use $handoff to transfer this work to a fresh full session beside related work or in a separate window/task for an aside; never use a subagent."
+  default_prompt: "Use $handoff to transfer this work to a fresh full session with verified context and placement."

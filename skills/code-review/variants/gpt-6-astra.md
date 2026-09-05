@@ -12,12 +12,11 @@ clean-tree gates; do not ask again about settled review authority.
 
 ## Freeze identity and authority
 
-Resolve `<skill-dir>` to this directory. Default to bare `codex review` in Codex
-or the built-in `code-review` workflow in Claude. A user-named engine wins, and
-a named Claude model selects Claude. Do not investigate the unselected engine.
-For Codex verify that the current runtime identity resolves/authenticates the
-standalone CLI. Use the harness-configured model, not hard-coded settings or
-private catalogue probes. `review-until-clean` owns engine fallback rules.
+Resolve `<skill-dir>` to this directory. Default to native Codex review with
+Astra at medium from either harness, using the bundled helper. Preserve an
+explicit engine/model selection and verify only that CLI's authentication.
+Do not probe private catalogues. `review-until-clean` owns selection and effort
+conflicts; a high-only engine cannot silently override medium-only work.
 
 Require committed `HEAD` and empty `git status --porcelain` before setup or either
 phase. Dirty staged/unstaged/untracked work needs the user's commit/discard decision;

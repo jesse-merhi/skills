@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: 'Transfer the current work to a fresh full agent session, placing related work beside the current session and unrelated asides separately.'
+description: 'Transfer work to a fresh full session with verified context and placement.'
 ---
 
 # Handoff

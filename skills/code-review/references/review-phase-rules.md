@@ -99,7 +99,8 @@ with the blocker or residual risk.
   Present a plain-language scope request according to `review-guardrails`, and
   do not run another review, apply another fix, or reset the baseline without
   explicit authorization.
-- Never switch or override the review model. Retry transient capacity failures
+- Pin the selected model and effort at launch; never silently switch them
+  during the review. Retry transient capacity failures
   with the same command/model.
 - Do not rerun review only to get nicer wording. The second clean confirmation
   exists to reduce missed findings, not to polish the final report.

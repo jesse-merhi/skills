@@ -8,6 +8,12 @@ collecting the result. At minimum, every review needs a Phase 2 subagent using
 that subagent the target, base, changed-flow summary, and the risk checklist
 from the one-time setup.
 
+Use Astra at medium for review workers, including those launched from Claude.
+Set both in the launcher. If a findings-only preset fixes high effort, use a
+fresh configurable worker with the same findings-only assignment instead.
+Never downgrade review to the mechanical Luna worker or silently inherit a
+different model. Honor an explicit user-selected reviewer.
+
 Every review subagent must start without coordinator conversation history. In
 Codex, set `fork_turns: "none"`; use the equivalent context-free option in
 other harnesses. Pass only a self-contained text brief containing the target,
@@ -75,4 +81,4 @@ parent turn active until every required reviewer reaches a terminal state.
 
 Use `wait-efficiently`'s GitHub Actions mode at the end, after both review phases
 and local validation are clean, when PR checks are pending and monitoring is in
-scope. That is coordinator work, not a review subagent.
+scope. Review judgment and the final gate remain with the coordinator.

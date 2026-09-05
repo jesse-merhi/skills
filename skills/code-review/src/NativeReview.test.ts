@@ -172,7 +172,8 @@ esac
       await mkdir(codexHome, { recursive: true })
       if (profile) await writeFile(join(codexHome, "findings-reviewer.config.toml"), await readFile(join(root, "codex/findings-reviewer.config.toml")))
       await writeFile(join(bin, "codex"), `#!/bin/sh
-printf '%s\\n' "$*" >> "${calls}"
+printf '%s\\0' "$@" >> "${calls}"
+printf '\\n' >> "${calls}"
 if [ "$1" = "--profile" ]; then shift 2; fi
 case "$1" in
   login) exit 0 ;;
@@ -193,16 +194,20 @@ esac
       try {
         // @effect-diagnostics-next-line processEnv:off
         const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, env: { ...process.env, HOME: home, CODEX_HOME: customHome ? codexHome : "", PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
-        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review --base master`)
+        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review -c model="gpt-6-astra" -c review_model="gpt-6-astra" -c model_reasoning_effort="medium" --base master`)
       } catch {
         failed = true
       }
       assert.strictEqual(failed, reviewFails)
-      const recorded = (await readFile(calls, "utf8")).trim().split("\n")
-      assert.strictEqual(recorded[0], "login status")
-      assert.strictEqual(recorded[1], "doctor --json")
-      assert.match(recorded[2] ?? "", /^exec --ephemeral /u)
-      assert.deepStrictEqual(recorded.slice(3), [`${profile ? "--profile findings-reviewer " : ""}review --base master`])
+      const recorded = (await readFile(calls, "utf8")).trim().split("\n").map((call) => call.split("\0").slice(0, -1))
+      assert.deepStrictEqual(recorded[0], ["login", "status"])
+      assert.deepStrictEqual(recorded[1], ["doctor", "--json"])
+      assert.deepStrictEqual(recorded[2]?.slice(0, 2), ["exec", "--ephemeral"])
+      assert.deepStrictEqual(recorded.slice(3), [[
+        ...(profile ? ["--profile", "findings-reviewer"] : []),
+        "review", "-c", 'model="gpt-6-astra"', "-c", 'review_model="gpt-6-astra"',
+        "-c", 'model_reasoning_effort="medium"', "--base", "master"
+      ]])
       if (reviewFails) {
         assert.isFalse(await Effect.runPromise(live(FileSystem.FileSystem.pipe(Effect.flatMap((fs) => fs.exists(output))))))
       } else {

@@ -20,7 +20,8 @@ unless the user requests the loop or `code-review` selects it as its native phas
    [loop.md](references/loop.md), and
    [fixing-and-reporting.md](references/fixing-and-reporting.md).
 3. Set `required_clean = 2` and maintain `iterations` and `consecutive_clean`.
-   Invoke the selected engine's bare built-in review with only the target.
+   Invoke the selected engine's built-in review with its target and explicit
+   model/effort configuration.
    Do not add a checklist, output-format prompt, earlier findings, rationale,
    or desired verdict. Do not replace it with a custom prompt, self-review,
    cold review, repo review command, or ad hoc subagent. Cross-harness `ask-codex`

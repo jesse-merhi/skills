@@ -200,7 +200,11 @@ export const nativeReviewArguments = Effect.fn("NativeReview.arguments")(functio
   const paths = yield* Path.Path
   const home = yield* codexHomeDirectory
   const profileInstalled = home !== undefined && (yield* fs.exists(paths.join(home, "findings-reviewer.config.toml")))
-  return [...(profileInstalled ? ["--profile", "findings-reviewer"] : []), "review", ...target.args]
+  return [
+    ...(profileInstalled ? ["--profile", "findings-reviewer"] : []),
+    "review", "-c", 'model="gpt-6-astra"', "-c", 'review_model="gpt-6-astra"',
+    "-c", 'model_reasoning_effort="medium"', ...target.args
+  ]
 })
 
 const sessionDay = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "/")

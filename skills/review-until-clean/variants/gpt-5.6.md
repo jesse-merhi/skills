@@ -26,7 +26,8 @@ Load `wait-efficiently` and [loop.md](references/loop.md). Read
 
 ## Execute and record the loop
 
-Use only the selected engine's bare built-in review and pass only the target.
+Use only the selected engine's built-in review with its target and explicit
+model/effort configuration.
 Never supply checklists, output prompts, prior findings, rationale, or desired
 verdicts. Do not substitute custom review prompts, self-review, cold review,
 repo-specific review commands, or ad hoc subagents. `ask-codex`/`ask-claude` are

@@ -4,6 +4,12 @@ Dispatch a separate reviewer subagent by default. The cold review loses most of
 its value if the same agent that implemented or prepared the change also
 performs the review in the same context.
 
+Use Astra at medium unless the user selects another reviewer. Configure these
+settings in the launcher; do not use a role fixed at high effort. In Claude,
+use an available isolated Codex reviewer route with a native completion channel.
+If that route is unavailable, report the missing capability rather than silently
+substituting a cheaper model. The mechanics below remain subject to that selection.
+
 Use the harness's subagent mechanism:
 
 - **Codex:** use `spawn_agent` with a tightly scoped review prompt.

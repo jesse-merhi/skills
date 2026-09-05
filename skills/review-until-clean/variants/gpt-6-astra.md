@@ -24,7 +24,8 @@ Load `review-guardrails`, inherit its persisted scope baseline, and confirm
 ## Run and respond under existing authority
 
 Maintain `iterations`, `consecutive_clean`, and `required_clean = 2`. Call the
-selected bare built-in engine with only the review target. No checklist, output
+selected built-in engine with the review target and explicit model/effort
+configuration. No checklist, output
 prompt, prior finding, rationale, or desired verdict may enter that call. Neither
 self-review, cold review, repo review commands, custom prompts, nor ad hoc subagents
 can substitute. `ask-codex` or `ask-claude` requires a current explicit request

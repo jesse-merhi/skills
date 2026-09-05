@@ -56,36 +56,19 @@ does not load `~/.claude/AGENTS.md` by itself.
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
 
-## 3. Configure Claude orchestration
+## 3. Preserve Claude's normal session
 
-For Claude Code, this repo owns two user-level agents under
-`REPO/claude/agents/`:
+Claude Code uses its normal main session and the global instructions linked
+above. Do not install custom main or reviewer agents. Install the matching
+skills without changing unrelated Claude settings or the selected model.
 
-- `fable-orchestrator` is the default main agent, retaining its existing name
-  but inheriting the selected Claude model rather than pinning Fable;
-- `codex-reviewer` relays code-centric review to GPT-5.6 Sol High.
-
-Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
-into that real directory. Replace a matching repo symlink or a dead symlink,
-but ask before replacing a real file or a symlink owned elsewhere. Preserve all
-unrelated agents.
-
-Retire the deleted `opus-worker.md` only when it is a symlink whose stored
-target is `REPO/claude/agents/opus-worker.md`, or a previous clone's matching
-path that you have verified belongs to this repository. Preserve a real file
-or any link owned elsewhere.
-
-Set `agent` to `fable-orchestrator` in `~/.claude/settings.json`, preserving
-every other setting. If `agent` already names something else, ask before
-replacing it. Then validate the agent directory:
-
-```sh
-claude plugin validate ~/.claude/agents
-```
-
-The default main agent takes effect in the next Claude Code session. Preserve
-the user's selected model and install its matching skills. Switching skill
-files does not switch the model. Skip this step for other harnesses.
+For upgrades, remove `agent` from `~/.claude/settings.json` only when its value
+is exactly `fable-orchestrator`. Within `~/.claude/agents/`, remove
+`fable-orchestrator.md`, `codex-reviewer.md`, and `opus-worker.md` only when each
+is a symlink whose stored target is in this repo's `claude/agents/` or a verified
+earlier clone of this repo. Check stored targets even when links are broken.
+Preserve real files, foreign links, other agent selections, and every other
+setting. Skip this step for other harnesses.
 
 ## 4. Configure Codex interaction
 

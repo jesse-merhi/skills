@@ -14,12 +14,11 @@ last fix and affected validation. `finding-discipline` establishes actionability
 
 ## Freeze the target and budget
 
-Resolve `<skill-dir>` to this skill's directory. Use the current harness's native
-engine—bare `codex review` in Codex, built-in `code-review` in Claude—unless the
-user names another. A named Claude model selects Claude. Check only the selected
-engine. For Codex confirm the current runtime identity can resolve/authenticate
-the standalone CLI. Keep the harness-configured model; do not probe private
-catalogues or override models. `review-until-clean` owns selection/fallback rules.
+Resolve `<skill-dir>` to this skill's directory. Default to native Codex review
+with Astra at medium from either Codex or Claude, using the bundled helper.
+A user-selected engine/model wins. Confirm the selected CLI can authenticate;
+do not probe private catalogues. `review-until-clean` owns selection and effort
+conflicts. Its high-only Claude engine cannot satisfy a medium-only assignment.
 
 Require committed `HEAD` and empty `git status --porcelain` before `scope-start`
 or review. If dirty, ask for staged/unstaged/untracked work to be committed or

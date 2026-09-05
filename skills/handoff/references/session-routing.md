@@ -1,5 +1,7 @@
 # Full-session routing
 
+These rules apply to full-session transfers. Mechanical-worker mode selects its
+model and return channel before applying any full-task placement rules.
 Route two independent decisions: which agent should receive the work, and where
 the full session should appear.
 

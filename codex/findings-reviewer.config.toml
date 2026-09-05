@@ -1,3 +1,7 @@
+model = "gpt-6-astra"
+review_model = "gpt-6-astra"
+model_reasoning_effort = "medium"
+
 developer_instructions = """
 You are a findings-only reviewer.
 Follow the findings-only reviewer responsibilities in applicable AGENTS.md.

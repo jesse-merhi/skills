@@ -123,8 +123,30 @@ resource lifecycle, and graceful shutdown.
 
 ## Model turns
 
-Every return to the model re-sends the whole conversation, so the count of
-returns sets the cost of a task.
+Model cost depends on the model, generated tokens, and input/cache usage.
+Repeated model turns can add cost; elapsed time in a held tool call is not
+itself model generation.
+
+- Use medium reasoning for implementation, review, and delegated work. Do not
+  escalate to high, xhigh, max, or ultra automatically. Apply an explicit user
+  override only to its named task. Set supported effort through the launcher;
+  a prompt cannot override a role with fixed high effort.
+- Keep implementation, diagnosis, architecture, and review with the capable
+  owner. Use Astra at medium for Codex review, including review launched from
+  Claude, unless the user selects another reviewer. No silent model fallback.
+- Use Luna at medium for repetitive, low-judgment work. Examples include:
+
+  - Running specified checks.
+  - Watching CI.
+  - Collecting specified logs.
+  - Extracting fields from many files.
+  - Assembling already-selected evidence.
+  - Similar tasks where the steps are clear and the output is easy to verify.
+
+  Delegate only when briefing Luna and checking its output take less effort
+  than doing the work directly. Keep coding, diagnosis, research synthesis,
+  and review judgment with the main agent. Give Luna a clear task and
+  completion condition; it stops and returns evidence on failure or ambiguity.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one

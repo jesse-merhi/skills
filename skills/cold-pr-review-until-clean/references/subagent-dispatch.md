@@ -1,5 +1,10 @@
 # Subagent dispatch
 
+Select Astra at medium unless the user selects another reviewer. Set the model
+and effort in the launcher; a role fixed at high is unsuitable. From Claude,
+use an available isolated Codex reviewer with a completion channel; report a
+missing route without silently switching models. Mechanical workers do not review.
+
 Use a fresh subagent for every cold-review pass whenever the harness can
 spawn one. The loop is designed to fight implementer anchoring bias; a
 self-review inside the implementation context does not provide the same signal.
