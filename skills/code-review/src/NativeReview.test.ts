@@ -427,22 +427,29 @@ esac
       const day = join(...now.toISOString().slice(0, 10).split("-"))
       await mkdir(join(sessionsRoot, day), { recursive: true })
       await writeFile(reviewer, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\n`, { mode: 0o700 })
-      const driver = (id: string, cwd: string, marker: boolean) =>
-        `${JSON.stringify({ type: "session_meta", payload: { id, cwd } })}\n${marker ? "{\"type\":\"entered_review_mode\"}\n" : ""}`
-      const child = (id: string, cwd: string, parent: string) =>
-        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, parent_thread_id: parent } })}\n{"type":"message"}\n`
-      // Driver plus its subagent thread: both belong to this run.
-      await writeFile(join(sessionsRoot, day, "rollout-a.jsonl"), driver("uuid-a", reviewDir, true))
+      // Current review metadata includes instructions larger than the old 8 KB
+      // prefix limit, and no entered_review_mode event is emitted.
+      const driver = (id: string, cwd: string, source = "exec") =>
+        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, source, base_instructions: "instructions ".repeat(2000) } })}\n`
+      const child = (id: string, cwd: string, parent: string, source = "review") =>
+        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, source: { subagent: source }, parent_thread_id: parent, base_instructions: "instructions ".repeat(2000) } })}\n{"type":"message"}\n`
+      await writeFile(join(sessionsRoot, day, "rollout-a.jsonl"), driver("uuid-a", reviewDir))
       await writeFile(join(sessionsRoot, day, "rollout-a-sub.jsonl"), child("uuid-a-sub", reviewDir, "uuid-a"))
-      // A review in another directory, an unrelated interactive session, and a
-      // subagent whose parent was not a review here.
-      await writeFile(join(sessionsRoot, day, "rollout-b.jsonl"), driver("uuid-b", otherDir, true))
-      await writeFile(join(sessionsRoot, day, "rollout-c.jsonl"), driver("uuid-c", reviewDir, false))
-      await writeFile(join(sessionsRoot, day, "rollout-c-sub.jsonl"), child("uuid-c-sub", reviewDir, "uuid-c"))
+      // Other directories, ordinary exec/spawn sessions, interactive reviews,
+      // and orphan children must not be swept up by this native review.
+      await writeFile(join(sessionsRoot, day, "rollout-b.jsonl"), driver("uuid-b", otherDir))
+      await writeFile(join(sessionsRoot, day, "rollout-b-sub.jsonl"), child("uuid-b-sub", otherDir, "uuid-b"))
+      await writeFile(join(sessionsRoot, day, "rollout-c.jsonl"), driver("uuid-c", reviewDir))
+      await writeFile(join(sessionsRoot, day, "rollout-c-sub.jsonl"), child("uuid-c-sub", reviewDir, "uuid-c", "thread_spawn"))
+      await writeFile(join(sessionsRoot, day, "rollout-e.jsonl"), driver("uuid-e", reviewDir, "cli"))
+      await writeFile(join(sessionsRoot, day, "rollout-e-sub.jsonl"), child("uuid-e-sub", reviewDir, "uuid-e"))
+      await writeFile(join(sessionsRoot, day, "rollout-orphan.jsonl"), child("uuid-orphan", reviewDir, "missing-parent"))
       // A review from an earlier run, outside this run's window.
-      await writeFile(join(sessionsRoot, day, "rollout-d.jsonl"), driver("uuid-d", reviewDir, true))
+      await writeFile(join(sessionsRoot, day, "rollout-d.jsonl"), driver("uuid-d", reviewDir))
+      await writeFile(join(sessionsRoot, day, "rollout-d-sub.jsonl"), child("uuid-d-sub", reviewDir, "uuid-d"))
       const old = new Date(now.getTime() - 3600_000)
       await utimes(join(sessionsRoot, day, "rollout-d.jsonl"), old, old)
+      await utimes(join(sessionsRoot, day, "rollout-d-sub.jsonl"), old, old)
       const archived = await Effect.runPromise(live(archiveReviewSessions({
         reviewer,
         reviewCwds: [reviewDir],
@@ -474,8 +481,8 @@ esac
         `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\nrm -f "${join(dayDir, "rollout-a.jsonl")}" "${join(dayDir, "rollout-a-sub.jsonl")}"\n`,
         { mode: 0o700 }
       )
-      await writeFile(join(dayDir, "rollout-a.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a", cwd: reviewDir } })}\n{"type":"entered_review_mode"}\n`)
-      await writeFile(join(dayDir, "rollout-a-sub.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a-sub", cwd: reviewDir, parent_thread_id: "uuid-a" } })}\n{"type":"message"}\n`)
+      await writeFile(join(dayDir, "rollout-a.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a", cwd: reviewDir, source: "exec" } })}\n`)
+      await writeFile(join(dayDir, "rollout-a-sub.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a-sub", cwd: reviewDir, source: { subagent: "review" }, parent_thread_id: "uuid-a" } })}\n{"type":"message"}\n`)
       const archived = await Effect.runPromise(live(archiveReviewSessions({
         reviewer,
         reviewCwds: [reviewDir],
