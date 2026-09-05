@@ -135,9 +135,19 @@ itself model generation.
 - Keep implementation, diagnosis, architecture, and review with the capable
   owner. Use Astra at medium for Codex review, including review launched from
   Claude, unless the user selects another reviewer. No silent model fallback.
-- Use Luna at medium for bounded, routine work when delegation saves effort.
-  Give it a clear task and completion condition. Failures return to the main
-  agent; delegation does not expand the task's permissions.
+- Use Luna at medium for repetitive, low-judgment work. Examples include:
+
+  - Running specified checks.
+  - Watching CI.
+  - Collecting specified logs.
+  - Extracting fields from many files.
+  - Assembling already-selected evidence.
+  - Similar tasks where the steps are clear and the output is easy to verify.
+
+  Delegate only when briefing Luna and checking its output take less effort
+  than doing the work directly. Keep coding, diagnosis, research synthesis,
+  and review judgment with the main agent. Give Luna a clear task and
+  completion condition; it stops and returns evidence on failure or ambiguity.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one
