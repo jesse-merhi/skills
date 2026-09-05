@@ -11,6 +11,8 @@ Turn one evidenced, reusable agent failure into an approved systemic repair. Kee
 
 Start when a user correction or self-detected mistake shows an agent action violating an invariant that matters across tasks, sessions, repositories, or users. Handle typos, expected review findings, ordinary debugging, changed objectives, factual clarifications, vague criticism, and one-deliverable preferences locally unless they reveal that invariant.
 
+For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing the task, even if the immediate mistake is fixed.
+
 Acknowledge the correction briefly. Repair the immediate result only when already authorized. Record redacted evidence: observed behavior, desired invariant, affected surface, current task state and permissions, and the likely Git or host-managed target.
 
 Before the first recommendation, require a clean Git target. Freeze its canonical worktree root, absolute `--git-common-dir`, `HEAD`, and evidence that index, tracked tree, and untracked scope are clean. A dirty initial target blocks the recommendation. Preserve this immutable baseline throughout the workflow.

@@ -11,6 +11,8 @@ Find the owning cause of a reusable agent mistake, obtain approval for a bound r
 
 Start from evidence, whether a user correction or your own discovery: what agent action violated a rule that should hold across tasks, sessions, repositories, or users? Ordinary debugging, expected review findings, typos, changed objectives, factual clarifications, vague criticism, and preferences for a single deliverable do not qualify unless they expose that reusable invariant.
 
+For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing the task, even if the immediate mistake is fixed.
+
 Acknowledge feedback briefly and make authorized task-local repairs. Capture a redacted statement of observed behavior, desired invariant, evidence, affected surface, task state, permissions, and likely Git or managed target.
 
 Require a clean Git target before the first recommendation. Record immutable canonical worktree root, absolute `--git-common-dir`, baseline `HEAD`, and evidence of clean index, tracked tree, and untracked scope. Report a dirty initial target as a blocker rather than treating its changes as yours.
