@@ -4,14 +4,6 @@ Use `scripts/codex-review` whenever Phase 1 uses Codex. It is a thin Effect CLI
 over native `codex review`; it does not duplicate the reviewer, invent a second
 verdict protocol, or parse prose to decide whether a review is clean.
 
-The helper pins `model` and `review_model` to `gpt-6-astra`, and
-`model_reasoning_effort` to `medium`, using CLI configuration overrides. This
-applies with or without the installed findings-only profile and does not alter
-the parent or global configuration. Inspect the native invocation evidence; a
-prompt requesting medium cannot override inherited launcher settings. For an
-explicit alternate reviewer, use the native command with that user's settings
-and the same clean-target/lifecycle gates rather than this pinned helper.
-
 ```sh
 scripts/codex-review
 scripts/codex-review --mode branch --base origin/main
