@@ -40,7 +40,9 @@ The worker may read the shared checkout and write run-owned artifacts. Test
 outputs are allowed only as specified. It must not edit source, repair tests,
 commit, push, merge, trigger CI, kill processes, rerun failed tests, or change
 scope. Freeze the checkout for local validation until the worker returns;
-check head before and after and discard stale proof. CI observation can run
+check head before and after and discard stale proof. If a deadline return
+leaves validation processes running, preserve the freeze until they finish or
+the owner completes authorized cleanup. CI observation can run
 beside unrelated owner work, but a new target requires a new explicit brief.
 
 ## Launch with a return path
