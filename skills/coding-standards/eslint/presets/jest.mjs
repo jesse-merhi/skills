@@ -16,7 +16,7 @@ export default function jest(options = {}) {
 		brittleStyleOptions.semanticClassValues = options.semanticClassValues;
 	}
 
-	return [
+	const configs = [
 		{
 			files: options.files ?? DEFAULT_FILES,
 			plugins: { jest: jestPlugin, standards },
@@ -28,7 +28,7 @@ export default function jest(options = {}) {
 				"jest/no-disabled-tests": "error",
 				"jest/no-done-callback": "error",
 				"jest/no-duplicate-hooks": "error",
-				"jest/no-error-equal": options.typeChecked ? "error" : "off",
+				"jest/no-error-equal": "off",
 				"jest/no-export": "error",
 				"jest/no-focused-tests": "error",
 				"jest/no-identical-title": "error",
@@ -43,11 +43,25 @@ export default function jest(options = {}) {
 				"jest/valid-describe-callback": "error",
 				"jest/valid-expect": "error",
 				"jest/valid-expect-in-promise": "error",
-				"jest/valid-expect-with-promise": options.typeChecked ? "error" : "off",
+				"jest/valid-expect-with-promise": "off",
 				"jest/valid-title": "error",
 				"standards/no-brittle-test-style-assertions": ["error", brittleStyleOptions],
 				"standards/no-large-test-snapshots": "error",
 			},
 		},
 	];
+	if (options.typeChecked) {
+		configs.push({
+			files: (options.files ?? DEFAULT_FILES).flatMap((testPattern) =>
+				(options.typeCheckedFiles ?? ["**/*.{ts,tsx,mts,cts}"])
+					.map((typedPattern) => [testPattern, typedPattern].flat()),
+			),
+			plugins: { jest: jestPlugin },
+			rules: {
+				"jest/no-error-equal": "error",
+				"jest/valid-expect-with-promise": "error",
+			},
+		});
+	}
+	return configs;
 }

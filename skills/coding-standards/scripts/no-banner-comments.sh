@@ -9,7 +9,7 @@ PATTERN='^[[:space:]]*(//|#)[[:space:]]*[-=]{10,}[[:space:]]*$'
 # Default: every tracked file. `--staged` limits the scan to the files staged for commit.
 MODE="${1:-tracked}"
 case "$MODE" in
-  --staged) FILES=$(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACM) ;;
+  --staged) FILES=$(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACMR) ;;
   tracked) FILES=$(git -c core.quotePath=false ls-files) ;;
   *) echo "usage: $0 [--staged]" >&2; exit 2 ;;
 esac

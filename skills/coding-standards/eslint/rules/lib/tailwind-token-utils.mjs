@@ -1,3 +1,9 @@
+export const STANDALONE_TAILWIND_UTILITIES = new Set(
+	"absolute block border flex grid hidden inline inline-block inline-flex inline-grid invisible not-sr-only relative rounded shadow sr-only sticky transition truncate visible whitespace-nowrap".split(
+		" ",
+	),
+);
+
 export function splitTailwindSegments(token, delimiter = ":") {
 	const segments = [];
 	let bracketDepth = 0;

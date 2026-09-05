@@ -1,13 +1,13 @@
 import path from "node:path";
 
 import { findVariable } from "./lib/find-variable.mjs";
-import { splitTailwindSegments } from "./lib/tailwind-token-utils.mjs";
+import { splitTailwindSegments, STANDALONE_TAILWIND_UTILITIES } from "./lib/tailwind-token-utils.mjs";
 
 const ALLOWED_TEST_FILE_PATTERN = /\.(?:visual|contrast|layout)\.(?:spec|test)\.[cm]?[jt]sx?$/;
 const ALLOW_MARKER = "@allow-brittle-test-style-assertion";
 const CLASS_ASSERTION_MATCHERS = new Set(["toBe", "toEqual", "toStrictEqual", "toContain", "toMatch"]);
 const EXACT_CLASS_ASSERTION_MATCHERS = new Set(["toBe", "toEqual", "toStrictEqual"]);
-const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "cva", "twMerge"]);
+const CLASS_FUNCTION_NAMES = new Set(["cn", "clsx", "classNames", "cva", "twMerge"]);
 const CLASS_NORMALIZATION_METHOD_NAMES = new Set([
 	"replace",
 	"replaceAll",
@@ -24,11 +24,6 @@ const DEFAULT_SEMANTIC_CLASS_TOKENS = [];
 
 // Keep this list deliberately small. These forms are recognizable as utility classes
 // without trying to model all of Tailwind or guess at product-specific class names.
-const STANDALONE_TAILWIND_UTILITIES = new Set(
-	"absolute block border flex grid hidden inline inline-block inline-flex inline-grid invisible not-sr-only relative rounded shadow sr-only sticky transition truncate visible whitespace-nowrap".split(
-		" ",
-	),
-);
 const TAILWIND_UTILITY_PATTERN =
 	/^(?:\[[^\]]+\]|aspect-(?:auto|square|video|\[[^\]]+\])|(?:h|w|m[trblxyse]?|p[trblxyse]?|inset(?:-[xy])?|top|right|bottom|left|z|min-[hw]|max-[hw]|gap(?:-[xy])?|space-[xy])-(?:\d+(?:\.\d+)?(?:\/\d+)?|px|full|auto|fit|min|max|screen|\[[^\]]+\])|(?:bg|border)-(?:[a-z]+-\d+|\[[^\]]+\])(?:\/(?:\d+|\[[^\]]+\]))?|text-(?:(?:[a-z]+-\d+|\[[^\]]+\])(?:\/(?:\d+|\[[^\]]+\]))?|xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|ellipsis|clip|wrap|nowrap|balance|pretty)|font-(?:sans|serif|mono|thin|extralight|light|normal|medium|semibold|bold|extrabold|black|\[[^\]]+\])|(?:items|content|justify|self)-(?:normal|start|end|center|between|around|evenly|baseline|stretch|auto|\[[^\]]+\])|place-(?:content|items|self)-(?:start|end|center|between|around|evenly|baseline|stretch|auto|\[[^\]]+\])|flex-(?:1|auto|initial|none|row|row-reverse|col|col-reverse|wrap|wrap-reverse|nowrap|\[[^\]]+\])|(?:grid-cols|grid-rows)-(?:none|subgrid|\d+|\[[^\]]+\])|(?:col|row)-(?:auto|span-(?:full|\d+)|start-(?:auto|\d+)|end-(?:auto|\d+)|\[[^\]]+\])|rounded(?:-[trblse](?:[trblse])?)?-(?:none|sm|md|lg|xl|2xl|3xl|full|\[[^\]]+\])|opacity-(?:\d+|\[[^\]]+\])|leading-(?:none|tight|snug|normal|relaxed|loose|\d+|\[[^\]]+\])|tracking-(?:tighter|tight|normal|wide|wider|widest|\[[^\]]+\])|order-(?:first|last|none|\d+|\[[^\]]+\])|(?:duration|delay|scale|rotate)-(?:none|\d+|\[[^\]]+\])|skew-[xy]-(?:\d+|\[[^\]]+\])|origin-(?:center|top(?:-right|-left)?|right|bottom(?:-right|-left)?|left|\[[^\]]+\])|animate-(?:none|spin|ping|pulse|bounce|\[[^\]]+\])|ease-(?:linear|in|out|in-out|\[[^\]]+\])|shadow-(?:2xs|xs|sm|md|lg|xl|2xl|inner|none|\[[^\]]+\])|outline-(?:none|hidden|dashed|dotted|double|\d+|\[[^\]]+\])|ring-offset-(?:\d+|\[[^\]]+\])|(?:cursor|overflow(?:-[xy])?|pointer-events|select|shrink|grow|ring|size|justify-self)-(?:[a-z0-9]+|\[[^\]]+\])|divide-[xy](?:-\d+)?|translate-[xy]-(?:\d+|[a-z]+|\[[^\]]+\]))$/;
 const COMMON_TAILWIND_UTILITY_PATTERN =
@@ -63,14 +58,14 @@ function normalizeFilename(filename) {
 
 function getFunctionParameterVariable(context, functionNode, parameter) {
 	if (parameter.type !== "Identifier") return null;
-	const functionScope = context.sourceCode.scopeManager?.acquire(functionNode);
-	return functionScope?.set.get(parameter.name) ?? null;
+	const functionScope = context.sourceCode.getScope(functionNode);
+	return functionScope.set.get(parameter.name) ?? null;
 }
 
 function getPropertyName(node) {
 	if (!node) return null;
 	if (node.type === "Identifier") return node.name;
-	if (node.type === "Literal" && typeof node.value === "string") return node.value;
+	if (node.type === "Literal" && ["string", "number"].includes(typeof node.value)) return String(node.value);
 	return null;
 }
 
@@ -80,7 +75,7 @@ function isCanonicalClassFunctionImport(specifier) {
 	}
 	if (specifier.type !== "ImportDefaultSpecifier" || specifier.parent?.type !== "ImportDeclaration") return false;
 	const sourceName = typeof specifier.parent.source.value === "string" ? specifier.parent.source.value : "";
-	return ["class-variance-authority", "clsx", "tailwind-merge"].includes(sourceName);
+	return ["class-variance-authority", "clsx", "classnames", "tailwind-merge"].includes(sourceName);
 }
 
 function isClassFunctionReference(node, context, visitedVariables = new Set()) {
@@ -117,13 +112,18 @@ function unwrapExpression(node) {
 	return current;
 }
 
+function getRegexText(pattern) {
+	return pattern?.replace(/\(\?(?::|[=!]|<[=!]|<[A-Za-z_$][\w$]*>)/g, "(")
+		.replace(/\[(?:\\[sfnrtv]| )+\]|\\[bBsSfnrtv]/g, " ") ?? null;
+}
+
 function getStaticText(node, context, visitedVariables = new Set(), parameterBindings = new Map()) {
 	const expression = unwrapExpression(node);
 	if (!expression) return null;
 	if (expression.type === "Literal" && ["boolean", "number", "string"].includes(typeof expression.value)) {
 		return String(expression.value);
 	}
-	if (expression.type === "Literal" && expression.regex) return expression.regex.pattern;
+	if (expression.type === "Literal" && expression.regex) return getRegexText(expression.regex.pattern);
 	if (expression.type === "Identifier" && context) {
 		const variable = findVariable(context, expression);
 		if (variable && parameterBindings.has(variable)) {
@@ -138,6 +138,13 @@ function getStaticText(node, context, visitedVariables = new Set(), parameterBin
 		const nextVisitedVariables = new Set(visitedVariables);
 		nextVisitedVariables.add(variable);
 		return getStaticText(initializer, context, nextVisitedVariables, parameterBindings);
+	}
+	if (expression.type === "MemberExpression" && context) {
+		if (visitedVariables.has(expression)) return null;
+		const nextVisitedVariables = new Set([...visitedVariables, expression]);
+		const texts = getMemberSourceExpressions(context, expression, nextVisitedVariables, parameterBindings)
+			.map((source) => getStaticText(source, context, nextVisitedVariables, parameterBindings));
+		return texts.length && texts.every((text) => text === texts[0]) ? texts[0] : null;
 	}
 	if (expression.type === "TemplateLiteral") {
 		let value = expression.quasis[0]?.value.cooked ?? "";
@@ -164,13 +171,31 @@ function getStaticText(node, context, visitedVariables = new Set(), parameterBin
 		getPropertyName(expression.callee) === "RegExp" &&
 		expression.arguments.length > 0
 	) {
-		return getStaticText(expression.arguments[0], context, visitedVariables, parameterBindings);
+		return getRegexText(getStaticText(expression.arguments[0], context, visitedVariables, parameterBindings));
 	}
 	return null;
 }
 
 function getStaticTexts(node, context, visitedVariables = new Set()) {
 	const expression = unwrapExpression(node);
+	if (expression?.type === "Identifier" && context) {
+		const variable = findVariable(context, expression);
+		if (!variable || visitedVariables.has(variable)) return [];
+		const nextVisitedVariables = new Set([...visitedVariables, variable]);
+		return getConstSourceExpressions(context, expression).flatMap((source) =>
+			getStaticTexts(source, context, nextVisitedVariables),
+		);
+	}
+	if (expression?.type === "MemberExpression" && context) {
+		if (visitedVariables.has(expression)) return [];
+		const nextVisitedVariables = new Set([...visitedVariables, expression]);
+		return getMemberSourceExpressions(context, expression).flatMap((source) =>
+			getStaticTexts(source, context, nextVisitedVariables),
+		);
+	}
+	if (expression?.type === "SpreadElement") {
+		return getStaticTexts(expression.argument, context, visitedVariables);
+	}
 	if (expression?.type === "ArrayExpression") {
 		return expression.elements.flatMap((element) => getStaticTexts(element, context, visitedVariables));
 	}
@@ -502,6 +527,8 @@ function containsClassSelectorExpression(node, context, visitedVariables = new S
 	}
 
 	if (expression.type === "MemberExpression") {
+		if (visitedVariables.has(expression)) return false;
+		visitedVariables.add(expression);
 		const memberSources = getMemberSourceExpressions(context, expression);
 		if (memberSources.length > 0) {
 			return memberSources.some((source) =>
@@ -514,25 +541,81 @@ function containsClassSelectorExpression(node, context, visitedVariables = new S
 	return false;
 }
 
-function getConstSourceExpressions(context, node) {
+function getBindingSourceExpressions(context, pattern, source, binding, visitedVariables = new Set()) {
+	if (!pattern) return [];
+	if (pattern === binding) return source ? [source] : [];
+	if (pattern.type === "AssignmentPattern") {
+		return getBindingSourceExpressions(context, pattern.left, source ?? pattern.right, binding, visitedVariables);
+	}
+	const selectProperty = (childPattern, propertyName) => {
+		if (propertyName === null) return [];
+		const values = getObjectPropertyExpressions(context, source, propertyName, visitedVariables);
+		return (values.length ? values : [undefined]).flatMap((value) =>
+			getBindingSourceExpressions(context, childPattern, value, binding, visitedVariables),
+		);
+	};
+	if (pattern.type === "ObjectPattern") {
+		return pattern.properties.flatMap((property) => {
+			if (property.type !== "Property" || (property.computed && property.key.type !== "Literal")) return [];
+			return selectProperty(property.value, getPropertyName(property.key));
+		});
+	}
+	if (pattern.type === "ArrayPattern") {
+		return pattern.elements.flatMap((element, index) => selectProperty(element, String(index)));
+	}
+	return [];
+}
+
+function getConstSourceExpressions(context, node, visitedVariables = new Set()) {
 	const definition = findVariable(context, node)?.defs.find(
 		(candidate) =>
 			candidate.type === "Variable" && candidate.name.type === "Identifier" && candidate.parent.kind === "const",
 	);
 	if (!definition) return [];
-	if (definition.node.init) return [definition.node.init];
+	if (definition.node.init) {
+		return getBindingSourceExpressions(context, definition.node.id, definition.node.init, definition.name, visitedVariables);
+	}
 
 	const declaration = definition.parent;
 	const loop = declaration.parent;
-	return loop?.type === "ForOfStatement" && loop.left === declaration ? [loop.right] : [];
+	if (loop?.type !== "ForOfStatement" || loop.left !== declaration) return [];
+	return getArrayElementSources(context, loop.right, visitedVariables).flatMap((row) =>
+		getBindingSourceExpressions(context, definition.node.id, row, definition.name, visitedVariables),
+	);
 }
 
-function getMemberSourceExpressions(context, node) {
+function getArrayElementSources(context, node, visitedSources = new Set()) {
+	const expression = unwrapExpression(node);
+	if (!expression || visitedSources.has(expression)) return [];
+	const nextVisitedSources = new Set([...visitedSources, expression]);
+	if (expression.type === "ArrayExpression") {
+		return expression.elements.flatMap((element) => element?.type === "SpreadElement"
+			? getArrayElementSources(context, element.argument, nextVisitedSources)
+			: element ? [element] : []);
+	}
+	if (expression.type === "Identifier") {
+		const variable = findVariable(context, expression);
+		if (!variable || nextVisitedSources.has(variable)) return [];
+		nextVisitedSources.add(variable);
+		return getConstSourceExpressions(context, expression, nextVisitedSources).flatMap((source) =>
+			getArrayElementSources(context, source, nextVisitedSources),
+		);
+	}
+	if (expression.type === "MemberExpression") {
+		return getMemberSourceExpressions(context, expression).flatMap((source) =>
+			getArrayElementSources(context, source, nextVisitedSources),
+		);
+	}
+	return [];
+}
+
+function getMemberSourceExpressions(context, node, visitedVariables = new Set(), parameterBindings = new Map()) {
 	const expression = unwrapExpression(node);
 	if (expression?.type !== "MemberExpression") return [];
-	const propertyName = getPropertyName(expression.property);
+	const propertyName = expression.computed
+		? getStaticText(expression.property, context, visitedVariables, parameterBindings) : getPropertyName(expression.property);
 	if (!propertyName) return [];
-	return getObjectPropertyExpressions(context, expression.object, propertyName);
+	return getObjectPropertyExpressions(context, expression.object, propertyName, visitedVariables);
 }
 
 function getObjectPropertyExpressions(context, node, propertyName, visitedVariables = new Set()) {
@@ -544,18 +627,30 @@ function getObjectPropertyExpressions(context, node, propertyName, visitedVariab
 		if (!variable || visitedVariables.has(variable)) return [];
 		const nextVisitedVariables = new Set(visitedVariables);
 		nextVisitedVariables.add(variable);
-		return getConstSourceExpressions(context, expression).flatMap((source) =>
+		return getConstSourceExpressions(context, expression, nextVisitedVariables).flatMap((source) =>
 			getObjectPropertyExpressions(context, source, propertyName, nextVisitedVariables),
 		);
 	}
 
+	if (expression.type === "ArrayExpression" && /^(?:0|[1-9]\d*)$/.test(propertyName)) {
+		const index = Number(propertyName);
+		if (expression.elements.slice(0, index + 1).some((element) => element?.type === "SpreadElement")) return [];
+		const element = expression.elements[index];
+		return element ? [element] : [];
+	}
+
 	if (expression.type === "ObjectExpression") {
-		return expression.properties.flatMap((property) => {
+		for (const property of [...expression.properties].reverse()) {
 			if (property.type === "SpreadElement") {
-				return getObjectPropertyExpressions(context, property.argument, propertyName, visitedVariables);
+				const values = getObjectPropertyExpressions(context, property.argument, propertyName, visitedVariables);
+				if (values.length) return values;
+				continue;
 			}
-			return getPropertyName(property.key) === propertyName ? [property.value] : [];
-		});
+			if ((!property.computed || property.key.type === "Literal") && getPropertyName(property.key) === propertyName) {
+				return [property.value];
+			}
+		}
+		return [];
 	}
 
 	if (expression.type === "ConditionalExpression") {
@@ -573,17 +668,31 @@ function getObjectPropertyExpressions(context, node, propertyName, visitedVariab
 	return [];
 }
 
-function getFunctionSourceExpressions(context, node) {
-	const variable = findVariable(context, node);
-	if (!variable) return [];
+function getFunctionSourceExpressions(context, node, visitedSources = new Set()) {
+	const expression = unwrapExpression(node);
+	if (!expression || visitedSources.has(expression)) return [];
+	visitedSources.add(expression);
+	if (["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"].includes(expression.type)) {
+		return [expression];
+	}
+	if (expression.type === "MemberExpression") {
+		return getMemberSourceExpressions(context, expression).flatMap((source) =>
+			getFunctionSourceExpressions(context, source, new Set(visitedSources)),
+		);
+	}
+	if (expression.type !== "Identifier") return [];
+	const variable = findVariable(context, expression);
+	if (!variable || visitedSources.has(variable)) return [];
+	visitedSources.add(variable);
 
 	return variable.defs.flatMap((definition) => {
 		if (
 			definition.type === "Variable" &&
-			definition.parent.kind === "const" &&
-			["ArrowFunctionExpression", "FunctionExpression"].includes(definition.node.init?.type)
+			definition.parent.kind === "const"
 		) {
-			return [definition.node.init];
+			return getConstSourceExpressions(context, expression).flatMap((source) =>
+				getFunctionSourceExpressions(context, source, new Set(visitedSources)),
+			);
 		}
 		if (definition.type === "FunctionName" && definition.node.type === "FunctionDeclaration") {
 			return [definition.node];
@@ -636,7 +745,9 @@ function getConstInitializer(context, node) {
 		(candidate) =>
 			candidate.type === "Variable" && candidate.name.type === "Identifier" && candidate.parent.kind === "const",
 	);
-	return definition?.node.init ?? null;
+	if (!definition?.node.init) return null;
+	const sources = getBindingSourceExpressions(context, definition.node.id, definition.node.init, definition.name);
+	return sources.length === 1 ? sources[0] : null;
 }
 
 function isClassMemberExpression(node) {
@@ -670,10 +781,13 @@ function isLikelyDomExpression(node, context, visitedVariables = new Set()) {
 		if (context) {
 			const variable = findVariable(context, expression);
 			if (visitedVariables.has(variable)) return false;
-			const initializer = variable?.defs.find((definition) => definition.type === "Variable")?.node.init;
-			if (initializer) {
+			const definition = variable?.defs.find((candidate) => candidate.type === "Variable");
+			const sources = definition?.node.init
+				? getBindingSourceExpressions(context, definition.node.id, definition.node.init, definition.name, visitedVariables)
+				: [];
+			if (sources.length) {
 				visitedVariables.add(variable);
-				return isLikelyDomExpression(initializer, context, visitedVariables);
+				return sources.some((source) => isLikelyDomExpression(source, context, new Set(visitedVariables)));
 			}
 		}
 		return /^(?:body|container|currentTarget|documentElement|el|element|html|node|root|target)$/i.test(
@@ -928,11 +1042,12 @@ export default {
 
 				const expectation = getExpectationCall(node);
 				const matcherName = getMatcherName(node);
-				if (expectation && isClassDerivedAssertion(expectation.arguments[0], context)) {
-					reportUnlessAllowed(context, node, "classAssertion");
-					return;
-				}
-				if (expectation && containsClassSelectorExpression(expectation.arguments[0], context)) {
+				const receivedExpressions = isExpectPollCall(expectation)
+					? getFunctionSourceExpressions(context, expectation.arguments[0]).flatMap(getFunctionReturnExpressions)
+					: expectation ? [expectation.arguments[0]] : [];
+				if (receivedExpressions.some((received) =>
+					isClassDerivedAssertion(received, context) || containsClassSelectorExpression(received, context),
+				)) {
 					reportUnlessAllowed(context, node, "classAssertion");
 					return;
 				}
@@ -1004,14 +1119,18 @@ export default {
 				}
 
 				const calleeName = getPropertyName(node.callee.property ?? node.callee);
-				if (calleeName === "toHaveCSS" || calleeName === "toHaveStyle") {
+				const styleAttribute = getStaticText(node.arguments[0], context) === "style" &&
+					((expectation && matcherName === "toHaveAttribute") ||
+						(node.callee.type === "MemberExpression" && calleeName === "getAttribute"));
+				if (calleeName === "toHaveCSS" || calleeName === "toHaveStyle" || styleAttribute) {
 					reportUnlessAllowed(context, node, "cssMatcher");
 					return;
 				}
 				if (calleeName === "getComputedStyle") reportUnlessAllowed(context, node, "computedStyle");
 			},
 			MemberExpression(node) {
-				if (getPropertyName(node.property) === "style" && isLikelyDomExpression(node.object, context)) {
+				const propertyName = node.computed ? getStaticText(node.property, context) : getPropertyName(node.property);
+				if (propertyName === "style" && isLikelyDomExpression(node.object, context)) {
 					reportUnlessAllowed(context, node, "elementStyle");
 				}
 			},

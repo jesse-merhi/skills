@@ -218,7 +218,7 @@ function codexModelContext(modelName: string): {
   return { tokens: 128_000, source: "fallback:conservative-context", effectivePercent: null };
 }
 
-function walkFiles(root: string, predicate: (file: string) => boolean, maxDepth = 8): string[] {
+export function walkFiles(root: string, predicate: (file: string) => boolean, maxDepth = 8): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   function walk(dir: string, depth: number) {
@@ -248,6 +248,7 @@ function walkFiles(root: string, predicate: (file: string) => boolean, maxDepth 
           continue;
         }
         if (stat.isDirectory()) walk(file, depth + 1);
+        else if (stat.isFile() && predicate(file)) out.push(file);
       } else if (entry.isFile() && predicate(file)) {
         out.push(file);
       }

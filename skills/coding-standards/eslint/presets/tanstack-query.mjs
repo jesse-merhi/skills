@@ -11,7 +11,7 @@ export default function tanstackQuery(options = {}) {
 				"@tanstack/query/mutation-property-order": "error",
 				"@tanstack/query/no-rest-destructuring": "error",
 				"@tanstack/query/no-unstable-deps": "error",
-				"@tanstack/query/no-void-query-fn": "error",
+				"@tanstack/query/no-void-query-fn": options.typeChecked ? "error" : "off",
 			},
 		},
 	];
