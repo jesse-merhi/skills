@@ -21,8 +21,6 @@ Handle trivial typos, expected review findings, ordinary debugging discoveries,
 changed objectives, factual clarifications, vague criticism, and one-deliverable
 preferences in the current task unless they expose that reusable invariant.
 
-For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing the task, even if the immediate mistake is fixed.
-
 Acknowledge user feedback briefly. Repair the immediate user-facing result only
 when existing task authority allows it. Capture and redact:
 
