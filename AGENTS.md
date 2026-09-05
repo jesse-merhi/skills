@@ -51,11 +51,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
-- When an evidence-backed user correction exposes reusable agent behavior or
-  asks to codify prevention in instructions, skills, lint, tests, or other
-  controls, load `feedback-hardening` before systemic repair. Task-local repair
-  may continue under existing authority, but a prevention request is not
-  advance approval of an unbound systemic recommendation.
+- When a user correction or self-detected mistake reveals a reusable agent
+  failure, use `feedback-hardening`. Before closing, the source coordinator must
+  start its recommendation workflow or explain the blocker. Local repairs may
+  continue; systemic changes require approval.
 
 ## Implementation design
 

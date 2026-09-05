@@ -11,6 +11,8 @@ Produce one approved, evidence-backed systemic repair for one reusable agent fai
 
 Qualify evidence from a user correction or self-detected action against a reusable invariant across tasks, sessions, repositories, or users. Treat typos, expected review findings, ordinary debugging, changed objectives, factual clarification, vague criticism, and one-deliverable preferences as task-local unless they expose such an invariant.
 
+For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing the task, even if the immediate mistake is fixed.
+
 Acknowledge the feedback briefly; repair the immediate result under existing task authority only. Capture redacted observed behavior, desired invariant, concrete evidence, affected surface, current task state/permissions, and likely Git or host-managed target.
 
 The first recommendation requires a clean Git target. Freeze canonical worktree root, absolute `--git-common-dir`, `HEAD`, and evidence of clean index, tracked tree, and untracked scope. A dirty initial target is a visible blocker. Never overwrite that baseline with implementation progress.

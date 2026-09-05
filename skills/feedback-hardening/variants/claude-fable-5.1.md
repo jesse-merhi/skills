@@ -9,6 +9,8 @@ Use these five steps to repair a reusable agent failure. Keep the source convers
 
 ## 1. Record the failure and target
 
+For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing the task, even if the immediate mistake is fixed.
+
 1. Check the trigger. Use this workflow for an evidence-backed user correction or self-detected action that violates an invariant across tasks, sessions, repositories, or users. A typo, expected review finding, ordinary debugging discovery, changed objective, factual clarification, vague criticism, or preference for one deliverable stays task-local unless it exposes such an invariant.
 2. Acknowledge user feedback briefly. Fix the immediate result only under existing task authority. Capture redacted observed behavior, desired invariant, concrete evidence, affected surface, task state, permissions, and likely Git or managed target.
 3. Before the first recommendation, check that the Git target is clean. Record the canonical worktree root, absolute `--git-common-dir`, `HEAD`, and evidence that index, tracked files, and untracked scope are clean. Stop this workflow visibly if the initial target is dirty. Keep that baseline immutable.

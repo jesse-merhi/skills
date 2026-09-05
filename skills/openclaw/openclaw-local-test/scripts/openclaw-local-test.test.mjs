@@ -73,7 +73,7 @@ async function canListen(port) {
 }
 
 async function findPortRange(start = 24_000) {
-  for (let candidate = start; candidate < 48_000; candidate += 10) {
+  for (let candidate = start; candidate + 2 < 32_768; candidate += 10) {
     if (await canListen(candidate)) return candidate;
   }
   throw new Error("no free local three-port range");
@@ -277,7 +277,7 @@ exec ${JSON.stringify(process.execPath)} "$@"
   const previousSessions = path.join(successfulState, "agents", "main", "sessions");
   await mkdir(previousSessions, { recursive: true });
   await writeFile(path.join(previousSessions, "previous.json"), "{}\n");
-  const firstPort = await findPortRange(36_000);
+  const firstPort = await findPortRange(20_000);
   const secondPort = await findPortRange(firstPort + 10);
   const thirdPort = await findPortRange(secondPort + 10);
   const fourthPort = await findPortRange(thirdPort + 10);
