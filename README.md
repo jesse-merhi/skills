@@ -65,7 +65,7 @@ Where the skills land, per harness:
 
 | Harness | Skills directory | Global instructions | Personal agents |
 | --- | --- | --- | --- |
-| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | Claude orchestrator, Codex reviewer |
+| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | not linked |
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
@@ -78,10 +78,10 @@ contained static copy of the selected prompt, as does Claude. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
-Claude Code uses its normal main session and your selected model. Shared owner
-and worker policy lives in `AGENTS.md`; `CLAUDE.md` adds Claude-specific review
-routing through `codex-reviewer`. `wait-efficiently` owns bounded mechanical
-workers, while `handoff` transfers work to a fresh full session.
+Claude Code uses its normal main session and your selected model, without
+custom main or reviewer agents. Shared owner and worker policy lives in
+`AGENTS.md`. `wait-efficiently` owns bounded mechanical workers, while `handoff`
+transfers work to a fresh full session.
 
 Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
 sessions. After installation, use `codex --profile findings-reviewer review

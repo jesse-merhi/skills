@@ -56,36 +56,12 @@ does not load `~/.claude/AGENTS.md` by itself.
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
 
-## 3. Configure Claude review
+## 3. Preserve Claude's normal session
 
-Claude Code uses its normal main session with shared policy from `AGENTS.md`
-and review routing from `CLAUDE.md`. This repo owns one user-level agent,
-`REPO/claude/agents/codex-reviewer.md`, which relays code-centric review to
-Astra at medium. No custom main agent is required.
-
-Survey `~/.claude/agents/` before changing it. Link `codex-reviewer.md`
-into that real directory. Replace a matching repo symlink or a dead symlink,
-but ask before replacing a real file or a symlink owned elsewhere. Preserve all
-unrelated agents.
-
-For an existing installation, remove the `agent` key from
-`~/.claude/settings.json` only when its value is exactly `fable-orchestrator`.
-Leave a missing key or any other value unchanged, and preserve every other
-setting. Do not replace it with another custom main agent.
-
-Retire `fable-orchestrator.md` and the previously deleted `opus-worker.md`
-only when each is a symlink whose stored target is the matching file under
-`REPO/claude/agents/`, or a previous clone's matching path that you have verified
-belongs to this repository. Preserve real files and links owned elsewhere.
-Then validate the agent directory:
-
-```sh
-claude plugin validate ~/.claude/agents
-```
-
-The main-agent migration takes effect in the next Claude Code session. Preserve
-the user's selected model and install its matching skills. Switching skill
-files does not switch the model. Skip this step for other harnesses.
+Claude Code uses its normal main session and the global instructions linked
+above. Do not install custom main or reviewer agents or change the user's
+selected agent or model. Install the matching skills without changing other
+Claude settings. Skip this step for other harnesses.
 
 ## 4. Configure Codex interaction
 

@@ -291,8 +291,6 @@ test_installation_metadata_and_runtime() {
   assert_not_contains "$ROOT_DIR/skills/openclaw/openclaw-pr-readiness/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
   assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
-  assert_contains "$ROOT_DIR/claude/agents/codex-reviewer.md" "name: codex-reviewer"
-  assert_contains "$ROOT_DIR/claude/agents/codex-reviewer.md" "model: haiku"
 }
 
 test_handoff_tmux_helper_builds_tmux_window_command() {
