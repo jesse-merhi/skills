@@ -135,6 +135,19 @@ Some skills are not entry points at all. `review-guardrails`,
 `finding-discipline`, and `review-flow-map` are plumbing that the review
 loops load; you can invoke them directly, but usually something else does.
 
+`coding-standards` brings personal engineering standards to a repository
+without turning every judgment call into a linter. `apply` prefers existing
+tools for reliable checks, writes concise local agent guidance, and records
+partial coverage, gaps, and exceptions in `lint/standards/ADOPTION.md`. When a
+stack is not represented in the catalog, it translates the principles on
+demand and continues; no new shared language column or custom checker is
+required. `sync` reconciles active checks and guidance as well as vendored
+files, preserving local decisions. The bundled Node/ESLint rules are concrete
+examples: for non-Node repositories, agents find or build equivalent checks
+in the target repository, asking before installing dependencies. This catalog
+does not need a bundled linter for every language. Standalone `translate`
+proposes a mapping; shared-catalog changes require a separate explicit request.
+
 Every skill has full GPT-5.6, GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5
 variants. Selection
 happens locally before the model sees the workflow, so there is no router turn
@@ -222,6 +235,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`improve-codebase-architecture`](skills/improve-codebase-architecture/SKILL.md) | An architectural lens over module depth, interfaces, locality, and testability. Proposes the smallest structural change, not a refactor. |
+| [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
 
 ### Planning, context, and handoff
 

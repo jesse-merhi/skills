@@ -20,43 +20,10 @@ const ScriptEnforcement = Schema.Struct({
   languages: Schema.Array(Schema.NonEmptyString)
 })
 
-const RuffEnforcement = Schema.Struct({
-  config: Schema.optionalKey(Schema.NonEmptyString),
-  kind: Schema.Literal("ruff"),
-  select: Schema.Array(Schema.NonEmptyString)
+const Enforcement = Schema.Struct({
+  javascript: Schema.NonEmptyArray(Schema.Union([PluginEnforcement, RuleEnforcement])),
+  script: Schema.optionalKey(Schema.NonEmptyArray(ScriptEnforcement))
 })
-
-const MypyEnforcement = Schema.Struct({
-  kind: Schema.Literal("mypy"),
-  options: Schema.Record(Schema.NonEmptyString, Schema.Union([Schema.String, Schema.Boolean]))
-})
-
-const SemgrepEnforcement = Schema.Struct({
-  file: Schema.NonEmptyString,
-  kind: Schema.Literal("semgrep")
-})
-
-const CheckEnforcement = Schema.Struct({
-  file: Schema.NonEmptyString,
-  kind: Schema.Literal("check"),
-  module: Schema.NonEmptyString
-})
-
-const NotApplicableEnforcement = Schema.Struct({
-  kind: Schema.Literal("not-applicable"),
-  reason: Schema.NonEmptyString
-})
-
-const Enforcement = Schema.Union([
-  CheckEnforcement,
-  MypyEnforcement,
-  NotApplicableEnforcement,
-  PluginEnforcement,
-  RuffEnforcement,
-  RuleEnforcement,
-  ScriptEnforcement,
-  SemgrepEnforcement
-])
 
 const PackageNames = Schema.NonEmptyArray(Schema.NonEmptyString)
 
@@ -81,7 +48,7 @@ const Baseline = Schema.Struct({
 })
 
 const Standard = Schema.Struct({
-  enforcement: Schema.Record(Schema.NonEmptyString, Schema.Array(Enforcement)),
+  enforcement: Enforcement,
   id: Schema.NonEmptyString,
   origin: Schema.NonEmptyString,
   principle: Schema.NonEmptyString,
@@ -101,7 +68,7 @@ const Standard = Schema.Struct({
 })
 
 const Ecosystem = Schema.Struct({
-  detect: Schema.Array(Schema.NonEmptyString),
+  detect: Schema.NonEmptyArray(Schema.NonEmptyString),
   packages: Schema.optionalKey(Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)),
   presets: Schema.NonEmptyString
 })
