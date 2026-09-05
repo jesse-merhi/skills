@@ -5,6 +5,10 @@ description: 'Transfer the current work to a fresh full agent session, placing r
 
 # Handoff
 
+For Codex destinations, resolve the model and reasoning effort using
+[Codex model selection](references/session-routing.md#codex-model-selection)
+before launch, and include the selected settings and verification in closeout.
+
 Deliver one compact handoff document and a verified fresh full-session launch,
 or the exact limitation preventing it. Use no subagent, delegated in-chat worker,
 or background agent anywhere in the handoff.

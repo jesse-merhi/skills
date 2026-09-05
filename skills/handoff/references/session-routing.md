@@ -3,6 +3,33 @@
 Route two independent decisions: which agent should receive the work, and where
 the full session should appear.
 
+## Codex model selection
+
+Invoking this skill authorizes `gpt-6-astra` with `medium` reasoning for a
+Codex full-session handoff. Default each unspecified setting independently:
+keep an explicit user-selected model or effort, including choices already made
+in this task. Apply this policy to Codex destinations from any harness; it does
+not select a different destination or change Claude session settings.
+
+Honor higher-priority tool restrictions. If a launcher requires an explicit
+user model request and does not accept skill invocation as that request, this
+skill cannot supply that authority: report the restriction and request the
+missing explicit choice before launching. Do not bypass it through another
+launcher or silently inherit a different model.
+
+Check that the selected model and effort are supported by the destination.
+If either is unsupported or cannot be set, preserve the handoff document and
+report the exact limitation; do not silently switch models or effort.
+
+Pass the settings through the launcher's configuration, not just the handoff
+prompt. For the Codex app's `create_thread`, use `model` and `thinking`; for
+interactive Codex, use `--model` and `-c 'model_reasoning_effort="medium"'`,
+substituting the selected effort. For a bridge, ACPX, or fork, inspect its
+supported configuration and ensure the initial turn uses the selected settings.
+Record the settings in the handoff document and report the effective model and
+effort with launch evidence. Distinguish requested settings from verified ones;
+a request or queued task is not proof of the running configuration.
+
 ## Surface evidence
 
 Use evidence from the current session in this order:
