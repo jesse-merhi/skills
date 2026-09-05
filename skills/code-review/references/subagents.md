@@ -81,5 +81,5 @@ parent turn active until every required reviewer reaches a terminal state.
 
 Use `wait-efficiently`'s GitHub Actions mode at the end, after both review phases
 and local validation are clean, when PR checks are pending and monitoring is in
-scope. The coordinator may hand this mechanical phase to Luna through
-`handoff`; review judgment and the final gate remain with the coordinator.
+scope. That skill owns the optional Luna worker for this mechanical phase;
+review judgment and the final gate remain with the coordinator.

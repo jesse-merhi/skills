@@ -133,7 +133,7 @@ itself model generation.
 - Keep implementation, diagnosis, architecture, and review with the capable
   owner. Use Astra at medium for Codex review, including review launched from
   Claude, unless the user selects another reviewer. No silent model fallback.
-- For sustained mechanical work, use `handoff`'s mechanical-worker mode:
+- For sustained mechanical work, use `wait-efficiently`'s mechanical-worker mode:
   Luna at medium runs already-selected checks, collects logs, watches CI, or
   packages approved evidence. One brief must cover the whole phase. A quick
   command or an existing held wait stays local. Do not delegate implementation

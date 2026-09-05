@@ -56,34 +56,34 @@ does not load `~/.claude/AGENTS.md` by itself.
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
 
-## 3. Configure Claude orchestration
+## 3. Configure Claude review
 
-For Claude Code, this repo owns two user-level agents under
-`REPO/claude/agents/`:
+Claude Code uses its normal main session with shared policy from `AGENTS.md`
+and review routing from `CLAUDE.md`. This repo owns one user-level agent,
+`REPO/claude/agents/codex-reviewer.md`, which relays code-centric review to
+Astra at medium. No custom main agent is required.
 
-- `fable-orchestrator` is the default main agent, retaining its existing name
-  but inheriting the selected Claude model rather than pinning Fable;
-- `codex-reviewer` relays code-centric review to Astra at medium.
-
-Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
+Survey `~/.claude/agents/` before changing it. Link `codex-reviewer.md`
 into that real directory. Replace a matching repo symlink or a dead symlink,
 but ask before replacing a real file or a symlink owned elsewhere. Preserve all
 unrelated agents.
 
-Retire the deleted `opus-worker.md` only when it is a symlink whose stored
-target is `REPO/claude/agents/opus-worker.md`, or a previous clone's matching
-path that you have verified belongs to this repository. Preserve a real file
-or any link owned elsewhere.
+For an existing installation, remove the `agent` key from
+`~/.claude/settings.json` only when its value is exactly `fable-orchestrator`.
+Leave a missing key or any other value unchanged, and preserve every other
+setting. Do not replace it with another custom main agent.
 
-Set `agent` to `fable-orchestrator` in `~/.claude/settings.json`, preserving
-every other setting. If `agent` already names something else, ask before
-replacing it. Then validate the agent directory:
+Retire `fable-orchestrator.md` and the previously deleted `opus-worker.md`
+only when each is a symlink whose stored target is the matching file under
+`REPO/claude/agents/`, or a previous clone's matching path that you have verified
+belongs to this repository. Preserve real files and links owned elsewhere.
+Then validate the agent directory:
 
 ```sh
 claude plugin validate ~/.claude/agents
 ```
 
-The default main agent takes effect in the next Claude Code session. Preserve
+The main-agent migration takes effect in the next Claude Code session. Preserve
 the user's selected model and install its matching skills. Switching skill
 files does not switch the model. Skip this step for other harnesses.
 

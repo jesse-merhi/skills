@@ -53,7 +53,8 @@ without forked conversation history. Record worker identity and distinguish
 requested settings from verified settings. Never select a preset fixed at high.
 
 - **Codex app:** create one fresh full task using `model: "gpt-5.6-luna"` and
-  `thinking: "medium"`. Use same-project placement from `handoff`; a read-only
+  `thinking: "medium"` only when the app permits task creation for this request.
+  Keep it in the owner's project (or projectless when the owner is projectless); a read-only
   worker may inspect the specified checkout without creating another editing
   worktree. Verify its real thread ID, not a pending client ID. Use
   `wait_threads` for terminal completion. Where the worker has a tested
@@ -62,7 +63,7 @@ requested settings from verified settings. Never select a preset fixed at high.
 - **Codex subagent:** when a full app task is unavailable and the harness
   supports worker model selection, create one fresh Luna/medium worker with no
   inherited history. Use its native completion/event wait. This is the explicit
-  worker-mode exception to full-session handoff, not a full-session transfer.
+  mechanical phase, not a full-session transfer.
 - **Claude:** use a tracked background Bash command running a fresh
   `codex exec --model gpt-5.6-luna -c 'model_reasoning_effort="medium"'` session
   with the brief, explicit working directory, and output file. Inspect local

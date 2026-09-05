@@ -78,10 +78,10 @@ contained static copy of the selected prompt, as does Claude. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
-Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
-The existing agent name is unchanged, but it now inherits your selected Claude
-model instead of forcing Fable. It owns implementation and high-level review,
-and delegates code-centric review to Astra at medium.
+Claude Code uses its normal main session and your selected model. Shared owner
+and worker policy lives in `AGENTS.md`; `CLAUDE.md` adds Claude-specific review
+routing through `codex-reviewer`. `wait-efficiently` owns bounded mechanical
+workers, while `handoff` transfers work to a fresh full session.
 
 Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
 sessions. After installation, use `codex --profile findings-reviewer review

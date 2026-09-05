@@ -1,18 +1,9 @@
 ---
 name: handoff
-description: 'Transfer full sessions or delegate sustained mechanical work with a verified return path.'
+description: 'Transfer work to a fresh full session with verified context and placement.'
 ---
 
 # Handoff
-
-Choose the mode from the assignment. For sustained CI observation, established
-validation, log collection, or packaging approved evidence, use
-[mechanical-worker.md](references/mechanical-worker.md) and finish that mode.
-It permits one bounded Luna/medium worker and a verified return to the owner.
-Quick commands and already-held waits stay local. Implementation and review
-judgment stay with the capable owner.
-
-The remaining instructions govern full-session transfers only.
 
 For Codex destinations, resolve the model and reasoning effort using
 [Codex model selection](references/session-routing.md#codex-model-selection)

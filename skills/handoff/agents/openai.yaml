@@ -1,4 +1,4 @@
 interface:
   display_name: "Handoff"
-  short_description: "Transfer work or delegate a mechanical phase"
-  default_prompt: "Use $handoff to select a full-session transfer or one bounded mechanical worker with a verified return path."
+  short_description: "Transfer work to a fresh full session"
+  default_prompt: "Use $handoff to transfer this work to a fresh full session with verified context and placement."
