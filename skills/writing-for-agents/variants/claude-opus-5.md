@@ -1,43 +1,44 @@
 ---
 name: writing-for-agents
-description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs with precise behavioral instructions.'
+description: 'Write agent instructions using shared rules and guidance for the models that will read them.'
 ---
 
 # Writing for agents
 
-Deliver a compact instruction system whose steps, authority, and completion
-criteria are unambiguous. Treat skills, AGENTS.md, CLAUDE.md, and their linked
-documents as one system. Preserve required proof and permissions while removing
-redundant generic self-check scaffolding.
+Deliver the requested instruction change and its validation. Keep optional
+investigation and document length proportional to that change.
 
-For skill work, load `model-writing-guides` and
-[SKILL-MECHANICS.md](SKILL-MECHANICS.md) before writing. Produce all supported
-complete variants with equivalent outcomes, permissions, exact commands, and
-evidence. Retain [upstream-license.md](references/upstream-license.md).
+Keep scope, permissions, required evidence, and completion explicit. Give each
+rule one owner and remove contradictions before adding instructions. Define the
+completed outcome; add intermediate gates only where order, permissions, or
+recovery requires them. Preserve existing authorization and resolve routine
+choices from the task and repository evidence.
 
-Give each meaning one owner. Group its definition, rules, and caveats together.
-Keep ordered steps and reference needed by every path inline; disclose conditional/
-advanced material one hop from SKILL.md. References may link only to their own
-SKILL.md among `skills/` files, never another reference. Keep SKILL.md within
-500 lines and every-turn skills in one file. Extra files cost model returns.
+## Choose the authoring route
 
-Pointers are retrieval contracts: front-load the familiar leading word, name the
-material and every distinct triggering branch, collapse synonyms, and omit
-identity the target already carries. Balance context load (tokens/attention every
-turn) against cognitive load (human memory of available documents). Use automatic
-retrieval for reliable cases, human judgment where it matters.
+- **Skills:** load `model-writing-guides` for the supported target profiles and
+  [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation and layout. Maintain
+  complete variants using the existing materializer; this router selects
+  authoring guidance, not runtime skill files.
+- **AGENTS.md, CLAUDE.md, or linked instructions:** keep shared rules independent
+  of model and harness. Load `model-writing-guides` only when writing for named
+  consuming models. Keep harness-specific rules in their owning configuration.
 
-End each step with a clear, demanding completion criterion. Sharpen what must
-be proved or accounted for before adding process. If observed rushing persists
-and a sharper criterion cannot solve it, place later steps behind a real context
-boundary. Do not add a verifier round where the completion gate already proves
-the same thing.
+Choose guidance for the models that will read the result, even when another
+model writes it. Infer targets from the request and repository configuration;
+when none is specified, keep shared instructions model-neutral. Ask only when
+an unresolved target would materially change the deliverable.
 
-Use familiar anchors such as tight, frontier, and red. Repeat the token rather
-than the definition. Prefer positive behavior; keep hard prohibitions paired
-with the allowed alternative. Proportion the saved instructions as well as chat.
+## Keep the result small and usable
 
-Prune lines failing relevance, single ownership, or behavioral effect beyond the
-model default. Scripts/config/layout/`--help` already own cheap mechanical facts;
-cache only costly lookups, unwritten conventions, reasons, and gotchas. Remove
-stale or duplicate instructions instead of layering more prose over them.
+Keep common constraints inline and disclose conditional procedures through
+precise pointers. Keep references one hop from SKILL.md under the repository's
+layout rules. Describe what a skill does and when to select it in its description;
+put execution details in the body. Preserve
+[upstream-license.md](references/upstream-license.md).
+
+Finish the requested documents and preserve equivalent contracts across affected
+profiles. Independently exercise changed skill decisions; use existing metadata
+and materializer checks for packaging. Do not test prose with string matches.
+Leave unrelated skills and installation settings alone unless their update is
+part of the request.

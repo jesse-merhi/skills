@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: 'Run before every final response: make it concise and clear, cut AI tells, re-pitch confusion, and use visuals only when they help.'
+description: 'Improve substantial writing, requested rewrites, or unclear explanations with concise, concrete language.'
 ---
 
 # Speak fking English
@@ -12,7 +12,7 @@ Return a clear, concise complete draft that preserves facts, scope, material qua
 - Explicit invocation or a full unslop/de-slop/AI-tells request: reader reset, visual filter, natural writing, deep catalogue, then final brevity. Merely discussing the skill is not invocation.
 - Implicit confusion or re-pitch: reader reset, then final brevity.
 - Implicit request for visual support: visual filter, then final brevity.
-- Other model-selected uses, including the final-response checkpoint: reader reset, visual filter, natural writing, then final brevity. Skip the deep catalogue.
+- Other selected uses, including substantial writing or a required delivery pass: reader reset, visual filter, natural writing, then final brevity. Skip the deep catalogue.
 
 When another skill calls this one, return revised text to it for its chosen audience. That call is implicit unless the user explicitly invoked this skill for the artifact. Apply only the selected sections, in order.
 

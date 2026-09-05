@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: 'Run before every final response: make it concise and clear, cut AI tells, re-pitch confusion, and use visuals only when they help.'
+description: 'Improve substantial writing, requested rewrites, or unclear explanations with concise, concrete language.'
 ---
 
 # Speak fking English
@@ -14,7 +14,7 @@ Use only the sections named by the matching route, in this order:
 - Explicit invocation or full unslop/de-slop/AI-tells request: steps 2, 3, 4, 5, 6. A discussion about this skill alone is not invocation.
 - Implicit confusion or request to re-pitch: steps 2 and 6.
 - Implicit request for visual support: steps 3 and 6.
-- Other implicit uses, including checking a final response: steps 2, 3, 4, 6. Skip step 5.
+- Other selected uses, including substantial writing or a required delivery pass: steps 2, 3, 4, 6. Skip step 5.
 
 If another skill calls this one, return the revised draft to that skill for its audience. Treat the call as implicit unless the user explicitly invoked this skill for the artifact. Do this editing before returning or saving the final draft.
 

@@ -2,7 +2,7 @@
 
 Official guide: [Using GPT-5.6](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6)
 
-Reviewed: 2026-09-03.
+Reviewed: 2026-09-05.
 
 Apply these deltas when writing or maintaining an agent instruction:
 

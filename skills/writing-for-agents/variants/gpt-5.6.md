@@ -1,49 +1,43 @@
 ---
 name: writing-for-agents
-description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs with precise behavioral instructions.'
+description: 'Write agent instructions using shared rules and guidance for the models that will read them.'
 ---
 
 # Writing for agents
 
-Write agent-facing documents as one instruction system: skills, AGENTS.md,
-CLAUDE.md, and linked guidance jointly determine behavior. For skill work load
-`model-writing-guides` and [SKILL-MECHANICS.md](SKILL-MECHANICS.md) before drafting.
-Produce every supported complete variant with equivalent outcomes, permissions,
-exact commands, and evidence. Preserve [upstream-license.md](references/upstream-license.md).
+Write the smallest useful instruction set for the intended consuming models.
 
-## Put each instruction where it is needed
+Keep scope, permissions, required evidence, and completion explicit. Give each
+rule one owner and remove contradictions before adding instructions. Define the
+completed outcome; add intermediate gates only where order, permissions, or
+recovery requires them. Preserve existing authorization and resolve routine
+choices from the task and repository evidence.
 
-Separate ordered actions from reference definitions/rules/examples. Keep steps
-and universally needed reference inline; disclose branch-specific material through
-one-hop pointers from SKILL.md. Each file read costs another model return, so do
-not hide material every invocation needs. References may link only to their own
-SKILL.md among files under `skills/`, not to other references. Keep SKILL.md at
-most 500 lines; an every-turn skill is one file. Co-locate each concept's definition,
-rules, and caveats under one heading.
+## Choose the authoring route
 
-A pointer already in context determines whether external material is reached.
-Say what it is and each distinct trigger branch unmistakably. Front-load the
-leading retrieval word, collapse synonyms, and omit identity/explanation already
-in the target. Balance always-loaded token/attention cost with human memory:
-without a pointer the human must remember the resource. Spend that cognitive
-load on genuine human judgment, not reliable automatic retrieval.
+- **Skills:** load `model-writing-guides` for the supported target profiles and
+  [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation and layout. Maintain
+  complete variants using the existing materializer; this router selects
+  authoring guidance, not runtime skill files.
+- **AGENTS.md, CLAUDE.md, or linked instructions:** keep shared rules independent
+  of model and harness. Load `model-writing-guides` only when writing for named
+  consuming models. Keep harness-specific rules in their owning configuration.
 
-## Specify the result before adding process
+Choose guidance for the models that will read the result, even when another
+model writes it. Infer targets from the request and repository configuration;
+when none is specified, keep shared instructions model-neutral. Ask only when
+an unresolved target would materially change the deliverable.
 
-End each step with a clear demanding completion criterion: the agent must tell
-done from unfinished and account for the whole obligation. Prefer "every modified
-model accounted for" to "produce a change list." Sharpen criteria before adding
-steps. If observed rushing persists and criteria cannot be improved, split the
-sequence at a real context boundary so later steps are not yet visible.
+## Keep the result small and usable
 
-Use familiar leading words such as tight, frontier, or red to anchor behavior.
-Repeat the anchor, not its definition. State the desired behavior positively;
-retain prohibitions for hard boundaries and pair them with the permitted action.
+Keep common constraints inline and disclose conditional procedures through
+precise pointers. Keep references one hop from SKILL.md under the repository's
+layout rules. Describe what a skill does and when to select it in its description;
+put execution details in the body. Preserve
+[upstream-license.md](references/upstream-license.md).
 
-## Remove instructions that do not earn their load
-
-Keep each meaning authoritative once. Treat scripts, config, layout, and `--help`
-as current truth; cache prose only for costly lookups, unwritten conventions,
-reasons, and gotchas. Review every line for relevance to the job, a single owner,
-and a behavior change beyond the model's default. Delete what fails these tests
-instead of accumulating stale instructions.
+Finish the requested documents and preserve equivalent contracts across affected
+profiles. Independently exercise changed skill decisions; use existing metadata
+and materializer checks for packaging. Do not test prose with string matches.
+Leave unrelated skills and installation settings alone unless their update is
+part of the request.

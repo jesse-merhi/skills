@@ -265,7 +265,7 @@ Internal review plumbing, loaded by the loops above and rarely called directly:
 
 | Skill | What it does |
 | --- | --- |
-| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Runs a compact clarity and voice pass before every final response, then adds the full AI-tells catalogue when the user invokes the skill explicitly. |
+| [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Improves substantial writing, requested rewrites, and unclear explanations; adds the full AI-tells catalogue when explicitly invoked. |
 | [`model-writing-guides`](skills/model-writing-guides/SKILL.md) | Maintains complete model-specific skill prompts, official writing-guide references, local selection, fallback, and stale-profile notices. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 
