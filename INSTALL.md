@@ -63,7 +63,7 @@ For Claude Code, this repo owns two user-level agents under
 
 - `fable-orchestrator` is the default main agent, retaining its existing name
   but inheriting the selected Claude model rather than pinning Fable;
-- `codex-reviewer` relays code-centric review to GPT-5.6 Sol High.
+- `codex-reviewer` relays code-centric review to Astra at medium.
 
 Survey `~/.claude/agents/` before changing it. Link each repo agent by filename
 into that real directory. Replace a matching repo symlink or a dead symlink,

@@ -1,5 +1,10 @@
 # Claude engine
 
+This engine cannot satisfy medium-only review: its lowest level is high.
+Use it only when the user explicitly selects this engine and permits its
+required effort. The default workflow routes to native Codex Astra/medium;
+never pass `medium` here or silently escalate to high.
+
 Inside Claude Code, invoke the built-in reviewer through its named workflow.
 This is the same finder-and-verify review that `/code-review` runs, and the
 workflow namespace cannot be shadowed by a personal skill of the same name:
@@ -8,7 +13,7 @@ workflow namespace cannot be shadowed by a personal skill of the same name:
 Workflow({ name: "code-review", args: "<level> [target]" })
 ```
 
-- Levels: `high`, `xhigh`, or `max` only; default to `high`. The workflow has no
+- Levels: `high`, `xhigh`, or `max` only; pass the user-authorized level. The workflow has no
   low/medium level. Any first token that is not one of these three is treated as
   part of the target and the level silently falls back to `high`, so always
   spell the level out.

@@ -9,12 +9,11 @@ Complete native review and then independent cold review for the same committed
 target. Use targeted fixes for accepted findings and preserve every scope,
 consultation, validation, and publication gate.
 
-1. Resolve `<skill-dir>` to this directory. Select the harness-native engine:
-   bare `codex review` in Codex or built-in `code-review` in Claude. An explicit
-   engine choice wins; a named Claude model selects Claude. Inspect only the
-   selected engine. For Codex, confirm the runtime identity can resolve and
-   authenticate the standalone CLI. Keep its configured model without probing
-   private catalogues or overriding it. `review-until-clean` owns fallback rules.
+1. Resolve `<skill-dir>` to this directory. Select native Codex review with
+   Astra at medium from either harness, using the bundled helper. An explicit
+   engine/model choice wins. Verify only the selected CLI and authentication;
+   do not probe private catalogues. `review-until-clean` owns selection and
+   effort conflicts. Do not invoke the high-only Claude engine for medium work.
 2. Require a committed `HEAD` and empty `git status --porcelain` before scope
    setup or review. For staged, unstaged, or untracked work, ask for it to be
    committed or discarded. Do not manufacture a temporary review snapshot.

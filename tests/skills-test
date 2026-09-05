@@ -247,7 +247,10 @@ test_findings_reviewer_config_only_filters_workflow_skills() {
 import assert from "node:assert/strict";
 
 const { default: config } = await import(`${process.env.ROOT_DIR}/codex/findings-reviewer.config.toml`);
-assert.deepEqual(new Set(Object.keys(config)), new Set(["developer_instructions", "skills"]));
+assert.deepEqual(new Set(Object.keys(config)), new Set(["model", "review_model", "model_reasoning_effort", "developer_instructions", "skills"]));
+assert.equal(config.model, "gpt-6-astra");
+assert.equal(config.review_model, "gpt-6-astra");
+assert.equal(config.model_reasoning_effort, "medium");
 assert.equal(typeof config.developer_instructions, "string");
 assert.ok(config.developer_instructions.trim());
 assert.deepEqual(Object.keys(config.skills), ["config"]);

@@ -122,8 +122,26 @@ resource lifecycle, and graceful shutdown.
 
 ## Model turns
 
-Every return to the model re-sends the whole conversation, so the count of
-returns sets the cost of a task.
+Model cost depends on the model, generated tokens, and input/cache usage.
+Repeated model turns can add cost; elapsed time in a held tool call is not
+itself model generation.
+
+- Use medium reasoning for implementation, review, and delegated work. Do not
+  escalate to high, xhigh, max, or ultra automatically. Apply an explicit user
+  override only to its named task. Set supported effort through the launcher;
+  a prompt cannot override a role with fixed high effort.
+- Keep implementation, diagnosis, architecture, and review with the capable
+  owner. Use Astra at medium for Codex review, including review launched from
+  Claude, unless the user selects another reviewer. No silent model fallback.
+- For sustained mechanical work, use `handoff`'s mechanical-worker mode:
+  Luna at medium runs already-selected checks, collects logs, watches CI, or
+  packages approved evidence. One brief must cover the whole phase. A quick
+  command or an existing held wait stays local. Do not delegate implementation
+  or spend a solution's worth of reasoning briefing a cheaper worker.
+- Once a worker owns the phase, use its verified callback or native event wait;
+  do not duplicate status checks or narrate unchanged progress. The worker
+  returns completion, first failure, stale target, deadline, or a decision
+  requiring the owner. Diagnosis and fixes return to the owner.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one

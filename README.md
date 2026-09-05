@@ -81,7 +81,7 @@ refuses to replace hand-written local skills or links owned elsewhere.
 Claude Code starts with the repo-owned `fable-orchestrator` as its main agent.
 The existing agent name is unchanged, but it now inherits your selected Claude
 model instead of forcing Fable. It owns implementation and high-level review,
-and delegates code-centric review to GPT-5.6 Sol High.
+and delegates code-centric review to Astra at medium.
 
 Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
 sessions. After installation, use `codex --profile findings-reviewer review

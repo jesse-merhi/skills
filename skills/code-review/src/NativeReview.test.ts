@@ -193,7 +193,7 @@ esac
       try {
         // @effect-diagnostics-next-line processEnv:off
         const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, env: { ...process.env, HOME: home, CODEX_HOME: customHome ? codexHome : "", PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
-        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review --base master`)
+        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review -c model="gpt-6-astra" -c review_model="gpt-6-astra" -c model_reasoning_effort="medium" --base master`)
       } catch {
         failed = true
       }
@@ -202,7 +202,7 @@ esac
       assert.strictEqual(recorded[0], "login status")
       assert.strictEqual(recorded[1], "doctor --json")
       assert.match(recorded[2] ?? "", /^exec --ephemeral /u)
-      assert.deepStrictEqual(recorded.slice(3), [`${profile ? "--profile findings-reviewer " : ""}review --base master`])
+      assert.deepStrictEqual(recorded.slice(3), [`${profile ? "--profile findings-reviewer " : ""}review -c model="gpt-6-astra" -c review_model="gpt-6-astra" -c model_reasoning_effort="medium" --base master`])
       if (reviewFails) {
         assert.isFalse(await Effect.runPromise(live(FileSystem.FileSystem.pipe(Effect.flatMap((fs) => fs.exists(output))))))
       } else {

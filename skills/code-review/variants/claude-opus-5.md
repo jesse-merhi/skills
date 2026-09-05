@@ -12,12 +12,11 @@ do not add an optional final verifier or a worker per overlapping lens.
 
 ## Target and durable limits
 
-Resolve `<skill-dir>` to this directory. Select bare `codex review` in Codex or
-built-in `code-review` in Claude unless the user names another engine. A named
-Claude model selects Claude. Check only the selected engine; Codex needs the
-current identity to resolve/authenticate the standalone CLI. Keep its configured
-model, without private catalogue probes or overrides. `review-until-clean` owns
-selection/fallback rules.
+Resolve `<skill-dir>` to this directory. Default to native Codex review with
+Astra at medium from either harness, using the bundled helper. Honor an explicit
+engine/model choice and verify only the selected CLI and authentication. Do not
+probe private catalogues. `review-until-clean` owns selection and effort conflicts;
+a high-only Claude engine cannot satisfy medium-only work without user override.
 
 Require a committed `HEAD` and empty `git status --porcelain` before scope setup
 or review. Ask for dirty staged/unstaged/untracked work to be committed/discarded;
@@ -68,7 +67,8 @@ Phase 1 is external native review, never an in-chat replacement. Load
 `review-until-clean`, `wait-efficiently`,
 [review-phase-rules.md](references/review-phase-rules.md), and the selected Codex
 [codex-review-helper.md](references/codex-review-helper.md). Keep the native command
-bare and target-only; do not inject a discovery prompt. Capture each external
+limited to target and model/effort configuration; do not inject a discovery
+prompt. Capture each external
 ID before waiting, collect terminal output, and archive before another invocation
 or leaving the phase. Guarantee cleanup on errors, cancellation, expiry, or early
 stop using `set_thread_archived` in Codex Desktop or `codex archive <id>` standalone.

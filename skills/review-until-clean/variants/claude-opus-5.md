@@ -20,7 +20,8 @@ inherit the persisted baseline, and confirm `scope-status`. Use `wait-efficientl
 [loop.md](references/loop.md), and
 [fixing-and-reporting.md](references/fixing-and-reporting.md).
 
-The review call stays bare and target-only. Do not inject an Opus discovery
+The review call accepts its target and explicit model/effort configuration only.
+Do not inject an Opus discovery
 prompt, checklist, output format, prior findings, rationale, or desired verdict.
 Do not substitute self-review, cold review, custom prompts, repo commands, or
 ad hoc subagents. `ask-codex`/`ask-claude` need the user's explicit current request

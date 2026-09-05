@@ -5,6 +5,13 @@ description: 'Wait for a command, CI run, subagent, or timed delay by holding on
 
 # Wait efficiently
 
+Before starting a sustained phase of repeated CI observations, established
+checks, log collection, or packaging approved evidence, use `handoff` mechanical-
+worker mode when its compact brief saves owner work. Keep one command already
+held until completion local. Once a worker owns the phase, the owner waits for
+its terminal event; do not also inspect CI or poll the worker. Implementation,
+failure diagnosis, and review judgment remain with the capable owner.
+
 Keep one wait pending. Return to the model when work finishes, action is needed, or the deadline expires. Repeated checks of unchanged progress waste round trips.
 
 ## 1. Choose the duration and mechanism

@@ -1,8 +1,13 @@
 # Codex engine
 
-Invoke `codex review` with the target flag only. Do not append a prompt.
+Invoke `codex review` with the target and model configuration only. Do not append
+a prompt. The `code-review` helper pins Astra and medium through CLI overrides,
+including `review_model`; it does not inherit the coordinator's model or effort.
+Use that helper for the default reviewer from Codex or Claude. For an explicit
+alternate reviewer pass the user's configuration to the native command.
 
-Use these forms:
+These show target selection; use the helper to supply the default model/effort
+pins, or add explicit configuration for the user-selected reviewer:
 
 ```sh
 # Review branch changes against a base branch such as main.
