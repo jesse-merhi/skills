@@ -51,14 +51,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
-- When an evidence-backed user correction or self-detected mistake reveals a
-  reusable agent failure, load `feedback-hardening` even if the immediate result
-  can be fixed locally. The source coordinator must start its recommendation
-  workflow or report the concrete blocker before closing the task. Reading the
-  skill or completing the local repair alone does not satisfy this requirement.
-  Follow the skill's exclusions, worker-role boundaries, and rules for active
-  workflows and queued evidence. Task-local repair may continue under existing
-  authority; systemic repair still requires approval of a bound recommendation.
+- When a user correction or self-detected mistake reveals a reusable agent
+  failure, use `feedback-hardening`. Before closing, the source coordinator must
+  start its recommendation workflow or explain the blocker. Local repairs may
+  continue; systemic changes require approval.
 
 ## Implementation design
 

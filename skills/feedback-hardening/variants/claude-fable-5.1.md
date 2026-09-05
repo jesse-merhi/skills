@@ -1,6 +1,6 @@
 ---
 name: feedback-hardening
-description: "Prevent recurrence when user corrections or self-detected mistakes expose reusable agent failures; excludes ordinary debugging and one-off preferences."
+description: "Evidence-backed user corrections or self-detected mistakes revealing reusable agent failures: delegate one systemic-fix recommendation, get approval, then implement it."
 ---
 
 # Feedback hardening
@@ -9,7 +9,7 @@ Use these five steps to repair a reusable agent failure. Keep the source convers
 
 ## 1. Record the failure and target
 
-For qualifying evidence, the source coordinator must start the recommendation workflow or report its concrete blocker before closing the task. Do not wait for the user to name this skill. Reading it or completing the local repair alone is insufficient. Follow the active-workflow, queue, and worker-role rules below instead of starting duplicate or nested workflows. Continue authorized task-local work while arranging the recommendation.
+For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing the task, even if the immediate mistake is fixed.
 
 1. Check the trigger. Use this workflow for an evidence-backed user correction or self-detected action that violates an invariant across tasks, sessions, repositories, or users. A typo, expected review finding, ordinary debugging discovery, changed objective, factual clarification, vague criticism, or preference for one deliverable stays task-local unless it exposes such an invariant.
 2. Acknowledge user feedback briefly. Fix the immediate result only under existing task authority. Capture redacted observed behavior, desired invariant, concrete evidence, affected surface, task state, permissions, and likely Git or managed target.
