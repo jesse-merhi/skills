@@ -2,7 +2,7 @@
 
 Official guide: [Prompting Claude Opus 5](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
 
-Reviewed: 2026-09-04.
+Reviewed: 2026-09-05.
 
 Adapt instructions where these model behaviors affect the skill:
 

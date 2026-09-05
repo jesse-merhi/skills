@@ -2,7 +2,7 @@
 
 Official guide: [Prompting Claude Fable 5.1](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1)
 
-Reviewed: 2026-09-03.
+Reviewed: 2026-09-05.
 
 Apply these deltas when writing or maintaining an agent instruction:
 

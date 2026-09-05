@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: 'Run before every final response: make it concise and clear, cut AI tells, re-pitch confusion, and use visuals only when they help.'
+description: 'Improve substantial writing, requested rewrites, or unclear explanations with concise, concrete language.'
 ---
 
 # Speak fking English
@@ -14,7 +14,7 @@ Choose one route and apply its sections in order:
 - Explicit invocation or full unslop/de-slop/AI-tells request: reader reset, visual filter, natural writing, deep catalogue, final brevity. Discussion of the skill is not invocation.
 - Implicit confusion/re-pitch: reader reset, final brevity.
 - Implicit visual support: visual filter, final brevity.
-- Other implicit uses, including final-response checks: reader reset, visual filter, natural writing, final brevity. Omit the deep catalogue.
+- Other selected uses, including substantial writing or a required delivery pass: reader reset, visual filter, natural writing, final brevity. Omit the deep catalogue.
 
 A calling skill receives revised text for its audience, not a separate user response. Treat its call as implicit unless the user explicitly invoked this skill for the artifact. Keep work inside the selected route and make it the last edit before return or save; do not add an unrelated verification round.
 

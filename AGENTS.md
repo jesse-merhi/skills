@@ -43,8 +43,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
     observable effect.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
-- Immediately before a user-facing final response, load `speak-fking-english`.
-- Stay concise while preserving the explanation needed to understand the work.
+- Keep replies concise, concrete, and free of repetition while preserving
+  necessary evidence and qualifications. Use `speak-fking-english` for
+  substantial writing, requested rewrites, unclear explanations, or when a
+  delivery workflow requires it; routine short replies need no extra skill read.
 - When user input is genuinely required, use the harness's native structured
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
@@ -69,9 +71,9 @@ Assign review duties by the task, not by whether an agent is a subagent.
 - Make architectural decisions for the long term. Do not implement a stopgap
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
-- Before creating or changing any skill, load `writing-for-agents` and
-  `model-writing-guides`. Update the complete prompt for every supported model;
-  variant file presence is the coverage record.
+- Before creating or changing agent instructions, use `writing-for-agents`
+  to select the applicable authoring guidance. For skill changes, keep every
+  supported model variant complete; variant file presence is the coverage record.
 
 ## Dependency-first implementation
 
@@ -130,11 +132,11 @@ returns sets the cost of a task.
   Codex code-mode cell, or several tool calls in one response where the harness
   runs them natively. Keep dependent calls, writes, and approval-sensitive
   actions serial.
-- Start one event-driven wait sized to the mechanism and expected completion
-  time, then resume that same wait or process if the harness yields. A wait
-  deadline is a ceiling, not a required delay; there is no universal minimum.
-  Load `wait-efficiently` for anything longer or more involved than a single
-  command.
+- Resume existing operations using completion notifications or bounded waits;
+  avoid repeated status polling. Load `wait-efficiently` for CI monitoring,
+  prolonged commands, timed delays, or coordinating pending agents. Ordinary
+  batches of quick commands need no extra skill read. Keep waits within tool
+  limits and the current communication requirements.
 
 ## Working rules
 

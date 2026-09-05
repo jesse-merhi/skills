@@ -1,9 +1,15 @@
 ---
 name: model-writing-guides
-description: 'Maintain complete model-specific skill variants and add coverage when a new model or official prompting guide appears.'
+description: 'Adapt agent instructions for target models and maintain complete skill variants.'
 ---
 
 # Model writing guides
+
+For AGENTS.md, CLAUDE.md, or linked instructions, use only the guides for the
+models that will consume the document, not the authoring model. Keep shared
+instructions model-neutral when no target is named. The variant and installer
+workflow below applies to skills; editing other documents does not require
+creating variants or switching the installation.
 
 Deliver complete model-specific workflows with equivalent behavior and one
 selected prompt per installed invocation. Adapt the actual instructions rather

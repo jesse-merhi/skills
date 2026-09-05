@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: Discover and remove local development artifacts that belong to finished or abandoned work, including worktrees, branches, stashes, processes, watchers, containers, volumes, build outputs, and simulator state. Use when asked to clean up after a task, PR, branch, worktree, or dev environment; not for source-code refactoring or remote resource deletion.
+description: 'Remove local development artifacts from finished or abandoned work; excludes source refactoring and remote deletion.'
 ---
 
 # Cleanup
