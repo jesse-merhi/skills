@@ -156,10 +156,11 @@ const scopeCheck = Command.make("scope-check", {
   yield* Console.log(formatScopeBudgetCheck(check))
 }))).pipe(Command.withDescription("Block review work that exceeds the frozen scope budget"))
 const scopeAuthorize = Command.make("scope-authorize", {
-  db, ...commonRun, scopeSummary, authorization: Flag.string("authorization")
+  db, ...commonRun, scopeSummary, authorization: Flag.string("authorization"), newBase: optionalString("new-base")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const budget = yield* authorizeScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, authorization: args.authorization })
+  const budget = yield* authorizeScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, authorization: args.authorization,
+    ...(Option.isSome(args.newBase) ? { newBase: args.newBase.value } : {}) })
   yield* Console.log(formatReadyScopeBudget(budget))
 }))).pipe(Command.withDescription("Reset a blocked baseline after explicit user authorization"))
 const scopeStatus = Command.make("scope-status", {

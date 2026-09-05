@@ -74,9 +74,20 @@ the revised scope:
   --authorization "<user's explicit approval>"
 ```
 
+When an authorized main sync changes the base of an existing review, pass its
+stored identity as `--base <old-base>` and add `--new-base <new-base>` to
+`scope-authorize`. This remeasures the baseline and moves the same run to the
+new base while preserving findings, commands, the branch lock, and event history.
+The authorization event records both base refs and commit IDs. Use the new
+`--base` for subsequent commands and restart the current review phase. This
+requires explicit authorization even when the old scope has not blocked yet;
+completed scopes remain terminal. An existing run at the destination identity
+is rejected rather than overwritten.
+
 Use `scope-status` after compaction or handoff. `scope-start` refuses to replace
 an existing baseline or create a second active baseline under a renamed target,
-and `scope-authorize` refuses to run until a check has blocked. Keep the database
+and `scope-authorize` requires a blocked scope, a base change, or a migrated
+budget requiring rebaseline. Keep the database
 outside the reviewed repository so its SQLite files cannot enter the measured
 diff. The exception is a migrated budget whose status says rebaseline is
 required: after showing that reason and receiving explicit approval, run
