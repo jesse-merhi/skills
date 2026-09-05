@@ -13,7 +13,7 @@ tmux list-panes -t "$TMUX_PANE" -F '#{pane_id}:#{pane_current_command}:#{pane_cu
 ## Codex launch settings
 
 Resolve `HANDOFF_MODEL` and `HANDOFF_EFFORT` using
-[Codex model selection](session-routing.md#codex-model-selection). Prepare the
+[the handoff skill](../SKILL.md). Prepare the
 required worktree first and set `WORKING_DIRECTORY` to it. Set `HANDOFF_PROMPT`
 to direct the new session to read the handoff document, with its next focus and
 worktree boundaries. Use native tmux launch arguments below: the bundled
