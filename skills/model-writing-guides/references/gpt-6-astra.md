@@ -2,7 +2,7 @@
 
 Official guide: [GPT-6 Astra prompting best practices](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra#prompting-best-practices)
 
-Reviewed: 2026-09-04.
+Reviewed: 2026-09-05.
 
 Adapt instructions where these model behaviors affect the skill:
 

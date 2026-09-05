@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: Create or check concise reviewer-visible PR context and practical proof when an authorized workflow publishes an update or prepares it for merge. Lead with what broke and how it is fixed, use actual product screenshots for static UI changes and recordings for motion or manual interaction, keep technical diagrams as separate system explanations, break down large changes by direct-base +LOC and -LOC, and prefer copyable text for textual behavior.
+description: 'Check or refresh PR descriptions and practical evidence during authorized publication or merge preparation.'
 ---
 
 # PR proof pack

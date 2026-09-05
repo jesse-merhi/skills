@@ -1,6 +1,6 @@
 ---
 name: wait-efficiently
-description: 'Wait for a command, CI run, subagent, or timed delay by holding one long call instead of polling; report only meaningful state changes.'
+description: 'Manage CI monitoring, prolonged commands, timed delays, and pending agents with bounded waits.'
 ---
 
 # Wait efficiently

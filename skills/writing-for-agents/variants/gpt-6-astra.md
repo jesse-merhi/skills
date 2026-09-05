@@ -1,54 +1,44 @@
 ---
 name: writing-for-agents
-description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs with precise behavioral instructions.'
+description: 'Write agent instructions using shared rules and guidance for the models that will read them.'
 ---
 
 # Writing for agents
 
-Make the combined instruction system predictable across skills, AGENTS.md,
-CLAUDE.md, and linked documents. Resolve contradictions at the owning instruction
-before adding another rule. Ordinary execution should proceed from clear criteria;
-genuine user decisions and permissions stay explicit.
+Use the task and existing instruction owners to choose the smallest useful
+authoring path. Carry the authorized change through its required validation.
 
-## Establish the contract and owner
+Keep scope, permissions, required evidence, and completion explicit. Give each
+rule one owner and remove contradictions before adding instructions. Define the
+completed outcome; add intermediate gates only where order, permissions, or
+recovery requires them. Preserve existing authorization and resolve routine
+choices from the task and repository evidence.
 
-For a skill, load `model-writing-guides` and
-[SKILL-MECHANICS.md](SKILL-MECHANICS.md) before drafting. Produce a complete prompt
-for every supported profile while preserving outcome, permissions, exact commands,
-and evidence. Keep each meaning in one authoritative place and co-locate its
-definition, rules, and caveats. Preserve [upstream-license.md](references/upstream-license.md).
+## Choose the authoring route
 
-## Put the right information in context
+- **Skills:** load `model-writing-guides` for the supported target profiles and
+  [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation and layout. Maintain
+  complete variants using the existing materializer; this router selects
+  authoring guidance, not runtime skill files.
+- **AGENTS.md, CLAUDE.md, or linked instructions:** keep shared rules independent
+  of model and harness. Load `model-writing-guides` only when writing for named
+  consuming models. Keep harness-specific rules in their owning configuration.
 
-Steps are ordered actions; references are definitions, rules, examples, and facts.
-Keep steps and every-path reference inline. Put conditional or advanced reference
-one hop from SKILL.md; reference files cannot chain to other references and may
-link only to their own SKILL.md within `skills/`. Keep SKILL.md at most 500 lines
-and every-turn skills in one file. Each extra read costs another model return.
+Choose guidance for the models that will read the result, even when another
+model writes it. Infer targets from the request and repository configuration;
+when none is specified, keep shared instructions model-neutral. Ask only when
+an unresolved target would materially change the deliverable.
 
-A context pointer controls retrieval, whether it is a description or an AGENTS
-line. Front-load a familiar leading word and state both what is behind it and
-all distinct trigger branches. Collapse synonyms and omit target identity already
-obvious there. Balance always-loaded token/attention cost against the human
-burden of remembering unlinked material. Automate reliable retrieval and preserve
-human judgment where it is actually needed.
+## Keep the result small and usable
 
-## Define completion that supports action
+Keep common constraints inline and disclose conditional procedures through
+precise pointers. Keep references one hop from SKILL.md under the repository's
+layout rules. Describe what a skill does and when to select it in its description;
+put execution details in the body. Preserve
+[upstream-license.md](references/upstream-license.md).
 
-End every step with a clear demanding criterion that distinguishes done from
-unfinished. Require exhaustive accounting where appropriate, not vague artifact
-requests. Sharpen the criterion before adding process. If premature completion
-is observed and criteria cannot be made sharper, split the sequence across a
-real context boundary so later steps cannot distract from unfinished work.
-
-Use learned anchor words such as tight, frontier, or red, repeating the anchor
-rather than its explanation. State desired behavior positively; pair necessary
-hard prohibitions with the allowed alternative. Do not use redundant caution to
-create extra permission rounds for already-authorized work.
-
-## Prune against the real environment
-
-Scripts, config, directory layout, and `--help` are live sources. Prose should
-cache costly lookups, unwritten conventions, reasons, or gotchas rather than cheap
-mechanical facts. Test every line for relevance, unique ownership, and actual
-behavioral effect beyond model defaults. Delete failures and stale sediment.
+Finish the requested documents and preserve equivalent contracts across affected
+profiles. Independently exercise changed skill decisions; use existing metadata
+and materializer checks for packaging. Do not test prose with string matches.
+Leave unrelated skills and installation settings alone unless their update is
+part of the request.
