@@ -1615,6 +1615,88 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   assert_output_contains "$out" "authorization=User explicitly approved the production-line growth."
 }
 
+test_review_scope_authorize_changes_literal_base_without_losing_history() {
+  local tmp db repo out old_base new_base run_id
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  repo="$tmp/repo"
+  git init --quiet --initial-branch main "$repo"
+  git -C "$repo" config user.name Test
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" commit --quiet --allow-empty --message base
+  old_base="$(git -C "$repo" rev-parse HEAD)"
+  git -C "$repo" switch --quiet --create feature
+  for number in {1..10}; do printf 'feature %s\n' "$number"; done > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message feature
+  local identity=(--db "$db" --repo sample-app --repo-path "$repo" --branch feature --target "literal base review")
+  local cli="$ROOT_DIR/skills/code-review/scripts/review-findings"
+  "$cli" scope-start "${identity[@]}" --base "$old_base" --scope-summary "Review feature." >/dev/null
+  "$cli" record-command "${identity[@]}" --base "$old_base" --command 'feature test' --result passed --reason 'Existing evidence.' >/dev/null
+  record_maintenance_finding "${identity[@]}" --base "$old_base" --decision-id KEEP --status open --source lens --fingerprint existing --summary 'Existing finding' --decision 'Keep the finding visible.' >/dev/null
+  run_id="$(node --disable-warning=ExperimentalWarning --input-type=module - "$db" <<'NODE'
+import { DatabaseSync } from 'node:sqlite'
+const db = new DatabaseSync(process.argv[2])
+console.log(db.prepare('select id from review_runs').get().id)
+db.close()
+NODE
+)"
+  git -C "$repo" switch --quiet main
+  for number in {1..100}; do printf 'main %s\n' "$number"; done > "$repo/main-only.ts"
+  git -C "$repo" add main-only.ts
+  git -C "$repo" commit --quiet --message 'advance main'
+  new_base="$(git -C "$repo" rev-parse HEAD)"
+  git -C "$repo" switch --quiet feature
+  git -C "$repo" merge --quiet --no-edit main
+  if "$cli" scope-check "${identity[@]}" --base "$old_base" --reason 'Main was merged.' >"$tmp/blocked" 2>&1; then
+    fail 'merged main history should exceed the old allowance'
+  fi
+  assert_contains "$tmp/blocked" 'baseline=10 current=110'
+  for invalid_base in '' missing-ref; do
+    if "$cli" scope-authorize "${identity[@]}" --base "$old_base" --new-base "$invalid_base" --scope-summary 'Review feature.' --authorization 'User approved base change.' >"$tmp/error" 2>&1; then
+      fail 'invalid replacement base must be rejected'
+    fi
+  done
+  if "$cli" scope-authorize "${identity[@]}" --base "$old_base" --new-base main --scope-summary 'Review feature.' --authorization '' >"$tmp/error" 2>&1; then
+    fail 'base replacement still requires authorization'
+  fi
+  out="$("$cli" scope-status "${identity[@]}" --base "$old_base")"
+  assert_output_contains "$out" 'SCOPE BUDGET BLOCKED'
+  out="$("$cli" scope-authorize "${identity[@]}" --base "$old_base" --new-base main --scope-summary 'Review only the feature after main sync.' --authorization 'User approved changing the base to main.')"
+  assert_output_contains "$out" 'base=main@'
+  assert_output_contains "$out" 'baseline=10 current=10'
+  assert_output_contains "$out" 'allowed-growth=3'
+  "$cli" scope-check "${identity[@]}" --base main --reason 'Check the revised scope.' >/dev/null
+  out="$("$cli" closeout "${identity[@]}" --base main --json)"
+  assert_output_contains "$out" 'Existing finding'
+  assert_output_contains "$out" 'feature test'
+  node --disable-warning=ExperimentalWarning --input-type=module - "$db" "$run_id" "$old_base" "$new_base" <<'NODE'
+import assert from 'node:assert/strict'
+import { DatabaseSync } from 'node:sqlite'
+const [, , path, id, oldBase, newBase] = process.argv
+const db = new DatabaseSync(path)
+const runs = db.prepare('select id, base from review_runs').all()
+assert.equal(runs.length, 1)
+assert.equal(runs[0].id, id)
+assert.equal(runs[0].base, 'main')
+assert.equal(db.prepare('select run_id from review_scope_locks').get().run_id, id)
+assert.equal(db.prepare('select count(*) as count from review_scope_events where run_id = ?').get(id).count, 4)
+const event = db.prepare("select reason, authorization from review_scope_events where event = 'authorized'").get()
+assert.equal(event.reason, `Rebaseline from ${oldBase}@${oldBase} to main@${newBase}`)
+assert.equal(event.authorization, 'User approved changing the base to main.')
+db.close()
+NODE
+  if "$cli" scope-complete "${identity[@]}" --base main --reason 'Review is clean.' >"$tmp/error" 2>&1; then
+    fail 'rebaseline must not erase unresolved findings'
+  fi
+  assert_contains "$tmp/error" 'KEEP'
+  for number in {11..14}; do printf 'feature %s\n' "$number"; done >> "$repo/app.ts"
+  if "$cli" scope-check "${identity[@]}" --base main --reason 'Four added feature lines.' >"$tmp/error" 2>&1; then
+    fail 'revised scope must still enforce the original 30 percent cap'
+  fi
+  assert_contains "$tmp/error" 'current=14 growth=4 allowed-growth=3'
+}
+
 test_review_scope_authorize_resolves_moved_base() {
   local tmp db repo out base_oid
   tmp="$(mktemp -d)"
@@ -3217,6 +3299,7 @@ test_review_findings_preserves_decision_log_on_update
 test_failed_scope_start_does_not_hide_existing_findings
 test_concurrent_scope_start_allows_only_one_active_budget
 test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state
+test_review_scope_authorize_changes_literal_base_without_losing_history
 test_review_scope_authorize_resolves_moved_base
 test_review_scope_authorize_resolves_moved_base_from_ready
 test_review_scope_budget_blocks_deterministically

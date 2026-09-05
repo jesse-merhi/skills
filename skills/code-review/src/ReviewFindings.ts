@@ -966,6 +966,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   readonly expectedGeneration?: number
   readonly allowReady?: boolean
   readonly inheritedBaseline?: ScopeBudgetStatus
+  readonly reason?: string
 }) {
   yield* validateLimit(input.inheritedBaseline?.limitPercent ?? input.limitPercent)
   const sql = yield* SqlClient.SqlClient
@@ -1001,14 +1002,20 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = input.runId ?? (yield* (input.freshRun === true ? createScopeRun(run) : upsertRun(run)))
-  yield* sql`update review_runs set head = ${targetOid} where id = ${runId}`
   if (input.expectedGeneration !== undefined) {
     const current = yield* readScopeBudget(runId)
     const expectedStatus = current.status === "blocked" || current.status === "rebaseline-required" || (input.allowReady === true && (current.status === "ready" || current.status === "ok"))
     if (current.generation !== input.expectedGeneration || !expectedStatus) {
       return yield* Effect.fail(new InvalidScopeBudget("scope budget changed while scope-authorize was measuring; rerun scope-check and request authorization for the current state"))
     }
+    if (current.baseRef !== run.base) {
+      const destination = yield* exactRunId(run)
+      if (destination !== undefined && destination !== runId) {
+        return yield* Effect.fail(new InvalidScopeBudget("the new base already identifies another review run; choose a distinct base ref to preserve both histories"))
+      }
+    }
   }
+  yield* sql`update review_runs set base = ${run.base}, head = ${targetOid}, repo_path = ${run.repoPath} where id = ${runId}`
   if (input.freshRun === true) {
     const repoKey = yield* canonicalRepoKey(run.repoPath)
     yield* sql`insert or ignore into review_scope_locks (repo_key, branch, run_id) values (${repoKey}, ${run.branch}, ${runId})`
@@ -1043,7 +1050,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
     currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines,
     newPaths: newHumanAuthoredPaths,
-    reason: "",
+    reason: input.reason ?? "",
     scopeSummary: input.scopeSummary,
     authorization
   })
@@ -1104,20 +1111,24 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
 export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudget")(function*(run: ReviewRun, input: {
   readonly scopeSummary: string
   readonly authorization: string
+  readonly newBase?: string
 }) {
   if (input.authorization.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-authorize requires the user's explicit authorization text"))
+  if (input.newBase !== undefined && input.newBase.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("--new-base must name a Git commit or ref"))
   const verifiedRun = yield* verifyScopeRun(run)
   const runId = yield* exactRunId(verifiedRun)
   if (runId === undefined) return yield* Effect.fail(new MissingScopeBudget())
   const existing = yield* readScopeBudget(runId)
   if (existing.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
+  const revisedRun = { ...verifiedRun, base: input.newBase ?? verifiedRun.base }
   const git = yield* trustedExecutable("git", verifiedRun.repoPath)
-  const currentBaseOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${verifiedRun.base}^{commit}`], { cwd: verifiedRun.repoPath })
-  const baseMoved = currentBaseOid !== existing.baseOid
+  const currentBaseOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${revisedRun.base}^{commit}`], { cwd: verifiedRun.repoPath })
+  const baseMoved = currentBaseOid !== existing.baseOid || revisedRun.base !== existing.baseRef
   if (existing.status !== "blocked" && existing.status !== "rebaseline-required" && !baseMoved) {
     return yield* Effect.fail(new InvalidScopeBudget("scope-authorize is only valid after scope-check has blocked, migration requires rebaseline, or the requested base ref has moved"))
   }
-  return yield* saveScopeBaseline(verifiedRun, { ...input, limitPercent: existing.limitPercent, baseOid: currentBaseOid, event: "authorized", runId, expectedGeneration: existing.generation, allowReady: baseMoved })
+  return yield* saveScopeBaseline(revisedRun, { ...input, limitPercent: existing.limitPercent, baseOid: currentBaseOid, event: "authorized", runId, expectedGeneration: existing.generation, allowReady: baseMoved,
+    reason: `Rebaseline from ${existing.baseRef}@${existing.baseOid} to ${revisedRun.base}@${currentBaseOid}` })
 })
 
 export const getScopeBudget = Effect.fn("ReviewFindings.getScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
