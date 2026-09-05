@@ -46,14 +46,18 @@ const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "ca
 
 const javascriptPresets = catalog.presets.javascript ?? {}
 
-const enforcements = catalog.standards.flatMap((standard) => Object.values(standard.enforcement).flat())
+const enforcements = catalog.standards.flatMap((standard) => [
+  ...standard.enforcement.javascript,
+  ...(standard.enforcement.script ?? [])
+])
 
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
 const scriptEntries = enforcements.flatMap((entry) => (entry.kind === "script" ? [entry] : []))
 const referencedPaths = [
   ...ruleEntries.map((entry) => entry.rule),
   ...scriptEntries.map((entry) => entry.file),
-  ...Object.values(catalog.baselines).map((baseline) => baseline.file)
+  ...Object.values(catalog.baselines).map((baseline) => baseline.file),
+  ...Object.values(catalog.presets).flatMap((family) => Object.values(family).map((preset) => preset.file))
 ]
 
 const bareSpecifier = (specifier: string): string => {
@@ -110,13 +114,44 @@ const isEnabled = (setting: typeof RuleSetting.Type): boolean => {
   return severity !== "off" && severity !== 0
 }
 
+interface MutableStandard {
+  enforcement: { javascript: Array<Record<string, unknown>> }
+}
+
+// The schema, not a test, is what has to reject a hand-edited catalog, so each
+// mutation below is one way that editing goes wrong.
+const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandard>) => void]> = [
+  [
+    "a standard whose javascript column is empty",
+    (standards) => {
+      for (const standard of standards) standard.enforcement.javascript = []
+    }
+  ],
+  [
+    "an enforcement entry carrying a key its kind does not define",
+    (standards) => {
+      for (const standard of standards) {
+        for (const entry of standard.enforcement.javascript) entry.severity = "error"
+      }
+    }
+  ],
+  [
+    "a shell script entry pasted into the javascript column",
+    (standards) => {
+      for (const standard of standards) {
+        standard.enforcement.javascript.push({ kind: "script", file: "check.sh", languages: ["sh"] })
+      }
+    }
+  ]
+]
+
 const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .filter((entry) => entry.endsWith(".mjs") && !entry.endsWith(".test.mjs"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
   it("resolves every referenced rule, script, baseline, and preset file", () => {
-    for (const path of [...referencedPaths, ...Object.values(javascriptPresets).map((preset) => preset.file)]) {
+    for (const path of referencedPaths) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
     }
   })
@@ -203,14 +238,8 @@ describe("coding standards catalog", () => {
       }
     }
   })
-  it("keys every enforcement column and preset family by a known ecosystem", () => {
-    const ecosystemNames = new Set(Object.keys(catalog.ecosystems))
+  it("keys every preset family by a known ecosystem and claims every rule in a preset", () => {
     const families = new Set(Object.values(catalog.ecosystems).map((ecosystem) => ecosystem.presets))
-    for (const standard of catalog.standards) {
-      for (const column of Object.keys(standard.enforcement)) {
-        assert.isTrue(column === "script" || ecosystemNames.has(column), `${standard.id} has an unknown column ${column}`)
-      }
-    }
     for (const family of Object.keys(catalog.presets)) {
       assert.isTrue(families.has(family), `preset family ${family} belongs to no ecosystem`)
     }
@@ -220,11 +249,30 @@ describe("coding standards catalog", () => {
       }
     }
   })
-  it("rejects a preset or baseline whose applies names no condition", () => {
-    const raw: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(
+
+  it("rejects an applies naming no condition and an ecosystem detecting nothing", () => {
+    const source = readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
+    const presets: { presets: { javascript: { base: { applies: unknown } } } } = JSON.parse(source)
+    presets.presets.javascript.base.applies = {}
+    assert.throws(() => decodeCatalog(JSON.stringify(presets)))
+    const ecosystems: { ecosystems: { javascript: { detect: unknown } } } = JSON.parse(source)
+    ecosystems.ecosystems.javascript.detect = []
+    assert.throws(() => decodeCatalog(JSON.stringify(ecosystems)))
+  })
+
+  it.each(rejectedMutations)("rejects %s", (_, mutate) => {
+    const raw: { standards: Array<MutableStandard> } = JSON.parse(
       readFileSync(join(standardsDirectory, "catalog.json"), "utf8")
     )
-    raw.presets.javascript.base.applies = {}
+    mutate(raw.standards)
     assert.throws(() => decodeCatalog(JSON.stringify(raw)))
+  })
+
+  it("gives every standard a column for every ecosystem", () => {
+    for (const standard of catalog.standards) {
+      for (const ecosystem of Object.keys(catalog.ecosystems)) {
+        assert.property(standard.enforcement, ecosystem, `${standard.id} lacks a ${ecosystem} column`)
+      }
+    }
   })
 })
