@@ -1,33 +1,25 @@
 ---
 name: to-spec
 description: 'Turn a resolved conversation into an Obsidian spec with testing seams and PR delivery shape.'
+metadata:
+  sources: |
+    - adapted from [skills/engineering/to-spec](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/to-spec) — recorded upstream review.
 ---
 
 # To spec
 
-Produce the spec from the decisions already settled in this conversation.
-Do not interview the user again about resolved choices.
+Turn settled discussion and current project evidence into an implementable Obsidian spec.
 
-1. Read the relevant code, glossary, ADRs, and Obsidian specs or notes. Batch
-   independent reads. Use the project's terminology and existing folder rules.
-2. Propose testing seams from current interfaces. Prefer existing seams, the
-   highest stable seam possible, and a small number of seams. Ask the user to
-   confirm choices that have not already been agreed.
-3. For a frontend feature, apply
-   [frontend-spec.md](references/frontend-spec.md): capture design direction,
-   important states and viewports, and the rendered proof expected during
-   implementation and review.
-4. Record the PR delivery shape. Keep one cohesive review unit together. Load
-   `gh-stack` for a strict dependency chain of at least two review groups;
-   independent paths belong in separate PRs or stacks. If delivery was not
-   settled, list it as an open question rather than inventing an order.
-5. Write the full spec with [note-template.md](references/note-template.md).
-   Keep acceptance criteria concrete. Avoid path inventories and incidental
-   code; a linked prototype excerpt is appropriate when it captures a decision
-   more exactly than prose.
-6. Publish to Obsidian `Specs/` following [naming.md](references/naming.md).
-   If the vault, destination, or write access is unavailable, return the Markdown
-   and proposed path. Write into the product repo only when explicitly asked.
+Read the repo, glossary, relevant ADRs, and related Obsidian notes before writing the spec. Name the existing functions, service methods, or routes that tests should call. Prefer the highest stable interface that proves the behavior, using as few test entry points as practical. For example, test order creation through the existing service method rather than testing each helper separately.
 
-Complete the available drafting work before raising an unresolved decision.
-Report the resulting spec and any open questions in direct, readable language.
+Use one PR for a cohesive change. Prefer a stack for dependent parts and separate PRs for independent work. Confirm a proposed stack with the user before publishing; use the installed `gh stack` tool for its delivery and discover commands with `gh stack --help`.
+
+Write and name the Obsidian spec.
+
+If the vault, path, or write access is unavailable, stop and tell the user.
+
+For UI work, apply [Frontend spec](references/frontend-spec.md) before publication. Planning does not launch another validation pass.
+
+## References
+
+- [Note template](references/note-template.md): Use to write and name the Obsidian spec.

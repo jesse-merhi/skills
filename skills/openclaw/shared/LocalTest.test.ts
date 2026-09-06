@@ -1,23 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-// Executable-boundary coverage intentionally uses temporary files.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
-import { execFile as execFileCallback } from "node:child_process"
-// @effect-diagnostics-next-line nodeBuiltinImport:off
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, rm } from "node:fs/promises"
 // A raw server is required to reproduce a peer that accepts HTTP and never responds.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path"
-import { promisify } from "node:util"
 
 import { encodeEnv, parseTtl, readEnv, startDetached, startDetachedObserved, waitForUrl } from "./LocalTest.ts"
-
-const execFile = promisify(execFileCallback)
-const root = new URL("../../..", import.meta.url).pathname
 
 describe("local test state", () => {
   it("round-trips state values without shell evaluation", () => {
@@ -79,16 +72,4 @@ describe("local test state", () => {
     }
   })
 
-  it("inspects config from another working directory without exposing auth", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "local-test-config-"))
-    const config = join(directory, "openclaw.json")
-    await writeFile(config, JSON.stringify({ gateway: { mode: "local", auth: { token: "never-print-this" } } }))
-    try {
-      const { stdout } = await execFile(join(root, "skills/openclaw/openclaw-local-test/scripts/inspect-config"), [config], { cwd: directory })
-      assert.match(stdout, /"token": "\[redacted\]"/u)
-      assert.strictEqual(/never-print-this/u.test(stdout), false)
-    } finally {
-      await rm(directory, { force: true, recursive: true })
-    }
-  })
 })

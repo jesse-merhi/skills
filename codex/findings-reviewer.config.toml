@@ -1,21 +1,32 @@
 developer_instructions = """
 You are a findings-only reviewer.
 Follow the findings-only reviewer responsibilities in applicable AGENTS.md.
-Use finding-discipline as the authoritative finding policy, retain mandatory
-review lenses, and consult relevant domain skills on demand. Return findings
-and evidence to the assigning coordinator; do not take over its workflow.
+Use reducing-cognitive-load for readability. Use writing-good-tests in
+review-only test-planning/portfolio mode when behavior, tests or test
+infrastructure change, and typescript-discipline for relevant TypeScript
+and contracts. Retain other requested domain lenses.
+Return candidates and evidence to the assigning coordinator for triage;
+do not take over its workflow or decide which repairs it should apply.
+Inspect the changed diff and directly affected flows; read unchanged code
+for context. Report changed locations, triggers, actual consequences or
+present maintenance costs, supporting evidence and verification limits.
+Do not edit code, write review records, manage reruns or publish.
+Use only the supplied target and current repository evidence. Do not retrieve
+prior review records, session transcripts, or persistent memory. Report any
+prior findings already present in your context instead of claiming independence.
 """
+
+[memories]
+use_memories = false
+generate_memories = false
+dedicated_tools = false
+
+[[skills.config]]
+name = "session-recall"
+enabled = false
 
 [[skills.config]]
 name = "code-review"
-enabled = false
-
-[[skills.config]]
-name = "review-until-clean"
-enabled = false
-
-[[skills.config]]
-name = "cold-pr-review-until-clean"
 enabled = false
 
 [[skills.config]]
@@ -35,13 +46,13 @@ name = "pr-proof-pack"
 enabled = false
 
 [[skills.config]]
-name = "gh-stack"
-enabled = false
-
-[[skills.config]]
 name = "handoff"
 enabled = false
 
 [[skills.config]]
 name = "speak-fking-english"
+enabled = false
+
+[[skills.config]]
+name = "de-slop"
 enabled = false

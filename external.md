@@ -12,73 +12,22 @@ only part of an external workflow earns a permanent place in the skill loop.
 | Repo-owned fork | This repository, with an upstream notice | This repository | Preserve attribution; upstream changes are input, not automatic policy. |
 | External | Upstream installation | Upstream project | Pin and review upstream; do not copy it here. |
 
-Current repo-owned forks include `research`, `tdd`, `writing-for-agents`,
+Current repo-owned forks include `writing-good-tests`, `writing-for-agents`,
 `skill-cleaner`, `speak-fking-english`, and the internal references behind the
 `design` router. Their skill files name the source and the behavior that differs
 from upstream. Everything else is repo-owned unless its skill says otherwise.
 
-## browser-use
+## Browser interaction
 
-- **Source:** <https://github.com/browser-use/browser-use/tree/0.13.7>
-- **Runtime dependency:** <https://github.com/browser-use/browser-harness/tree/v0.1.8>
-- **License:** MIT
-- **What it is:** Browser Use's maintained Claude skill and CLI for controlling
-  a permitted local Chrome-family browser, including Chrome and Dia, through
-  the Chrome DevTools Protocol.
-- **Why it is external:** Browser Use owns the browser connection, interaction
-  helpers, consent flow, and current Claude instructions. The official skill
-  should stay aligned with the installed CLI instead of being copied here.
-- **Update model:** `browser-use` is pinned to `0.13.7` at commit
-  `f0aa3a8bb03779c71a5aa262d389e3bfe6b77cdc`; its packaged
-  `browser-harness` dependency is `0.1.8`, tagged at commit
-  `dbe6f8f22ba65170e2d4b8f17754c704d008fe49`. Review both projects before
-  updating either pin.
+Claude uses its available Chrome integration; Codex uses its native browser
+tools. Do not install the separate browser-use skill. Removing that skill does
+not uninstall browsers, their integrations, the CLI, or upstream caches.
 
-### Install
+## Stacked PR tooling
 
-Install the pinned CLI first, then let that exact installation write its
-version-matched skill. The local browser requires the human to enable remote
-debugging and approve its connection prompt; the agent must not bypass either
-consent step.
+Keep the installed `gh stack` CLI extension. Use it for dependent PR chains and discover commands through `gh stack --help`; publication still needs the owning workflow's authority.
 
-| Harness | Method |
-| --- | --- |
-| Claude Code | `uv tool install --python 3.12 --force 'browser-use==0.13.7' && browser-use skill install --target claude --no-install --force` |
-
-The Browser Use installer owns the external skill. Do not symlink or copy a
-`browser-use` skill from this repository. Other harnesses must skip this entry
-until a tested command and workflow are added.
-
-## gh-stack
-
-- **Source:** <https://github.com/github/gh-stack/tree/v0.1.0/skills/gh-stack>
-- **CLI extension:** <https://github.com/github/gh-stack/releases/tag/v0.1.0>
-- **License:** MIT
-- **What it is:** GitHub's maintained agent workflow and CLI extension for
-  planning, creating, submitting, syncing, and reviewing dependent pull
-  requests as a stack.
-- **Why it is external:** GitHub owns both the stack semantics and the CLI. The
-  official skill should stay aligned with the installed extension instead of
-  being copied into this repository.
-- **Update model:** The skill and extension are pinned to `v0.1.0` at commit
-  `a1b4a3d4d0bcde9ec3a78ab99b2d63af121857a9`. Review GitHub's release and
-  skill changes together before updating the pin.
-
-### Install
-
-Install the pinned extension, then install its official skill at user scope for
-the current harness. `--force` makes a reinstall converge on the reviewed
-version instead of silently retaining a different version.
-
-| Harness | Method |
-| --- | --- |
-| Claude Code | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent claude-code --scope user --force` |
-| Codex | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent codex --scope user --force` |
-| opencode | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent opencode --scope user --force` |
-| Pi | `gh extension install github/gh-stack --pin v0.1.0 --force && gh skill install github/gh-stack skills/gh-stack/SKILL.md --pin v0.1.0 --agent pi --scope user --force` |
-
-The installers own the external `gh-stack` skill and extension. Do not symlink
-`gh-stack` from this repository.
+The separate external gh-stack skill is retired. Do not reinstall it or copy its command tutorial into another skill. Removing the skill must not remove the GitHub CLI, extension binary, package cache or repository.
 
 ## teach
 

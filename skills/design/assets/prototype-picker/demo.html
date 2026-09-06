@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype picker example</title>
+<link rel="stylesheet" href="./picker.css">
+<style>
+  body { margin: 0; padding: 32px 24px 100px; font: 18px/1.5 system-ui; color: #203028; background: #f4f4ed; }
+  main { max-width: 760px; margin: auto; }
+  article { padding: 32px; border-radius: 20px; background: white; }
+  input { box-sizing: border-box; max-width: 100%; min-height: 44px; font: inherit; }
+  h1 { font-size: clamp(28px, 5vw, 48px); line-height: 1.1; }
+</style>
+<main><h1>One decision. Two directions.</h1><p>Switch with buttons, arrow keys, or 1 and 2. R replays. Typing below does not switch the design.</p><div id="stage"></div><p><label>Shortcut isolation <input aria-label="Shortcut isolation" placeholder="Type 1, 2, or R"></label></p></main>
+<nav id="picker"></nav>
+<script type="module">
+  import { mountPrototypePicker } from "./picker.js";
+  const render = (name, text) => () => {
+    const article = document.createElement("article");
+    const heading = document.createElement("h2");
+    heading.textContent = name;
+    const paragraph = document.createElement("p");
+    paragraph.textContent = text;
+    article.append(heading, paragraph);
+    return article;
+  };
+  mountPrototypePicker({
+    stage: document.querySelector("#stage"), picker: document.querySelector("#picker"),
+    variants: [
+      { name: "Quiet", render: render("Quiet", "Clear hierarchy, short copy, and room to read.") },
+      { name: "Editorial", render: render("Editorial", "A more expressive treatment of the same content.") }
+    ]
+  });
+</script>
+</html>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlassian queries"
+  short_description: "Query Jira and Confluence through Atlassian tools"
+  default_prompt: "Use $atlassian-queries to query this Jira project through the available authenticated Atlassian tools."

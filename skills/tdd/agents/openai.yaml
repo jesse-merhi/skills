@@ -1,4 +1,0 @@
-interface:
-  display_name: "TDD"
-  short_description: "Build through red-green-refactor cycles"
-  default_prompt: "Use $tdd to choose the behavioral seam, prove red, implement green, and refactor while the tests stay green."

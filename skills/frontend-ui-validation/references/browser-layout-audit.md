@@ -1,24 +1,15 @@
-# Browser layout audit
+# Layout evidence
 
-Run the bundled layout audit script through Playwright at each required width:
+`skill-audit-layout` uses Playwright already installed in the current project. It writes screenshots and `captures.json` with the requested state, final URL, capture time, viewport, console errors, layout findings, and capture failures. `--storage-state <private-file>` supplies an existing authorized login state; it does not authorize creating or changing a login.
 
-```bash
-node <skill-dir>/scripts/audit-layout.mjs <url>
-```
+Navigation waits for DOM content, not an idle network. Use `--wait-for <selector>` for the visible element that establishes the page's ready state. `--timeout-ms` bounds navigation, readiness, and screenshot operations (default 30000). A failed capture stays in the report, later requested captures still run, and the command exits unsuccessfully. A screenshot without a readiness selector does not establish that asynchronous content finished loading.
 
-The script catches:
+The measurements flag page overflow, clipped text, overlapping boxes, off-screen elements, and small controls. They are candidates to inspect, not automatic failures: intentional overlays, scrolling content, ellipsis, and inline links can be legitimate. The 44px target warning is a generous touch heuristic, not a complete accessibility audit.
 
-- document-level horizontal overflow
-- element content overflow via `scrollWidth/clientWidth` and
-  `scrollHeight/clientHeight`
-- visible sibling overlaps
-- clipped or cramped text containers
-- buttons, links, and form controls smaller than 44 x 44 CSS pixels
-- visible elements outside the viewport
-- console errors
+URL states are separate navigations, not interaction scripts. For menus, dialogs, transitions, or authenticated flows that require actions, exercise them with the available approved browser tools. Capture the resulting state and inspect the relevant text, boxes, focus, and console.
 
-The script is intentionally conservative. Treat its output as a review queue.
-Do not dismiss findings without looking at the element, text, and box values.
+Compare screenshots with a supplied design reference for composition and hierarchy. Read layout/style data when useful and exposed by the tool; report unavailable checks rather than inventing tool names.
 
-If a screenshot and the layout audit disagree, trust the measured DOM first and
-inspect the screenshot to decide whether the measured issue is real.
+Keep captures private when they contain user data. Persistent E2E tests belong to the project's test portfolio, not this ad-hoc capture helper.
+
+Follow [Keep evidence useful](../SKILL.md#keep-evidence-useful). The helper does not supply build/revision, local changes or actual interaction outcomes automatically.

@@ -1,38 +1,28 @@
 ---
 name: session-recall
-description: Find prior local Codex or Claude sessions; keep contents local and inspect cards before opening logs.
+description: Find prior local Codex or Claude sessions.
 ---
 
 # Session recall
 
-Find the relevant prior full session without exposing more transcript than needed.
-Keep all session contents local. Do not edit logs, upload them, or paste whole
-logs into external tools.
+Use `agent-session-find` first: search, inspect likely matches, then answer. Report useful progress if the search takes a while.
 
-1. Read [command-setup.md](references/command-setup.md) for the command, privacy,
-   database, and parallel-refresh rules. Use `agent-session-find` first when
-   earlier agent work may answer the question.
-2. Start with a bounded query:
+Prefer the installed command; use `./agent-session-find` in its source checkout if unavailable. Use `--help` for options, or another harness's local recall tool when appropriate.
 
-   ```sh
-   agent-session-find --index-since 14d --max-sources 80 "<query>"
-   ```
+```sh
+agent-session-find --index-since 14d --max-sources 80 --limit 5 "<query>"
+```
 
-   For a known project use `agent-session-find --cwd "<repo-name>" --since 30d "<query>"`.
-   Use `--source codex` or `--source claude` when the harness is known, and
-   `--limit 5` for short results. For old or long-running projects use
-   `--index-since 90d` instead of an unbounded first search.
-3. If the clue mentions a handoff, worker, subagent, delegated implementation,
-   reviewer pass, or another agent's branch, commit, or PR, retry with `--workers`.
-4. After a successful refresh, add `--no-refresh` to follow-up queries against
-   that index. Batch independent bounded queries at this stage. Use
-   [query-strategy.md](references/query-strategy.md) to choose terms.
-5. If there is no match, increase `--index-since`, remove `--cwd`, try synonyms,
-   then omit `--max-sources` for a fuller refresh. Use `agent-session-find status`
-   if index size matters before widening.
-6. Inspect low-token cards first. Read [result-handling.md](references/result-handling.md)
-   before opening a local JSONL log. Return the matching identifiers and supported
-   answer. Quote copied wording and distinguish it from your summary.
+Search short terms someone likely typed: repo names, errors, filenames, or feature words. Filter by `--cwd` or `--source` when known. Adjust terms and date/source limits to fit the clues, widening when needed rather than following a fixed search sequence. Include `--workers` for handoffs or delegated work.
 
-During a long search, report changed matches or blockers. Preserve original
-session history; recall does not authorize rewriting it.
+The command maintains a local SQLite index. Reuse it with `--no-refresh` for follow-up queries; refresh when expanding indexed coverage. Never refresh the same database concurrently. Use `--db <writable-local-path>` if needed.
+
+Inspect result cards for topic, repo, date, and matching text before reading only the relevant log excerpts. Prefer full sessions unless seeking worker output. Worker results are transcripts, not necessarily reopenable sidebar tasks: `src` locates the log and `parent` the coordinator.
+
+Return the session identifier and supported answer, distinguishing quotations from summaries. Old decisions are context, not proof of current correctness; verify current code or docs before acting.
+
+Keep transcripts local and unchanged; never upload them. Recall alone does not authorize thread management or edits to the app's database.
+
+## References
+
+- [Source checkout](https://github.com/jesse-merhi/agent-session-finder): fallback location when the installed command is unavailable.

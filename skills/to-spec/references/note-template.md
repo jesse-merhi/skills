@@ -1,5 +1,7 @@
 # Spec note template
 
+Publish to `Specs/YYYY-MM-DD-short-outcome.md`, following an existing project-specific vault folder when present.
+
 ```md
 # Spec: <Outcome>
 
@@ -36,7 +38,7 @@ Excluded:
 - <behavior to test through public interfaces>
 - <agreed test seam or seams; prefer the highest existing seam that still gives stable feedback>
 - <test level or prior-art test path when known>
-- <for frontend UI work: required `frontend-ui-validation` evidence such as mobile/desktop screenshots, layout audit, console check, or trace>
+- <for frontend UI work: required mobile/desktop screenshots, interactions, layout checks, or traces>
 - <what does not need dedicated coverage>
 
 ## PR Delivery

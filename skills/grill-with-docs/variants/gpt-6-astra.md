@@ -1,43 +1,25 @@
 ---
 name: grill-with-docs
-description: 'Ground a plan in repo docs, code, Obsidian notes, ADRs, specs, and tickets, then grill its decisions.'
+description: 'Ground a plan in code and Obsidian notes, then question its decisions.'
+metadata:
+  sources: |
+    - adapted from [skills/engineering/grill-with-docs](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/grill-with-docs) — recorded upstream review.
 ---
 
 # Grill with docs
 
-Use repository and project-note evidence to make the `grilling` interview
-concrete. Resolve factual questions from those sources; preserve the interview's
-user-owned decisions and final confirmation.
+Use current project evidence to support a `grilling` interview, not to restart settled decisions.
 
-## Establish what the project already knows
+```sh
+skill-collect-context --repo <checkout> --query "<topic>"
+```
 
-Read [grounding.md](references/grounding.md) and locate relevant docs, code,
-Obsidian notes, ADRs, specs, and tickets before judging the plan. Extract its
-concepts, system names, transitions, outcomes, and invariants. Reuse established
-vocabulary and expose overloaded names, invented terms, or missing domain concepts.
-Already settled decisions are context, not reasons to reopen the interview.
+The read-only helper identifies the Git checkout, repository documents, matching code, and notes in the configured Obsidian vault. Use `--vault <path>` for another vault and `--limit` for more matches. It returns paths, not conclusions; read the relevant files and user-supplied notes. Missing vault access is reported explicitly—use an available connector or disclose the gap.
 
-## Test the unsettled decision tree
+Check claims against actual code. Extract the actors, domain terms, state changes, outcomes, and implied invariants. Flag overloaded names and contradictions before building questions on them.
 
-Load `grilling` for the full settled-frontier rounds, recommendations, background
-fact-finding, and user answers. Apply [session-behavior.md](references/session-behavior.md)
-to sharpen language, test scenarios and code claims, challenge glossary gaps,
-assess UI readiness, update context, and offer ADRs.
+Load `grilling` for the interview. Use concrete scenarios. Pressure-test feasibility, failure cases, surprising dependencies, existing ADRs, vague acceptance criteria, and the first useful piece of delivery.
 
-Tie questions to evidence: the relied-on ADR, implementing code path, first
-tracer-bullet behavior, failure-inducing assumption, and testable acceptance
-criterion. For UI, cover design direction, viewport states, and expected
-`frontend-ui-validation` proof. Do not ask the user to supply facts the project
-can establish. Do put each unresolved decision to them as `grilling` requires.
+For UI plans, establish audience, design direction, important states/viewports, and the rendered proof needed. Divide a plan only when its scope or unresolved decisions make one session impractical.
 
-## Reach a usable conclusion
-
-If the scope is too large or foggy, suggest explicit decisions or tickets to
-split it. Otherwise finish with a tightened executable plan, assumptions, and
-first ticket, or identify the remaining blockers. Keep Grounding, What Holds Up,
-Gaps, Tightened Plan, and Next Round sections short and use only those needed.
-When the frontier is settled, stop adding questions; seek any missing shared-
-understanding confirmation before proceeding.
-
-Use [context-format.md](references/context-format.md) for glossary notes and
-[adr-format.md](references/adr-format.md) when an ADR is warranted.
+Return the tightened plan, remaining gaps, and next questions. Stop once the user confirms it is clear enough to execute. Use the [ADR guidance](references/adr-format.md) to decide whether to offer one and to write it after acceptance.

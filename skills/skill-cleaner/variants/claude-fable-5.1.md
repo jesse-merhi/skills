@@ -1,37 +1,38 @@
 ---
 name: skill-cleaner
 description: "Audit agent skills: loaded roots, duplicate skills, unused skills, prompt-budget costs, compact descriptions."
+metadata:
+  source: https://github.com/steipete/agent-scripts
+  source-path: skills/skill-cleaner
+  upstream-review-revision: 0e8ca002fc1dd76ae84c71f8d24dfd1ac7096ff5
+  upstream-review-date: "2026-09-06"
+  license: MIT
 ---
 
 # Skill cleaner
 
-Audit the skills that are actually loaded and recommend focused cleanup.
-Do not turn an inventory request into editing, deletion, or installation changes.
+Produce an evidence-backed inventory and cleanup recommendations for loaded skill roots, duplicates, usage, and prompt-budget pressure. This is suggest-first; edit or remove only when the user requests it.
 
-1. Run the analyzer from the repository root, or resolve the same script from
-   this skill directory:
+Use the installed `skill-cleaner` command. Read `--help` for supported options rather than a separate command guide:
 
-   ```bash
-   skills/skill-cleaner/scripts/skill-cleaner --months 3
-   ```
+```bash
+skill-cleaner --help
+skill-cleaner --months 3
+```
 
-   See [commands.md](references/commands.md) for other supported commands.
-2. Read the results in [report-guide.md](references/report-guide.md) order.
-   Use [analyzer-notes.md](references/analyzer-notes.md) to interpret root,
-   duplicate, usage, and budget heuristics. Batch independent configuration and
-   usage checks. Verify unfamiliar or current harness behavior from installed
-   configuration or source.
-3. Present the useful inventory and recommendations. Treat no recent usage or
-   a generated shorter description as a candidate for investigation, not a
-   deletion instruction. During a long audit, report changed counts, ownership
-   decisions, or blockers.
-4. If the user requested changes, read [cleanup-policy.md](references/cleanup-policy.md)
-   before applying them. Verify that every retained duplicate exists and is
-   loaded. Preserve product, tool, action, and object trigger nouns plus exclusions.
-   Test candidate descriptions behaviorally before treating them as equivalent.
-   Do not delete ignored or untracked directories without naming the destination
-   or confirming they are disposable.
+Batch independent configuration and usage checks. Verify unfamiliar harness behavior from installed configuration or source; during long work, report changed counts, ownership decisions, or blockers.
 
-The analyzer is an Effect adaptation of MIT-licensed
-[`steipete/agent-scripts`](https://github.com/steipete/agent-scripts). Preserve
-[its upstream license](references/upstream-license.md) when redistributing it.
+## Interpret the evidence
+
+- Separate the live model-visible inventory from filesystem fallback. `--no-live` forces fallback; `--root <path> --root-only` limits the scan to supplied roots. For another harness, supply its roots and use its local usage evidence.
+- Read budget pressure alongside roots, enabled state, description candidates, duplicates, and unused candidates. Budget figures estimate Codex's 2% allocation using `ceil(utf8_bytes / 4)`; check the reported model and context source, and use `--context-tokens` for an exact context-size override.
+- Duplicate names alone do not justify deletion. Compare bodies and ownership; symlinked roots and file reads are realpath-deduped.
+- Missing recent usage is not proof of disuse. Default logs cover recent Codex history and sessions, not archives unless `--deep-logs` is used. Evidence comes from user messages and tool-call arguments, not developer catalogs.
+
+## Apply only requested cleanup
+
+Verify the kept duplicate exists and is loaded. Prefer the harness-provided copy when it covers the same behavior, but retain repository skills that encode project policy or live operations. Do not delete ignored or untracked directories without naming the destination or confirming they are disposable.
+
+Preserve description trigger nouns—product, tool, action, object—and exclusions. Generated shorter descriptions remain manual rewrite candidates until behavioral tests establish equivalent triggering. Group authorized changes by descriptions, deletions, or configuration; commit only when separately authorized.
+
+Report the useful inventory, supporting evidence, limits, and proposed decisions.

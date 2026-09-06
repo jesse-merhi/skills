@@ -1,60 +1,42 @@
 ---
 name: cleanup
-description: Discover and remove local development artifacts that belong to finished or abandoned work, including worktrees, branches, stashes, processes, watchers, containers, volumes, build outputs, and simulator state. Use when asked to clean up after a task, PR, branch, worktree, or dev environment; not for source-code refactoring or remote resource deletion.
+description: 'Remove verified, disposable local artifacts from finished or abandoned development work.'
 ---
 
 # Cleanup
 
-Resolve and remove the complete disposable local footprint of the target work.
-Use the task, repository, and ownership metadata to settle routine identity
-questions. Ask when multiple live targets remain plausible or a decision changes
-what data would be lost.
+Identify the task's checkout, branch, processes, services, and generated files. Ownership must come from exact paths, process working directories, service labels, or other native records—not just similar names.
 
-## Prove the target and its boundary
+Start with the read-only inventory:
 
-Identify repository, worktree, branch/stack, and merged or explicitly abandoned
-status. Record relevant exact paths, refs, project/Compose labels, process cwd,
-ports, bundle IDs, and simulator/emulator identifiers. Establish a stable
-checkout or directory that survives cleanup.
+```sh
+skill-cleanup-inventory --root <repo> --output <new-file.json>
+```
 
-Read repository instructions and existing cleanup scripts, then applicable
-[artifact-discovery.md](references/artifact-discovery.md) categories. Inspect
-every category implicated by task history, repository, and running tools. Native
-Git worktree records, Compose labels, Watchman roots, cwd, pidfiles, manifests,
-and platform IDs establish ownership; a substring match does not.
+Add `--compose-project <name>` for a known Compose project. The inventory collects evidence; it does not decide what is safe to delete.
 
-Classify all items as removable with proven ownership/disposability, retained
-because shared/active/reusable/remote/unrelated, or requiring a user decision.
-Only a requested dry run or a decision item calls for an inventory-before-deletion
-pause. Already-authorized disposal does not need an added approval gate.
+Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Ask before removing uncertain data, uncommitted files, unique commits, or stashes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
 
-## Preserve saved state and real authority gates
+From a directory that will remain, stop owned processes and services, remove their disposable state, then remove the worktree and local branch. Read needed configuration before deleting it. Delete the current agent worktree last.
 
-A cleanup request covers clearly owned local disposable artifacts. It does not
-cover remote resources, user-authored work, credentials, shared infrastructure,
-or machine-wide caches. Stop before deleting potentially user-authored uncommitted
-or untracked files, unique unmerged/unabandoned commits, ambiguously owned stashes,
-reusable/shared volumes or databases or platform state or caches, and unclear
-infrastructure. State the exact user decision needed.
+Verify with the same paths and identifiers. Report what was removed, retained, or needs a decision. A dry run stops at that inventory.
 
-Prefer ordinary local branch deletion after ancestry proof. Independently confirm
-squash/rebase merge or abandonment before force deletion. Remote deletion remains
-separately authorized.
+## Artifact discovery
 
-## Finish the owned teardown
+Inspect only categories the task used. Match exact ownership before removing anything.
 
-Retain the worktree until configuration and identity reads are complete. Execute
-from the stable location using exact paths/selectors: stop owned processes and
-task runners gracefully; perform native scoped service/container/database/network/
-volume/watcher/platform teardown; remove remaining owned temporary files, logs,
-sockets, pidfiles, outputs, and non-shared caches; remove the worktree, matching
-local branch, target stashes, and stale metadata.
+| Area | Useful evidence and commands |
+| --- | --- |
+| Git | `git status --short --branch`, `git worktree list --porcelain`, `git stash list`, current PR merge state, and branch ancestry |
+| Generated files | Repository clean targets and `git clean -ndX` for a preview; inspect ignored files before deletion |
+| Processes | `ps -axo pid=,ppid=,command=`, `lsof -nP -iTCP -sTCP:LISTEN`, and `lsof -a -p <pid> -d cwd -Fn` |
+| Compose | Project/config labels on containers, networks, and volumes; use the exact project and config for teardown |
+| Watchers | Registered roots; use `watchman watch-del <path>` for the owned root |
+| Mobile/browser | Bundle/package IDs, device IDs, profile directories, and task-created processes |
+| Other services | Repository pidfiles, manifests, lease records, logs, and native status/stop commands |
 
-If this is the agent's current worktree, its deletion must be the last filesystem
-mutation after all reads, with verification from the stable location. Preserve
-shared services. Broad pruning, all-watch deletion, generic `pkill`, all-simulator
-shutdown, and forced repo-wide `git clean` exceed this request.
+A matching name or stale remote-tracking ref is not ownership or merge proof. Inspect current authoritative state. Linked worktrees, unique commits, untracked files, and stashes may contain user work.
 
-Repeat the exact-identity discovery queries and confirm the stable checkout is
-healthy. Report every item as removed, deliberately retained with reason, or
-awaiting a decision, and state whether remote branches/resources stayed untouched.
+Use native scoped teardown, then verify the same paths, PIDs, ports, refs, or IDs are absent. Inspect volume contents/purpose before including `--volumes`. Keep shared devices, caches, databases, profiles, and infrastructure. Avoid machine-wide pruning.
+
+If an artifact returns, find its owner process rather than repeatedly deleting it.

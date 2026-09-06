@@ -16,12 +16,11 @@ Assign review duties by the task, not by whether an agent is a subagent.
   fix-and-rerun workflow. Use a findings-only reviewer preset when the harness
   exposes one; never select it for an until-clean coordinator. Give it the
   target, neutral checklist, and requested evidence without implementation
-  rationale or prior findings. It uses
-  `finding-discipline` as the authority for finding eligibility, severity, and
-  reporting, and consults relevant domain skills while retaining the mandatory
-  review lenses below. Keep those policies in their owning skills rather than
-  copying them into role instructions.
-- The reviewer returns findings with their rating evidence, rejected candidates,
+  rationale or prior findings. It reports candidates and supporting evidence,
+  consulting relevant domain skills and retaining the mandatory review lenses
+  below. The coordinator uses code-review's findings guide for those candidates;
+  the findings CLI owns severity and disposition.
+- The reviewer returns candidates with their rating evidence, rejected candidates,
   verification limits, and requested coverage evidence to the coordinator. It
   does not edit code, write the findings registry, manage fixes or reruns,
   publish, or run writing and handoff workflows for its internal report. The coordinator records the
@@ -69,8 +68,8 @@ Assign review duties by the task, not by whether an agent is a subagent.
 - Make architectural decisions for the long term. Do not implement a stopgap
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
-- Before creating or changing any skill, load `writing-for-agents` and
-  `model-writing-guides`. Update the complete prompt for every supported model;
+- Before creating or changing any skill, load `writing-for-agents` and its
+  model-writing guidance. Update the complete prompt for every supported model;
   variant file presence is the coverage record.
 
 ## Dependency-first implementation
@@ -107,7 +106,7 @@ resource lifecycle, and graceful shutdown.
 ## Test and review design
 
 - Before creating, changing, or removing tests or test infrastructure, load
-  `test-audit` and apply its portfolio policy. During code review, load it for
+  `writing-good-tests` in test-planning/portfolio mode. During code review, load it for
   every production behavior change and whenever the diff creates, changes, or
   removes tests or test infrastructure.
 - Validate skill instructions through independent agent exercises and review.
@@ -119,6 +118,16 @@ resource lifecycle, and graceful shutdown.
   misfires shows up there.
 - During code review, load `reducing-cognitive-load` while assessing the initial
   diff and every proposed fix so reduction happens inside the review loop.
+
+### Evidence before review fixes
+
+- Before repairing a review-discovered bug, apply the evidence checks in
+  code-review's findings guide. A reproduction through the actual application using
+  realistic local fixtures can qualify; production data is not required.
+- Keep evidence tied to the reviewed revision and label what was actually
+  observed. A type-permitted value or invented unreachable state is not proof.
+- Preserve privacy, access and repair-authority boundaries. This grants no
+  production access and never authorizes causing an incident to obtain evidence.
 
 ## Model turns
 
@@ -147,8 +156,9 @@ returns sets the cost of a task.
   or when a named workflow explicitly grants final-push authority. Otherwise,
   stop at a local checkpoint and show the result.
 - Choose the PR delivery shape before implementation. Keep one cohesive change
-  in one PR. When one story contains two or more dependent review units, load
-  `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
+  in one PR. When one story contains two or more dependent review units, plan a
+  bottom-to-top stack before editing. Use the installed `gh stack` tool
+  and discover commands through `gh stack --help`. Keep independent or
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
 - Review gate: before marking any PR ready, asking for human sign-off, or

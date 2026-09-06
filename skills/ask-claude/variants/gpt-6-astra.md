@@ -5,39 +5,28 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 # Ask Claude
 
-An explicit request to ask Claude authorizes this full-session workflow.
-A reference to the skill or an ordinary review, planning, delegation, or
-implementation request does not. Do not launch it automatically.
+Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
-## Prepare and launch the authorized request
+Resolve routine brief details from the request and checkout; keep unresolved scope decisions with the user.
 
-Resolve `<skill-dir>` to this skill's directory. Use the request and checkout
-to build a brief containing the objective, relevant files, constraints, expected
-output, owned scope, write permission, and temporary-session cleanup obligation.
-Resolve routine briefing details from available evidence; ask only if an
-unresolved user decision changes the permitted work.
+## Send the brief
 
-Choose the matching wrapper:
+Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope. Tell it to close its temporary session before finishing.
 
+For advice, review, or planning:
 ```sh
-# Advice, planning, or review
-<skill-dir>/scripts/ask-claude read "<self-contained prompt>"
-# Implementation explicitly authorized for the scope in the brief
-<skill-dir>/scripts/ask-claude write "<self-contained prompt>"
+ask-claude read "<self-contained prompt>"
 ```
 
-Keep the current Claude model configuration. Use one fresh full ACP session via
-`acpx ... claude exec`, never an in-chat substitute. Persistent `prompt` mode is
-reserved for an explicitly requested ongoing cross-harness conversation.
+For explicitly authorized implementation:
+```sh
+ask-claude write "<self-contained prompt>"
+```
 
-## Capture the result and finish the session
+Use the current Claude configuration and one fresh `acpx ... claude exec` session, not an in-chat subagent. Use persistent `prompt` mode only for an explicitly requested ongoing conversation.
 
-Inspect Claude's evidence and validate any edits in the originating session.
-Carry the request through cleanup without a second permission round: require
-the temporary session to close itself, verify closure, and close any exact
-remaining ACP ID even after failure, cancellation, timeout, or early stop.
-For a requested persistent session, close it when the user ends the conversation.
+## Return the result and close
 
-Report the supported result and any validation or cleanup limits. ACP and
-authentication failures must remain visible; do not silently answer yourself or
-replace Claude with a subagent.
+Record the session ID, inspect the evidence, and validate any edits in the originating session. Verify self-cleanup; close that exact session if it remains after success, failure, cancellation, timeout, or early stop. Close a requested persistent session when its conversation ends.
+
+Report the result and any cleanup failure. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.

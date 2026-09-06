@@ -7,6 +7,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "review:skills": "bun packages/skill-review/server.mjs",
     "check": "tsc --noEmit -p tsconfig.json",
     "diagnostics": "effect-language-service diagnostics --project tsconfig.json --strict",
     "lint": "eslint --max-warnings 0 packages skills vitest.config.ts eslint.config.js eslint-rules",

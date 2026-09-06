@@ -1,31 +1,31 @@
 ---
 name: design
-description: 'Route UI design work among production visual design, interaction and motion implementation, read-only motion review, and explicit multi-variant prototyping.'
+description: 'Design or refine interfaces around the product, its users, and a clear visual direction.'
+metadata:
+  sources: |
+    - adapted from [skills/emil-design-eng](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/emil-design-eng) — recorded upstream review.
+    - adapted from [skills/find-animation-opportunities](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/find-animation-opportunities) — recorded upstream review.
+    - adapted from [skills/apple-design](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/apple-design) — recorded upstream review.
+    - adapted from [skills/animation-vocabulary](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/animation-vocabulary) — recorded upstream review.
+    - adapted from [skills/prototype](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/prototype) — recorded upstream review.
+    - adapted from [skills/review-animations](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/review-animations) — recorded upstream review.
+    - Informed by [Anthropic frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md), researched 2026-09-05; not an installed dependency.
 ---
 
 # Design
 
-Deliver the requested UI result, interaction, motion review, or explicitly
-requested set of alternatives. Keep the work and report within that mode.
+Start with what the person is trying to do and the real content they need. Read the existing screens, components, and design tokens. Preserve the product's visual language unless the brief calls for a new direction.
 
-Select the applicable reference set:
+Choose a clear hierarchy, typography, spacing, and palette that fit the subject. Put the important content and actions first. Make distinctive choices where the brief allows them, not a new design system for every small change.
 
-| Result | Guidance |
-| --- | --- |
-| Production layout, hierarchy, typography, colour, components, responsive UI | [frontend.md](references/frontend.md) |
-| Transitions, gestures, springs, easing, timing, interruption, component feel | [motion.md](references/motion.md) |
-| Read-only review of existing motion | [motion-review.md](references/motion-review.md), then [motion-review-standards.md](references/motion-review-standards.md) before final findings |
-| Explicitly requested alternatives, variants, or prototype | [prototype.md](references/prototype.md) and [prototype-picker.md](references/prototype-picker.md) |
+Build a working slice with realistic content and the relevant empty, loading, error, and narrow-screen states. Inspect it while working; refine what looks unclear or awkward.
 
-For interaction work, add [motion-opportunity-audit.md](references/motion-opportunity-audit.md)
-when finding opportunities, [gesture-design.md](references/gesture-design.md)
-for complex gestures, or [animation-vocabulary.md](references/animation-vocabulary.md)
-to identify an effect. Load only relevant guidance. Production UI and motion
-may be combined for the same result.
+A review returns observed problems and useful changes; it does not authorize implementation. For implementation, use `frontend-ui-validation` or the project's native UI checks. Reuse current evidence from the task rather than launching another identical validation pass.
 
-Do not turn difficult design choices into unsolicited prototypes, or a review
-into implementation. In motion review, discover genuine interaction problems
-before filtering the actionable findings. For implementation, make rendered
-proof part of completion through `frontend-ui-validation` or the repository's
-native UI workflow. Preserve the selected mode's required checks without
-adding an optional verification team or unrelated final sweep.
+Show the result in the actual interface. Explain consequential choices briefly.
+
+## References
+
+- For layout and visual decisions, use [interface design](references/frontend.md).
+- For animation and gestures, use [motion](references/motion.md).
+- For requested alternatives, use [prototypes](references/prototype.md) and the optional [picker](references/prototype-picker.md).

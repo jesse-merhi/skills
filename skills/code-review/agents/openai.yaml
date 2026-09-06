@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
-  short_description: "Review locally, summarize, then deliver once."
-  default_prompt: "Use $code-review to review and fix locally until clean, summarize persisted findings, then make the authorized final PR push and run CI last."
+  short_description: "Review, fix, repeat and summarize what changed."
+  default_prompt: "Use $code-review to review and fix this change, push authorized fixes, and summarize findings and code changes."
 
 policy:
   allow_implicit_invocation: false

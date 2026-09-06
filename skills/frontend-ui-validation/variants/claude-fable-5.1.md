@@ -1,49 +1,36 @@
 ---
 name: frontend-ui-validation
-description: 'Validate web UI with Playwright screenshots, layout checks, responsive states, and reference comparisons.'
+description: 'Validate behaviour of web or native UI through real interactions, screenshots, and layout evidence.'
 ---
 
-# Frontend UI validation
+# UI validation
 
-Validate the changed interface in the rendered app. Cover the requested states
-and widths, not just a desktop happy-path screenshot. This workflow is ad-hoc;
-use project testing skills for persistent Playwright specs.
+Validate the changed UI behaves appropriately.
 
-1. Start the app with its normal repository dev command and open the changed
-   page in a real browser. Unless the task gives better targets, use 390×844,
-   768×1024, and 1440×900. Include reachable empty, error, and loading states.
-2. At each width run:
+## Web
 
-   ```bash
-   node <skill-dir>/scripts/audit-layout.mjs <url>
-   ```
+Use the repository's normal launch workflow and the session's approved browser tools. In Codex use its browser tools; in Claude use the available Chrome integration.
 
-   Read [browser-layout-audit.md](references/browser-layout-audit.md). Inspect
-   each warning's element, text, and box values before judging it.
-3. Use direct checks from [mcp-browser-checks.md](references/mcp-browser-checks.md)
-   when available. Batch independent screenshots and measurements. Inspect
-   overflow, clipped text, overlap, tiny tap targets, console errors, responsive
-   failures, hierarchy, generic filler, and design-direction mismatch. Zoom or
-   crop details when needed, retaining whole-page context.
-4. For native React Native/Expo screens, follow
-   [native-expo.md](references/native-expo.md) and capture simulator proof from
-   the mobile app. Use browser checks only for web-rendered screens. For Figma,
-   mockup, reference, theme, density, auth, or operational-app comparisons,
-   read [design-specific-checks.md](references/design-specific-checks.md).
-5. Report every real error and warning. If fixes are authorized, edit source
-   and rerun the affected viewport and state. Do not repair by mutating the live
-   DOM. For validation-only work, return evidence and a recommendation without edits.
-6. Show counts, console status, screenshot paths, and reasons for retained issues:
+Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, unintended overlap, focus, or unreachable controls. Compare composition, spacing, type, and colour with any supplied reference. Fix source, not a temporary DOM edit.
 
-   ```text
-   390x844: 0 errors, 0 warnings
-   768x1024: 0 errors, 1 warning intentionally left: <reason>
-   1440x900: 0 errors, 0 warnings
-   Console: 0 errors
-   Screenshots: <paths>
-   ```
+For repeatable URL-state captures, use the existing Playwright helper only when the project already has Playwright and the harness permits it:
 
-If the script cannot run, say so and identify replacement MCP/manual checks.
-For native Expo, use the native reference's evidence instead of browser-width
-lines. Do not claim browser coverage for a simulator-only screen. During long
-work, report new visual evidence, a changed direction, or a blocker.
+```sh
+skill-audit-layout <URL> --state <name>=<URL> --viewport 390x844 --wait-for <ready-selector> --output-dir <new-directory>
+```
+
+Use `--help` for controls. Make sure to exercise menus, dialogs, forms, or transitions with real interactions.
+
+## Native
+
+Follow [Native checks](references/native-expo.md) for the changed native flow.
+
+## Keep evidence useful
+
+Record the build or revision and relevant local changes, environment, web viewport or native device, interaction, expected and observed outcome, and capture paths. Include failures and unavailable checks. Screenshots prove appearance; recordings help prove motion and interaction. Layout warnings and passing tests support that evidence but do not establish visual quality.
+
+Give downstream tickets, reviewers, and proof-pack work the same evidence paths and coverage notes.
+
+## References
+
+- [Layout evidence](references/browser-layout-audit.md): Use for the capture helper's output and limitations.

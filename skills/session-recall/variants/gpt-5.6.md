@@ -1,35 +1,28 @@
 ---
 name: session-recall
-description: Find prior local Codex or Claude sessions; keep contents local and inspect cards before opening logs.
+description: Find prior local Codex or Claude sessions.
 ---
 
 # Session recall
 
-Recover the relevant prior full session with minimal transcript exposure.
-Use `agent-session-find` first when prior agent work may answer the question.
-Keep contents local; never upload them or paste whole logs into external tools.
+Find the prior session that answers the question, using `agent-session-find` first.
 
-Read [command-setup.md](references/command-setup.md) for setup, privacy, database,
-and refresh rules. Start bounded:
+Prefer the installed command; use `./agent-session-find` in its source checkout if unavailable. Use `--help` for options, or another harness's local recall tool when appropriate.
 
 ```sh
-agent-session-find --index-since 14d --max-sources 80 "<query>"
-agent-session-find --cwd "<repo-name>" --since 30d "<query>"
-agent-session-find --limit 5 "<query>"
+agent-session-find --index-since 14d --max-sources 80 --limit 5 "<query>"
 ```
 
-Choose repo/cwd context when known and `--source codex` or `--source claude` when
-the likely harness is known. For handoffs, workers, subagents, delegated work,
-reviewer passes, or another agent's branch, commit, or PR, retry with `--workers`.
+Search short terms someone likely typed: repo names, errors, filenames, or feature words. Filter by `--cwd` or `--source` when known. Adjust terms and date/source limits to fit the clues, widening when needed rather than following a fixed search sequence. Include `--workers` for handoffs or delegated work.
 
-If unmatched, widen in steps: increase `--index-since`, remove `--cwd`, try synonyms,
-then omit `--max-sources` for a fuller local refresh. For stale or long-running
-projects start with `--index-since 90d` rather than an unbounded scan. Use
-`agent-session-find status` to inspect index size before widening when needed.
-After the first successful refresh, use `--no-refresh` for follow-up queries
-against the same index.
+The command maintains a local SQLite index. Reuse it with `--no-refresh` for follow-up queries; refresh when expanding indexed coverage. Never refresh the same database concurrently. Use `--db <writable-local-path>` if needed.
 
-Use [query-strategy.md](references/query-strategy.md) for terms. Inspect compact
-result cards before logs and follow [result-handling.md](references/result-handling.md)
-before opening local JSONL. Return the relevant session and supported answer,
-not a transcript dump.
+Inspect result cards for topic, repo, date, and matching text before reading only the relevant log excerpts. Prefer full sessions unless seeking worker output. Worker results are transcripts, not necessarily reopenable sidebar tasks: `src` locates the log and `parent` the coordinator.
+
+Return the session identifier and supported answer, distinguishing quotations from summaries. Old decisions are context, not proof of current correctness; verify current code or docs before acting.
+
+Keep transcripts local and unchanged; never upload them. Recall alone does not authorize thread management or edits to the app's database.
+
+## References
+
+- [Source checkout](https://github.com/jesse-merhi/agent-session-finder): fallback location when the installed command is unavailable.

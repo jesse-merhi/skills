@@ -1,10 +1,25 @@
 #!/usr/bin/env node
 import { NodeRuntime } from "@effect/platform-node";
 import * as Effect from "effect/Effect";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { parseArgs } from "node:util";
+
+const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+  state: { type: "string", multiple: true }, viewport: { type: "string", multiple: true },
+  "output-dir": { type: "string" }, "storage-state": { type: "string" }, help: { type: "boolean" },
+  "wait-for": { type: "string" }, "timeout-ms": { type: "string", default: "30000" },
+} });
+if (values.help || !positionals[0]) {
+  console.log("audit-layout.mjs URL [--state NAME=URL] [--viewport WIDTHxHEIGHT] [--wait-for READY-SELECTOR] [--timeout-ms 30000] [--output-dir NEW-DIRECTORY] [--storage-state PRIVATE-PLAYWRIGHT-STATE]\nUses Playwright installed in the current project. Captures screenshots, console errors, and layout together. Run manually against authorized pages; output may contain private UI data. Failed captures remain in captures.json and do not prevent later requested captures.");
+  process.exit(values.help ? 0 : 2);
+}
 
 const requireFromCwd = createRequire(path.join(process.cwd(), "package.json"));
+const timeout = Number(values["timeout-ms"]);
+if (!Number.isSafeInteger(timeout) || timeout <= 0) throw new Error("--timeout-ms requires a positive integer");
 let chromium;
 
 try {
@@ -19,36 +34,40 @@ const DEFAULT_VIEWPORTS = [
   { width: 1440, height: 900, name: "desktop" },
 ];
 
-const url = process.argv[2];
-
-if (!url) {
-  console.error("Usage: audit-layout.mjs <url>");
-  process.exit(2);
-}
+const url = positionals[0];
+const states = [{ name: "default", url }, ...(values.state ?? []).map(value => {
+  const separator = value.indexOf("=");
+  if (separator < 1) throw new Error("--state requires NAME=URL");
+  return { name: value.slice(0, separator), url: value.slice(separator + 1) };
+})];
+const viewports = values.viewport?.map(value => {
+  const match = /^(\d+)x(\d+)$/u.exec(value);
+  if (!match || Number(match[1]) < 100 || Number(match[2]) < 100) throw new Error("--viewport requires WIDTHxHEIGHT, minimum 100x100");
+  return { width: Number(match[1]), height: Number(match[2]), name: value };
+}) ?? DEFAULT_VIEWPORTS;
+const outputDirectory = values["output-dir"] ? path.resolve(values["output-dir"]) : fs.mkdtempSync(path.join(os.tmpdir(), "ui-proof-"));
+if (values["output-dir"]) fs.mkdirSync(outputDirectory, { mode: 0o700 });
 
 const program = Effect.acquireUseRelease(
   Effect.tryPromise(() => chromium.launch()),
   (browser) => Effect.tryPromise(async () => {
-const page = await browser.newPage();
 const results = [];
-
-page.on("console", (message) => {
-  if (message.type() === "error") {
-    results.push({
-      level: "error",
-      type: "console",
-      viewport: "all",
-      message: message.text(),
-    });
-  }
-});
-
-for (const viewport of DEFAULT_VIEWPORTS) {
-  await page.setViewportSize({
-    width: viewport.width,
-    height: viewport.height,
-  });
-  await page.goto(url, { waitUntil: "networkidle" });
+const captures = [];
+for (const state of states) {
+for (const viewport of viewports) {
+  const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, storageState: values["storage-state"] });
+  context.setDefaultTimeout(timeout);
+  const page = await context.newPage();
+  const consoleErrors = [];
+  page.on("console", message => { if (message.type() === "error") consoleErrors.push(message.text()); });
+  page.on("pageerror", error => consoleErrors.push(error.message));
+  const capture = { state: state.name, url: state.url, viewport, capturedAt: new Date().toISOString(), consoleErrors, findings: [] };
+  try {
+  await page.goto(state.url, { waitUntil: "domcontentloaded", timeout });
+  if (values["wait-for"]) await page.locator(values["wait-for"]).waitFor({ state: "visible", timeout });
+  const screenshot = path.join(outputDirectory, `${captures.length + 1}-${viewport.width}x${viewport.height}.png`);
+  await page.screenshot({ path: screenshot, fullPage: true });
+  capture.screenshot = screenshot;
 
   const audit = await page.evaluate((viewportName) => {
     const viewportWidth = document.documentElement.clientWidth;
@@ -241,7 +260,19 @@ for (const viewport of DEFAULT_VIEWPORTS) {
     };
   }, viewport.name);
 
-  results.push(...audit.findings.map((finding) => ({ ...finding, viewport: audit.size })));
+  capture.findings = audit.findings;
+  } catch (error) {
+    capture.captureError = error instanceof Error ? error.message : String(error);
+  } finally {
+  capture.finalUrl = page.url();
+  captures.push(capture);
+  results.push(...capture.findings.map((finding) => ({ ...finding, state: state.name, viewport: `${viewport.width}x${viewport.height}` })),
+    ...consoleErrors.map(message => ({ level: "error", type: "console", state: state.name, viewport: `${viewport.width}x${viewport.height}`, message })),
+    ...(capture.captureError ? [{ level: "error", type: "capture-failed", state: state.name, viewport: `${viewport.width}x${viewport.height}`, message: capture.captureError }] : []));
+  fs.writeFileSync(path.join(outputDirectory, "captures.json"), JSON.stringify(captures, null, 2));
+  await context.close();
+  }
+}
 }
 
 const errors = results.filter((result) => result.level === "error");
@@ -251,6 +282,8 @@ console.log(
   JSON.stringify(
     {
       url,
+      outputDirectory,
+      captures,
       summary: {
         errors: errors.length,
         warnings: warnings.length,

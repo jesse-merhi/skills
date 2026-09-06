@@ -1,36 +1,25 @@
 ---
 name: grill-with-docs
-description: 'Ground a plan in repo docs, code, Obsidian notes, ADRs, specs, and tickets, then grill its decisions.'
+description: 'Ground a plan in code and Obsidian notes, then question its decisions.'
+metadata:
+  sources: |
+    - adapted from [skills/engineering/grill-with-docs](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/grill-with-docs) — recorded upstream review.
 ---
 
 # Grill with docs
 
-Ground a `grilling` interview in current project evidence, then reach a plan the
-user confirms is clear enough to execute. `grilling` owns the decision-tree
-interview; this skill supplies its factual basis.
+Use current project evidence to support a `grilling` interview, not to restart settled decisions.
 
-Before judging the plan, locate docs, code, and Obsidian context with
-[grounding.md](references/grounding.md). Extract product concepts, system names,
-state transitions, outcomes, and implied invariants. Compare them with the
-existing vocabulary; identify overloaded names, invented terms, and domain gaps.
+```sh
+skill-collect-context --repo <checkout> --query "<topic>"
+```
 
-Load `grilling`. Ask the complete settled frontier in each numbered round,
-recommend an answer for each question, dispatch its background fact-finding,
-and leave decisions to the user. Apply [session-behavior.md](references/session-behavior.md)
-for glossary challenges, precise language, concrete scenarios, code cross-checks,
-UI readiness, context updates, and ADR offers.
+The read-only helper identifies the Git checkout, repository documents, matching code, and notes in the configured Obsidian vault. Use `--vault <path>` for another vault and `--limit` for more matches. It returns paths, not conclusions; read the relevant files and user-supplied notes. Missing vault access is reported explicitly—use an available connector or disclose the gap.
 
-Useful pressure points are the existing ADR behind a choice, the code path
-supporting feasibility, the first tracer-bullet ticket, a failure-inducing
-assumption, and vague acceptance criteria. For rendered UI, establish design
-direction, relevant viewport states, and expected `frontend-ui-validation` proof.
+Check claims against actual code. Extract the actors, domain terms, state changes, outcomes, and implied invariants. Flag overloaded names and contradictions before building questions on them.
 
-If the plan is too large or unclear for one session, propose explicit decisions
-or tickets to divide it. Return short sections as useful: Grounding, What Holds
-Up, Gaps, Tightened Plan, and Next Round. The tightened plan should expose its
-assumptions and first ticket; an unready plan needs concrete blockers/questions.
-Stop questioning once ready. If confirmation is still missing, make that the
-next round before proceeding.
+Load `grilling` for the interview. Use concrete scenarios. Pressure-test feasibility, failure cases, surprising dependencies, existing ADRs, vague acceptance criteria, and the first useful piece of delivery.
 
-For a glossary note use [context-format.md](references/context-format.md).
-For a warranted ADR use [adr-format.md](references/adr-format.md).
+For UI plans, establish audience, design direction, important states/viewports, and the rendered proof needed. Divide a plan only when its scope or unresolved decisions make one session impractical.
+
+Return the tightened plan, remaining gaps, and next questions. Stop once the user confirms it is clear enough to execute. Use the [ADR guidance](references/adr-format.md) to decide whether to offer one and to write it after acceptance.

@@ -1,36 +1,29 @@
 ---
 name: clawhub-local-test
-description: Run a guarded local ClawHub test instance with development Convex data refreshed from production.
+description: 'Launch a local ClawHub instance with a guarded development database and test personas.'
 ---
 
 # ClawHub local test
 
-Provide a ready-to-test local ClawHub checkout backed by a production snapshot
-imported only into local/anonymous or the worktree's named cloud `dev:` Convex.
-Never import into production, staging, preview, or an unrecognized deployment.
-
-Ensure the helper is on PATH, preserving its Effect module tree through a symlink:
-
-```bash
-mkdir -p ~/.local/bin
-ln -sfn "${CODEX_HOME:-$HOME/.codex}/skills/clawhub-local-test/scripts/clawhub-local-test" ~/.local/bin/clawhub-local-test
-clawhub-local-test --repo <clawhub-checkout-or-worktree>
+```sh
+clawhub-local-test --repo <checkout-or-worktree>
 ```
 
-Omit `--repo` only when already in the intended checkout. Do not copy the launcher
-alone or override its deployment guard. Use [options.md](references/options.md)
-for snapshots, ports, browser, fixtures, lease, status, and stop options.
+The helper handles worktree setup, Convex startup/code sync, production snapshot export, development import, test personas, app startup, and an eight-hour lease. No global installation is needed.
 
-For setup, export/import safety, fixtures, state, or TTL explanation read
-[helper-behavior.md](references/helper-behavior.md). For local dev-auth, admin
-persona, wrench, or cloud `dev:` secret sync read
-[local-admin.md](references/local-admin.md). For startup/import/auth/abuse-fixture/
-persona failure use [troubleshooting.md](references/troubleshooting.md).
+Imports replace development data. Only local/anonymous or the worktree's named `dev:` deployment is allowed; keep the guard intact. Production snapshots remain private and local.
 
-Report local URL, checkout path, Convex URL/deployment marker/import target,
-snapshot path and fresh-export/reuse state, dev-auth and publisher-abuse fixture
-states, logs, lease expiry, `clawhub-local-test --status`, and
-`clawhub-local-test --stop`. Completion requires the helper, intended checkout,
-and verified permitted development target. Keep secrets, raw `.env.local`,
-production rows, snapshot contents, and generated secrets out of chat and commits;
-use local summaries as evidence.
+Use `--skip-import` to skip snapshot replacement, `--refresh` for a fresh snapshot, or `--ttl 2h` for a shorter run. Schema sync, dev-auth setup, and fixture seeding still change the development target. Run `--help` for options; don't use this launcher when the database must stay untouched.
+
+Return the URL, checkout, development target, snapshot/fixture status, expiry, and these controls:
+
+```sh
+clawhub-local-test --status
+clawhub-local-test --stop
+```
+
+## Local admin and troubleshooting
+
+The local wrench with **Use Admin** as `@local-admin` is part of a complete launch, not an optional extra. Verify it on the localhost app with dev auth enabled. For cloud `dev:` targets, the helper synchronizes the app and Convex secret; restart through the helper if they disagree. Inspect only whether `/dev-auth/secret` has a secret, never its value.
+
+For failures, inspect `~/.clawhub-local-test/logs/convex.err.log` or `app.err.log`. Resolve schema mismatches before reimporting. Correct rejected deployment configuration rather than bypassing the import guard. Keep snapshots and generated secrets out of chat and Git.

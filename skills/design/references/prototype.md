@@ -1,18 +1,9 @@
-# Prototype UI variants
+# Compare UI directions
 
-Use this mode only when the user explicitly requests a prototype, alternatives,
-or several design directions. Explore one UI decision with three distinct
-directions by default and at most five.
+Explore the decision the user asked about. Choose enough alternatives to expose meaningful trade-offs; there is no fixed variant count.
 
-- Give every direction a name and a meaningful axis such as layout, density,
-  personality, motion, or interaction model.
-- Use realistic content and working interactions.
-- Reuse the project's stack, tokens, components, and dependencies.
-- Keep prototype routes and modules isolated from production imports.
-- Render one direction at a time in realistic context.
-- Verify every direction at wide and narrow widths, including keyboard, focus,
-  reduced motion, and console behavior.
+Use realistic content and working interactions. Reuse the project's stack and components. Keep experiments separate from production imports and make switching easy. The bundled picker is optional; existing project controls are fine.
 
-Present each direction's axis, when it wins, and its cost. Stop for the user's
-selection. After selection, integrate only the winner and remove prototype-only
-code unless the user asks to keep it.
+Show how each direction differs, where it works best, and its cost. Check the relevant widths, keyboard/focus behavior, reduced motion, and console output.
+
+Wait for the user's choice before integrating. Integrate only the selected direction and remove experiment-only code unless asked to keep it.

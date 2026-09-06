@@ -1,81 +1,17 @@
-# HTML explanation pattern map
+# Choosing a page shape
 
-Local examples: `../assets/patterns/`
+The files in `assets/patterns/` are starting points, not mandatory formats.
 
-Choose the pattern by the question the reader needs answered. Visual style is
-secondary.
+| Reader's question | Example |
+| --- | --- |
+| Which option should we choose? | `decision-brief.html`: compare shared criteria and explain the recommendation |
+| How does it work? | `code-flow.html`: follow the input through code to its observable result |
+| What happened? | `incident-report.html`: show impact, timeline, cause, and recovery |
+| What if something changes? | `interactive-model.html`: vary an input and show the consequence |
+| Teach me this concept | `concept-lesson.html`: explain it through a worked example |
+| What happens next? | `implementation-plan.html`: show dependencies, decisions, and proof |
+| What changed in this PR? | `annotated-diff.html`: explain the real patch beside its code |
 
-## Pattern table
+Use `assets/explanation-template.html` when none fits. Replace sample content, remove unused sections, and keep the output standalone.
 
-| Pattern | Reader question | Required shape |
-| --- | --- | --- |
-| `decision-brief.html` | Which option should we choose, and why? | Recommendation first, shared criteria, evidence, trade-offs, next action |
-| `code-flow.html` | How does this behavior happen? | Observable result, invariant, numbered flow, exact files and symbols, proof |
-| `incident-report.html` | What happened and what prevents a repeat? | Impact, absolute timeline, causal chain, recovery, owners and follow-ups |
-| `interactive-model.html` | How does changing an assumption change the result? | Labeled inputs, live output, sensitivity, formula and source data |
-| `concept-lesson.html` | What mental model should I retain? | Mission, invariant, worked example, edge cases, retrieval check |
-| `implementation-plan.html` | What should happen next, in what order, and how will we know? | Target behavior, dependencies, phases, risks, acceptance proof |
-| `annotated-diff.html` | What changed in this PR or stack, and how do the layers compose? | Compact outcome, optional stack navigation, complete annotated direct-base diff, file review progress, secondary proof only when needed |
-
-## Reusing a pattern
-
-When a pattern closely matches the task:
-
-1. Copy the closest file from `assets/patterns/` into the task output location.
-2. Replace all sample content with the user's real topic, files, symbols, data, or decision.
-3. Keep the standalone structure: inline CSS, inline JavaScript, no build step.
-4. Delete irrelevant sections instead of preserving empty shells.
-5. Verify the copied page in a browser.
-
-Use `assets/explanation-template.html` only when none of the seven patterns fit.
-
-## Choosing a shape
-
-- If the user asks "which option should we pick?", use the decision brief.
-- If the user asks "how does this work?", use code flow.
-- If the user asks "teach me", use the concept lesson.
-- If the user asks "what happened?", use an incident timeline.
-- If the user asks "what if this input changes?", use the interactive model.
-- If the user asks "what should we do next?", use the implementation plan.
-- For a PR walkthrough, adapt code flow when behavior changed and decision brief
-  when the page explains an architectural choice.
-- For a reader who wants to understand a PR or stack, use the change
-  walkthrough. Lead with changed behavior. For a stack, navigate layers
-  bottom-to-top and explain each direct-base diff separately. For a standalone
-  PR, omit the navigator. Put the complete annotated direct-base diff first.
-  Explain every file inline and reserve extra implementation, test, or proof
-  views for information the diff cannot communicate without repetition.
-- For status, adapt implementation plan and make completed, active, blocked,
-  and next work explicit.
-
-## HTML quality bar
-
-- The page should reduce reading effort. If it is just paragraphs in a browser, use chat instead.
-- Use layout to encode meaning: columns for comparison, timelines for time, arrows for flow, badges for state, tables for repeated facts.
-- Use one compact row-based list for a short flow or summary of changes. Reserve
-  card grids for independent concepts, not steps that should be read in order.
-- Write each summary row as one specific statement. Omit generic mini-headings
-  that restate the sentence beside them.
-- Keep the first viewport useful. The user should see the answer, not only a title.
-- For PR reading, make the first viewport reach the selected layer's changed
-  code. Do not spend it on review-order prose, diff metrics, repeated summaries,
-  generic architecture teaching, or raw patch metadata.
-- Use plain CSS and semantic HTML. Add JavaScript only when interaction helps.
-- Keep generated assets local. Inline SVG is fine for diagrams.
-- Couple a claim with its evidence or inspectable example.
-- Put code explanations inline between the highlighted code segments they
-  describe. Keep editorial boxes visually distinct from real source comments.
-- For review-sized diffs, show every changed file in a compact collapsible list,
-  provide search and bulk expand/collapse, and key Viewed progress to the exact
-  diff revision. A checked file collapses so the next unread file becomes the
-  natural focus.
-- Preserve every diff source line, but turn raw hunk coordinates into a quiet
-  `... unchanged lines` divider. Compact line spacing and syntax highlighting
-  should make the code easier to scan without altering it.
-- Hide only optional detail. Recommendations, required evidence, and next
-  actions stay visible.
-- Reflow at 320 CSS pixels. Code and tables may scroll inside their own
-  containers; the page must not.
-- Use a text label or shape as well as color for status.
-- Keep controls at least 44px in the dimension the user must target.
-- Support reduced motion and printable output.
+Layout should express the relationship: comparison columns, a time sequence, a code flow, or repeated facts in a table. Add interaction only when it helps the reader inspect a claim or explore an assumption.

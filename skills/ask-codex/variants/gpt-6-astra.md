@@ -5,40 +5,28 @@ description: 'Ask Codex from a non-Codex harness through a full ACP session for 
 
 # Ask Codex
 
-Use a full Codex ACP session when the user explicitly asks to ask Codex or
-invokes `$ask-codex`. Do not infer that authority from a skill mention, link,
-or ordinary review, planning, delegation, or implementation request.
+Run only when the user explicitly asks to ask Codex or invokes `$ask-codex`.
 
-## Carry the request into a full session
+Resolve routine brief details from the request and checkout; keep unresolved scope decisions with the user.
 
-Build the brief from the user's request and repository evidence: objective,
-checkout, relevant files, constraints, expected output, permission to write,
-and owned scope. Include Codex's obligation to archive its temporary task with
-`set_thread_archived` before finishing. Resolve routine brief details directly;
-keep genuinely undecided scope or authority choices with the user.
+## Send the brief
 
-Resolve `<skill-dir>` to this directory and run the authorized mode:
+Give Codex the objective, checkout, relevant files, constraints, expected output, and permitted write scope. Tell it to archive its temporary task with `set_thread_archived` before finishing.
 
+For advice, review, or planning:
 ```sh
-# Advice, review, and planning are read-only
-<skill-dir>/scripts/ask-codex read "<self-contained prompt>"
-# Write only within explicitly authorized implementation scope
-<skill-dir>/scripts/ask-codex write "<self-contained prompt>"
+ask-codex read "<self-contained prompt>"
 ```
 
-Use the current Codex configuration, with no hard-coded model and no in-chat
-subagent substitution. Record the created task/session ID.
+For explicitly authorized implementation:
+```sh
+ask-codex write "<self-contained prompt>"
+```
 
-## Accept the result and close its lifecycle
+Use the current Codex configuration and one fresh full ACP session, not an in-chat subagent. Use a persistent named session only for an explicitly requested ongoing conversation.
 
-Inspect the evidence and validate edits in the originating session before
-reporting completion. Capture the result, verify self-archival, and archive the
-exact remaining task in caller cleanup. This applies to success, failure,
-cancellation, timeout, and early stop. Use `set_thread_archived` if available,
-otherwise `codex archive <id>`. Cleanup needs no separate confirmation.
+## Return the result and archive
 
-A fresh one-shot ACP session is the default. An explicitly requested ongoing
-cross-harness conversation may retain a persistent named session; archive it
-when the user ends the conversation. Surface failed archival with the ID and
-report ACP/authentication failures exactly. Never silently replace Codex's
-requested answer with your own or a subagent's.
+Record the task/session ID, inspect the evidence, and validate any edits in the originating session. Verify self-archival. If it did not happen, archive that exact task with `set_thread_archived`, or `codex archive <id>` when the tool is unavailable. Do this after success, failure, cancellation, timeout, or early stop; archive a requested persistent session when its conversation ends.
+
+Report the result and any archival failure with its ID. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Diagnose"
-  short_description: "Debug reproducibly before proposing or applying fixes."
-  default_prompt: "Diagnose this bug systematically before making changes."

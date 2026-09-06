@@ -1,53 +1,42 @@
 ---
 name: cleanup
-description: Discover and remove local development artifacts that belong to finished or abandoned work, including worktrees, branches, stashes, processes, watchers, containers, volumes, build outputs, and simulator state. Use when asked to clean up after a task, PR, branch, worktree, or dev environment; not for source-code refactoring or remote resource deletion.
+description: 'Remove verified, disposable local artifacts from finished or abandoned development work.'
 ---
 
 # Cleanup
 
-Remove the verified disposable local footprint of the named finished or abandoned
-work and account for every discovered item. Bound discovery to categories implied
-by that work; do not add machine-wide housekeeping or inventory-verifier agents.
+Identify the task's checkout, branch, processes, services, and generated files. Ownership must come from exact paths, process working directories, service labels, or other native records—not just similar names.
 
-Resolve the repository, worktree, branch/stack, merged or explicitly abandoned
-status, and a stable directory that will survive deletion. Record exact relevant
-paths, refs, project/Compose labels, process cwd, ports, bundle IDs, and platform
-identifiers. Use task and repository evidence; ask only if live targets remain
-ambiguous or a choice changes data loss.
+Start with the read-only inventory:
 
-Read repository cleanup instructions/scripts and relevant
-[artifact-discovery.md](references/artifact-discovery.md) categories. Inspect the
-whole implicated footprint using native ownership metadata: Git worktrees,
-Compose labels, Watchman roots, cwd, pidfiles, manifests, and platform IDs.
-Classify each item once as `remove` (proven ownership and disposable), `keep`
-(shared, active, reusable, remote, unrelated), or `decision` (uncertain ownership/value).
-Present the inventory before deletion only for a dry run or a needed decision.
+```sh
+skill-cleanup-inventory --root <repo> --output <new-file.json>
+```
 
-The request authorizes owned local disposable artifacts, not user work,
-credentials, shared infrastructure, machine-wide caches, or remote deletion.
-Pause for potentially user-authored uncommitted/untracked files; unique commits
-neither merged nor abandoned; ambiguously owned stashes; reusable/shared volumes,
-databases, simulators, emulators, or caches; and unclear/shared infrastructure.
-Prefer ordinary local branch deletion after ancestry proof. Force deletion
-requires independent squash/rebase-merge or abandonment evidence. Remote deletion
-needs separate explicit authority.
+Add `--compose-project <name>` for a known Compose project. The inventory collects evidence; it does not decide what is safe to delete.
 
-Keep the target worktree until all identity/configuration reads are done. From
-the stable directory, use exact ownership selectors and dependency order:
+Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Ask before removing uncertain data, uncommitted files, unique commits, or stashes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
 
-1. Gracefully stop owned processes, dev servers, and task runners.
-2. Use scoped native teardown for services, containers, databases, networks,
-   volumes, watchers, and platform state.
-3. Remove remaining owned temporary files, logs, sockets, pidfiles, generated
-   outputs, and non-shared caches.
-4. Remove the worktree, matching local branch, target stashes, and stale metadata.
+From a directory that will remain, stop owned processes and services, remove their disposable state, then remove the worktree and local branch. Read needed configuration before deleting it. Delete the current agent worktree last.
 
-For the agent's current worktree, deletion is the final filesystem mutation;
-continue verification only from the stable location. Keep shared services running.
-Global pruning, all-Watchman deletion, generic `pkill`, all-simulator shutdown,
-and forced repo-wide `git clean` are outside scope.
+Verify with the same paths and identifiers. Report what was removed, retained, or needs a decision. A dry run stops at that inventory.
 
-Finish with the same exact-identity discovery queries and a healthy stable
-checkout. Report removals, retained items and reasons, explicit unresolved
-decisions, and whether remote resources stayed untouched. These ownership and
-post-removal checks are completion requirements, not optional extra sweeps.
+## Artifact discovery
+
+Inspect only categories the task used. Match exact ownership before removing anything.
+
+| Area | Useful evidence and commands |
+| --- | --- |
+| Git | `git status --short --branch`, `git worktree list --porcelain`, `git stash list`, current PR merge state, and branch ancestry |
+| Generated files | Repository clean targets and `git clean -ndX` for a preview; inspect ignored files before deletion |
+| Processes | `ps -axo pid=,ppid=,command=`, `lsof -nP -iTCP -sTCP:LISTEN`, and `lsof -a -p <pid> -d cwd -Fn` |
+| Compose | Project/config labels on containers, networks, and volumes; use the exact project and config for teardown |
+| Watchers | Registered roots; use `watchman watch-del <path>` for the owned root |
+| Mobile/browser | Bundle/package IDs, device IDs, profile directories, and task-created processes |
+| Other services | Repository pidfiles, manifests, lease records, logs, and native status/stop commands |
+
+A matching name or stale remote-tracking ref is not ownership or merge proof. Inspect current authoritative state. Linked worktrees, unique commits, untracked files, and stashes may contain user work.
+
+Use native scoped teardown, then verify the same paths, PIDs, ports, refs, or IDs are absent. Inspect volume contents/purpose before including `--volumes`. Keep shared devices, caches, databases, profiles, and infrastructure. Avoid machine-wide pruning.
+
+If an artifact returns, find its owner process rather than repeatedly deleting it.

@@ -1,7 +1,0 @@
-interface:
-  display_name: "PR Review Checkout"
-  short_description: "Open a PR in VS Code with local-backed diffs"
-  default_prompt: "Use $pr-review-checkout to open this pull request in its real worktree and orient me for a local-backed VS Code review."
-
-policy:
-  allow_implicit_invocation: false

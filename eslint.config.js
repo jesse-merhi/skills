@@ -14,7 +14,7 @@ import noTrivialForwardingWrapper from "./eslint-rules/no-trivial-forwarding-wra
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
 const testFiles = ["**/*.test.ts"]
 const jsonParseAllowedFiles = ["**/*.test.ts", "**/*.test.mjs"]
-const runtimeJavaScriptFiles = ["skills/**/*.mjs"]
+const runtimeJavaScriptFiles = ["skills/**/*.mjs", "packages/**/*.mjs"]
 const lintInfrastructureFiles = ["eslint.config.js", "eslint-rules/**/*.js", "eslint-rules/**/*.mjs"]
 const local = {
   rules: {

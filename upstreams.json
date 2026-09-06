@@ -33,17 +33,12 @@
           "upstreamPaths": ["skills/engineering/to-tickets"]
         },
         {
-          "localSkill": "research",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/engineering/research"]
-        },
-        {
           "localSkill": "speak-fking-english",
           "relationship": "adapted",
           "upstreamPaths": ["skills/productivity/wait-what"]
         },
         {
-          "localSkill": "tdd",
+          "localSkill": "writing-good-tests",
           "relationship": "adapted",
           "upstreamPaths": ["skills/engineering/tdd"]
         },
@@ -110,6 +105,11 @@
       "mappings": [
         {
           "localSkill": "speak-fking-english",
+          "relationship": "adapted",
+          "upstreamPaths": ["pstack/skills/unslop"]
+        },
+        {
+          "localSkill": "de-slop",
           "relationship": "adapted",
           "upstreamPaths": ["pstack/skills/unslop"]
         }

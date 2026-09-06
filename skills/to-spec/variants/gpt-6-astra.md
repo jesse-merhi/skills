@@ -1,37 +1,25 @@
 ---
 name: to-spec
 description: 'Turn a resolved conversation into an Obsidian spec with testing seams and PR delivery shape.'
+metadata:
+  sources: |
+    - adapted from [skills/engineering/to-spec](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/to-spec) — recorded upstream review.
 ---
 
 # To spec
 
-Make the existing conversation executable as a spec. Use settled decisions and
-repo evidence immediately; ask only about choices this workflow still requires
-the user to settle.
+Turn settled discussion and current project evidence into an implementable Obsidian spec.
 
-## Establish the design
+Read the repo, glossary, relevant ADRs, and related Obsidian notes before writing the spec. Name the existing functions, service methods, or routes that tests should call. Prefer the highest stable interface that proves the behavior, using as few test entry points as practical. For example, test order creation through the existing service method rather than testing each helper separately.
 
-Read the relevant code, glossary, ADRs, and related Obsidian material. Preserve
-local terminology and decisions. Choose existing testing interfaces where
-possible, favor the highest stable seam, and minimize seams. Reuse an agreed
-choice; otherwise ask whether the proposed seams meet the user's expectations.
-For UI work, resolve the design and rendered-proof requirements through
-[frontend-spec.md](references/frontend-spec.md).
+Use one PR for a cohesive change. Prefer a stack for dependent parts and separate PRs for independent work. Confirm a proposed stack with the user before publishing; use the installed `gh stack` tool for its delivery and discover commands with `gh stack --help`.
 
-## Write the plan
+Write and name the Obsidian spec.
 
-Use [note-template.md](references/note-template.md). Record one PR for a cohesive
-review unit, a `gh-stack` chain for multiple genuinely dependent groups, and
-separate PRs or stacks for independent paths. An unsettled delivery shape stays
-an open question; it is not permission to manufacture dependencies.
+If the vault, path, or write access is unavailable, stop and tell the user.
 
-Include meaningful acceptance criteria and decisions. Prefer durable behavioral
-descriptions to file inventories or code snippets. A linked prototype excerpt
-may remain when it expresses a decision more accurately than prose.
+For UI work, apply [Frontend spec](references/frontend-spec.md) before publication. Planning does not launch another validation pass.
 
-## Deliver it
+## References
 
-Publish under Obsidian `Specs/` using [naming.md](references/naming.md). When the
-vault, target path, or write permission is missing, return the finished Markdown
-and a proposed path. Do not create repo-local specs without an explicit request.
-Keep the handoff concise and distinguish completed decisions from open ones.
+- [Note template](references/note-template.md): Use to write and name the Obsidian spec.

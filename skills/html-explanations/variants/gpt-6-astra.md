@@ -1,67 +1,22 @@
 ---
 name: html-explanations
-description: 'Create standalone HTML for complex explanations, code walkthroughs, plans, reports, diagrams, or research.'
+description: 'Create a standalone HTML explanation when a visual or interactive page makes the subject easier to understand.'
 ---
 
 # HTML explanations
 
-Choose the smallest local HTML page that answers the reader's question and
-build it. Resolve routine pattern/layout choices from the task instead of asking
-for a template selection. Preserve uncertainty in the content and required render checks.
+Answer the reader's question, then show the flow, comparison, example, or evidence that makes the answer clear. Use a page when its structure or interaction helps more than chat.
 
-## Shape the explanation around one question
+Create one local HTML file with inline CSS and JavaScript, without a build step or remote runtime.
 
-Use for comparisons, code/architecture/flow/bug explanations, PR walkthroughs,
-plans/status/incidents/handoffs, research, lessons, and demos that clarify behavior.
-Read [html-effectiveness-patterns.md](references/html-effectiveness-patterns.md),
-then reuse `assets/explanation-template.html` or the closest `assets/patterns/`
-reasoning structure. Replace sample facts and remove irrelevant sections.
-Produce one `.html` with inline CSS/JavaScript, no build or remote runtime dependency.
+Put code explanations beside the relevant code, visibly separate from source comments. Preserve exact source and evidence; hide only optional detail. Explaining a PR is not authority to review it.
 
-Lead with the answer and omit a summary that repeats the headline/first visual.
-Explain in plain language before dense mechanics. For explicit code/PR reading,
-reach the real changed flow/code in the first viewport after one outcome statement.
-Use concrete task labels and everyday terms before specialist vocabulary; retain
-exact names in evidence/code where useful. Summary rows name a behavior, promise,
-file, symbol, or boundary, not generic process labels. Put test machinery after
-the promise it checks.
+Use readable line lengths, clear hierarchy, keyboard-accessible controls, and colour plus text for status. Reflow at 320px; let wide code and tables scroll within their containers. Give `pre code` its own style so inline-code pills don't leak into blocks. Respect reduced motion and keep the argument intact when printed.
 
-## Make the page readable rather than larger
+Inspect the rendered page, its interactions, console, and narrow layout. Keep private content and assets local. Return the file link, a short explanation, and anything you couldn't verify.
 
-Aim for 70–75-character primary lines and compact tables, flows, timelines,
-comparisons, or controls. A short sequence is one ordered list with separators;
-independent concepts may use cards. Treat all sections as optional, cutting
-process narration, repeated summaries, dashboards, metrics, and redundant orientation.
-Interaction should expose a claim, assumption, state, or understanding check.
-Put long code/caveats below or in `<details>` unless they are the main task.
+## References
 
-Highlight code with local token markup/CSS or a small inline highlighter, using
-a limited high-contrast palette. Attach visibly labeled editorial explanations
-between relevant code segments and keep them distinct from source comments.
-Link/label exact files and symbols. A dedicated `pre code` reset must remove
-inline background/border/padding/radius/font-sizing styles from blocks.
-
-At 320 CSS pixels reflow into one column without page overflow, while wide
-code/tables scroll inside containers. Status needs text/shape with colour; controls
-need labels, keyboard behavior, visible focus, and touch targets. Respect reduced
-motion and print styles that preserve the argument while removing controls/
-decoration. Local user data/secrets stay local with no external scripts/fonts/
-analytics/image URLs.
-
-## Apply the specialized shape and finish its proof
-
-For PR/diff pages read [pr-diff-walkthrough.md](references/pr-diff-walkthrough.md)
-and use `assets/patterns/annotated-diff.html`. Explain the complete annotated
-direct-base change; do not infer authority to review it. Other shapes can follow
-code entrypoint→state→result, options→trade-offs→recommendation, concept→example,
-architecture ownership, bug→cause→fix→proof, or report/incident timelines.
-Plans/status/incidents/handoffs need explicit unknowns, absolute material dates,
-actionable-only checklists, and relevant command/results. Pattern research is
-in [html-explanation-patterns.md](references/html-explanation-patterns.md).
-
-Open the file in a browser when tools exist. Check console for JS, every code
-block's contrast/reset, first-viewport clarity, wide/320px page overflow, applicable
-narrow mobile view, and print CSS/preview for saveable reports/handoffs/plans/lessons.
-Fix an unclear opening and report what was not verified; if nothing ran, say so
-in page and reply. Finish with the created file, coverage, proof, and an absolute
-clickable local-file Markdown link, without repeating the page in chat.
+- [Pattern guide](references/html-effectiveness-patterns.md): Use for reusable examples when creating the page; adapt them freely and remove irrelevant sections.
+- [Diff walkthroughs](references/pr-diff-walkthrough.md): Use for PR and stack reading.
+- [Source research](references/html-explanation-patterns.md): When changing the templates themselves, consult their source research.

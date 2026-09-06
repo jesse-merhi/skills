@@ -1,49 +1,34 @@
 ---
 name: handoff
 description: 'Transfer the current work to a fresh full agent session, placing related work beside the current session and unrelated asides separately.'
+metadata:
+  sources: |
+    - adapted from [skills/productivity/handoff](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/handoff) — recorded upstream review.
 ---
 
 # Handoff
 
-Deliver one compact handoff document and a verified fresh full-session launch,
-or the exact limitation preventing it. Use no subagent, delegated in-chat worker,
-or background agent anywhere in the handoff.
+Move the work to a fresh full session.
 
-Write the document in the OS temporary directory. Include objective, state,
-evidence, touched files and commands, blockers, validation, Obsidian research
-links, suggested skills, and next actions. Link artifacts instead of copying
-them; redact secrets and unnecessary personal data. Keep the saved handoff
-focused on what the next session needs.
+## Write the brief
 
-Classify same-objective, feature, investigation, review, or implementation work
-as `continuation`; classify a separate user-introduced objective as `aside`.
-Default direct follow-on work to continuation, even if it can run independently.
+Save one compact document in the OS temporary directory containing:
+- Objective and current state.
+- Evidence, blockers, and relevant Obsidian links.
+- Next actions, synthesized from what the user asked for.
 
-Limit environment discovery to choosing and verifying the full-session route.
-Run `scripts/detect-handoff-surface`, read [session-routing.md](references/session-routing.md),
-and use the first verified option: explicit destination, current tmux pane,
-current app session, supported running app, fresh terminal or ACPX session.
-Process ancestry and native markers establish the current session before global
-process discovery; tmux elsewhere is insufficient.
+Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Link artifacts and omit secrets. Carry the existing PR or review plan, not another copy of its workflow.
 
-Before launch, read [worktree-isolation.md](references/worktree-isolation.md)
-for edit, repair, commit, or PR work and
-[repair-pr-handoffs.md](references/repair-pr-handoffs.md) for repairs/PRs.
-Designate the worktree and add required boundaries, skills, and publication
-authority to the receiving brief. Apply the chosen placement:
+## Get the launch command
 
-- tmux uses [tmux-placement.md](references/tmux-placement.md): new pane in the
-  current window for continuation, new window in the current session for an aside.
-- Codex app uses a fresh same-project task for continuation, projectless or the
-  matching other project for an aside, and a worktree for edits when required.
-- Claude uses a fresh named or tmux-launched interactive session, never a
-  background agent.
-- Other harnesses targeting Codex prefer a verified app task API. Otherwise
-  use a fresh named ACPX or interactive session and disclose the non-app route.
+Run `detect-handoff-surface`. It detects the current session and prints the recommended command or native app tool. If the user specified a destination, pass `--destination codex-app|claude-app|codex-cli|claude-cli`.
 
-Fork only when raw conversation history is genuinely necessary.
+Use `continuation` by default. Pass `--relationship aside` only for a substantially unrelated user objective. The script handles pane/window placement; do not repeat its detection logic.
 
-Completion evidence is the document path, relationship, surface and detection
-proof, placement, isolation, and launch status. Queued is not started. If the
-selected app lacks a verified creation path, stop with that limitation. Do not
-add a verifier worker or silently substitute one for the full session.
+## Launch and confirm
+
+Run the recommended command/tool. Use a new worktree only when required; preserve needed uncommitted changes and their base revision in the brief or linked patch.
+
+Launch a full interactive session, never ACPX, subagents, or background agents. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
+
+Confirm the new agent has started and only one new session was created. Report the brief path, session/worktree location, and observed status.

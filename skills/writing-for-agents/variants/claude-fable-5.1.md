@@ -1,46 +1,57 @@
 ---
 name: writing-for-agents
-description: 'Write agent-facing skills, AGENTS.md, CLAUDE.md, and linked docs with precise behavioral instructions.'
+description: 'Write skills, AGENTS.md, and other agent instructions in clear, practical language.'
+metadata:
+  source: https://github.com/mattpocock/skills
+  source-path: skills/productivity/writing-for-agents
+  source-revision: 6654f6b60cd9d5be8b54c6fafe44346dabeb3b76
 ---
 
 # Writing for agents
 
-Treat skills, AGENTS.md, CLAUDE.md, and linked documents as one instruction system.
-Make the authorized process predictable with literal wording and explicit order
-where order matters.
+Write as though you're explaining the job to a capable colleague. Explain what matters, give useful examples, and leave ordinary decisions to the agent. When shortening, remove unnecessary ideas rather than making sentences denser.
 
-1. Establish the document's job and authority. For a skill, load
-   `model-writing-guides` and [SKILL-MECHANICS.md](SKILL-MECHANICS.md) before drafting.
-   Write complete variants for every supported profile, preserving outcome,
-   permissions, exact commands, and evidence. Keep the requested rewrite scope;
-   do not expand an ordinary edit into unrelated documents.
-2. Separate steps from reference. Keep ordered actions and reference needed on
-   every path inline. Put conditional/advanced reference one hop from SKILL.md.
-   References may link only to their own SKILL.md among `skills/` files, not
-   to another reference. Keep SKILL.md within 500 lines and every-turn skills in
-   one file. Group each concept's definition, rules, and caveats together.
-3. Write each pointer as a reliable trigger. Say what the material is and name
-   every distinct branch that needs it. Front-load a familiar leading word,
-   collapse synonyms for one branch, and remove identity already present in
-   the target. The pointer's wording determines whether the agent ever reads it.
-4. Balance context and cognitive costs. Always-loaded instructions spend tokens
-   and attention; unlinked resources force humans to remember their existence.
-   Put reliable automatic retrieval behind clear pointers and reserve human
-   memory for choices needing human judgment. Do not split universally needed
-   material into extra reads: each file adds a model return.
-5. End every step with a clear, demanding completion criterion. State what must
-   be accounted for, not just which artifact to emit. Improve the criterion
-   before adding process. If observed rushing persists and the criterion cannot
-   be sharpened, hide later steps behind a real context boundary.
-6. Use familiar anchors such as tight, frontier, or red. Repeat the word rather
-   than its definition. Prefer positive target behavior; keep prohibitions for
-   hard guardrails and pair them with what to do instead. For long tool work,
-   specify useful batching and meaningful updates when relevant. Unfamiliar or
-   current factual claims need source lookup.
-7. Prune every line for relevance, a single authoritative owner, and behavior
-   beyond the model's default. Scripts/config/layout/`--help` are source truth;
-   prose caches earn space only for expensive lookups, unwritten conventions,
-   reasons, or gotchas. Finish the requested document and validation without
-   leaving a pile of duplicate rules.
+Prefer direct instructions over lists of anti-patterns. Keep necessary commands, permissions, and non-obvious gotchas. Familiar concepts and speculative mistakes rarely need explaining.
 
-Preserve the MIT notice in [upstream-license.md](references/upstream-license.md).
+## Shape the document
+
+Let the skill's name and description explain its purpose and when to use it. Start the body with useful guidance instead of repeating that introduction.
+
+Use numbered stages when their order helps, and templates when they provide a useful starting point. Keep both brief and adaptable. Explain what a good result needs; reserve fixed steps and explicit completion checks for work where they materially protect correctness or safety.
+
+For example, write "Explain what changed, why it matters, and show the result." A fixed four-sentence opening and another checklist of the same questions add little.
+
+Keep skills concise and easy for a person to read. Do not manually wrap prose lines.
+
+## Give each instruction one home
+
+Batch independent reads of the relevant skills, AGENTS.md, CLAUDE.md, and linked documents. Resolve contradictions at their owner instead of adding another rule.
+
+Keep instructions needed on every path inline. Put conditional commands and substantial examples in references. Link supporting files and explain when to read them in the body. References may link only to their own SKILL.md among files under `skills/`, not to other references. Extra files cost extra reads; keep every-turn skills in one file and SKILL.md within 500 lines.
+
+Use familiar terms consistently. Let scripts, configuration, and `--help` own mechanical details; retain prose for useful context and gotchas.
+
+Record verified upstream URLs and known paths or revisions in frontmatter metadata.
+
+## Skill mechanics
+
+Preserve existing invocation policy unless the user requests a change. A model-invoked skill is discoverable without being named, but its description uses context on every turn; state its distinct triggers precisely. A user-invoked skill trades that cost for the human remembering to invoke it; keep its summary short. In Codex, user-invoked skills use `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; model-invoked skills omit that policy.
+
+Split off a model-invoked skill only for a distinct trigger or a skill that other workflows must reach. Split a sequence only when visible later steps repeatedly cause premature completion and a clearer completion criterion has not helped; an inline call does not create a new context boundary. If user-invoked skills become hard to remember, one user-invoked router can explain the choices without invoking hidden skills for the user.
+
+## Model variants
+
+Read the existing variants, shared resources, and the model guides below before editing. Maintain complete `variants/<profile>.md` prompts for all four supported models, not overlays or routing prompts. Preserve behavior, permissions, exact commands, evidence, and completion criteria; model advice does not authorize extra gates or delegation.
+
+File presence records coverage. Keep root `SKILL.md` linked to `variants/gpt-5.6.md` and share scripts, references, assets, and metadata unless runtime behavior differs. Validate affected profiles with independent agent exercises and the materializer test; check that one complete prompt loads directly and shared behavior remains equivalent.
+
+For a new model, add its official guide and complete skill variants, then update the matcher and same-family rank in `scripts/materialize-skill-variants.mjs`. The materializer owns fallback and the once-per-session warning until coverage exists. Keep source links and review dates in the four model guides; refresh them when needed.
+
+Finish all authorized variant edits with targeted changes. For long work, report meaningful progress without narrating routine reads. Keep edits within the requested scope. Installation and model switching follow repository `INSTALL.md` and README; a prompt edit does not authorize either.
+
+## References
+
+- [GPT-5.6](references/gpt-5.6.md): use when writing its variant.
+- [Astra](references/gpt-6-astra.md): use when writing its variant.
+- [Fable](references/claude-fable-5.1.md): use when writing its variant.
+- [Opus](references/claude-opus-5.md): use when writing its variant.

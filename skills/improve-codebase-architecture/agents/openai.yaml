@@ -1,4 +1,0 @@
-interface:
-  display_name: "Improve Architecture"
-  short_description: "Review modules, seams, and tests"
-  default_prompt: "Review this area for architecture improvements, using Obsidian notes for durable context instead of repo-local docs."

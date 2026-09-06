@@ -1377,6 +1377,24 @@ test_review_findings_query_uses_latest_run_and_semantic_terms() {
   assert_output_not_contains "$out" "old-base invoice regression"
 }
 
+test_review_findings_query_handles_constructor_tokens() {
+  local tmp db out term
+  tmp="$(mktemp -d)"
+  db="$tmp/reviews.sqlite"
+  record_maintenance_finding --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #constructor" --base main --decision-id D1 --status open --source review --fingerprint "constructor invoice lookup" --summary "Constructor invoice lookup failure." --text "Invoice constructor rejects valid input." >/dev/null
+
+  for term in billing constructor; do
+    out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" query --db "$db" --repo sample-app --repo-path "$tmp/sample-app" --branch query-branch --target "PR #constructor" --json "$term")"
+    node --input-type=module - "$out" <<'NODE'
+import assert from "node:assert/strict"
+const results = JSON.parse(process.argv[2])
+assert.equal(results.length, 1)
+assert.equal(results[0].decision_id, "D1")
+assert.equal(results[0].summary, "Constructor invoice lookup failure.")
+NODE
+  done
+}
+
 test_review_findings_query_requires_explicit_broad_scope_outside_git() {
   local tmp db
   tmp="$(mktemp -d)"
@@ -3210,6 +3228,7 @@ test_review_findings_upgrades_legacy_schema
 test_review_findings_migrates_v5_handling_and_maintenance_evidence
 test_review_findings_reports_database_failures
 test_review_findings_query_uses_latest_run_and_semantic_terms
+test_review_findings_query_handles_constructor_tokens
 test_review_findings_query_requires_explicit_broad_scope_outside_git
 test_review_findings_rejects_negative_query_limits
 test_review_findings_shares_history_across_git_worktrees

@@ -1,111 +1,60 @@
 ---
 name: code-review
-description: 'Run authorized native and independent fix-and-rerun reviews for a PR, branch, commit, or diff.'
+description: 'Review code, check findings, fix worthwhile problems and repeat until clean.'
 ---
 
 # Code review
 
-Deliver a governed two-phase review of one committed target: external native
-`review-until-clean`, then fresh in-chat `cold-pr-review-until-clean`, followed
-by recorded closeout. Preserve both whole-target gates and required workers;
-do not add an optional final verifier or a worker per overlapping lens.
+Run native review, then an independent review. If the user asks for only one, run only that part.
 
-## Target and durable limits
+## 1. Start the review
 
-Resolve `<skill-dir>` to this directory. Select bare `codex review` in Codex or
-built-in `code-review` in Claude unless the user names another engine. A named
-Claude model selects Claude. Check only the selected engine; Codex needs the
-current identity to resolve/authenticate the standalone CLI. Keep its configured
-model, without private catalogue probes or overrides. `review-until-clean` owns
-selection/fallback rules.
+Check out the PR branch or the commit in question. Use the PR's base, or the requested commit's parent. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
 
-Require a committed `HEAD` and empty `git status --porcelain` before scope setup
-or review. Ask for dirty staged/unstaged/untracked work to be committed/discarded;
-never manufacture a temporary snapshot. Record `iteration = 0`,
-`last_reviewed_head`, base-plus-head `last_reviewed_target`, `repo_display_name`,
-`findings_db_path` (normally `~/.local/state/agent-review-findings/reviews.sqlite`),
-local `review_started`, original `baseline_diff`, request/target/behavior/owner
-`scope_baseline`, empty `consult_queue`, `findings_registry`, and valid-count-ranked
-`file_coverage`. Load `review-guardrails` and
-[guardrails-and-scope.md](references/guardrails-and-scope.md):
+Fill these values from the checkout and PR:
 
 ```sh
-review_findings_bin="<skill-dir>/scripts/review-findings"
-"$review_findings_bin" schema
-"$review_findings_bin" scope-start \
-  --repo <repo> --repo-path <repo-root> --branch <branch> \
-  --target <target> --base <base> --head <head> \
-  --scope-summary "<request, behavior, and owner boundary>"
+review-findings scope-start --repo <owner/repo> --repo-path <checkout> \
+  --branch <branch> --target <PR-URL-or-commit> --base <base> \
+  --head <starting-sha> --scope-summary "<requested change and allowed repairs>"
 ```
 
-The schema governs records. Resume with `scope-status`. Preserve the first
-branch/base LOC allowance across runs; reset only through explicitly authorized
-user words recorded in `scope-authorize`.
+To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands.
 
-## Complete discovery before filtering
+## 2. Run native reviews and fix the findings
 
-Use [setup-and-lenses.md](references/setup-and-lenses.md) once for flow mapping,
-required/applicable conditional lenses, Fowler smell baseline on the Standards
-path, neutral cold-risk checklist, and validation. At least three substantially
-independent runtime flows trigger [large-diff-slices.md](references/large-diff-slices.md)
-before Phase 1; file count does not. For its custom discovery briefs, request all
-genuine scoped candidates with evidence rather than actionable-only output.
-The coordinator filters afterward and records rejections. Preserve slice limits,
-coverage, and the ban on recursive reviewers. Run optional lenses locally unless
-substantial and independent; combine overlapping lenses.
+Use [the native reviewer](references/native-review.md) and [the review loop](references/review-loop.md). Handle returned findings with [the findings guide](references/fixing-and-reporting.md).
 
-Read [findings-registry.md](references/findings-registry.md). Record every source
-and disposition through the absolute helper. Use `speak-fking-english`'s reader
-reset for finding cards and owner summary. Query coverage before dispatch and
-prioritize least-covered changed files without telling cold reviewers counts
-or verdicts. Identifiable substantive file assessment is attested once per
-general/discovery/cold reviewer in an end-of-review batch. Current content identity
-governs validity; coverage is prioritization, never a clean gate.
+## 3. Run an independent review
 
-## Execute the required phases
+Use [the independent-review instructions](references/cold-review.md) with [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
 
-Phase 1 is external native review, never an in-chat replacement. Load
-`review-until-clean`, `wait-efficiently`,
-[review-phase-rules.md](references/review-phase-rules.md), and the selected Codex
-[codex-review-helper.md](references/codex-review-helper.md). Keep the native command
-bare and target-only; do not inject a discovery prompt. Capture each external
-ID before waiting, collect terminal output, and archive before another invocation
-or leaving the phase. Guarantee cleanup on errors, cancellation, expiry, or early
-stop using `set_thread_archived` in Codex Desktop or `codex archive <id>` standalone.
+## 4. Check, push and summarize
 
-After native meets its clean stop, use [subagents.md](references/subagents.md)
-and `cold-pr-review-until-clean` in fresh in-chat subagents, not new top-level tasks.
-Send frozen target and neutral risk checklist. Custom reviewers discover all
-genuine scoped candidates before actionability filtering, without prior findings,
-rationale, or desired verdicts. Use held native waits and match registry/consults
-only after independent return. Do not append verifier workers.
+Run the relevant repository tests, typecheck, lint and build commands identified during review. If a repair is needed, fix it and repeat the review for that part before finishing. Record each check before completing the run:
 
-Both loops own `finding-discipline`, the separate autonomous fix bar, targeted
-repair, affected validation, per-fix `scope-check`, and pass-level commits.
-Real findings are not automatic fixes. Do not patch follow-ups/out-of-scope work
-or edit between clean passes. Native fixes stay native; cold fixes stay cold
-unless the user explicitly requests a new native gate.
+```sh
+review-findings record-command --repo <owner/repo> --repo-path <checkout> \
+  --branch <branch> --target <PR-URL-or-commit> --base <base> \
+  --command "<full validation command>" --result "<observed result>" \
+  --reason "<behavior checked and evidence location>"
+```
 
-## Close out once the result is ready
+```sh
+review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
+  --branch <branch> --target <PR-URL-or-commit> --base <base> \
+  --reason "Final checks and requested reviews complete" --json
+review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
+  --branch <branch> --target <PR-URL-or-commit> --base <base> \
+  --reason "Requested reviews complete with no open decisions" --json
+```
 
-After both gates, run full setup-selected local validation. If code changes,
-repeat the affected phase and validation. With a clean committed final tree,
-run final `scope-check` then `scope-complete`. Follow
-[pr-closeout.md](references/pr-closeout.md) for owner/publication authority,
-proof freshness, one final push, CI, and blockers. No remote branch/PR mutation
-while either phase has findings or before full local validation passes.
+Run completion only after all requested reviews and checks pass with no open decisions. If a command blocks work, [handle its reported reason](references/blocked-checks.md).
 
-Use [final-output.md](references/final-output.md) and `review-findings closeout`,
-not chat memory. Report exact final SHA, phase results, findings/fixes,
-verification, consultations, delivery/proof/CI status, and audit retrieval compactly.
-Runtime records require path, reachability, likelihood, impact, consequence,
-contract, root cause, repair, and intervention justification; the CLI derives
-severity/`accept`. Maintenance records require current cost, root cause, and
-intervention justification; repairs are also recorded for patched, deferred,
-and approved-consult cases.
+[Push authorized fixes](references/publish-fixes.md), then [summarize the saved results](references/final-output.md).
 
-Stop honestly for missing engine/tools, blocked validation, budget/user stop,
-unavailable subagents without accepted lower confidence, or open consults.
-No "clean except" verdict. Keep repo bots, security remediation, OpenGrep, merge,
-and advisory writing separate unless requested. `ask-codex`/`ask-claude` require
-an explicit current request for that exact session and are not review fallbacks.
+Use [the findings commands](references/findings-registry.md) when recording or retrieving evidence.
+
+## Separately requested bot review
+
+For a separately requested bot review, use [the ClawSweeper workflow](references/clawsweeper.md) and [its ratings](references/clawsweeper-ratings.md).

@@ -1,43 +1,28 @@
 ---
 name: design-technical-diagrams
-description: 'Create or refine architecture, lifecycle, sequence, trust-boundary, decision, threat-model, SVG, or HTML diagrams that explain system relationships. Do not use technical diagrams as product runtime or UI proof.'
+description: 'Create clear system diagrams with readable labels and deliberate layout.'
 ---
 
 # Design technical diagrams
 
-Deliver one diagram that makes a system relationship clear at its destination
-size, plus the rendered evidence that it communicates. Default to one view;
-ask before producing a set answering different questions. Keep the artifact and
-handoff concise without omitting required facts.
+Explain one system relationship at the size the reader will actually see. Establish the audience, question, destination width, and facts from the current code or documentation. Keep technical explanation separate from runtime proof.
 
-Define claim, reader, destination size/medium, current or target state, facts to
-show, and details better left in prose. Trace real actors, systems, inputs,
-stores, decisions, changes of state, outputs, authority boundaries, and feedback.
-Use one actor's action or decision per primary step, grouped by owning system/phase.
+Prefer a layout engine over hand-positioning boxes and connectors. For Graphviz, write a small DOT graph and use the installed `dot` through:
 
-Choose topology before decoration. Read [visual-system.md](references/visual-system.md),
-sketch two or three spatially different low-detail layouts, and select for
-thumbnail clarity. Equal boxes imply equal roles. Render a wireframe with real
-short labels, realistic proportions, correct arrows, and icon space; fix an
-unclear start, focal system, decision, feedback route, or outcome now.
+```sh
+skill-render-diagram flow.dot --output-dir <new-directory> --width 960
+```
 
-Load `speak-fking-english` before copy is frozen. Use concrete actors/actions/objects,
-define needed terms in place, and reserve body text for facts geometry/grouping/
-route labels cannot communicate. Apply existing product type/palette, search
-repo and installed icon assets first, pair icons/colour with text, and use open
-connector gutters. Include chrome or legends only when the destination needs them.
+The helper sizes nodes, routes edges, writes SVG plus an HTML preview and source copy, and rejects labels that would become too small at the requested width. Use `--direction LR` for a left-to-right flow. An existing Mermaid or project-native renderer is also fine.
 
-Make visual acceptance part of delivery: [quality-gate.md](references/quality-gate.md)
-requires whole-frame, destination-size, close-detail, responsive-width, and every-
-export inspection. Optional [svg-linting.md](references/svg-linting.md) supports
-dense hand-authored SVG after composition works. Convert feedback to observable
-checks, fix source, rerender, and repeat affected passes until all pass or the
-user accepts an exception. Do not add a generic verification round or verifier agent.
+Keep labels short and concrete. Group by real ownership or phase, reserve connector space, and use restrained product colours. If a graph is crowded, change direction, shorten labels, or split the explanation by reader question rather than shrinking everything. Ask before expanding the requested scope into multiple diagrams.
 
-The diagram explains; it does not prove product execution or UI correctness.
-Keep actual screenshots, recordings, requests/responses, and runtime observations
-separate and label the diagram `What this explains`, never `What this proves`.
-Lead with the export, claim, source, destination-size evidence, responsive/export
-checks, and limitations. Lint counts alone cannot establish communication.
-Use [diagram-page.html](assets/diagram-page.html) only for an explicitly requested
-standalone page and do not inherit sample topology/chrome for embedded diagrams.
+Open the actual export at its destination width. Check label readability, clipping, overlap, arrow direction, route crossings, and whether the main path is obvious. Inspect requested narrow layouts separately; a large desktop export is not mobile proof. Fix the diagram in a loop until there are no issues.
+
+Deliver the diagram, editable source, inspected size, and any remaining limitation. The diagram may have a title, but do not add too much surrounding content - the diagram should explain itself.
+
+## References
+
+- [DOT syntax example](assets/flow.dot): For Graphviz, start from this only as a syntax example, not a topology to copy.
+- [Layout and checks](references/layout-and-checks.md): For custom SVG, styling, or automated geometry checks, use this guidance.
+- [Diagram page](assets/diagram-page.html): Use only when a standalone page is requested.

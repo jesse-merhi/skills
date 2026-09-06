@@ -125,6 +125,19 @@ an installed but invalid or unsupported profile fails rather than silently
 rerunning without the filter. Authentication probes and session archiving do
 not select the reviewer profile.
 
+The preset also sets `memories.use_memories`, `memories.generate_memories`, and
+`memories.dedicated_tools` to false, and hides `session-recall`. This prevents
+automatic memory injection/generation for these reviewer sessions; it does not
+restrict filesystem reads. Always launch a fresh reviewer rather than resume
+the implementer's context. App subagent tools that cannot select a profile do
+not inherit these controls merely because the file is installed.
+
+The memory controls were exercised with Codex 0.153.1 against a loopback-only
+fixture provider: the normal configuration injected a temporary memory marker,
+while the reviewer profile omitted it and retained the reviewer instructions.
+No real model or user memory was used. `debug prompt-input` alone does not
+exercise the memory extension and is not proof of isolation.
+
 Keep coordinators and delegated until-clean workflows on their normal profile.
 In-chat spawn tools without a profile-selection parameter retain their normal
 skill catalog; do not claim this preset filters those children. The preset
@@ -238,7 +251,7 @@ Build a static view containing the active model's copied `SKILL.md`. Shared
 executable resources remain linked to their repository dependency root:
 
 ```sh
-node REPO/skills/model-writing-guides/scripts/materialize-skill-variants.mjs \
+node REPO/skills/writing-for-agents/scripts/materialize-skill-variants.mjs \
   --source REPO/skills \
   --output VIEW_ROOT \
   --model 'INSTALL_MODEL_ID' \
@@ -346,18 +359,83 @@ those files.
 
 ## 10. Verify repo-owned CLIs
 
-The `review-findings` CLI runs directly from the linked skill and uses the
-repo-owned Effect runtime installed in step 5. Verify it can resolve that
-runtime and report its SQLite database path:
+### Command installation
+
+The Codex/Claude installer in step 7 also publishes the explicit public-command
+catalog from `skills/writing-for-agents/scripts/install-commands.mjs` to
+`~/.local/bin`. It does not scan executable files or publish tests and internal
+libraries. No shell configuration is changed. If that directory is not on
+`PATH`, the installer reports it; choose an existing PATH directory with
+`--bin-dir` or update your environment yourself.
+
+`--root` changes only the harness configuration root. For a completely isolated
+installation, supply both directories:
 
 ```sh
-REPO/skills/code-review/scripts/review-findings path
+./install-skills --harness codex --model astra \
+  --root /temporary/codex --bin-dir /temporary/bin --dry-run --json
+```
+
+JSON output includes `binDir`, the complete resulting `commands` catalog
+(`name`, owning `skill`, absolute `target`, and `runtime`), `commandsChanged`,
+and `commandsRetired`. A dry run checks collisions and entrypoints without
+writing files. Install from a durable repository clone with its dependencies
+installed, not a disposable worktree: launchers execute that clone's absolute
+entrypoints, preserving arguments, working directory, environment and exit
+status. They do not run from a generated model view.
+
+Both harnesses share one owner at
+`BIN_DIR/.jesse-merhi-skills-commands/manifest.json`. Matching installs are
+idempotent and use a shared publication lock. A different clone cannot take
+ownership unless a full install explicitly supplies the verified
+`--previous-source OLD_REPO/skills`. After a transfer, old-clone installs are
+refused rather than silently switching commands back.
+
+Existing unmanaged binaries, directories and foreign or unowned symlinks are
+never overwritten, including dead links. A collision stops installation before
+prompts change; inspect it and resolve ownership separately. Modified managed
+launchers also stop installation. Full installs retire only obsolete aliases
+still pointing at this command owner, preserving foreign replacements.
+`--skill NAME` updates that skill's aliases while preserving unselected aliases;
+it retains the existing requirement for the same installed model and source.
+Command or prompt publication failures restore changed aliases and the previous
+command catalog. The standalone materializer does not publish PATH commands.
+
+Public aliases:
+
+| Commands | Owning skill / entrypoint |
+| --- | --- |
+| `codex-review`, `review-findings` | `code-review/scripts/<name>`; `codex-review` dispatches native reviews only |
+| `ask-codex`, `ask-claude` | Respective skill's `scripts/<name>` |
+| `rovodev-atlassian` | `atlassian-queries/scripts/rovodev-atlassian` |
+| `skill-cleaner` | `skill-cleaner/scripts/skill-cleaner` |
+| `skill-audit-layout` | `frontend-ui-validation/scripts/audit-layout.mjs` |
+| `skill-cleanup-inventory` | `cleanup/scripts/inventory.mjs` |
+| `skill-collect-context` | `grill-with-docs/scripts/collect-context.mjs` |
+| `skill-diff-page` | `html-explanations/scripts/diff-page.mjs` |
+| `skill-render-diagram`, `skill-check-rendered-diagram` | `design-technical-diagrams/scripts/render-diagram.mjs`, `check-rendered-diagram.mjs` |
+| `codex-handoff-tmux`, `detect-handoff-surface` | `handoff/scripts/<name>` |
+| `quiet-wait`, `estimate-gh-wait` | `wait-efficiently/scripts/<name>` |
+| `pr-net-diff`, `github-verify-rendered-proof`, `proof-media` | `pr-proof-pack/scripts/<name>` |
+| `proof-publication` | `pr-proof-pack/scripts/proof-publication.mjs` |
+| `clawhub-local-test`, `openclaw-stg-test` | `openclaw/<name>/scripts/<name>` |
+
+### Verify commands
+
+After an authorized installation, verify the PATH aliases rather than resolving
+a skill directory. `review-findings` uses the repo-owned Effect runtime
+installed in step 5 and reports its SQLite database path:
+
+```sh
+command -v codex-review review-findings skill-cleaner
+codex-review --help
+review-findings path
 ```
 
 Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration.
 That override belonged to the removed Rust installation and can silently select
-a CLI that lacks the required scope commands. The skill-owned launcher above is
-the only supported entrypoint.
+a CLI that lacks the required scope commands. The installed alias calls the
+current repo-owned launcher.
 
 ## 11. Verify
 

@@ -13,6 +13,9 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
 import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordReviewedFiles, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
+import { recordFindingMatch, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
+import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
+import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
@@ -75,10 +78,11 @@ const pathCommand = Command.make("path", { db }, ({ db }) => Console.log(expandH
 const findingSchema = Command.make("schema", {}, () => Console.log(formatFindingSchema())).pipe(Command.withDescription("Print the authoritative record schema and consistency rules"))
 const record = Command.make("record", {
   db, ...commonRun, decisionLog: Flag.string("decision-log").pipe(Flag.withDefault("")),
-  decisionId: Flag.string("decision-id"), status: Flag.choice("status", FINDING_STATUSES), source: Flag.string("source"), fingerprint: Flag.string("fingerprint"), summary: Flag.string("summary"),
+  decisionId: Flag.string("decision-id").pipe(Flag.withDefault("")), status: Flag.choice("status", FINDING_STATUSES).pipe(Flag.withDefault("")), source: Flag.string("source"), fingerprint: Flag.string("fingerprint").pipe(Flag.withDefault("")), summary: Flag.string("summary").pipe(Flag.withDefault("")),
+  matchOf: Flag.string("match-of").pipe(Flag.withDefault("")), matchNote: Flag.string("match-note").pipe(Flag.withDefault("")), evidence: Flag.string("evidence").pipe(Flag.withDefault("")), json: Flag.boolean("json"),
   area: Flag.string("area").pipe(Flag.withDefault("")), impact: Flag.string("impact").pipe(Flag.withDefault("")), material: Flag.boolean("material"),
   userImpact: Flag.string("user-impact").pipe(Flag.withDefault("")), decision: Flag.string("decision").pipe(Flag.withDefault("")), text: Flag.string("text").pipe(Flag.withDefault("")),
-  findingKind: Flag.choice("finding-kind", FINDING_KINDS), productionPath: Flag.string("production-path").pipe(Flag.withDefault("")),
+  findingKind: Flag.choice("finding-kind", FINDING_KINDS).pipe(Flag.withDefault("")), productionPath: Flag.string("production-path").pipe(Flag.withDefault("")),
   reachabilityEvidence: Flag.string("reachability-evidence").pipe(Flag.withDefault("")), likelihood: Flag.string("likelihood").pipe(Flag.withDefault("")),
   actualConsequence: Flag.string("actual-consequence").pipe(Flag.withDefault("")),
   maintenanceEvidence: Flag.string("maintenance-evidence").pipe(Flag.withDefault("")), presentCost: Flag.string("present-cost").pipe(Flag.withDefault("")),
@@ -87,13 +91,18 @@ const record = Command.make("record", {
   recommendedFix: Flag.string("recommended-fix").pipe(Flag.withDefault("")),
   interventionJustification: Flag.string("intervention-justification").pipe(Flag.withDefault("")),
   rejectionGate: Flag.string("rejection-gate").pipe(Flag.withDefault("")),
-  fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES),
-  handling: Flag.choice("handling", FINDING_HANDLINGS),
+  fixScope: Flag.choice("fix-scope", FINDING_FIX_SCOPES).pipe(Flag.withDefault("")),
+  handling: Flag.choice("handling", FINDING_HANDLINGS).pipe(Flag.withDefault("")),
   ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
-  const result = yield* recordFinding({ ...toRun(args), decisionLog: args.decisionLog }, args)
-  yield* Console.log(`recorded run=${result.runId} issue=${result.issueId} decision=${args.decisionId} db=${args.db}`)
+  if (args.matchOf.length > 0 && (args.decisionId.length > 0 || args.status.length > 0 || args.ownerResolution.length > 0 || args.handling.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-of appends evidence only; omit decision/status/handling/owner-resolution fields"))
+  if (args.matchOf.length === 0 && (args.matchNote.length > 0 || args.evidence.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-note and --evidence require --match-of"))
+  const result = args.matchOf.length > 0
+    ? yield* recordFindingMatch(toRun(args), args)
+    : yield* recordFinding({ ...toRun(args), decisionLog: args.decisionLog }, args)
+  const limits = yield* readReviewLimits(result.runId, args.head)
+  yield* Console.log(args.json ? JSON.stringify({ ...result, limits }) : `recorded run=${result.runId} issue=${result.issueId} decision=${args.matchOf || args.decisionId} db=${args.db}\n${JSON.stringify({ limits })}`)
 })))
 const recordCommandCli = Command.make("record-command", {
   db, ...commonRun, command: Flag.string("command"), result: Flag.string("result"), reason: Flag.string("reason"), decisionId: Flag.string("decision-id").pipe(Flag.withDefault(""))
@@ -141,19 +150,27 @@ const prune = Command.make("prune", {
   yield* Console.log(`${args.dryRun ? "would prune" : "pruned"} findings=${count} db=${args.db}`)
 })))
 const scopeStart = Command.make("scope-start", {
-  db, ...commonRun, scopeSummary
+  db, ...commonRun, scopeSummary, json: Flag.boolean("json"),
+  timeBudgetHours: Flag.float("time-budget-hours").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.timeBudgetHours)),
+  consultCap: Flag.integer("consult-cap").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.consultCap)),
+  coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.coldCleanTarget))
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const budget = yield* startScopeBudget(toRun(args), { scopeSummary: args.scopeSummary })
-  yield* Console.log(formatReadyScopeBudget(budget))
+  const budget = yield* startScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, limits: { timeBudgetHours: args.timeBudgetHours, consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget } })
+  const limits = yield* reviewLimits(toRun(args))
+  yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatReadyScopeBudget(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Freeze the review scope and deterministic diff-growth baseline"))
 const scopeCheck = Command.make("scope-check", {
-  db, ...commonRun, reason: Flag.string("reason")
+  db, ...commonRun, reason: Flag.string("reason"), json: Flag.boolean("json")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
   const check = yield* checkScopeBudget(toRun(args), args.reason)
-  if (check.blocked) return yield* Effect.fail(new ScopeBudgetBlocked(check))
-  yield* Console.log(formatScopeBudgetCheck(check))
+  const limits = yield* reviewLimits(toRun(args))
+  if (check.blocked) {
+    if (args.json) return yield* new ReviewLimitsBlocked({ message: JSON.stringify({ ...check, limits }), report: limits })
+    return yield* Effect.fail(new ScopeBudgetBlocked(check))
+  }
+  yield* Console.log(args.json ? JSON.stringify({ ...check, limits }) : `${formatScopeBudgetCheck(check)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Block review work that exceeds the frozen scope budget"))
 const scopeAuthorize = Command.make("scope-authorize", {
   db, ...commonRun, scopeSummary, authorization: Flag.string("authorization")
@@ -163,18 +180,20 @@ const scopeAuthorize = Command.make("scope-authorize", {
   yield* Console.log(formatReadyScopeBudget(budget))
 }))).pipe(Command.withDescription("Reset a blocked baseline after explicit user authorization"))
 const scopeStatus = Command.make("scope-status", {
-  db, ...commonRun
+  db, ...commonRun, json: Flag.boolean("json")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
   const budget = yield* getScopeBudget(toRun(args))
-  yield* Console.log(formatScopeBudgetStatus(budget))
+  const limits = yield* reviewLimits(toRun(args))
+  yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatScopeBudgetStatus(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Show the persisted review scope budget"))
 const scopeComplete = Command.make("scope-complete", {
-  db, ...commonRun, reason: Flag.string("reason")
+  db, ...commonRun, reason: Flag.string("reason"), json: Flag.boolean("json")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
   const budget = yield* completeScopeBudget(toRun(args), args.reason)
-  yield* Console.log(formatScopeBudgetStatus(budget))
+  const limits = yield* reviewLimits(toRun(args))
+  yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatScopeBudgetStatus(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Close a clean scope budget so a later review can start"))
 
 const coverageRecord = Command.make("coverage-record", {
@@ -195,7 +214,28 @@ const coverageStatus = Command.make("coverage-status", {
   yield* Console.log(args.json ? JSON.stringify(coverage, null, 2) : formatReviewFileCoverage(coverage))
 }))).pipe(Command.withDescription("Rank current changed files by valid independent review count"))
 
-const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, pathCommand]))
+const progressStatus = Command.make("progress-status", { db, ...commonRun, phase: Flag.choice("phase", ["native", "cold", "clawsweeper"]).pipe(Flag.optional) }, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+  yield* initialize()
+  const progress = yield* reviewProgress(toRun(args))
+  const limits = yield* reviewLimits(toRun(args), Option.getOrUndefined(args.phase) ?? progress?.phase)
+  yield* Console.log(JSON.stringify({ ...(progress ?? { revision: 0 }), limits }))
+})))
+const progressRecord = Command.make("progress-record", {
+  db, ...commonRun, revision: Flag.integer("expected-revision"), phase: Flag.choice("phase", ["native", "cold", "clawsweeper"]),
+  outcome: Flag.choice("outcome", PROGRESS_OUTCOMES), evidence: Flag.string("evidence"),
+  findingId: optionalString("finding-id"), repairAttempt: optionalString("repair-attempt"), authorization: optionalString("authorization")
+}, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+  yield* initialize()
+  const event = yield* Schema.decodeUnknownEffect(ProgressEvent)({ expectedRevision: args.revision, phase: args.phase, head: args.head, outcome: args.outcome, evidence: args.evidence,
+    ...(Option.isSome(args.findingId) ? { findingId: args.findingId.value } : {}),
+    ...(Option.isSome(args.repairAttempt) ? { repairAttempt: args.repairAttempt.value } : {}),
+    ...(Option.isSome(args.authorization) ? { authorization: args.authorization.value } : {})
+  })
+  const progress = yield* reviewProgress(toRun(args), event)
+  yield* Console.log(JSON.stringify({ ...progress, limits: yield* reviewLimits(toRun(args), event.phase) }))
+})))
+
+const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, pathCommand]))
 const Live = Layer.mergeAll(NodeServices.layer)
 const rootDb = process.argv[2]
 if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== undefined) {
@@ -207,5 +247,5 @@ command.pipe(Command.run({ version: "3.2.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))

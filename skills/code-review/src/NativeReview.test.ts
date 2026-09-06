@@ -318,17 +318,14 @@ esac
       const { stdout } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--json", "file.txt", "missing.txt"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
       const report = JSON.parse(stdout)
       assert.strictEqual(report.base.ref, "origin/main")
-      assert.deepStrictEqual(report.fileDetails.map(({ path, status, branch_commits }: { path: string; status: string; branch_commits: ReadonlyArray<string> }) => ({ path, status, commitCount: branch_commits.length })), [
-        { path: "file.txt", status: "modified", commitCount: 1 },
-        { path: "missing.txt", status: "not touched in branch", commitCount: 0 }
-      ])
+      assert.deepStrictEqual(report.changeBreakdown.total, { files: 1, additions: 1, deletions: 1, binaryFiles: 0 })
       // @effect-diagnostics-next-line processEnv:off
       const { stdout: markdown } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--markdown", "file.txt"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
-      assert.match(markdown, /## Requested File Details\n- file\.txt: modified/u)
+      assert.include(markdown, "| Implementation | 1 | +1 | -1 |")
       // Executable-boundary compatibility test intentionally inherits the caller environment.
       // @effect-diagnostics-next-line processEnv:off
       const { stdout: relativeMarkdown } = await execFile(join(root, "skills/pr-proof-pack/scripts/pr-net-diff"), ["--markdown", "./file.txt"], { cwd: directory, env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` } })
-      assert.match(relativeMarkdown, /## Requested File Details\n- \.\/file\.txt: modified/u)
+      assert.strictEqual(relativeMarkdown, markdown)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

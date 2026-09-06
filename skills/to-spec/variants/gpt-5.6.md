@@ -1,30 +1,25 @@
 ---
 name: to-spec
 description: 'Turn a resolved conversation into an Obsidian spec with testing seams and PR delivery shape.'
+metadata:
+  sources: |
+    - adapted from [skills/engineering/to-spec](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/to-spec) — recorded upstream review.
 ---
 
 # To spec
 
-Turn settled discussion and current project evidence into an implementable
-Obsidian spec. Preserve decisions already made rather than restarting the
-interview.
+Turn settled discussion and current project evidence into an implementable Obsidian spec.
 
-Ground the spec in the repo, glossary, relevant ADRs, and related Obsidian notes.
-Identify the testing seams: prefer existing seams, the highest stable interface,
-and as few seams as practical. If those decisions are unsettled, confirm them
-with the user. For UI work, apply
-[frontend-spec.md](references/frontend-spec.md) before publication.
+Read the repo, glossary, relevant ADRs, and related Obsidian notes before writing the spec. Name the existing functions, service methods, or routes that tests should call. Prefer the highest stable interface that proves the behavior, using as few test entry points as practical. For example, test order creation through the existing service method rather than testing each helper separately.
 
-Record the delivery shape before implementation: one cohesive review unit in
-one PR; `gh-stack` for two or more review groups on a strict dependency path;
-separate PRs or stacks for independent work. Preserve the agreed shape. If it
-was not settled, record an open question instead of inventing dependencies.
+Use one PR for a cohesive change. Prefer a stack for dependent parts and separate PRs for independent work. Confirm a proposed stack with the user before publishing; use the installed `gh stack` tool for its delivery and discover commands with `gh stack --help`.
 
-Write with [note-template.md](references/note-template.md) and publish under
-Obsidian `Specs/` using [naming.md](references/naming.md). If the vault, path, or
-write access is unavailable, return the Markdown and proposed path. Repo-local
-spec files require an explicit request.
+Write and name the Obsidian spec.
 
-Keep decisions and observable acceptance criteria. Omit brittle file inventories
-and ordinary code samples; retain a prototype excerpt only when it conveys a
-decision more precisely than prose, with a link to its source.
+If the vault, path, or write access is unavailable, stop and tell the user.
+
+For UI work, apply [Frontend spec](references/frontend-spec.md) before publication. Planning does not launch another validation pass.
+
+## References
+
+- [Note template](references/note-template.md): Use to write and name the Obsidian spec.

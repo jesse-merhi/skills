@@ -1,37 +1,25 @@
 ---
 name: grill-with-docs
-description: 'Ground a plan in repo docs, code, Obsidian notes, ADRs, specs, and tickets, then grill its decisions.'
+description: 'Ground a plan in code and Obsidian notes, then question its decisions.'
+metadata:
+  sources: |
+    - adapted from [skills/engineering/grill-with-docs](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/grill-with-docs) — recorded upstream review.
 ---
 
 # Grill with docs
 
-Use current project evidence to prepare and conduct a `grilling` session.
-The interview must settle the user's decisions, not replace them with guesses.
+Use current project evidence to support a `grilling` interview, not to restart settled decisions.
 
-1. Before judging the plan, search the sources in
-   [grounding.md](references/grounding.md). Batch independent docs, code, and
-   Obsidian reads. Verify unfamiliar or current claims from their source.
-   Mark copied wording as a quotation and separate it from your interpretation.
-2. List the plan's concepts, system names, state changes, user outcomes, and
-   implied invariants. Compare them with existing code and documentation.
-   Prefer established terms and flag invented or overloaded names and domain gaps.
-3. Load `grilling`. Map the decision tree and ask its complete settled frontier
-   in numbered rounds. Recommend an answer for each question, dispatch background
-   fact-finding as that skill requires, and wait for the user's decisions.
-4. Use [session-behavior.md](references/session-behavior.md) throughout: challenge
-   glossary gaps, sharpen vague language, test concrete scenarios, cross-check
-   code claims, assess UI readiness, update context, and offer warranted ADRs.
-   Ask which ADR supports a choice, which code path proves feasibility, what
-   the first tracer-bullet ticket does, what assumption could fail, and which
-   acceptance criteria cannot yet be tested. For UI, establish design direction,
-   viewport states, and expected `frontend-ui-validation` proof.
-5. If the subject cannot fit a useful session, suggest splitting it into explicit
-   decisions or tickets. Otherwise continue until executable and user-confirmed.
-   Report a grounding change when it changes the questions or recommendations.
-6. Return the tightened plan, assumptions, and first ticket, or concise blockers
-   if it remains unready. Use Grounding, What Holds Up, Gaps, Tightened Plan, and
-   Next Round only where useful. When the plan is ready, stop asking new questions;
-   make any outstanding confirmation the next round before proceeding.
+```sh
+skill-collect-context --repo <checkout> --query "<topic>"
+```
 
-Use [context-format.md](references/context-format.md) for a glossary note and
-[adr-format.md](references/adr-format.md) for an ADR that is genuinely warranted.
+The read-only helper identifies the Git checkout, repository documents, matching code, and notes in the configured Obsidian vault. Use `--vault <path>` for another vault and `--limit` for more matches. It returns paths, not conclusions; read the relevant files and user-supplied notes. Missing vault access is reported explicitly—use an available connector or disclose the gap.
+
+Check claims against actual code. Extract the actors, domain terms, state changes, outcomes, and implied invariants. Flag overloaded names and contradictions before building questions on them.
+
+Load `grilling` for the interview. Use concrete scenarios. Pressure-test feasibility, failure cases, surprising dependencies, existing ADRs, vague acceptance criteria, and the first useful piece of delivery.
+
+For UI plans, establish audience, design direction, important states/viewports, and the rendered proof needed. Divide a plan only when its scope or unresolved decisions make one session impractical.
+
+Return the tightened plan, remaining gaps, and next questions. Stop once the user confirms it is clear enough to execute. Use the [ADR guidance](references/adr-format.md) to decide whether to offer one and to write it after acceptance.

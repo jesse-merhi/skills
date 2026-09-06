@@ -1,51 +1,36 @@
 ---
 name: frontend-ui-validation
-description: 'Validate web UI with Playwright screenshots, layout checks, responsive states, and reference comparisons.'
+description: 'Validate behaviour of web or native UI through real interactions, screenshots, and layout evidence.'
 ---
 
-# Frontend UI validation
+# UI validation
 
-Deliver rendered evidence for the changed UI's required states and viewport
-matrix, with every real error and warning resolved or reported. Keep this an
-ad-hoc validation task; do not add speculative states, persistent test suites,
-or verifier agents.
+Validate the changed UI behaves appropriately.
 
-Start the app with its normal repository command and open the changed page in
-a real browser. Unless better targets are supplied, cover 390×844, 768×1024,
-and 1440×900, including reachable empty, error, and loading states. Run at each width:
+## Web
 
-```bash
-node <skill-dir>/scripts/audit-layout.mjs <url>
+Use the repository's normal launch workflow and the session's approved browser tools. In Codex use its browser tools; in Claude use the available Chrome integration.
+
+Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, unintended overlap, focus, or unreachable controls. Compare composition, spacing, type, and colour with any supplied reference. Fix source, not a temporary DOM edit.
+
+For repeatable URL-state captures, use the existing Playwright helper only when the project already has Playwright and the harness permits it:
+
+```sh
+skill-audit-layout <URL> --state <name>=<URL> --viewport 390x844 --wait-for <ready-selector> --output-dir <new-directory>
 ```
 
-Use [browser-layout-audit.md](references/browser-layout-audit.md) to interpret
-the audit and [mcp-browser-checks.md](references/mcp-browser-checks.md) for direct
-screenshot, box, console, and style checks. Inspect the actual element/text/box
-behind warnings. Examine overflow, clipping, overlap, tap targets, console errors,
-responsiveness, hierarchy, filler, and design direction. Inspect close detail
-when needed while retaining the complete layout view.
+Use `--help` for controls. Make sure to exercise menus, dialogs, forms, or transitions with real interactions.
 
-Native React Native/Expo screens use [native-expo.md](references/native-expo.md)
-and simulator evidence from the mobile app, not browser-only proof. Apply
-[design-specific-checks.md](references/design-specific-checks.md) for Figma,
-mockup, reference, theme, density, auth, or operational-app comparisons.
+## Native
 
-When implementation is authorized, repair source and rerun the same affected
-state and viewport. Otherwise return evidence and recommended fixes without
-source edits. Do not count live DOM mutation as a repair. Discover genuine UI
-failures before selecting the report; brevity must not hide a real warning.
+Follow [Native checks](references/native-expo.md) for the changed native flow.
 
-Return compact proof such as:
+## Keep evidence useful
 
-```text
-390x844: 0 errors, 0 warnings
-768x1024: 0 errors, 1 warning intentionally left: <reason>
-1440x900: 0 errors, 0 warnings
-Console: 0 errors
-Screenshots: <paths>
-```
+Record the build or revision and relevant local changes, environment, web viewport or native device, interaction, expected and observed outcome, and capture paths. Include failures and unavailable checks. Screenshots prove appearance; recordings help prove motion and interaction. Layout warnings and passing tests support that evidence but do not establish visual quality.
 
-If the script did not run, name replacement MCP/manual checks. Replace browser
-lines with native Expo evidence for simulator screens; never imply browser
-coverage from native rendering. These checks and repair reruns are the completion
-gate; a screenshot or a generic final verification pass is not a substitute.
+Give downstream tickets, reviewers, and proof-pack work the same evidence paths and coverage notes.
+
+## References
+
+- [Layout evidence](references/browser-layout-audit.md): Use for the capture helper's output and limitations.

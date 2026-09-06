@@ -1,19 +1,13 @@
-# Production UI
+# Interface design
 
-Shape the interface around the product and its existing design system, then
-implement and inspect the complete rendered result.
+Choose the layout from the user's task and the information, not a favourite template. A work queue needs useful density and clear state; an editorial page may need a strong image and a reading rhythm.
 
-1. Read the audience, platform, vocabulary, acceptance criteria, product docs,
-   tokens, and representative existing components.
-2. Name the visual direction in one sentence. Preserve established conventions
-   unless the requested outcome justifies changing the system.
-3. Reuse the project's components and installed dependencies. Extend a shared
-   component when its existing contract is close; do not rebuild it at the call
-   site.
-4. Implement the relevant loading, empty, error, disabled, overflow, long-copy,
-   narrow-viewport, keyboard, focus, and touch states.
-5. Build hierarchy with content order, typography, spacing, placement, and
-   existing colour tokens before decoration. Preserve useful density and avoid
-   turning every group into a card.
-6. Inspect the rendered result at supported widths and states. Report what was
-   visibly checked and any remaining risk.
+Use real labels and plausible content early. Long names, empty sections, and errors often expose a weak layout sooner than polished placeholder cards.
+
+Establish a small, coherent type and spacing system. Make the primary action obvious, related controls close, and secondary detail quieter. Keep decoration subordinate to the content.
+
+In an existing product, use its components and tokens. For a new direction, draw from the subject's visual language and invest in one or two distinctive choices rather than styling every element loudly.
+
+Use semantic regions, headings, labels, and clear focus. Inspect the actual interface at relevant widths and with keyboard interaction.
+
+Research checked on 2026-09-05: [W3C page structure](https://www.w3.org/WAI/tutorials/page-structure/) grounds usable navigation.

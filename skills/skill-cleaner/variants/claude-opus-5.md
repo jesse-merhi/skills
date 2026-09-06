@@ -1,35 +1,36 @@
 ---
 name: skill-cleaner
 description: "Audit agent skills: loaded roots, duplicate skills, unused skills, prompt-budget costs, compact descriptions."
+metadata:
+  source: https://github.com/steipete/agent-scripts
+  source-path: skills/skill-cleaner
+  upstream-review-revision: 0e8ca002fc1dd76ae84c71f8d24dfd1ac7096ff5
+  upstream-review-date: "2026-09-06"
+  license: MIT
 ---
 
 # Skill cleaner
 
-Deliver an analyzer-led inventory and a short set of evidence-backed cleanup
-decisions. Cover loaded roots, prompt budget, duplicates, and usage. Suggest
-first; only a user request authorizes editing or removal.
+Produce an evidence-backed inventory and cleanup recommendations for loaded skill roots, duplicates, usage, and prompt-budget pressure. This is suggest-first; edit or remove only when the user requests it.
 
-Run from the repository root, or resolve the corresponding path from this skill:
+Use the installed `skill-cleaner` command. Read `--help` for supported options rather than a separate command guide:
 
 ```bash
-skills/skill-cleaner/scripts/skill-cleaner --months 3
+skill-cleaner --help
+skill-cleaner --months 3
 ```
 
-Choose supported variants through [commands.md](references/commands.md). Follow
-[report-guide.md](references/report-guide.md) when reading output and use
-[analyzer-notes.md](references/analyzer-notes.md) to distinguish heuristic
-candidates from proven waste. Keep both the chat report and any saved report
-focused on decisions and the evidence needed to make them.
+## Interpret the evidence
 
-For requested cleanup, apply [cleanup-policy.md](references/cleanup-policy.md)
-as part of accepting each change. Confirm the retained copy exists and is loaded
-before deleting a duplicate. Preserve description trigger nouns for product,
-tool, action, and object, plus exclusions. Treat generated descriptions as manual
-rewrite candidates until behavioral tests establish equivalent triggering.
-Ignored or untracked directories need a named destination or confirmation that
-they are disposable before deletion.
+- Separate the live model-visible inventory from filesystem fallback. `--no-live` forces fallback; `--root <path> --root-only` limits the scan to supplied roots. For another harness, supply its roots and use its local usage evidence.
+- Read budget pressure alongside roots, enabled state, description candidates, duplicates, and unused candidates. Budget figures estimate Codex's 2% allocation using `ceil(utf8_bytes / 4)`; check the reported model and context source, and use `--context-tokens` for an exact context-size override.
+- Duplicate names alone do not justify deletion. Compare bodies and ownership; symlinked roots and file reads are realpath-deduped.
+- Missing recent usage is not proof of disuse. Default logs cover recent Codex history and sessions, not archives unless `--deep-logs` is used. Evidence comes from user messages and tool-call arguments, not developer catalogs.
 
-Do not add an optional verification-agent fan-out or unrelated installation and
-prompt-writing work. Preserve [the upstream license](references/upstream-license.md)
-when redistributing this Effect adaptation of the MIT-licensed
-[`steipete/agent-scripts`](https://github.com/steipete/agent-scripts) analyzer.
+## Apply only requested cleanup
+
+Verify the kept duplicate exists and is loaded. Prefer the harness-provided copy when it covers the same behavior, but retain repository skills that encode project policy or live operations. Do not delete ignored or untracked directories without naming the destination or confirming they are disposable.
+
+Preserve description trigger nouns—product, tool, action, object—and exclusions. Generated shorter descriptions remain manual rewrite candidates until behavioral tests establish equivalent triggering. Group authorized changes by descriptions, deletions, or configuration; commit only when separately authorized.
+
+Keep chat and saved reports focused on the useful inventory, supporting evidence, limits, and proposed decisions. Do not add optional worker rounds, installation changes, or unrelated prompt-writing work.

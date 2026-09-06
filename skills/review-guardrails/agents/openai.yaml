@@ -1,4 +1,0 @@
-interface:
-  display_name: "Review Guardrails"
-  short_description: "Budgets, consult queue, and fixed-point suspension for review loops"
-  default_prompt: "Use $review-guardrails to set wall-clock and diff-growth budgets, queue consult-worthy findings while other fixes continue, and suspend as blocked-on-consult at the fixed point instead of re-reviewing an unchanged tree."

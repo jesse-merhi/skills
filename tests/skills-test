@@ -247,7 +247,8 @@ test_findings_reviewer_config_only_filters_workflow_skills() {
 import assert from "node:assert/strict";
 
 const { default: config } = await import(`${process.env.ROOT_DIR}/codex/findings-reviewer.config.toml`);
-assert.deepEqual(new Set(Object.keys(config)), new Set(["developer_instructions", "skills"]));
+assert.deepEqual(new Set(Object.keys(config)), new Set(["developer_instructions", "memories", "skills"]));
+assert.deepEqual(config.memories, { use_memories: false, generate_memories: false, dedicated_tools: false });
 assert.equal(typeof config.developer_instructions, "string");
 assert.ok(config.developer_instructions.trim());
 assert.deepEqual(Object.keys(config.skills), ["config"]);
@@ -262,13 +263,13 @@ for (const entry of exclusions) {
 const names = new Set(exclusions.map(entry => entry.name));
 assert.equal(names.size, exclusions.length);
 for (const name of [
-  "code-review", "review-until-clean", "cold-pr-review-until-clean",
-  "just-do-it", "handoff", "pr-proof-pack",
+  "code-review", "session-recall",
+  "just-do-it", "handoff", "pr-proof-pack", "de-slop",
 ]) assert.ok(names.has(name), `${name} must be excluded`);
 for (const name of [
-  "cold-pr-review", "finding-discipline", "review-guardrails",
-  "review-flow-map", "test-audit", "reducing-cognitive-load",
-  "typescript-discipline", "mcp-server-review", "improve-codebase-architecture",
+  "finding-discipline", "review-guardrails",
+  "writing-good-tests", "reducing-cognitive-load",
+  "typescript-discipline", "mcp-server-review",
 ]) assert.ok(!names.has(name), `${name} must remain available`);
 '
 }
@@ -285,7 +286,6 @@ test_installation_metadata_and_runtime() {
   assert_contains "$ROOT_DIR/skills/ask-claude/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$ROOT_DIR/skills/ask-codex/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$ROOT_DIR/skills/just-do-it/agents/openai.yaml" "allow_implicit_invocation: false"
-  assert_not_contains "$ROOT_DIR/skills/openclaw/openclaw-pr-readiness/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
   assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
   assert_contains "$ROOT_DIR/claude/agents/fable-orchestrator.md" "name: fable-orchestrator"
@@ -488,22 +488,19 @@ test_pr_proof_helpers() {
   assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
   assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
   assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
-  assert_output_contains "$explicit_net_diff" '"path": "feature.txt"'
-  assert_output_not_contains "$explicit_net_diff" '"path": "destination.txt"'
-  assert_output_not_contains "$explicit_net_diff" '"path": "observer.txt"'
-  assert_output_contains "$explicit_net_diff" 'Add selected change'
-  assert_output_contains "$explicit_net_diff" '"transient.txt"'
-  assert_output_not_contains "$explicit_net_diff" 'Advance observer'
+  assert_output_contains "$explicit_net_diff" '"files": 1'
+  assert_output_contains "$explicit_net_diff" '"additions": 1'
+  assert_output_contains "$explicit_net_diff" '"deletions": 0'
   requested_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$destination_sha" --head "$selected_sha" --json feature.txt observer.txt)"
-  assert_output_contains "$requested_net_diff" '"path": "feature.txt"'
-  assert_output_contains "$requested_net_diff" '"status": "modified"'
-  assert_output_contains "$requested_net_diff" '"path": "observer.txt"'
-  assert_output_contains "$requested_net_diff" '"status": "not touched in branch"'
+  [[ "$requested_net_diff" == "$explicit_net_diff" ]] || fail "path selection must retain the one net change"
+  requested_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$destination_sha" --head "$selected_sha" --markdown observer.txt)"
+  assert_output_contains "$requested_net_diff" "No net diff."
   explicit_markdown="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base "$destination_sha" --head "$selected_sha" --markdown)"
   assert_output_contains "$explicit_markdown" "Selected base: $destination_sha ${destination_sha:0:12}"
   assert_output_contains "$explicit_markdown" "Comparison base: ${base_sha:0:12}"
   assert_output_contains "$explicit_markdown" "Head: ${selected_sha:0:12}"
-  assert_output_contains "$explicit_markdown" "transient.txt"
+  assert_output_contains "$explicit_markdown" "| Implementation | 1 | +1 | -0 |"
+  assert_output_contains "$explicit_markdown" "| **Total** | **1** | **+1** | **-0** |"
   fake_gh_dir="$net_diff_fixture/fake-bin"
   mkdir "$fake_gh_dir"
   printf '%s\n' '#!/usr/bin/env bash' '[[ "$#" -eq 4 && "$1" == "pr" && "$2" == "view" && "$3" == "--json" && "$4" == "baseRefName,baseRefOid" ]] || exit 64' "printf '%s\\n' '{\"baseRefName\":\"not-local\",\"baseRefOid\":\"$destination_sha\"}'" > "$fake_gh_dir/gh"
@@ -513,14 +510,13 @@ test_pr_proof_helpers() {
   assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
   assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
   assert_output_contains "$explicit_net_diff" '"head": '"\"$observer_sha\""
-  assert_output_contains "$explicit_net_diff" '"path": "observer.txt"'
+  assert_output_contains "$explicit_net_diff" '"additions": 1'
   explicit_net_diff="$(cd "$net_diff_fixture" && PATH="$fake_gh_dir:$PATH" "$skill/scripts/pr-net-diff" --head "$selected_sha" --json)"
   assert_output_contains "$explicit_net_diff" '"source": "gh pr view"'
   assert_output_contains "$explicit_net_diff" '"sha": '"\"$destination_sha\""
   assert_output_contains "$explicit_net_diff" '"comparisonBase": '"\"$base_sha\""
   assert_output_contains "$explicit_net_diff" '"head": '"\"$selected_sha\""
-  assert_output_contains "$explicit_net_diff" '"path": "feature.txt"'
-  assert_output_not_contains "$explicit_net_diff" '"path": "observer.txt"'
+  assert_output_contains "$explicit_net_diff" '"additions": 1'
   git -C "$net_diff_fixture" update-ref refs/tags/--destination "$destination_sha"
   git -C "$net_diff_fixture" update-ref refs/tags/--source "$selected_sha"
   explicit_net_diff="$(cd "$net_diff_fixture" && "$skill/scripts/pr-net-diff" --base=--destination --head=--source --json)"
@@ -639,16 +635,9 @@ if (!elements.get("reading").innerHTML.includes("balances transient recovery")) 
 JS
 }
 
-test_openclaw_local_test_helpers() {
-  node --test \
-    "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/runtime-profile.test.mjs" \
-    "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/shared-browser-proxy.test.mjs" \
-    "$ROOT_DIR/skills/openclaw/openclaw-local-test/scripts/openclaw-local-test.test.mjs"
-}
-
 test_model_skill_variant_materializer() {
-  node --test "$ROOT_DIR/skills/model-writing-guides/scripts/materialize-skill-variants.test.mjs" \
-    "$ROOT_DIR/skills/model-writing-guides/scripts/install-skills.test.mjs"
+  node --test "$ROOT_DIR/skills/writing-for-agents/scripts/materialize-skill-variants.test.mjs" \
+    "$ROOT_DIR/skills/writing-for-agents/scripts/install-skills.test.mjs"
 }
 
 test_skill_frontmatter_is_valid
@@ -658,6 +647,5 @@ test_findings_reviewer_config_only_filters_workflow_skills
 test_handoff_tmux_helper_builds_tmux_window_command
 test_pr_proof_helpers
 test_examples_report_computed_values
-test_openclaw_local_test_helpers
 test_model_skill_variant_materializer
 printf 'ok - skill metadata and executable helper tests\n'

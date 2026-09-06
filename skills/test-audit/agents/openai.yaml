@@ -1,4 +1,0 @@
-interface:
-  display_name: "Test Audit"
-  short_description: "Audit useful, non-tautological test coverage."
-  default_prompt: "Use $test-audit to review related test coverage, flag tautological or implementation-coupled assertions, and decide what to add, change, remove, or skip."
