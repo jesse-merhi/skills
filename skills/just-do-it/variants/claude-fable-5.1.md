@@ -1,67 +1,25 @@
 ---
 name: just-do-it
-description: 'Take one well-defined, cohesive change from its current implementation or delivery checkpoint through exact-head code review, proof, CI, and a reviewer-ready PR. Use only when the user explicitly invokes this skill.'
+description: 'Finish a proposed change and deliver a reviewed PR ready for Jesse.'
 ---
 
 # Just Do It
 
-Use only when explicitly invoked. Finish one small, settled, cohesive change as
-a non-draft PR ready for Jesse's inspection. Continue verified work from its
-current checkpoint instead of rebuilding it.
+When explicitly invoked, finish the proposed change and deliver one PR ready for Jesse to inspect.
 
-The invocation grants feature branching, local commits, normal feature-branch
-pushes, one PR's creation/update/title/body, proof uploads, draft/ready state,
-and full `code-review`. It excludes force-push, merge, deployment, manual labels,
-reactions, prose comments, destructive actions, new dependencies, breaking changes,
-and unrelated scope. Stop for a material missing product choice, dependency,
-breaking change, security disclosure, production mutation, or multi-PR shape.
-Follow repo gates without expanding the assignment.
+Check the code, PR, and current review/test evidence. Start at the first unfinished or invalidated step; keep completed work whose evidence still applies.
 
-1. Inspect local and remote worktree/branch/base/net diff/commits, PR metadata/
-   authorship/head, review closeout, proof, CI, and repo gates. Batch independent
-   reads and verify unfamiliar current behavior from source. Mark each step
-   current, incomplete, stale, or not applicable. Resume the earliest incomplete/
-   stale step; retain current implementation, PR, review, and proof. Chat/task
-   status or an old pass is insufficient without current tree/head evidence.
-2. Read repo instructions, relevant code, and installed dependencies. Reproduce
-   the problem or baseline when implementation remains; otherwise exercise the
-   existing acceptance behavior. Confirm dedicated worktree, non-default feature
-   branch, current intended base, and one PR. Before GitHub mutation verify
-   active account `jesse-merhi` and Jesse authorship of any existing PR. Preserve
-   unrelated changes. Finish this step with concrete before/after, scope,
-   validation, branch/base, and downstream checkpoint status.
-3. Reuse repo utilities/dependencies/components for the smallest complete fix.
-   Add or update narrow practical contract proof. Do not rewrite an already
-   correct diff; exercise it. Run sufficient focused validation and stop at the
-   first test error to diagnose. Keep all edits/tests inside the requested behavior.
-4. Audit and commit the intended net diff with a readable subject. Before a new
-   push invalidates review/proof, return an existing ready PR to draft. Push normally
-   to the feature branch, creating one truthful draft PR or updating the verified
-   Jesse-authored one. Keep ready only while all later evidence is current.
-   Confirm local/remote head, branch, and base match; never push default or take
-   over unverified authorship/destination.
-5. Load `code-review` only when no current exact-head full closeout exists.
-   Complete/resume both until-clean phases, accepted fixes, final validation,
-   closeout, and authorized final push. This invocation already decides to run
-   the review. Do not ask again or replace it with ad hoc review, CI, a proof
-   pack, repo bots, or `autoreview`. Require exact-tree clean evidence and all
-   accepted fixes in the remote head.
-6. Load `pr-proof-pack` on the final direct-base diff. Preserve current proof;
-   refresh stale/missing claims, show reproducible broken/fixed behavior in the
-   simplest accurate format, and inspect the rendered result. Mark a draft ready
-   when its context/proof is usable to a reader without this thread.
-7. Monitor required CI and all repo gates. Treat readiness as one exact-head
-   fixed point. New code/generated output/base changes/pushes invalidate affected
-   evidence; return the PR to draft and resume the earliest stale step. Use
-   normal non-force base updates. A failed or blocked gate goes back to draft
-   before diagnosis/reporting.
-8. Inspect final metadata/head. Require non-draft, no conflict, exact-head review,
-   current proof, passing required CI, and repo gates. Leave approval and the
-   required `jesse-merhi` thumbs-up to Jesse. Do not merge, enable automerge,
-   label, react, or report a blocked PR as ready.
+1. Finish the change and run focused validation. For web or native UI, the implementation owner uses `frontend-ui-validation` and records evidence for review and proof-pack reuse.
+2. Commit and push the scoped changes to a feature branch. Create or update Jesse's draft PR. For an approved dependent PR chain, use the installed `gh stack` tool and discover commands through `gh stack --help`; preserve each PR's own review and sign-off gates.
+3. Complete `code-review` on the current head.
+4. Complete `pr-proof-pack` for the final diff.
+5. Pass required CI and repo checks. For PRs targeting `openclaw/*`, complete the explicit ClawSweeper workflow in `code-review`.
+6. When all required steps pass and the PR has no conflicts, mark it ready for Jesse. Do not merge it.
 
-Report meaningful checkpoints, new evidence, or blockers during long work.
-Finish with PR URL/readiness, exact head, plain-language change, observed proof,
-full review findings/fixes, CI/repo results, and anything awaiting Jesse. A
-ready-for-review PR is not merged or maintainer-approved; blockers need exact
-next action and the safest completed state.
+If blocked or a required workflow cannot finish within its limits, leave the PR draft and explain why.
+
+## Permissions
+
+Before GitHub writes, verify account `jesse-merhi` and Jesse's authorship of an existing PR.
+
+No force-push, merge/automerge, deployment, destructive actions, labels, or reactions. The only allowed public comment is exactly `/clawsweeper re-review`, when required by step 5; no prose additions. Ask before new dependencies, breaking changes, or unrelated scope.

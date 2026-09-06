@@ -1,54 +1,36 @@
 ---
 name: handoff
 description: 'Transfer work to a fresh full session with verified context and placement.'
+metadata:
+  sources: |
+    - adapted from [skills/productivity/handoff](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/handoff) — recorded upstream review.
 ---
 
 # Handoff
 
-For Codex destinations, resolve the model and reasoning effort using
-[Codex model selection](references/session-routing.md#codex-model-selection)
-before launch, and include the selected settings and verification in closeout.
+Move the work to a fresh full session.
 
-Create or prepare a fresh full session. Never use a subagent, in-chat worker,
-or background agent for any part of this workflow.
+## Write the brief
 
-1. Gather current state and evidence, batching independent reads. Write one
-   compact handoff document in the OS temporary directory. Include the objective,
-   touched files and commands, blockers, validation, durable Obsidian research
-   links, suggested skills, and next actions. Preserve exact constraints, names,
-   identifiers, decisions, and unfinished work. Link existing artifacts, redact
-   secrets and unnecessary personal data, and do not rewrite prior session history.
-2. Classify the relationship. `continuation` advances the same objective,
-   feature, investigation, review, or implementation; `aside` is a separate
-   objective introduced by the user. Default direct follow-on work to continuation.
-   Independence of execution alone does not make an aside.
-3. Run `scripts/detect-handoff-surface`. Read
-   [session-routing.md](references/session-routing.md). Prefer, in order, the
-   explicit destination, verified current tmux pane, verified current app session,
-   supported running app, then a fresh terminal or ACPX session. Use current
-   process ancestry and native markers before global discovery. A tmux process
-   elsewhere does not identify this session.
-4. Before launching edit, repair, commit, or PR work, read
-   [worktree-isolation.md](references/worktree-isolation.md), and for repair/PR
-   work also [repair-pr-handoffs.md](references/repair-pr-handoffs.md). Designate
-   the worktree and add the required boundaries, skills, and publication
-   authority to the receiving session's brief. Then launch through the verified route:
-   - tmux: follow [tmux-placement.md](references/tmux-placement.md). Put a
-     continuation in a new pane of the current window and an aside in a new
-     window of the current session.
-   - Codex app: create a fresh same-project task for continuation, or a
-     projectless/matching other-project task for an aside. Isolate edits in a
-     worktree when required by the repo.
-   - Claude: use a fresh named or tmux-launched interactive session, not a
-     Claude background agent.
-   - Other harness to Codex: prefer a verified app task API. Otherwise use a
-     fresh named ACPX or interactive session and say that it is not an app task.
-5. Fork only when raw history is needed; a continuation does
-   not automatically need it because the document carries context.
-6. Verify launch. Report document path, relationship, detected surface and its
-   evidence, placement, isolation, and status. A queued worktree or launch request
-   is not a started session. If the selected app has no verified creation path,
-   stop with that exact limitation. Do not substitute a subagent.
+Save one compact document in the OS temporary directory containing:
+- Objective and current state.
+- Evidence, blockers, and relevant Obsidian links.
+- Next actions based on the user's request.
 
-During long preparation, report a meaningful change in destination, evidence,
-or readiness. Complete the authorized handoff rather than merely promising it.
+Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
+
+## Get the launch command
+
+Run `detect-handoff-surface`. It detects the current session and prints the recommended command or native app tool. If the user specified a destination, pass `--destination codex-app|claude-app|codex-cli|claude-cli`.
+
+Use `continuation` by default. Pass `--relationship aside` only for a substantially unrelated user objective. The script handles pane/window placement; do not repeat its detection logic.
+
+## Launch and confirm
+
+For a Codex destination, read [Codex launch settings](references/codex-settings.md) before launch.
+
+Run the recommended command or use the recommended native tool. Use a new worktree only when required; preserve needed uncommitted changes and their base revision in the brief or linked patch.
+
+Launch a full interactive session, never ACPX, subagents, or background agents. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
+
+Confirm the new agent has started and only one new session was created. Report the brief path, session/worktree location, and observed status.

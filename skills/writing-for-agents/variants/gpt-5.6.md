@@ -1,43 +1,61 @@
 ---
 name: writing-for-agents
 description: 'Write agent instructions using shared rules and guidance for the models that will read them.'
+metadata:
+  source: https://github.com/mattpocock/skills
+  source-path: skills/productivity/writing-for-agents
+  source-revision: 6654f6b60cd9d5be8b54c6fafe44346dabeb3b76
 ---
 
 # Writing for agents
 
-Write the smallest useful instruction set for the intended consuming models.
+Write as though you're explaining the job to a capable colleague. Remove unnecessary ideas rather than making sentences denser. Preserve the user's settled decisions and deliberate edits.
 
-Keep scope, permissions, required evidence, and completion explicit. Give each
-rule one owner and remove contradictions before adding instructions. Define the
-completed outcome; add intermediate gates only where order, permissions, or
-recovery requires them. Preserve existing authorization and resolve routine
-choices from the task and repository evidence.
+## Write plainly
 
-## Choose the authoring route
+- Use ordinary English and concrete actions. Introduce an unfamiliar step before referring to it.
+- Tell the agent what to do. Keep meaningful permissions and safety boundaries brief; cut anti-pattern catalogues, obvious explanations, and speculative mistakes.
+- Stay specific about requirements. Shortening an opinionated standard must not turn it into vague advice.
+- Let the name and description explain the skill's purpose and triggers. Start the body with useful guidance instead of repeating them.
+- Use brief numbered stages when order matters. Keep templates flexible: describe what a useful result needs, not a fixed sentence count or status vocabulary unless an interface requires it.
+- Give practical examples and leave routine choices to the agent. Keep prose in paragraphs without manual line wrapping.
 
-- **Skills:** load `model-writing-guides` for the supported target profiles and
-  [SKILL-MECHANICS.md](SKILL-MECHANICS.md) for invocation and layout. Maintain
-  complete variants using the existing materializer; this router selects
-  authoring guidance, not runtime skill files.
-- **AGENTS.md, CLAUDE.md, or linked instructions:** keep shared rules independent
-  of model and harness. Load `model-writing-guides` only when writing for named
-  consuming models. Keep harness-specific rules in their owning configuration.
+For example, write "Explain what changed, why it matters, and show the result" rather than assigning a purpose to each of four opening sentences. Caption proof with what happened before and what happens now, not just "base" and "PR."
 
-Choose guidance for the models that will read the result, even when another
-model writes it. Infer targets from the request and repository configuration;
-when none is specified, keep shared instructions model-neutral. Ask only when
-an unresolved target would materially change the deliverable.
+## Give each instruction one home
 
-## Keep the result small and usable
+Read the relevant skills, AGENTS.md, CLAUDE.md, and linked documents together. Resolve contradictions at their owner instead of adding another rule.
 
-Keep common constraints inline and disclose conditional procedures through
-precise pointers. Keep references one hop from SKILL.md under the repository's
-layout rules. Describe what a skill does and when to select it in its description;
-put execution details in the body. Preserve
-[upstream-license.md](references/upstream-license.md).
+When another skill or reference owns an instruction, link it and stop. Do not repeat or paraphrase its rules beside the link. Put each link at the step that uses it, and each guardrail beside the action it governs.
 
-Finish the requested documents and preserve equivalent contracts across affected
-profiles. Independently exercise changed skill decisions; use existing metadata
-and materializer checks for packaging. Do not test prose with string matches.
-Leave unrelated skills and installation settings alone unless their update is
-part of the request.
+Keep short, routinely needed guidance inline. Use references for substantial examples or genuinely conditional material, such as host-specific commands. A standalone skill needs a distinct useful job; keep incidental steps with their owning workflow.
+
+Record verified external origins, paths, and known revisions in frontmatter metadata so they can be refreshed. Keep operational links in the body.
+
+## Let tools handle mechanics
+
+Show the runnable command using its installed name. Let command help describe options instead of maintaining another manual or asking the agent to locate a skill directory.
+
+Use existing tools before building helpers. Scripts and configuration should handle detection, routing, counters, scoring, limits, and supported invocation settings. Keep prose for decisions and non-obvious context.
+
+Describe the normal path first. For example, check a provider CLI's version if an upload fails, rather than before every upload. Keep checks that establish the requested result or protect safety.
+
+## Maintain the skill
+
+Preserve existing invocation policy unless the user requests a change. Give model-invoked skills precise, distinct triggers. In Codex, explicit-only skills use `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; model-invoked skills omit that policy.
+
+Keep every-turn skills in one file and `SKILL.md` within the repository's 500-line ceiling. References may link only to their own `SKILL.md` among files under `skills/`, not to other references.
+
+Keep edits within the requested scope. Installation and model switching follow repository `INSTALL.md` and README; a prompt edit does not authorize either.
+
+## Write for the consuming models
+
+Use guidance for the models that will read the result, not the model writing it. For AGENTS.md, CLAUDE.md, or other shared instructions, read only the guides for named target models; otherwise stay model-neutral. Those documents do not require variants.
+
+For skills, keep one human-reviewable master and complete `variants/<profile>.md` prompts for every supported model. Read the existing variants and shared resources, then the applicable provider guidance: [GPT-5.6](references/gpt-5.6.md), [Astra](references/gpt-6-astra.md), [Fable](references/claude-fable-5.1.md), or [Opus](references/claude-opus-5.md).
+
+Preserve behaviour, permissions, exact commands, evidence, and completion criteria across variants. Model guidance does not authorize extra gates or delegation. Share scripts, references, assets, and metadata unless runtime behaviour differs.
+
+File presence records coverage. Keep root `SKILL.md` linked to `variants/gpt-5.6.md`. Validate affected profiles through independent agent exercises and the materializer test; one complete prompt should load directly with equivalent shared behaviour.
+
+For a new model, add its official guide and complete variants, then update the matcher and same-family rank in `scripts/materialize-skill-variants.mjs`. The materializer owns fallback and its once-per-session warning until coverage exists. Keep provider source links and review dates current.

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skill review</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">s.</span><div><strong>Skill review</strong><small>LOCAL WORKSPACE</small></div></div>
+    <div class="header-actions"><span id="progress">Loading library…</span><a class="button" href="/tooling" target="_blank" rel="noopener">Changes</a><button id="backup">Back up</button><a class="button" href="/api/export" download>Export all</a><button id="help-button" aria-label="Storage and applying changes">?</button></div>
+  </header>
+  <div id="notice" role="status" hidden></div>
+  <div class="workspace">
+    <aside class="library" aria-label="Skill library">
+      <div class="library-heading"><h2>Your skills</h2><span id="skill-count"></span></div>
+      <label class="search-label"><span class="sr-only">Find a skill</span><input id="search" type="search" placeholder="Find a skill…" autocomplete="off"></label>
+      <label class="filter-label"><span>Show</span><select id="filter"><option value="all">All skills</option><option value="feedback">Outstanding feedback</option><option value="unreviewed">Not reviewed</option><option value="in-progress">In progress</option><option value="ready">Ready to apply</option><option value="needs-review">Needs re-review</option></select></label>
+      <p class="order-note">Workflows first, supporting skills after. Links can be circular.</p>
+      <nav id="skill-list" aria-label="Review queue"></nav>
+      <div class="library-footer">Your pace. Nothing is applied automatically.</div>
+    </aside>
+    <main id="main">
+      <div id="tabs" role="tablist" aria-label="Open skills"></div>
+      <div class="document-heading">
+        <div><div class="eyebrow" id="skill-number">REVIEW WORKSPACE</div><h1 id="skill-title">Opening your library</h1><p id="source-status">Loading the saved review…</p></div>
+        <div class="navigation"><button id="show-library" aria-label="Toggle skill library">Skills</button><button id="previous" aria-label="Previous skill">←</button><button id="next" aria-label="Next skill">→</button><button id="show-details" aria-label="Toggle references and files">Details</button></div>
+      </div>
+      <div id="drift" class="warning" hidden></div>
+      <div id="applied-feedback" role="status" hidden>
+        <strong id="applied-heading"></strong>
+        <p><strong>Changed:</strong> <span id="applied-summary"></span></p>
+        <p id="applied-review"><strong>Check:</strong> <span id="applied-review-focus"></span></p>
+        <small id="applied-meta"></small>
+      </div>
+      <div id="conflict" class="warning" hidden><strong>Another tab saved a newer version.</strong><p id="conflict-description"></p><button id="load-saved">Load saved version</button><button id="use-mine">Save my version instead</button></div>
+      <div class="editor-toolbar"><div class="document-label"><strong id="file-label">Review master</strong><span id="file-kind">Model-neutral draft</span></div><div class="editor-controls"><button id="history-button">History</button><label><span class="sr-only">Editor view</span><select id="view"><option value="split">Edit + preview</option><option value="write">Edit</option><option value="preview">Preview</option></select></label></div></div>
+      <p class="preview-hint">Preview updates when you leave the editor. Your writing still autosaves.</p>
+      <div id="editor-area" data-view="split"><div class="writing-pane"><label class="sr-only" for="editor">Skill Markdown</label><textarea id="editor" spellcheck="false" placeholder="Choose a skill to begin." disabled></textarea></div><iframe id="preview" title="Rendered skill preview" sandbox=""></iframe></div>
+      <section class="review-controls" aria-label="Review decisions">
+        <div class="decision-row"><label>Decision<select id="decision"><option value="keep">Keep</option><option value="edit">Edit</option><option value="split">Split</option><option value="delete">Delete</option></select></label><label>Review state<select id="status"><option value="unreviewed">Not reviewed</option><option value="in-progress">In progress</option><option value="ready">Ready to apply</option><option value="needs-review">Needs re-review</option></select></label><button id="save-now">Save now</button><span id="save-status" role="status" aria-live="polite">Opening…</span></div>
+        <label class="notes-label" for="notes">Notes for applying your changes <span>Split boundaries, deletion reasons, or anything else.</span></label><textarea id="notes" rows="2" placeholder="Optional. These notes are saved with this skill."></textarea>
+      </section>
+    </main>
+    <aside class="details" aria-label="Related skills and source files">
+      <h2>Connected skills</h2><p class="muted">Open one alongside this skill. Your draft stays here.</p>
+      <h3>Referenced by</h3><div id="referenced-by"></div>
+      <h3>References</h3><div id="references"></div>
+      <div class="section-divider"></div>
+      <div class="files-heading"><h2>Skill files</h2><span id="file-progress"></span></div>
+      <p class="muted">Originals are preserved. Supporting text edits are drafts too.</p>
+      <button id="master-file" class="file-button selected">Review master</button>
+      <div id="files"></div>
+      <details id="code-sources" class="variants" hidden><summary>Code and assets</summary><p class="muted">Preserved here, outside the document review count.</p><div id="code-files"></div></details>
+      <details id="variant-differences" class="variants" hidden><summary>Behavior differs across variants</summary><div id="variant-notes"></div></details>
+      <details class="variants"><summary>Original model variants</summary><div id="variants"></div></details>
+      <details id="removed-sources" class="variants" hidden><summary>Removed files · preserved originals</summary><p class="muted">No longer in the source skill. Original text is read-only here; any saved drafts and notes remain in History and Export all.</p><div id="removed-files"></div></details>
+      <label class="reviewed-check"><input id="file-reviewed" type="checkbox"> I reviewed this file</label>
+    </aside>
+  </div>
+  <dialog id="history-dialog"><div class="dialog-heading"><h2>Saved history</h2><button id="close-history" aria-label="Close history">×</button></div><p>Loading an earlier version creates a new draft. No saved revision is erased.</p><div id="history-list"></div></dialog>
+  <dialog id="help-dialog"><div class="dialog-heading"><h2>Your work stays on disk</h2><button id="close-help" aria-label="Close storage information">×</button></div><p>Every confirmed save is a database transaction with a permanent revision. Original source files, all variants, assets, and symbolic links are captured separately.</p><p class="storage-path" id="storage-path"></p><p>This folder is outside the worktree. Keep it when cleaning up development work.</p><p><strong>Back up</strong> creates a separate SQLite copy. <strong>Export all</strong> downloads a portable archive with originals, drafts, revision history, and conflict recoveries. Keep an export on another device or backed-up drive to protect against disk loss.</p><h3>When you want changes applied</h3><p>Mark any finished skills <strong>Ready to apply</strong>, then tell the agent: “Apply the ready drafts from my skill-review workspace.” You can keep reviewing the others later.</p><p>Saving a draft, marking it ready, or selecting Delete never changes runnable skills, commits files, or installs variants.</p><button id="recover-browser">Find browser recovery drafts</button><div id="browser-recoveries"></div></dialog>
+</body>
+</html>
