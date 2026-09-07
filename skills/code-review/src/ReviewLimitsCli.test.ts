@@ -164,7 +164,7 @@ test.effect("a start's failed diff measurement persists the scope block for expl
   const { cli, repository, git } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
   const fs = yield* FileSystem.FileSystem
-  yield* fs.writeFileString(`${repository}/sample.txt`, "changed\nextra\n")
+  yield* fs.writeFileString(`${repository}/sample.txt`, "changed\nextra\nanother\n")
   yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "synthetic scope expansion"])
   const head = yield* git(["rev-parse", "HEAD"])
   const startArgs = ["--head", head, "--expected-revision", "0", "--phase", "native", "--outcome", "started", "--evidence", "synthetic pass"]

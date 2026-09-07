@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 
-import { allowedScopeGrowth, decodeFinding, deriveRuntimeOutcome, type FindingInput } from "./ReviewFindings.ts"
+import { allowedScopeGrowth, decodeFinding, DEFAULT_SCOPE_GROWTH_PERCENT, deriveRuntimeOutcome, type FindingInput } from "./ReviewFindings.ts"
 
 const runtimeFinding = {
   decisionId: "D1",
@@ -33,12 +33,15 @@ const runtimeFinding = {
 } satisfies FindingInput
 
 describe("review scope growth", () => {
-  it("uses 30 percent without a floor and caps large branches at 100 lines", () => {
-    assert.strictEqual(allowedScopeGrowth(1, 30), 0)
-    assert.strictEqual(allowedScopeGrowth(40, 30), 12)
-    assert.strictEqual(allowedScopeGrowth(333, 30), 99)
-    assert.strictEqual(allowedScopeGrowth(334, 30), 100)
-    assert.strictEqual(allowedScopeGrowth(2_000, 30), 100)
+  it("tapers from half of tiny diffs to ten percent, capped at 300 lines", () => {
+    const cases = [
+      [0, 0], [1, 0], [20, 10], [99, 49], [100, 50], [101, 50],
+      [400, 50], [500, 50], [509, 50], [510, 51], [600, 60],
+      [1_000, 100], [2_999, 299], [3_000, 300], [4_000, 300]
+    ] as const
+    for (const [baseline, allowance] of cases) {
+      assert.strictEqual(allowedScopeGrowth(baseline, DEFAULT_SCOPE_GROWTH_PERCENT), allowance)
+    }
   })
 })
 
