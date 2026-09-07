@@ -27,6 +27,8 @@ Use `continuation` by default. Pass `--relationship aside` only for a substantia
 
 ## Launch and confirm
 
+For a Codex destination, read [Codex launch settings](references/codex-settings.md) before launch.
+
 Run the recommended command or use the recommended native tool. Use a new worktree only when required; preserve needed uncommitted changes and their base revision in the brief or linked patch.
 
 Launch a full interactive session, never ACPX, subagents, or background agents. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
