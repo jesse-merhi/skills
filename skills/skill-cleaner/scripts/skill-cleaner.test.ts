@@ -9,7 +9,6 @@ import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 import { checkedText } from "../../../packages/effect-cli/CheckedProcess.ts";
-
 import {
   compactDescription,
   discoverRoots,
