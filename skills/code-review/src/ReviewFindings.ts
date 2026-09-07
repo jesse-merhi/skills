@@ -477,8 +477,8 @@ export interface ScopeBudgetCheck extends ScopeBudgetStatus {
   readonly blocked: boolean
 }
 
-export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
-export const MAX_SCOPE_GROWTH_LINES = 100
+export const DEFAULT_SCOPE_GROWTH_PERCENT = 50
+export const MAX_SCOPE_GROWTH_LINES = 300
 const PRODUCTION_ONLY_LINE_METRIC = "production-only"
 export const TOTAL_LOC_LINE_METRIC = "total-human-authored"
 const ScopeLineMetric = Schema.Literals([PRODUCTION_ONLY_LINE_METRIC, TOTAL_LOC_LINE_METRIC])
@@ -486,8 +486,11 @@ type ScopeLineMetric = typeof ScopeLineMetric.Type
 
 const humanAuthoredLines = (productionLines: number, testLines: number): number => productionLines + testLines
 
-export const allowedScopeGrowth = (baselineLines: number, limitPercent: number): number =>
-  Math.min(Math.floor(baselineLines * limitPercent / 100), MAX_SCOPE_GROWTH_LINES)
+export const allowedScopeGrowth = (baselineLines: number, limitPercent: number): number => {
+  const smallDiffLimit = Math.floor(baselineLines * limitPercent / 100)
+  const taperedAllowance = Math.max(50, Math.floor(baselineLines / 10))
+  return Math.min(smallDiffLimit, taperedAllowance, MAX_SCOPE_GROWTH_LINES)
+}
 
 export class MissingScopeBudget extends Error {
   readonly _tag = "MissingScopeBudget"
