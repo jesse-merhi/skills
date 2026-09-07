@@ -1,6 +1,6 @@
 # Codex launch settings
 
-Default an unspecified model to `gpt-6-astra`. Preserve the user's model and effort choices independently, including choices already made for this task. This applies to Codex destinations from any harness, not Claude sessions.
+Default an unspecified model to `gpt-6-astra`. Preserve the user's model and effort choices independently, including choices already made for this task.
 
 When effort is unspecified, assess the remaining task from the brief. Choose `low` (light reasoning) for well-scoped, straightforward work with a clear approach and no unresolved decisions. Choose `medium` when any part needs higher-level thinking, such as diagnosis, design, trade-offs, or resolving ambiguity. Use `medium` when the difficulty is uncertain. Decide from the available context without asking the user to classify the task.
 

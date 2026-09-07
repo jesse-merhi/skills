@@ -27,7 +27,7 @@ Use `continuation` by default. Pass `--relationship aside` only for a substantia
 
 ## Launch and confirm
 
-For a Codex destination, choose reasoning effort for the remaining work using [Codex launch settings](references/codex-settings.md) before launch.
+For a Codex destination, read [Codex launch settings](references/codex-settings.md) before launch.
 
 Run the recommended command or use the recommended native tool. Use a new worktree only when required; preserve needed uncommitted changes and their base revision in the brief or linked patch.
 
