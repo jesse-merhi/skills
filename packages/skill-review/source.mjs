@@ -43,10 +43,12 @@ export function captureSkill(skill, head) {
   const entryPath = realpathSync(path.join(skill.directory, "SKILL.md"))
   if (!entryPath.startsWith(realpathSync(skill.directory) + path.sep)) throw new Error(`Skill entry escapes its source: ${skill.name}`)
   visit(skill.directory)
+  const base = files.find((file) => file.path === "BASE.md")
+  if (base !== undefined && base.encoding !== "utf8") throw new Error(`Skill base must be a regular UTF-8 file: ${skill.name}`)
   return Schema.decodeUnknownSync(SourceBundle)({
     name: skill.name,
     directory: skill.directory,
-    entry: readFileSync(entryPath, "utf8"),
+    entry: base?.content ?? readFileSync(entryPath, "utf8"),
     files,
     head,
     capturedAt: new Date().toISOString(),

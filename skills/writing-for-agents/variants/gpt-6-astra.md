@@ -52,10 +52,12 @@ Keep edits within the requested scope. Installation and model switching follow r
 
 Use guidance for the models that will read the result, not the model writing it. For AGENTS.md, CLAUDE.md, or other shared instructions, read only the guides for named target models; otherwise stay model-neutral. Those documents do not require variants.
 
-For skills, keep one human-reviewable master and complete `variants/<profile>.md` prompts for every supported model. Read the existing variants and shared resources, then the applicable provider guidance: [GPT-5.6](references/gpt-5.6.md), [Astra](references/gpt-6-astra.md), [Fable](references/claude-fable-5.1.md), or [Opus](references/claude-opus-5.md).
+For skills, `BASE.md` is the human-owned, model-neutral source of truth. Read it and the shared resources first, then the applicable provider guidance: [GPT-5.6](references/gpt-5.6.md), [Astra](references/gpt-6-astra.md), [Fable](references/claude-fable-5.1.md), or [Opus](references/claude-opus-5.md).
+
+Morph that base into a complete `variants/<profile>.md` prompt for each supported model. Use existing variants to compare model-specific wording, not to recover or override the base. Change shared behaviour in the base first; adapting a model's wording does not authorize rewriting the user's baseline.
 
 Preserve behaviour, permissions, exact commands, evidence, and completion criteria across variants. Model guidance does not authorize extra gates or delegation. Share scripts, references, assets, and metadata unless runtime behaviour differs.
 
-File presence records coverage. Keep root `SKILL.md` linked to `variants/gpt-5.6.md`. Validate affected profiles through independent agent exercises and the materializer test; one complete prompt should load directly with equivalent shared behaviour.
+File presence records coverage. Keep root `SKILL.md` linked to `variants/gpt-5.6.md` for runtime discovery; it is not the base. The materializer selects an already-authored variant, not a generated base or a model call. Validate affected prompts against the base through independent agent exercises and validate installation with the materializer test.
 
 For a new model, add its official guide and complete variants, then update the matcher and same-family rank in `scripts/materialize-skill-variants.mjs`. The materializer owns fallback and its once-per-session warning until coverage exists. Keep provider source links and review dates current.

@@ -170,6 +170,10 @@ the repo in step 8.
 
 ## 7. Materialize and link model-aware skills
 
+Authoring starts from each skill's `BASE.md`, then adapts it into complete
+`variants/<profile>.md` prompts. Installation only selects those existing variants;
+it does not generate them or install the human-reviewable base.
+
 ### Codex and Claude Code
 
 From `REPO`, use the repository's installer after the prerequisites above:

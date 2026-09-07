@@ -39,12 +39,16 @@ export async function prepareApply({ name, revision, directory, root, readDetail
     fs.unlinkSync(candidateEntry);
     fs.symlinkSync(path.relative(sourceDirectory, originalEntry), candidateEntry);
   }
+  const candidateBase = path.join(directory, "candidate/BASE.md");
+  const baseInfo = fs.lstatSync(candidateBase, { throwIfNoEntry: false });
+  if (baseInfo !== undefined && !baseInfo.isFile()) throw new Error("Candidate BASE.md must be a regular file");
+  fs.writeFileSync(candidateBase, record.draft.content.master, "utf8");
   writeNew(path.join(directory, "draft.json"), record);
   writeNew(path.join(directory, "plan.json"), {
     name, revision, directory: sourceDirectory, root: fs.realpathSync(root),
     fingerprint: source.fingerprint, draftDigest: digest(record.draft.content)
   });
-  return { directory, revision, sourceDrift: source.fingerprint !== record.source.fingerprint, next: "Reconcile source drift, apply this draft to candidate, produce all four complete variants, and independently exercise them. Then apply this pinned plan." };
+  return { directory, revision, sourceDrift: source.fingerprint !== record.source.fingerprint, next: "The pinned master is in candidate/BASE.md. Read it and the model guides to produce all four complete variants. Reconcile supporting-file drift and independently exercise the variants, then apply this pinned plan." };
 }
 
 export async function applyPlan(directory, readDetail = detail) {
@@ -52,6 +56,11 @@ export async function applyPlan(directory, readDetail = detail) {
   const record = await readDetail(plan.name);
   if (record.draft.revision !== plan.revision || digest(record.draft.content) !== plan.draftDigest) throw new Error("Audit draft changed; prepare a new plan without overwriting the old one");
   const candidate = path.join(directory, "candidate");
+  const candidateBase = path.join(candidate, "BASE.md");
+  if (!fs.existsSync(candidateBase) || !fs.lstatSync(candidateBase).isFile()
+    || fs.readFileSync(candidateBase, "utf8") !== record.draft.content.master) {
+    throw new Error("Candidate BASE.md must preserve the exact pinned audit master");
+  }
   for (const model of profiles) {
     const selected = planSkillVariants({ sourceRoot: candidate, model, requireExact: true });
     if (selected.skills.length !== 1 || selected.skills[0].name !== plan.name) throw new Error("Candidate must contain exactly the selected skill");

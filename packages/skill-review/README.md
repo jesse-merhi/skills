@@ -69,7 +69,17 @@ This protects against refreshes, process restarts, conflicting saves, and
 accidental draft replacement, not destruction or failure of the entire disk.
 Keep an export on another device or a backed-up drive for that risk.
 
-## One human master, all original variants
+## One repository base, all model variants
+
+Each retained repository skill has a regular `BASE.md`: the human-owned baseline.
+Read that base and the model's writing guide, then morph it into a complete variant.
+The runtime `SKILL.md` remains a link to the GPT-5.6 variant; the installer selects
+variants and excludes the base. Neither the editor nor installer calls a model.
+
+New reviews start from `BASE.md`. Legacy or external sources without one retain
+the existing preparation/default-prompt fallback. Existing saved masters, comments,
+review states and histories are never reseeded. The base is edited through the
+master editor, not a second supporting-file editor.
 
 For this first review, the existing default prompts are already model-neutral in
 their wording. Independent comparison against all four profiles identifies
@@ -149,7 +159,13 @@ bun packages/skill-review/apply.mjs apply --plan /private/new-plan
 bun packages/skill-review/apply.mjs rollback --plan /private/new-plan
 ```
 
-Between prepare and apply, the agent reconciles source drift and edits the plan's candidate directory into all four complete variants, then independently exercises them. Apply rechecks the live revision and current source fingerprint. It keeps the prior source directory and a transaction record; rollback refuses to overwrite later source edits. It does not generate prompts, mutate review history, install views, split/delete skills, or publish. Use targeted `install-skills --skill NAME` for each matching installed model afterward. Splits/deletions still require an explicit coordinated change plan.
+Prepare writes the exact pinned master into `candidate/BASE.md`. Read that file and
+the model guides to author all four complete variants; reconcile supporting-file
+drift and independently exercise the results. Apply rejects a missing, symlinked or
+changed base and rechecks the live draft revision and source fingerprint. It keeps
+the prior source directory and a transaction record; rollback refuses later source
+edits. It does not call models, mutate history, install views, split/delete skills,
+or publish. Installation remains a separate authorized operation.
 
 Tell the agent: “Apply the ready drafts from my skill-review workspace,” and
 provide the state path shown under **?**. This is a separate authorized task.

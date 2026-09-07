@@ -90,10 +90,10 @@ export const Archive = Schema.Struct({
 export type Archive = typeof Archive.Type
 
 export const initialDraft = (source: SourceBundle): StoredDraft => ({
-  content: { master: source.preparation?.master ?? source.entry, files: {}, notes: "", decision: "keep", status: "unreviewed", reviewedFiles: [] },
+  content: { master: source.files.find((file) => file.path === "BASE.md" && file.encoding === "utf8")?.content ?? source.preparation?.master ?? source.entry, files: {}, notes: "", decision: "keep", status: "unreviewed", reviewedFiles: [] },
   revision: 0,
   savedAt: source.capturedAt
 })
 
 export const isEditableFile = (file: typeof SourceFile.Type) => file.encoding === "utf8"
-  && file.path !== "SKILL.md" && !file.path.startsWith("variants/")
+  && !["SKILL.md", "BASE.md"].includes(file.path) && !file.path.startsWith("variants/")

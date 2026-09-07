@@ -37,7 +37,7 @@
         <small id="applied-meta"></small>
       </div>
       <div id="conflict" class="warning" hidden><strong>Another tab saved a newer version.</strong><p id="conflict-description"></p><button id="load-saved">Load saved version</button><button id="use-mine">Save my version instead</button></div>
-      <div class="editor-toolbar"><div class="document-label"><strong id="file-label">Review master</strong><span id="file-kind">Model-neutral draft</span></div><div class="editor-controls"><button id="history-button">History</button><label><span class="sr-only">Editor view</span><select id="view"><option value="split">Edit + preview</option><option value="write">Edit</option><option value="preview">Preview</option></select></label></div></div>
+      <div class="editor-toolbar"><div class="document-label"><strong id="file-label">Base skill</strong><span id="file-kind">Base draft → BASE.md → model variants</span></div><div class="editor-controls"><button id="history-button">History</button><label><span class="sr-only">Editor view</span><select id="view"><option value="split">Edit + preview</option><option value="write">Edit</option><option value="preview">Preview</option></select></label></div></div>
       <p class="preview-hint">Preview updates when you leave the editor. Your writing still autosaves.</p>
       <div id="editor-area" data-view="split"><div class="writing-pane"><label class="sr-only" for="editor">Skill Markdown</label><textarea id="editor" spellcheck="false" placeholder="Choose a skill to begin." disabled></textarea></div><iframe id="preview" title="Rendered skill preview" sandbox=""></iframe></div>
       <section class="review-controls" aria-label="Review decisions">
@@ -52,7 +52,7 @@
       <div class="section-divider"></div>
       <div class="files-heading"><h2>Skill files</h2><span id="file-progress"></span></div>
       <p class="muted">Originals are preserved. Supporting text edits are drafts too.</p>
-      <button id="master-file" class="file-button selected">Review master</button>
+      <button id="master-file" class="file-button selected">Base skill</button>
       <div id="files"></div>
       <details id="code-sources" class="variants" hidden><summary>Code and assets</summary><p class="muted">Preserved here, outside the document review count.</p><div id="code-files"></div></details>
       <details id="variant-differences" class="variants" hidden><summary>Behavior differs across variants</summary><div id="variant-notes"></div></details>

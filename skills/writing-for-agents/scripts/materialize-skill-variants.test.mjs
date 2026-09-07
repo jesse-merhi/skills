@@ -22,6 +22,7 @@ function writeSkill(root, directory, name, profileNames = supportedProfiles) {
   fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
   fs.mkdirSync(path.join(skill, "references"));
   fs.writeFileSync(path.join(skill, "SKILL.md"), "---\nname: " + name + "\ndescription: fixture\n---\n");
+  fs.writeFileSync(path.join(skill, "BASE.md"), "Human-owned baseline, not the runtime prompt.\n");
   fs.writeFileSync(path.join(skill, "references", "shared.md"), "shared\n");
   for (const profile of profileNames) {
     fs.writeFileSync(
@@ -109,6 +110,7 @@ test("materializes one contained static variant and links shared resources", (t)
   assert.equal(fs.lstatSync(path.join(current.output, "alpha", "SKILL.md")).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(path.join(current.output, "beta", "references", "shared.md"), "utf8"), "shared\n");
   assert.equal(fs.existsSync(path.join(current.output, "alpha", "variants")), false);
+  assert.equal(fs.existsSync(path.join(current.output, "alpha", "BASE.md")), false);
 
   const fable = materializeSkillVariants({
     model: "claude-fable-5.1",
@@ -116,6 +118,7 @@ test("materializes one contained static variant and links shared resources", (t)
     sourceRoot: current.source,
   });
   assert.equal(fable.profile, "claude-fable-5.1");
+  assert.equal(fs.existsSync(path.join(current.output, "alpha", "BASE.md")), false);
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("claude-fable-5.1\n"), true);
   assert.equal(
     fs.readFileSync(`${current.output}/beta/references/../SKILL.md`, "utf8"),

@@ -229,7 +229,7 @@ export function selectVariant(skill, requestedProfile) {
 
 function materializeSharedEntries(skill, outputDirectory) {
   for (const entry of fs.readdirSync(skill.directory, { withFileTypes: true })) {
-    if (["SKILL.md", "variants"].includes(entry.name)) continue;
+    if (["SKILL.md", "BASE.md", "variants"].includes(entry.name)) continue;
     const source = path.join(skill.directory, entry.name);
     const destination = path.join(outputDirectory, entry.name);
     if (entry.name === "references") {

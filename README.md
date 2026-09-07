@@ -119,11 +119,18 @@ The [original skill prompts](originals/README.md) are kept verbatim in `original
 with their source commits. They are reference copies, separate from the maintained
 model variants, and are never included in model-specific installations.
 
-A skill is a directory with complete prompts under `variants/`. Its root
-`SKILL.md` points at the GPT-5.6 variant so ordinary repository discovery still
-works. Installation selects one variant as the harness-visible `SKILL.md`; the
+A skill's `BASE.md` is its human-owned, model-neutral source of truth. The flow is
+**read the base → adapt it for each model → install the selected variant**.
+The audited masters are kept here, not only in the local review database.
+`coding-standards` arrived from main outside the audit; its initial base is its existing source prompt.
+
+Complete model prompts live under `variants/`. Root `SKILL.md` still points at
+the GPT-5.6 variant for runtime discovery; it is not the base. Installation
+selects an already-authored variant as the harness-visible `SKILL.md`; the
 frontmatter carries a `name` and one-line `description`, and the body contains
-the workflow, constraints, stop conditions, and reference pointers.
+the workflow, constraints, stop conditions, and reference pointers. The installer
+does not call a model or expose `BASE.md` in installed views. Edit shared behaviour
+in the base first, then adapt all variants using `writing-for-agents`.
 
 Two ways one gets used:
 

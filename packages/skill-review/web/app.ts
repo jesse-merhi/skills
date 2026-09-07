@@ -303,7 +303,7 @@ function renderFiles() {
   code.replaceChildren()
   const isDocument = (path: string) => !path.startsWith("variants/") && (path.endsWith(".md") || path.endsWith(".txt") || path.endsWith(".rst") || path === "agents/openai.yaml")
   element("master-file", HTMLButtonElement).classList.toggle("selected", activeFile === "master")
-  for (const file of [...copy.detail.source.files, ...(copy.detail.addedFiles ?? [])].filter((file) => file.path !== "SKILL.md")) {
+  for (const file of [...copy.detail.source.files, ...(copy.detail.addedFiles ?? [])].filter((file) => !["SKILL.md", "BASE.md"].includes(file.path))) {
     const button = document.createElement("button")
     button.className = `file-button${activeFile === file.path ? " selected" : ""}`
     button.textContent = `${copy.content.reviewedFiles.includes(file.path) ? "✓ " : ""}${file.path}${copy.detail.addedFiles?.some(added => added.path === file.path) ? " · new" : ""}`
@@ -313,7 +313,7 @@ function renderFiles() {
   }
   element("removed-sources", HTMLDetailsElement).hidden = !removed.childElementCount
   element("code-sources", HTMLDetailsElement).hidden = !code.childElementCount
-  const validFiles = new Set(["master", ...[...copy.detail.source.files, ...(copy.detail.addedFiles ?? [])].filter((file) => file.path !== "SKILL.md" && isDocument(file.path) && !copy.detail.removedFiles.includes(file.path)).map((file) => file.path)])
+  const validFiles = new Set(["master", ...[...copy.detail.source.files, ...(copy.detail.addedFiles ?? [])].filter((file) => !["SKILL.md", "BASE.md"].includes(file.path) && isDocument(file.path) && !copy.detail.removedFiles.includes(file.path)).map((file) => file.path)])
   element("file-progress", HTMLSpanElement).textContent = `${copy.content.reviewedFiles.filter((file) => validFiles.has(file)).length}/${validFiles.size}`
   element("file-reviewed", HTMLInputElement).checked = copy.content.reviewedFiles.includes(activeFile)
 }
@@ -331,10 +331,10 @@ function renderDocument() {
   status.disabled = !!copy.conflict
   element("file-reviewed", HTMLInputElement).disabled = !!copy.conflict || removed
   editor.value = currentText(copy)
-  element("file-label", HTMLElement).textContent = activeFile === "master" ? "Review master" : activeFile
+  element("file-label", HTMLElement).textContent = activeFile === "master" ? "Base skill" : activeFile
   element("file-kind", HTMLSpanElement).textContent = removed ? "Removed from source · preserved original · read-only"
     : added ? (editor.readOnly ? "New source file · read-only" : "New supporting-file draft · edits saved in history")
-    : editor.readOnly ? "Original snapshot · read-only" : activeFile === "master" ? "One editable draft · original variants retained" : "Supporting-file draft · original retained"
+    : editor.readOnly ? "Original snapshot · read-only" : activeFile === "master" ? "Base draft → BASE.md → model variants" : "Supporting-file draft · original retained"
   notes.value = copy.content.notes
   decision.value = copy.content.decision
   status.value = copy.content.status

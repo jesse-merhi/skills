@@ -70,7 +70,8 @@ Assign review duties by the task, not by whether an agent is a subagent.
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
 - Before creating or changing agent instructions, use `writing-for-agents`
-  to select the applicable authoring guidance. For skill changes, keep every
+  to select the applicable authoring guidance. For skill changes, read the
+  skill's `BASE.md` first and keep shared behaviour there, then adapt every
   supported model variant complete; variant file presence is the coverage record.
 
 ## Dependency-first implementation

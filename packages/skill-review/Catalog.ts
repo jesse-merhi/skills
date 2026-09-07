@@ -6,7 +6,7 @@ export function buildCatalog(bundles: ReadonlyArray<SourceBundle>, drafts: Reado
     const draft = drafts.get(bundle.name)
     const texts = [
       { path: "SKILL.md", content: draft?.content.master ?? bundle.entry },
-      ...bundle.files.filter((file) => file.encoding === "utf8" && file.path.endsWith(".md") && file.path !== "SKILL.md" && !file.path.startsWith("variants/"))
+      ...bundle.files.filter((file) => file.encoding === "utf8" && file.path.endsWith(".md") && !["SKILL.md", "BASE.md"].includes(file.path) && !file.path.startsWith("variants/"))
         .map((file) => ({ path: file.path, content: draft?.content.files[file.path] ?? file.content }))
     ]
     for (const target of bundles) {
