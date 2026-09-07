@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+destination=""
+relationship="continuation"
+while (( $# )); do
+  case "$1" in
+    --destination|--relationship)
+      [[ $# -ge 2 ]] || { echo "Missing value for $1" >&2; exit 2; }
+      if [[ "$1" == "--destination" ]]; then destination="$2"; else relationship="$2"; fi
+      shift 2
+      ;;
+    --help)
+      echo 'Usage: detect-handoff-surface [--destination codex-app|claude-app|codex-cli|claude-cli] [--relationship continuation|aside]'
+      echo 'Print a launch plan only. No session or worktree is created.'
+      exit 0
+      ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+case "$destination" in ""|codex-app|claude-app|codex-cli|claude-cli) ;; *) echo "Unknown destination: $destination" >&2; exit 2 ;; esac
+case "$relationship" in continuation|aside) ;; *) echo "Unknown relationship: $relationship" >&2; exit 2 ;; esac
+
 process_chain=""
 pid="$$"
 count=0
@@ -12,28 +32,82 @@ while [[ "$pid" =~ ^[0-9]+$ ]] && (( pid > 1 )) && (( count < 16 )); do
   count=$((count + 1))
 done
 
-if [[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] && tmux display-message -p -t "$TMUX_PANE" '#{session_name}:#{window_index}:#{pane_id}' >/dev/null 2>&1; then
-  printf 'surface=tmux\n'
-  printf 'evidence=TMUX and TMUX_PANE identify the current pane\n'
-elif [[ -n "${CODEX_THREAD_ID:-}" ]] && grep -Eq '/Applications/(ChatGPT|Codex)\.app/|/Contents/Resources/codex' <<<"$process_chain"; then
-  printf 'surface=codex-app\n'
-  printf 'evidence=CODEX_THREAD_ID and current process ancestry identify the Codex app\n'
+detected="terminal"
+if [[ -n "${CODEX_THREAD_ID:-}" ]] && grep -Eq '/Applications/(ChatGPT|Codex)\.app/|/Contents/Resources/codex' <<<"$process_chain"; then
+  detected="codex-app"
 elif grep -Eq '/Applications/Claude\.app/' <<<"$process_chain"; then
-  printf 'surface=claude-app\n'
-  printf 'evidence=current process ancestry identifies Claude.app\n'
-elif pgrep -f '/Applications/(ChatGPT|Codex)\.app/' >/dev/null 2>&1; then
-  printf 'surface=codex-app-open\n'
-  printf 'evidence=a Codex-capable app is running outside the current process ancestry\n'
-elif pgrep -f '/Applications/Claude\.app/' >/dev/null 2>&1; then
-  printf 'surface=claude-app-open\n'
-  printf 'evidence=Claude.app is running outside the current process ancestry\n'
+  detected="claude-app"
 elif grep -Eq '(^|/)(claude)( |$)' <<<"$process_chain"; then
-  printf 'surface=claude-cli\n'
-  printf 'evidence=current process ancestry identifies Claude Code\n'
+  detected="claude-cli"
 elif grep -Eq '(^|/)(codex)( |$)' <<<"$process_chain"; then
-  printf 'surface=codex-cli\n'
-  printf 'evidence=current process ancestry identifies Codex CLI\n'
-else
-  printf 'surface=terminal\n'
-  printf 'evidence=no supported tmux or app ancestry was detected\n'
+  detected="codex-cli"
 fi
+
+surface="$detected"
+if [[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] && tmux display-message -p -t "$TMUX_PANE" '#{session_name}:#{window_index}:#{pane_id}' >/dev/null 2>&1; then
+  surface="tmux"
+fi
+printf 'surface=%s\n' "$surface"
+printf 'evidence=current ancestry identifies %s; verified placement is %s\n' "$detected" "$surface"
+if [[ -z "$destination" ]]; then
+  destination="$detected"
+  if [[ "$surface" == "tmux" ]]; then
+    case "$destination" in codex-app) destination="codex-cli" ;; claude-app) destination="claude-cli" ;; esac
+  fi
+fi
+printf 'destination=%s\nrelationship=%s\n' "$destination" "$relationship"
+
+case "$destination" in
+  codex-app)
+    cat <<'EOF'
+action=native-tool
+tool=mcp__codex_app__create_thread
+Use list_projects first for a project task. Pass a prompt pointing to the brief, with the objective and next actions. Continuation stays in the same project; an aside uses its matching project or a projectless task. Use the tool's worktree environment for Git edits and honor an explicit checkout request. Keep existing branch and publication constraints from the brief. If the tool is unavailable, ask the user; do not substitute a CLI session.
+verification=Inspect the returned task until the full session has started; queued setup is not started.
+EOF
+    exit 0
+    ;;
+  claude-app|terminal)
+    printf 'action=ask\n'
+    printf 'reason=No verified automatic launch route for %s. Keep the brief and ask the user for a supported destination.\n' "$destination"
+    exit 0
+    ;;
+esac
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "$destination" == "codex-cli" ]]; then
+  printf -v launcher '%q' "$script_dir/codex-handoff-tmux"
+  launcher+=' --run-codex --file "$HANDOFF_PATH" --cd "$WORKING_DIRECTORY"'
+  isolation=' --worktree-name "$TASK_NAME" --branch "$BRANCH"'
+  if ! command -v codex >/dev/null 2>&1; then
+    printf 'action=ask\nreason=Codex CLI is unavailable. Keep the brief and ask the user.\n'
+    exit 0
+  fi
+else
+  launcher='claude --name "$TASK_NAME"'
+  isolation=' --worktree "$TASK_NAME"'
+  if ! command -v claude >/dev/null 2>&1; then
+    printf 'action=ask\nreason=Claude CLI is unavailable. Keep the brief and ask the user.\n'
+    exit 0
+  fi
+fi
+
+prefix='cd "$WORKING_DIRECTORY" && '
+if [[ "$surface" == "tmux" ]]; then
+  printf 'action=command\n'
+  if [[ "$relationship" == "continuation" ]]; then
+    prefix='tmux split-window -h -t "$TMUX_PANE" -c "$WORKING_DIRECTORY" -P -F "#{pane_id}" '
+  else
+    prefix='tmux new-window -t "$(tmux display-message -p -t "$TMUX_PANE" "#{session_id}:")" -n "$TASK_NAME" -c "$WORKING_DIRECTORY" -P -F "#{pane_id}" '
+  fi
+else
+  printf 'action=new-terminal\n'
+  printf 'Run the command in a fresh user-visible interactive terminal, not a background process or the current agent command runner. If unavailable, ask the user.\n'
+fi
+suffix=""
+if [[ "$destination" == "claude-cli" ]]; then suffix=' "Read the handoff at $HANDOFF_PATH and continue from it as a full independent session."'; fi
+printf 'Set HANDOFF_PATH and WORKING_DIRECTORY to absolute paths; TASK_NAME is a short session/worktree name. For Codex isolation, set BRANCH to a new branch following the repository naming rules.\n'
+printf 'command=%s%s%s\n' "$prefix" "$launcher" "$suffix"
+printf 'worktree_command=%s%s%s%s\n' "$prefix" "$launcher" "$isolation" "$suffix"
+printf 'Choose worktree_command when repository instructions require a new worktree; otherwise use command for the designated directory. Worktree creation starts from committed state, not uncommitted edits.\n'
+printf 'verification=Inspect the new terminal or returned pane for the running agent. Pane creation alone is not a started agent.\n'

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing Good Tests"
+  short_description: "Choose useful proof, then implement the behavior"
+  default_prompt: "Use $writing-good-tests to plan useful coverage, assess existing tests, and implement the authorized behavior."

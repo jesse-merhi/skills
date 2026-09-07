@@ -1,4 +1,0 @@
-interface:
-  display_name: "Review Flow Map"
-  short_description: "Map changed flows and risk areas before judging a PR."
-  default_prompt: "Use $review-flow-map to map this PR or diff before reviewing it."

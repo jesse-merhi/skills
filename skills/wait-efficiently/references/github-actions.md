@@ -1,35 +1,18 @@
-# GitHub Actions waiting
+# GitHub Actions waits
 
-Use historical durations to choose the next useful observation. Monitoring is
-observation only: diagnose or fix a failure only when the user also asked for
-that work.
+Choose one installed watch command. Check `gh run watch --help` or `gh pr checks --help` for supported flags:
 
-1. Confirm `gh --version` and `gh auth status` succeed.
-2. Resolve the required check names and exact head, then identify each pending
-   workflow run ID with `gh pr checks` or `gh run list`. Reconcile required
-   checks against the returned checks; an empty or partial list is not success.
-3. Run `scripts/estimate-gh-wait --run-id <id>`.
-4. Wait and fetch once inside one held tool call:
+```sh
+gh run watch <run-id> --exit-status --compact --interval <seconds>
+gh pr checks <pr> --watch --required --interval <seconds>
+```
 
-   ```sh
-   <skill-dir>/scripts/quiet-wait <suggested_wait_seconds>s
-   gh run view <run-id> --json status,conclusion,jobs,updatedAt
-   ```
+Resolve the PR's current head and required checks. Set an interval suited to workflow duration and urgency. Omit `--required` when all checks matter; use `--fail-fast` with the PR watch only when the first failure answers the task. For several checks, use one PR watch rather than a loop per check.
 
-5. Report only a meaningful state change: queued to running, a completed job,
-   a new failure, or all required checks complete. Completion is not success:
-   each required check must succeed unless the owner explicitly allowed its
-   skipped/neutral conclusion. Missing checks or unexpected conclusions need
-   owner interpretation; observation alone does not authorize repair or reruns.
-6. Recalculate after queued becomes in-progress or a job completes.
+Hold that command with the host's tracked-command mechanism. The CLI polls internally without a model turn per poll. Preserve its exit status and result: `--exit-status` reports run failure, and `gh pr checks` exit code 8 means pending, not success.
 
-The estimator uses completed runs with the same workflow and event. It prefers
-the same branch when at least three examples exist, uses the 75th-percentile
-duration, subtracts current elapsed time, and falls back to 120 seconds.
+Before reporting success, reconcile results with the required checks on that head. Empty or partial results are incomplete; required checks must succeed unless the owner explicitly accepts a skipped or neutral result. Recheck the head if it changed during the wait.
 
-When monitoring several runs, wait until the earliest predicted observation.
-Do not create one polling loop per check.
+If continuous watching is unsuitable, optionally use `estimate-gh-wait --run-id <id>` to choose the next observation time. It uses completed runs for the same workflow/event, favors at least three same-branch samples, and falls back conservatively with sparse history. It is not a prerequisite for a watch.
 
-Avoid `gh run watch` and `gh pr checks --watch`: their hidden fixed-frequency
-polling cannot use the repository's observed durations. If `gh` is missing or
-unauthenticated, stop and report the exact prerequisite.
+Report unavailable tools or credentials without changing authentication. Watching does not authorize reruns, cancellation, or repairs.

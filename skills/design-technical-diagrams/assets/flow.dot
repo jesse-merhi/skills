@@ -1,0 +1,12 @@
+digraph {
+  request [label="User submits a change"];
+  validation [label="Validate the request", shape=diamond, fillcolor="#e9eee4"];
+  save [label="Save valid changes"];
+  error [label="Explain what to correct", fillcolor="#f4e9df"];
+  result [label="Show the saved result"];
+  request -> validation;
+  validation -> save [label="valid"];
+  validation -> error [label="invalid"];
+  save -> result;
+  error -> request [label="retry"];
+}

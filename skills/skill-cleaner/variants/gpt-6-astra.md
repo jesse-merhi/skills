@@ -1,42 +1,38 @@
 ---
 name: skill-cleaner
 description: "Audit agent skills: loaded roots, duplicate skills, unused skills, prompt-budget costs, compact descriptions."
+metadata:
+  source: https://github.com/steipete/agent-scripts
+  source-path: skills/skill-cleaner
+  upstream-review-revision: 0e8ca002fc1dd76ae84c71f8d24dfd1ac7096ff5
+  upstream-review-date: "2026-09-06"
+  license: MIT
 ---
 
 # Skill cleaner
 
-Establish which skills are loaded, where prompt budget is spent, and which
-cleanup decisions are supported. Use available configuration and logs to resolve
-routine inventory questions without asking the user to investigate them.
+Produce an evidence-backed inventory and cleanup recommendations for loaded skill roots, duplicates, usage, and prompt-budget pressure. This is suggest-first; edit or remove only when the user requests it.
 
-## Build the evidence
-
-From the repository root run the command below, or resolve the equivalent script
-path from this skill directory:
+Use the installed `skill-cleaner` command. Read `--help` for supported options rather than a separate command guide:
 
 ```bash
-skills/skill-cleaner/scripts/skill-cleaner --months 3
+skill-cleaner --help
+skill-cleaner --months 3
 ```
 
-Consult [commands.md](references/commands.md) for variants,
-[report-guide.md](references/report-guide.md) for reading order, and
-[analyzer-notes.md](references/analyzer-notes.md) for limits of budget, root,
-duplicate, and usage heuristics. Distinguish an unused candidate from proven
-safe removal.
+Resolve routine inventory questions from available configuration and logs without asking the user to investigate them.
 
-## Separate recommendations from authorized cleanup
+## Interpret the evidence
 
-An audit produces recommendations. Editing or removal requires a user request.
-When already authorized, apply [cleanup-policy.md](references/cleanup-policy.md)
-and establish that the kept copy exists and is loaded before deleting its
-duplicate. For ignored or untracked directories, name the destination or obtain
-confirmation that they are disposable.
+- Separate the live model-visible inventory from filesystem fallback. `--no-live` forces fallback; `--root <path> --root-only` limits the scan to supplied roots. For another harness, supply its roots and use its local usage evidence.
+- Read budget pressure alongside roots, enabled state, description candidates, duplicates, and unused candidates. Budget figures estimate Codex's 2% allocation using `ceil(utf8_bytes / 4)`; check the reported model and context source, and use `--context-tokens` for an exact context-size override.
+- Duplicate names alone do not justify deletion. Compare bodies and ownership; symlinked roots and file reads are realpath-deduped.
+- Missing recent usage is not proof of disuse. Default logs cover recent Codex history and sessions, not archives unless `--deep-logs` is used. Evidence comes from user messages and tool-call arguments, not developer catalogs.
 
-A shorter description must retain product, tool, action, and object trigger
-nouns and exclusions. Generated text remains a manual rewrite candidate until
-behavioral tests show that trigger meaning survives. Validate the changed
-selection or cleanup behavior without expanding into unrelated skill rewrites.
+## Apply only requested cleanup
 
-Return the inventory and concrete decisions supported by it. This Effect
-analyzer adapts MIT-licensed [`steipete/agent-scripts`](https://github.com/steipete/agent-scripts);
-retain [the upstream license](references/upstream-license.md) on redistribution.
+Verify the kept duplicate exists and is loaded. Prefer the harness-provided copy when it covers the same behavior, but retain repository skills that encode project policy or live operations. Do not delete ignored or untracked directories without naming the destination or confirming they are disposable.
+
+Preserve description trigger nouns—product, tool, action, object—and exclusions. Generated shorter descriptions remain manual rewrite candidates until behavioral tests establish equivalent triggering. Group authorized changes by descriptions, deletions, or configuration; commit only when separately authorized.
+
+Validate changed selection or cleanup behavior without expanding into unrelated rewrites. Report the useful inventory, supporting evidence, limits, and proposed decisions.

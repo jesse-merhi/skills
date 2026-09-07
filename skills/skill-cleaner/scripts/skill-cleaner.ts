@@ -1,8 +1,10 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import * as Console from "effect/Console";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as CliOutput from "effect/unstable/cli/CliOutput";
 // The analyzer snapshots large directory trees synchronously inside one Effect;
 // Node's Dirent API avoids thousands of Effect allocations without changing lifecycle ownership.
 // @effect-diagnostics-next-line nodeBuiltinImport:off
@@ -1248,6 +1250,39 @@ function render(
 }
 
 const main = Effect.gen(function*() {
+  if (args.has("--help") || args.has("-h")) {
+    yield* Console.log(CliOutput.defaultFormatter().formatHelpDoc({
+      description: "Report skill roots, duplicates, usage, and prompt-budget estimates. No cleanup is applied.",
+      usage: "skill-cleaner [flags]",
+      annotations: Context.empty(),
+      flags: [
+        { name: "help", type: "boolean", description: "Show usage without reading skills, configuration, or logs, or querying Codex" },
+        { name: "months", type: "number", description: "Recent usage window in months (default: 3)" },
+        { name: "no-logs", type: "boolean", description: "Skip usage-log scanning" },
+        { name: "deep-logs", type: "boolean", description: "Include archived Codex sessions and OpenClaw logs" },
+        { name: "max-log-mb", type: "number", description: "Maximum total log data to scan in MiB (default: 300)" },
+        { name: "no-live", type: "boolean", description: "Use filesystem inventory without querying Codex" },
+        { name: "root", type: "path", description: "Add a skill root; repeat for multiple roots" },
+        { name: "root-only", type: "boolean", description: "Scan only supplied --root paths; requires a root and implies --no-live" },
+        { name: "all", type: "boolean", description: "Include disabled and non-live discovered skills" },
+        { name: "model", type: "string", description: "Override the model resolved from Codex configuration or cache" },
+        { name: "context-tokens", type: "number", description: "Override the model context size used for budget estimates" },
+        { name: "budget-percent", type: "number", description: "Percentage of model context allocated to skills (default: 2)" },
+        { name: "chars-per-token", type: "number", description: "UTF-8 bytes per estimated token (default: 4)" },
+        { name: "json", type: "boolean", description: "Print the report as JSON" },
+      ].map((flag) => ({
+        ...flag,
+        aliases: flag.name === "help" ? ["-h"] : [],
+        description: Option.some(flag.description),
+        required: false,
+      })),
+      examples: [
+        { command: "skill-cleaner --months 3", description: "Report the default roots with recent usage evidence" },
+        { command: "skill-cleaner --root ./skills --root-only --no-logs", description: "Report only the supplied skill tree" },
+      ],
+    }));
+    return;
+  }
   if (rootOnly && extraRoots.length === 0) {
     process.exitCode = 2;
     yield* Console.error("skill-cleaner: --root-only requires at least one --root <path>");

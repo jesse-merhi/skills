@@ -1,10 +1,14 @@
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as Effect from "effect/Effect";
+import * as ManagedRuntime from "effect/ManagedRuntime";
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 // @effect-diagnostics-next-line nodeBuiltinImport:off
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 
+import { checkedText } from "../../../packages/effect-cli/CheckedProcess.ts";
 import {
   compactDescription,
   discoverRoots,
@@ -16,6 +20,8 @@ import {
 } from "./skill-cleaner.ts";
 
 const temporaryDirectories: string[] = [];
+const runtime = ManagedRuntime.make(NodeServices.layer);
+afterAll(() => runtime.dispose());
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -24,6 +30,39 @@ afterEach(() => {
 });
 
 describe("skill-cleaner", () => {
+  it.each([
+    { name: "long help", flags: ["--help"] },
+    { name: "short help before root validation", flags: ["-h", "--root-only"] },
+    { name: "help with scan and output options", flags: ["--root", "/must-not-scan", "--json", "--deep-logs", "--help"] },
+  ])("prints $name without filesystem discovery or child processes", async ({ flags }) => {
+    const probe = `
+      import fs from "node:fs";
+      import childProcess from "node:child_process";
+      process.argv = [process.execPath, "skill-cleaner", ...process.argv.slice(1)];
+      const { run } = await import(${JSON.stringify(new URL("./skill-cleaner.ts", import.meta.url).href)});
+      const deny = (operation) => () => {
+        process.stderr.write("Unexpected analyzer I/O: " + operation);
+        process.exit(86);
+      };
+      for (const operation of ["accessSync", "readdirSync", "readFileSync", "statSync", "realpathSync"]) {
+        fs[operation] = deny(operation);
+      }
+      childProcess.spawn = deny("spawn");
+      run();
+    `;
+    const output = await runtime.runPromise(
+      checkedText(process.execPath, ["--input-type=module", "--eval", probe, "--", ...flags]).pipe(Effect.timeout("10 seconds")),
+    );
+
+    expect(output).toContain("USAGE");
+    expect(output).toContain("skill-cleaner [flags]");
+    expect(output).toContain("--months");
+    expect(output).toContain("--root-only");
+    expect(output).toContain("--deep-logs");
+    expect(output).toContain("--context-tokens");
+    expect(output).not.toContain("# Skill Cleaner Report");
+  });
+
   it("limits root discovery to explicitly supplied roots", () => {
     const temporary = mkdtempSync(join(tmpdir(), "skill-cleaner-roots-"));
     temporaryDirectories.push(temporary);
