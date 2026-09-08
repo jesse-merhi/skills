@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cleanup and archive"
+  short_description: "Clean up local artifacts and archive the session"
+  default_prompt: "Use $cleanup-and-archive to clean up this session’s local artifacts, verify the result, and archive the session."
