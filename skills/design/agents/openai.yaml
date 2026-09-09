@@ -1,4 +1,4 @@
 interface:
   display_name: "Design"
-  short_description: "Route UI design, motion, review, and prototypes"
-  default_prompt: "Use $design to choose and apply the right production UI, interaction, motion-review, or prototype workflow."
+  short_description: "Design clear, deliberate product interfaces"
+  default_prompt: "Use $design to improve this interface around its users, content, and existing design system."

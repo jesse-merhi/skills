@@ -5,25 +5,35 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 # Ask Claude
 
-Use this skill only when the user explicitly invokes `$ask-claude` or asks you to ask Claude. Mentioning or discussing the skill does not authorize a run. Use a full Claude ACP session through the launcher, not an in-chat subagent.
+Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
-Give Claude a self-contained brief: objective, checkout, relevant files, constraints, expected answer and evidence, and whether writes are authorized. Run from the intended checkout; resolve routine paths and command choices from the brief without asking again. Use the current Claude configuration without choosing a model:
+Resolve routine brief details from the request and checkout; keep unresolved scope decisions with the user.
 
+## Send the brief
+
+Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope.
+
+For advice, review, or planning:
 ```sh
-<skill-dir>/scripts/ask-claude read "<self-contained prompt>"
+ask-claude read "<self-contained prompt>"
 ```
 
-Use `write` instead of `read` only for user-authorized implementation with an explicit owned scope. Inspect the returned evidence and validate edits yourself before reporting completion. Authentication or execution failure is a failure; report it rather than substituting another agent or your own answer.
-
-The launcher owns temporary-session cleanup. It prevents native history writes, retains the answer and raw ACP evidence in the private run directory printed on stderr, and checks process teardown and persisted history separately. Temporary helpers cannot be resumed. Do not ask the child to close itself or treat an empty ACP session list as proof that Claude history is gone.
-
-Check the exit status and reported verification. Keep the run directory with the task evidence, including partial answers and errors when work fails. Before calling the task complete, inspect the answer and any artifacts it references. If the caller or supervisor was interrupted, use its exact run directory:
-
+For explicitly authorized implementation:
 ```sh
-<skill-dir>/scripts/ask-claude recover <run-directory>
-<skill-dir>/scripts/ask-claude inspect <run-directory>
+ask-claude write "<self-contained prompt>"
 ```
 
-If recovery reports that the supervisor is still active, let its bounded teardown finish before retrying. Recovery stops only a process group with a matching recorded owner. Unknown ownership or unexpected history remains an explicit failure, with the evidence retained. The launcher never deletes history. Further history deletion needs the user's explicit decision.
+Use the current Claude configuration and one fresh `acpx ... claude exec` session, not an in-chat subagent. For an explicitly requested ongoing conversation, use named persistent `prompt` mode outside this launcher and its no-history environment. Retain that session ID and answer, then close that exact session when the conversation ends; closing stops execution without archiving or deleting history.
 
-This launcher accepts only fresh temporary invocations. For an explicitly requested ongoing conversation, use a named persistent ACP session outside this launcher and outside its no-history environment. Closing that conversation stops execution; it does not archive or delete its saved history.
+## Return the result and close
+
+For temporary sessions, the launcher disables native history for this invocation and lets ACP handle execution teardown. It streams the answer and saves the raw response and errors in the private run directory printed on stderr. Temporary helpers cannot be resumed; no existing history is deleted.
+
+Check the command's exit status, then retrieve the answer and verify the exact native session:
+```sh
+ask-claude inspect <run-directory>
+```
+
+Run this check after success, failure, timeout, cancellation, or interruption. If no run directory was printed, launch failed before Claude started. Retain the run directory with the task evidence and validate any edits yourself. Unresolved identity, remaining processes, or unexpected history is a cleanup failure; report it without claiming the child closed itself.
+
+Report the result and any cleanup failure. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.

@@ -1,5 +1,7 @@
 # Spec note template
 
+Publish to `Specs/YYYY-MM-DD-short-outcome.md`, following an existing project-specific vault folder when present.
+
 ```md
 # Spec: <Outcome>
 
@@ -8,7 +10,7 @@ Type: Spec
 Created: <YYYY-MM-DD>
 
 ## Outcome
-<One or two sentences describing the user/system outcome.>
+<Briefly describe the user/system outcome.>
 
 ## Problem
 <What pain or opportunity this addresses.>
@@ -36,7 +38,7 @@ Excluded:
 - <behavior to test through public interfaces>
 - <agreed test seam or seams; prefer the highest existing seam that still gives stable feedback>
 - <test level or prior-art test path when known>
-- <for frontend UI work: required `frontend-ui-validation` evidence such as mobile/desktop screenshots, layout audit, console check, or trace>
+- <for frontend UI work: required mobile/desktop screenshots, interactions, layout checks, or traces>
 - <what does not need dedicated coverage>
 
 ## PR Delivery
@@ -45,9 +47,7 @@ Excluded:
   1. <logical review unit>. Depends on <group or None>; proves <reviewer-visible outcome>
 - Boundary rule: <why these changes belong together or need separate review>
 - Keep independent groups out of a linear stack; do not turn every acceptance criterion into its own PR.
-- PR gates: before readiness or merge, apply the Review gate and Sign-off gate
-  from `AGENTS.md` to each PR. The Review gate must cover the exact head;
-  Sign-off persists for the PR across later heads.
+- PR gates: before readiness or merge, apply the Review gate and Sign-off gate from `AGENTS.md` to each PR. The Review gate must cover the exact head; Sign-off persists for the PR across later heads.
 
 ## Open Questions
 - <decision still needed>

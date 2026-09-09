@@ -1,19 +1,19 @@
-# Native Expo checks
+# Native UI checks
 
-When the changed UI is a native Expo screen:
+The implementation owner launches the app through the repository's mobile workflow and uses Maestro to exercise the changed screen on a simulator or device. Reuse existing flows instead of introducing a second native harness.
 
-- Start the app through the repo's normal mobile command. Prefer the repo-owned
-  mobile/dev skill when one exists.
-- Use local Expo MCP tools when available for simulator screenshots, visible
-  tree / selector inspection, taps, and app logs.
-- Prefer stable `testID` / accessibility selectors over coordinates.
-- Validate the changed native state at phone dimensions in the simulator. Check
-  the reachable loading, empty, error, and long-content states the task touched.
-- Run the repo-owned source, accessibility, typography, and UI-quality checks
-  that apply to the changed screen.
-- Do not use remote EAS build, update, workflow, or account-log MCP tools for
-  visual validation unless the user explicitly asks for remote Expo work.
+For an existing Maestro flow:
 
-For native Expo work, final evidence should include simulator/device, screen or
-route tested, screenshot path when captured, app log status, selector/state
-checks performed, and source-analysis result.
+```sh
+maestro test <flow.yaml>
+```
+
+Use stable accessibility selectors or React Native `testID` values. For Expo Go, open the development link; standalone/development builds use their bundle/package ID. See [Maestro React Native support](https://docs.maestro.dev/get-started/supported-platform/react-native) and [CLI commands](https://docs.maestro.dev/maestro-cli/maestro-cli-commands-and-options), checked 2026-09-05.
+
+Check the actual interaction, keyboard, scrolling, long content, and relevant failure states. Capture the screen and app logs. Use hardware when gesture feel matters.
+
+Keep Maestro/E2E runs manually triggered. Adding tooling or remote builds, uploads, and cloud tests needs separate authorization. An existing native test workflow should be reused, not replaced just to follow this skill.
+
+If Maestro or the required device is unavailable, stop and ask the user for help. A permitted manual interaction can provide partial evidence but does not count as a Maestro run. Do not install tools or alter authentication to make the check appear complete.
+
+Record evidence using [Keep evidence useful](../SKILL.md#keep-evidence-useful).

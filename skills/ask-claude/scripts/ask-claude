@@ -1,3 +1,163 @@
-#!/usr/bin/env bash
-set -euo pipefail
-exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lifecycle.py" "$@"
+#!/usr/bin/env python3
+"""Run native ACP teardown without saving Claude history; retain caller evidence."""
+import argparse
+import json
+import math
+import os
+from pathlib import Path
+import subprocess
+import sys
+import uuid
+
+
+def capture_output(directory):
+    with (Path(directory) / 'events.ndjson').open('ab', buffering=0) as events:
+        for line in sys.stdin.buffer:
+            events.write(line)
+            try:
+                update = json.loads(line).get('params', {}).get('update', {})
+                content = update.get('content', {})
+                if update.get('sessionUpdate') == 'agent_message_chunk' and content.get('type') == 'text':
+                    print(content['text'], end='', flush=True)
+            except BrokenPipeError:
+                os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+            except (ValueError, KeyError, TypeError, AttributeError):
+                pass  # Preserve malformed events for inspect to report.
+
+
+def inspect_run(directory):
+    run = Path(directory).resolve()
+    state = json.loads((run / 'run.json').read_text())
+    if state.get('schema') != 'ask-claude-run-v2' or state.get('runDir') != str(run):
+        raise ValueError('not an ask-claude run directory')
+    session_id = None
+    creation_request = None
+    answer = []
+    errors = []
+    stop_reason = None
+    for line in (run / 'events.ndjson').read_text().splitlines():
+        try:
+            message = json.loads(line)
+            if message.get('method') == 'session/new':
+                creation_request = message['id']
+            result = message.get('result', {})
+            if creation_request is not None and message.get('id') == creation_request:
+                if result.get('sessionId'):
+                    session_id = str(uuid.UUID(result['sessionId']))
+            update = message.get('params', {}).get('update', {})
+            if update.get('sessionUpdate') == 'agent_message_chunk':
+                content = update.get('content', {})
+                if content.get('type') == 'text':
+                    answer.append(content['text'])
+            if result.get('stopReason'):
+                stop_reason = result['stopReason']
+            if message.get('error'):
+                errors.append(message['error'])
+        except (ValueError, KeyError, TypeError, AttributeError) as error:
+            errors.append('Unreadable ACP event: ' + str(error))
+
+    # The launcher gives ACP its own group; inspection never signals a process.
+    rows = subprocess.check_output(['ps', '-axo', 'pid=,pgid=,stat='], text=True)
+    remaining = [int(pid) for pid, group, status in (row.split() for row in rows.splitlines())
+                 if int(group) == state['processGroup'] and not status.startswith('Z')]
+    history = []
+    if session_id:
+        projects = Path(state['claudeConfigDir']) / 'projects'
+        if projects.exists():
+            for project in projects.iterdir():
+                for name in (session_id, session_id + '.jsonl'):
+                    path = project / name
+                    if path.exists() or path.is_symlink():
+                        history.append(str(path))
+        records = Path(state['acpxSessionsDir'])
+        if records.exists():
+            for path in records.iterdir():
+                if path.suffix == '.json':
+                    record = json.loads(path.read_text())
+                    if session_id in [record.get(key) for key in
+                                      ('sessionId', 'acpSessionId', 'agentSessionId')]:
+                        history.append(str(path))
+    report = {'nativeSessionId': session_id, 'stopReason': stop_reason,
+              'execution': 'running' if remaining else 'stopped', 'remainingPids': remaining,
+              'history': 'retained' if history else ('absent' if session_id else 'unknown'),
+              'historyPaths': history, 'errors': errors}
+    (run / 'answer.txt').write_text(''.join(answer))
+    (run / 'verification.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(''.join(answer), end='')
+    print('\nask-claude: ' + json.dumps(report), file=sys.stderr)
+    return 0 if session_id and stop_reason == 'end_turn' and not remaining and not history and not errors else 70
+
+
+def launch(mode, prompt):
+    timeout = float(os.environ.get('ASK_AGENT_TIMEOUT_SECONDS', '1800'))
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError('ASK_AGENT_TIMEOUT_SECONDS must be positive and finite')
+    # Resolve first, then replace this process with ACP. Killing an npx parent
+    # can otherwise leave ACP running after the caller has gone away.
+    executable = subprocess.check_output(
+        ['npx', '--yes', '--package=acpx@0.13.1', '--call', 'command -v acpx'], text=True).strip()
+    if not Path(executable).is_file():
+        raise ValueError('npx did not resolve an acpx executable')
+    os.umask(0o077)
+    root = Path(os.environ.get('ASK_CLAUDE_RUNS_DIR',
+                str(Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state')))
+                    / 'ask-claude/runs')))
+    root.mkdir(parents=True, exist_ok=True)
+    run = (root / str(uuid.uuid4())).resolve()
+    run.mkdir(mode=0o700)
+    if os.getpgrp() != os.getpid():
+        os.setpgid(0, 0)
+    state = {'schema': 'ask-claude-run-v2', 'runDir': str(run), 'cwd': str(Path.cwd()),
+             'processGroup': os.getpgrp(), 'acpxExecutable': executable,
+             'claudeConfigDir': str(Path(os.environ.get('CLAUDE_CONFIG_DIR',
+                                                       str(Path.home() / '.claude'))).resolve()),
+             'acpxSessionsDir': str(Path.home() / '.acpx/sessions')}
+    (run / 'run.json').write_text(json.dumps(state, indent=2) + '\n')
+    (run / 'prompt.txt').write_text(prompt)
+    print('ask-claude: evidence ' + str(run), file=sys.stderr, flush=True)
+    print('ask-claude: after exit, run ask-claude inspect ' + str(run), file=sys.stderr, flush=True)
+    permissions = ['--approve-reads', '--non-interactive-permissions', 'fail']
+    if mode == 'write':
+        permissions = ['--approve-all']
+    args = [executable, '--cwd', str(Path.cwd()), *permissions, '--format', 'json',
+            '--timeout', str(timeout), 'claude', 'exec', '--file', str(run / 'prompt.txt')]
+    (run / 'events.ndjson').touch()
+    # This reader only saves output. ACP remains the foreground PID and owns
+    # cancellation/teardown; the reader drains its pipe after ACP exits.
+    reader = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_capture', str(run)],
+                              stdin=subprocess.PIPE, start_new_session=True)
+    os.dup2(reader.stdin.fileno(), 1)
+    reader.stdin.close()
+    with (run / 'stderr.txt').open('wb') as errors:
+        os.dup2(errors.fileno(), 2)
+    os.environ['CLAUDE_CODE_SKIP_PROMPT_HISTORY'] = '1'
+    os.execv(executable, args)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog='ask-claude', description='Run a temporary Claude session with native history disabled.',
+        epilog='read/write stream the answer, save ACP output in a private evidence directory and return ACP exit status. '
+               'inspect prints the answer and checks native identity, process teardown and saved history; '
+               'an incomplete answer or unverified cleanup exits 70. It never kills processes or deletes history. '
+               'ASK_CLAUDE_RUNS_DIR overrides $XDG_STATE_HOME/ask-claude/runs (~/.local/state by default). '
+               'ASK_AGENT_TIMEOUT_SECONDS sets the native ACP timeout (default 1800).')
+    commands = parser.add_subparsers(dest='command', required=True)
+    for mode in ('read', 'write'):
+        commands.add_parser(mode).add_argument('prompt', nargs='+')
+    commands.add_parser('inspect').add_argument('directory')
+    commands.add_parser('_capture', help=argparse.SUPPRESS).add_argument('directory')
+    args = parser.parse_args()
+    if args.command == '_capture':
+        return capture_output(args.directory)
+    if args.command == 'inspect':
+        return inspect_run(args.directory)
+    launch(args.command, ' '.join(args.prompt))
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print('ask-claude: ' + str(error), file=sys.stderr)
+        sys.exit(70)

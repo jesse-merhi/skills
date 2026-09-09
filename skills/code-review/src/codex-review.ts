@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import { Command, Flag } from "effect/unstable/cli"
 
-import { preflightCodexAuthentication, reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } from "./NativeReview.ts"
+import { nativeReviewArguments, preflightCodexAuthentication, reviewIdentity, runNativeReview, selectReviewPlan, untilReviewStable } from "./NativeReview.ts"
 
 // Environment defaults are captured once at the CLI boundary.
 // @effect-diagnostics-next-line processEnv:off
@@ -28,7 +28,7 @@ const review = Command.make("codex-review", {
   if (!args.dryRun && Option.isSome(outputPath)) yield* fileSystem.remove(outputPath.value, { force: true })
   const plan = yield* selectReviewPlan(args.mode, args.base, args.commit, !args.dryRun)
   yield* Console.log(`codex-review target: ${plan.label}`)
-  for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} review ${target.args.join(" ")}`)
+  for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} ${(yield* nativeReviewArguments(target)).join(" ")}`)
   if (args.dryRun) return
   yield* preflightCodexAuthentication(args.codexBin)
   const currentIdentity = selectReviewPlan(args.mode, args.base, args.commit).pipe(Effect.flatMap((currentPlan) => {

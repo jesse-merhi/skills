@@ -1,45 +1,35 @@
 # Final output
 
-Rebuild every closeout from the findings database. Do not rely on chat memory,
-especially after compaction. Resolve `review_findings_bin` as
-`<skill-dir>/scripts/review-findings`; never use the retired
-`AGENT_REVIEW_FINDINGS_BIN` override. Record final validation, then run both:
+Use the saved run identity, including `--db <path>` if the run uses a nondefault database. Retrieve the completed records:
 
 ```sh
-"$review_findings_bin" closeout --summary --repo <repo> --repo-path <repo-root> \
-  --branch <branch> --base <base> --target <current-target>
-"$review_findings_bin" closeout --json --repo <repo> --repo-path <repo-root> \
-  --branch <branch> --base <base> --target <current-target>
+review-findings closeout --summary --repo <owner/repo> --repo-path <checkout> \
+  --branch <branch> --target <target> --base <base>
+review-findings closeout --json --repo <owner/repo> --repo-path <checkout> \
+  --branch <branch> --target <target> --base <base>
 ```
 
-Use the summary for structure and the JSON audit to verify that no finding was
-lost. If either is incomplete, repair the database records before answering.
+The JSON's `verification_run` contains `command`, `result`, `reason` and `decision_id`; use these records rather than inventing a validation result. Validation must be recorded before completion; report missing records rather than trying to write to a closed run.
 
-Write a short owner report:
+Lead with whether review finished and fixes were pushed or remain local. Give the exact target and final SHA, native/cold phase results and evidence, validation, unresolved decisions and limits. A missing `reviewed_head` means the saved run is incomplete; an exact SHA alone does not prove both phases ran. Keep enough evidence for a later workflow to check the reviewed head without relying on chat memory.
 
-Before these sections, state the exact reviewed commit SHA and target. A later
-PR workflow must be able to compare it with the current head without relying on
-chat memory or CI state.
+Include these whole-run counts from the full JSON:
 
-1. **Outcome:** clean, blocked, or incomplete; whether the final push and CI
-   completed.
-2. **What review found:** total and status counts, then group every finding into
-   a small number of plain-language themes. Give each theme a count and its
-   finding IDs so the counts reconcile with the complete audit. Explain the
-   highest-impact findings and their fixes. Include source-by-disposition and
-   rejection-gate counts so weak native and cold-review candidates remain
-   measurable. Do not print hundreds of repetitive cards.
-3. **Still open:** unresolved decisions and failed or skipped validation.
-   Report follow-ups and owner-declined deferred work separately from explicitly
-   accepted residual risk so none is mislabeled as resolved or unresolved.
-4. **Delivery:** final local validation, proof freshness result, PR URL or owner
-   blocker, CI state, and the required thumbs-up sign-off.
-5. **Full audit:** include the exact `closeout --json` or scoped `query` command
-   that retrieves every persisted finding.
+- **Raised:** `review_candidates.length`, counting each finding ID once; repeated `finding_matches` are not new findings.
+- **Fixed:** candidates whose `status` is `fixed`.
+- **Discarded:** candidates whose `status` is `rejected`, with brief reasons. Investigating, deferred and provisional work is not discarded or fixed.
 
-Say that the final pass had no remaining findings only after summarizing the
-whole run. Do not reduce a review that found and fixed problems to "no
-findings."
+The summary's `total_findings` excludes rejected and investigating candidates; it is not the raised count. Reconcile other statuses with the full candidate list. Keep unanswered decisions, nonblocking follow-ups, owner-declined deferred work and accepted residual risk distinct. State last-pass results separately: a clean last pass does not erase earlier findings or repairs.
 
-Run the complete draft through `speak-fking-english`. Preserve finding counts,
-IDs, outcomes, and risk while removing reviewer jargon and repeated sections.
+Optionally show up to three highest-priority and three lowest-priority rated runtime findings, with IDs, outcomes and why they matter. Use CLI ratings; choose the highest group first and the lowest from the remaining IDs so fewer than six never produces duplicates. Maintenance findings have no runtime priority: describe their reading/change cost separately.
+
+Report lines added/deleted, labeling the range. The final total PR diff runs from the saved review base (`scope_budget.baseOid`) to the final SHA. Review fixes run from setup's saved starting SHA to the final SHA; reuse `scope_budget.pinnedHeadOid` only when it records that same starting head, not the review base.
+
+```sh
+git diff --numstat "<review-base-sha>" "<final-sha>"
+git diff --numstat "<starting-sha>" "<final-sha>"
+```
+
+Sum numeric additions/deletions; report binary changes separately. If the starting SHA is unavailable, say the review-only count is unavailable rather than guessing.
+
+Include the fully populated `review-findings closeout --json` command above to retrieve the complete audit. Add any other useful explanation freely; no fixed extra sections are required. Run the draft through `speak-fking-english` without losing counts, evidence or open work.

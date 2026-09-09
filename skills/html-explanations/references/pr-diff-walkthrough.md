@@ -1,38 +1,15 @@
-# PR and diff walkthroughs
+# Diff walkthroughs
 
-Use this internal mode when a reader wants to understand a PR, branch, commit,
-diff, or stack without requesting a code review.
+Generate a local Git walkthrough with the existing helper:
 
-## Source contract
+```sh
+skill-diff-page --root <repo> --base <direct-base> --head <head> --output <new.html>
+```
 
-- Capture base and head identities before fetching the diff and verify them
-  after generation. Fail if either changed.
-- For a stack, gather each open layer bottom-to-top and explain every layer from
-  its direct base. Never attribute inherited changes to a higher layer.
-- Show the complete direct-base patch when the user wants code-reading detail.
-  Omit it only when unavailable or deceptive, and say why.
-- Preserve every source line while removing machine-only headers such as
-  `diff --git`, `index`, and raw hunk coordinates.
-- Check parsed file and line counts against source metadata and retain a digest
-  for revision-keyed state.
+It pins revisions, includes real per-file patches, and retains a digest. Replace its purpose prompts with evidence-backed explanations and inspect the rendered page.
 
-## Page structure
+For a stack, explain each layer against its direct base. Keep inherited changes out of that layer's story. For a standalone PR, omit stack navigation.
 
-Lead with the changed behavior and implementation story. For a standalone PR,
-omit stack navigation. For a stack, use one compact navigator labelled with PR,
-base, position, and short outcome; switching layers must update its outcome,
-files, diff, and proof together.
+When the reader wants code detail, show the complete patch and explain each changed file beside its code. Preserve source lines. For large diffs, use search, collapse, and revision-keyed Viewed progress to keep reading manageable.
 
-Give every changed file one anchored explanation of its purpose. Add line-level
-notes only for behavior, constraints, or trade-offs that are not obvious from
-the patch. Tests remain changed files; explain what behavior they prove rather
-than repeating them in a separate tab.
-
-For a substantial multi-file diff, add filename search, expand/collapse, and a
-Viewed state keyed by PR, exact revision, and file. Keep the primary file open
-and unusually large or generated files closed initially. Do not put aggregate
-line counts or process narration above the code unless they answer a real
-reader question.
-
-Use outcome-first, task-specific headings. Show extra proof, rollout notes, or
-open questions only when they add information the annotated diff cannot carry.
+Lead with what changed and why. Add evidence or caveats where they contribute something the annotated code doesn't show. A walkthrough is neither a code review nor proof that the feature ran.
