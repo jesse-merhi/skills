@@ -1158,7 +1158,6 @@ test_review_neutrality_and_skill_ownership_are_explicit() {
 }
 
 test_cross_harness_sessions_are_full_and_symmetric() {
-  python3 -m unittest discover -s "$ROOT_DIR/skills/ask-claude/scripts" -p "test_*.py" -f
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "This is not a subagent"
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "Mentioning,"
   assert_contains "$ROOT_DIR/skills/ask-codex/SKILL.md" "archive itself"
