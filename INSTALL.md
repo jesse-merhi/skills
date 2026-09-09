@@ -394,7 +394,6 @@ Public aliases:
 | --- | --- |
 | `codex-review`, `review-findings` | `code-review/scripts/<name>`; `codex-review` dispatches native reviews only |
 | `ask-codex`, `ask-claude` | Respective skill's `scripts/<name>` |
-| `rovodev-atlassian` | `atlassian-queries/scripts/rovodev-atlassian` |
 | `skill-cleaner` | `skill-cleaner/scripts/skill-cleaner` |
 | `skill-audit-layout` | `frontend-ui-validation/scripts/audit-layout.mjs` |
 | `skill-cleanup-inventory` | `cleanup/scripts/inventory.mjs` |
