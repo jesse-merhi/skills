@@ -23,6 +23,7 @@ def capture_output(directory):
                 os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
             except (ValueError, KeyError, TypeError, AttributeError):
                 pass  # Preserve malformed events for inspect to report.
+    (Path(directory) / 'capture.done').touch()
 
 
 def inspect_run(directory):
@@ -30,6 +31,8 @@ def inspect_run(directory):
     state = json.loads((run / 'run.json').read_text())
     if state.get('schema') != 'ask-claude-run-v2' or state.get('runDir') != str(run):
         raise ValueError('not an ask-claude run directory')
+    if not (run / 'capture.done').is_file():
+        raise ValueError('output capture is unfinished; let stdout drain before inspecting')
     session_id = None
     creation_request = None
     answer = []
@@ -142,11 +145,11 @@ def main():
                'an incomplete answer or unverified cleanup exits 70. It never kills processes or deletes history. '
                'ASK_CLAUDE_RUNS_DIR overrides $XDG_STATE_HOME/ask-claude/runs (~/.local/state by default). '
                'ASK_AGENT_TIMEOUT_SECONDS sets the native ACP timeout (default 1800).')
-    commands = parser.add_subparsers(dest='command', required=True)
+    commands = parser.add_subparsers(dest='command', required=True, metavar='{read,write,inspect}')
     for mode in ('read', 'write'):
         commands.add_parser(mode).add_argument('prompt', nargs='+')
     commands.add_parser('inspect').add_argument('directory')
-    commands.add_parser('_capture', help=argparse.SUPPRESS).add_argument('directory')
+    commands.add_parser('_capture').add_argument('directory')
     args = parser.parse_args()
     if args.command == '_capture':
         return capture_output(args.directory)
