@@ -8,7 +8,6 @@ import { withOutputLock } from "./materialize-skill-variants.mjs";
 export const commandCatalog = [
   ["ask-claude", "ask-claude", "ask-claude", ["bash"]],
   ["ask-codex", "ask-codex", "ask-codex", ["bash"]],
-  ["rovodev-atlassian", "atlassian-queries", "rovodev-atlassian"],
   ["skill-cleanup-inventory", "cleanup", "inventory.mjs"],
   ["codex-review", "code-review", "codex-review"],
   ["review-findings", "code-review", "review-findings", ["node", "--disable-warning=ExperimentalWarning"]],

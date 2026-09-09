@@ -297,7 +297,6 @@ Use **Show → Needs re-review** for the orange queue. Each changed skill has a 
 
 | Feedback | Result |
 | --- | --- |
-| Atlassian queries | Renamed to `atlassian-queries`; shorter query-first instructions. The Rovo launcher requests read-only behavior but does not enforce a permission boundary. |
 | ClawHub local test | One direct launch command, no global symlink setup, four references reduced to one. Clarified that `--skip-import` skips replacement but can still change schema/auth/fixtures. |
 | ClawSweeper | Plain review/fix loop; six references reduced to one rating guide. Removed the bespoke watcher and use `wait-efficiently`. Retained fresh-response, budget, streak, and publication boundaries. Current rating code was checked once for the saved guide; future runs need not inspect the bot repository. |
 | Cleanup | Shortened the body and discovery reference. Kept ownership evidence and protection for dirty/shared state. The inventory writes a report but deletes nothing. |
