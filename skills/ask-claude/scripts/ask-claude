@@ -10,6 +10,11 @@ import sys
 import uuid
 
 
+def ps(*args):
+    return subprocess.check_output(['ps', *args], text=True,
+                                   env=dict(os.environ, LC_ALL='C', TZ='UTC'))
+
+
 def capture_output(directory):
     with (Path(directory) / 'events.ndjson').open('ab', buffering=0) as events:
         for line in sys.stdin.buffer:
@@ -29,7 +34,7 @@ def capture_output(directory):
 def inspect_run(directory):
     run = Path(directory).resolve()
     state = json.loads((run / 'run.json').read_text())
-    if state.get('schema') != 'ask-claude-run-v2' or state.get('runDir') != str(run):
+    if state.get('schema') != 'ask-claude-run-v3' or state.get('runDir') != str(run):
         raise ValueError('not an ask-claude run directory')
     if not (run / 'capture.done').is_file():
         raise ValueError('output capture is unfinished; let stdout drain before inspecting')
@@ -59,10 +64,16 @@ def inspect_run(directory):
         except (ValueError, KeyError, TypeError, AttributeError) as error:
             errors.append('Unreadable ACP event: ' + str(error))
 
-    # The launcher gives ACP its own group; inspection never signals a process.
-    rows = subprocess.check_output(['ps', '-axo', 'pid=,pgid=,stat='], text=True)
-    remaining = [int(pid) for pid, group, status in (row.split() for row in rows.splitlines())
-                 if int(group) == state['processGroup'] and not status.startswith('Z')]
+    # Preserve shell job control. Identify ACP by PID/birth time and the Claude
+    # SDK process by its native --session-id argument, never by a shared group.
+    remaining = []
+    for line in ps('-ww', '-axo', 'pid=,stat=,lstart=,args=').splitlines():
+        pid, status, *fields = line.split(None, 7)
+        started, command = ' '.join(fields[:5]), fields[5]
+        owns_acp = int(pid) == state['launcherPid'] and started == state['launcherStarted']
+        owns_claude = session_id and '--session-id=' + session_id in command.split()
+        if (owns_acp or owns_claude) and not status.startswith('Z'):
+            remaining.append(int(pid))
     history = []
     if session_id:
         projects = Path(state['claudeConfigDir']) / 'projects'
@@ -108,10 +119,10 @@ def launch(mode, prompt):
     root.mkdir(parents=True, exist_ok=True)
     run = (root / str(uuid.uuid4())).resolve()
     run.mkdir(mode=0o700)
-    if os.getpgrp() != os.getpid():
-        os.setpgid(0, 0)
-    state = {'schema': 'ask-claude-run-v2', 'runDir': str(run), 'cwd': str(Path.cwd()),
-             'processGroup': os.getpgrp(), 'acpxExecutable': executable,
+    state = {'schema': 'ask-claude-run-v3', 'runDir': str(run), 'cwd': str(Path.cwd()),
+             'launcherPid': os.getpid(),
+             'launcherStarted': ' '.join(ps('-p', str(os.getpid()), '-o', 'lstart=').split()),
+             'acpxExecutable': executable,
              'claudeConfigDir': str(Path(os.environ.get('CLAUDE_CONFIG_DIR',
                                                        str(Path.home() / '.claude'))).resolve()),
              'acpxSessionsDir': str(Path.home() / '.acpx/sessions')}
