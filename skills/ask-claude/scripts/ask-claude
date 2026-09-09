@@ -112,7 +112,7 @@ def launch(mode, prompt):
         ['npx', '--yes', '--package=acpx@0.13.1', '--call', 'command -v acpx'], text=True).strip()
     if not Path(executable).is_file():
         raise ValueError('npx did not resolve an acpx executable')
-    os.umask(0o077)
+    caller_umask = os.umask(0o077)
     root = Path(os.environ.get('ASK_CLAUDE_RUNS_DIR',
                 str(Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state')))
                     / 'ask-claude/runs')))
@@ -145,6 +145,7 @@ def launch(mode, prompt):
     with (run / 'stderr.txt').open('wb') as errors:
         os.dup2(errors.fileno(), 2)
     os.environ['CLAUDE_CODE_SKIP_PROMPT_HISTORY'] = '1'
+    os.umask(caller_umask)
     os.execv(executable, args)
 
 
