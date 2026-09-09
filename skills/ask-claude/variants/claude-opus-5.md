@@ -27,5 +27,3 @@ Check the exit status and reported verification. Keep the run directory with the
 If recovery reports that the supervisor is still active, let its bounded teardown finish before retrying. Recovery stops only a process group with a matching recorded owner. Unknown ownership or unexpected history remains an explicit failure, with the evidence retained. The launcher never deletes history. Further history deletion needs the user's explicit decision.
 
 This launcher accepts only fresh temporary invocations. For an explicitly requested ongoing conversation, use a named persistent ACP session outside this launcher and outside its no-history environment. Closing that conversation stops execution; it does not archive or delete its saved history.
-
-Read [lifecycle behavior](references/lifecycle.md) for storage, recovery limits and the verified native capabilities.

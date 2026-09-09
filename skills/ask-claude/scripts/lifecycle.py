@@ -349,8 +349,16 @@ def launch(mode, prompt):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Ask a temporary Claude ACP session; preserve evidence without native history.')
-    commands = parser.add_subparsers(dest='command', required=True)
+    parser = argparse.ArgumentParser(
+        prog='ask-claude',
+        description='Ask a temporary Claude ACP session; preserve evidence without native history.',
+        epilog='Temporary helpers cannot be resumed. The answer streams to stdout; stderr prints the private evidence directory. '
+               'ASK_CLAUDE_RUNS_DIR overrides its default under $XDG_STATE_HOME/ask-claude/runs '
+               '(~/.local/state when unset). ASK_AGENT_TIMEOUT_SECONDS sets the overall deadline (default: 1800). '
+               'After interruption, use recover with that exact directory, then inspect. '
+               'Unverified cleanup exits nonzero and retains evidence; no history is deleted. '
+               'Recovery requires the supervisor to have stopped. Unrecognized or detached processes need manual investigation.')
+    commands = parser.add_subparsers(dest='command', required=True, metavar='{read,write,inspect,recover}')
     for name in ('read', 'write'):
         commands.add_parser(name).add_argument('prompt', nargs='+')
     for name in ('inspect', 'recover', '_supervise'):
