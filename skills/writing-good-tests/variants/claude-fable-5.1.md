@@ -12,7 +12,13 @@ Decide what behavior needs proof, find the coverage that already exists, then im
 
 ## Choose the proof
 
-Read the changed contract and nearby tests, fixtures, routes and helpers, including staged, unstaged, untracked and deleted work. For each proposed test, identify the realistic regression, the failure a caller would see, the expected result established independently of the implementation, and the nearest overlapping proof. Specifications and worked examples can supply expectations; copying the implementation into the assertion cannot.
+Read the changed contract and nearby tests, fixtures, routes and helpers, including staged, unstaged, untracked and deleted work. Before writing a test—including a rejection test—prove the situation can happen in the code you’re testing. Trace where the input comes from and how it gets there. Inventing a fixture is not proof.
+
+Identify the failure a caller would see, the required result, and the nearest overlapping test. Establish expectations independently of the implementation; specifications and worked examples can supply them. Merely proving that a schema validator rejects an invented object adds no useful coverage.
+
+Use the application’s own data definitions for successful fakes and fixtures. Don’t redefine application data just for tests or change application behavior to make a fixture fit.
+
+**Example:** Test retries for HTTP `429` only if that response can reach the retry handler and should trigger a retry. If the client handles it internally, injecting it into the handler invents an unreachable scenario.
 
 Choose the lowest practical boundary that proves the failure: unit tests for policy or parsing, integration tests for real bindings/persistence/isolation, and a useful end-to-end journey for visible cross-boundary behavior. Use parser/linter plus execution for declarative configuration. Do not test skill prose or linter implementation; apply the repository's instruction-exercise and linter validation policy.
 
@@ -27,7 +33,7 @@ Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
 - Use real internal collaborators. Substitute an external API, clock, filesystem or database only when the real boundary is unreliable or disproportionately expensive, using the existing interface and realistic results.
 - Consolidate repeated shapes into named, object-shaped cases only when each row proves a distinct regression.
-- Remove tautologies, incidental mock-call/order assertions, impossible states, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only when a real product, accessibility, safety or protocol contract needs it.
+- Remove tautologies, incidental mock-call/order assertions, inputs or states that cannot reach the code being tested, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only when a real product, accessibility, safety or protocol contract needs it.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 
 ## Implement one behavior at a time
