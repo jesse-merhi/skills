@@ -1,0 +1,74 @@
+{
+  "status": "frozen-before-measured-runs",
+  "model": "gpt-6-astra",
+  "efforts": [
+    "medium",
+    "xhigh"
+  ],
+  "repository": "UplinkedTeam/uplinked",
+  "base": "d07035cadff80fc2c3865ad83f22fce55f4ed624",
+  "cli_version": "0.153.4",
+  "repetitions_per_cell": 3,
+  "planned_runs": 18,
+  "seed": 20260911,
+  "task_sizes": [
+    "small",
+    "medium",
+    "large"
+  ],
+  "execution": "sequential; one fresh isolated worktree and ephemeral session per attempt; no treatment result sharing",
+  "controls": [
+    "same baseline per task",
+    "same task prompt per paired settings",
+    "same installed dependencies and environment",
+    "no nested subagents",
+    "no web search",
+    "no global user config",
+    "memory use and generation disabled",
+    "no live services or production changes",
+    "no fixes/retries on primary attempts"
+  ],
+  "primary_outcomes": [
+    "independent acceptance pass/fail and cases passed",
+    "wall seconds from process start to completion",
+    "reported total input/cached/cache-write/output/reasoning tokens",
+    "standard API-equivalent cost"
+  ],
+  "secondary_outcomes": [
+    "scope violations",
+    "changed production/test lines",
+    "commands and failures",
+    "qualitative maintainability and completion evidence"
+  ],
+  "grading": "Freeze acceptance cases before measured runs. Grade first-attempt tree, not later repairs. Review anonymized diffs when possible; disclose model-based grading limitations.",
+  "timeouts_seconds": {
+    "small": 900,
+    "medium": 1500,
+    "large": 2400
+  },
+  "cost_usd_per_million": {
+    "uncached_input": 10,
+    "cached_input": 1,
+    "cache_write_input": 12.5,
+    "output_including_reasoning": 50
+  },
+  "cost_source": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+  "cost_formula": "((input-cached-cache_write)*10 + cached*1 + cache_write*12.5 + output*50)/1000000; reasoning is a subset of output, not added twice",
+  "exclusions": [
+    "discovery",
+    "environment setup",
+    "one no-tools connectivity check",
+    "independent grading",
+    "post-experiment repair"
+  ],
+  "limits": [
+    "three researcher-selected tasks in one private repository",
+    "three stochastic repeats per cell; descriptive case study, no universal causal claim",
+    "unversioned model alias and backend hardware cannot be pinned",
+    "shared server-side cache cannot be cleared; report cached and cache-normalized costs separately",
+    "no subscription quota attribution",
+    "timeouts/failures remain in results; missing token counts remain missing",
+    "private source and raw transcripts are not public release artifacts"
+  ],
+  "baseline_setup": "bun install --frozen-lockfile --ignore-scripts with Bun1.3.14; lock/tree unchanged; same restore in each worktree"
+}
