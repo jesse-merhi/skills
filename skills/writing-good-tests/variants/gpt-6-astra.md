@@ -14,6 +14,14 @@ Decide what behavior needs proof, find the coverage that already exists, then im
 
 Read the changed contract and nearby tests, fixtures, routes and helpers, including staged, unstaged, untracked and deleted work. For each proposed test, identify the realistic regression, the failure a caller would see, the expected result established independently of the implementation, and the nearest overlapping proof. Specifications and worked examples can supply expectations; copying the implementation into the assertion cannot.
 
+Before writing a test, prove the situation can happen in the code you’re testing. Trace where the input comes from and how it gets there. Inventing a fixture is not proof.
+
+Use the application’s own data definitions for successful fakes and fixtures. Don’t create separate test structures or change application behavior to make a fixture fit.
+
+Every test—including rejection tests—must protect required behavior against a possible failure. Check existing coverage first. Merely proving that a schema validator rejects an invented object adds no useful coverage.
+
+**Example:** Test retries for HTTP `429` only if that response can reach the retry handler and should trigger a retry. If the client handles it internally, injecting it into the handler invents an unreachable scenario.
+
 Choose the lowest practical boundary that proves the failure: unit tests for policy or parsing, integration tests for real bindings/persistence/isolation, and a useful end-to-end journey for visible cross-boundary behavior. Use parser/linter plus execution for declarative configuration. Do not test skill prose or linter implementation; apply the repository's instruction-exercise and linter validation policy.
 
 Keep one test responsible for proving each promised regression. A broader test replaces a smaller one only when it exercises the same branch with equivalent inputs, asserts the same outcome and runs at an equivalent required cadence. Inspect that replacement before deleting the old owner. Passing through code, manual coverage, planned tests and types alone are not replacements.
