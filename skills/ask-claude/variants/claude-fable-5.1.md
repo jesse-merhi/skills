@@ -25,6 +25,6 @@ ask-claude write "<self-contained prompt>"
 
 ## 2. Return the result
 
-The launcher runs one temporary Claude session with saved history disabled; ACP handles timeout, cancellation, and execution teardown. It returns Claude's output and exit status. Temporary sessions cannot be resumed; no existing history is deleted.
+Claude sessions are ephemeral.
 
 Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
