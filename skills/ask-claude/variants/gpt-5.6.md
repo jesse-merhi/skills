@@ -9,7 +9,7 @@ Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
 ## Send the brief
 
-Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope. Tell it to close its temporary session before finishing.
+Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope.
 
 For advice, review, or planning:
 ```sh
@@ -21,10 +21,8 @@ For explicitly authorized implementation:
 ask-claude write "<self-contained prompt>"
 ```
 
-Use the current Claude configuration and one fresh `acpx ... claude exec` session, not an in-chat subagent. Use persistent `prompt` mode only for an explicitly requested ongoing conversation.
+## Return the result
 
-## Return the result and close
+Claude sessions are ephemeral.
 
-Record the session ID, inspect the evidence, and validate any edits in the originating session. After success, failure, cancellation, timeout, or early stop, verify that the temporary session closed; if it remains, close that exact session. Close a requested persistent session when its conversation ends.
-
-Report the result and any cleanup failure. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
+Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
