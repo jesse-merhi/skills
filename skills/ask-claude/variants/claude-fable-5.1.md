@@ -23,13 +23,8 @@ For explicitly authorized implementation:
 ask-claude write "<self-contained prompt>"
 ```
 
-## 2. Verify and return the result
+## 2. Return the result
 
-The launcher creates one temporary Claude session with saved history disabled and automatic execution teardown. It streams the answer and saves the raw response and errors in the private run directory printed on stderr. Temporary helpers cannot be resumed; no existing history is deleted.
+The launcher runs one temporary Claude session with saved history disabled; ACP handles timeout, cancellation, and execution teardown. It returns Claude's output and exit status. Temporary sessions cannot be resumed; no existing history is deleted.
 
-Check the command's exit status, then retrieve the answer and verify the exact native session:
-```sh
-ask-claude inspect <run-directory>
-```
-
-Run this check after success, failure, timeout, cancellation, or interruption. If no run directory was printed, launch failed before Claude started. Retain the run directory as task evidence, validate any edits yourself, and report the answer and inspection result. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
+Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
