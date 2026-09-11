@@ -5,6 +5,7 @@ import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
 
 import { checkedInherit, type CheckedProcessOptions, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { ReviewSnapshotError, trustedExecutable } from "./ReviewEnvironment.ts"
@@ -171,19 +172,12 @@ const SessionMetaLine = Schema.fromJsonString(Schema.Struct({
   payload: Schema.Struct({
     id: Schema.String,
     cwd: Schema.String,
+    source: Schema.Unknown,
     parent_thread_id: Schema.optionalKey(Schema.String)
   })
 }))
 
-// One `codex review` writes two rollouts: a small driver session carrying the
-// entered_review_mode marker, and the subagent thread that holds the actual
-// review transcript, linked back by parent_thread_id. Archiving only the driver
-// leaves the larger half behind, so both are collected.
-const reviewSessionMarker = "\"entered_review_mode\""
-const sessionHeadBytes = 8192
-// The driver session is a few tens of KB; this bounds the marker read so a
-// concurrent interactive rollout is never loaded in full.
-const maxDriverSessionBytes = 4 * 1024 * 1024
+const isReviewSource = Schema.is(Schema.Struct({ subagent: Schema.Literal("review") }))
 
 // @effect-diagnostics-next-line processEnv:off
 const sessionEnvironment = { CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME }
@@ -211,10 +205,9 @@ const sessionDay = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-
 
 const readSessionHead = Effect.fn("NativeReview.readSessionHead")(function*(path: string) {
   const fs = yield* FileSystem.FileSystem
-  const head = yield* Effect.scoped(fs.open(path).pipe(Effect.flatMap((file) => file.readAlloc(sessionHeadBytes))))
-  if (Option.isNone(head)) return Option.none()
-  const firstLine = new TextDecoder().decode(head.value).split("\n", 1)[0] ?? ""
-  return yield* Schema.decodeUnknownEffect(SessionMetaLine)(firstLine).pipe(Effect.option)
+  const firstLine = yield* fs.stream(path).pipe(Stream.decodeText(), Stream.splitLines, Stream.runHead, Effect.orElseSucceed(() => Option.none()))
+  if (Option.isNone(firstLine)) return Option.none()
+  return yield* Schema.decodeUnknownEffect(SessionMetaLine)(firstLine.value).pipe(Effect.option)
 })
 
 export const archiveReviewSessions = Effect.fn("NativeReview.archiveReviewSessions")(function*(options: {
@@ -254,26 +247,27 @@ export const archiveReviewSessions = Effect.fn("NativeReview.archiveReviewSessio
           if (mtime === undefined || mtime.getTime() < cutoffTime) continue
           const meta = yield* readSessionHead(path)
           if (Option.isNone(meta) || !cwds.has(meta.value.payload.cwd)) continue
-          const { id, parent_thread_id: parent } = meta.value.payload
+          const { id, parent_thread_id: parent, source } = meta.value.payload
           if (parent !== undefined) {
-            children.push({ id, parent, path })
+            if (isReviewSource(source)) children.push({ id, parent, path })
             continue
           }
-          if (info.value.size > maxDriverSessionBytes) continue
-          const content = yield* fs.readFileString(path).pipe(Effect.orElseSucceed(() => ""))
-          if (content.includes(reviewSessionMarker)) drivers.push(id)
+          if (source === "exec") drivers.push(id)
         }
       }
     }
   }
-  const driverIds = new Set(drivers)
+  // A native review is an exec driver paired with a review-source child.
+  // Neither an exec session alone nor an arbitrary spawned child identifies it.
+  const reviewParents = new Set(children.map((child) => child.parent))
+  const driverIds = new Set(drivers.filter((id) => reviewParents.has(id)))
   const archived: Array<string> = []
   const archive = Effect.fn("NativeReview.archiveSession")(function*(id: string) {
     const result = yield* checkedTrimmedText(options.reviewer, ["archive", id]).pipe(Effect.timeout("30 seconds"), Effect.option)
     if (Option.isSome(result)) archived.push(id)
     return Option.isSome(result)
   })
-  for (const id of drivers) {
+  for (const id of driverIds) {
     if (!(yield* archive(id))) yield* Console.error(`warning: could not archive review session ${id}`)
   }
   // Archiving a driver moves its subagent thread too, so only sweep the ones
