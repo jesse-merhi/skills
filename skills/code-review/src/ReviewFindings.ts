@@ -216,14 +216,16 @@ Required for rejected candidates without an owner resolution:
 Required for runtime findings:
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
   --impact ${FINDING_IMPACTS.join("|")}
-  Likelihood describes whether and how a client/API user or resulting background work reaches the trigger:
-    certain: the affected normal operation reliably fails without unusual conditions.
-    likely: ordinary actions or inputs commonly reach it; possible: a specific realistic action or supported condition reaches it; rare: a demonstrated unusual combination reaches it.
-    A deterministic failure after selecting a rare trigger is still rare. State the affected workflow and supported configuration; do not generalize a narrow reproduction to all users.
-    unknown: the reachable trigger or consequence still needs investigation; theoretical: only a hypothetical trigger, not an evidenced real flow. Neither is an accepted, rated finding. Usage statistics are not required to establish a realistic path.
+  Likelihood: how client/API users or background jobs reach the failure.
+    certain: the affected normal operation reliably fails.
+    likely: ordinary actions or inputs commonly reach it.
+    possible: a specific realistic action or supported condition reaches it.
+    rare: a demonstrated unusual combination reaches it.
+    Name the affected workflow and configuration. A failure on every attempt with a rare input is still rare; usage statistics are not required to prove reachability.
+    unknown: trigger or consequence needs investigation; theoretical: no evidenced real flow. Neither receives a rating or acceptance.
   Impact describes the consequence when triggered, independently of likelihood:
     critical: catastrophic loss or compromise; high: major loss, compromise or disruption; medium: meaningful but bounded failure; low: minor, recoverable harm.
-  Rate the demonstrated user or system consequence after existing protections and recovery, not the component name or the word "security".
+  Rate the demonstrated harm after existing protections and recovery. A component name or the word "security" does not establish impact.
   A required check failing does not by itself establish high or critical impact; identify the resulting broken deliverable or supported workflow.
   P0 means a release blocker, including major failures reliably encountered in normal use and catastrophic consequences under evidenced likely or possible conditions.
 
