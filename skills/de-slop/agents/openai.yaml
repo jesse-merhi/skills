@@ -1,0 +1,4 @@
+interface:
+  display_name: "De-slop"
+  short_description: "Rewrite prose in a specific, natural voice"
+  default_prompt: "Use $de-slop to remove AI-like padding from this draft while keeping its meaning and voice."

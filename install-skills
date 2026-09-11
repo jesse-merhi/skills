@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+import { runInstaller } from "./skills/writing-for-agents/scripts/install-skills.mjs";
+
+runInstaller();

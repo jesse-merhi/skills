@@ -4,6 +4,32 @@ Shared instructions for every coding harness (Claude Code, Codex,
 opencode, Pi). Keep this file harness-agnostic. Anything Claude-specific belongs
 in `CLAUDE.md`, which imports this file and layers on top of it.
 
+## Review responsibilities
+
+Assign review duties by the task, not by whether an agent is a subagent.
+
+- The coordinator owns the review loop, findings registry, approval requests,
+  authorized fixes, validation, commits, publication, handoffs, and user-facing
+  summary. A subagent assigned an until-clean workflow is a coordinator for
+  that workflow; it is not a findings-only reviewer.
+- A findings-only reviewer is assigned to inspect and report, not to run the
+  fix-and-rerun workflow. Use a findings-only reviewer preset when the harness
+  exposes one; never select it for an until-clean coordinator. Give it the
+  target, neutral checklist, and requested evidence without implementation
+  rationale or prior findings. It reports candidates and supporting evidence,
+  consulting relevant domain skills and retaining the mandatory review lenses
+  below. The coordinator uses code-review's findings guide for those candidates;
+  the findings CLI owns severity and disposition.
+- The reviewer returns candidates with their rating evidence, rejected candidates,
+  verification limits, and requested coverage evidence to the coordinator. It
+  does not edit code, write the findings registry, manage fixes or reruns,
+  publish, or run writing and handoff workflows for its internal report. The coordinator records the
+  returned evidence, obtains CLI-derived severity and disposition, and handles
+  user-facing presentation and delivery gates.
+- Reading a skill does not expand the assignment or authorize its workflow.
+  Safety, security, permission boundaries, and applicable repository constraints
+  remain binding on every agent; role instructions are not a sandbox.
+
 ## Communication
 
 - Lead with the outcome, then explain what changed and why.
@@ -16,17 +42,18 @@ in `CLAUDE.md`, which imports this file and layers on top of it.
     observable effect.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
-- Immediately before every final response, load `speak-fking-english`.
-- Stay concise while preserving the explanation needed to understand the work.
+- Keep replies concise, concrete, and free of repetition while preserving
+  necessary evidence and qualifications. Use `speak-fking-english` for
+  substantial writing, requested rewrites, unclear explanations, or when a
+  delivery workflow requires it; routine short replies need no extra skill read.
 - When user input is genuinely required, use the harness's native structured
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
-- When an evidence-backed user correction exposes reusable agent behavior or
-  asks to codify prevention in instructions, skills, lint, tests, or other
-  controls, load `feedback-hardening` before systemic repair. Task-local repair
-  may continue under existing authority, but a prevention request is not
-  advance approval of an unbound systemic recommendation.
+- When a user correction or self-detected mistake reveals a reusable agent
+  failure, use `feedback-hardening`. Before closing, the source coordinator must
+  start its recommendation workflow or explain the blocker. Local repairs may
+  continue; systemic changes require approval.
 
 ## Implementation design
 
@@ -42,6 +69,10 @@ in `CLAUDE.md`, which imports this file and layers on top of it.
 - Make architectural decisions for the long term. Do not implement a stopgap
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
+- Before creating or changing agent instructions, use `writing-for-agents`
+  to select the applicable authoring guidance. For skill changes, read the
+  skill's `BASE.md` first and keep shared behaviour there, then adapt every
+  supported model variant complete; variant file presence is the coverage record.
 
 ## Dependency-first implementation
 
@@ -77,7 +108,7 @@ resource lifecycle, and graceful shutdown.
 ## Test and review design
 
 - Before creating, changing, or removing tests or test infrastructure, load
-  `test-audit` and apply its portfolio policy. During code review, load it for
+  `writing-good-tests` in test-planning/portfolio mode. During code review, load it for
   every production behavior change and whenever the diff creates, changes, or
   removes tests or test infrastructure.
 - Validate skill instructions through independent agent exercises and review.
@@ -90,21 +121,65 @@ resource lifecycle, and graceful shutdown.
 - During code review, load `reducing-cognitive-load` while assessing the initial
   diff and every proposed fix so reduction happens inside the review loop.
 
+### Evidence before review fixes
+
+- Before repairing a review-discovered bug, apply the evidence checks in
+  code-review's findings guide. A reproduction through the actual application using
+  realistic local fixtures can qualify; production data is not required.
+- Keep evidence tied to the reviewed revision and label what was actually
+  observed. A type-permitted value or invented unreachable state is not proof.
+- Preserve privacy, access and repair-authority boundaries. This grants no
+  production access and never authorizes causing an incident to obtain evidence.
+
 ## Model turns
 
-Every return to the model re-sends the whole conversation, so the count of
-returns sets the cost of a task.
+Model cost depends on the model, generated tokens, and input/cache usage.
+Repeated model turns can add cost; elapsed time in a held tool call is not
+itself model generation.
+
+- Use Astra at medium for coordination, integration, and verification. The
+  coordinator may complete small local steps when delegation would not help.
+  For meaningful delegated work, use Sol at high for implementation and tests,
+  and Luna at max for bounded investigation and focused research. Use Astra at
+  xhigh only for independent review when the task or delivery gate requires it.
+- Apply an explicit user model or effort override only to its named task. Set
+  model and effort through the launcher; a prompt cannot override a launcher's
+  fixed settings. If the selected configuration is unavailable, report that
+  limitation instead of silently substituting another model or effort.
+- Delegate useful independent work on demand. Do not create the full model tree
+  automatically. Delegate only when briefing the worker and checking its output
+  costs less than doing the work directly. Give each worker a bounded task and
+  completion condition, keep dependent work sequential, and leave integration
+  with the coordinator. A worker stops and returns evidence on failure or
+  ambiguity.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one
   Codex code-mode cell, or several tool calls in one response where the harness
   runs them natively. Keep dependent calls, writes, and approval-sensitive
   actions serial.
-- Start one event-driven wait sized to the mechanism and expected completion
-  time, then resume that same wait or process if the harness yields. A wait
-  deadline is a ceiling, not a required delay; there is no universal minimum.
-  Load `wait-efficiently` for anything longer or more involved than a single
-  command.
+- Resume existing operations using completion notifications or bounded waits;
+  avoid repeated status polling. Load `wait-efficiently` for CI monitoring,
+  prolonged commands, timed delays, or coordinating pending agents. Ordinary
+  batches of quick commands need no extra skill read. Keep waits within tool
+  limits and the current communication requirements.
+
+## Outcome and completion
+
+- Infer the intended outcome from the original request and the user's later
+  corrections. Treat a correction as part of the current outcome unless the
+  user replaces the task.
+- A request to change, build, or fix authorizes the ordinary local
+  implementation, integration, and verification needed to deliver that outcome
+  within the existing permission, publication, and destructive-action
+  boundaries. Do not stop at a plan, diagnosis, or partial patch while obvious
+  authorized work remains.
+- Before stopping, apply the [communication proof requirements](#communication),
+  reconcile the result against the original request and every accepted
+  correction, then finish any obvious missing in-scope step that needs no new
+  authority or user decision.
+- If the outcome remains incomplete, state exactly what remains, what evidence
+  was established, and which blocker prevents completion.
 
 ## Working rules
 
@@ -117,8 +192,9 @@ returns sets the cost of a task.
   or when a named workflow explicitly grants final-push authority. Otherwise,
   stop at a local checkpoint and show the result.
 - Choose the PR delivery shape before implementation. Keep one cohesive change
-  in one PR. When one story contains two or more dependent review units, load
-  `gh-stack` and plan a bottom-to-top stack before editing. Keep independent or
+  in one PR. When one story contains two or more dependent review units, plan a
+  bottom-to-top stack before editing. Use the installed `gh stack` tool
+  and discover commands through `gh stack --help`. Keep independent or
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
 - Review gate: before marking any PR ready, asking for human sign-off, or

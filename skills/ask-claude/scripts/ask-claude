@@ -18,7 +18,10 @@ if [[ "$mode" == "write" ]]; then
   permissions=(--approve-all)
 fi
 
-exec npx --yes acpx@0.13.1 \
+# Replace the actual ACP process so cancellation does not stop at an npx parent.
+acpx_executable="$(npx --yes --package=acpx@0.13.1 --call 'command -v acpx')"
+export CLAUDE_CODE_SKIP_PROMPT_HISTORY=1
+exec "$acpx_executable" \
   --cwd "$PWD" \
   "${permissions[@]}" \
   --timeout "$timeout_seconds" \

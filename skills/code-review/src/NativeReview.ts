@@ -182,6 +182,25 @@ const isReviewSource = Schema.is(Schema.Struct({ subagent: Schema.Literal("revie
 // @effect-diagnostics-next-line processEnv:off
 const sessionEnvironment = { CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME }
 
+const codexHomeDirectory = Effect.gen(function*() {
+  const paths = yield* Path.Path
+  if (sessionEnvironment.CODEX_HOME !== undefined && sessionEnvironment.CODEX_HOME.length > 0) return sessionEnvironment.CODEX_HOME
+  if (sessionEnvironment.HOME !== undefined && sessionEnvironment.HOME.length > 0) return paths.join(sessionEnvironment.HOME, ".codex")
+  return undefined
+})
+
+export const nativeReviewArguments = Effect.fn("NativeReview.arguments")(function*(target: ReviewTarget) {
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const home = yield* codexHomeDirectory
+  const profileInstalled = home !== undefined && (yield* fs.exists(paths.join(home, "findings-reviewer.config.toml")))
+  return [
+    ...(profileInstalled ? ["--profile", "findings-reviewer"] : []),
+    "review", "-c", 'model="gpt-6-astra"', "-c", 'review_model="gpt-6-astra"',
+    "-c", 'model_reasoning_effort="xhigh"', ...target.args
+  ]
+})
+
 const sessionDay = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "/")
 
 const readSessionHead = Effect.fn("NativeReview.readSessionHead")(function*(path: string) {
@@ -199,13 +218,7 @@ export const archiveReviewSessions = Effect.fn("NativeReview.archiveReviewSessio
 }) {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
-  const codexHome = options.sessionsRoot !== undefined
-    ? undefined
-    : sessionEnvironment.CODEX_HOME !== undefined && sessionEnvironment.CODEX_HOME.length > 0
-    ? sessionEnvironment.CODEX_HOME
-    : sessionEnvironment.HOME !== undefined && sessionEnvironment.HOME.length > 0
-    ? paths.join(sessionEnvironment.HOME, ".codex")
-    : undefined
+  const codexHome = options.sessionsRoot === undefined ? yield* codexHomeDirectory : undefined
   const root = options.sessionsRoot ?? (codexHome === undefined ? undefined : paths.join(codexHome, "sessions"))
   if (root === undefined || !(yield* fs.exists(root))) return []
   const cwds = new Set<string>()
@@ -297,7 +310,7 @@ export const runNativeReview = Effect.fn("NativeReview.run")(function*(options: 
   // so archive it to keep the resume picker and session search lean.
   const reviewTarget = Effect.fn("NativeReview.reviewTarget")(function*(target: ReviewTarget) {
     const startedAt = yield* DateTime.now
-    const output = yield* checkedText(reviewer, ["review", ...target.args])
+    const output = yield* checkedText(reviewer, yield* nativeReviewArguments(target))
     yield* archiveReviewSessions({
       reviewer,
       reviewCwds: [process.cwd(), repo],

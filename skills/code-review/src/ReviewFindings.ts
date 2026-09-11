@@ -10,9 +10,12 @@ import { createHash } from "node:crypto"
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
+import { type BudgetExtension, BudgetExtensionConflict, checkReviewLimits, DEFAULT_REVIEW_LIMITS, extendReviewTimeBudget, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
+import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
+  readonly runId?: string
   readonly repo: string
   readonly repoPath: string
   readonly branch: string
@@ -48,7 +51,7 @@ export const FINDING_STATUSES = ["open", "fixed", "rejected", "deferred", "provi
 export const FINDING_DISPOSITIONS = ["accept", "investigate", "consult", "follow-up", "residual", "reject"] as const
 export const FINDING_FIX_SCOPES = ["local", "systemic"] as const
 export const FINDING_HANDLINGS = ["fix", "consult", "follow-up", "reject"] as const
-export const FINDING_LIKELIHOODS = ["likely", "possible", "rare", "unknown", "theoretical"] as const
+export const FINDING_LIKELIHOODS = ["certain", "likely", "possible", "rare", "unknown", "theoretical"] as const
 export const FINDING_IMPACTS = ["critical", "high", "medium", "low"] as const
 export const FINDING_SEVERITIES = ["", "p0", "p1", "p2", "p3"] as const
 export const FINDING_AREAS = ["", "ui", "workflow", "api-contract", "permissions", "privacy", "finance", "data-correctness", "audit", "migration", "schema", "internal"] as const
@@ -65,13 +68,17 @@ interface FindingOutcome {
 }
 
 const RUNTIME_OUTCOMES = {
+  certain: {
+    low: { severity: "p3", disposition: "accept" }, medium: { severity: "p2", disposition: "accept" },
+    high: { severity: "p0", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
+  },
   likely: {
     low: { severity: "p3", disposition: "accept" }, medium: { severity: "p2", disposition: "accept" },
     high: { severity: "p1", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
   },
   possible: {
     low: { severity: "", disposition: "reject" }, medium: { severity: "p2", disposition: "accept" },
-    high: { severity: "p1", disposition: "accept" }, critical: { severity: "p1", disposition: "accept" }
+    high: { severity: "p1", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
   },
   rare: {
     low: { severity: "", disposition: "reject" }, medium: { severity: "", disposition: "reject" },
@@ -163,8 +170,14 @@ export class InvalidFinding extends Error {
 
 export const formatFindingSchema = () => `review-findings record schema v${FINDING_SCHEMA_VERSION}
 
+Triage:
+  The coordinator checks reviewer candidates and records the evidence, likelihood and impact; the CLI derives the rating and disposition.
+  runtime: incorrect executable behavior, including internal jobs, data integrity, security and infrastructure failures; direct UI impact is not required.
+  maintenance: current readability or change cost, not a way to relabel internal runtime bugs or bypass runtime evidence.
+  A rating does not authorize a repair; existing evidence, scope and permission gates still apply.
+
 Required for every finding:
-  --repo <name> --repo-path <root> --target <PR or range>
+  --review <id>, or --repo <name> --repo-path <root> --target <PR or range>
   --finding-kind ${FINDING_KINDS.join("|")}
   --status ${FINDING_STATUSES.join("|")}
   --fix-scope ${FINDING_FIX_SCOPES.join("|")}
@@ -177,6 +190,12 @@ Optional finding metadata:
   --area ${FINDING_AREAS.filter(Boolean).join("|")} --material
   --user-impact, --decision, --text
   --owner-resolution ${FINDING_OWNER_RESOLUTIONS.join("|")} for an explicit terminal decision about the finding
+
+Repeated finding evidence (instead of a new finding card):
+  record --match-of <open or rejected decision ID> --source <reviewer/pass> --evidence <result reference> --match-note <revision and same cause>
+  Appends to the existing open or rejected finding without changing its status or owner decision.
+  The same source and evidence reference is idempotent; a changed note is rejected.
+  closeout --json includes finding_matches. Matching remains the coordinator's judgment.
 
 Required for every actionable finding:
   --root-cause <underlying cause and owning boundary>
@@ -198,11 +217,25 @@ Required for rejected candidates without an owner resolution:
 Required for runtime findings:
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
   --impact ${FINDING_IMPACTS.join("|")}
+  Likelihood: how client/API users or background jobs reach the failure.
+    certain: the affected normal operation reliably fails.
+    likely: ordinary actions or inputs commonly reach it.
+    possible: a specific realistic action or supported condition reaches it.
+    rare: a demonstrated unusual combination reaches it.
+    Name the affected workflow and configuration. A failure on every attempt with a rare input is still rare; usage statistics are not required to prove reachability.
+    unknown: trigger or consequence needs investigation; theoretical: no evidenced real flow. Neither receives a rating or acceptance.
+  Impact describes the consequence when triggered, independently of likelihood:
+    critical: catastrophic loss or compromise; high: major loss, compromise or disruption; medium: meaningful but bounded failure; low: minor, recoverable harm.
+  Rate the demonstrated harm after existing protections and recovery. A component name or the word "security" does not establish impact.
+  A required check failing does not by itself establish high or critical impact; identify the resulting broken deliverable or supported workflow.
+  P0 means a release blocker, including major failures reliably encountered in normal use and catastrophic consequences under evidenced likely or possible conditions.
 
-Required when likelihood is likely, possible, or rare:
-  --production-path <current producer -> transformations -> failing sink>
-  --reachability-evidence <observed payload, current contract, or repository invariant>
+Required when likelihood is certain, likely, possible, or rare:
+  --production-path <actual executable path: current producer -> transformations -> failing sink>
+  --reachability-evidence <realistic input and reachable state through the reviewed code, including normal guards and dependencies>
   --actual-consequence <verified behavior and meaningful user/system impact>
+  --production-path names application code, not a deployed incident. Local fixtures and synthetic data qualify; production captures are not required.
+  Record revision, starting state, steps, expected and observed results, and an evidence reference. A contract or type-permitted value alone does not prove a failure.
 
 Required when likelihood is unknown or theoretical:
   --decision <investigation or rejection rationale>; runtime proof fields may be incomplete
@@ -218,6 +251,7 @@ Required when deferring accepted local risk:
   --decision <why the residual risk is accepted>
 
 CLI-derived severity/disposition matrix:
+  certain:     low=${outcomeLabel("certain", "low")}; medium=${outcomeLabel("certain", "medium")}; high=${outcomeLabel("certain", "high")}; critical=${outcomeLabel("certain", "critical")}
   likely:      low=${outcomeLabel("likely", "low")}; medium=${outcomeLabel("likely", "medium")}; high=${outcomeLabel("likely", "high")}; critical=${outcomeLabel("likely", "critical")}
   possible:    low=${outcomeLabel("possible", "low")}; medium=${outcomeLabel("possible", "medium")}; high=${outcomeLabel("possible", "high")}; critical=${outcomeLabel("possible", "critical")}
   rare:        low=${outcomeLabel("rare", "low")}; medium=${outcomeLabel("rare", "medium")}; high=${outcomeLabel("rare", "high")}; critical=${outcomeLabel("rare", "critical")}
@@ -233,6 +267,7 @@ Consistency rules:
   residual -> deferred with required decision text and no patch
   deferred legacy record without disposition -> unresolved until re-recorded
   reject -> rejected and no patch
+  rejected records remain searchable evidence, not repair work or review blockers; unknown material risks still require investigation
   accept|follow-up|residual and approved consult -> required repair fields
   unresolved or declined consult -> may omit recommended fix with decision rationale
   rejected or investigating candidate -> omit repair fields
@@ -303,10 +338,13 @@ export interface CloseoutFinding {
 }
 interface CloseoutFindingRow extends Omit<CloseoutFinding, "material"> { readonly material: number }
 
-const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, material: boolean, text: string) => {
+const findingText = (input: Finding, severity: string) => [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.contractEvidence, input.rootCause, input.recommendedFix, input.interventionJustification, input.rejectionGate, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
+
+const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, material: boolean) => {
+  const text = findingText(finding, existing.severity)
   const stored: ReadonlyArray<string | number> = [
     existing.status, existing.source, existing.fingerprint, existing.summary,
-    existing.area, existing.severity, existing.material, existing.user_impact,
+    existing.area, existing.material, existing.user_impact,
     existing.decision, existing.text, existing.finding_kind,
     existing.production_path, existing.reachability_evidence, existing.likelihood,
     existing.impact, existing.actual_consequence, existing.maintenance_evidence,
@@ -317,7 +355,7 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
   ]
   const replay: ReadonlyArray<string | number> = [
     finding.status, finding.source, finding.fingerprint, finding.summary,
-    finding.area, finding.severity, material ? 1 : 0, finding.userImpact,
+    finding.area, material ? 1 : 0, finding.userImpact,
     finding.decision, text, finding.findingKind, finding.productionPath,
     finding.reachabilityEvidence, finding.likelihood, finding.impact,
     finding.actualConsequence, finding.maintenanceEvidence, finding.presentCost,
@@ -455,8 +493,8 @@ export interface ScopeBudgetCheck extends ScopeBudgetStatus {
   readonly blocked: boolean
 }
 
-export const DEFAULT_SCOPE_GROWTH_PERCENT = 30
-export const MAX_SCOPE_GROWTH_LINES = 100
+export const DEFAULT_SCOPE_GROWTH_PERCENT = 50
+export const MAX_SCOPE_GROWTH_LINES = 300
 const PRODUCTION_ONLY_LINE_METRIC = "production-only"
 export const TOTAL_LOC_LINE_METRIC = "total-human-authored"
 const ScopeLineMetric = Schema.Literals([PRODUCTION_ONLY_LINE_METRIC, TOTAL_LOC_LINE_METRIC])
@@ -464,8 +502,11 @@ type ScopeLineMetric = typeof ScopeLineMetric.Type
 
 const humanAuthoredLines = (productionLines: number, testLines: number): number => productionLines + testLines
 
-export const allowedScopeGrowth = (baselineLines: number, limitPercent: number): number =>
-  Math.min(Math.floor(baselineLines * limitPercent / 100), MAX_SCOPE_GROWTH_LINES)
+export const allowedScopeGrowth = (baselineLines: number, limitPercent: number): number => {
+  const smallDiffLimit = Math.floor(baselineLines * limitPercent / 100)
+  const taperedAllowance = Math.max(50, Math.floor(baselineLines / 10))
+  return Math.min(smallDiffLimit, taperedAllowance, MAX_SCOPE_GROWTH_LINES)
+}
 
 export class MissingScopeBudget extends Error {
   readonly _tag = "MissingScopeBudget"
@@ -508,6 +549,8 @@ export class ScopeBudgetBlocked extends Error {
 }
 
 export interface Closeout {
+  readonly limits?: ReviewLimitsReport
+  readonly finding_matches?: ReadonlyArray<FindingMatchRow>
   readonly reviewed_head: string
   readonly review_candidates: ReadonlyArray<CloseoutFinding>
   readonly material_findings: ReadonlyArray<CloseoutFinding>
@@ -528,6 +571,7 @@ export interface CloseoutCount {
 }
 
 export interface CloseoutSummary {
+  readonly limits?: ReviewLimitsReport
   readonly reviewed_head: string
   readonly total_findings: number
   readonly material_findings: number
@@ -569,7 +613,8 @@ const synonyms: Readonly<Record<string, ReadonlyArray<string>>> = {
 const tokenize = (text: string) => [...text.toLowerCase().matchAll(/[a-z0-9][a-z0-9_.:/#-]*/gu)].flatMap(([raw]) => {
   const token = raw.replace(/^[._:/#-]+|[._:/#-]+$/gu, "")
   if (token.length === 0) return []
-  return [token, ...(synonyms[token] ?? []), ...(token.length > 4 && token.endsWith("s") ? [token.slice(0, -1)] : []), ...(token.length > 5 && token.endsWith("ed") ? [token.slice(0, -2)] : []), ...(token.length > 6 && token.endsWith("ing") ? [token.slice(0, -3)] : [])]
+  const tokenSynonyms = Object.hasOwn(synonyms, token) ? synonyms[token] : undefined
+  return [token, ...(tokenSynonyms ?? []), ...(token.length > 4 && token.endsWith("s") ? [token.slice(0, -1)] : []), ...(token.length > 5 && token.endsWith("ed") ? [token.slice(0, -2)] : []), ...(token.length > 6 && token.endsWith("ing") ? [token.slice(0, -3)] : [])]
 })
 type SparseVector = ReadonlyArray<readonly [number, number]>
 const vectorize = (text: string): SparseVector => {
@@ -615,7 +660,12 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
+    `create table if not exists review_budget_extensions (run_id text not null references review_runs(id) on delete cascade, request_id text not null, receipt text not null, primary key(run_id, request_id))`,
+    `create table if not exists review_invocations (id text primary key, run_id text not null references review_runs(id) on delete cascade, head text not null, base_oid text not null, phase text not null, start_revision integer not null, status text not null, outcome text not null, evidence text not null, launched integer not null default 0)`,
+    `create table if not exists review_progress_events (run_id text not null references review_runs(id) on delete cascade, revision integer not null, payload text not null, primary key(run_id, revision))`,
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
+    `create table if not exists review_run_limits (run_id text primary key references review_runs(id) on delete cascade, settings text not null)`,
+    `create table if not exists review_finding_matches (id integer primary key autoincrement, issue_id text not null references issues(id) on delete cascade, source text not null, evidence text not null, note text not null, created_at integer not null, unique(issue_id, source, evidence))`,
     `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', contract_evidence text not null default '', root_cause text not null default '', recommended_fix text not null default '', intervention_justification text not null default '', rejection_gate text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', evidence_version integer not null default ${FINDING_SCHEMA_VERSION}, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
     `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
@@ -624,6 +674,8 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     `create table if not exists review_file_attestations (id text primary key, run_id text not null references review_runs(id) on delete cascade, review_id text not null, reviewer text not null, path text not null, change_id text not null, reviewed_at integer not null, unique(run_id, review_id, path))`
   ]
   yield* Effect.forEach(tables, (statement) => sql.unsafe(statement), { discard: true })
+  yield* sql`insert or ignore into review_run_limits (run_id, settings)
+    select run_id, ${JSON.stringify(DEFAULT_REVIEW_LIMITS)} from review_scope_budgets`
   const columns = [
     ["review_runs", "repo_key", "text"], ["review_runs", "branch", "text"], ["review_runs", "update_seq", "integer not null default 0"],
     ["issues", "first_seen_at", "integer"], ["issues", "last_seen_at", "integer"], ["issues", "seen_count", "integer not null default 1"],
@@ -731,7 +783,7 @@ const canonicalBaseIdentity = Effect.fn("ReviewFindings.canonicalBaseIdentity")(
   return `oid:${oid}`
 })
 
-const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
+const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base" | "runId">) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
   const requestedIdentity = yield* canonicalBaseIdentity(run.repoPath, run.base).pipe(
@@ -745,7 +797,10 @@ const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<Re
     const candidateIdentity = yield* canonicalBaseIdentity(run.repoPath, candidate.base).pipe(
       Effect.orElseSucceed(() => `raw:${candidate.base}`)
     )
-    if (candidateIdentity === requestedIdentity) return candidate.id
+    if (candidateIdentity === requestedIdentity) {
+      if (run.runId !== undefined && run.runId !== candidate.id) return yield* Effect.fail(new InvalidFinding("This handle belongs to a different review run; use the current review ID"))
+      return candidate.id
+    }
   }
   return undefined
 })
@@ -812,6 +867,28 @@ const resolveRecordRun = Effect.fn("ReviewFindings.resolveRecordRun")(function*(
     branch: run.branch.length > 0 ? run.branch : match.branch,
     base: run.base.length > 0 ? run.base : match.base
   }
+})
+
+const requireReviewWriter = Effect.fn("ReviewFindings.requireReviewWriter")(function*(runId: string, reviewId?: string) {
+  const sql = yield* SqlClient.SqlClient
+  const pending = (yield* sql<{ readonly id: string }>`select id from review_invocations where run_id = ${runId} and status = 'open'`)[0]
+  if (pending !== undefined && pending.id !== reviewId) return yield* new ProgressConflict({ message: `Use --review ${pending.id} to record this review; finish it before another phase or repair` })
+})
+
+const requireRepairAuthorization = Effect.fn("ReviewFindings.requireRepairAuthorization")(function*(runId: string, findingId: string) {
+  const limits = yield* readReviewLimits(runId)
+  if (limits.repairAttempts.some(attempt => attempt.findingId === findingId && attempt.unsuccessfulAttempts >= 2)) {
+    return yield* new ProgressConflict({ message: "Two unsuccessful repairs require owner authorization before another attempt or a fixed result" })
+  }
+})
+
+/** Repairs wait for a complete assessment; legacy runs without managed reviews retain their workflow. */
+export const requireFinishedReview = Effect.fn("ReviewFindings.requireFinishedReview")(function*(run: ReviewRun) {
+  const runId = yield* exactRunId(yield* resolveRecordRun(run))
+  if (runId === undefined) return
+  const sql = yield* SqlClient.SqlClient
+  const latest = (yield* sql<{ readonly status: string }>`select status from review_invocations where run_id = ${runId} order by start_revision desc limit 1`)[0]
+  if (latest !== undefined && latest.status !== "finished") return yield* new ProgressConflict({ message: "Finish the complete review before recording repairs; a blocked review is incomplete" })
 })
 
 const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {
@@ -889,7 +966,8 @@ export const classifyReviewFileCoverage = (
 export const getReviewFileCoverage = Effect.fn("ReviewFindings.getReviewFileCoverage")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
   const sql = yield* SqlClient.SqlClient
   const coverage = yield* coverageTarget(run)
-  const attestations = yield* sql<ReviewFileAttestationRow>`select review_id, reviewer, path, change_id from review_file_attestations where run_id = ${coverage.runId}`
+  const attestations = yield* sql<ReviewFileAttestationRow>`select review_id, reviewer, path, change_id from review_file_attestations where run_id = ${coverage.runId}
+    and not exists (select 1 from review_invocations i where i.id = review_id and i.status != 'finished')`
   return classifyReviewFileCoverage(coverage.manifest, attestations)
 })
 
@@ -907,6 +985,7 @@ export const recordReviewedFiles = Effect.fn("ReviewFindings.recordReviewedFiles
   const sql = yield* SqlClient.SqlClient
   const coverage = yield* coverageTarget(run)
   if (coverage.budget.status === "complete") return yield* Effect.fail(new InvalidReviewCoverage("review file coverage is complete and terminal; start a new review run before recording more files"))
+  yield* requireReviewWriter(coverage.runId, input.reviewId)
   const manifest = new Map(coverage.manifest.map((file) => [file.path, file]))
   const invalid = [...files.keys()].filter((path) => !manifest.has(path))
   if (invalid.length > 0) return yield* Effect.fail(new InvalidReviewCoverage(`coverage-record accepts only files in the current changed-file manifest; not changed: ${invalid.join(", ")}`))
@@ -966,6 +1045,8 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   readonly expectedGeneration?: number
   readonly allowReady?: boolean
   readonly inheritedBaseline?: ScopeBudgetStatus
+  readonly reason?: string
+  readonly limits?: Partial<LimitSettings>
 }) {
   yield* validateLimit(input.inheritedBaseline?.limitPercent ?? input.limitPercent)
   const sql = yield* SqlClient.SqlClient
@@ -1001,14 +1082,21 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
   const runId = input.runId ?? (yield* (input.freshRun === true ? createScopeRun(run) : upsertRun(run)))
-  yield* sql`update review_runs set head = ${targetOid} where id = ${runId}`
+  if (input.freshRun === true) yield* freezeReviewLimits(runId, input.limits ?? {})
   if (input.expectedGeneration !== undefined) {
     const current = yield* readScopeBudget(runId)
     const expectedStatus = current.status === "blocked" || current.status === "rebaseline-required" || (input.allowReady === true && (current.status === "ready" || current.status === "ok"))
     if (current.generation !== input.expectedGeneration || !expectedStatus) {
       return yield* Effect.fail(new InvalidScopeBudget("scope budget changed while scope-authorize was measuring; rerun scope-check and request authorization for the current state"))
     }
+    if (current.baseRef !== run.base) {
+      const destination = yield* exactRunId(run)
+      if (destination !== undefined && destination !== runId) {
+        return yield* Effect.fail(new InvalidScopeBudget("the new base already identifies another review run; choose a distinct base ref to preserve both histories"))
+      }
+    }
   }
+  yield* sql`update review_runs set base = ${run.base}, head = ${targetOid}, repo_path = ${run.repoPath} where id = ${runId}`
   if (input.freshRun === true) {
     const repoKey = yield* canonicalRepoKey(run.repoPath)
     yield* sql`insert or ignore into review_scope_locks (repo_key, branch, run_id) values (${repoKey}, ${run.branch}, ${runId})`
@@ -1043,7 +1131,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
     currentTestLines: measurement.tests.changedLines,
     allowedGrowthLines,
     newPaths: newHumanAuthoredPaths,
-    reason: "",
+    reason: input.reason ?? "",
     scopeSummary: input.scopeSummary,
     authorization
   })
@@ -1053,6 +1141,7 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
 
 export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(function*(run: ReviewRun, input: {
   readonly scopeSummary: string
+  readonly limits?: Partial<LimitSettings>
 }) {
   const sql = yield* SqlClient.SqlClient
   const verifiedRun = yield* verifyScopeRun(run)
@@ -1104,20 +1193,24 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
 export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudget")(function*(run: ReviewRun, input: {
   readonly scopeSummary: string
   readonly authorization: string
+  readonly newBase?: string
 }) {
   if (input.authorization.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-authorize requires the user's explicit authorization text"))
+  if (input.newBase !== undefined && input.newBase.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("--new-base must name a Git commit or ref"))
   const verifiedRun = yield* verifyScopeRun(run)
   const runId = yield* exactRunId(verifiedRun)
   if (runId === undefined) return yield* Effect.fail(new MissingScopeBudget())
   const existing = yield* readScopeBudget(runId)
   if (existing.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
+  const revisedRun = { ...verifiedRun, base: input.newBase ?? verifiedRun.base }
   const git = yield* trustedExecutable("git", verifiedRun.repoPath)
-  const currentBaseOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${verifiedRun.base}^{commit}`], { cwd: verifiedRun.repoPath })
-  const baseMoved = currentBaseOid !== existing.baseOid
+  const currentBaseOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${revisedRun.base}^{commit}`], { cwd: verifiedRun.repoPath })
+  const baseMoved = currentBaseOid !== existing.baseOid || revisedRun.base !== existing.baseRef
   if (existing.status !== "blocked" && existing.status !== "rebaseline-required" && !baseMoved) {
     return yield* Effect.fail(new InvalidScopeBudget("scope-authorize is only valid after scope-check has blocked, migration requires rebaseline, or the requested base ref has moved"))
   }
-  return yield* saveScopeBaseline(verifiedRun, { ...input, limitPercent: existing.limitPercent, baseOid: currentBaseOid, event: "authorized", runId, expectedGeneration: existing.generation, allowReady: baseMoved })
+  return yield* saveScopeBaseline(revisedRun, { ...input, limitPercent: existing.limitPercent, baseOid: currentBaseOid, event: "authorized", runId, expectedGeneration: existing.generation, allowReady: baseMoved,
+    reason: `Rebaseline from ${existing.baseRef}@${existing.baseOid} to ${revisedRun.base}@${currentBaseOid}` })
 })
 
 export const getScopeBudget = Effect.fn("ReviewFindings.getScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
@@ -1132,6 +1225,10 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   const sql = yield* SqlClient.SqlClient
   const budget = yield* getScopeBudget(run)
   if (budget.status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review instead of reopening it"))
+  const git = yield* trustedExecutable("git", run.repoPath)
+  const head = budget.pinnedHeadOid || (yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: run.repoPath }))
+  const limits = yield* readReviewLimits(budget.runId, head)
+  yield* checkReviewLimits({ ...limits, stoppingReasons: limits.stoppingReasons.filter(reason => reason !== "DIFF_GROWTH_EXCEEDED" && reason !== "NEW_BINARY_PATHS"), allowed: limits.stoppingReasons.every(reason => reason === "DIFF_GROWTH_EXCEEDED" || reason === "NEW_BINARY_PATHS") })
   if (budget.status === "rebaseline-required") return yield* Effect.fail(new InvalidScopeBudget(budget.lastReason))
   if (budget.lineMetric !== TOTAL_LOC_LINE_METRIC) return yield* Effect.fail(new InvalidScopeBudget("scope budget uses the retired production-only metric; explicit rebaseline is required"))
   const measurement: ScopeMeasurement = yield* measureScopeDiff(run.repoPath, budget.baseOid, budget.pinnedHeadOid.length === 0 ? "HEAD" : budget.pinnedHeadOid, budget.pinnedHeadOid.length === 0)
@@ -1205,6 +1302,8 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
       const findings = unresolved.map((finding) => `${finding.decision_id} [${finding.status}]: ${finding.summary}`).join("\n")
       return yield* Effect.fail(new InvalidScopeBudget(`scope-complete requires every finding to be fixed, rejected, or explicitly deferred; resolve these findings first:\n${findings}`))
     }
+    const limits = yield* readReviewLimits(check.runId, current.pinnedHeadOid || cleanHead)
+    if (limits.incompletePhases.length > 0) return yield* Effect.fail(new InvalidScopeBudget(JSON.stringify({ limits, stoppingReasons: ["PHASE_TARGET_NOT_MET"] })))
     yield* sql`update review_runs set head = ${current.pinnedHeadOid.length > 0 ? current.pinnedHeadOid : cleanHead} where id = ${check.runId}`
     yield* sql`update review_scope_budgets set generation = generation + 1, status = 'complete', last_reason = ${reason}, updated_at = ${nowSeconds()} where run_id = ${check.runId}`
     yield* sql`delete from review_scope_locks where run_id = ${check.runId}`
@@ -1228,19 +1327,21 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
 
 type DecodedFinding = typeof FindingRecord.Type
 
-const requiredFindingText = (finding: DecodedFinding) => {
+const requiredFindingText = (finding: FindingInput) => {
   const fields = [
     ["--decision-id", finding.decisionId],
     ["--source", finding.source],
     ["--fingerprint", finding.fingerprint],
-    ["--summary", finding.summary]
+    ["--summary", finding.summary],
+    ["--finding-kind", finding.findingKind],
+    ["--status", finding.status],
+    ["--fix-scope", finding.fixScope],
+    ["--handling", finding.handling]
   ] as const
   return fields.find(([, value]) => value.trim().length === 0)?.[0]
 }
 
 const findingInputError = (finding: DecodedFinding) => {
-  const missing = requiredFindingText(finding)
-  if (missing !== undefined) return `${missing} must not be empty`
   if (finding.handling === "reject" && finding.decision.trim().length === 0) {
     return "--handling reject requires --decision with the actionability rationale"
   }
@@ -1376,6 +1477,8 @@ const findingActionabilityError = (finding: Finding) => {
 }
 
 const decodeFindingInput = Effect.fn("ReviewFindings.decodeFindingInput")(function*(input: FindingInput, skipActionability: boolean) {
+  const missing = requiredFindingText(input)
+  if (missing !== undefined) return yield* Effect.fail(new InvalidFinding(`${missing} must not be empty`))
   const normalized = {
     ...input,
     status: normalizeStatus(input.status),
@@ -1419,35 +1522,48 @@ const decodeFindingForReplay = Effect.fn("ReviewFindings.decodeFindingForReplay"
   return yield* decodeFindingInput(input, true)
 })
 
-export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput) {
+export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput, reviewId?: string) {
   const input = yield* decodeFindingForReplay(rawInput)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const run = yield* resolveRecordRun(rawRun)
+  if (input.status === "fixed" || input.status === "provisional" || input.ownerResolution.length > 0) yield* requireFinishedReview(run)
   const existingRunId = yield* exactRunId(run)
+  if (existingRunId !== undefined) {
+    yield* requireReviewWriter(existingRunId, reviewId)
+    if (input.status === "fixed" || input.status === "provisional") yield* requireRepairAuthorization(existingRunId, input.decisionId)
+  }
   const existingRun = existingRunId === undefined
     ? undefined
     : (yield* sql<RunStatusRow>`select status from review_runs where id = ${existingRunId}`)[0]
   const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
-  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.contractEvidence, input.rootCause, input.recommendedFix, input.interventionJustification, input.rejectionGate, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
+  const text = findingText(input, input.severity)
   const existingIssues = existingRunId === undefined
     ? []
     : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
   const existingIssue = existingIssues[0]
+  if (reviewId !== undefined) {
+    const invocation = (yield* sql<{ readonly status: string }>`select status from review_invocations where id = ${reviewId}`)[0]
+    if (invocation?.status === "finished") {
+      yield* requireFinishedReview(run)
+      if (existingIssue === undefined) return yield* Effect.fail(new InvalidFinding("A finished review can update only an existing finding"))
+      if (input.status === "reopened" && existingIssue.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A finished review can reopen only an existing provisional repair"))
+    }
+  }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
     return yield* Effect.fail(new InvalidFinding("updating an owner-resolved finding requires --owner-resolution and --decision"))
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0) {
-    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    if (!isExactResolvedReplay(existingIssue, input, material) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
       return yield* Effect.fail(new InvalidFinding("owner-resolved findings are immutable; only an exact idempotent replay is allowed"))
     }
-    if (!hasLegacyEvidence(existingIssue)) return { runId: existingRunId, issueId: existingIssue.id }
+    if (!hasLegacyEvidence(existingIssue) && existingRunId !== undefined) return { runId: existingRunId, issueId: existingIssue.id }
   }
   if (existingIssue?.disposition === "follow-up") {
-    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    if (!isExactResolvedReplay(existingIssue, input, material) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
       return yield* Effect.fail(new InvalidFinding("deferred follow-up findings are immutable; use a new decision ID for later work"))
     }
-    if (!hasLegacyEvidence(existingIssue)) return { runId: existingRunId, issueId: existingIssue.id }
+    if (!hasLegacyEvidence(existingIssue) && existingRunId !== undefined) return { runId: existingRunId, issueId: existingIssue.id }
   }
   if (existingRun?.status === "complete") {
     return yield* Effect.fail(new InvalidScopeBudget("review run is complete and terminal; start a new user-authorized review before recording more findings"))
@@ -1527,6 +1643,106 @@ export const recordCommand = Effect.fn("ReviewFindings.recordCommand")(function*
   }))
 })
 
+export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run: ReviewRun, event?: ProgressEvent, reviewId?: string) {
+  const sql = yield* SqlClient.SqlClient
+  const runId = yield* exactRunId(run)
+  if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
+  if (event?.outcome === "started") {
+    const budget = yield* getScopeBudget(run)
+    const actualHead = yield* requireCleanReviewTree(run.repoPath)
+    const expectedHead = budget.pinnedHeadOid || actualHead
+    if (event.head !== expectedHead) return yield* Effect.fail(new InvalidScopeBudget("Progress start requires the scoped commit SHA, not a different head or symbolic ref"))
+    yield* checkReviewLimits(yield* readReviewLimits(runId, event.head, event.phase))
+    yield* checkScopeBudget(run, "Check the frozen scope before starting the next recorded pass.")
+  }
+  return yield* sql.withTransaction(Effect.gen(function*() {
+  if (event !== undefined) {
+    yield* requireReviewWriter(runId, reviewId)
+    if (event.outcome.startsWith("repair-")) yield* requireFinishedReview(run)
+    if (event.outcome === "repair-applied") yield* requireRepairAuthorization(runId, event.findingId ?? "")
+    const state = (yield* sql<{ readonly status: string; readonly scope_status: string }>`select review_runs.status, coalesce(review_scope_budgets.status, '') as scope_status from review_runs
+      left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
+    if (state?.status === "complete" || state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("Completed review progress is immutable"))
+    if (event.outcome.startsWith("repair-")) {
+      const issue = yield* sql`select id from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional')`
+      if (issue.length === 0) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open finding"))
+    }
+    if (event.outcome === "started") {
+      yield* checkReviewLimits(yield* readReviewLimits(runId, event.head, event.phase))
+    }
+    if (event.outcome === "clean" || event.outcome === "clean-except-queue") {
+      const findings = yield* sql<UnresolvedFindingRow>`select decision_id, status, summary, coalesce(disposition, '') as disposition, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${runId}`
+      const unresolved = findings.filter(finding => !isFindingTerminal(finding) || hasLegacyEvidence(finding))
+      const limits = yield* readReviewLimits(runId, event.head)
+      const queued = new Set(limits.openQuestions.map(question => question.decisionId))
+      if (unresolved.some(finding => event.outcome === "clean" || !queued.has(finding.decision_id) || hasLegacyEvidence(finding))) return yield* Effect.fail(new InvalidFinding("A clean result cannot leave active findings; clean-except-queue permits only recorded open questions"))
+      if (event.outcome === "clean-except-queue" && queued.size === 0) return yield* Effect.fail(new InvalidFinding("clean-except-queue requires an open question; otherwise record clean"))
+    }
+    return yield* recordProgress(runId, event)
+  }
+  return yield* readProgress(runId)
+  }))
+})
+
+export const extendReviewBudget = Effect.fn("ReviewFindings.extendBudget")(function*(run: ReviewRun & { readonly runId: string }, extension: typeof BudgetExtension.Type) {
+  const runId = yield* exactRunId(yield* verifyScopeRun(run))
+  if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
+  if (run.runId !== runId) return yield* new BudgetExtensionConflict({ message: "Saved run ID does not match the resolved scope; authorization cannot extend a different review run" })
+  return yield* extendReviewTimeBudget(runId, extension)
+})
+
+export const reviewLimits = Effect.fn("ReviewFindings.limits")(function*(run: ReviewRun, phase?: ReviewPhase) {
+  const runId = yield* exactRunId(yield* resolveRecordRun(run))
+  if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
+  const sql = yield* SqlClient.SqlClient
+  const saved = (yield* sql<{ readonly head: string; readonly pinned_head_oid: string | null }>`select coalesce(head, '') as head, pinned_head_oid from review_runs
+    left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
+  let head = run.head || saved?.head || ""
+  if (saved?.pinned_head_oid != null) {
+    const git = yield* trustedExecutable("git", run.repoPath)
+    head = saved.pinned_head_oid || (yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: run.repoPath }))
+  }
+  return yield* readReviewLimits(runId, head, phase)
+})
+
+interface FindingMatchRow {
+  readonly decision_id: string
+  readonly source: string
+  readonly evidence: string
+  readonly note: string
+}
+
+export const recordFindingMatch = Effect.fn("ReviewFindings.recordMatch")(function*(rawRun: ReviewRun, input: {
+  readonly matchOf: string; readonly source: string; readonly evidence: string; readonly matchNote: string
+}, reviewId?: string) {
+  const matchText = Schema.String.check(Schema.isMinLength(1))
+  yield* Schema.decodeUnknownEffect(Schema.Struct({ matchOf: matchText, source: matchText, evidence: matchText, matchNote: matchText }))({
+    matchOf: input.matchOf.trim(), source: input.source.trim(), evidence: input.evidence.trim(), matchNote: input.matchNote.trim()
+  }).pipe(Effect.mapError(() => new InvalidFinding("A match requires --match-of, --source, --evidence and --match-note")))
+  const sql = yield* SqlClient.SqlClient
+  return yield* sql.withTransaction(Effect.gen(function*() {
+    const run = yield* resolveRecordRun(rawRun)
+    const runId = yield* exactRunId(run)
+    if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
+    yield* requireReviewWriter(runId, reviewId)
+    const issue = (yield* sql<{ readonly id: string }>`select issues.id from issues join review_runs on review_runs.id = issues.run_id
+      left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id
+      where issues.run_id = ${runId} and decision_id = ${input.matchOf}
+        and (issues.status = 'rejected' or (issues.status in ('open', 'reopened', 'provisional') and coalesce(owner_resolution, '') = ''))
+        and review_runs.status != 'complete' and coalesce(review_scope_budgets.status, '') != 'complete'`)[0]
+    if (issue === undefined) return yield* Effect.fail(new InvalidFinding("Match target must be an existing open finding or rejected finding in this active run; fixed findings require a new decision"))
+    const existing = yield* sql<{ readonly note: string }>`select note from review_finding_matches where issue_id = ${issue.id} and source = ${input.source} and evidence = ${input.evidence}`
+    if (existing[0] !== undefined) {
+      if (existing[0].note !== input.matchNote) return yield* Effect.fail(new InvalidFinding("Recorded match evidence is immutable"))
+      return { runId, issueId: issue.id }
+    }
+    const timestamp = nowSeconds()
+    yield* sql`insert into review_finding_matches (issue_id, source, evidence, note, created_at) values (${issue.id}, ${input.source}, ${input.evidence}, ${input.matchNote}, ${timestamp})`
+    yield* sql`update issues set seen_count = seen_count + 1, last_seen_at = ${timestamp} where id = ${issue.id}`
+    return { runId, issueId: issue.id }
+  }))
+})
+
 export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*(filters: {
   readonly repo: string
   readonly repoPath?: string
@@ -1560,7 +1776,12 @@ export const buildCloseout = Effect.fn("ReviewFindings.buildCloseout")(function*
   const commands = runId === undefined ? [] : yield* sql<CommandRow>`select command, result, reason, coalesce(decision_id, '') as decision_id from commands where run_id = ${runId} order by updated_at, command`
   const scopeBudget = runId === undefined ? Option.none() : yield* readScopeBudget(runId).pipe(Effect.option)
   const reviewComplete = Option.isSome(scopeBudget) ? scopeBudget.value.status === "complete" : runs[0]?.status === "complete"
+  const limits = runId === undefined ? undefined : yield* readReviewLimits(runId, runs[0]?.head ?? "")
+  const matches = runId === undefined ? [] : yield* sql<FindingMatchRow>`select issues.decision_id, review_finding_matches.source, evidence, note from review_finding_matches
+    join issues on issues.id = review_finding_matches.issue_id where issues.run_id = ${runId} order by review_finding_matches.id`
   return {
+    ...(limits === undefined ? {} : { limits }),
+    finding_matches: matches,
     reviewed_head: reviewComplete ? runs[0]?.head ?? "" : "",
     review_candidates: findings,
     material_findings: actionableFindings.filter(isMaterial),
@@ -1809,6 +2030,7 @@ export const summarizeCloseout = (closeout: Closeout, limit: number): CloseoutSu
   const important = closeout.material_findings.filter((finding) => finding.disposition !== "residual" && !isDeferredWork(finding) && isFindingTerminal(finding) && !hasLegacyEvidence(finding)).sort(compareFindings)
   const stillOpen = [...closeout.still_open].sort(compareFindings)
   return {
+    ...(closeout.limits === undefined ? {} : { limits: closeout.limits }),
     reviewed_head: closeout.reviewed_head,
     total_findings: closeout.findings_found.length,
     material_findings: closeout.material_findings.length,

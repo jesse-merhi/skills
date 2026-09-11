@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manage a guarded Cloudflare Quick Tunnel for an attested OpenClaw UI preview."""
+"""Manage a leased Cloudflare Quick Tunnel for a synthetic OpenClaw UI preview."""
 
 from __future__ import annotations
 
@@ -22,12 +22,10 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 
-ATTESTATION_PATH = "/.well-known/openclaw-stg-test.json"
 DEFAULT_TTL = "4h"
 MAX_TTL_SECONDS = 24 * 60 * 60
 MIN_TTL_SECONDS = 5 * 60
 PUBLIC_URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
-SAFE_DATA_SOURCES = {"browser-mock", "static-fixture"}
 STATE_FILE = "state.json"
 
 
@@ -37,7 +35,7 @@ class StagingError(RuntimeError):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Publish an attested loopback OpenClaw UI preview through a leased Quick Tunnel."
+        description="Publish a synthetic loopback OpenClaw UI preview through a leased Quick Tunnel."
     )
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--status", action="store_true", help="show the managed tunnel")
@@ -110,9 +108,9 @@ def known_private_ports() -> set[int]:
     return ports
 
 
-def fetch_json(
+def check_preview(
     url: str, timeout: float = 3.0, resolved_ip: str | None = None
-) -> dict[str, Any]:
+) -> None:
     request = Request(url, headers={"User-Agent": "openclaw-stg-test/1"})
     original_getaddrinfo = socket.getaddrinfo
     target_host = urlsplit(url).hostname
@@ -126,17 +124,10 @@ def fetch_json(
         with patched_dns(resolve_target if resolved_ip is not None else None):
             with urlopen(request, timeout=timeout) as response:
                 if response.status < 200 or response.status >= 300:
-                    raise StagingError(f"attestation returned HTTP {response.status}")
-                body = response.read(64 * 1024)
+                    raise StagingError(f"preview returned HTTP {response.status}")
+                response.read(1)
     except (HTTPError, URLError, TimeoutError, OSError) as error:
-        raise StagingError(f"could not read attestation at {url}: {error}") from error
-    try:
-        value = json.loads(body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise StagingError(f"attestation at {url} is not valid JSON") from error
-    if not isinstance(value, dict):
-        raise StagingError("attestation must be a JSON object")
-    return value
+        raise StagingError(f"could not reach preview at {url}: {error}") from error
 
 
 @contextmanager
@@ -167,27 +158,6 @@ def resolve_with_public_dns(host: str) -> list[str]:
     if result.returncode != 0:
         return []
     return [line.strip() for line in result.stdout.splitlines() if re.fullmatch(r"[0-9.]+", line)]
-
-
-def validate_attestation(value: dict[str, Any], expected_origin: str | None) -> str:
-    if value.get("schemaVersion") != 1:
-        raise StagingError("attestation schemaVersion must be 1")
-    if value.get("publicPreview") is not True:
-        raise StagingError("attestation must set publicPreview to true")
-    if value.get("containsCredentials") is not False:
-        raise StagingError("attestation must set containsCredentials to false")
-    data_source = value.get("dataSource")
-    if data_source not in SAFE_DATA_SOURCES:
-        allowed = ", ".join(sorted(SAFE_DATA_SOURCES))
-        raise StagingError(f"attestation dataSource must be one of: {allowed}")
-    if expected_origin is not None and value.get("origin") != expected_origin:
-        raise StagingError(f"attestation origin must exactly match {expected_origin}")
-    return str(data_source)
-
-
-def fetch_local_attestation(origin: str) -> tuple[dict[str, Any], str]:
-    value = fetch_json(origin + ATTESTATION_PATH)
-    return value, validate_attestation(value, origin)
 
 
 def process_start_ticks(pid: int) -> str | None:
@@ -336,7 +306,6 @@ def show_status(state_dir: Path) -> int:
     print(f"Status: {'running' if running else 'stale'}")
     print(f"Public URL: {state.get('publicUrl', 'unknown')}")
     print(f"Origin: {state.get('origin', 'unknown')}")
-    print(f"Data source: {state.get('dataSource', 'unknown')}")
     print(f"Expires at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(expires_at))}")
     print(f"Remaining seconds: {remaining}")
     print(f"State: {state_dir}")
@@ -363,7 +332,7 @@ def wait_for_public_url(log_path: Path, process: subprocess.Popen[bytes]) -> str
     raise StagingError(f"cloudflared did not report a Quick Tunnel URL\n{tail}")
 
 
-def wait_for_public_attestation(public_url: str, expected: dict[str, Any]) -> None:
+def wait_for_public_preview(public_url: str) -> None:
     deadline = time.monotonic() + 60
     last_error: Exception | None = None
     host = urlsplit(public_url).hostname
@@ -373,14 +342,11 @@ def wait_for_public_attestation(public_url: str, expected: dict[str, Any]) -> No
             resolved_ips.extend(resolve_with_public_dns(host))
         for resolved_ip in resolved_ips:
             try:
-                actual = fetch_json(
-                    public_url + ATTESTATION_PATH,
+                check_preview(
+                    public_url,
                     timeout=5,
                     resolved_ip=resolved_ip,
                 )
-                validate_attestation(actual, None)
-                if actual != expected:
-                    raise StagingError("public attestation does not match the local origin")
                 return
             except StagingError as error:
                 last_error = error
@@ -430,7 +396,7 @@ def start(state_dir: Path, raw_url: str | None, raw_ttl: str) -> int:
     if port in known_private_ports():
         raise StagingError(f"refusing protected OpenClaw Gateway or browser-proxy port {port}")
     ttl_seconds = parse_ttl(raw_ttl)
-    attestation, data_source = fetch_local_attestation(origin)
+    check_preview(origin)
 
     cloudflared = shutil.which("cloudflared")
     if cloudflared is None:
@@ -481,13 +447,12 @@ def start(state_dir: Path, raw_url: str | None, raw_ttl: str) -> int:
         )
         tunnel_ticks = process_start_ticks(process.pid)
         public_url = wait_for_public_url(tunnel_log_path, process)
-        wait_for_public_attestation(public_url, attestation)
+        wait_for_public_preview(public_url)
         started_at = int(time.time())
         state: dict[str, Any] = {
             "schemaVersion": 1,
             "origin": origin,
             "publicUrl": public_url,
-            "dataSource": data_source,
             "startedAt": started_at,
             "expiresAt": started_at + ttl_seconds,
             "tunnelPid": process.pid,
@@ -521,7 +486,6 @@ def start(state_dir: Path, raw_url: str | None, raw_ttl: str) -> int:
 
     print(f"Public URL: {public_url}")
     print(f"Origin: {origin}")
-    print(f"Data source: {data_source}")
     print(f"Expires at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(started_at + ttl_seconds))}")
     print(f"Status: openclaw-stg-test --state-dir {state_dir} --status")
     print(f"Stop: openclaw-stg-test --state-dir {state_dir} --stop")
