@@ -8,7 +8,7 @@ Use Astra at medium unless the user selects another reviewer. Set model and effo
 
 A brief can say: “Review this target with the supplied skills. Trace changed behavior through real callers and system events. Return distinct problems, changed locations, triggers, consequences, likelihood and impact evidence, uncertainty, and rejected candidates with reasons. Report what you could not verify. Do not edit code or manage repairs.”
 
-Ask reviewers to finish assessing the assigned behaviors even after finding several problems; report every distinct supported candidate. A concise summary must not truncate the underlying candidate list.
+Require one complete report after assessing all assigned behaviors. Include every distinct candidate and rejected claim; do not send findings one at a time or stop after the first few.
 
 Ask reviewers to establish intended behavior from the task, documentation, callers, tests and base revision. Intentional contract changes are not automatically regressions; material conflicts become questions. Evidence should name the expected result, reachable inputs or state, and observed outcome. Missing, unexecuted or stale proof is not an observed failure.
 
@@ -45,4 +45,4 @@ review-findings coverage-status --repo <owner/repo> --repo-path <checkout> \
 
 Prioritize stale/unreviewed files, then reviewed-once, then reviewed-twice. Give reviewers the files and observed `changeId`, not previous counts or verdicts. Ask for substantively assessed files, their observed change IDs and the invocation ID. Read unchanged code for context, not unrelated review targets.
 
-Wait on the existing invocation using `wait-efficiently`. After it returns, include one coverage object in the coordinator’s review-result batch for the general invocation. Use separate `coverage-record` only when operating outside the lifecycle batch path. Context reads and focused-skill checks are not whole-file coverage. Check and record findings only after the independent return, then continue the main review loop.
+Wait on the existing invocation using `wait-efficiently`. After it returns, include one coverage object in the coordinator’s review-result batch for the general invocation. Context reads and focused-skill checks are not whole-file coverage. Check and record findings only after the independent return, then continue the main review loop.

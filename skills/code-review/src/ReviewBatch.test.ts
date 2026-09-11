@@ -8,7 +8,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { applyReviewBatch, type Batch } from "./ReviewBatch.ts"
-import { authorizeScopeBudget, getScopeBudget, initialize, recordFindingMatch, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
+import { authorizeScopeBudget, getReviewFileCoverage, getScopeBudget, initialize, recordFindingMatch, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
 import { measureScopeDiff } from "./ReviewScope.ts"
 
 const fixture = Effect.fn("ReviewBatch.fixture")(function*(historical = false) {
@@ -145,6 +145,31 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     yield* sql`update review_runs set status = 'complete' where id = ${scope.runId}`
     const terminal = yield* recordFindingMatch(run, { ...match, source: "late" }).pipe(Effect.flip)
     assert.include(terminal.message, "active run")
+  }).pipe(Effect.scoped), { timeout: 30000 })
+
+  test.effect("saves new candidates, repeated evidence and coverage atomically in one completed result", () => Effect.gen(function*() {
+    const { run } = yield* fixture()
+    yield* applyReviewBatch(run, start)
+    yield* applyReviewBatch(run, { requestId: "native-result", expectedRevision: 1, action: { kind: "review-result", phase: "native", evidence: "native report", outcome: "clean", findings: [rejected] } })
+    yield* applyReviewBatch(run, { requestId: "cold-start", expectedRevision: 2, action: { kind: "review-start", phase: "cold", evidence: "cold invocation" } })
+    const coverage = yield* getReviewFileCoverage(run)
+    const match = { matchOf: "D1", source: "cold", evidence: "cold report", matchNote: `Same cause and counterevidence at ${run.head}` }
+    const result = { requestId: "cold-result", expectedRevision: 3, action: { kind: "review-result", phase: "cold", evidence: "cold report", outcome: "findings", findings: [accepted], matches: [match], coverage: { reviewId: "cold-1", reviewer: "fixture", files: coverage.map(file => ({ path: file.path, changeId: file.changeId })) } } } satisfies typeof Batch.Type
+    const invalid = yield* applyReviewBatch(run, { ...result, action: { ...result.action, matches: [match, { ...match, matchOf: "missing" }] } }).pipe(Effect.flip)
+    assert.include(invalid.message, "Match target")
+    const sql = yield* SqlClient.SqlClient
+    assert.deepStrictEqual(yield* sql`select decision_id from issues where run_id = ${run.runId}`, [{ decision_id: "D1" }])
+    assert.lengthOf(yield* sql`select review_finding_matches.* from review_finding_matches join issues on issues.id = issue_id where issues.run_id = ${run.runId}`, 0)
+    assert.strictEqual((yield* reviewProgress(run))?.revision, 3)
+    const blocked = yield* applyReviewBatch(run, { ...result, action: { kind: "review-result", phase: "cold", evidence: "interrupted", outcome: "blocked", findings: [], matches: [match] } }).pipe(Effect.flip)
+    assert.include(blocked.message, "blocked invocation")
+    yield* applyReviewBatch(run, result)
+    assert.strictEqual((yield* applyReviewBatch(run, result)).replayed, true)
+    assert.lengthOf(yield* sql`select review_finding_matches.* from review_finding_matches join issues on issues.id = issue_id where issues.run_id = ${run.runId}`, 1)
+    assert.strictEqual((yield* getReviewFileCoverage(run))[0]?.reviews, 1)
+    assert.strictEqual((yield* reviewProgress(run))?.revision, 4)
+    const second = yield* applyReviewBatch(run, { ...result, requestId: "more-findings", expectedRevision: 4 }).pipe(Effect.flip)
+    assert.include(second.message, "matching started invocation")
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("saves an interrupted old-head result and permits a new invocation without crediting stale clean evidence", () => Effect.gen(function*() {

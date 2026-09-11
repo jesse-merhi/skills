@@ -11,7 +11,7 @@ import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
 import { type BudgetExtension, BudgetExtensionConflict, checkReviewLimits, DEFAULT_REVIEW_LIMITS, extendReviewTimeBudget, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
-import { type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
+import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
@@ -848,6 +848,18 @@ const resolveRecordRun = Effect.fn("ReviewFindings.resolveRecordRun")(function*(
     branch: run.branch.length > 0 ? run.branch : match.branch,
     base: run.base.length > 0 ? run.base : match.base
   }
+})
+
+/** Keep individual CLI updates out of a pending batch review, including abbreviated run identities. */
+export const requireCompletedReviewBatch = Effect.fn("ReviewFindings.requireCompletedReviewBatch")(function*(run: ReviewRun) {
+  const runId = yield* exactRunId(yield* resolveRecordRun(run))
+  if (runId === undefined) return
+  const progress = yield* readProgress(runId)
+  if (progress?.outcome !== "started") return
+  const sql = yield* SqlClient.SqlClient
+  const pending = yield* sql`select request_id from review_batch_receipts where run_id = ${runId}
+    and json_extract(receipt, '$.action') = 'review-start' and json_extract(receipt, '$.revision') = ${progress.revision}`
+  if (pending.length > 0) return yield* new ProgressConflict({ message: "Submit all findings, matches and coverage together with batch review-result before individual updates" })
 })
 
 const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {

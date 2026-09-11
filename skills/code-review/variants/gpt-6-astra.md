@@ -31,7 +31,7 @@ To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <ch
 
 Use [the native reviewer](references/native-review.md) and [the review loop](references/review-loop.md) to schedule reviews and repairs. Follow [the findings guide](references/fixing-and-reporting.md) to check candidates, repair shared causes and verify preserved behavior.
 
-Record starts and completed actions with [lifecycle batches](references/batches.md).
+Submit each completed review as [one batch](references/batches.md): all candidates, repeated reports and coverage together. Finish and record the assessment before repairing; do not submit findings one at a time.
 
 ## 3. Run an independent review
 
@@ -39,14 +39,7 @@ Follow [the independent-review instructions](references/cold-review.md) and [the
 
 ## 4. Check, push and summarize
 
-Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Record each completed check:
-
-```sh
-review-findings record-command --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --command "<full validation command>" --result "<observed result>" \
-  --reason "<behavior checked and evidence location>"
-```
+Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Save completed checks in a `checks` batch.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \

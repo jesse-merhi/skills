@@ -1,42 +1,32 @@
-# Discover, repair and verify
+# Review, repair and verify
 
-Keep one saved run across native review, repairs and independent review. Use the lifecycle batch commands from the main skill for normal starts and completed results. Keep model execution outside the transaction.
+Keep one saved run. Start each invocation through a batch on the exact committed head, then resume that invocation until it returns. An interrupted, empty or unusable result is `blocked`, never clean.
 
-## Discover before editing
+## Finish discovery before repairs
 
-Record a `review-start` action using the current saved revision and exact committed head, then launch the requested reviewer once. The start checks scope and limits. If an invocation is already running, resume it. If interrupted, save its blocked result before another start; an empty or interrupted response is not clean.
+Collect and adjudicate the entire native result before editing. Normally repair its accepted findings together, obtain the required native result on the repaired head, then run independent review. Honor single-phase and single-pass requests.
 
-Collect and adjudicate the whole native result before editing. Normally repair its accepted findings together, obtain the required final-head native result, then run the independent assessment. A single-phase request uses only its requested inventory.
+Gather independent findings before repairs only when a named unresolved flow or shared boundary could materially change the repair. Record that reason; size or reassurance alone is insufficient. Dispatch serially, keep native findings out of the independent brief, and combine both inventories before repairing.
 
-Gather the independent inventory before repairs when a named unresolved flow or shared boundary could materially change the repair, and combining discoveries can avoid substantial rework. Record that concrete reason; PR size or a desire for extra reassurance is not enough. Keep dispatches serial so each saved start has its matching result. Give the independent reviewer the target, contracts and required lenses without native findings or judgments. Combine both inventories and their evidence before repairing; do not run a separate fix loop for each reviewer.
+Assess changed behavior from real entry points through state, dependencies, failure and recovery to outcomes. Distinguish inspected code, executed behavior and unresolved coverage; file counts and finding counts do not prove completeness.
 
-Map the affected behaviors from real entry points through state, dependencies and outcomes. Look for failure and recovery paths where the change can break its contract. Distinguish inspected code, executed behavior and unresolved coverage. File-read counts and the number of findings are not a completeness score.
+Save the complete assessment in one `review-result`, including repeated reports and independent coverage:
 
-The coordinator establishes and records each candidate using the findings guide, then saves one `review-result` batch with its outcome and any independent file-coverage attestations:
-
-- `clean`: no supported findings or unresolved decisions remain in the run.
+- `clean`: no supported findings or unresolved decisions remain.
 - `clean-except-queue`: only recorded owner questions remain.
-- `findings`: supported findings still require repair.
+- `findings`: accepted issues still await repair, including issues from an earlier inventory.
 - `blocked`: the review failed, was interrupted, examined the wrong code or lacks usable evidence.
 
-During discovery, use `findings` while accepted issues from either inventory await repair, even when this reviewer adds none; preserve its actual result in the evidence artifact. A clean batch cannot leave an earlier finding open.
+Preserve this reviewer's actual result in its artifact even when earlier issues determine the run's outcome. Repeated claims require comparing current evidence with prior counterevidence, not automatically reversing a rejection.
 
-A newly reported candidate does not automatically override a previous rejection. Compare the actual evidence and revision. Preserve changed evidence and unresolved questions; do not convert uncertainty into either a repair or a clean claim.
+## Repair shared causes
 
-## Repair together
+Apply the findings guide to the full accepted inventory. Repair related causes together, verify affected and preserved behavior, then submit a `repair-result` while the findings remain open. Check scope, inspect the combined diff and commit authorized repairs together. Repair workers return patches and evidence; the coordinator owns the registry and review scheduling.
 
-Investigate the failed assumptions and their affected paths before editing, then repair related confirmed issues as a coherent batch. Apply the findings guide's evidence, permission and repair rules. A delegated repair worker changes code and returns proof; the coordinator owns registry, scope, commits and review scheduling.
+## Review the final code
 
-Verify the repaired behavior, related paths and preserved behavior. Add useful regression coverage before delivery, using expected results from the contract. Save completed repair attempts and checks in a `repair-result` batch while the findings are still open. Check scope, inspect the combined diff and commit authorized review fixes together.
+Require the phase targets frozen at setup: normally one clean native and one clean independent result on the final head. An earlier independent discovery pass does not cover later repairs. A new repair invalidates both final-head phase results; an unchanged clean discovery result already counts. Domain lenses do not each require another agent.
 
-## Decide the next review
+Reuse supporting proof only while its relevant code, callers, dependencies, fixtures, configuration and environment still apply. Broaden verification when the impact cannot be bounded.
 
-Use the saved targets: this workflow requests one clean native result and one clean independent result on the final head. An explicit single-phase or single-pass request remains limited to that scope. The executable's legacy defaults do not replace the targets frozen at setup.
-
-Obtain the required clean native result and fresh independent assessment on the final head. If an independent discovery inventory ran before repairs, it does not replace independent assessment of the repaired head. Later repairs require both phase results on the new head. If discovery found no supported problems and the head is unchanged, its clean results already satisfy the requested targets; do not launch a second pair. Continue because the code changed, evidence is missing or a supported issue remains; do not repeat an unchanged completed phase merely to obtain another reassuring response. Domain lenses remain required, but they do not each require another agent.
-
-Keep supporting evidence across passes when its relevant code, callers, dependency version, fixtures, configuration and environment remain applicable. Changed behavior invalidates its earlier proof. If impact cannot be bounded, broaden verification rather than assuming unrelated-looking files are unaffected.
-
-## Stop honestly
-
-Completion requires the requested final-head phases, applicable checks and resolution of supported findings and decisions. A spending or time limit ends work as incomplete. It does not erase findings, reset the run, waive checks or establish cleanliness. Preserve the patch, evidence and exact next action for a permitted continuation.
+Complete only after the requested reviews, applicable checks and decisions are resolved. A spending or time limit leaves work incomplete: preserve the patch, evidence and next action without resetting the run or waiving findings.

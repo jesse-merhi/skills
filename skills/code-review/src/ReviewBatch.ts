@@ -4,7 +4,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { type FindingInput, getScopeBudget, recordCommand, recordFinding, recordReviewedFiles, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
+import { type FindingInput, getScopeBudget, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
 import { ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { ProgressConflict } from "./ReviewProgress.ts"
 
@@ -30,6 +30,7 @@ const ReviewResult = Schema.Struct({
   kind: Schema.Literal("review-result"), phase: Phase, evidence: Text,
   outcome: Schema.Literals(["clean", "clean-except-queue", "findings", "blocked"]),
   findings: Schema.Array(Finding),
+  matches: Schema.optionalKey(Schema.Array(Schema.Struct({ matchOf: Text, source: Text, evidence: Text, matchNote: Text }))),
   coverage: Schema.optionalKey(Schema.Struct({ reviewId: Text, reviewer: Text, files: Schema.Array(Schema.Struct({ path: Text, changeId: Text })) }))
 })
 const RepairResult = Schema.Struct({
@@ -84,8 +85,9 @@ export const applyReviewBatch = Effect.fn("ReviewBatch.apply")(function*(rawRun:
       progress = started
     } else if (action.kind === "review-result") {
       if (progress?.outcome !== "started" || progress.phase !== action.phase || progress.head !== head) return yield* new ProgressConflict({ message: "Review result requires the matching started invocation, phase and revision" })
-      if (interrupted && (action.findings.length > 0 || action.coverage !== undefined)) return yield* new ProgressConflict({ message: "A blocked invocation records its limits only; preserve candidate artifacts separately without crediting coverage" })
+      if (interrupted && (action.findings.length > 0 || (action.matches?.length ?? 0) > 0 || action.coverage !== undefined)) return yield* new ProgressConflict({ message: "A blocked invocation records its limits only; preserve candidate artifacts separately without crediting coverage" })
       for (const finding of action.findings) yield* recordFinding(run, findingInput(finding))
+      for (const match of action.matches ?? []) yield* recordFindingMatch(run, match)
       if (action.coverage !== undefined) yield* recordReviewedFiles(run, action.coverage)
       progress = yield* event(action.outcome, action.phase, action.evidence)
     } else if (action.kind === "repair-result") {

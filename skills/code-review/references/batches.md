@@ -1,41 +1,39 @@
-# Record one lifecycle action
+# Submit a complete review
 
-Use the coordinator's existing registry database and prepared checkout. Save JSON artifacts outside the reviewed repository. Repair workers return patches and evidence; they do not initialize another run or manage the registry.
-
-Create `run.json` once from the scoped checkout:
+The coordinator uses one database and saves action files outside the checkout. Create `run.json` from `scope-start` and the reviewed commit:
 
 ```json
-{"runId":"scope-start runId","repo":"owner/repo","repoPath":"/absolute/checkout","branch":"feature","target":"PR URL","base":"base SHA","head":"reviewed SHA"}
+{"runId":"saved run ID","repo":"owner/repo","repoPath":"/absolute/checkout","branch":"feature","target":"PR URL","base":"base SHA","head":"reviewed SHA"}
 ```
 
-Update `head` only after committing a new revision; preserve earlier run files alongside their action files. Use the same database throughout. Read `review-findings batch-schema` for the machine contract and `review-findings schema` for rating and evidence requirements. The batch delegates to existing finding, coverage and progress functions; it cannot validate the truth of a finding.
+After a new commit, update `head` and preserve the earlier files. Read `review-findings batch-schema` for action fields and `review-findings schema` for rating requirements.
 
 ```sh
 review-findings batch --db <database> --run-file <run.json> --file <action.json>
 ```
 
-The command returns a compact receipt with the saved revision. Use that revision in the next action. Keep a unique request ID for each actual action. Replaying the identical request returns its receipt; reusing an ID with different content fails. A conflict requires inspecting current progress, not retrying with a guessed revision.
+Use each returned revision in the next action and a unique request ID per action. Identical replay returns the receipt without repeating writes. On a conflict, inspect saved progress before correcting the request.
 
-## Start a review
+## Start once, submit once
 
 ```json
 {"requestId":"native-1-start","expectedRevision":0,"action":{"kind":"review-start","phase":"native","evidence":"invocation reference"}}
 ```
 
-Start the external reviewer only after this succeeds. A repeated start receipt is not authorization to launch again: resume the saved invocation. If the process never launched or was interrupted, record that blocked result before a new request.
+Launch only after the start succeeds. A replayed receipt means resume that invocation, not launch again. Save a `blocked` result if it never launched or was interrupted.
 
-## Save a completed review
+Finish the assessment, adjudicate every candidate, then submit one `review-result` before editing:
 
 ```json
-{"requestId":"native-1-result","expectedRevision":1,"action":{"kind":"review-result","phase":"native","evidence":"result artifact","outcome":"clean","findings":[]}}
+{"requestId":"native-1-result","expectedRevision":1,"action":{"kind":"review-result","phase":"native","evidence":"complete report","outcome":"clean","findings":[],"matches":[]}}
 ```
 
-Use `findings`, `clean-except-queue` or `blocked` when appropriate. Include every adjudicated candidate in `findings`, using the same named fields as the record schema. A clean batch with an active finding is rejected atomically. For independent coverage, supply `coverage` with the review ID, reviewer and observed `{path, changeId}` entries; context reads do not qualify. Preserve repeated-finding evidence through `record --match-of` for an open or rejected finding in the active run. Include the current revision and why the cause and counterevidence still apply. It appends evidence without reopening or replacing the earlier decision; changed facts require explicit re-adjudication.
+Include accepted, rejected and uncertain candidates in `findings`. Put repeated reports in `matches` with `matchOf`, `source`, `evidence` and `matchNote`. Include independent file attestations in `coverage`. A pending batch review rejects individual `record`, `coverage-record` and `progress-record` commands. Completion accepts one result; completeness of the assessment remains the reviewer's responsibility.
 
-## Save completed repairs and checks
+The transaction saves everything or nothing. A denied start preserves its scope-block diagnostic for authorization, without recording a start. Keep external artifacts after errors; the transaction cannot undo processes or edits.
 
-A `repair-result` action has `phase`, a `repairs` array and a `checks` array. Each repair contains the full updated `finding`, a unique `attempt`, patch/verification `evidence`, and `unsuccessful`. A successful finding has status `fixed`; an unsuccessful attempt keeps it `open`. The command records the patch attempt before updating its finding. It refuses a third unsuccessful repair sequence without the existing owner-authorization event.
+## Repairs and checks
 
-Each check contains `command`, `result`, `reason` and optional `decisionId`. Save checks that completed without a repair using a `checks` action. Results are records of observed commands, not instructions for the CLI to execute. Preserve the actual failing result and diagnose it; do not label a check passed because it was scheduled.
+Use `repair-result` for verified repairs and their checks, submitting while the findings are still open. Each repair includes the full updated `finding`, unique `attempt`, observed `evidence` and `unsuccessful`: false requires `fixed`, true requires `open`. Two failed attempts require owner authorization before a third.
 
-The transaction either saves the whole action or rolls it back. A denied review start preserves its measured scope block for authorization, but saves no start event or receipt. External processes and code edits are not rolled back. Keep their artifacts after an error and resolve the reported state before submitting a corrected action.
+Use a `checks` action for other completed validation. Record actual commands and results; the CLI does not run them. Individual commands remain available after the review result for owner decisions and exceptional transitions.

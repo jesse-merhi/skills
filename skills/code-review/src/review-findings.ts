@@ -14,7 +14,7 @@ import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.
 import { trustedExecutable } from "./NativeReview.ts"
 import { applyReviewBatch, Batch, BatchRun } from "./ReviewBatch.ts"
 import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordReviewedFiles, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
-import { extendReviewBudget, recordFindingMatch, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
+import { extendReviewBudget, recordFindingMatch, requireCompletedReviewBatch, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
 import { BudgetExtensionConflict, DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
@@ -97,6 +97,7 @@ const record = Command.make("record", {
   ownerResolution: Flag.string("owner-resolution").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
+  yield* requireCompletedReviewBatch(toRun(args))
   if (args.matchOf.length > 0 && (args.decisionId.length > 0 || args.status.length > 0 || args.ownerResolution.length > 0 || args.handling.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-of appends evidence only; omit decision/status/handling/owner-resolution fields"))
   if (args.matchOf.length === 0 && (args.matchNote.length > 0 || args.evidence.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-note and --evidence require --match-of"))
   const result = args.matchOf.length > 0
@@ -213,6 +214,7 @@ const coverageRecord = Command.make("coverage-record", {
   db, ...commonRun, reviewId: Flag.string("review-id"), reviewer: Flag.string("reviewer"), file: Flag.string("file").pipe(Flag.atLeast(1)), changeId: Flag.string("change-id").pipe(Flag.atLeast(1))
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
+  yield* requireCompletedReviewBatch(toRun(args))
   if (args.file.length !== args.changeId.length) return yield* Effect.fail(new InvalidReviewCoverage("coverage-record requires one --change-id for each --file, in the same order"))
   const files = args.file.map((path, index) => ({ path, changeId: args.changeId[index] ?? "" }))
   const result = yield* recordReviewedFiles(toRun(args), { reviewId: args.reviewId, reviewer: args.reviewer, files })
@@ -239,6 +241,7 @@ const progressRecord = Command.make("progress-record", {
   findingId: optionalString("finding-id"), repairAttempt: optionalString("repair-attempt"), authorization: optionalString("authorization")
 }, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
+  yield* requireCompletedReviewBatch(toRun(args))
   const event = yield* Schema.decodeUnknownEffect(ProgressEvent)({ expectedRevision: args.revision, phase: args.phase, head: args.head, outcome: args.outcome, evidence: args.evidence,
     ...(Option.isSome(args.findingId) ? { findingId: args.findingId.value } : {}),
     ...(Option.isSome(args.repairAttempt) ? { repairAttempt: args.repairAttempt.value } : {}),

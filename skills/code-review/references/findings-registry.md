@@ -16,7 +16,8 @@ Read `review-findings --help`, then subcommand `--help` for flags. Run `review-f
 | Check scope / record approved expansion / finish | `scope-check` / `scope-authorize` / `scope-complete` |
 | Append explicitly authorized review time | `budget-extend` |
 | Read pass state / record passes, repairs or decisions | `progress-status` / `progress-record` |
-| Save a triaged finding / append repeat evidence | `record` / `record --match-of ID` |
+| Submit a complete review, repair or checks | `batch` (contract: `batch-schema`) |
+| Record owner decisions or exceptional transitions | `record`, `progress-record` |
 | Save finished validation | `record-command` |
 | Search before dispatch, resume or answering review questions | `query` |
 | Assign changed files / save one invocation's coverage | `coverage-status --json` / `coverage-record` |
@@ -33,18 +34,18 @@ For an explicitly user-authorized time extension, run `review-findings budget-ex
 
 ## 3. Record findings and decisions
 
-1. Record each finding as soon as triaged, using `schema` for its kind and disposition; never invent evidence to fill a template. Apply `speak-fking-english` to each batch without changing technical claims. Give the owner the premise, what goes wrong/where, who experiences it, and the repair, rejection reason or outstanding decision. Keep reviewer shorthand, engine names, severity and fingerprints in structured fields.
+1. Adjudicate all candidates before submitting one review batch, using `schema` for kind and disposition; never invent evidence to fill a template. Apply `speak-fking-english` to each batch without changing technical claims. Give the owner the premise, what goes wrong/where, who experiences it, and the repair, rejection reason or outstanding decision. Keep reviewer shorthand, engine names, severity and fingerprints in structured fields.
 2. Mark findings material when they affect visible behavior, workflows, access/permissions, data correctness, audit integrity, finance, schemas/migrations or API contracts. Record affected files/behavior, source, owner/next action and validation. Use the main skill's findings guide for evidence and repair decisions.
 3. Let the CLI derive severity/disposition; do not pass priority, severity or disposition. Handling cannot turn rejected or unproven risk into work. Keep runtime and maintenance evidence separate. Use the schema's rejection contract for unsupported candidates, including the failed gate and rationale rather than fabricated proof.
 4. Use `fix` for accepted contained work, `consult` for owner decisions and deferred `follow-up` for nonblocking adjacent work. An accepted local `fix` deferred as residual risk requires a decision explaining that acceptance. An unanswered consult stays open; deferral requires `--owner-resolution declined` and the owner's explicit decision.
 5. Close an approved consulted repair as fixed with `--owner-resolution approved`; close a rejected finding with `declined`, always recording the owner's decision. Use the same explicit approval when keeping a provisional fix. Declining a provisional repair means revert it and record `reopened` with decision text but no owner resolution: the finding remains active.
 6. Preserve terminal current-schema owner decisions: exact replay is a no-op even after scope completion; changing any field requires a new decision ID. Active legacy findings remain open until re-recorded with current evidence. An evidence-only upgrade must preserve status, source identity, owner decision, disposition, fix scope and handling; completed legacy history remains terminal and labelled legacy.
-7. Append recurring reports to the same open finding with `record --match-of ID`, source, evidence and match note, rather than creating another card. Matching does not change its status or resolve its question. Record each validation command immediately when it finishes, including result, reason and related finding.
+7. Put recurring reports in the review batch’s `matches` array. Matching preserves the earlier decision and outstanding question. Save completed validation with its result, reason and related finding in a repair or checks batch.
 
 ## 4. Assign and record file coverage
 
 1. Use `coverage-status --json` before general/discovery dispatch. Assign stale and unreviewed files first, then reviewed-once, then reviewed-twice. Give cold reviewers files/flows without earlier verdicts or counts. Retain each assigned file's `changeId`.
-2. Record all substantively reviewed changed files from one general invocation in a single `coverage-record`, pairing each file with its observed change ID in order. One review ID counts once per file, including retries; a new ID requires a genuinely independent invocation.
+2. Include substantively reviewed changed files in the review result’s `coverage`, pairing each file with its observed change ID. One review ID counts once per file, including retries; a new ID requires a genuinely independent invocation.
 3. Count assessment of changed behavior for actionable correctness/maintenance findings, not listing, context reads, narrow-lens classification or appearance in a whole-repository diff. Coverage prioritizes work; it is not a clean gate.
 4. Respect exact-content checks: edits invalidate earlier coverage without deleting history; any changed file rejects the whole submitted batch. Paths outside the manifest, non-UTF-8 Git paths and dirty nested repositories stop coverage rather than guess identity.
 
