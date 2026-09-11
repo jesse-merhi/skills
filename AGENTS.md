@@ -52,8 +52,9 @@ Assign review duties by the task, not by whether an agent is a subagent.
   reasonable low-risk assumption can resolve the uncertainty.
 - When a user correction or self-detected mistake reveals a reusable agent
   failure, use `feedback-hardening`. Before closing, the source coordinator must
-  start its recommendation workflow or explain the blocker. Local repairs may
-  continue; systemic changes require approval.
+  start its recommendation workflow or explain the blocker. Continue repairs
+  the user has already authorized; `feedback-hardening` owns the scope check
+  for any additional permission.
 
 ## Implementation design
 
