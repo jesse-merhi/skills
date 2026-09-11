@@ -113,3 +113,37 @@ test("refuses a symlinked root without writing through it", t => {
   assert.throws(() => installProfiles({ root }), /real directory/);
   assert.deepEqual(fs.readdirSync(elsewhere), []);
 });
+
+for (const migrating of [false, true]) {
+  test(`restores ${migrating ? "previous links" : "a fresh root"} after a caught filesystem failure`, t => {
+    const { temporary, root } = fixture(t);
+    fs.mkdirSync(root);
+    fs.writeFileSync(path.join(root, "config.toml"), "# personal config\n");
+    let previousSource;
+    if (migrating) {
+      previousSource = path.join(temporary, "old clone");
+      fs.mkdirSync(previousSource);
+      fs.cpSync(path.join(repository, "codex"), path.join(previousSource, "codex"), { recursive: true });
+      installProfiles({ root, source: previousSource });
+    }
+    const snapshot = () => fs.readdirSync(root).map(name => {
+      const filename = path.join(root, name);
+      return [name, fs.lstatSync(filename).isSymbolicLink() ? fs.readlinkSync(filename) : fs.readFileSync(filename, "utf8")];
+    });
+    const before = snapshot();
+    const symlink = fs.symlinkSync;
+    let calls = 0;
+    const failure = t.mock.method(fs, "symlinkSync", (...args) => {
+      if (++calls === 2) throw Object.assign(new Error("filesystem I/O failure"), { code: "EIO" });
+      return symlink(...args);
+    });
+    try {
+      assert.throws(() => installProfiles({ root, previousSource }), /filesystem I\/O failure/);
+      assert.deepEqual(snapshot(), before);
+    } finally {
+      failure.mock.restore();
+    }
+    assert.ok(installProfiles({ root, previousSource }).links.every(link => link.changed));
+    assert.equal(fs.readFileSync(path.join(root, "config.toml"), "utf8"), "# personal config\n");
+  });
+}

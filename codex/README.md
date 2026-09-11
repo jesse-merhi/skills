@@ -18,7 +18,7 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 | `findings_reviewer` — independent findings only | GPT-6 Astra | xhigh |
 | Unnamed child | GPT-5.6 Sol | high |
 
-At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit launch overrides take precedence over role settings.
+At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit spawn arguments override unnamed-child defaults, but named roles retain their pinned model and effort. For an approved exception, use an unnamed child with explicit settings or a separately configured role.
 
 For example:
 
