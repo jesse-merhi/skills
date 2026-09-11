@@ -72,6 +72,11 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.strictEqual(decode(yield* cli("progress-status")).revision, 1)
   yield* invoke(["review", "finish", ...handle, "--outcome", "findings", "--evidence", "complete report"])
   yield* invoke(["review", "finish", ...handle, "--outcome", "findings", "--evidence", "complete report"])
+  yield* invoke(["record", ...handle, ...accepted, "--status", "provisional"])
+  yield* invoke(["record", ...handle, ...accepted, "--status", "reopened", "--decision", "Owner declines this provisional repair"])
+  assert.deepStrictEqual(yield* sql`select status from issues where decision_id = 'D2'`, [{ status: "reopened" }])
+  yield* invoke(["record", ...handle, ...accepted.map(value => value === "D2" ? "NEW" : value), "--status", "reopened", "--decision", "Not an existing provisional repair"]).pipe(Effect.flip)
+  assert.lengthOf(yield* sql`select id from issues where decision_id = 'NEW'`, 0)
   for (const patch of ["patch-1", "patch-2"]) {
     yield* invoke(["progress-record", ...handle, "--outcome", "repair-applied", "--finding-id", "D2", "--repair-attempt", patch, "--evidence", patch])
     yield* invoke(["progress-record", ...handle, "--outcome", "repair-unsuccessful", "--finding-id", "D2", "--repair-attempt", patch, "--evidence", "verification failed"])
@@ -89,25 +94,37 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.lengthOf(yield* sql`select * from review_finding_matches`, 1)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
-test.effect("native command launches once and exposes its saved report through the review handle", () => Effect.gen(function*() {
-  const { cli, invoke, directory, repository, reviewStart, database } = yield* fixture
+test.effect("native command reviews the full historical range once and exposes its saved report", () => Effect.gen(function*() {
+  const { cli, invoke, directory, repository, reviewStart, database, git } = yield* fixture
   const fs = yield* FileSystem.FileSystem
+  yield* fs.writeFileString(`${repository}/second.txt`, "second commit\n")
+  yield* git(["add", "second.txt"])
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "second"])
+  const historicalHead = yield* git(["rev-parse", "HEAD"])
+  yield* fs.writeFileString(`${repository}/later.txt`, "later commit\n")
+  yield* git(["add", "later.txt"])
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "later"])
+  const worktrees = yield* git(["worktree", "list", "--porcelain"])
   const reviewer = `${directory}/reviewer`
   const calls = `${directory}/calls`
   yield* fs.writeFileString(reviewer, `#!/bin/sh
 case " $* " in
-  *" review "*) printf 'review\\n' >> "${calls}"; printf 'No findings\\n' ;;
+  *" review "*) printf 'review\\n' >> "${calls}"; printf 'No findings\\n'; git diff --name-only main...HEAD ;;
   *) exit 0 ;;
 esac
 `)
   yield* fs.chmod(reviewer, 0o700)
-  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--head", historicalHead, "--json"])
   const args = ["review", "native", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--codex-bin", reviewer]
   const launched = yield* invoke(args)
   const Receipt = Schema.fromJsonString(Schema.Struct({ reviewId: Schema.String, launched: Schema.Boolean, report: Schema.String }))
   const first = Schema.decodeUnknownSync(Receipt)(launched.split("\n")[0] ?? "")
   assert.strictEqual(first.launched, true)
   assert.include(yield* fs.readFileString(first.report), "No findings")
+  assert.include(yield* fs.readFileString(first.report), "sample.txt")
+  assert.include(yield* fs.readFileString(first.report), "second.txt")
+  assert.notInclude(yield* fs.readFileString(first.report), "later.txt")
+  assert.strictEqual(yield* git(["worktree", "list", "--porcelain"]), worktrees)
   const second = Schema.decodeUnknownSync(Receipt)((yield* invoke(args)).trim())
   assert.strictEqual(second.reviewId, first.reviewId)
   assert.strictEqual(second.launched, false)
@@ -128,6 +145,20 @@ esac
   if (latest === undefined) return assert.fail("Failed launch must remain inspectable")
   const status = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ status: Schema.String })))(yield* invoke(["review", "status", "--review", latest.id]))
   assert.strictEqual(status.status, "blocked")
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("old handles cannot write evidence into a new run with the same identity", () => Effect.gen(function*() {
+  const { cli, invoke, reviewStart, database } = yield* fixture
+  const scopeFlags = ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--require-current-head", "--json"]
+  yield* cli("scope-start", scopeFlags)
+  const first = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ reviewId: Schema.String })))(yield* reviewStart())
+  yield* invoke(["review", "finish", "--review", first.reviewId, "--outcome", "clean", "--evidence", "complete result"])
+  yield* cli("scope-complete", ["--reason", "complete", "--json"])
+  yield* cli("scope-start", scopeFlags)
+  const denied = yield* invoke(["record-command", "--review", first.reviewId, "--command", "check", "--result", "pass", "--reason", "old evidence"]).pipe(Effect.flip)
+  assert.include(denied.stderr, "different review run")
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.lengthOf(yield* sql`select id from commands`, 0)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("CLI extends an expired existing run with a replayable receipt and preserves its history", () => Effect.gen(function*() {

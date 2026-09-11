@@ -119,7 +119,8 @@ const record = Command.make("record", {
   const write = () => Effect.gen(function*() {
     return args.matchOf.length > 0 ? yield* recordFindingMatch(run, args, args.review || undefined) : yield* recordFinding({ ...run, decisionLog: args.decisionLog }, args, args.review || undefined)
   })
-  const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0
+  const finishedReopen = args.review.length > 0 && args.status === "reopened" && (yield* getReview(args.review)).status === "finished"
+  const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0 || finishedReopen
   const result = args.review.length > 0 && !repair ? yield* withOpenReview(args.review, write) : yield* write()
   const limits = yield* readReviewLimits(result.runId, run.head)
   yield* Console.log(args.json ? JSON.stringify({ ...result, limits }) : `recorded run=${result.runId} issue=${result.issueId} decision=${args.matchOf || args.decisionId} db=${args.db}\n${JSON.stringify({ limits })}`)
@@ -308,9 +309,23 @@ const reviewNative = Command.make("native", {
   const launch = !review.resumed && (yield* claimNativeLaunch(review.reviewId))
   yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, launched: launch, report }))
   if (!launch) return
-  const scope = yield* getScopeBudget(reviewRun(review))
-  const target = scope.pinnedHeadOid ? ["--mode", "commit", "--commit", review.head] : ["--mode", "branch", "--base", review.baseOid]
-  yield* checkedText(process.execPath, [fileURLToPath(new URL("./codex-review.ts", import.meta.url)), ...target, "--codex-bin", args.codexBin, "--output", report], { cwd: review.repoPath }).pipe(
+  const git = yield* trustedExecutable("git", review.repoPath)
+  const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
+  const launchAt = (cwd: string) => checkedText(process.execPath, [fileURLToPath(new URL("./codex-review.ts", import.meta.url)), "--mode", "branch", "--base", review.baseOid, "--codex-bin", args.codexBin, "--output", report], { cwd })
+  const launchHistorical = Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const parent = yield* fs.makeTempDirectory({ prefix: "native-review." })
+    const checkout = `${parent}/checkout`
+    return yield* Effect.acquireUseRelease(
+      checkedText(git, ["worktree", "add", "--detach", checkout, review.head], { cwd: review.repoPath }),
+      () => launchAt(checkout),
+      () => checkedText(git, ["worktree", "remove", checkout], { cwd: review.repoPath }).pipe(
+        Effect.andThen(fs.remove(parent)),
+        Effect.catch(error => Console.error(`Could not remove review checkout ${checkout}: ${String(error)}`))
+      )
+    )
+  })
+  yield* (checkoutHead === review.head ? launchAt(review.repoPath) : launchHistorical).pipe(
     Effect.flatMap(() => requireOpenReview(review.reviewId)),
     Effect.onExit(exit => CauseExit.isFailure(exit) ? finishReview(review.reviewId, "blocked", Cause.pretty(exit.cause)) : Effect.void)
   )

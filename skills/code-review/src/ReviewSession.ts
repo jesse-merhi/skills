@@ -45,6 +45,7 @@ export const requireOpenReview = Effect.fn("ReviewSession.requireOpen")(function
   const progress = yield* reviewProgress(reviewRun(review))
   if (progress?.outcome !== "started" || progress.revision !== review.startRevision) return yield* new ProgressConflict({ message: "Review progress changed; inspect review status before continuing" })
   yield* checkReviewTarget(review)
+  yield* requireCleanReviewTree(review.repoPath)
   return review
 })
 
@@ -67,7 +68,8 @@ export const startReview = Effect.fn("ReviewSession.start")(function*(run: Revie
       yield* checkReviewTarget(review)
       return { ...review, resumed: true }
     }
-    const head = scope.pinnedHeadOid || (yield* requireCleanReviewTree(run.repoPath))
+    const cleanHead = yield* requireCleanReviewTree(run.repoPath)
+    const head = scope.pinnedHeadOid || cleanHead
     const progress = yield* reviewProgress(run)
     if (progress?.outcome === "started") return yield* new ProgressConflict({ message: "An earlier review is still running; finish it before starting another" })
     const started = yield* reviewProgress(run, { expectedRevision: progress?.revision ?? 0, phase, head, outcome: "started", evidence }).pipe(
@@ -93,7 +95,10 @@ export const finishReview = Effect.fn("ReviewSession.finish")(function*(reviewId
       if (review.outcome !== outcome || review.evidence !== evidence) return yield* new ProgressConflict({ message: "The saved review result is immutable" })
       return review
     }
-    if (outcome !== "blocked") yield* checkReviewTarget(review)
+    if (outcome !== "blocked") {
+      yield* checkReviewTarget(review)
+      yield* requireCleanReviewTree(review.repoPath)
+    }
     const progress = yield* reviewProgress(reviewRun(review))
     if (progress?.outcome !== "started" || progress.revision !== review.startRevision) return yield* new ProgressConflict({ message: "The review no longer matches the saved invocation" })
     yield* reviewProgress(reviewRun(review), { expectedRevision: progress.revision, phase: review.phase, head: review.head, outcome, evidence }, reviewId)

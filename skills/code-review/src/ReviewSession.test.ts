@@ -92,7 +92,7 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("credits coverage only after completion and appends repeat evidence without reopening a rejection", () => Effect.gen(function*() {
-    const { run } = yield* fixture()
+    const { run, fs } = yield* fixture()
     const native = yield* startReview(run, "native", "native")
     yield* recordFinding(run, candidate(), native.reviewId)
     yield* finishReview(native.reviewId, "clean", "native result")
@@ -101,6 +101,11 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     yield* withOpenReview(cold.reviewId, current => recordFindingMatch(reviewRun(current), { matchOf: "D1", source: "cold", evidence: "cold report", matchNote: `Same cause and counterevidence at ${run.head}` }, current.reviewId))
     yield* withOpenReview(cold.reviewId, current => recordReviewedFiles(reviewRun(current), { reviewId: cold.reviewId, reviewer: "cold", files }))
     assert.strictEqual((yield* getReviewFileCoverage(run))[0]?.reviews, 0)
+    yield* fs.writeFileString(`${run.repoPath}/sample.txt`, "uncommitted review content\n")
+    yield* finishReview(cold.reviewId, "clean", "dirty result").pipe(Effect.flip)
+    assert.strictEqual((yield* getReview(cold.reviewId)).status, "open")
+    assert.strictEqual((yield* getReviewFileCoverage(run))[0]?.reviews, 0)
+    yield* fs.writeFileString(`${run.repoPath}/sample.txt`, "changed\n")
     yield* finishReview(cold.reviewId, "clean", "complete cold report")
     assert.strictEqual((yield* getReviewFileCoverage(run))[0]?.reviews, 1)
     const sql = yield* SqlClient.SqlClient

@@ -15,6 +15,7 @@ import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } fr
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
+  readonly runId?: string
   readonly repo: string
   readonly repoPath: string
   readonly branch: string
@@ -172,7 +173,7 @@ Triage:
   A rating does not authorize a repair; existing evidence, scope and permission gates still apply.
 
 Required for every finding:
-  --repo <name> --repo-path <root> --target <PR or range>
+  --review <id>, or --repo <name> --repo-path <root> --target <PR or range>
   --finding-kind ${FINDING_KINDS.join("|")}
   --status ${FINDING_STATUSES.join("|")}
   --fix-scope ${FINDING_FIX_SCOPES.join("|")}
@@ -767,7 +768,7 @@ const canonicalBaseIdentity = Effect.fn("ReviewFindings.canonicalBaseIdentity")(
   return `oid:${oid}`
 })
 
-const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
+const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base" | "runId">) {
   const sql = yield* SqlClient.SqlClient
   const repoKey = yield* canonicalRepoKey(run.repoPath)
   const requestedIdentity = yield* canonicalBaseIdentity(run.repoPath, run.base).pipe(
@@ -781,7 +782,10 @@ const exactRunId = Effect.fn("ReviewFindings.exactRunId")(function*(run: Pick<Re
     const candidateIdentity = yield* canonicalBaseIdentity(run.repoPath, candidate.base).pipe(
       Effect.orElseSucceed(() => `raw:${candidate.base}`)
     )
-    if (candidateIdentity === requestedIdentity) return candidate.id
+    if (candidateIdentity === requestedIdentity) {
+      if (run.runId !== undefined && run.runId !== candidate.id) return yield* Effect.fail(new InvalidFinding("This handle belongs to a different review run; use the current review ID"))
+      return candidate.id
+    }
   }
   return undefined
 })
@@ -1523,6 +1527,13 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     ? []
     : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
   const existingIssue = existingIssues[0]
+  if (reviewId !== undefined && input.status === "reopened") {
+    const invocation = (yield* sql<{ readonly status: string }>`select status from review_invocations where id = ${reviewId}`)[0]
+    if (invocation?.status === "finished") {
+      yield* requireFinishedReview(run)
+      if (existingIssue?.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A finished review can reopen only an existing provisional repair"))
+    }
+  }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
     return yield* Effect.fail(new InvalidFinding("updating an owner-resolved finding requires --owner-resolution and --decision"))
   }
