@@ -2317,11 +2317,11 @@ NODE
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("insert into review_scope_locks (repo_key, branch, run_id) select review_runs.repo_key, coalesce(review_runs.branch, ?), review_runs.id from review_runs join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.target = ? and review_scope_budgets.status = ?").run("", "first review", "complete")' "$db"
 
   for terminal_command in scope-check scope-complete; do
-    local -a process_check_flags=()
+    local -a terminal_args=("$terminal_command")
     if [ "$terminal_command" = scope-complete ]; then
-      process_check_flags=(--process-check "Synthetic review: no process friction observed.")
+      terminal_args+=(--process-check "Synthetic review: no process friction observed.")
     fi
-    if "$ROOT_DIR/skills/code-review/scripts/review-findings" "$terminal_command" "${process_check_flags[@]}" \
+    if "$ROOT_DIR/skills/code-review/scripts/review-findings" "${terminal_args[@]}" \
       --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
       --target "first review" --base main --reason "Completed budgets are terminal." \
       >"$tmp/stdout" 2>"$tmp/stderr"; then
