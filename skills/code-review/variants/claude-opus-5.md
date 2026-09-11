@@ -39,9 +39,11 @@ Use [the review commands](references/recording-reviews.md) to save the complete 
 
 Follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
 
-## 4. Check, push and summarize
+## 4. Check, reflect and finish
 
 Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Save completed checks with `review-findings record-command --review <review-id>`.
+
+After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \

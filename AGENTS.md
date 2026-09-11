@@ -50,11 +50,12 @@ Assign review duties by the task, not by whether an agent is a subagent.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
-- When a user correction or self-detected mistake reveals a reusable agent
-  failure, use `feedback-hardening`. Before closing, the source coordinator must
-  start its recommendation workflow or explain the blocker. Continue repairs
-  the user has already authorized; `feedback-hardening` owns the scope check
-  for any additional permission.
+- Use `feedback-hardening` before closing a substantive task, after a user
+  correction, and before reporting a blocked workflow. Tell the user what got in
+  the way and what would help next time. This reflection is required after every
+  code review, even when the code is clean. The coordinator owns it; findings-only
+  reviewers send observations in their existing report. Follow the skill for
+  reporting and repair authority.
 
 ## Implementation design
 
