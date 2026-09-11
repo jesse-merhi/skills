@@ -5,6 +5,8 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 
 import { checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
@@ -54,6 +56,50 @@ const fixture = Effect.gen(function*() {
 })
 
 layer(Layer.mergeAll(NodeServices.layer, Reactivity.layer))("review limits CLI", test => {
+for (const changeHead of [false, true]) {
+test.effect(`native diagnostics survive successful output and changed target=${changeHead}`, () => Effect.gen(function*() {
+  const { cli, directory, database, repository } = yield* fixture
+  const fs = yield* FileSystem.FileSystem
+  const home = `${directory}/codex-home`
+  const day = new Date().toISOString().slice(0, 10).replaceAll("-", "/")
+  const sessions = `${home}/sessions/${day}`
+  const session = `${sessions}/rollout-fixture.jsonl`
+  yield* fs.makeDirectory(sessions, { recursive: true })
+  yield* fs.writeFileString(session, JSON.stringify({ type: "session_meta", payload: { id: "fixture-session", cwd: yield* fs.realPath(repository) } }) + '\n{"type":"entered_review_mode"}\n')
+  const calls = `${directory}/calls`
+  const reviewer = `${directory}/reviewer`
+  yield* fs.writeFileString(reviewer, `#!/bin/sh
+case " $* " in
+  *" review "*)
+    touch "${session}"
+    printf 'review\\n' >> "${calls}"
+    printf 'Original review output\\n'
+    ${changeHead ? 'git -c core.hooksPath=/dev/null commit --allow-empty -m moved >/dev/null' : ':'}
+    ;;
+  *" archive "*) exit 9 ;;
+  *) exit 0 ;;
+esac
+`)
+  yield* fs.chmod(reviewer, 0o700)
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+  const child = yield* spawner.spawn(ChildProcess.make(process.execPath, [
+    new URL("review-findings.ts", import.meta.url).pathname, "review", "native", "--db", database,
+    "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--codex-bin", reviewer
+  ], { env: { CODEX_HOME: home }, extendEnv: true }))
+  const result = yield* Effect.all({ code: child.exitCode, stdout: Stream.mkString(Stream.decodeText(child.stdout)), stderr: Stream.mkString(Stream.decodeText(child.stderr)) }, { concurrency: "unbounded" })
+  assert.strictEqual(result.code === 0, !changeHead, result.stderr + result.stdout)
+  assert.include(result.stderr, "could not archive review session fixture-session")
+  assert.strictEqual(yield* fs.readFileString(calls), "review\n")
+  const first = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ report: Schema.String })))(result.stdout.split("\n")[0] ?? "")
+  assert.include(yield* fs.readFileString(first.report), "Original review output")
+  if (changeHead) {
+    const sql = yield* SqliteClient.make({ filename: database })
+    assert.deepStrictEqual(yield* sql`select status from review_invocations`, [{ status: "blocked" }])
+  }
+}).pipe(Effect.scoped), { timeout: 60000 })
+}
+
 test.effect("CLI records a whole report with a handle, repairs only after finish, and needs no JSON input files", () => Effect.gen(function*() {
   const { cli, invoke, reviewStart, database } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])

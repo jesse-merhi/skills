@@ -22,6 +22,7 @@ const review = Command.make("codex-review", {
   output: Flag.optional(Flag.string("output")),
   parallelTests: Flag.optional(Flag.string("parallel-tests")),
   checkAuth: Flag.boolean("check-auth"),
+  once: Flag.boolean("once"),
   dryRun: Flag.boolean("dry-run")
 }, Effect.fn("codexReview.handler")(function*(args) {
   if (args.checkAuth) {
@@ -50,19 +51,21 @@ const review = Command.make("codex-review", {
   }))
   const result = yield* untilReviewStable({
     identity: currentIdentity,
+    ...(args.once ? { maxRuns: 1 } : {}),
     operation: selectReviewPlan(args.mode, args.base, args.commit).pipe(
       Effect.flatMap((currentPlan) => runNativeReview({ codexBin: args.codexBin, plan: currentPlan, testCommand: args.parallelTests }).pipe(
+        Effect.tap(output => Effect.gen(function*() {
+          if (Option.isNone(outputPath)) return
+          const paths = yield* Path.Path
+          yield* fileSystem.makeDirectory(paths.dirname(outputPath.value), { recursive: true })
+          yield* fileSystem.writeFileString(outputPath.value, output)
+        })),
         Effect.map((output) => ({ output, plan: currentPlan }))
       ))
     ),
     onChange: () => Console.error("review target changed while the review was running; reviewing the latest state")
   })
   const output = result.value.output
-  if (Option.isSome(outputPath)) {
-    const paths = yield* Path.Path
-    yield* fileSystem.makeDirectory(paths.dirname(outputPath.value), { recursive: true })
-    yield* fileSystem.writeFileString(outputPath.value, output)
-  }
   if (output.length > 0) yield* Console.log(output)
   yield* Console.log(`codex-review complete${result.runs > 1 ? ` after ${result.runs} runs` : ""}`)
 })).pipe(Command.withDescription("Run the native Codex review command against a resolved Git target"))

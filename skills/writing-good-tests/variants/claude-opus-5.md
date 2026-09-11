@@ -1,6 +1,6 @@
 ---
 name: writing-good-tests
-description: 'Plan useful test coverage, audit test quality, and implement behavior through test-first cycles.'
+description: 'Write useful tests for valid inputs and failure cases, improve weak tests, and verify behavior before pushing.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
@@ -8,7 +8,7 @@ metadata:
 
 # Writing Good Tests
 
-Decide what behavior needs proof, find the coverage that already exists, then implement only the authorized change. In review-only work, inspect and report; do not edit code or start red-green cycles.
+Establish the intended behavior, inspect existing coverage and fix problems within the task.
 
 ## Choose the proof
 
@@ -22,27 +22,29 @@ Use the application’s own data definitions for successful fakes and fixtures. 
 
 Choose the lowest practical boundary that proves the failure: unit tests for policy or parsing, integration tests for real bindings/persistence/isolation, and a useful end-to-end journey for visible cross-boundary behavior. Use parser/linter plus execution for declarative configuration. Do not test skill prose or linter implementation; apply the repository's instruction-exercise and linter validation policy.
 
-Keep one test responsible for proving each promised regression. A broader test replaces a smaller one only when it exercises the same branch with equivalent inputs, asserts the same outcome and runs at an equivalent required cadence. Inspect that replacement before deleting the old owner. Passing through code, manual coverage, planned tests and types alone are not replacements.
+Keep coverage for every required behavior. A broader test replaces a smaller one only when it exercises the same branch with equivalent inputs, asserts the same outcome and runs at an equivalent required cadence. Inspect that replacement before deleting the old test. Passing through code, manual coverage, planned tests and types alone are not replacements.
 
 Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, concurrency, offline, migration and external-failure checks when the complete journey does not prove them. Retired behavior needs no test unless its absence still protects a promised compatibility, security or migration property.
 
 ## Write tests worth keeping
 
+Improve the test files you touch, rather than only appending tests. Rewrite weak tests, reorganize confusing files and remove tests that prove nothing useful. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
+
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
 - Use real internal collaborators. Substitute an external API, clock, filesystem or database only when the real boundary is unreliable or disproportionately expensive, using the existing interface and realistic results.
-- Consolidate repeated shapes into named, object-shaped cases only when each row proves a distinct regression.
+- Use named, parameterized cases when they make related behaviors easier to read and extend. Give each case a clear purpose and keep scenarios separate when their setup or assertions differ.
 - Remove tautologies, incidental mock-call/order assertions, inputs or states that cannot reach the code being tested, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only when a real product, accessibility, safety or protocol contract needs it.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 
-## Implement one behavior at a time
+## Implement, then prove the behavior
 
-When behavior is missing, write or adapt its useful test, run it and confirm it fails for the missing behavior rather than broken setup. Implement the smallest complete solution, then refactor while green.
+Implement the authorized behavior and check its result against the agreed contract. Then write tests that prove it works for valid inputs and relevant failure cases. Reuse existing tests when they already prove it, including for covered refactors.
 
-If existing coverage already proves the behavior, reuse it. Do not invent a new test or break working code to manufacture a red phase. For already-covered refactors, preserve the contract and use the existing checks.
+Run focused checks to resolve uncertainty, diagnose failures or verify repairs. For review fixes, establish a reachable failure and repair authority before editing; a synthetic test alone proves neither.
 
-Run the affected test after each meaningful change, then broader relevant checks when the slice is stable. Stop on the first test error and diagnose it before rerunning. Review-discovered bugs still need reachable-flow evidence and repair authority; an isolated synthetic test does not establish either.
+Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After review repairs, rerun affected tests and required final checks. Otherwise, repeat or broaden testing only for changed behavior, failures or unresolved concerns. Stop on the first test error and diagnose it before rerunning.
 
 ## Check cost and finish
 

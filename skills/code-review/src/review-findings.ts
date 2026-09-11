@@ -12,7 +12,7 @@ import * as Schema from "effect/Schema"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import { fileURLToPath } from "node:url"
 
-import { checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
 import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordReviewedFiles, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
 import { extendReviewBudget, recordFindingMatch, requireFinishedReview, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
@@ -311,7 +311,7 @@ const reviewNative = Command.make("native", {
   if (!launch) return
   const git = yield* trustedExecutable("git", review.repoPath)
   const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
-  const launchAt = (cwd: string) => checkedText(process.execPath, [fileURLToPath(new URL("./codex-review.ts", import.meta.url)), "--mode", "branch", "--base", review.baseOid, "--codex-bin", args.codexBin, "--output", report], { cwd })
+  const launchAt = (cwd: string) => checkedInherit(process.execPath, [fileURLToPath(new URL("./codex-review.ts", import.meta.url)), "--mode", "branch", "--base", review.baseOid, "--once", "--codex-bin", args.codexBin, "--output", report], { cwd })
   const launchHistorical = Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const parent = yield* fs.makeTempDirectory({ prefix: "native-review." })

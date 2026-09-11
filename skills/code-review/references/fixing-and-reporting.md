@@ -2,7 +2,7 @@
 
 ## Establish the problem
 
-Tie each candidate to the reviewed change and exact revision. Establish its trigger, expected behavior and actual result through realistic inputs and normal checks in the application. Local reproduction is sufficient; production logs are unnecessary.
+Tie each candidate to the reviewed change and exact revision. Show how a client/API user or background job reaches the bug, what should happen, what happens instead and who is affected. Use realistic inputs and the application's normal checks. Local reproduction is sufficient; production logs are unnecessary.
 
 Trace actual callers, configured producers and installed dependencies. A controlled fixture at an existing external boundary can prove a failure; inventing a future adapter or bypassing internal guarantees cannot. Type-permitted inputs and user count alone do not establish reachability or a race.
 
@@ -12,7 +12,7 @@ Compare applicable recorded counterevidence before repeating an investigation. A
 
 ## Rate the complete inventory
 
-Use `review-findings schema` for evidence and rating requirements. Assess likelihood and impact even when the reviewer supplied a priority; rare destructive failures matter. Keep maintenance cost separate. The CLI derives severity and disposition but cannot verify the evidence.
+Use `review-findings schema` for evidence and rating requirements. Assess likelihood and impact even when the reviewer supplied a priority; rare destructive failures matter. Keep maintenance cost separate. The CLI derives severity and disposition but cannot verify the evidence. Accept runtime findings only with the proof above; leave unresolved candidates unrated and explain rejections.
 
 Record every checked candidate, including rejected and uncertain ones, through `record --review <id>` in the code-mode call for the complete report. Match repeated reports to the same open or rejected cause with `record --match-of`. Include the revision and why the cause and counterevidence still apply. Changed facts requiring a new judgment, or recurrence after a fix, need a new decision linked to the earlier ID.
 
