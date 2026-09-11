@@ -40,13 +40,11 @@ Keep test changes within the requested behavior. Broader test cleanup needs its 
 
 ## Implement, then prove the behavior
 
-Test-first development is optional unless requested.
-
 Implement a complete behavior and confirm its observable result against the agreed contract. Then write or adapt the smallest useful regression test, using expectations established independently of the implementation. If existing coverage already proves the behavior, reuse it; an already-covered refactor needs no new test.
 
 Use focused checks during implementation when they answer a current uncertainty, diagnose a failure, or verify a repair. Review-discovered bugs still need reachable-flow evidence and repair authority before editing; a newly written failing test is not the only valid evidence, and an isolated synthetic test does not establish reachability or authority.
 
-Before pushing, run the relevant regression tests and required repository checks on the completed implementation. After review repairs, rerun affected proof and complete the required final checks. Broaden or repeat testing only for relevant changes, failures, or unresolved concerns. Stop on the first test error and diagnose it before rerunning.
+Before pushing, ensure every promised regression has useful coverage, reusing existing tests when they already prove it. Run the relevant regression tests and required repository checks on the completed implementation; do not push while they fail or required behavior remains unproved. After review repairs, rerun affected proof and complete the required final checks. Broaden or repeat testing only for relevant changes, failures, or unresolved concerns. Stop on the first test error and diagnose it before rerunning.
 
 ## Check cost and finish
 
