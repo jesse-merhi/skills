@@ -9,6 +9,8 @@ review-findings closeout --json --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <target> --base <base>
 ```
 
+Include the saved `scope_budget.processCheck` in the user summary. An empty field means the process check was not recorded; do not invent one for historical reviews. For a blocked or partial review, keep the observation and next action in the task record without marking the run complete.
+
 The JSON's `verification_run` contains `command`, `result`, `reason` and `decision_id`; use these records rather than inventing a validation result. Validation must be recorded before completion; report missing records rather than trying to write to a closed run.
 
 Lead with whether review finished and fixes were pushed or remain local. Give the exact target and final SHA, native/cold phase results and evidence, validation, unresolved decisions and limits. A missing `reviewed_head` means the saved run is incomplete; an exact SHA alone does not prove both phases ran. Keep enough evidence for a later workflow to check the reviewed head without relying on chat memory.

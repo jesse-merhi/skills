@@ -1,46 +1,34 @@
 ---
 name: feedback-hardening
-description: 'Turn a reusable agent failure into an independently recommended, approved repair.'
+description: 'Check the process after tasks and code reviews, surface friction and corrections, and turn useful feedback into verified improvements.'
 ---
 
 # Feedback hardening
 
-Use this for an evidenced agent failure that can recur across tasks—not ordinary debugging, typos, changed goals, or one-off preferences. Keep authorized task-local repair moving; this workflow grants no additional permissions.
+## 1. Check the process
 
-For qualifying failures, the source coordinator must start the recommendation workflow or explain the blocker before closing, even when the immediate mistake is fixed.
+The coordinator checks before closing a substantive task, after a user correction, and before reporting blocked work. Always check after a requested code review, including clean, partial and single-phase reviews. Check once for the whole workflow, not every pass. Findings-only workers include observations in their existing report.
 
-## Establish the target
+Look for repeated commands, repair churn, confusing instructions, missing context, tool failures, unnecessary waiting, and corrections you resisted or forgot. Successful work can still expose a bad process. Ordinary debugging does not automatically need a global rule.
 
-Record redacted evidence, the violated invariant, task state, permissions, and likely owning layer. Before the first recommendation, require a clean Git target and freeze its canonical root, absolute Git common directory, HEAD, and clean status. For managed targets, capture the revision or ETag.
+Reporting needs no clean checkout, extra agent or approval. If nothing useful surfaced, record that honestly.
 
-Keep that original baseline separate from the current approved checkpoint. Track target state/checksum and how to reproduce it, evidence version, recommendation, selected option, approval, scope, validation, and next action. One source conversation coordinates one active workflow; queue distinct failures.
+## 2. Tell the user what got in the way
 
-## Get an independent recommendation
+Be candid about awkward tools, instructions and your own mistakes. Vent with concrete examples: what happened, what extra work it caused, and what would help. Separate observed facts from suspected causes. Do not blame the user or invent complaints, motives or measurements.
 
-Send exactly one fresh, no-history worker the evidence, invariant, target baseline/checkpoint, constraints, and workflow/evidence IDs. Its role is recommendation-only: no edits, publication, implementation delegation, or inherited approval. Prefer enforced read-only execution; disclose when this boundary is instruction-only. Never reuse it as an implementer.
+For example: “I rebuilt the command four times to supply IDs the tool already knows. The CLI should fill those in.” Keep the report short. General tasks need no extra paragraph when nothing surfaced; reviews still record that result.
 
-The worker finds the owning cause and ranks credible repairs:
-1. Remove the invalid choice through architecture, types, APIs, or lifecycle.
-2. Enforce the invariant with an existing check or focused test.
-3. Put necessary judgment in the narrowest instruction.
-4. Rely on human review only when stronger options do not fit.
+## 3. Recommend the smallest useful change
 
-Return one lead recommendation, alternatives, scope, risks, and proof plan. Bind the result to workflow/evidence IDs, target identity/checksum, recommendation ID, and a no-mutation attestation. Outcomes are recommended, retargeted with evidence, or blocked with a concrete reason. The worker reports contributing skills without editing them or delegating again.
+Check the owning tools, instructions and available prior feedback. Reuse open recommendations; respect declines unless new evidence matters. Prefer removing unnecessary work or fixing the tool, then an existing check, then a narrow instruction. Keep safety, evidence and review requirements intact.
 
-Accept only the retained worker handle's authenticated terminal result, matching those fields. Interim messages are not recommendations. Wait on that handle; on failure report the actual blocker. Do not release the slot until the worker is terminal—interruption alone may not settle it.
+Name the change, its owner and how to tell whether it helped. State missing evidence when the cause is uncertain. Use one independent, read-only recommendation worker only for competing causes or consequential tradeoffs; it advises without editing.
 
-## Approve and implement
+## 4. Apply and follow through
 
-Recheck exact target state, present the recommendation, and obtain explicit approval of a named option bound to its evidence, target, mechanism, and scope. A correction or general prevention request is not that approval.
+Use existing user instructions to resolve scope and implement authorized changes without asking again. Otherwise present the concrete scope for approval. Reporting grants no additional authority, including installation, publication or merge. Recheck the target and preserve concurrent work through its normal implementation workflow.
 
-Immediately before editing, revalidate the approved checkpoint. For a managed write, require the approved revision or ETag as its write precondition; if unsupported, stop rather than overwrite concurrent changes.
+Verify the change against the original failure. Keep evidence, results, pending recommendations, approval state and next actions in the existing task or review record for resumption or handoff. Consult that record on the next relevant run when available: changing an instruction alone does not prove improvement.
 
-Use the target's normal implementation workflow. Keep the recommendation worker retired. In-scope changes advance the checkpoint; new evidence, target/base drift, or out-of-scope changes require a fresh recommendation and approval. Implementation workers report new failures to the coordinator rather than launching nested hardening workflows.
-
-Approval does not grant separate publication, merge, deployment, destructive, spending, protected-schema, or access-expansion authority. A decline ends implementation.
-
-## Finish or hand off
-
-Verify the approved repair and report the cause, chosen prevention layer, changed artifacts, before/after evidence, and remaining limits. Record completed, declined, failed, or abandoned; settle all workers before releasing the slot.
-
-Before handoff, settle the recommendation worker and carry the baseline, authenticated recommendation, approval, current checkpoint, and next action. The successor revalidates them; matching state does not grant authority. Keep ownership until the successor acknowledges adoption. Expected approved dirty work is valid; mismatched state or new evidence needs a fresh recommendation.
+Recording observations and next actions, or no useful change, completes this check. Recommendations do not become code findings or delay an otherwise complete review. Include feedback about this workflow in the same report; do not start recursive hardening.

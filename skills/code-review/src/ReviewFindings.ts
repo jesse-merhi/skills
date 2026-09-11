@@ -429,6 +429,7 @@ interface ScopeBudgetRow {
   readonly new_production_paths_json: string
   readonly new_binary_production_paths_json: string
   readonly last_reason: string
+  readonly process_check: string
 }
 interface FixedFindingRow { readonly decision_id: string; readonly summary: string }
 interface UnresolvedFindingRow {
@@ -485,6 +486,7 @@ export interface ScopeBudgetStatus {
   readonly newProductionPaths: ReadonlyArray<string>
   readonly newBinaryProductionPaths: ReadonlyArray<string>
   readonly lastReason: string
+  readonly processCheck: string
 }
 
 export interface ScopeBudgetCheck extends ScopeBudgetStatus {
@@ -693,6 +695,7 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "line_metric", "text not null default 'production-only'"],
     ["review_scope_budgets", "pinned_head_oid", "text not null default ''"], ["review_scope_budgets", "baseline_binary_paths_json", "text not null default '[]'"],
     ["review_scope_budgets", "new_binary_production_paths_json", "text not null default '[]'"],
+    ["review_scope_budgets", "process_check", "text not null default ''"],
     ["review_scope_events", "line_metric", "text not null default 'production-only'"], ["review_scope_events", "baseline_test_lines", "integer not null default 0"],
     ["review_scope_events", "current_test_lines", "integer not null default 0"]
   ] as const
@@ -924,7 +927,8 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
     allowedGrowthLines: row.allowed_growth_lines,
     newProductionPaths,
     newBinaryProductionPaths,
-    lastReason: row.last_reason
+    lastReason: row.last_reason,
+    processCheck: row.process_check
   } satisfies ScopeBudgetStatus
 })
 
@@ -1282,7 +1286,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   }))
 })
 
-export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string) {
+export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string, processCheck = "") {
   if (reason.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-complete requires the clean review result"))
   const cleanHead = yield* requireCleanReviewTree(run.repoPath).pipe(Effect.mapError((error) => new InvalidScopeBudget(error.message)))
   const sql = yield* SqlClient.SqlClient
@@ -1305,7 +1309,7 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
     const limits = yield* readReviewLimits(check.runId, current.pinnedHeadOid || cleanHead)
     if (limits.incompletePhases.length > 0) return yield* Effect.fail(new InvalidScopeBudget(JSON.stringify({ limits, stoppingReasons: ["PHASE_TARGET_NOT_MET"] })))
     yield* sql`update review_runs set head = ${current.pinnedHeadOid.length > 0 ? current.pinnedHeadOid : cleanHead} where id = ${check.runId}`
-    yield* sql`update review_scope_budgets set generation = generation + 1, status = 'complete', last_reason = ${reason}, updated_at = ${nowSeconds()} where run_id = ${check.runId}`
+    yield* sql`update review_scope_budgets set generation = generation + 1, status = 'complete', last_reason = ${reason}, process_check = ${processCheck.trim()}, updated_at = ${nowSeconds()} where run_id = ${check.runId}`
     yield* sql`delete from review_scope_locks where run_id = ${check.runId}`
     yield* writeScopeEvent({
     runId: check.runId,
@@ -1321,7 +1325,7 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
     scopeSummary: check.scopeSummary,
     authorization: check.authorization
     })
-    return { ...check, generation: check.generation + 1, status: "complete", lastReason: reason }
+    return { ...check, generation: check.generation + 1, status: "complete", lastReason: reason, processCheck: processCheck.trim() }
   }))
 })
 
@@ -1939,6 +1943,7 @@ export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
   `scope=${scope.scopeSummary}`,
   `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`,
   ...(scope.lastReason.length === 0 ? [] : [`last-reason=${scope.lastReason}`]),
+  `process-check=${scope.processCheck || "not recorded"}`,
   ...blockingBinaryPathsLines(scope),
   ...pathsAddedLines(scope)
 ].join("\n")

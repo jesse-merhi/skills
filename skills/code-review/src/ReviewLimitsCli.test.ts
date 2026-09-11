@@ -221,6 +221,29 @@ esac
   assert.strictEqual(status.status, "blocked")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
+for (const report of ["No useful process improvement surfaced.", "The launcher lost its saved run ID; propose inferring it. No tool change authorized."]) {
+test.effect(`completion preserves the process check: ${report}`, () => Effect.gen(function*() {
+  const { cli, progress, database } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--require-current-head", "--json"])
+  const sql = yield* SqliteClient.make({ filename: database })
+  yield* cli("scope-check", ["--reason", "fixture is within scope", "--json"])
+  const premature = yield* cli("scope-complete", ["--reason", "complete", "--process-check", report]).pipe(Effect.flip)
+  assert.include(premature.stderr, "PHASE_TARGET_NOT_MET")
+  assert.deepStrictEqual(yield* sql`select status, process_check from review_scope_budgets`, [{ status: "ok", process_check: "" }])
+  yield* progress(0, "started")
+  yield* progress(1, "clean")
+  const completed = decode(yield* cli("scope-complete", ["--reason", "complete", "--process-check", report, "--json"]))
+  assert.strictEqual(completed.status, "complete")
+  const saved = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ scope_budget: Schema.Struct({ processCheck: Schema.String }), review_candidates: Schema.Array(Schema.Unknown) })))(yield* cli("closeout", ["--json"]))
+  assert.strictEqual(saved.scope_budget.processCheck, report)
+  assert.lengthOf(saved.review_candidates, 0)
+  assert.include(yield* cli("closeout", ["--summary"]), report)
+  const denied = yield* cli("scope-complete", ["--reason", "rewrite", "--process-check", "replacement"]).pipe(Effect.flip)
+  assert.include(denied.stderr, "terminal")
+  assert.deepStrictEqual(yield* sql`select status, process_check from review_scope_budgets`, [{ status: "complete", process_check: report }])
+}).pipe(Effect.scoped), { timeout: 30000 })
+}
+
 test.effect("old handles cannot write evidence into a new run with the same identity", () => Effect.gen(function*() {
   const { cli, invoke, reviewStart, database } = yield* fixture
   const scopeFlags = ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--require-current-head", "--json"]
