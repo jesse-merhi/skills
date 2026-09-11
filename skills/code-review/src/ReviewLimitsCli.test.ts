@@ -4,6 +4,7 @@ import { assert, layer } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
@@ -56,6 +57,25 @@ const fixture = Effect.gen(function*() {
 })
 
 layer(Layer.mergeAll(NodeServices.layer, Reactivity.layer))("review limits CLI", test => {
+test.effect("scope record commands reject checkout-local databases before creating them", () => Effect.gen(function*() {
+  const { repository } = yield* fixture
+  const fs = yield* FileSystem.FileSystem
+  const database = `${repository}/reviews.sqlite`
+  const identities = [
+    ["--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main"],
+    ["--review", "unknown"]
+  ]
+  for (const identity of identities) {
+    for (const command of [
+      ["progress-record", "--expected-revision", "0", "--phase", "native", "--outcome", "started", "--evidence", "fixture"],
+      ["coverage-record", "--review-id", "fixture", "--reviewer", "fixture", "--file", "sample.txt", "--change-id", "fixture"]
+    ]) {
+      yield* checkedText(process.execPath, [new URL("review-findings.ts", import.meta.url).pathname, ...command, "--db", database, ...identity]).pipe(Effect.flip)
+      assert.isFalse(yield* fs.exists(database))
+    }
+  }
+}).pipe(Effect.scoped), { timeout: 30000 })
+
 for (const changeHead of [false, true]) {
 test.effect(`native diagnostics survive successful output and changed target=${changeHead}`, () => Effect.gen(function*() {
   const { cli, directory, database, repository } = yield* fixture
@@ -108,6 +128,8 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.deepStrictEqual(receipt(yield* reviewStart()), { ...started, resumed: true })
   const handle = ["--review", started.reviewId]
   const rejected = ["--decision-id", "D1", "--status", "rejected", "--source", "fixture", "--fingerprint", "candidate", "--summary", "Unsupported candidate", "--finding-kind", "maintenance", "--fix-scope", "local", "--handling", "reject", "--rejection-gate", "reality", "--decision", "No claimed duplicate"]
+  const files = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Array(Schema.Struct({ path: Schema.String, changeId: Schema.String }))))(yield* cli("coverage-status", ["--json"]))
+  for (const file of files) yield* invoke(["coverage-record", ...handle, "--reviewer", "fixture", "--file", file.path, "--change-id", file.changeId])
   const accepted = ["--decision-id", "D2", "--source", "fixture", "--fingerprint", "owner cause", "--summary", "Fixture repair", "--finding-kind", "maintenance", "--maintenance-evidence", "Synthetic duplicate policy", "--present-cost", "Two changes for one policy", "--root-cause", "Duplicated authority", "--recommended-fix", "Use existing owner", "--intervention-justification", "Remove duplicate", "--fix-scope", "local", "--handling", "fix"]
   yield* Effect.forEach([rejected, [...accepted, "--status", "open"]], card => invoke(["record", ...handle, ...card]))
   yield* invoke(["record", ...handle, "--match-of", "D1", "--source", "second-location", "--evidence", "report", "--match-note", "Same cause"])
@@ -156,9 +178,10 @@ test.effect("native command reviews the full historical range once and exposes i
   const worktrees = yield* git(["worktree", "list", "--porcelain"])
   const reviewer = `${directory}/reviewer`
   const calls = `${directory}/calls`
+  const reviewCwd = `${directory}/review-cwd`
   yield* fs.writeFileString(reviewer, `#!/bin/sh
 case " $* " in
-  *" review "*) printf 'review\\n' >> "${calls}"; printf 'No findings\\n'; git diff --name-only main...HEAD ;;
+  *" review "*) pwd > "${reviewCwd}"; printf 'review\\n' >> "${calls}"; printf 'No findings\\n'; git diff --name-only main...HEAD ;;
   *) exit 0 ;;
 esac
 `)
@@ -174,6 +197,8 @@ esac
   assert.include(yield* fs.readFileString(first.report), "second.txt")
   assert.notInclude(yield* fs.readFileString(first.report), "later.txt")
   assert.strictEqual(yield* git(["worktree", "list", "--porcelain"]), worktrees)
+  const paths = yield* Path.Path
+  assert.isFalse(yield* fs.exists(paths.dirname((yield* fs.readFileString(reviewCwd)).trim())))
   const second = Schema.decodeUnknownSync(Receipt)((yield* invoke(args)).trim())
   assert.strictEqual(second.reviewId, first.reviewId)
   assert.strictEqual(second.launched, false)
@@ -188,7 +213,7 @@ esac
   yield* invoke(["review", "finish", "--review", reserved.reviewId, "--outcome", "blocked", "--evidence", "External invocation cancelled"])
   yield* fs.writeFileString(reviewer, "#!/bin/sh\nprintf 'review unavailable\n' >&2\nexit 9\n")
   const failed = yield* invoke(args).pipe(Effect.flip)
-  assert.include(failed.stderr, "review unavailable")
+  assert.include(failed.message, "review unavailable")
   const sql = yield* SqliteClient.make({ filename: database })
   const latest = (yield* sql<{ readonly id: string }>`select id from review_invocations order by start_revision desc limit 1`)[0]
   if (latest === undefined) return assert.fail("Failed launch must remain inspectable")

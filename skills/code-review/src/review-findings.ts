@@ -91,6 +91,15 @@ const withScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: Effect.E
 })
 
 const init = Command.make("init", { db }, ({ db }) => withDb(db, initialize()).pipe(Effect.andThen(Console.log(db))))
+const withReviewScopeDb = <A, E, R>(args: { readonly db: string; readonly repoPath: string; readonly review: string }, effect: Effect.Effect<A, E, R>) => Effect.gen(function*() {
+  if (args.repoPath) return yield* withScopeDb(args.db, args.repoPath, effect)
+  // Read an existing handle without creating or initializing the requested database.
+  const review = yield* getReview(args.review).pipe(
+    // @effect-diagnostics-next-line strictEffectProvide:off
+    Effect.provide(SqliteClient.layer({ filename: expandHomePath(args.db), readonly: true }))
+  )
+  return yield* withScopeDb(args.db, review.repoPath, effect)
+})
 const pathCommand = Command.make("path", { db }, ({ db }) => Console.log(expandHomePath(db)))
 const findingSchema = Command.make("schema", {}, () => Console.log(formatFindingSchema())).pipe(Command.withDescription("Print the authoritative record schema and consistency rules"))
 const record = Command.make("record", {
@@ -231,7 +240,7 @@ const scopeComplete = Command.make("scope-complete", {
 
 const coverageRecord = Command.make("coverage-record", {
   db, ...recordRunFlags, reviewId: Flag.string("review-id").pipe(Flag.withDefault("")), reviewer: Flag.string("reviewer"), file: Flag.string("file").pipe(Flag.atLeast(1)), changeId: Flag.string("change-id").pipe(Flag.atLeast(1))
-}, (args) => withDb(args.db, Effect.gen(function*() {
+}, (args) => withReviewScopeDb(args, Effect.gen(function*() {
   yield* initialize()
   const run = yield* resolveCommandRun(args)
   if (args.file.length !== args.changeId.length) return yield* Effect.fail(new InvalidReviewCoverage("coverage-record requires one --change-id for each --file, in the same order"))
@@ -260,7 +269,7 @@ const progressRecord = Command.make("progress-record", {
   db, ...recordRunFlags, revision: Flag.integer("expected-revision").pipe(Flag.withDefault(-1)), phase: Flag.choice("phase", ["native", "cold", "clawsweeper"]).pipe(Flag.withDefault("native")),
   outcome: Flag.choice("outcome", PROGRESS_OUTCOMES), evidence: Flag.string("evidence"),
   findingId: optionalString("finding-id"), repairAttempt: optionalString("repair-attempt"), authorization: optionalString("authorization")
-}, args => withDb(args.db, Effect.gen(function*() {
+}, args => withReviewScopeDb(args, Effect.gen(function*() {
   yield* initialize()
   const run = yield* resolveCommandRun(args)
   if (args.review && !args.outcome.startsWith("repair-")) return yield* Effect.fail(new InvalidFinding("Use review start and review finish for review results; progress-record --review records repair events"))
@@ -320,7 +329,7 @@ const reviewNative = Command.make("native", {
       checkedText(git, ["worktree", "add", "--detach", checkout, review.head], { cwd: review.repoPath }),
       () => launchAt(checkout),
       () => checkedText(git, ["worktree", "remove", checkout], { cwd: review.repoPath }).pipe(
-        Effect.andThen(fs.remove(parent)),
+        Effect.andThen(fs.remove(parent, { recursive: true })),
         Effect.catch(error => Console.error(`Could not remove review checkout ${checkout}: ${String(error)}`))
       )
     )
