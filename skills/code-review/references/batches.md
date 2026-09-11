@@ -38,4 +38,4 @@ A `repair-result` action has `phase`, a `repairs` array and a `checks` array. Ea
 
 Each check contains `command`, `result`, `reason` and optional `decisionId`. Save checks that completed without a repair using a `checks` action. Results are records of observed commands, not instructions for the CLI to execute. Preserve the actual failing result and diagnose it; do not label a check passed because it was scheduled.
 
-The transaction either saves the whole action or rolls it back. External processes and code edits are not rolled back. Keep their artifacts after an error and resolve the reported state before submitting a corrected action.
+The transaction either saves the whole action or rolls it back. A denied review start preserves its measured scope block for authorization, but saves no start event or receipt. External processes and code edits are not rolled back. Keep their artifacts after an error and resolve the reported state before submitting a corrected action.

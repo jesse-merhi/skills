@@ -8,7 +8,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { applyReviewBatch, type Batch } from "./ReviewBatch.ts"
-import { initialize, recordFindingMatch, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
+import { authorizeScopeBudget, getScopeBudget, initialize, recordFindingMatch, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
 import { measureScopeDiff } from "./ReviewScope.ts"
 
 const fixture = Effect.fn("ReviewBatch.fixture")(function*(historical = false) {
@@ -39,6 +39,26 @@ const rejected = { decisionId: "D1", status: "rejected", source: "fixture", fing
 const accepted = { decisionId: "D2", status: "open", source: "fixture", fingerprint: "duplicate owner", summary: "Duplicated policy", findingKind: "maintenance", fixScope: "local", handling: "fix", maintenanceEvidence: "Same policy is implemented by two owners", presentCost: "Both owners require changes for the same policy update", rootCause: "Duplicated authority", recommendedFix: "Use the existing owner", interventionJustification: "Remove the second implementation with preserved behavior" }
 
 layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory:" })))("review lifecycle batches", test => {
+  test.effect("preserves a denied start's scope block so authorization can resume the same request", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture()
+    yield* fs.writeFileString(`${run.repoPath}/sample.txt`, "changed\nextra\nanother\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "scope expansion"])
+    const expanded = { ...run, head: yield* git(["rev-parse", "HEAD"]) }
+    const denied = yield* applyReviewBatch(expanded, start).pipe(Effect.flip)
+    assert.strictEqual(denied._tag, "ReviewLimitsBlocked")
+    const blocked = yield* getScopeBudget(expanded)
+    assert.strictEqual(blocked.status, "blocked")
+    assert.strictEqual(blocked.growthLines, 2)
+    const sql = yield* SqlClient.SqlClient
+    assert.strictEqual((yield* sql`select * from review_progress_events where run_id = ${run.runId}`).length, 0)
+    assert.strictEqual((yield* sql`select * from review_batch_receipts where run_id = ${run.runId}`).length, 0)
+    yield* authorizeScopeBudget(expanded, { scopeSummary: "Approved fixture expansion", authorization: "Fixture owner authorizes this scope" })
+    const resumed = yield* applyReviewBatch(expanded, start)
+    assert.strictEqual(resumed.revision, 1)
+    assert.strictEqual((yield* applyReviewBatch(expanded, start)).replayed, true)
+    assert.strictEqual((yield* sql`select * from review_progress_events where run_id = ${run.runId}`).length, 1)
+  }).pipe(Effect.scoped), { timeout: 30000 })
+
   test.effect("reviews a pinned historical commit while the checkout stays on a later commit", () => Effect.gen(function*() {
     const { run, scope, git } = yield* fixture(true)
     assert.strictEqual(scope.pinnedHeadOid, run.head)

@@ -5,6 +5,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
 import { type FindingInput, getScopeBudget, recordCommand, recordFinding, recordReviewedFiles, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
+import { ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { ProgressConflict } from "./ReviewProgress.ts"
 
 const Text = Schema.String.check(Schema.isMinLength(1))
@@ -56,7 +57,7 @@ export const applyReviewBatch = Effect.fn("ReviewBatch.apply")(function*(rawRun:
   const scope = yield* getScopeBudget(run)
   if (scope.runId !== run.runId) return yield* new ProgressConflict({ message: "Saved run ID does not match the active scope; do not replay an earlier run into a new review" })
   const payload = JSON.stringify({ run, batch })
-  return yield* sql.withTransaction(Effect.gen(function*() {
+  const result = yield* sql.withTransaction(Effect.gen(function*() {
     const saved = (yield* sql<{ readonly payload: string; readonly receipt: string }>`select payload, receipt from review_batch_receipts where run_id = ${scope.runId} and request_id = ${batch.requestId}`)[0]
     if (saved !== undefined) {
       if (saved.payload !== payload) return yield* new ProgressConflict({ message: "Request ID already belongs to a different action; saved history is immutable" })
@@ -75,7 +76,12 @@ export const applyReviewBatch = Effect.fn("ReviewBatch.apply")(function*(rawRun:
     })
     if (action.kind === "review-start") {
       if (progress?.outcome === "started") return yield* new ProgressConflict({ message: "A review is already running; resume that invocation or record its interrupted result before starting another" })
-      progress = yield* event("started", action.phase, action.evidence)
+      const started = yield* event("started", action.phase, action.evidence).pipe(
+        Effect.catchTag("ReviewLimitsBlocked", error => Effect.succeed(error))
+      )
+      // Keep the measured scope block for authorization, without saving a start or receipt.
+      if (started instanceof ReviewLimitsBlocked) return started
+      progress = started
     } else if (action.kind === "review-result") {
       if (progress?.outcome !== "started" || progress.phase !== action.phase || progress.head !== head) return yield* new ProgressConflict({ message: "Review result requires the matching started invocation, phase and revision" })
       if (interrupted && (action.findings.length > 0 || action.coverage !== undefined)) return yield* new ProgressConflict({ message: "A blocked invocation records its limits only; preserve candidate artifacts separately without crediting coverage" })
@@ -101,4 +107,6 @@ export const applyReviewBatch = Effect.fn("ReviewBatch.apply")(function*(rawRun:
     yield* sql`insert into review_batch_receipts (run_id, request_id, payload, receipt) values (${scope.runId}, ${batch.requestId}, ${payload}, ${JSON.stringify(receipt)})`
     return { ...receipt, replayed: false }
   }))
+  if (result instanceof ReviewLimitsBlocked) return yield* result
+  return result
 })
