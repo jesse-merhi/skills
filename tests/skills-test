@@ -294,7 +294,7 @@ test_installation_metadata_and_runtime() {
 }
 
 test_handoff_tmux_helper_builds_tmux_window_command() {
-  local tmp handoff output helper
+  local direct_rejection_output direct_rejection_status handoff helper output rejection_output rejection_status tmp
   tmp="$(mktemp -d)"
   handoff="$tmp/handoff.md"
   printf '# Handoff\n' > "$handoff"
@@ -320,7 +320,8 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "--focus"
   assert_output_contains "$output" "--mode"
   assert_output_contains "$output" "new"
-  assert_output_contains "$output" "--model gpt-6-astra --reasoning-effort medium"
+  assert_output_not_contains "$output" "--model"
+  assert_output_contains "$output" "--reasoning-effort medium"
 
   output="$(
     TMUX=/tmp/fake \
@@ -433,9 +434,58 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   fi
   assert_contains "$tmp/not-worktree.out" "Worktree path exists but is not a git worktree"
 
-  mkdir "$tmp/fake-bin"
-  printf '%s\n' '#!/usr/bin/env bash' 'printf "fake-codex: %s\\n" "$*"' > "$tmp/fake-bin/codex"
-  chmod +x "$tmp/fake-bin/codex"
+  mkdir "$tmp/fake-bin" "$tmp/codex-args"
+  : > "$tmp/codex-attempts"
+  : > "$tmp/tmux-attempts"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    'printf "attempt\\n" >> "$FAKE_CODEX_ATTEMPTS"' \
+    'attempt="$(wc -l < "$FAKE_CODEX_ATTEMPTS" | tr -d " ")"' \
+    'printf "%s\\n" "$@" > "$FAKE_CODEX_ARGS/$attempt"' \
+    'printf "fake-codex: %s\\n" "$*"' \
+    'while (( $# > 0 )); do' \
+    '  if [[ "$1" == "--model" ]]; then model="${2-}"; shift 2; else shift; fi' \
+    'done' \
+    'if [[ -n "${FAKE_CODEX_REJECT_MODEL-}" && "${model-}" == "$FAKE_CODEX_REJECT_MODEL" ]]; then' \
+    '  printf "unsupported explicit model: %s\\n" "$model" >&2' \
+    '  exit 42' \
+    'fi' > "$tmp/fake-bin/codex"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    'if [[ "${1-}" == "display-message" ]]; then printf "fixture:0:%%0\\n"; exit 0; fi' \
+    'printf "attempt\\n" >> "$FAKE_TMUX_ATTEMPTS"' \
+    'nested="${!#}"' \
+    'bash -c "$nested"' > "$tmp/fake-bin/tmux"
+  chmod +x "$tmp/fake-bin/codex" "$tmp/fake-bin/tmux"
+
+  assert_codex_invocation() {
+    local attempt="$1" mode="$2" model="$3" effort="$4" args_file
+    args_file="$tmp/codex-args/$attempt"
+    test -f "$args_file" || fail "expected Codex attempt $attempt to be recorded"
+    if [[ "$mode" == "fork-last" ]]; then
+      [[ "$(sed -n '1p' "$args_file")" == "fork" ]] || fail "expected fork-last attempt to start with fork"
+      [[ "$(sed -n '2p' "$args_file")" == "--last" ]] || fail "expected fork-last attempt to include --last"
+    else
+      [[ "$(sed -n '1p' "$args_file")" == "--cd" ]] || fail "expected new attempt to start with --cd"
+      assert_not_contains "$args_file" "--last"
+    fi
+    assert_contains "$args_file" "$ROOT_DIR"
+    assert_contains "$args_file" "Read the handoff document before acting:"
+    assert_contains "$args_file" "$handoff"
+    assert_contains "$args_file" "model_reasoning_effort=\"$effort\""
+    if [[ -n "$model" ]]; then
+      [[ "$(grep -Fxc -- "--model" "$args_file")" == "1" ]] || fail "expected exactly one --model in Codex attempt $attempt"
+      grep -Fxq -- "$model" "$args_file" || fail "expected Codex attempt $attempt to preserve model: $model"
+    else
+      assert_not_contains "$args_file" "--model"
+    fi
+  }
+
+  export FAKE_CODEX_ARGS="$tmp/codex-args"
+  export FAKE_CODEX_ATTEMPTS="$tmp/codex-attempts"
+  export FAKE_TMUX_ATTEMPTS="$tmp/tmux-attempts"
   output="$(
     PATH="$tmp/fake-bin:$PATH" \
       "$helper" \
@@ -444,15 +494,83 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --cd "$ROOT_DIR"
   )"
   assert_output_contains "$output" "fake-codex: --cd $ROOT_DIR"
-  assert_output_contains "$output" '--model gpt-6-astra -c model_reasoning_effort="medium"'
+  assert_output_not_contains "$output" "--model"
+  assert_output_contains "$output" '-c model_reasoning_effort="medium"'
   assert_output_contains "$output" "Read the handoff document before acting"
+  assert_codex_invocation 1 new "" medium
 
   output="$(PATH="$tmp/fake-bin:$PATH" "$helper" --run-codex --file "$handoff" --cd "$ROOT_DIR" --mode fork-last --model gpt-5.6)"
   assert_output_contains "$output" "fake-codex: fork --last --cd $ROOT_DIR"
   assert_output_contains "$output" '--model gpt-5.6 -c model_reasoning_effort="medium"'
+  assert_codex_invocation 2 fork-last gpt-5.6 medium
 
   output="$(PATH="$tmp/fake-bin:$PATH" "$helper" --run-codex --file "$handoff" --cd "$ROOT_DIR" --reasoning-effort high)"
-  assert_output_contains "$output" '--model gpt-6-astra -c model_reasoning_effort="high"'
+  assert_output_not_contains "$output" "--model"
+  assert_output_contains "$output" '-c model_reasoning_effort="high"'
+  assert_codex_invocation 3 new "" high
+
+  output="$(PATH="$tmp/fake-bin:$PATH" "$helper" --run-codex --file "$handoff" --cd "$ROOT_DIR" --mode fork-last --model "gpt-6-astra preview" --reasoning-effort low)"
+  assert_output_contains "$output" '--model gpt-6-astra preview -c model_reasoning_effort="low"'
+  assert_codex_invocation 4 fork-last "gpt-6-astra preview" low
+
+  output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --mode fork-last)"
+  assert_output_contains "$output" "Opened tmux window handoff"
+  assert_codex_invocation 5 fork-last "" medium
+
+  output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --mode fork-last --model gpt-5.6)"
+  assert_output_contains "$output" "Opened tmux window handoff"
+  assert_codex_invocation 6 fork-last gpt-5.6 medium
+
+  output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --reasoning-effort high)"
+  assert_output_contains "$output" "Opened tmux window handoff"
+  assert_codex_invocation 7 new "" high
+
+  output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --model "gpt-6-astra preview" --reasoning-effort low)"
+  assert_output_contains "$output" "Opened tmux window handoff"
+  assert_codex_invocation 8 new "gpt-6-astra preview" low
+
+  [[ "$(wc -l < "$tmp/tmux-attempts" | tr -d ' ')" == "4" ]] || fail "expected one tmux attempt per nested launcher case"
+
+  if rejection_output="$(
+    TMUX=/tmp/fake \
+      FAKE_CODEX_REJECT_MODEL="unsupported/model@preview" \
+      PATH="$tmp/fake-bin:$PATH" \
+      "$helper" \
+        --file "$handoff" \
+        --cd "$ROOT_DIR" \
+        --relationship aside \
+        --mode fork-last \
+        --model "unsupported/model@preview" 2>&1
+  )"; then
+    fail "unsupported explicit model should surface the external Codex failure"
+  else
+    rejection_status="$?"
+  fi
+  [[ "$rejection_status" == "42" ]] || fail "expected external Codex exit 42, got $rejection_status"
+  assert_output_contains "$rejection_output" "unsupported explicit model: unsupported/model@preview"
+  assert_codex_invocation 9 fork-last "unsupported/model@preview" medium
+  [[ "$(wc -l < "$tmp/codex-attempts" | tr -d ' ')" == "9" ]] || fail "unsupported model must not launch a replacement Codex attempt"
+  [[ "$(wc -l < "$tmp/tmux-attempts" | tr -d ' ')" == "5" ]] || fail "unsupported model must not launch a replacement tmux attempt"
+
+  if direct_rejection_output="$(
+    FAKE_CODEX_REJECT_MODEL="unsupported/model@preview" \
+      PATH="$tmp/fake-bin:$PATH" \
+      "$helper" \
+        --run-codex \
+        --file "$handoff" \
+        --cd "$ROOT_DIR" \
+        --model "unsupported/model@preview" 2>&1
+  )"; then
+    fail "direct launcher should surface the external Codex failure"
+  else
+    direct_rejection_status="$?"
+  fi
+  [[ "$direct_rejection_status" == "42" ]] || fail "expected direct external Codex exit 42, got $direct_rejection_status"
+  assert_output_contains "$direct_rejection_output" "unsupported explicit model: unsupported/model@preview"
+  assert_codex_invocation 10 new "unsupported/model@preview" medium
+  [[ "$(wc -l < "$tmp/codex-attempts" | tr -d ' ')" == "10" ]] || fail "direct rejection must not launch a replacement Codex attempt"
+  [[ "$(wc -l < "$tmp/tmux-attempts" | tr -d ' ')" == "5" ]] || fail "direct rejection must not invoke tmux"
+  assert_contains "$handoff" "# Handoff"
 }
 
 test_pr_proof_helpers() {

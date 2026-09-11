@@ -17,7 +17,7 @@ Save one compact document in the OS temporary directory containing:
 - Evidence, blockers, and relevant Obsidian links.
 - Next actions based on the user's request.
 
-Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
+Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Carry the user instructions that authorize remaining work and any later corrections that supersede old unanswered questions; a handoff does not require the user to approve the same work again. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
 
 ## Get the launch command
 
@@ -28,7 +28,6 @@ Use `continuation` by default. Pass `--relationship aside` only for a substantia
 ## Launch and confirm
 
 For a Codex destination, read [Codex launch settings](references/codex-settings.md) before launch.
-Use the model policy in the applicable `AGENTS.md`; the destination launcher owns its executable defaults.
 
 Run the recommended command or use the recommended native tool. Use a new worktree only when required; preserve needed uncommitted changes and their base revision in the brief or linked patch.
 
