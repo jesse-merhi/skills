@@ -137,26 +137,21 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use medium reasoning for implementation, review, and delegated work. Do not
-  escalate to high, xhigh, max, or ultra automatically. Apply an explicit user
-  override only to its named task. Set supported effort through the launcher;
-  a prompt cannot override a role with fixed high effort.
-- Keep implementation, diagnosis, architecture, and review with the capable
-  owner. Use Astra at medium for Codex review, including review launched from
-  Claude, unless the user selects another reviewer. No silent model fallback.
-- Use Luna at medium for repetitive, low-judgment work. Examples include:
-
-  - Running specified checks.
-  - Watching CI.
-  - Collecting specified logs.
-  - Extracting fields from many files.
-  - Assembling already-selected evidence.
-  - Similar tasks where the steps are clear and the output is easy to verify.
-
-  Delegate only when briefing Luna and checking its output take less effort
-  than doing the work directly. Keep coding, diagnosis, research synthesis,
-  and review judgment with the main agent. Give Luna a clear task and
-  completion condition; it stops and returns evidence on failure or ambiguity.
+- Use Astra at medium for coordination, integration, and verification. The
+  coordinator may complete small local steps when delegation would not help.
+  For meaningful delegated work, use Sol at high for implementation and tests,
+  and Luna at max for bounded investigation and focused research. Use Astra at
+  xhigh only for independent review when the task or delivery gate requires it.
+- Apply an explicit user model or effort override only to its named task. Set
+  model and effort through the launcher; a prompt cannot override a launcher's
+  fixed settings. If the selected configuration is unavailable, report that
+  limitation instead of silently substituting another model or effort.
+- Delegate useful independent work on demand. Do not create the full model tree
+  automatically. Delegate only when briefing the worker and checking its output
+  costs less than doing the work directly. Give each worker a bounded task and
+  completion condition, keep dependent work sequential, and leave integration
+  with the coordinator. A worker stops and returns evidence on failure or
+  ambiguity.
 
 - Batch independent calls into one turn. Reads, greps, and status checks that do
   not depend on each other belong in a single request: `Promise.all` inside one
@@ -168,6 +163,23 @@ itself model generation.
   prolonged commands, timed delays, or coordinating pending agents. Ordinary
   batches of quick commands need no extra skill read. Keep waits within tool
   limits and the current communication requirements.
+
+## Outcome and completion
+
+- Infer the intended outcome from the original request and the user's later
+  corrections. Treat a correction as part of the current outcome unless the
+  user replaces the task.
+- A request to change, build, or fix authorizes the ordinary local
+  implementation, integration, and verification needed to deliver that outcome
+  within the existing permission, publication, and destructive-action
+  boundaries. Do not stop at a plan, diagnosis, or partial patch while obvious
+  authorized work remains.
+- Before stopping, apply the [communication proof requirements](#communication),
+  reconcile the result against the original request and every accepted
+  correction, then finish any obvious missing in-scope step that needs no new
+  authority or user decision.
+- If the outcome remains incomplete, state exactly what remains, what evidence
+  was established, and which blocker prevents completion.
 
 ## Working rules
 

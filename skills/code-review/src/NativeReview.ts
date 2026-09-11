@@ -203,7 +203,7 @@ export const nativeReviewArguments = Effect.fn("NativeReview.arguments")(functio
   return [
     ...(profileInstalled ? ["--profile", "findings-reviewer"] : []),
     "review", "-c", 'model="gpt-6-astra"', "-c", 'review_model="gpt-6-astra"',
-    "-c", 'model_reasoning_effort="medium"', ...target.args
+    "-c", 'model_reasoning_effort="xhigh"', ...target.args
   ]
 })
 
