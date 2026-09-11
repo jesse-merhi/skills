@@ -1527,11 +1527,12 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     ? []
     : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
   const existingIssue = existingIssues[0]
-  if (reviewId !== undefined && input.status === "reopened") {
+  if (reviewId !== undefined) {
     const invocation = (yield* sql<{ readonly status: string }>`select status from review_invocations where id = ${reviewId}`)[0]
     if (invocation?.status === "finished") {
       yield* requireFinishedReview(run)
-      if (existingIssue?.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A finished review can reopen only an existing provisional repair"))
+      if (existingIssue === undefined) return yield* Effect.fail(new InvalidFinding("A finished review can update only an existing finding"))
+      if (input.status === "reopened" && existingIssue.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A finished review can reopen only an existing provisional repair"))
     }
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {

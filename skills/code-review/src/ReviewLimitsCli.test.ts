@@ -77,6 +77,9 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.deepStrictEqual(yield* sql`select status from issues where decision_id = 'D2'`, [{ status: "reopened" }])
   yield* invoke(["record", ...handle, ...accepted.map(value => value === "D2" ? "NEW" : value), "--status", "reopened", "--decision", "Not an existing provisional repair"]).pipe(Effect.flip)
   assert.lengthOf(yield* sql`select id from issues where decision_id = 'NEW'`, 0)
+  const inventedRepair = yield* invoke(["record", ...handle, ...accepted.map(value => value === "D2" ? "NEW-FIX" : value), "--status", "fixed"]).pipe(Effect.flip)
+  assert.include(inventedRepair.stderr, "existing finding")
+  assert.lengthOf(yield* sql`select id from issues where decision_id = 'NEW-FIX'`, 0)
   for (const patch of ["patch-1", "patch-2"]) {
     yield* invoke(["progress-record", ...handle, "--outcome", "repair-applied", "--finding-id", "D2", "--repair-attempt", patch, "--evidence", patch])
     yield* invoke(["progress-record", ...handle, "--outcome", "repair-unsuccessful", "--finding-id", "D2", "--repair-attempt", patch, "--evidence", "verification failed"])
