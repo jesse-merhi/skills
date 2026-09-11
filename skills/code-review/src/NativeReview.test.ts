@@ -25,6 +25,28 @@ const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => e
 )
 
 describe("native review target", () => {
+  it("runs authentication diagnostics only when explicitly requested, without a review target", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-auth-command-"))
+    const reviewer = join(directory, "codex")
+    const calls = join(directory, "calls")
+    try {
+      await writeFile(reviewer, `#!/bin/sh
+printf '%s\\n' "$1" >> "${calls}"
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
+  exec) printf 'ok\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--check-auth", "--codex-bin", reviewer], { cwd: directory })
+      assert.include(stdout, "Authentication diagnostic passed; no code review started")
+      assert.strictEqual(await readFile(calls, "utf8"), "login\ndoctor\nexec\n")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  }, 15_000)
+
   it("uses redacted diagnostics and a live request even when cached login status fails", async () => {
     const directory = await mkdtemp(join(tmpdir(), "codex-auth-preflight-"))
     const reviewer = join(directory, "codex")
@@ -194,19 +216,16 @@ esac
       try {
         // @effect-diagnostics-next-line processEnv:off
         const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--mode", "branch"], { cwd: repository, env: { ...process.env, HOME: home, CODEX_HOME: customHome ? codexHome : "", PATH: `${bin}:${process.env.PATH ?? ""}`, CODEX_BIN: join(bin, "codex"), GH_BIN: join(bin, "gh"), CODEX_REVIEW_OUTPUT: output } })
-        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review -c model="gpt-6-astra" -c review_model="gpt-6-astra" -c model_reasoning_effort="medium" --base master`)
+        assert.include(stdout, `review: ${join(bin, "codex")} ${profile ? "--profile findings-reviewer " : ""}review -c model="gpt-6-astra" -c review_model="gpt-6-astra" -c model_reasoning_effort="xhigh" --base master`)
       } catch {
         failed = true
       }
       assert.strictEqual(failed, reviewFails)
       const recorded = (await readFile(calls, "utf8")).trim().split("\n").map((call) => call.split("\0").slice(0, -1))
-      assert.deepStrictEqual(recorded[0], ["login", "status"])
-      assert.deepStrictEqual(recorded[1], ["doctor", "--json"])
-      assert.deepStrictEqual(recorded[2]?.slice(0, 2), ["exec", "--ephemeral"])
-      assert.deepStrictEqual(recorded.slice(3), [[
+      assert.deepStrictEqual(recorded, [[
         ...(profile ? ["--profile", "findings-reviewer"] : []),
         "review", "-c", 'model="gpt-6-astra"', "-c", 'review_model="gpt-6-astra"',
-        "-c", 'model_reasoning_effort="medium"', "--base", "master"
+        "-c", 'model_reasoning_effort="xhigh"', "--base", "master"
       ]])
       if (reviewFails) {
         assert.isFalse(await Effect.runPromise(live(FileSystem.FileSystem.pipe(Effect.flatMap((fs) => fs.exists(output))))))
@@ -424,22 +443,29 @@ esac
       const day = join(...now.toISOString().slice(0, 10).split("-"))
       await mkdir(join(sessionsRoot, day), { recursive: true })
       await writeFile(reviewer, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\n`, { mode: 0o700 })
-      const driver = (id: string, cwd: string, marker: boolean) =>
-        `${JSON.stringify({ type: "session_meta", payload: { id, cwd } })}\n${marker ? "{\"type\":\"entered_review_mode\"}\n" : ""}`
-      const child = (id: string, cwd: string, parent: string) =>
-        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, parent_thread_id: parent } })}\n{"type":"message"}\n`
-      // Driver plus its subagent thread: both belong to this run.
-      await writeFile(join(sessionsRoot, day, "rollout-a.jsonl"), driver("uuid-a", reviewDir, true))
+      // Current review metadata includes instructions larger than the old 8 KB
+      // prefix limit, and no entered_review_mode event is emitted.
+      const driver = (id: string, cwd: string, source = "exec") =>
+        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, source, base_instructions: "instructions ".repeat(2000) } })}\n`
+      const child = (id: string, cwd: string, parent: string, source = "review") =>
+        `${JSON.stringify({ type: "session_meta", payload: { id, cwd, source: { subagent: source }, parent_thread_id: parent, base_instructions: "instructions ".repeat(2000) } })}\n{"type":"message"}\n`
+      await writeFile(join(sessionsRoot, day, "rollout-a.jsonl"), driver("uuid-a", reviewDir))
       await writeFile(join(sessionsRoot, day, "rollout-a-sub.jsonl"), child("uuid-a-sub", reviewDir, "uuid-a"))
-      // A review in another directory, an unrelated interactive session, and a
-      // subagent whose parent was not a review here.
-      await writeFile(join(sessionsRoot, day, "rollout-b.jsonl"), driver("uuid-b", otherDir, true))
-      await writeFile(join(sessionsRoot, day, "rollout-c.jsonl"), driver("uuid-c", reviewDir, false))
-      await writeFile(join(sessionsRoot, day, "rollout-c-sub.jsonl"), child("uuid-c-sub", reviewDir, "uuid-c"))
+      // Other directories, ordinary exec/spawn sessions, interactive reviews,
+      // and orphan children must not be swept up by this native review.
+      await writeFile(join(sessionsRoot, day, "rollout-b.jsonl"), driver("uuid-b", otherDir))
+      await writeFile(join(sessionsRoot, day, "rollout-b-sub.jsonl"), child("uuid-b-sub", otherDir, "uuid-b"))
+      await writeFile(join(sessionsRoot, day, "rollout-c.jsonl"), driver("uuid-c", reviewDir))
+      await writeFile(join(sessionsRoot, day, "rollout-c-sub.jsonl"), child("uuid-c-sub", reviewDir, "uuid-c", "thread_spawn"))
+      await writeFile(join(sessionsRoot, day, "rollout-e.jsonl"), driver("uuid-e", reviewDir, "cli"))
+      await writeFile(join(sessionsRoot, day, "rollout-e-sub.jsonl"), child("uuid-e-sub", reviewDir, "uuid-e"))
+      await writeFile(join(sessionsRoot, day, "rollout-orphan.jsonl"), child("uuid-orphan", reviewDir, "missing-parent"))
       // A review from an earlier run, outside this run's window.
-      await writeFile(join(sessionsRoot, day, "rollout-d.jsonl"), driver("uuid-d", reviewDir, true))
+      await writeFile(join(sessionsRoot, day, "rollout-d.jsonl"), driver("uuid-d", reviewDir))
+      await writeFile(join(sessionsRoot, day, "rollout-d-sub.jsonl"), child("uuid-d-sub", reviewDir, "uuid-d"))
       const old = new Date(now.getTime() - 3600_000)
       await utimes(join(sessionsRoot, day, "rollout-d.jsonl"), old, old)
+      await utimes(join(sessionsRoot, day, "rollout-d-sub.jsonl"), old, old)
       const archived = await Effect.runPromise(live(archiveReviewSessions({
         reviewer,
         reviewCwds: [reviewDir],
@@ -471,8 +497,8 @@ esac
         `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\nrm -f "${join(dayDir, "rollout-a.jsonl")}" "${join(dayDir, "rollout-a-sub.jsonl")}"\n`,
         { mode: 0o700 }
       )
-      await writeFile(join(dayDir, "rollout-a.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a", cwd: reviewDir } })}\n{"type":"entered_review_mode"}\n`)
-      await writeFile(join(dayDir, "rollout-a-sub.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a-sub", cwd: reviewDir, parent_thread_id: "uuid-a" } })}\n{"type":"message"}\n`)
+      await writeFile(join(dayDir, "rollout-a.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a", cwd: reviewDir, source: "exec" } })}\n`)
+      await writeFile(join(dayDir, "rollout-a-sub.jsonl"), `${JSON.stringify({ type: "session_meta", payload: { id: "uuid-a-sub", cwd: reviewDir, source: { subagent: "review" }, parent_thread_id: "uuid-a" } })}\n{"type":"message"}\n`)
       const archived = await Effect.runPromise(live(archiveReviewSessions({
         reviewer,
         reviewCwds: [reviewDir],

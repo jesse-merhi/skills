@@ -1,11 +1,13 @@
 ---
 name: code-review
-description: 'Review code, check findings, fix worthwhile problems and repeat until clean.'
+description: 'Review changed behavior, repair confirmed problems together, and independently verify the final code.'
 ---
 
 # Code review
 
-Run native review, then an independent review. If the user asks for only one, run only that part.
+Run native review, repair confirmed problems, then obtain native and independent review of the final code. Honor a request for only one phase or pass and report its limits.
+
+Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
 ## 1. Start the review
 
@@ -16,29 +18,30 @@ Fill these values from the checkout and PR:
 ```sh
 review-findings scope-start --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --head <starting-sha> --scope-summary "<requested change and allowed repairs>"
+  --head <starting-sha> --scope-summary "<requested change and allowed repairs>" \
+  --native-clean-target 1 --required-phase native --required-phase cold \
+  --require-current-head
 ```
 
-To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands.
+For a single-phase request, specify only that phase. Use two clean native passes when explicitly requested.
 
-## 2. Run native reviews and fix the findings
+Prepare the runtime and validation commands once, reusing an authorized worktree. Check tool versions against the repository. Identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
-Use [the native reviewer](references/native-review.md) and [the review loop](references/review-loop.md). Handle returned findings with [the findings guide](references/fixing-and-reporting.md).
+To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands. Extend an expired timer only under existing explicit user authority, using [the budget-extension command](references/findings-registry.md).
+
+## 2. Review and repair
+
+Use [the native reviewer](references/native-review.md) and [the review loop](references/review-loop.md) to schedule reviews and repairs. Follow [the findings guide](references/fixing-and-reporting.md) to check candidates, repair shared causes and verify preserved behavior.
+
+Use [the review commands](references/recording-reviews.md) to save the complete report. Run its finding, repeat-evidence and coverage commands together in one code-mode call. Check every result, then finish the review before repairing.
 
 ## 3. Run an independent review
 
-Use [the independent-review instructions](references/cold-review.md) with [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
+Follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
 
 ## 4. Check, push and summarize
 
-Run the relevant repository tests, typecheck, lint and build commands identified during review. If a repair is needed, fix it and repeat the review for that part before finishing. Record each check before completing the run:
-
-```sh
-review-findings record-command --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --command "<full validation command>" --result "<observed result>" \
-  --reason "<behavior checked and evidence location>"
-```
+Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Save completed checks with `review-findings record-command --review <review-id>`.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \

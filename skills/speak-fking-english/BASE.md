@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: 'Run before every final response to make the language concise, plain and easy to understand.'
+description: 'Improve substantial writing, requested rewrites, or unclear explanations with concise, concrete language.'
 metadata:
   sources: |
     - adapted from [skills/productivity/wait-what](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/wait-what) — recorded upstream review.

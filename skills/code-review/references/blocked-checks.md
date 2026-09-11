@@ -21,13 +21,11 @@ If declined, leave the expansion unapplied or revert the blocked repair, record 
 Ask before another attempt. After approval, record:
 
 ```sh
-review-findings progress-record --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> --phase <phase> \
-  --head <sha> --expected-revision <revision> --outcome repair-authorized \
+review-findings progress-record --review <id> --outcome repair-authorized \
   --finding-id <decision-id> --authorization "<user's approval>" --evidence <decision-reference>
 ```
 
-Use the finding's `decisionId` and the current saved revision and head. This clears only that finding's failed-attempt count.
+Use the finding's `decisionId`; the CLI supplies the saved phase, head and revision. This clears only that finding's failed-attempt count.
 
 ## Time or unanswered questions
 

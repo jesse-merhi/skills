@@ -1,55 +1,33 @@
 # Check, rate and fix findings
 
-## 1. Establish the problem
+## Establish the problem
 
-For each reported bug, use realistic inputs and normal checks in the reviewed application to establish its trigger, expected behavior and actual result. A local reproduction or an observed failure that applies to the reviewed code is enough; production logs are not required.
+Tie each candidate to the reviewed change and exact revision. Show how a client/API user or background job reaches the bug, what should happen, what happens instead and who is affected. Use realistic inputs and the application's normal checks. Local reproduction is sufficient; production logs are unnecessary.
 
-Include internal failures such as lost data, broken backups and failed jobs. For security, check attainable access and existing defenses. Explain a lost layer of protection without claiming an exploit that another layer blocks. For maintenance findings, show the confusing code and its present cost to read or change.
+Trace actual callers, configured producers and installed dependencies. A controlled fixture at an existing external boundary can prove a failure; inventing a future adapter or bypassing internal guarantees cannot. Type-permitted inputs and user count alone do not establish reachability or a race.
 
-Tie findings to the reviewed change. Investigate missing evidence; reject unsupported claims, personal preferences and missing-test suggestions without a specific behavior to prove. Type-permitted inputs and user count alone do not establish reachability or a race.
+Include internal failures such as lost data, broken backups and failed jobs. For security, check attainable access and existing defenses; distinguish a lost protection from an exploit still blocked elsewhere. For maintenance, show the confusing code and its present cost.
 
-## 2. Rate and record
+Compare applicable recorded counterevidence before repeating an investigation. A later fix does not disprove an earlier bug. Investigate missing evidence; reject unsupported claims, preferences and missing-test suggestions without a specific behavior to prove. Keep prior verdicts out of independent briefs.
 
-Assess likelihood and impact yourself, including for native findings that already have a priority. Explain how often the trigger can occur and the harm it causes; rare destructive failures still matter. Use the CLI's rating scales and record contract:
+## Rate the complete inventory
 
-```sh
-review-findings schema
-review-findings record --help
-```
+Use `review-findings schema` for evidence and rating requirements. Assess likelihood and impact even when the reviewer supplied a priority; rare destructive failures matter. Keep maintenance cost separate. The CLI derives severity and disposition but cannot verify the evidence. Accept runtime findings only with the proof above; leave unresolved candidates unrated and explain rejections.
 
-Record every checked candidate, including rejected and uncertain ones. The CLI derives severity and disposition from the evidence; it does not verify that evidence. Keep maintenance cost separate from runtime likelihood and impact.
+Record every checked candidate, including rejected and uncertain ones, through `record --review <id>` in the code-mode call for the complete report. Match repeated reports to the same open or rejected cause with `record --match-of`. Include the revision and why the cause and counterevidence still apply. Changed facts requiring a new judgment, or recurrence after a fix, need a new decision linked to the earlier ID.
 
-Match repeated reports to the same open cause after the reviewer returns. Append evidence with `review-findings record --match-of <id>` and the saved run identity, source, evidence and match note from its help; keep one finding and one outstanding question.
+## Choose and verify repairs
 
-## 3. Choose the repair
+Before editing, group the accepted inventory by failed assumption. Trace other callers and sibling implementations, including failure and recovery. Repair the shared cause and confirmed affected instances together, preferring repository or dependency solutions. Check assumptions introduced by the fix: adding a lock also requires checking cancellation, ownership and runtime availability. This is implementation work, not another review invocation.
 
-Fix proven, worthwhile problems that the CLI accepts within the authorized task and budget. Repair the shared cause at its owner, reuse repository or dependency solutions, and check affected callers. Several files alone do not require another approval. Weigh the repair's complexity against the harm; leave independent adjacent work as a nonblocking follow-up.
+Fix proven, worthwhile problems accepted by the CLI within existing authority and budget. Keep independent adjacent work as a nonblocking follow-up. Ask about missing permission, expanded scope or concrete high-risk choices; preserve explicit requirements for breaking changes, dependencies, access and publication. `investigate` and `consult` do not authorize edits, including tentative keep/revert repairs.
 
-Ask when permission is missing, scope must expand or a concrete high-risk choice remains. Explain the problem, proposed fix and actual decision in plain English. Keep explicit requirements for breaking changes, dependencies, access and publication. An `investigate` or `consult` result is not permission to patch.
+Queue unanswered questions and continue independent authorized work. Repeated reports share one question; silence is not approval. Record the owner's answer before dependent work. Wait when nothing independent remains or the CLI blocks continuation.
 
-Queue unanswered questions and continue independent authorized work. Repeated reports belong to the existing question; silence is not approval. Wait when no independent work remains, the clean target is reached or the CLI blocks continuation. Record the owner's answer before dependent work. A tentative keep/revert edit needs prior authority; reversibility alone grants none. The findings commands reference covers those less common record transitions.
+Use `writing-good-tests` for behavior or test changes, `reducing-cognitive-load` for repairs, and `typescript-discipline` for TypeScript. Reuse applicable `frontend-ui-validation` evidence for UI changes and request missing states.
 
-## 4. Fix and verify
+Verify the repaired behavior, affected siblings and behavior the fix must preserve. For validation, authorization or selection changes, test the intended accepted case and a realistic near-match that must stay rejected. Trace downstream decisions and effects; acceptance alone is insufficient. Add coverage for distinct realistic regressions not already protected. Stop on the first failure and diagnose before rerunning. Check the combined patch once per affected check set.
 
-Use `writing-good-tests` for behavior or test changes, `reducing-cognitive-load` for readable repairs and `typescript-discipline` for TypeScript. For UI changes, reuse the implementation owner's `frontend-ui-validation` evidence and request missing states.
+Record repair attempts and checks through the review commands, using `decisionId`, not database `issueId`. Record the applied attempt while the finding is open, then record verification. Mark a successful repair fixed; record a failed attempt as `repair-unsuccessful` and keep its finding open. Two failures require owner authorization before a third. Record the owner's decision through the existing authorization command; do not duplicate saved attempts.
 
-Record each actual patch attempt using the finding's `decisionId`, not its database `issueId`:
-
-```sh
-review-findings progress-record --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> --phase <phase> \
-  --head <sha> --expected-revision <revision> --outcome repair-applied \
-  --finding-id <decision-id> --repair-attempt <unique-attempt-id> --evidence <patch-reference>
-```
-
-Run focused checks. Record a failed repair with `--outcome repair-unsuccessful`, the same attempt ID, matching finding/phase/head, current revision and verification evidence. Two failed attempts require approval before a third.
-
-Record successful repairs as fixed through `review-findings record` and completed checks through `review-findings record-command`. After each repair or failed attempt:
-
-```sh
-review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> \
-  --reason "After a repair or failed attempt" --json
-```
-
-Resolve any reported blocker before more work. Once checks pass, return to the review loop to commit and review the accepted fixes. Preserve unrelated edits.
+Run `review-findings scope-check` with the saved scope after the repairs or a failed attempt. Resolve blockers before continuing, then commit and return to review. Preserve unrelated edits.

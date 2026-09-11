@@ -250,7 +250,7 @@ const { default: config } = await import(`${process.env.ROOT_DIR}/codex/findings
 assert.deepEqual(new Set(Object.keys(config)), new Set(["model", "review_model", "model_reasoning_effort", "developer_instructions", "memories", "skills"]));
 assert.equal(config.model, "gpt-6-astra");
 assert.equal(config.review_model, "gpt-6-astra");
-assert.equal(config.model_reasoning_effort, "medium");
+assert.equal(config.model_reasoning_effort, "xhigh");
 assert.deepEqual(config.memories, { use_memories: false, generate_memories: false, dedicated_tools: false });
 assert.equal(typeof config.developer_instructions, "string");
 assert.ok(config.developer_instructions.trim());

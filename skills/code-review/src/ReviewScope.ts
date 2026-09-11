@@ -182,7 +182,11 @@ export const measureScopeDiff = Effect.fn("ReviewScope.measureScopeDiff")(functi
   const measured = includeWorkingTree ? yield* Effect.scoped(Effect.gen(function*() {
     const temporaryDirectory = yield* fs.makeTempDirectoryScoped({ prefix: "review-scope-index." })
     const temporaryIndex = paths.join(temporaryDirectory, "index")
-    const processOptions = { cwd: repoPath, env: { GIT_INDEX_FILE: temporaryIndex, GIT_LITERAL_PATHSPECS: "1" }, extendEnv: true } as const
+    const temporaryObjects = paths.join(temporaryDirectory, "objects")
+    yield* fs.makeDirectory(temporaryObjects)
+    const repositoryObjects = paths.resolve(repoPath, yield* checkedTrimmedText(git, ["rev-parse", "--git-path", "objects"], { cwd: repoPath }))
+    // Intent-to-add can write an empty blob. Keep measurement writes outside the repository.
+    const processOptions = { cwd: repoPath, env: { GIT_INDEX_FILE: temporaryIndex, GIT_LITERAL_PATHSPECS: "1", GIT_OBJECT_DIRECTORY: temporaryObjects, GIT_ALTERNATE_OBJECT_DIRECTORIES: JSON.stringify(repositoryObjects) }, extendEnv: true } as const
     const currentIndexPath = yield* checkedTrimmedText(git, ["rev-parse", "--git-path", "index"], { cwd: repoPath })
     const currentIndex = paths.resolve(repoPath, currentIndexPath)
     yield* fs.copy(currentIndex, temporaryIndex, { overwrite: true })

@@ -2,9 +2,13 @@
 
 Give a fresh reviewer the exact target, base, head, changed files and requested evidence. Use a findings-only agent with no inherited conversation or resumed session. Keep prior findings, attempted fixes and implementation discussion out of its brief.
 
-Use Astra at medium unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change a fixed-high preset. Report an unavailable configuration rather than silently substituting another model.
+Tell the reviewer which runtime versions and commands you used, which commit you checked, and what passed, failed or remains unchecked. Link the output. Leave out earlier findings, verdicts and repair explanations. Passing tests do not replace reviewing the code. Reuse results that still apply; run more checks when something changed or a specific question remains unanswered. If the reviewer cannot run a check, report that to the coordinator; do not repair the environment.
+
+Follow the model policy in the applicable `AGENTS.md` unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change fixed launcher settings. Report an unavailable configuration rather than silently substituting another model.
 
 A brief can say: “Review this target with the supplied skills. Trace changed behavior through real callers and system events. Return distinct problems, changed locations, triggers, consequences, likelihood and impact evidence, uncertainty, and rejected candidates with reasons. Report what you could not verify. Do not edit code or manage repairs.”
+
+Require one complete report after assessing all assigned behaviors. Include every distinct candidate and rejected claim; do not send findings one at a time or stop after the first few.
 
 Ask reviewers to establish intended behavior from the task, documentation, callers, tests and base revision. Intentional contract changes are not automatically regressions; material conflicts become questions. Evidence should name the expected result, reachable inputs or state, and observed outcome. Missing, unexecuted or stale proof is not an observed failure.
 
@@ -18,9 +22,9 @@ Give reviewers these inputs:
 - `frontend-ui-validation` for UI changes: assess the implementation owner's evidence and request missing states or interactions.
 - `design` in motion-review mode for animation, gestures and transition timing.
 
-Include other requested domain skills. Add a focused test reviewer and a focused TypeScript reviewer when their conditions apply. Identify relevant repository validation commands for the main agent to run after fixes.
+Include other skills the user requested. Use one independent reviewer. Add a specialist only for a specific part they cannot cover well, and explain why. The main reviewer still checks tests and TypeScript. They tell the main agent which test, typecheck, lint or build commands to run after fixes.
 
-For substantial independent areas, divide files or flows among reviewers. Keep one combined findings list and review loop; individual areas do not need their own clean-pass loops. Follow inputs through changed code, state and external calls to their consequences. The CLI tracks coverage, not runtime behavior.
+If several reviewers are needed, assign each a feature or execution path and specify who checks the code they share. Follow inputs through the changed code, state and external calls to the result. Keep their findings in one list and run one review-and-repair loop for the combined change. Each reviewer reports where execution starts, what should happen, how failure or recovery works, and what they read, ran or could not verify. File counts alone do not show that behavior was checked. Reuse evidence that answers the question; do not add a test for every checklist item.
 
 ## Fresh context
 
@@ -39,6 +43,6 @@ review-findings coverage-status --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <target> --base <base> --json
 ```
 
-Prioritize stale/unreviewed files, then reviewed-once, then reviewed-twice. Give reviewers the files and observed `changeId`, not previous counts or verdicts. Ask for substantively assessed files, their observed change IDs and the invocation ID. Read unchanged code for context, not unrelated review targets.
+Prioritize stale/unreviewed files, then reviewed-once, then reviewed-twice. Give reviewers the files and their `changeId`, without previous counts or verdicts. Ask them to list the files whose changed behavior they checked, with the observed change IDs and review invocation ID. Read unchanged code when needed to understand the change; keep findings within the requested scope.
 
-Wait on the existing invocation using `wait-efficiently`. After it returns, record one `review-findings coverage-record` batch per general invocation using its help and the saved run identity. Context reads and focused-skill checks are not whole-file coverage. Check and record findings only after the independent return, then continue the main review loop.
+Wait for that review using `wait-efficiently`. After it returns, the coordinator checks the findings and records them with the review handle, together with the files whose changed behavior was assessed. Finish the review only after every record succeeds. Reading a file for context or checking only one concern does not count as reviewing all its changed behavior. Continue the main review loop.
