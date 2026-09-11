@@ -1,6 +1,6 @@
 # Expensive suites
 
-Use this when test changes could materially affect execution cost or total workflow time (makespan), or when runtime optimization is requested. Preserve one executable owner for each promised regression before optimizing how tests run.
+Use this when test changes could materially affect execution cost or total workflow time (makespan), or when runtime optimization is requested. Preserve tests for every required behavior before optimizing how they run.
 
 ## Compare like with like
 

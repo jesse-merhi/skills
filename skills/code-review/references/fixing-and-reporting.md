@@ -2,7 +2,7 @@
 
 ## 1. Establish the problem
 
-For each reported bug, use realistic inputs and normal checks in the reviewed application to establish its trigger, expected behavior and actual result. A local reproduction or an observed failure that applies to the reviewed code is enough; production logs are not required.
+Show how a client/API user or background job reaches the bug, what should happen, what happens instead and who is affected. Use realistic inputs and the application's normal checks. A local reproduction or an observed failure in the reviewed code is enough; production logs are not required.
 
 Include internal failures such as lost data, broken backups and failed jobs. For security, check attainable access and existing defenses. Explain a lost layer of protection without claiming an exploit that another layer blocks. For maintenance findings, show the confusing code and its present cost to read or change.
 
@@ -10,14 +10,14 @@ Tie findings to the reviewed change. Investigate missing evidence; reject unsupp
 
 ## 2. Rate and record
 
-Assess likelihood and impact yourself, including for native findings that already have a priority. Explain how often the trigger can occur and the harm it causes; rare destructive failures still matter. Use the CLI's rating scales and record contract:
+Check the evidence yourself, even when a reviewer supplied a priority. Rate likelihood and impact using the CLI's definitions:
 
 ```sh
 review-findings schema
 review-findings record --help
 ```
 
-Record every checked candidate, including rejected and uncertain ones. The CLI derives severity and disposition from the evidence; it does not verify that evidence. Keep maintenance cost separate from runtime likelihood and impact.
+Record every checked candidate. Accept runtime findings only with the proof above; leave unresolved candidates unrated and explain rejections. The CLI calculates severity and disposition but cannot verify the evidence. Keep maintenance cost separate from runtime ratings.
 
 Match repeated reports to the same open cause after the reviewer returns. Append evidence with `review-findings record --match-of <id>` and the saved run identity, source, evidence and match note from its help; keep one finding and one outstanding question.
 
