@@ -294,7 +294,7 @@ test_installation_metadata_and_runtime() {
 }
 
 test_handoff_tmux_helper_builds_tmux_window_command() {
-  local direct_rejection_output direct_rejection_status handoff helper output rejection_output rejection_status tmp
+  local direct_rejection_output direct_rejection_status handoff helper output rejection_output tmp
   tmp="$(mktemp -d)"
   handoff="$tmp/handoff.md"
   printf '# Handoff\n' > "$handoff"
@@ -434,7 +434,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   fi
   assert_contains "$tmp/not-worktree.out" "Worktree path exists but is not a git worktree"
 
-  mkdir "$tmp/fake-bin" "$tmp/codex-args"
+  mkdir "$tmp/fake-bin" "$tmp/codex-args" "$tmp/tmux-panes"
   : > "$tmp/codex-attempts"
   : > "$tmp/tmux-attempts"
   printf '%s\n' \
@@ -456,8 +456,14 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
     'set -euo pipefail' \
     'if [[ "${1-}" == "display-message" ]]; then printf "fixture:0:%%0\\n"; exit 0; fi' \
     'printf "attempt\\n" >> "$FAKE_TMUX_ATTEMPTS"' \
+    'attempt="$(wc -l < "$FAKE_TMUX_ATTEMPTS" | tr -d " ")"' \
     'nested="${!#}"' \
-    'bash -c "$nested"' > "$tmp/fake-bin/tmux"
+    'set +e' \
+    'bash -c "$nested" > "$FAKE_TMUX_PANES/$attempt.stdout" 2> "$FAKE_TMUX_PANES/$attempt.stderr"' \
+    'status="$?"' \
+    'set -e' \
+    'printf "%s\\n" "$status" > "$FAKE_TMUX_PANES/$attempt.status"' \
+    'exit 0' > "$tmp/fake-bin/tmux"
   chmod +x "$tmp/fake-bin/codex" "$tmp/fake-bin/tmux"
 
   assert_codex_invocation() {
@@ -486,6 +492,7 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   export FAKE_CODEX_ARGS="$tmp/codex-args"
   export FAKE_CODEX_ATTEMPTS="$tmp/codex-attempts"
   export FAKE_TMUX_ATTEMPTS="$tmp/tmux-attempts"
+  export FAKE_TMUX_PANES="$tmp/tmux-panes"
   output="$(
     PATH="$tmp/fake-bin:$PATH" \
       "$helper" \
@@ -529,9 +536,12 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "Opened tmux window handoff"
   assert_codex_invocation 8 new "gpt-6-astra preview" low
 
+  for pane in 1 2 3 4; do
+    [[ "$(< "$tmp/tmux-panes/$pane.status")" == "0" ]] || fail "expected nested Codex attempt $pane to succeed"
+  done
   [[ "$(wc -l < "$tmp/tmux-attempts" | tr -d ' ')" == "4" ]] || fail "expected one tmux attempt per nested launcher case"
 
-  if rejection_output="$(
+  if ! rejection_output="$(
     TMUX=/tmp/fake \
       FAKE_CODEX_REJECT_MODEL="unsupported/model@preview" \
       PATH="$tmp/fake-bin:$PATH" \
@@ -542,12 +552,13 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
         --mode fork-last \
         --model "unsupported/model@preview" 2>&1
   )"; then
-    fail "unsupported explicit model should surface the external Codex failure"
-  else
-    rejection_status="$?"
+    fail "tmux window creation should succeed independently of the nested Codex failure"
   fi
-  [[ "$rejection_status" == "42" ]] || fail "expected external Codex exit 42, got $rejection_status"
-  assert_output_contains "$rejection_output" "unsupported explicit model: unsupported/model@preview"
+  assert_output_contains "$rejection_output" "Opened tmux window handoff"
+  assert_output_not_contains "$rejection_output" "unsupported explicit model"
+  assert_contains "$tmp/tmux-panes/5.stdout" "fake-codex: fork --last"
+  assert_contains "$tmp/tmux-panes/5.stderr" "unsupported explicit model: unsupported/model@preview"
+  [[ "$(< "$tmp/tmux-panes/5.status")" == "42" ]] || fail "expected nested Codex exit 42"
   assert_codex_invocation 9 fork-last "unsupported/model@preview" medium
   [[ "$(wc -l < "$tmp/codex-attempts" | tr -d ' ')" == "9" ]] || fail "unsupported model must not launch a replacement Codex attempt"
   [[ "$(wc -l < "$tmp/tmux-attempts" | tr -d ' ')" == "5" ]] || fail "unsupported model must not launch a replacement tmux attempt"
