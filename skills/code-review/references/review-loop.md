@@ -1,52 +1,32 @@
-# Run a review, fix findings, repeat
+# Review, repair and verify
 
-Keep one saved record of each review and repair so a resumed session can continue where it stopped.
+Keep one saved run. Use `review native` or `review start` on the exact committed head, then wait for that invocation. An interrupted, empty or unusable result is `blocked`, never clean.
 
-## 1. Before the review
+## Finish discovery before repairs
 
-Set `<phase>` to `native` for native review or `cold` for independent review, and check whether another pass is allowed:
+Collect and adjudicate the entire native result before editing. Normally repair its accepted findings together, obtain the required native result on the repaired head, then run independent review. Honor single-phase and single-pass requests.
 
-```sh
-review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> \
-  --reason "Before the next review pass" --json
-review-findings progress-status --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> --phase <phase>
-```
+Gather independent findings before repairs only when a named unresolved flow or shared boundary could materially change the repair. Record that reason; size or reassurance alone is insufficient. Dispatch serially, keep native findings out of the independent brief, and combine both inventories before repairing.
 
-Use the returned revision to record the start:
+Assess changed behavior from real entry points through state, dependencies, failure and recovery to outcomes. Distinguish inspected code, executed behavior and unresolved coverage; file counts and finding counts do not prove completeness.
 
-```sh
-review-findings progress-record --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> --phase <phase> \
-  --head <reviewed-sha> --expected-revision <revision> \
-  --outcome started --evidence <invocation-reference>
-```
+Record all findings, repeated reports and coverage in one code-mode call, checking each command. Then use `review finish` with the outcome:
 
-Launch the reviewer only if these commands succeed. If another process updated the record, read the new state before continuing; keep the existing run and limits.
+- `clean`: no supported findings or unresolved decisions remain.
+- `clean-except-queue`: only recorded owner questions remain.
+- `findings`: accepted issues still await repair, including issues from an earlier inventory.
+- `blocked`: the review failed, was interrupted, examined the wrong code or lacks usable evidence.
 
-## 2. Save the result
+Preserve this reviewer's actual result in its artifact even when earlier issues determine the run's outcome. Repeated claims require comparing current evidence with prior counterevidence, not automatically reversing a rejection.
 
-Wait for the reviewer to finish against the intended code. Check and record its findings using the findings guide in the main skill, then save the outcome before repairs. Use the revision returned by the start:
+## Repair shared causes
 
-```sh
-review-findings progress-record --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <target> --base <base> --phase <phase> \
-  --head <reviewed-sha> --expected-revision <revision> \
-  --outcome <result> --evidence <review-result-reference>
-```
+Apply the findings guide to the full accepted inventory. Repair related causes together, verify affected and preserved behavior, then record the attempts and results through the review commands. Record each attempt before closing its finding. Check scope, inspect the combined diff and commit authorized repairs together. Repair workers return patches and evidence; the coordinator owns the registry and review scheduling.
 
-- `clean`: no valid findings remain, including when all candidates were rejected with evidence.
-- `clean-except-queue`: only recorded questions remain.
-- `findings`: a supported finding still needs repair.
-- `blocked`: the review failed, was interrupted, checked the wrong code or returned no usable result.
+## Review the final code
 
-Keep completed results even when the next action is blocked. Retry an apparently transient, ambiguous result once within the saved limits, using the same engine and model.
+Require the phase targets frozen at setup: normally one clean native and one clean independent result on the final head. An earlier independent discovery pass does not cover later repairs. A new repair invalidates both final-head phase results; an unchanged clean discovery result already counts. Domain lenses do not each require another agent.
 
-## 3. Fix and repeat
+Reuse supporting proof only while its relevant code, callers, dependencies, fixtures, configuration and environment still apply. Broaden verification when the impact cannot be bounded.
 
-After repairs pass their checks, inspect the diff and commit the fixes together. Review the updated code in the same phase. For a single-commit review, use the repair commit next.
-
-Native review needs two clean passes on unchanged code. Independent review uses its saved target, normally one. Stop at that count. Changes reset the current streak, not completed phases or history. Independent-review fixes repeat only independent review.
-
-If all pending questions are later rejected with evidence, keep the earned passes on unchanged code. Open questions prevent completion; follow the findings guide when an answer is needed.
+Complete only after the requested reviews, applicable checks and decisions are resolved. A spending or time limit leaves work incomplete: preserve the patch, evidence and next action without resetting the run or waiving findings.

@@ -25,6 +25,28 @@ const live = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeServices>) => e
 )
 
 describe("native review target", () => {
+  it("runs authentication diagnostics only when explicitly requested, without a review target", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-auth-command-"))
+    const reviewer = join(directory, "codex")
+    const calls = join(directory, "calls")
+    try {
+      await writeFile(reviewer, `#!/bin/sh
+printf '%s\\n' "$1" >> "${calls}"
+case "$1" in
+  login) exit 0 ;;
+  doctor) printf '%s\\n' '{"checks":{"auth.credentials":{"status":"ok"}}}' ;;
+  exec) printf 'ok\\n' ;;
+  *) exit 7 ;;
+esac
+`, { mode: 0o700 })
+      const { stdout } = await execFile(join(root, "skills/code-review/scripts/codex-review"), ["--check-auth", "--codex-bin", reviewer], { cwd: directory })
+      assert.include(stdout, "Authentication diagnostic passed; no code review started")
+      assert.strictEqual(await readFile(calls, "utf8"), "login\ndoctor\nexec\n")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  }, 15_000)
+
   it("uses redacted diagnostics and a live request even when cached login status fails", async () => {
     const directory = await mkdtemp(join(tmpdir(), "codex-auth-preflight-"))
     const reviewer = join(directory, "codex")
@@ -200,10 +222,7 @@ esac
       }
       assert.strictEqual(failed, reviewFails)
       const recorded = (await readFile(calls, "utf8")).trim().split("\n").map((call) => call.split("\0").slice(0, -1))
-      assert.deepStrictEqual(recorded[0], ["login", "status"])
-      assert.deepStrictEqual(recorded[1], ["doctor", "--json"])
-      assert.deepStrictEqual(recorded[2]?.slice(0, 2), ["exec", "--ephemeral"])
-      assert.deepStrictEqual(recorded.slice(3), [[
+      assert.deepStrictEqual(recorded, [[
         ...(profile ? ["--profile", "findings-reviewer"] : []),
         "review", "-c", 'model="gpt-6-astra"', "-c", 'review_model="gpt-6-astra"',
         "-c", 'model_reasoning_effort="medium"', "--base", "master"
