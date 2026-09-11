@@ -84,14 +84,17 @@ test.effect(`native diagnostics survive successful output and changed target=${c
   const day = new Date().toISOString().slice(0, 10).replaceAll("-", "/")
   const sessions = `${home}/sessions/${day}`
   const session = `${sessions}/rollout-fixture.jsonl`
+  const reviewSession = `${sessions}/rollout-review.jsonl`
   yield* fs.makeDirectory(sessions, { recursive: true })
-  yield* fs.writeFileString(session, JSON.stringify({ type: "session_meta", payload: { id: "fixture-session", cwd: yield* fs.realPath(repository) } }) + '\n{"type":"entered_review_mode"}\n')
+  const cwd = yield* fs.realPath(repository)
+  yield* fs.writeFileString(session, JSON.stringify({ type: "session_meta", payload: { id: "fixture-session", cwd, source: "exec" } }) + "\n")
+  yield* fs.writeFileString(reviewSession, JSON.stringify({ type: "session_meta", payload: { id: "fixture-review", cwd, source: { subagent: "review" }, parent_thread_id: "fixture-session" } }) + "\n")
   const calls = `${directory}/calls`
   const reviewer = `${directory}/reviewer`
   yield* fs.writeFileString(reviewer, `#!/bin/sh
 case " $* " in
   *" review "*)
-    touch "${session}"
+    touch "${session}" "${reviewSession}"
     printf 'review\\n' >> "${calls}"
     printf 'Original review output\\n'
     ${changeHead ? 'git -c core.hooksPath=/dev/null commit --allow-empty -m moved >/dev/null' : ':'}

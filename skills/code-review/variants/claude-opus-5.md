@@ -7,6 +7,8 @@ description: 'Review changed behavior, repair confirmed problems together, and i
 
 Run native review, repair confirmed problems, then obtain native and independent review of the final code. Honor a request for only one phase or pass and report its limits.
 
+Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
+
 ## 1. Start the review
 
 Check out the PR branch or the commit in question. Use the PR's base, or the requested commit's parent. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.

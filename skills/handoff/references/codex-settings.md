@@ -1,11 +1,9 @@
 # Codex launch settings
 
-Default an unspecified model to `gpt-6-astra`. Preserve the user's model and effort choices independently, including choices already made for this task.
+Preserve the user's model and effort choices independently, including choices already made for this task. When no model is specified, or the user asks for their configured default, omit the model override wherever the launcher supports it. Do not replace that omission with a coordinator model from `AGENTS.md` or ask the user to choose again. A new session uses the destination's configured default; a fork may inherit its source session's settings.
 
-When effort is unspecified, assess the remaining task from the brief. Choose `low` (light reasoning) for well-scoped, straightforward work with a clear approach and no unresolved decisions. Choose `medium` when any part needs higher-level thinking, such as diagnosis, design, trade-offs, or resolving ambiguity. Use `medium` when the difficulty is uncertain. Decide from the available context without asking the user to classify the task.
+Pass explicit choices through the launcher, not just the prompt. `codex-handoff-tmux` accepts an optional `--model` and a separate `--reasoning-effort`; its effort fallback remains `medium`. When effort is unspecified, follow the applicable `AGENTS.md` effort policy within the launcher's supported settings. Direct interactive and app launchers use their supported model and effort fields.
 
-Pass settings through the launcher, not just the prompt. With `codex-handoff-tmux`, pass `--model` and the selected `--reasoning-effort low` or `--reasoning-effort medium` explicitly; its fallback remains `medium`. Direct interactive launches use `--model` and `-c 'model_reasoning_effort="low"'` or `-c 'model_reasoning_effort="medium"'`; app launchers use their supported model and effort fields. Substitute an explicit user effort choice for these selected defaults.
+Follow the launcher's contract. For example, Codex app task creation permits a model override only when the user explicitly requests that model; otherwise omit the field. If a destination requires a model and offers no configured-default path, ask only for that missing choice. If an explicit model or effort is unsupported, preserve the brief and report the limitation without silently substituting a setting or launching a replacement session.
 
-Honor the launcher's authority requirements. If it requires an explicit user model request, ask for that choice rather than treating skill invocation as permission or bypassing the restriction. If a setting is unsupported, preserve the brief and report the limitation rather than switching silently.
-
-Record the selected settings and a short reason for the effort choice in the brief. Report requested settings separately from verified running settings; a queued launch is not proof of the effective configuration.
+Record explicit choices, any omitted settings, and the reason for a selected effort in the brief. Report requested settings separately from verified running settings; a queued launch is not proof of the effective configuration.

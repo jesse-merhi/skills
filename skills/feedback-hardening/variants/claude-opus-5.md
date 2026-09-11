@@ -23,12 +23,12 @@ For example: “I rebuilt the command four times to supply IDs the tool already 
 
 Check the owning tools, instructions and available prior feedback. Reuse open recommendations; respect declines unless new evidence matters. Prefer removing unnecessary work or fixing the tool, then an existing check, then a narrow instruction. Keep safety, evidence and review requirements intact.
 
-Keep the recommendation within the observed problem: name the change, its owner and how to tell whether it helped. State missing evidence when the cause is uncertain. Use one independent, read-only recommendation worker only for competing causes or consequential tradeoffs; it advises without editing.
+Keep the recommendation tied to the observed problem. Name the change, its owner and how to tell whether it helped. State missing evidence when the cause is uncertain. Use one independent, read-only recommendation worker only for competing causes or consequential tradeoffs; it advises without editing.
 
 ## 4. Apply and follow through
 
-Implement changes already covered by the user's instructions. Otherwise present the concrete scope for approval. Reporting grants no additional authority, including installation, publication or merge. Recheck the target and preserve concurrent work through its normal implementation workflow.
+Implement changes already covered by the user's instructions and record that authority. Ask only for additional permission or a material user decision. Feedback or investigation alone does not authorize broader changes. Reporting grants no installation, publication, merge or other separate authority. Recheck the target and preserve concurrent work through its normal implementation workflow. Use revision or ETag preconditions for managed writes; stop if concurrent changes cannot be protected.
 
-Verify the change against the original failure. Keep evidence, pending recommendations, approval state and next actions in the existing task notes for resumption or handoff. Consult that record on the next relevant run when available: changing an instruction alone does not prove improvement.
+Verify the change against the original failure. Keep evidence, pending recommendations, approval state and next actions in the existing task notes for resumption or handoff. Include later instructions that supersede pending questions without treating them as approval of the old proposal. Consult that record on the next relevant run when available: changing an instruction alone does not prove improvement.
 
 This reflection is complete when you have told the user what got in the way and what would help, or that nothing useful surfaced. Recommendations do not become code findings or delay an otherwise complete review. Include feedback about this workflow in the same report; do not start recursive hardening.
