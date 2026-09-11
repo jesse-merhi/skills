@@ -16,9 +16,11 @@ For a specific commit:
 codex-review --mode commit --commit <sha>
 ```
 
-The helper pins Astra at medium, checks the clean checkout and credentials, saves output and attempts to archive successful review sessions. Its installed `findings-reviewer` profile supplies readability, test and TypeScript instructions when available; the helper does not take a custom review brief. Use `codex-review --help` for output paths. It uses the host's standalone Codex identity, including when called from Claude or OpenClaw. For an explicit model or effort override, use a supported native launcher that honors it; this helper cannot override its pinned settings.
+The helper pins Astra at medium, checks the clean checkout, runs the actual review, saves output and attempts to archive successful review sessions. Its installed `findings-reviewer` profile supplies readability, test and TypeScript instructions when available; the helper does not take a custom review brief. Use `codex-review --help` for output paths. It uses the host's standalone Codex identity, including when called from Claude or OpenClaw. For an explicit model or effort override, use a supported native launcher that honors it; this helper cannot override its pinned settings.
 
 For a branch review, run `git rev-parse HEAD <base>` before and after the helper. For a commit review, pass the saved SHA. A changed target, dirty checkout, nonzero exit or missing result means incomplete, not clean. The helper may retry a changed target up to three times; if it reports a different target, restart the pass against the intended committed code.
+
+The actual review establishes whether authentication and the selected model work. Do not run a separate paid probe before ordinary reviews. If a failure needs authentication diagnosis, `codex-review --check-auth` runs the existing diagnostic and stops without reviewing code; its live probe is an additional model request. Preserve the original review failure and repair the specific blocker before a permitted retry.
 
 After a failure, cancellation or archiving warning, archive only sessions identified as belonging to this invocation with `codex archive <session-id>`. Preserve the review output. Report cleanup you cannot complete rather than archiving unrelated sessions.
 

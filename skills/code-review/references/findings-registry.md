@@ -14,6 +14,7 @@ Read `review-findings --help`, then subcommand `--help` for flags. Run `review-f
 | Read the record contract | `schema` |
 | Freeze authorized scope / resume its state | `scope-start` / `scope-status --json` |
 | Check scope / record approved expansion / finish | `scope-check` / `scope-authorize` / `scope-complete` |
+| Append explicitly authorized review time | `budget-extend` |
 | Read pass state / record passes, repairs or decisions | `progress-status` / `progress-record` |
 | Save a triaged finding / append repeat evidence | `record` / `record --match-of ID` |
 | Save finished validation | `record-command` |
@@ -27,6 +28,8 @@ Use the saved repository name/path, branch, target and base to avoid mixing runs
 Follow the pass-recording, fixing and blocked-check instructions linked where they are used in the main skill. Historical-head measurement without checking it out needs Git 2.41+ for target binary attributes; otherwise check out that head or obtain an authorized Git update.
 
 When an authorized main sync changes an existing run's base, use `scope-authorize --base <old-base> --new-base <new-base>` with the user's explicit authorization. It remeasures the baseline while preserving findings, commands, the branch lock and event history. Use the new base afterward and restart the current review phase. Completed scopes remain terminal; an existing destination run is rejected rather than overwritten. A migrated budget marked as requiring rebaseline also needs explicit authorization through `scope-authorize`; `scope-check` cannot clear that state.
+
+For an explicitly user-authorized time extension, run `review-findings budget-extend` with the saved run identity, `--run-id <saved-run-id> --request-id <unique-request-id> --additional-seconds <positive-integer> --authorization "<existing explicit user authority>"`. This appends time to the saved deadline, including after expiry; choose enough authorized time to cover any elapsed overrun. The command does not supply authority itself or extend time automatically. It preserves the original start, frozen settings, findings, repair attempts and phase evidence. Its JSON output includes the old/new deadline, authorization receipt and current limits. Exact replay returns the original receipt without adding time; changed reuse of an ID is rejected. The run ID must match the resolved existing run, so a later review with the same target cannot receive an earlier authorization. Other stopping reasons and completed-run terminal state remain binding. Extensions require this updated CLI for later lifecycle commands: older versions ignore the extension ledger and still report the original deadline.
 
 ## 3. Record findings and decisions
 

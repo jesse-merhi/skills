@@ -10,7 +10,7 @@ import { createHash } from "node:crypto"
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
-import { checkReviewLimits, DEFAULT_REVIEW_LIMITS, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
+import { type BudgetExtension, BudgetExtensionConflict, checkReviewLimits, DEFAULT_REVIEW_LIMITS, extendReviewTimeBudget, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
 import { type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
@@ -187,8 +187,8 @@ Optional finding metadata:
   --owner-resolution ${FINDING_OWNER_RESOLUTIONS.join("|")} for an explicit terminal decision about the finding
 
 Repeated finding evidence (instead of a new finding card):
-  record --match-of <open decision ID> --source <reviewer/pass> --evidence <result reference> --match-note <same code and cause>
-  Appends to the existing open finding without changing its status or owner decision.
+  record --match-of <open or rejected decision ID> --source <reviewer/pass> --evidence <result reference> --match-note <revision and same cause>
+  Appends to the existing open or rejected finding without changing its status or owner decision.
   The same source and evidence reference is idempotent; a changed note is rejected.
   closeout --json includes finding_matches. Matching remains the coordinator's judgment.
 
@@ -644,6 +644,8 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
+    `create table if not exists review_budget_extensions (run_id text not null references review_runs(id) on delete cascade, request_id text not null, receipt text not null, primary key(run_id, request_id))`,
+    `create table if not exists review_batch_receipts (run_id text not null references review_runs(id) on delete cascade, request_id text not null, payload text not null, receipt text not null, primary key(run_id, request_id))`,
     `create table if not exists review_progress_events (run_id text not null references review_runs(id) on delete cascade, revision integer not null, payload text not null, primary key(run_id, revision))`,
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
     `create table if not exists review_run_limits (run_id text primary key references review_runs(id) on delete cascade, settings text not null)`,
@@ -1623,6 +1625,13 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   }))
 })
 
+export const extendReviewBudget = Effect.fn("ReviewFindings.extendBudget")(function*(run: ReviewRun & { readonly runId: string }, extension: typeof BudgetExtension.Type) {
+  const runId = yield* exactRunId(yield* verifyScopeRun(run))
+  if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
+  if (run.runId !== runId) return yield* new BudgetExtensionConflict({ message: "Saved run ID does not match the resolved scope; authorization cannot extend a different review run" })
+  return yield* extendReviewTimeBudget(runId, extension)
+})
+
 export const reviewLimits = Effect.fn("ReviewFindings.limits")(function*(run: ReviewRun, phase?: ReviewPhase) {
   const runId = yield* exactRunId(yield* resolveRecordRun(run))
   if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
@@ -1659,9 +1668,9 @@ export const recordFindingMatch = Effect.fn("ReviewFindings.recordMatch")(functi
     const issue = (yield* sql<{ readonly id: string }>`select issues.id from issues join review_runs on review_runs.id = issues.run_id
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id
       where issues.run_id = ${runId} and decision_id = ${input.matchOf}
-        and issues.status in ('open', 'reopened', 'provisional') and coalesce(owner_resolution, '') = ''
+        and (issues.status = 'rejected' or (issues.status in ('open', 'reopened', 'provisional') and coalesce(owner_resolution, '') = ''))
         and review_runs.status != 'complete' and coalesce(review_scope_budgets.status, '') != 'complete'`)[0]
-    if (issue === undefined) return yield* Effect.fail(new InvalidFinding("Match target must be an existing open finding in this active run"))
+    if (issue === undefined) return yield* Effect.fail(new InvalidFinding("Match target must be an existing open finding or rejected finding in this active run; fixed findings require a new decision"))
     const existing = yield* sql<{ readonly note: string }>`select note from review_finding_matches where issue_id = ${issue.id} and source = ${input.source} and evidence = ${input.evidence}`
     if (existing[0] !== undefined) {
       if (existing[0].note !== input.matchNote) return yield* Effect.fail(new InvalidFinding("Recorded match evidence is immutable"))

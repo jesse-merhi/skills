@@ -12,9 +12,10 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
+import { applyReviewBatch, Batch, BatchRun } from "./ReviewBatch.ts"
 import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordReviewedFiles, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
-import { recordFindingMatch, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
-import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
+import { extendReviewBudget, recordFindingMatch, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
+import { BudgetExtensionConflict, DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
 
@@ -153,10 +154,13 @@ const scopeStart = Command.make("scope-start", {
   db, ...commonRun, scopeSummary, json: Flag.boolean("json"),
   timeBudgetHours: Flag.float("time-budget-hours").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.timeBudgetHours)),
   consultCap: Flag.integer("consult-cap").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.consultCap)),
-  coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.coldCleanTarget))
+  coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.coldCleanTarget)),
+  nativeCleanTarget: Flag.integer("native-clean-target").pipe(Flag.withDefault(2)),
+  requiredPhase: Flag.choice("required-phase", ["native", "cold"]).pipe(Flag.atLeast(0)),
+  requireCurrentHead: Flag.boolean("require-current-head")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const budget = yield* startScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, limits: { timeBudgetHours: args.timeBudgetHours, consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget } })
+  const budget = yield* startScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, limits: { timeBudgetHours: args.timeBudgetHours, consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget, nativeCleanTarget: args.nativeCleanTarget, requiredPhases: args.requiredPhase, requireCurrentHead: args.requireCurrentHead } })
   const limits = yield* reviewLimits(toRun(args))
   yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatReadyScopeBudget(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Freeze the review scope and deterministic diff-growth baseline"))
@@ -180,6 +184,14 @@ const scopeAuthorize = Command.make("scope-authorize", {
     ...(Option.isSome(args.newBase) ? { newBase: args.newBase.value } : {}) })
   yield* Console.log(formatReadyScopeBudget(budget))
 }))).pipe(Command.withDescription("Reset a blocked baseline after explicit user authorization"))
+const budgetExtend = Command.make("budget-extend", {
+  db, ...commonRun, runId: Flag.string("run-id"), requestId: Flag.string("request-id"), additionalSeconds: Flag.integer("additional-seconds"), authorization: Flag.string("authorization")
+}, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+  yield* initialize()
+  const extension = yield* extendReviewBudget({ ...toRun(args), runId: args.runId }, args)
+  yield* Console.log(JSON.stringify({ ...extension, limits: yield* reviewLimits(toRun(args)) }))
+}))).pipe(Command.withDescription("Append explicitly user-authorized time to an existing run; exact request replay adds no time"))
+
 const scopeStatus = Command.make("scope-status", {
   db, ...commonRun, json: Flag.boolean("json")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
@@ -236,7 +248,18 @@ const progressRecord = Command.make("progress-record", {
   yield* Console.log(JSON.stringify({ ...progress, limits: yield* reviewLimits(toRun(args), event.phase) }))
 })))
 
-const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, pathCommand]))
+const batch = Command.make("batch", { db, runFile: Flag.string("run-file"), file: Flag.string("file") }, args => Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const run = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(BatchRun))(yield* fs.readFileString(args.runFile))
+  const batch = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Batch))(yield* fs.readFileString(args.file))
+  yield* withScopeDb(args.db, run.repoPath, Effect.gen(function*() {
+    yield* initialize()
+    yield* Console.log(JSON.stringify(yield* applyReviewBatch(run, batch)))
+  }))
+})).pipe(Command.withDescription("Atomically save one review, repair or check batch; exact request replay does not repeat writes"))
+const batchSchema = Command.make("batch-schema", {}, () => Console.log(JSON.stringify({ run: Schema.toJsonSchemaDocument(BatchRun), batch: Schema.toJsonSchemaDocument(Batch) }))).pipe(Command.withDescription("Print the structured run and lifecycle action contracts; findings still use the authoritative rating schema"))
+
+const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, budgetExtend, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, batch, batchSchema, pathCommand]))
 const Live = Layer.mergeAll(NodeServices.layer)
 const rootDb = process.argv[2]
 if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== undefined) {
@@ -248,5 +271,5 @@ command.pipe(Command.run({ version: "3.2.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof BudgetExtensionConflict || error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))

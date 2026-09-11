@@ -21,8 +21,14 @@ const review = Command.make("codex-review", {
   codexBin: Flag.string("codex-bin").pipe(Flag.withDefault(process.env.CODEX_BIN ?? "codex")),
   output: Flag.optional(Flag.string("output")),
   parallelTests: Flag.optional(Flag.string("parallel-tests")),
+  checkAuth: Flag.boolean("check-auth"),
   dryRun: Flag.boolean("dry-run")
 }, Effect.fn("codexReview.handler")(function*(args) {
+  if (args.checkAuth) {
+    if (args.dryRun) return yield* Console.log("Would run explicit authentication diagnostics; no code review would start")
+    yield* preflightCodexAuthentication(args.codexBin)
+    return yield* Console.log("Authentication diagnostic passed; no code review started")
+  }
   const outputPath = Option.orElse(args.output, () => defaultOutput)
   const fileSystem = yield* FileSystem.FileSystem
   if (!args.dryRun && Option.isSome(outputPath)) yield* fileSystem.remove(outputPath.value, { force: true })
@@ -30,7 +36,6 @@ const review = Command.make("codex-review", {
   yield* Console.log(`codex-review target: ${plan.label}`)
   for (const target of plan.targets) yield* Console.log(`review: ${args.codexBin} ${(yield* nativeReviewArguments(target)).join(" ")}`)
   if (args.dryRun) return
-  yield* preflightCodexAuthentication(args.codexBin)
   const currentIdentity = selectReviewPlan(args.mode, args.base, args.commit).pipe(Effect.flatMap((currentPlan) => {
     const refsFor = (flag: "--base" | "--commit") => currentPlan.targets.flatMap((target) => {
       const index = target.args.indexOf(flag)
