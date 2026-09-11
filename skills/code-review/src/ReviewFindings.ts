@@ -335,10 +335,13 @@ export interface CloseoutFinding {
 }
 interface CloseoutFindingRow extends Omit<CloseoutFinding, "material"> { readonly material: number }
 
-const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, material: boolean, text: string) => {
+const findingText = (input: Finding, severity: string) => [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.contractEvidence, input.rootCause, input.recommendedFix, input.interventionJustification, input.rejectionGate, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
+
+const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, material: boolean) => {
+  const text = findingText(finding, existing.severity)
   const stored: ReadonlyArray<string | number> = [
     existing.status, existing.source, existing.fingerprint, existing.summary,
-    existing.area, existing.severity, existing.material, existing.user_impact,
+    existing.area, existing.material, existing.user_impact,
     existing.decision, existing.text, existing.finding_kind,
     existing.production_path, existing.reachability_evidence, existing.likelihood,
     existing.impact, existing.actual_consequence, existing.maintenance_evidence,
@@ -349,7 +352,7 @@ const isExactResolvedReplay = (existing: ExistingIssueRow, finding: Finding, mat
   ]
   const replay: ReadonlyArray<string | number> = [
     finding.status, finding.source, finding.fingerprint, finding.summary,
-    finding.area, finding.severity, material ? 1 : 0, finding.userImpact,
+    finding.area, material ? 1 : 0, finding.userImpact,
     finding.decision, text, finding.findingKind, finding.productionPath,
     finding.reachabilityEvidence, finding.likelihood, finding.impact,
     finding.actualConsequence, finding.maintenanceEvidence, finding.presentCost,
@@ -1497,7 +1500,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     ? undefined
     : (yield* sql<RunStatusRow>`select status from review_runs where id = ${existingRunId}`)[0]
   const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
-  const text = [input.decisionId, input.status, input.source, input.fingerprint, input.summary, input.area, input.severity, input.userImpact, input.decision, input.findingKind, input.productionPath, input.reachabilityEvidence, input.likelihood, input.impact, input.actualConsequence, input.maintenanceEvidence, input.presentCost, input.contractEvidence, input.rootCause, input.recommendedFix, input.interventionJustification, input.rejectionGate, input.disposition, input.fixScope, input.handling, input.ownerResolution, input.text].filter(Boolean).join(" ")
+  const text = findingText(input, input.severity)
   const existingIssues = existingRunId === undefined
     ? []
     : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
@@ -1506,13 +1509,13 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     return yield* Effect.fail(new InvalidFinding("updating an owner-resolved finding requires --owner-resolution and --decision"))
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0) {
-    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    if (!isExactResolvedReplay(existingIssue, input, material) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
       return yield* Effect.fail(new InvalidFinding("owner-resolved findings are immutable; only an exact idempotent replay is allowed"))
     }
     if (!hasLegacyEvidence(existingIssue) && existingRunId !== undefined) return { runId: existingRunId, issueId: existingIssue.id }
   }
   if (existingIssue?.disposition === "follow-up") {
-    if (!isExactResolvedReplay(existingIssue, input, material, text) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
+    if (!isExactResolvedReplay(existingIssue, input, material) && !isLegacyEvidenceUpgrade(existingIssue, input)) {
       return yield* Effect.fail(new InvalidFinding("deferred follow-up findings are immutable; use a new decision ID for later work"))
     }
     if (!hasLegacyEvidence(existingIssue) && existingRunId !== undefined) return { runId: existingRunId, issueId: existingIssue.id }

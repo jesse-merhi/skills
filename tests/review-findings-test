@@ -464,7 +464,7 @@ test_review_findings_schema_is_visible_and_enforced() {
     --finding-kind runtime --fix-scope systemic --handling consult \
     --production-path "supported request -> shared policy -> workflow failure" \
     --reachability-evidence "A supported request reaches the shared policy." \
-    --likelihood possible --impact high \
+    --likelihood possible --impact critical \
     "${RUNTIME_ACTIONABILITY[@]}" \
     --actual-consequence "The core workflow is blocked." \
     --decision "Should the owner approve the systemic runtime repair?" >/dev/null
@@ -475,10 +475,40 @@ test_review_findings_schema_is_visible_and_enforced() {
     --finding-kind runtime --fix-scope systemic --handling consult \
     --production-path "supported request -> shared policy -> workflow failure" \
     --reachability-evidence "A supported request reaches the shared policy." \
-    --likelihood possible --impact high \
+    --likelihood possible --impact critical \
     "${RUNTIME_ACTIONABILITY[@]}" \
     --actual-consequence "The core workflow is blocked." \
     --owner-resolution approved --decision "The owner approved the durable shared-policy fix." >/dev/null
+
+  # Recreate the persisted P1 rating written by the previous CLI matrix.
+  DB="$db" SNAPSHOT="$tmp/historical-row.json" node --input-type=module <<'NODE'
+import { DatabaseSync } from "node:sqlite";
+import { writeFileSync } from "node:fs";
+const db = new DatabaseSync(process.env.DB);
+db.prepare("update issues set priority = 'p1', text = replace(text, ' p0 ', ' p1 ') where decision_id = 'D11'").run();
+writeFileSync(process.env.SNAPSHOT, JSON.stringify(db.prepare("select * from issues where decision_id = 'D11'").get()));
+db.close();
+NODE
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
+    --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
+    --decision-id D11 --status fixed --source review --fingerprint "approved systemic runtime fix" \
+    --summary "The owner approved the systemic runtime fix." \
+    --finding-kind runtime --fix-scope systemic --handling consult \
+    --production-path "supported request -> shared policy -> workflow failure" \
+    --reachability-evidence "A supported request reaches the shared policy." \
+    --likelihood possible --impact critical \
+    "${RUNTIME_ACTIONABILITY[@]}" \
+    --actual-consequence "The core workflow is blocked." \
+    --owner-resolution approved --decision "The owner approved the durable shared-policy fix." >/dev/null
+
+  DB="$db" SNAPSHOT="$tmp/historical-row.json" node --input-type=module <<'NODE'
+import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
+import assert from "node:assert/strict";
+const db = new DatabaseSync(process.env.DB);
+assert.deepEqual({ ...db.prepare("select * from issues where decision_id = 'D11'").get() }, JSON.parse(readFileSync(process.env.SNAPSHOT)), "historical replay must preserve the whole resolved row");
+db.close();
+NODE
 
   "$ROOT_DIR/skills/code-review/scripts/review-findings" record \
     --db "$db" --repo sample-app --repo-path "$tmp/repo" --target "PR #schema" --base main \
