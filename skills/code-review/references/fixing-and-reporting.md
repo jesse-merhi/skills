@@ -2,7 +2,7 @@
 
 ## 1. Establish the problem
 
-For each reported bug, use realistic inputs and normal checks in the reviewed application to establish its trigger, expected behavior and actual result. A local reproduction or an observed failure that applies to the reviewed code is enough; production logs are not required.
+For each reported bug, establish how a client/API user or resulting background work reaches it through realistic inputs and normal application checks, and who experiences the resulting harm. Show the steps or conditions, expected behavior and actual consequence. A local reproduction or an observed failure that applies to the reviewed code is enough; production logs are not required.
 
 Include internal failures such as lost data, broken backups and failed jobs. For security, check attainable access and existing defenses. Explain a lost layer of protection without claiming an exploit that another layer blocks. For maintenance findings, show the confusing code and its present cost to read or change.
 
@@ -10,14 +10,14 @@ Tie findings to the reviewed change. Investigate missing evidence; reject unsupp
 
 ## 2. Rate and record
 
-Assess likelihood and impact yourself, including for native findings that already have a priority. Explain how often the trigger can occur and the harm it causes; rare destructive failures still matter. Use the CLI's rating scales and record contract:
+Assess likelihood and impact yourself, including for native findings that already have a priority. Ground likelihood in how users reach the trigger, and impact in the consequence after existing protections and recovery; rare destructive failures still matter. Use the CLI's rating scales and record contract:
 
 ```sh
 review-findings schema
 review-findings record --help
 ```
 
-Record every checked candidate, including rejected and uncertain ones. The CLI derives severity and disposition from the evidence; it does not verify that evidence. Keep maintenance cost separate from runtime likelihood and impact.
+Record every checked candidate, including rejected and uncertain ones. Accept a runtime finding only after establishing a realistic reachable trigger and its consequence. Unresolved candidates remain unrated investigations; reject unsupported claims with a reason. The CLI derives severity and disposition from the evidence; it does not verify that evidence. Keep maintenance cost separate from runtime likelihood and impact.
 
 Match repeated reports to the same open cause after the reviewer returns. Append evidence with `review-findings record --match-of <id>` and the saved run identity, source, evidence and match note from its help; keep one finding and one outstanding question.
 

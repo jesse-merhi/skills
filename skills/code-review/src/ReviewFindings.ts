@@ -216,14 +216,14 @@ Required for rejected candidates without an owner resolution:
 Required for runtime findings:
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
   --impact ${FINDING_IMPACTS.join("|")}
-  Likelihood describes how often the trigger arises in actual use, not confidence in the reviewer:
-    certain: normal use of an affected supported workflow reliably encounters the failure without unusual conditions.
-    likely: common conditions reach it; possible: a realistic but less common condition reaches it; rare: a demonstrated unusual combination reaches it.
+  Likelihood describes whether and how a client/API user or resulting background work reaches the trigger:
+    certain: the affected normal operation reliably fails without unusual conditions.
+    likely: ordinary actions or inputs commonly reach it; possible: a specific realistic action or supported condition reaches it; rare: a demonstrated unusual combination reaches it.
     A deterministic failure after selecting a rare trigger is still rare. State the affected workflow and supported configuration; do not generalize a narrow reproduction to all users.
-    unknown: reachability or frequency is not established; theoretical: only a hypothetical trigger, not an evidenced real flow.
+    unknown: the reachable trigger or consequence still needs investigation; theoretical: only a hypothetical trigger, not an evidenced real flow. Neither is an accepted, rated finding. Usage statistics are not required to establish a realistic path.
   Impact describes the consequence when triggered, independently of likelihood:
     critical: catastrophic loss or compromise; high: major loss, compromise or disruption; medium: meaningful but bounded failure; low: minor, recoverable harm.
-  Rate the demonstrated user or system consequence, not the component name or the word "security".
+  Rate the demonstrated user or system consequence after existing protections and recovery, not the component name or the word "security".
   A required check failing does not by itself establish high or critical impact; identify the resulting broken deliverable or supported workflow.
   P0 means a release blocker, including major failures reliably encountered in normal use and catastrophic consequences under evidenced likely or possible conditions.
 
