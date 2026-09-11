@@ -221,6 +221,21 @@ esac
   assert.strictEqual(status.status, "blocked")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
+test.effect("completion requires a process report without losing finished reviews", () => Effect.gen(function*() {
+  const { cli, progress, database } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--require-current-head", "--json"])
+  yield* progress(0, "started")
+  yield* progress(1, "clean")
+  const sql = yield* SqliteClient.make({ filename: database })
+  for (const reportFlags of [[], ["--process-check", ""], ["--process-check", "   "]]) {
+    const denied = yield* cli("scope-complete", ["--reason", "complete", ...reportFlags]).pipe(Effect.flip)
+    assert.include(denied.stderr, "requires --process-check")
+    assert.deepStrictEqual(yield* sql`select status, process_check from review_scope_budgets`, [{ status: "ok", process_check: "" }])
+    assert.lengthOf(yield* sql`select run_id from review_scope_locks`, 1)
+    assert.strictEqual(decode(yield* cli("progress-status")).revision, 2)
+  }
+}).pipe(Effect.scoped), { timeout: 30000 })
+
 for (const report of ["No useful process improvement surfaced.", "The launcher lost its saved run ID; propose inferring it. No tool change authorized."]) {
 test.effect(`completion preserves the process check: ${report}`, () => Effect.gen(function*() {
   const { cli, progress, database } = yield* fixture
@@ -250,7 +265,7 @@ test.effect("old handles cannot write evidence into a new run with the same iden
   yield* cli("scope-start", scopeFlags)
   const first = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ reviewId: Schema.String })))(yield* reviewStart())
   yield* invoke(["review", "finish", "--review", first.reviewId, "--outcome", "clean", "--evidence", "complete result"])
-  yield* cli("scope-complete", ["--reason", "complete", "--json"])
+  yield* cli("scope-complete", ["--process-check", "Synthetic review: no process friction observed.", "--reason", "complete", "--json"])
   yield* cli("scope-start", scopeFlags)
   const denied = yield* invoke(["record-command", "--review", first.reviewId, "--command", "check", "--result", "pass", "--reason", "old evidence"]).pipe(Effect.flip)
   assert.include(denied.stderr, "different review run")
@@ -310,7 +325,7 @@ test.effect("CLI preserves native2/cold1/claws2, prevents completion bypass and 
     "--finding-kind", "maintenance", "--fix-scope", "local", "--handling", "reject", "--rejection-gate", "reality", "--decision", "Synthetic inspection found no claimed duplicate"])
   yield* progress(1, "clean")
   yield* cli("scope-check", ["--reason", "fixture", "--json"])
-  const incomplete = yield* cli("scope-complete", ["--reason", "fixture", "--json"]).pipe(Effect.flip)
+  const incomplete = yield* cli("scope-complete", ["--process-check", "Synthetic review: no process friction observed.", "--reason", "fixture", "--json"]).pipe(Effect.flip)
   assert.include(incomplete.stderr, "PHASE_TARGET_NOT_MET")
   assert.strictEqual(decode(yield* cli("scope-status", ["--json"])).status, "ok")
   yield* progress(2, "started")
@@ -322,11 +337,11 @@ test.effect("CLI preserves native2/cold1/claws2, prevents completion bypass and 
   yield* progress(5, "clean", "cold")
   yield* progress(6, "started", "clawsweeper")
   yield* progress(7, "clean", "clawsweeper")
-  const clawsIncomplete = yield* cli("scope-complete", ["--reason", "fixture", "--json"]).pipe(Effect.flip)
+  const clawsIncomplete = yield* cli("scope-complete", ["--process-check", "Synthetic review: no process friction observed.", "--reason", "fixture", "--json"]).pipe(Effect.flip)
   assert.include(clawsIncomplete.stderr, "PHASE_TARGET_NOT_MET")
   yield* progress(8, "started", "clawsweeper")
   yield* progress(9, "clean", "clawsweeper")
-  const completed = decode(yield* cli("scope-complete", ["--reason", "fixture", "--json"]))
+  const completed = decode(yield* cli("scope-complete", ["--process-check", "Synthetic review: no process friction observed.", "--reason", "fixture", "--json"]))
   assert.strictEqual(completed.status, "complete")
   const terminal = yield* progress(10, "reset").pipe(Effect.flip)
   assert.include(terminal.stderr, "immutable")

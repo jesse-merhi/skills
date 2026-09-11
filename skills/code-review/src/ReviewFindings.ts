@@ -1286,8 +1286,9 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   }))
 })
 
-export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string, processCheck = "") {
+export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">, reason: string, processCheck: string) {
   if (reason.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-complete requires the clean review result"))
+  if (processCheck.trim().length === 0) return yield* Effect.fail(new InvalidScopeBudget("scope-complete requires --process-check: use feedback-hardening to report process friction and the next action, or that no useful improvement surfaced"))
   const cleanHead = yield* requireCleanReviewTree(run.repoPath).pipe(Effect.mapError((error) => new InvalidScopeBudget(error.message)))
   const sql = yield* SqlClient.SqlClient
   const budget = yield* getScopeBudget(run)

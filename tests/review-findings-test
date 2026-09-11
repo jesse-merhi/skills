@@ -1608,7 +1608,7 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   done
   test -e "$tmp/complete.started" || fail "delayed scope-check did not reach the completion race"
 
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "completion race" --base main --reason "The current review is complete." >/dev/null
   : > "$tmp/complete.release"
@@ -1734,7 +1734,7 @@ assert.equal(event.reason, `Rebaseline from ${oldBase}@${oldBase} to main@${newB
 assert.equal(event.authorization, 'User approved changing the base to main.')
 db.close()
 NODE
-  if "$cli" scope-complete "${identity[@]}" --base main --reason 'Review is clean.' >"$tmp/error" 2>&1; then
+  if "$cli" scope-complete --process-check "Synthetic review: no process friction observed." "${identity[@]}" --base main --reason 'Review is clean.' >"$tmp/error" 2>&1; then
     fail 'rebaseline must not erase unresolved findings'
   fi
   assert_contains "$tmp/error" 'KEEP'
@@ -2169,7 +2169,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --target "first review" --base main --reason "Run the final clean review." >/dev/null
 
   printf 'uncommitted\n' >> "$repo/app.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Dirty review result." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -2183,7 +2183,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
   { printf 'feature\n'; for number in {1..200}; do printf 'post-check change %s\n' "$number"; done; } > "$repo/app.ts"
   git -C "$repo" add app.ts
   git -C "$repo" commit --quiet --message "grow past review budget"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Stale clean result." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -2207,7 +2207,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --status open --source review --fingerprint "shared parser contract" \
     --summary "Choose the shared parser contract." --decision "Which shared parser contract should the owner approve?" \
     --text "User decision is still required." >/dev/null
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Unresolved consult remains." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -2217,7 +2217,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
   assert_contains "$tmp/stderr" "CONSULT-001 [open]: Choose the shared parser contract."
 
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set status = ?, owner_resolution = ? where decision_id = ?").run("deferred", "", "CONSULT-001")' "$db"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Legacy consult lacks owner resolution." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -2245,7 +2245,7 @@ test_review_scope_budget_can_close_before_a_later_review() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --command "pnpm test final" --result passed \
     --reason "Final validation before scope completion." --decision-id CONSULT-001 >/dev/null
-  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Both required review phases are clean.")"
   assert_output_contains "$out" "SCOPE BUDGET COMPLETE"
@@ -2317,7 +2317,11 @@ NODE
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("insert into review_scope_locks (repo_key, branch, run_id) select review_runs.repo_key, coalesce(review_runs.branch, ?), review_runs.id from review_runs join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.target = ? and review_scope_budgets.status = ?").run("", "first review", "complete")' "$db"
 
   for terminal_command in scope-check scope-complete; do
-    if "$ROOT_DIR/skills/code-review/scripts/review-findings" "$terminal_command" \
+    local -a process_check_flags=()
+    if [ "$terminal_command" = scope-complete ]; then
+      process_check_flags=(--process-check "Synthetic review: no process friction observed.")
+    fi
+    if "$ROOT_DIR/skills/code-review/scripts/review-findings" "$terminal_command" "${process_check_flags[@]}" \
       --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
       --target "first review" --base main --reason "Completed budgets are terminal." \
       >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -2342,7 +2346,7 @@ NODE
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "later review" --base main --reason "Later review is clean." >/dev/null
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "later review" --base main --reason "Later review is complete." >/dev/null
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
@@ -2431,7 +2435,7 @@ NODE
   assert_output_contains "$out" "baseline=2 current=2"
   assert_output_not_contains "$out" "current=103"
 
-  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "requested commit review" --base main \
     --reason "Pinned historical review is clean.")"
@@ -3113,7 +3117,7 @@ test_repeated_review_inherits_original_branch_loc() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Use the original allowance." >/dev/null
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "The first review is clean." >/dev/null
 
@@ -3143,7 +3147,7 @@ test_repeated_review_inherits_original_branch_loc() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "second review" --base origin/main --reason "Restore the reviewed ceiling." >/dev/null
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete --process-check "Synthetic review: no process friction observed." \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "second review" --base origin/main --reason "The repeated review is clean." >/dev/null
 
