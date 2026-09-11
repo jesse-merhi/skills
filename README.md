@@ -224,7 +224,7 @@ Triage and blocked-check handling are now references in `code-review`; the forme
 
 | Skill | What it does |
 | --- | --- |
-| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Implements behavior, tests valid inputs and failure cases, and cleans up weak tests along the way; review-only work stays read-only. |
+| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Implements behavior, tests valid inputs and failure cases, and improves the test files it touches. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |

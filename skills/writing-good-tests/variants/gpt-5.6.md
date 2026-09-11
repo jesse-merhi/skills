@@ -8,7 +8,7 @@ metadata:
 
 # Writing Good Tests
 
-Establish the intended behavior and find existing coverage. In review-only work, inspect and report without editing code.
+Establish the intended behavior, inspect existing coverage and fix problems within the task.
 
 ## Choose the proof
 
@@ -28,13 +28,13 @@ Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 
 ## Write tests worth keeping
 
-Improve weak tests you encounter during implementation, or remove tests that prove nothing useful. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
+Improve the test files you touch, rather than only appending tests. Rewrite weak tests, reorganize confusing files and remove tests that prove nothing useful. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
 
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
 - Use real internal collaborators. Substitute an external API, clock, filesystem or database only when the real boundary is unreliable or disproportionately expensive, using the existing interface and realistic results.
-- Consolidate repeated shapes into named, object-shaped cases only when each row proves a distinct behavior.
+- Use named, parameterized cases when they make related behaviors easier to read and extend. Give each case a clear purpose and keep scenarios separate when their setup or assertions differ.
 - Remove tautologies, incidental mock-call/order assertions, inputs or states that cannot reach the code being tested, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only when a real product, accessibility, safety or protocol contract needs it.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 

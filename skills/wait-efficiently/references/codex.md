@@ -1,6 +1,6 @@
 # Codex waits
 
-Use the current host's exposed tools. Command sessions, CLI agents, and Desktop tasks have different handles.
+Use code mode for command execution and waiting. If `functions.exec` and `functions.wait` are unavailable, report the missing capability before starting a long-running command. Command sessions, CLI agents, and Desktop tasks have different handles.
 
 ## Choose the outer wait
 
@@ -12,10 +12,10 @@ Command launch and resume tools have separate limits. The outer cell's deadline 
 
 1. Launch once with `exec_command`, using its allowed `yield_time_ms`.
 2. If it returns `session_id`, resume with `write_stdin({ session_id, chars: "", yield_time_ms })`. Use the resume tool's own limit, not the shorter launch limit.
-3. In code mode, await launch and resume in a loop inside one `functions.exec` cell. If it returns a running cell ID, continue that cell with `functions.wait` and the calculated deadline.
+3. Await launch and resume in a loop inside one `functions.exec` cell. If it returns a running cell ID, continue that cell with `functions.wait` and the calculated deadline.
 4. Collect the terminal exit code and output. Keep full validation/review output in a run-owned file; inspect it when output is truncated. A timeout or session ID is not success.
 
-Without code mode, call the exposed command and resume tools directly. A shell helper cannot call host tools. Do not use `notify` or `yield_control` for unchanged progress.
+Do not replace code mode with separate launch and polling calls. Use direct calls only for tools the host excludes from code mode, such as native agent controls. Do not use `notify` or `yield_control` for unchanged progress.
 
 ## Required agent results
 
