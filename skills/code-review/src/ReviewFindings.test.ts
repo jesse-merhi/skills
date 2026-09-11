@@ -48,10 +48,12 @@ describe("review scope growth", () => {
 describe("review finding risk outcomes", () => {
   it("derives every severity and disposition from likelihood and impact", () => {
     const cases = [
+      ["certain", "low", "p3", "accept"], ["certain", "medium", "p2", "accept"],
+      ["certain", "high", "p0", "accept"], ["certain", "critical", "p0", "accept"],
       ["likely", "low", "p3", "accept"], ["likely", "medium", "p2", "accept"],
       ["likely", "high", "p1", "accept"], ["likely", "critical", "p0", "accept"],
       ["possible", "low", "", "reject"], ["possible", "medium", "p2", "accept"],
-      ["possible", "high", "p1", "accept"], ["possible", "critical", "p1", "accept"],
+      ["possible", "high", "p1", "accept"], ["possible", "critical", "p0", "accept"],
       ["rare", "low", "", "reject"], ["rare", "medium", "", "reject"],
       ["rare", "high", "p2", "consult"], ["rare", "critical", "p1", "consult"],
       ["unknown", "low", "", "investigate"], ["unknown", "medium", "", "investigate"],
@@ -70,6 +72,26 @@ describe("review finding risk outcomes", () => {
         assert.strictEqual(finding.disposition, "accept")
         assert.strictEqual(finding.recommendedFix, "Persist the work and schedule its identifier.")
       })
+    ))
+
+  it.effect("classifies a core workflow that reliably loses work as a release blocker", () =>
+    decodeFinding({
+      ...runtimeFinding,
+      likelihood: "certain",
+      impact: "high",
+      reachabilityEvidence: "Every supported scheduling request in the local application fixture exceeds the limit, including the default request.",
+      actualConsequence: "No supported request can schedule work; the core workflow is unavailable."
+    }).pipe(
+      Effect.map((finding) => {
+        assert.strictEqual(finding.severity, "p0")
+        assert.strictEqual(finding.disposition, "accept")
+      })
+    ))
+
+  it.effect("requires reachable-flow evidence even when the reviewer chooses certain", () =>
+    decodeFinding({ ...runtimeFinding, likelihood: "certain", impact: "high", reachabilityEvidence: "" }).pipe(
+      Effect.flip,
+      Effect.map((error) => assert.match(error.message, /runtime findings require --reachability-evidence/u))
     ))
 
   it.effect("accepts a contained systemic repair", () =>

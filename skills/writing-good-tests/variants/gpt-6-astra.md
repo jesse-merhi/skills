@@ -1,6 +1,6 @@
 ---
 name: writing-good-tests
-description: 'Plan useful test coverage, audit test quality, and implement behavior through test-first cycles.'
+description: 'Write effective regression tests, assess existing coverage, and verify implemented behavior before pushing.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
@@ -8,7 +8,7 @@ metadata:
 
 # Writing Good Tests
 
-Decide what behavior needs proof, find the coverage that already exists, then implement only the authorized change. In review-only work, inspect and report; do not edit code or start red-green cycles.
+Establish the intended behavior and find existing coverage. Implement the authorized behavior, then add or adapt useful regression tests before pushing. In review-only work, inspect and report; do not edit code or run an implementation workflow.
 
 ## Choose the proof
 
@@ -28,6 +28,8 @@ Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 
 ## Write tests worth keeping
 
+Keep test changes within the requested behavior. Broader test cleanup needs its own scope; discovering an unrelated weak test does not authorize rewriting it.
+
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
@@ -36,13 +38,15 @@ Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 - Remove tautologies, incidental mock-call/order assertions, inputs or states that cannot reach the code being tested, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only when a real product, accessibility, safety or protocol contract needs it.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 
-## Implement one behavior at a time
+## Implement, then prove the behavior
 
-When behavior is missing, write or adapt its useful test, run it and confirm it fails for the missing behavior rather than broken setup. Implement the smallest complete solution, then refactor while green.
+Test-first development is optional unless requested.
 
-If existing coverage already proves the behavior, reuse it. Do not invent a new test or break working code to manufacture a red phase. For already-covered refactors, preserve the contract and use the existing checks.
+Implement a complete behavior and confirm its observable result against the agreed contract. Then write or adapt the smallest useful regression test, using expectations established independently of the implementation. If existing coverage already proves the behavior, reuse it; an already-covered refactor needs no new test.
 
-Run the affected test after each meaningful change, then broader relevant checks when the slice is stable. Stop on the first test error and diagnose it before rerunning. Review-discovered bugs still need reachable-flow evidence and repair authority; an isolated synthetic test does not establish either.
+Use focused checks during implementation when they answer a current uncertainty, diagnose a failure, or verify a repair. Review-discovered bugs still need reachable-flow evidence and repair authority before editing; a newly written failing test is not the only valid evidence, and an isolated synthetic test does not establish reachability or authority.
+
+Before pushing, run the relevant regression tests and required repository checks on the completed implementation. After review repairs, rerun affected proof and complete the required final checks. Broaden or repeat testing only for relevant changes, failures, or unresolved concerns. Stop on the first test error and diagnose it before rerunning.
 
 ## Check cost and finish
 

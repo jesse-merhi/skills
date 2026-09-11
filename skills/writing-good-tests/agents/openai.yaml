@@ -1,4 +1,4 @@
 interface:
   display_name: "Writing Good Tests"
-  short_description: "Choose useful proof, then implement the behavior"
-  default_prompt: "Use $writing-good-tests to plan useful coverage, assess existing tests, and implement the authorized behavior."
+  short_description: "Write useful tests for implemented behavior"
+  default_prompt: "Use $writing-good-tests to assess existing coverage and write effective regression tests for the implemented behavior before pushing."

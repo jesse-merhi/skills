@@ -50,7 +50,7 @@ export const FINDING_STATUSES = ["open", "fixed", "rejected", "deferred", "provi
 export const FINDING_DISPOSITIONS = ["accept", "investigate", "consult", "follow-up", "residual", "reject"] as const
 export const FINDING_FIX_SCOPES = ["local", "systemic"] as const
 export const FINDING_HANDLINGS = ["fix", "consult", "follow-up", "reject"] as const
-export const FINDING_LIKELIHOODS = ["likely", "possible", "rare", "unknown", "theoretical"] as const
+export const FINDING_LIKELIHOODS = ["certain", "likely", "possible", "rare", "unknown", "theoretical"] as const
 export const FINDING_IMPACTS = ["critical", "high", "medium", "low"] as const
 export const FINDING_SEVERITIES = ["", "p0", "p1", "p2", "p3"] as const
 export const FINDING_AREAS = ["", "ui", "workflow", "api-contract", "permissions", "privacy", "finance", "data-correctness", "audit", "migration", "schema", "internal"] as const
@@ -67,13 +67,17 @@ interface FindingOutcome {
 }
 
 const RUNTIME_OUTCOMES = {
+  certain: {
+    low: { severity: "p3", disposition: "accept" }, medium: { severity: "p2", disposition: "accept" },
+    high: { severity: "p0", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
+  },
   likely: {
     low: { severity: "p3", disposition: "accept" }, medium: { severity: "p2", disposition: "accept" },
     high: { severity: "p1", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
   },
   possible: {
     low: { severity: "", disposition: "reject" }, medium: { severity: "p2", disposition: "accept" },
-    high: { severity: "p1", disposition: "accept" }, critical: { severity: "p1", disposition: "accept" }
+    high: { severity: "p1", disposition: "accept" }, critical: { severity: "p0", disposition: "accept" }
   },
   rare: {
     low: { severity: "", disposition: "reject" }, medium: { severity: "", disposition: "reject" },
@@ -213,13 +217,17 @@ Required for runtime findings:
   --likelihood ${FINDING_LIKELIHOODS.join("|")}
   --impact ${FINDING_IMPACTS.join("|")}
   Likelihood describes how often the trigger arises in actual use, not confidence in the reviewer:
-    likely: ordinary use reaches it; possible: a realistic but less common condition reaches it; rare: a demonstrated unusual combination reaches it.
+    certain: normal use of an affected supported workflow reliably encounters the failure without unusual conditions.
+    likely: common conditions reach it; possible: a realistic but less common condition reaches it; rare: a demonstrated unusual combination reaches it.
+    A deterministic failure after selecting a rare trigger is still rare. State the affected workflow and supported configuration; do not generalize a narrow reproduction to all users.
     unknown: reachability or frequency is not established; theoretical: only a hypothetical trigger, not an evidenced real flow.
   Impact describes the consequence when triggered, independently of likelihood:
     critical: catastrophic loss or compromise; high: major loss, compromise or disruption; medium: meaningful but bounded failure; low: minor, recoverable harm.
   Rate the demonstrated user or system consequence, not the component name or the word "security".
+  A required check failing does not by itself establish high or critical impact; identify the resulting broken deliverable or supported workflow.
+  P0 means a release blocker, including major failures reliably encountered in normal use and catastrophic consequences under evidenced likely or possible conditions.
 
-Required when likelihood is likely, possible, or rare:
+Required when likelihood is certain, likely, possible, or rare:
   --production-path <actual executable path: current producer -> transformations -> failing sink>
   --reachability-evidence <realistic input and reachable state through the reviewed code, including normal guards and dependencies>
   --actual-consequence <verified behavior and meaningful user/system impact>
@@ -240,6 +248,7 @@ Required when deferring accepted local risk:
   --decision <why the residual risk is accepted>
 
 CLI-derived severity/disposition matrix:
+  certain:     low=${outcomeLabel("certain", "low")}; medium=${outcomeLabel("certain", "medium")}; high=${outcomeLabel("certain", "high")}; critical=${outcomeLabel("certain", "critical")}
   likely:      low=${outcomeLabel("likely", "low")}; medium=${outcomeLabel("likely", "medium")}; high=${outcomeLabel("likely", "high")}; critical=${outcomeLabel("likely", "critical")}
   possible:    low=${outcomeLabel("possible", "low")}; medium=${outcomeLabel("possible", "medium")}; high=${outcomeLabel("possible", "high")}; critical=${outcomeLabel("possible", "critical")}
   rare:        low=${outcomeLabel("rare", "low")}; medium=${outcomeLabel("rare", "medium")}; high=${outcomeLabel("rare", "high")}; critical=${outcomeLabel("rare", "critical")}
@@ -255,6 +264,7 @@ Consistency rules:
   residual -> deferred with required decision text and no patch
   deferred legacy record without disposition -> unresolved until re-recorded
   reject -> rejected and no patch
+  rejected records remain searchable evidence, not repair work or review blockers; unknown material risks still require investigation
   accept|follow-up|residual and approved consult -> required repair fields
   unresolved or declined consult -> may omit recommended fix with decision rationale
   rejected or investigating candidate -> omit repair fields
