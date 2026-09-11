@@ -66,7 +66,7 @@ export const applyReviewBatch = Effect.fn("ReviewBatch.apply")(function*(rawRun:
     const actualHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: run.repoPath })
     const action = batch.action
     const interrupted = action.kind === "review-result" && action.outcome === "blocked"
-    if (actualHead !== run.head && !interrupted) return yield* new ProgressConflict({ message: "Checkout head changed; save the old invocation as blocked before preparing an action for the actual revision" })
+    if ((scope.pinnedHeadOid || actualHead) !== run.head && !interrupted) return yield* new ProgressConflict({ message: "Checkout head changed; save the old invocation as blocked before preparing an action for the actual revision" })
     const head = run.head
     let progress = yield* reviewProgress(run)
     if ((progress?.revision ?? 0) !== batch.expectedRevision) return yield* new ProgressConflict({ message: "Progress changed; inspect the saved state before submitting another action" })

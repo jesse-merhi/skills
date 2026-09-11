@@ -11,7 +11,7 @@ import { applyReviewBatch, type Batch } from "./ReviewBatch.ts"
 import { initialize, recordFindingMatch, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
 import { measureScopeDiff } from "./ReviewScope.ts"
 
-const fixture = Effect.gen(function*() {
+const fixture = Effect.fn("ReviewBatch.fixture")(function*(historical = false) {
   yield* initialize()
   const fs = yield* FileSystem.FileSystem
   const repoPath = yield* fs.makeTempDirectoryScoped({ prefix: "review-batch." })
@@ -26,6 +26,10 @@ const fixture = Effect.gen(function*() {
   yield* fs.writeFileString(`${repoPath}/sample.txt`, "changed\n")
   yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "change"])
   const run = { repo: "fixture", repoPath, branch: "fixture", target: "fixture", base: "main", head: yield* git(["rev-parse", "HEAD"]), status: "active", decisionLog: "" }
+  if (historical) {
+    yield* fs.writeFileString(`${repoPath}/sample.txt`, "later change\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "later change"])
+  }
   const objectsBeforeScope = yield* git(["count-objects", "-v"])
   const scope = yield* startScopeBudget(run, { scopeSummary: "Local fixture repairs", limits: { nativeCleanTarget: 1, requiredPhases: ["native", "cold"], requireCurrentHead: true } })
   return { run: { ...run, runId: scope.runId }, scope, git, fs, objectsBeforeScope }
@@ -35,8 +39,18 @@ const rejected = { decisionId: "D1", status: "rejected", source: "fixture", fing
 const accepted = { decisionId: "D2", status: "open", source: "fixture", fingerprint: "duplicate owner", summary: "Duplicated policy", findingKind: "maintenance", fixScope: "local", handling: "fix", maintenanceEvidence: "Same policy is implemented by two owners", presentCost: "Both owners require changes for the same policy update", rootCause: "Duplicated authority", recommendedFix: "Use the existing owner", interventionJustification: "Remove the second implementation with preserved behavior" }
 
 layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory:" })))("review lifecycle batches", test => {
+  test.effect("reviews a pinned historical commit while the checkout stays on a later commit", () => Effect.gen(function*() {
+    const { run, scope, git } = yield* fixture(true)
+    assert.strictEqual(scope.pinnedHeadOid, run.head)
+    yield* applyReviewBatch(run, start)
+    yield* applyReviewBatch(run, { requestId: "historical-result", expectedRevision: 1, action: { kind: "review-result", phase: "native", evidence: "historical assessment", outcome: "clean", findings: [] } })
+    assert.strictEqual((yield* reviewProgress(run))?.head, run.head)
+    assert.strictEqual((yield* reviewProgress(run))?.outcome, "clean")
+    assert.notStrictEqual(yield* git(["rev-parse", "HEAD"]), run.head)
+  }).pipe(Effect.scoped), { timeout: 30000 })
+
   test.effect("rolls back a partially invalid result and replays a completed request without duplicate writes", () => Effect.gen(function*() {
-    const { run, scope } = yield* fixture
+    const { run, scope } = yield* fixture()
     const wrongRun = yield* applyReviewBatch({ ...run, runId: "previous-run" }, start).pipe(Effect.flip)
     assert.include(wrongRun.message, "run ID")
     yield* applyReviewBatch(run, start)
@@ -54,7 +68,7 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("prevents duplicate launches and records repair events before the finding becomes terminal", () => Effect.gen(function*() {
-    const { run, scope } = yield* fixture
+    const { run, scope } = yield* fixture()
     yield* applyReviewBatch(run, start)
     const duplicate = yield* applyReviewBatch(run, { ...start, requestId: "other-launch", expectedRevision: 1 }).pipe(Effect.flip)
     assert.include(duplicate.message, "already running")
@@ -71,7 +85,7 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("measures untracked changes without writing objects or the real index", () => Effect.gen(function*() {
-    const { run, git, fs, objectsBeforeScope } = yield* fixture
+    const { run, git, fs, objectsBeforeScope } = yield* fixture()
     assert.strictEqual(yield* git(["count-objects", "-v"]), objectsBeforeScope)
     const objectsBefore = yield* git(["count-objects", "-v"])
     const indexBefore = yield* fs.readFile(`${run.repoPath}/.git/index`)
@@ -82,7 +96,7 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("collects independent discovery while native findings remain open without claiming a clean run", () => Effect.gen(function*() {
-    const { run, scope } = yield* fixture
+    const { run, scope } = yield* fixture()
     yield* applyReviewBatch(run, start)
     yield* applyReviewBatch(run, { requestId: "native-result", expectedRevision: 1, action: { kind: "review-result", phase: "native", evidence: "native inventory", outcome: "findings", findings: [accepted] } })
     yield* applyReviewBatch(run, { requestId: "cold-start", expectedRevision: 2, action: { kind: "review-start", phase: "cold", evidence: "independent inventory at original head" } })
@@ -96,7 +110,7 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("appends repeated evidence to a rejected finding without changing its decision or reopening it", () => Effect.gen(function*() {
-    const { run, scope } = yield* fixture
+    const { run, scope } = yield* fixture()
     yield* applyReviewBatch(run, start)
     yield* applyReviewBatch(run, { requestId: "native-rejected", expectedRevision: 1, action: { kind: "review-result", phase: "native", evidence: "initial rejection evidence", outcome: "clean", findings: [rejected] } })
     const sql = yield* SqlClient.SqlClient
@@ -114,7 +128,7 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("saves an interrupted old-head result and permits a new invocation without crediting stale clean evidence", () => Effect.gen(function*() {
-    const { run, git, fs } = yield* fixture
+    const { run, git, fs } = yield* fixture()
     yield* applyReviewBatch(run, start)
     yield* fs.writeFileString(`${run.repoPath}/sample.txt`, "repaired\n")
     yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "repair"])
