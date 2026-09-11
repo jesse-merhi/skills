@@ -4,21 +4,17 @@ Use the requested engine, model and effort. Otherwise, use Codex with Astra at m
 
 ## Codex
 
-For the checked-out PR branch:
+For normal Codex review, use the launcher that owns the saved review:
 
 ```sh
-codex-review --mode branch --base <base>
+review-findings review native <saved scope flags>
 ```
 
-For a specific commit:
+It runs the existing `codex-review` helper with Astra at medium, saves the output outside the checkout and returns a review ID and report path. The helper uses the host's standalone Codex identity and attempts to archive its successful sessions. Repeating the command while that review is open returns its state without another model request. Record the complete report through the review commands before finishing it.
 
-```sh
-codex-review --mode commit --commit <sha>
-```
+For an explicit model or effort override, reserve a native review with `review start --phase native`, then use a supported launcher that honors the selection. The pinned helper cannot override its model settings. Pass the exact target and disclose an unavailable configuration.
 
-The helper pins Astra at medium, checks the clean checkout, runs the actual review, saves output and attempts to archive successful review sessions. Its installed `findings-reviewer` profile supplies readability, test and TypeScript instructions when available; the helper does not take a custom review brief. Use `codex-review --help` for output paths. It uses the host's standalone Codex identity, including when called from Claude or OpenClaw. For an explicit model or effort override, use a supported native launcher that honors it; this helper cannot override its pinned settings.
-
-For a branch review, run `git rev-parse HEAD <base>` before and after the helper. For a commit review, pass the saved SHA. A changed target, dirty checkout, nonzero exit or missing result means incomplete, not clean. The helper may retry a changed target up to three times; if it reports a different target, restart the pass against the intended committed code.
+The standalone helper remains available for separately requested use: `codex-review --mode branch --base <base>` or `codex-review --mode commit --commit <sha>`. Check the target before and after a standalone invocation. A changed target, dirty checkout, nonzero exit or missing result is incomplete. Preserve its output and finish the reserved review as blocked when the result cannot apply to its saved target.
 
 The actual review establishes whether authentication and the selected model work. Do not run a separate paid probe before ordinary reviews. If a failure needs authentication diagnosis, `codex-review --check-auth` runs the existing diagnostic and stops without reviewing code; its live probe is an additional model request. Preserve the original review failure and repair the specific blocker before a permitted retry.
 

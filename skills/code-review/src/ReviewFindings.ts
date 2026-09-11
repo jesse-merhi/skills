@@ -645,7 +645,7 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
     `create table if not exists review_budget_extensions (run_id text not null references review_runs(id) on delete cascade, request_id text not null, receipt text not null, primary key(run_id, request_id))`,
-    `create table if not exists review_batch_receipts (run_id text not null references review_runs(id) on delete cascade, request_id text not null, payload text not null, receipt text not null, primary key(run_id, request_id))`,
+    `create table if not exists review_invocations (id text primary key, run_id text not null references review_runs(id) on delete cascade, head text not null, base_oid text not null, phase text not null, start_revision integer not null, status text not null, outcome text not null, evidence text not null, launched integer not null default 0)`,
     `create table if not exists review_progress_events (run_id text not null references review_runs(id) on delete cascade, revision integer not null, payload text not null, primary key(run_id, revision))`,
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
     `create table if not exists review_run_limits (run_id text primary key references review_runs(id) on delete cascade, settings text not null)`,
@@ -850,16 +850,26 @@ const resolveRecordRun = Effect.fn("ReviewFindings.resolveRecordRun")(function*(
   }
 })
 
-/** Keep individual CLI updates out of a pending batch review, including abbreviated run identities. */
-export const requireCompletedReviewBatch = Effect.fn("ReviewFindings.requireCompletedReviewBatch")(function*(run: ReviewRun) {
+const requireReviewWriter = Effect.fn("ReviewFindings.requireReviewWriter")(function*(runId: string, reviewId?: string) {
+  const sql = yield* SqlClient.SqlClient
+  const pending = (yield* sql<{ readonly id: string }>`select id from review_invocations where run_id = ${runId} and status = 'open'`)[0]
+  if (pending !== undefined && pending.id !== reviewId) return yield* new ProgressConflict({ message: `Use --review ${pending.id} to record this review; finish it before another phase or repair` })
+})
+
+const requireRepairAuthorization = Effect.fn("ReviewFindings.requireRepairAuthorization")(function*(runId: string, findingId: string) {
+  const limits = yield* readReviewLimits(runId)
+  if (limits.repairAttempts.some(attempt => attempt.findingId === findingId && attempt.unsuccessfulAttempts >= 2)) {
+    return yield* new ProgressConflict({ message: "Two unsuccessful repairs require owner authorization before another attempt or a fixed result" })
+  }
+})
+
+/** Repairs wait for a complete assessment; legacy runs without managed reviews retain their workflow. */
+export const requireFinishedReview = Effect.fn("ReviewFindings.requireFinishedReview")(function*(run: ReviewRun) {
   const runId = yield* exactRunId(yield* resolveRecordRun(run))
   if (runId === undefined) return
-  const progress = yield* readProgress(runId)
-  if (progress?.outcome !== "started") return
   const sql = yield* SqlClient.SqlClient
-  const pending = yield* sql`select request_id from review_batch_receipts where run_id = ${runId}
-    and json_extract(receipt, '$.action') = 'review-start' and json_extract(receipt, '$.revision') = ${progress.revision}`
-  if (pending.length > 0) return yield* new ProgressConflict({ message: "Submit all findings, matches and coverage together with batch review-result before individual updates" })
+  const latest = (yield* sql<{ readonly status: string }>`select status from review_invocations where run_id = ${runId} order by start_revision desc limit 1`)[0]
+  if (latest !== undefined && latest.status !== "finished") return yield* new ProgressConflict({ message: "Finish the complete review before recording repairs; a blocked review is incomplete" })
 })
 
 const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {
@@ -937,7 +947,8 @@ export const classifyReviewFileCoverage = (
 export const getReviewFileCoverage = Effect.fn("ReviewFindings.getReviewFileCoverage")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {
   const sql = yield* SqlClient.SqlClient
   const coverage = yield* coverageTarget(run)
-  const attestations = yield* sql<ReviewFileAttestationRow>`select review_id, reviewer, path, change_id from review_file_attestations where run_id = ${coverage.runId}`
+  const attestations = yield* sql<ReviewFileAttestationRow>`select review_id, reviewer, path, change_id from review_file_attestations where run_id = ${coverage.runId}
+    and not exists (select 1 from review_invocations i where i.id = review_id and i.status != 'finished')`
   return classifyReviewFileCoverage(coverage.manifest, attestations)
 })
 
@@ -955,6 +966,7 @@ export const recordReviewedFiles = Effect.fn("ReviewFindings.recordReviewedFiles
   const sql = yield* SqlClient.SqlClient
   const coverage = yield* coverageTarget(run)
   if (coverage.budget.status === "complete") return yield* Effect.fail(new InvalidReviewCoverage("review file coverage is complete and terminal; start a new review run before recording more files"))
+  yield* requireReviewWriter(coverage.runId, input.reviewId)
   const manifest = new Map(coverage.manifest.map((file) => [file.path, file]))
   const invalid = [...files.keys()].filter((path) => !manifest.has(path))
   if (invalid.length > 0) return yield* Effect.fail(new InvalidReviewCoverage(`coverage-record accepts only files in the current changed-file manifest; not changed: ${invalid.join(", ")}`))
@@ -1491,12 +1503,17 @@ const decodeFindingForReplay = Effect.fn("ReviewFindings.decodeFindingForReplay"
   return yield* decodeFindingInput(input, true)
 })
 
-export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput) {
+export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput, reviewId?: string) {
   const input = yield* decodeFindingForReplay(rawInput)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const run = yield* resolveRecordRun(rawRun)
+  if (input.status === "fixed" || input.status === "provisional" || input.ownerResolution.length > 0) yield* requireFinishedReview(run)
   const existingRunId = yield* exactRunId(run)
+  if (existingRunId !== undefined) {
+    yield* requireReviewWriter(existingRunId, reviewId)
+    if (input.status === "fixed" || input.status === "provisional") yield* requireRepairAuthorization(existingRunId, input.decisionId)
+  }
   const existingRun = existingRunId === undefined
     ? undefined
     : (yield* sql<RunStatusRow>`select status from review_runs where id = ${existingRunId}`)[0]
@@ -1599,7 +1616,7 @@ export const recordCommand = Effect.fn("ReviewFindings.recordCommand")(function*
   }))
 })
 
-export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run: ReviewRun, event?: ProgressEvent) {
+export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run: ReviewRun, event?: ProgressEvent, reviewId?: string) {
   const sql = yield* SqlClient.SqlClient
   const runId = yield* exactRunId(run)
   if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
@@ -1613,6 +1630,9 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   }
   return yield* sql.withTransaction(Effect.gen(function*() {
   if (event !== undefined) {
+    yield* requireReviewWriter(runId, reviewId)
+    if (event.outcome.startsWith("repair-")) yield* requireFinishedReview(run)
+    if (event.outcome === "repair-applied") yield* requireRepairAuthorization(runId, event.findingId ?? "")
     const state = (yield* sql<{ readonly status: string; readonly scope_status: string }>`select review_runs.status, coalesce(review_scope_budgets.status, '') as scope_status from review_runs
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
     if (state?.status === "complete" || state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("Completed review progress is immutable"))
@@ -1667,7 +1687,7 @@ interface FindingMatchRow {
 
 export const recordFindingMatch = Effect.fn("ReviewFindings.recordMatch")(function*(rawRun: ReviewRun, input: {
   readonly matchOf: string; readonly source: string; readonly evidence: string; readonly matchNote: string
-}) {
+}, reviewId?: string) {
   const matchText = Schema.String.check(Schema.isMinLength(1))
   yield* Schema.decodeUnknownEffect(Schema.Struct({ matchOf: matchText, source: matchText, evidence: matchText, matchNote: matchText }))({
     matchOf: input.matchOf.trim(), source: input.source.trim(), evidence: input.evidence.trim(), matchNote: input.matchNote.trim()
@@ -1677,6 +1697,7 @@ export const recordFindingMatch = Effect.fn("ReviewFindings.recordMatch")(functi
     const run = yield* resolveRecordRun(rawRun)
     const runId = yield* exactRunId(run)
     if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
+    yield* requireReviewWriter(runId, reviewId)
     const issue = (yield* sql<{ readonly id: string }>`select issues.id from issues join review_runs on review_runs.id = issues.run_id
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id
       where issues.run_id = ${runId} and decision_id = ${input.matchOf}

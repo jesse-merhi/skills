@@ -1,6 +1,6 @@
 # Review, repair and verify
 
-Keep one saved run. Start each invocation through a batch on the exact committed head, then resume that invocation until it returns. An interrupted, empty or unusable result is `blocked`, never clean.
+Keep one saved run. Use `review native` or `review start` on the exact committed head, then wait for that invocation. An interrupted, empty or unusable result is `blocked`, never clean.
 
 ## Finish discovery before repairs
 
@@ -10,7 +10,7 @@ Gather independent findings before repairs only when a named unresolved flow or 
 
 Assess changed behavior from real entry points through state, dependencies, failure and recovery to outcomes. Distinguish inspected code, executed behavior and unresolved coverage; file counts and finding counts do not prove completeness.
 
-Save the complete assessment in one `review-result`, including repeated reports and independent coverage:
+Record all findings, repeated reports and coverage in one code-mode call, checking each command. Then use `review finish` with the outcome:
 
 - `clean`: no supported findings or unresolved decisions remain.
 - `clean-except-queue`: only recorded owner questions remain.
@@ -21,7 +21,7 @@ Preserve this reviewer's actual result in its artifact even when earlier issues 
 
 ## Repair shared causes
 
-Apply the findings guide to the full accepted inventory. Repair related causes together, verify affected and preserved behavior, then submit a `repair-result` while the findings remain open. Check scope, inspect the combined diff and commit authorized repairs together. Repair workers return patches and evidence; the coordinator owns the registry and review scheduling.
+Apply the findings guide to the full accepted inventory. Repair related causes together, verify affected and preserved behavior, then record the attempts and results through the review commands. Record each attempt before closing its finding. Check scope, inspect the combined diff and commit authorized repairs together. Repair workers return patches and evidence; the coordinator owns the registry and review scheduling.
 
 ## Review the final code
 

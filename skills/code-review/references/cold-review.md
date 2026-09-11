@@ -45,4 +45,4 @@ review-findings coverage-status --repo <owner/repo> --repo-path <checkout> \
 
 Prioritize stale/unreviewed files, then reviewed-once, then reviewed-twice. Give reviewers the files and their `changeId`, without previous counts or verdicts. Ask them to list the files whose changed behavior they checked, with the observed change IDs and review invocation ID. Read unchanged code when needed to understand the change; keep findings within the requested scope.
 
-Wait for that review using `wait-efficiently`. After it returns, the coordinator checks the findings and saves them with one coverage object in the review-result batch. Reading a file for context or checking only one concern does not count as reviewing all its changed behavior. Continue the main review loop.
+Wait for that review using `wait-efficiently`. After it returns, the coordinator checks the findings and records them with the review handle, together with the files whose changed behavior was assessed. Finish the review only after every record succeeds. Reading a file for context or checking only one concern does not count as reviewing all its changed behavior. Continue the main review loop.
