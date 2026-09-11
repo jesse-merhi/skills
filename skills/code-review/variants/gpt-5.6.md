@@ -41,7 +41,7 @@ Follow [the independent-review instructions](references/cold-review.md) and [the
 
 Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Save completed checks with `review-findings record-command --review <review-id>`.
 
-Before completing or reporting a blocked review, use `feedback-hardening` for the mandatory process check. Include observations from reviewers and final validation. Record what caused friction and the next action, or that nothing useful surfaced. This also applies to partial, single-phase and bot-only requests. Follow the skill for any proposed improvements.
+After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
@@ -49,8 +49,7 @@ review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
   --reason "Final checks and requested reviews complete" --json
 review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --reason "Requested reviews complete with no open decisions" \
-  --process-check "<observed friction and next action, or no useful change>" --json
+  --reason "Requested reviews complete with no open decisions" --json
 ```
 
 Run completion only after all requested reviews and checks pass with no open decisions. If a command blocks work, [handle its reported reason](references/blocked-checks.md).

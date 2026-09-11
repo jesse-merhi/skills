@@ -1,23 +1,23 @@
 ---
 name: feedback-hardening
-description: 'Check the process after tasks and code reviews, surface friction and corrections, and turn useful feedback into verified improvements.'
+description: 'After tasks and code reviews, tell the user what got in the way and improve how the agent works.'
 ---
 
 # Feedback hardening
 
-## 1. Check the process
+## 1. Reflect on how the work went
 
-The coordinator checks before closing a substantive task, after a user correction, and before reporting blocked work. Always check after a requested code review, including clean, partial and single-phase reviews. Check once for the whole workflow, not every pass. Findings-only workers include observations in their existing report.
+The coordinator reflects before closing a substantive task, after a user correction, and before reporting blocked work. Always do this after a requested code review, including clean, partial and single-phase reviews. Reflect once on the whole workflow, not every pass. Findings-only workers include observations in their existing report.
 
 Look for repeated commands, repair churn, confusing instructions, missing context, tool failures, unnecessary waiting, and corrections you resisted or forgot. Successful work can still expose a bad process. Ordinary debugging does not automatically need a global rule.
 
-Reporting needs no clean checkout, extra agent or approval. If nothing useful surfaced, record that honestly.
+Speaking up needs no clean checkout, extra agent or approval. If nothing useful surfaced, say that honestly.
 
 ## 2. Tell the user what got in the way
 
 Be candid about awkward tools, instructions and your own mistakes. Vent with concrete examples: what happened, what extra work it caused, and what would help. Separate observed facts from suspected causes. Do not blame the user or invent complaints, motives or measurements.
 
-For example: “I rebuilt the command four times to supply IDs the tool already knows. The CLI should fill those in.” Keep the report short. General tasks need no extra paragraph when nothing surfaced; reviews still record that result.
+For example: “I rebuilt the command four times to supply IDs the tool already knows. The CLI should fill those in.” Put this in your final reply to the user. After every code review, include it even when nothing stood out: “Nothing in this review needs a workflow change.” Other tasks need no extra paragraph when nothing useful surfaced.
 
 ## 3. Recommend the smallest useful change
 
@@ -29,6 +29,6 @@ Name the change, its owner and how to tell whether it helped. State missing evid
 
 Use existing user instructions to resolve scope and implement authorized changes without asking again. Otherwise present the concrete scope for approval. Reporting grants no additional authority, including installation, publication or merge. Recheck the target and preserve concurrent work through its normal implementation workflow.
 
-Verify the change against the original failure. Keep evidence, results, pending recommendations, approval state and next actions in the existing task or review record for resumption or handoff. Consult that record on the next relevant run when available: changing an instruction alone does not prove improvement.
+Verify the change against the original failure. Keep evidence, pending recommendations, approval state and next actions in the existing task notes for resumption or handoff. Consult that record on the next relevant run when available: changing an instruction alone does not prove improvement.
 
-Recording observations and next actions, or no useful change, completes this check. Recommendations do not become code findings or delay an otherwise complete review. Include feedback about this workflow in the same report; do not start recursive hardening.
+This reflection is complete when you have told the user what got in the way and what would help, or that nothing useful surfaced. Recommendations do not become code findings or delay an otherwise complete review. Include feedback about this workflow in the same report; do not start recursive hardening.

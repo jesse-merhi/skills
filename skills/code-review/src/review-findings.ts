@@ -230,10 +230,10 @@ const scopeStatus = Command.make("scope-status", {
   yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatScopeBudgetStatus(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Show the persisted review scope budget"))
 const scopeComplete = Command.make("scope-complete", {
-  db, ...commonRun, reason: Flag.string("reason"), processCheck: Flag.string("process-check").pipe(Flag.withDefault(""), Flag.withDescription("Required: process friction and next action, or no useful change after checking with feedback-hardening")), json: Flag.boolean("json")
+  db, ...commonRun, reason: Flag.string("reason"), json: Flag.boolean("json")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const budget = yield* completeScopeBudget(toRun(args), args.reason, args.processCheck)
+  const budget = yield* completeScopeBudget(toRun(args), args.reason)
   const limits = yield* reviewLimits(toRun(args))
   yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatScopeBudgetStatus(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Close a clean scope budget so a later review can start"))

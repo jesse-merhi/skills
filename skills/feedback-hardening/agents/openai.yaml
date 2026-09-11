@@ -1,4 +1,4 @@
 interface:
   display_name: "Feedback Hardening"
-  short_description: "Check process friction and improve the next run"
-  default_prompt: "Use $feedback-hardening to check how this task or code review went. Report concrete friction candidly, recommend the smallest useful improvement, and apply changes within existing authorization."
+  short_description: "Tell the user what got in the way"
+  default_prompt: "Use $feedback-hardening after this task or code review. Tell the user what made the work harder and what would help next time, then apply improvements within existing authorization."
