@@ -1,6 +1,6 @@
 # Launch the native reviewer
 
-Use the requested engine, model and effort. Otherwise, use Codex with Astra at medium, including from Claude. If the requested configuration is unavailable, report the limitation rather than substituting another review.
+Use the requested engine, model and effort. Otherwise follow the model policy in the applicable `AGENTS.md`, including when launching from Claude. If the requested configuration is unavailable, report the limitation rather than substituting another review.
 
 ## Codex
 
@@ -10,7 +10,7 @@ For normal Codex review, use the launcher that owns the saved review:
 review-findings review native <saved scope flags>
 ```
 
-It runs the existing `codex-review` helper with Astra at medium, saves the output outside the checkout and returns a review ID and report path. The helper uses the host's standalone Codex identity and attempts to archive its successful sessions. Repeating the command while that review is open returns its state without another model request. Record the complete report through the review commands before finishing it.
+It runs the existing `codex-review` helper with the native model and effort pinned by that launcher, saves the output outside the checkout and returns a review ID and report path. The helper uses the host's standalone Codex identity and attempts to archive its successful sessions. Repeating the command while that review is open returns its state without another model request. Record the complete report through the review commands before finishing it.
 
 For an explicit model or effort override, reserve a native review with `review start --phase native`, then use a supported launcher that honors the selection. The pinned helper cannot override its model settings. Pass the exact target and disclose an unavailable configuration.
 

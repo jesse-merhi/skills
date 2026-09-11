@@ -34,10 +34,9 @@ This repo owns the user's global agent instructions:
 
 - `REPO/AGENTS.md` holds shared instructions for every harness.
 - `REPO/CLAUDE.md` is Claude Code only. It imports `AGENTS.md` via
-  `@AGENTS.md` and layers Claude-specific content (model delegation policy)
-  on top. Never move Claude-specific content into `AGENTS.md`: Codex reads
-  `AGENTS.md` directly and must not see instructions about delegating to
-  itself.
+  `@AGENTS.md` and layers Claude-specific browser guidance on top. Keep
+  harness-specific content there; `AGENTS.md` owns shared model and completion
+  policy.
 
 Link per harness (replace existing dead symlinks; ask before replacing real
 files with local edits):
@@ -103,7 +102,8 @@ codex exec --profile findings-reviewer "Inspect this diff and return findings on
 
 The `skills/code-review/scripts/codex-review` helper selects this profile for
 native reviews whenever the installed file exists. Its `--dry-run` output shows
-the selection. With or without the file, it pins Astra at medium;
+the selection. With or without the file, the launcher pins the native reviewer
+from the [global model policy](AGENTS.md#model-turns);
 an installed but invalid or unsupported profile fails rather than silently
 rerunning without the filter. Authentication probes and session archiving do
 not select the reviewer profile.
@@ -125,7 +125,7 @@ Keep coordinators and delegated until-clean workflows on their normal profile.
 In-chat spawn tools without a profile-selection parameter retain their normal
 skill catalog; do not claim this preset filters those children. The preset
 hides named orchestration and delivery skills, while other domain skills
-remain discoverable. It selects Astra at medium for findings-only review; it
+remain discoverable. It matches the global independent-review model and effort;
 does not change tools, approvals, or sandbox permissions, and is not a security boundary.
 
 Skip this step for other harnesses.

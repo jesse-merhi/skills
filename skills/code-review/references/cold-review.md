@@ -4,7 +4,7 @@ Give a fresh reviewer the exact target, base, head, changed files and requested 
 
 Tell the reviewer which runtime versions and commands you used, which commit you checked, and what passed, failed or remains unchecked. Link the output. Leave out earlier findings, verdicts and repair explanations. Passing tests do not replace reviewing the code. Reuse results that still apply; run more checks when something changed or a specific question remains unanswered. If the reviewer cannot run a check, report that to the coordinator; do not repair the environment.
 
-Use Astra at medium unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change a fixed-high preset. Report an unavailable configuration rather than silently substituting another model.
+Follow the model policy in the applicable `AGENTS.md` unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change fixed launcher settings. Report an unavailable configuration rather than silently substituting another model.
 
 A brief can say: “Review this target with the supplied skills. Trace changed behavior through real callers and system events. Return distinct problems, changed locations, triggers, consequences, likelihood and impact evidence, uncertainty, and rejected candidates with reasons. Report what you could not verify. Do not edit code or manage repairs.”
 
