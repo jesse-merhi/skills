@@ -16,12 +16,15 @@ const Output = Schema.fromJsonString(Schema.Struct({
   runId: Schema.optional(Schema.String),
   revision: Schema.optional(Schema.Number),
   status: Schema.optional(Schema.String),
+  blocked: Schema.optional(Schema.Boolean),
+  diagnosticWarnings: Schema.optional(Schema.Array(Schema.String)),
   limits: Schema.Struct({
     startedAt: Schema.Number,
     remainingSeconds: Schema.Number,
     consultCap: Schema.Number,
     openQuestionCount: Schema.Number,
     cleanTargets: Schema.Struct({ native: Schema.Number, cold: Schema.Number, clawsweeper: Schema.Number }),
+    diagnosticWarnings: Schema.Array(Schema.String),
     stoppingReasons: Schema.Array(Schema.String)
   })
 }))
@@ -391,7 +394,7 @@ test.effect("CLI gates evidenced repair failures and accepts a scoped owner deci
   yield* progress(5, "started")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
-test.effect("a start's failed diff measurement persists the scope block for explicit authorization", () => Effect.gen(function*() {
+test.effect("CLI reports diff growth as a diagnostic and starts review without scope authorization", () => Effect.gen(function*() {
   const { cli, repository, git } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
   const fs = yield* FileSystem.FileSystem
@@ -399,11 +402,12 @@ test.effect("a start's failed diff measurement persists the scope block for expl
   yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "synthetic scope expansion"])
   const head = yield* git(["rev-parse", "HEAD"])
   const startArgs = ["--head", head, "--expected-revision", "0", "--phase", "native", "--outcome", "started", "--evidence", "synthetic pass"]
-  const stopped = yield* cli("progress-record", startArgs).pipe(Effect.flip)
-  assert.include(stopped.stderr, "DIFF_GROWTH_EXCEEDED")
-  assert.strictEqual(decode(yield* cli("scope-status", ["--json"])).status, "blocked")
-  assert.strictEqual(decode(yield* cli("progress-status")).revision, 0)
-  yield* cli("scope-authorize", ["--authorization", "Owner approves fixture expansion", "--scope-summary", "expanded fixture"])
+  const check = decode(yield* cli("scope-check", ["--reason", "inspect whether the expanded approach remains coherent", "--json"]))
+  assert.strictEqual(check.status, "ok")
+  assert.strictEqual(check.blocked, false)
+  assert.deepStrictEqual(check.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+  assert.deepStrictEqual(check.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+  assert.notInclude(check.limits.stoppingReasons, "DIFF_GROWTH_EXCEEDED")
   assert.strictEqual(decode(yield* cli("progress-record", startArgs)).revision, 1)
 }).pipe(Effect.scoped), { timeout: 60000 })
 })

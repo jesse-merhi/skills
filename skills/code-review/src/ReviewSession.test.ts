@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
-import { authorizeScopeBudget, type FindingInput, getReviewFileCoverage, getScopeBudget, initialize, recordFinding, recordFindingMatch, recordReviewedFiles, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
+import { type FindingInput, getReviewFileCoverage, getScopeBudget, initialize, recordFinding, recordFindingMatch, recordReviewedFiles, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
 import { measureScopeDiff } from "./ReviewScope.ts"
 import { claimNativeLaunch, finishReview, getReview, reviewRun, startReview, withOpenReview } from "./ReviewSession.ts"
 
@@ -41,19 +41,17 @@ const candidate = (overrides: Partial<FindingInput> = {}): FindingInput => ({
 const accepted = candidate({ decisionId: "D2", status: "open", fingerprint: "duplicate owner", summary: "Duplicated policy", handling: "fix", rejectionGate: "", decision: "", maintenanceEvidence: "Same policy has two owners", presentCost: "Both owners require changes for one update", rootCause: "Duplicated authority", recommendedFix: "Use the existing owner", interventionJustification: "Remove the duplicate while preserving behavior" })
 
 layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory:" })))("managed review sessions", test => {
-  test.effect("keeps the scope block when start is denied and permits an authorized retry", () => Effect.gen(function*() {
+  test.effect("records diff growth as a diagnostic and continues the authorized review", () => Effect.gen(function*() {
     const { run, git, fs } = yield* fixture()
     yield* fs.writeFileString(`${run.repoPath}/sample.txt`, "changed\nextra\nanother\n")
     yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "scope expansion"])
-    const denied = yield* startReview(run, "native", "invocation").pipe(Effect.flip)
-    assert.strictEqual(denied._tag, "ReviewLimitsBlocked")
-    assert.strictEqual((yield* getScopeBudget(run)).status, "blocked")
+    const review = yield* startReview(run, "native", "invocation")
+    assert.strictEqual((yield* getScopeBudget(run)).status, "ok")
     assert.strictEqual((yield* getScopeBudget(run)).growthLines, 2)
     const sql = yield* SqlClient.SqlClient
-    assert.lengthOf(yield* sql`select * from review_invocations where run_id = ${run.runId}`, 0)
-    assert.lengthOf(yield* sql`select * from review_progress_events where run_id = ${run.runId}`, 0)
-    yield* authorizeScopeBudget(run, { scopeSummary: "Approved fixture expansion", authorization: "Fixture owner approves" })
-    const review = yield* startReview(run, "native", "invocation")
+    assert.deepStrictEqual(yield* sql`select event from review_scope_events where run_id = ${run.runId} order by id`, [{ event: "started" }, { event: "growth-warning" }])
+    assert.lengthOf(yield* sql`select * from review_invocations where run_id = ${run.runId}`, 1)
+    assert.lengthOf(yield* sql`select * from review_progress_events where run_id = ${run.runId}`, 1)
     assert.strictEqual((yield* startReview(run, "native", "invocation")).reviewId, review.reviewId)
     assert.strictEqual((yield* reviewProgress(run))?.revision, 1)
   }).pipe(Effect.scoped), { timeout: 30000 })

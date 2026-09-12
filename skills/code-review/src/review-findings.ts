@@ -204,7 +204,7 @@ const scopeCheck = Command.make("scope-check", {
     return yield* Effect.fail(new ScopeBudgetBlocked(check))
   }
   yield* Console.log(args.json ? JSON.stringify({ ...check, limits }) : `${formatScopeBudgetCheck(check)}\n${JSON.stringify({ limits })}`)
-}))).pipe(Command.withDescription("Block review work that exceeds the frozen scope budget"))
+}))).pipe(Command.withDescription("Measure scope growth, warn on line growth, and block unmeasurable binary additions"))
 const scopeAuthorize = Command.make("scope-authorize", {
   db, ...commonRun, scopeSummary, authorization: Flag.string("authorization"), newBase: optionalString("new-base")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {

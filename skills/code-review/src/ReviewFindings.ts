@@ -490,6 +490,7 @@ export interface ScopeBudgetStatus {
 export interface ScopeBudgetCheck extends ScopeBudgetStatus {
   readonly maximumLines: number
   readonly completedFindings: ReadonlyArray<FixedFindingRow>
+  readonly diagnosticWarnings: ReadonlyArray<string>
   readonly blocked: boolean
 }
 
@@ -1240,7 +1241,9 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   const currentLines = humanAuthoredLines(measurement.production.changedLines, measurement.tests.changedLines)
   const growthLines = Math.max(0, currentLines - baselineLines)
   const maximumLines = baselineLines + budget.allowedGrowthLines
-  const blocked = currentLines > maximumLines || newBinaryHumanAuthoredPaths.length > 0
+  const growthExceeded = currentLines > maximumLines
+  const diagnosticWarnings = growthExceeded ? ["DIFF_GROWTH_EXCEEDED"] : []
+  const blocked = newBinaryHumanAuthoredPaths.length > 0
   const status = blocked ? "blocked" : "ok"
   const timestamp = nowSeconds()
   return yield* sql.withTransaction(Effect.gen(function*() {
@@ -1251,7 +1254,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
   yield* sql`update review_scope_budgets set generation = generation + 1, status = ${status}, current_production_lines = ${measurement.production.changedLines}, current_test_lines = ${measurement.tests.changedLines}, current_generated_lines = ${measurement.generated.changedLines}, growth_lines = ${growthLines}, new_production_paths_json = ${JSON.stringify(newHumanAuthoredPaths)}, new_binary_production_paths_json = ${JSON.stringify(newBinaryHumanAuthoredPaths)}, last_reason = ${reason}, updated_at = ${timestamp} where run_id = ${budget.runId}`
   yield* writeScopeEvent({
     runId: budget.runId,
-    event: blocked ? "blocked" : "checked",
+    event: blocked ? "blocked" : growthExceeded ? "growth-warning" : "checked",
     lineMetric: budget.lineMetric,
     baselineProductionLines: budget.baselineProductionLines,
     baselineTestLines: budget.baselineTestLines,
@@ -1277,6 +1280,7 @@ export const checkScopeBudget = Effect.fn("ReviewFindings.checkScopeBudget")(fun
     lastReason: reason,
     maximumLines,
     completedFindings,
+    diagnosticWarnings,
     blocked
   } satisfies ScopeBudgetCheck
   }))
@@ -1934,7 +1938,9 @@ export const formatReadyScopeBudget = (scope: ScopeBudgetStatus): string => [
 ].join("\n")
 
 export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
-  `SCOPE BUDGET ${scope.status.toUpperCase()}`,
+  scope.status === "ok" && scope.growthLines > scope.allowedGrowthLines
+    ? "SCOPE GROWTH WARNING"
+    : `SCOPE BUDGET ${scope.status.toUpperCase()}`,
   scopeCountsLine(scope),
   `scope=${scope.scopeSummary}`,
   `authorization=${scope.authorization.length === 0 ? "initial user request" : scope.authorization}`,
@@ -1944,10 +1950,13 @@ export const formatScopeBudgetStatus = (scope: ScopeBudgetStatus): string => [
 ].join("\n")
 
 export const formatScopeBudgetCheck = (check: ScopeBudgetCheck): string => [
-  "SCOPE BUDGET OK",
+  check.diagnosticWarnings.length === 0 ? "SCOPE BUDGET OK" : "SCOPE GROWTH WARNING",
   scopeCountsLine(check),
   `scope=${check.scopeSummary}`,
   `next-work=${check.lastReason}`,
+  ...(check.diagnosticWarnings.length === 0 ? [] : [
+    "The diff exceeded its saved growth threshold. Inspect why it grew and whether the approach remains coherent; this warning does not stop authorized work."
+  ]),
   ...pathsAddedLines(check)
 ].join("\n")
 

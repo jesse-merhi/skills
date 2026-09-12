@@ -1624,12 +1624,12 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-start \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main --scope-summary "Test authorization transition serialization." >/dev/null
-  for number in {1..200}; do printf 'helper %s\n' "$number"; done > "$repo/helper.ts"
+  printf '\0binary scope addition\n' > "$repo/helper.bin"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "authorization race" --base main --reason "The additional production line needs authorization." \
+    --target "authorization race" --base main --reason "The binary addition needs authorization." \
     >"$tmp/block.out" 2>"$tmp/block.err"; then
-    fail "production-line growth beyond the budget should block before authorization"
+    fail "a binary addition should block before authorization"
   fi
 
   (stale_code=0; env GIT_BIN="$git_wrapper" SCOPE_REAL_GIT="$real_git" \
@@ -1649,8 +1649,8 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main \
-    --scope-summary "Include the explicitly approved production-line growth." \
-    --authorization "User explicitly approved the production-line growth." >/dev/null
+    --scope-summary "Include the explicitly approved binary addition." \
+    --authorization "User explicitly approved the binary addition." >/dev/null
   : > "$tmp/authorize.release"
   wait "$stale_pid"
   stale_code="$(cat "$tmp/authorize.code")"
@@ -1660,7 +1660,7 @@ test_stale_scope_checks_cannot_overwrite_terminal_or_authorized_state() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "authorization race" --base main)"
   assert_output_contains "$out" "SCOPE BUDGET READY"
-  assert_output_contains "$out" "authorization=User explicitly approved the production-line growth."
+  assert_output_contains "$out" "authorization=User explicitly approved the binary addition."
 }
 
 test_review_scope_authorize_changes_literal_base_without_losing_history() {
@@ -1696,10 +1696,9 @@ NODE
   new_base="$(git -C "$repo" rev-parse HEAD)"
   git -C "$repo" switch --quiet feature
   git -C "$repo" merge --quiet --no-edit main
-  if "$cli" scope-check "${identity[@]}" --base "$old_base" --reason 'Main was merged.' >"$tmp/blocked" 2>&1; then
-    fail 'merged main history should exceed the old allowance'
-  fi
-  assert_contains "$tmp/blocked" 'baseline=10 current=110'
+  out="$("$cli" scope-check "${identity[@]}" --base "$old_base" --reason 'Main was merged.')"
+  assert_output_contains "$out" 'SCOPE GROWTH WARNING'
+  assert_output_contains "$out" 'baseline=10 current=110'
   for invalid_base in '' missing-ref; do
     if "$cli" scope-authorize "${identity[@]}" --base "$old_base" --new-base "$invalid_base" --scope-summary 'Review feature.' --authorization 'User approved base change.' >"$tmp/error" 2>&1; then
       fail 'invalid replacement base must be rejected'
@@ -1709,7 +1708,7 @@ NODE
     fail 'base replacement still requires authorization'
   fi
   out="$("$cli" scope-status "${identity[@]}" --base "$old_base")"
-  assert_output_contains "$out" 'SCOPE BUDGET BLOCKED'
+  assert_output_contains "$out" 'SCOPE GROWTH WARNING'
   out="$("$cli" scope-authorize "${identity[@]}" --base "$old_base" --new-base main --scope-summary 'Review only the feature after main sync.' --authorization 'User approved changing the base to main.')"
   assert_output_contains "$out" 'base=main@'
   assert_output_contains "$out" 'baseline=10 current=10'
@@ -1739,10 +1738,9 @@ NODE
   fi
   assert_contains "$tmp/error" 'KEEP'
   for number in {11..16}; do printf 'feature %s\n' "$number"; done >> "$repo/app.ts"
-  if "$cli" scope-check "${identity[@]}" --base main --reason 'Six added feature lines.' >"$tmp/error" 2>&1; then
-    fail 'revised scope must still enforce the original 50 percent cap'
-  fi
-  assert_contains "$tmp/error" 'current=16 growth=6 allowed-growth=5'
+  out="$("$cli" scope-check "${identity[@]}" --base main --reason 'Six added feature lines.')"
+  assert_output_contains "$out" 'SCOPE GROWTH WARNING'
+  assert_output_contains "$out" 'current=16 growth=6 allowed-growth=5'
 }
 
 test_review_scope_authorize_resolves_moved_base() {
@@ -1931,46 +1929,17 @@ test_review_scope_budget_blocks_deterministically() {
   assert_output_contains "$out" "excluded-generated=100"
 
   printf 'line 16\n' >> "$repo/app.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" \
     --repo sample-app \
     --repo-path "$repo" \
     --branch feature \
     --target "PR #12" \
     --base main \
-    --reason "The remaining finding needs more human-authored lines." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check should block after growth exceeds exactly 50 percent"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=10 current=16 growth=6 allowed-growth=5 maximum=15"
-  assert_contains "$tmp/stderr" "Completed review work:"
-  assert_contains "$tmp/stderr" "D1: Startup now rejects an invalid configuration."
-  assert_contains "$tmp/stderr" "Why more scope is requested: The remaining finding needs more human-authored lines."
-  assert_contains "$tmp/stderr" "Stop reviewing now."
-  assert_contains "$tmp/stderr" "Ask the user for explicit authorization"
-
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
-    --db "$db" \
-    --repo sample-app \
-    --repo-path "$repo" \
-    --branch feature \
-    --target "PR #12" \
-    --base main \
-    --head "$(git -C "$repo" rev-parse HEAD)" \
-    --scope-summary "Add the app entrypoint and startup guard." \
-    --authorization "User approved the additional startup-guard scope." >/dev/null
-
-  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
-    --db "$db" \
-    --repo sample-app \
-    --repo-path "$repo" \
-    --branch feature \
-    --target "PR #12" \
-    --base main)"
-  assert_output_contains "$out" "SCOPE BUDGET READY"
-  assert_output_contains "$out" "baseline=16"
-  assert_output_contains "$out" "authorization=User approved the additional startup-guard scope."
+    --reason "Inspect why the remaining finding needs more human-authored lines.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=10 current=16 growth=6 allowed-growth=5 maximum=15"
+  assert_output_contains "$out" "this warning does not stop authorized work"
 
   printf 'helper\n' > "$repo/helper.ts"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
@@ -1981,8 +1950,8 @@ test_review_scope_budget_blocks_deterministically() {
     --target "PR #12" \
     --base main \
     --reason "The accepted fix adds a small helper in a new production file.")"
-  assert_output_contains "$out" "SCOPE BUDGET OK"
-  assert_output_contains "$out" "baseline=16 current=17 growth=1 allowed-growth=8 maximum=24"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=10 current=17 growth=7 allowed-growth=5 maximum=15"
   assert_output_contains "$out" "Human-authored paths added since the baseline (informational):"
   assert_output_contains "$out" "- helper.ts"
 
@@ -1990,16 +1959,16 @@ test_review_scope_budget_blocks_deterministically() {
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #12" --base main --reason "The fix adds a symlink.")"
-  assert_output_contains "$out" "SCOPE BUDGET OK"
-  assert_output_contains "$out" "baseline=16 current=18 growth=2 allowed-growth=8 maximum=24"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=10 current=18 growth=8 allowed-growth=5 maximum=15"
 
   for _ in {1..9000}; do printf 'a'; done > "$repo/late-nul.txt"
   printf '\0\n' >> "$repo/late-nul.txt"
   out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #12" --base main --reason "The text file has a NUL beyond Git's binary probe.")"
-  assert_output_contains "$out" "SCOPE BUDGET OK"
-  assert_output_contains "$out" "baseline=16 current=19 growth=3 allowed-growth=8 maximum=24"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=10 current=19 growth=9 allowed-growth=5 maximum=15"
 
   printf '*.dat -diff\n*.txt diff\n*.drv diff=opaque\n*.reserved diff=set\n' > "$repo/.gitattributes"
   git -C "$repo" config diff.opaque.binary true
@@ -2028,7 +1997,7 @@ test_review_scope_budget_blocks_deterministically() {
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #12" --base main)"
   assert_output_contains "$out" "Scope budget"
-  assert_output_contains "$out" "SCOPE BUDGET OK"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
   assert_output_contains "$out" "Human-authored paths added since the baseline (informational):"
   assert_output_contains "$out" "helper.ts"
 
@@ -2105,16 +2074,13 @@ test_review_scope_budget_counts_tests_in_total_loc() {
   assert_output_contains "$out" "production=10 tests=20 excluded-generated=0"
 
   printf 'test 21\n' >> "$repo/app.test.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "total LOC review" --base main \
-    --reason "One test line exceeds the total LOC allowance." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check must count tests when total LOC growth exceeds 50 percent"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=20 current=31 growth=11 allowed-growth=10 maximum=30"
-  assert_contains "$tmp/stderr" "production=10 tests=21 excluded-generated=0"
+    --reason "One test line exceeds the total LOC allowance.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=20 current=31 growth=11 allowed-growth=10 maximum=30"
+  assert_output_contains "$out" "production=10 tests=21 excluded-generated=0"
 
   for number in {1..20}; do printf 'test %s\n' "$number"; done > "$repo/app.test.ts"
   printf '\0binary test fixture\n' > "$repo/fixture.test.bin"
@@ -2178,25 +2144,18 @@ test_review_scope_budget_can_close_before_a_later_review() {
   assert_contains "$tmp/stderr" "clean committed worktree"
   printf 'feature\n' > "$repo/app.ts"
 
-  # Post-check drift past the allowance must block scope-complete and route to
-  # scope-authorize, rather than closing on the stale passing check.
+  # Post-check drift is remeasured and surfaced before the final completion.
   { printf 'feature\n'; for number in {1..200}; do printf 'post-check change %s\n' "$number"; done; } > "$repo/app.ts"
   git -C "$repo" add app.ts
   git -C "$repo" commit --quiet --message "grow past review budget"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "first review" --base main --reason "Stale clean result." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-complete must remeasure the tree instead of trusting a stale passing check"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
+    --target "first review" --base main --reason "Inspect post-check growth before completion.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=1 current=201 growth=200 allowed-growth=0 maximum=1"
   printf 'feature\n' > "$repo/app.ts"
   git -C "$repo" add app.ts
   git -C "$repo" commit --quiet --message "restore reviewed tree"
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
-    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "first review" --base main --scope-summary "First review after restoring the approved tree." \
-    --authorization "The user already authorized the original one-line feature scope." >/dev/null
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --reason "Run the final clean review again." >/dev/null
@@ -2575,7 +2534,7 @@ test_review_scope_budget_uses_current_side_binary_state() {
 }
 
 test_review_scope_budget_counts_binary_to_text_replacements_as_text() {
-  local tmp db repo
+  local tmp db repo out
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
   repo="$tmp/repo"
@@ -2596,14 +2555,12 @@ test_review_scope_budget_counts_binary_to_text_replacements_as_text() {
     --scope-summary "Count the measurable text replacement." >"$tmp/start"
   assert_contains "$tmp/start" "baseline=100 current=100"
   for number in {101..151}; do printf 'text %s\n' "$number"; done >> "$repo/asset.bin"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "binary to text review" --base main \
-    --reason "Grow the text replacement beyond its line budget." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "binary-to-text growth must use measurable current text lines"
-  fi
-  assert_contains "$tmp/stderr" "baseline=100 current=151 growth=51 allowed-growth=50 maximum=150"
+    --reason "Grow the text replacement beyond its line threshold.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=100 current=151 growth=51 allowed-growth=50 maximum=150"
 }
 
 test_review_scope_budget_applies_deleted_attributes_to_tracked_files() {
@@ -2736,7 +2693,7 @@ test_review_scope_budget_honors_staged_attribute_deletion() {
 }
 
 test_review_scope_budget_honors_unstaged_attribute_deletion() {
-  local tmp db repo
+  local tmp db repo out
   tmp="$(mktemp -d)"
   db="$tmp/reviews.sqlite"
   repo="$tmp/repo"
@@ -2757,15 +2714,12 @@ test_review_scope_budget_honors_unstaged_attribute_deletion() {
   rm "$repo/.gitattributes"
   printf 'text after deletion\n' > "$repo/new.txt"
 
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "unstaged attribute deletion review" --base main --reason "Add text after deleting its binary rule." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "line growth should still exceed the zero-line allowance"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=1 current=3 growth=2 allowed-growth=0 maximum=1"
-  if grep -Fq -- "Binary human-authored paths added since the baseline" "$tmp/stderr"; then
+    --target "unstaged attribute deletion review" --base main --reason "Add text after deleting its binary rule.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=1 current=3 growth=2 allowed-growth=0 maximum=1"
+  if printf '%s\n' "$out" | grep -Fq -- "Binary human-authored paths added since the baseline"; then
     fail "scope-check must not use an unstaged deleted binary rule"
   fi
 }
@@ -3131,13 +3085,11 @@ test_repeated_review_inherits_original_branch_loc() {
   assert_output_contains "$out" "baseline=10 current=15 growth=5 allowed-growth=5 maximum=15"
 
   printf 'line 16\n' >> "$repo/app.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "second review" --base origin/main --reason "A repeated review must not add another buffer." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "a repeated review must keep the first branch LOC baseline"
-  fi
-  assert_contains "$tmp/stderr" "baseline=10 current=16 growth=6 allowed-growth=5 maximum=15"
+    --target "second review" --base origin/main --reason "A repeated review must not add another buffer.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=10 current=16 growth=6 allowed-growth=5 maximum=15"
 
   git -C "$repo" restore app.ts
   "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
@@ -3189,27 +3141,12 @@ test_review_scope_budget_tapers_large_pr_allowance() {
   assert_output_contains "$out" "baseline=3000 current=3300 growth=300 allowed-growth=300 maximum=3300"
 
   printf 'line 3301\n' >> "$repo/app.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #21" --base main \
-    --reason "One line past the tapered cap." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-check should block once a large branch exceeds the 300-line allowance"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=3000 current=3301 growth=301 allowed-growth=300 maximum=3300"
-
-  # Authorizing re-measures the tree, but a large branch still gets no more
-  # than the 300-line cap.
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
-    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "PR #21" --base main \
-    --scope-summary "Include the approved production-line growth." \
-    --authorization "User approved the larger diff." >/dev/null
-  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
-    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "PR #21" --base main)"
-  assert_output_contains "$out" "baseline=3301 current=3301 growth=0 allowed-growth=300 maximum=3601"
+    --reason "One line past the tapered cap.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=3000 current=3301 growth=301 allowed-growth=300 maximum=3300"
 }
 
 test_review_scope_budget_uses_test_only_baseline() {
@@ -3244,15 +3181,12 @@ test_review_scope_budget_uses_test_only_baseline() {
   assert_output_contains "$out" "baseline=40 current=60 growth=20 allowed-growth=20 maximum=60"
 
   printf 'production 21\n' >> "$repo/app.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #23" --base main \
-    --reason "The fix wants to touch production code." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "a test-only baseline must block growth beyond 50 percent of total LOC"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "baseline=40 current=61 growth=21 allowed-growth=20 maximum=60"
+    --reason "The fix wants to touch production code.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=40 current=61 growth=21 allowed-growth=20 maximum=60"
 }
 
 test_review_scope_budget_keeps_the_allowance_it_was_created_with() {
@@ -3300,17 +3234,14 @@ NODE
   }
   assert_output_contains "$out" "maximum=45 production=40 tests=0 excluded-generated=0"
 
-  # A manually frozen tighter allowance remains authoritative.
+  # A manually frozen tighter allowance remains the diagnostic threshold.
   for number in {41..46}; do printf 'fix %s\n' "$number"; done >> "$repo/app.ts"
-  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "PR #22" --base main \
-    --reason "A fix beyond the allowance this budget was created with." \
-    >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "a budget must keep its stored allowance"
-  fi
-  assert_contains "$tmp/stderr" "SCOPE BUDGET BLOCKED"
-  assert_contains "$tmp/stderr" "current=46 growth=6 allowed-growth=5"
+    --reason "A fix beyond the allowance this budget was created with.")"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "current=46 growth=6 allowed-growth=5"
 
   node --input-type=module - "$db" <<'NODE'
 import { DatabaseSync } from "node:sqlite"

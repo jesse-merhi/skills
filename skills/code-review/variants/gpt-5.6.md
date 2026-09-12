@@ -54,7 +54,7 @@ review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
   --reason "Requested reviews complete with no open decisions" --json
 ```
 
-Run completion only after all requested reviews and checks pass with no open decisions. If a command blocks work, [handle its reported reason](references/blocked-checks.md).
+Run completion only after all requested reviews and checks pass with no open decisions. For diagnostic growth warnings or blocked work, [handle the reported reason](references/blocked-checks.md). Growth warnings call for internal reassessment while authorized work continues.
 
 [Push authorized fixes](references/publish-fixes.md), then [summarize the saved results](references/final-output.md).
 

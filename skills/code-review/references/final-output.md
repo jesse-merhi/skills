@@ -13,6 +13,8 @@ Include your `feedback-hardening` reflection in your reply to the user: what got
 
 The JSON's `verification_run` contains `command`, `result`, `reason` and `decision_id`; use these records rather than inventing a validation result. Validation must be recorded before completion; report missing records rather than trying to write to a closed run.
 
+Explain what changed for the user, what was observed, why it matters, important design decisions and what remains. Link the PR or local proof and say what the human should inspect. For a decision, explain real alternatives and recommend one. Allow enough prose for the complexity; validation totals and hashes support the explanation rather than replace it. Explain the practical situation without routine references to internal instructions, preserving higher-priority required disclosures.
+
 Lead with whether review finished and fixes were pushed or remain local. Give the exact target and final SHA, native/cold phase results and evidence, validation, unresolved decisions and limits. A missing `reviewed_head` means the saved run is incomplete; an exact SHA alone does not prove both phases ran. Keep enough evidence for a later workflow to check the reviewed head without relying on chat memory.
 
 Include these whole-run counts from the full JSON:
