@@ -42,7 +42,7 @@ Keep test cleanup tied to the changed behavior and the coverage needed to prove 
 
 Implement the authorized behavior and check its result against the agreed contract. Then write tests that prove it works for valid inputs and relevant failure cases. Reuse existing tests when they already prove it, including for covered refactors.
 
-Finish a coherent implementation or repair batch before running broad tests, lint, typecheck and builds. During implementation, run focused checks when they answer a specific uncertainty, diagnose a failure or verify a repair. For review fixes, establish a reachable failure and repair authority before editing; a synthetic test alone proves neither.
+Finish the related edits, then run broad tests, lint, typecheck and builds. Run a focused check earlier only to answer a specific question, diagnose a failure or verify a fix. Before fixing a review finding, confirm the bug can happen and the fix is within the authorized task.
 
 When delegating, assign one owner for shared validation before workers start checks. Workers return their changes and focused evidence; the owner validates the integrated batch. Reuse results while the relevant code, callers, dependencies, fixtures, configuration and environment still apply.
 
