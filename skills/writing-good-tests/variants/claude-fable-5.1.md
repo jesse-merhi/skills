@@ -1,6 +1,6 @@
 ---
 name: writing-good-tests
-description: 'Write useful tests for valid inputs and failure cases, improve weak tests, and verify behavior before pushing.'
+description: 'Write useful tests for valid inputs and failure cases, improve affected coverage, and verify behavior before pushing.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
@@ -28,7 +28,7 @@ Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 
 ## Write tests worth keeping
 
-Improve the test files you touch, rather than only appending tests. Rewrite weak tests, reorganize confusing files and remove tests that prove nothing useful. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
+Keep test cleanup tied to the changed behavior and the coverage needed to prove it. Rewrite a weak test when the task depends on that coverage, reorganize a confusing file only when it obscures the affected scenarios, and remove tests that prove nothing useful within this scope. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
 
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.

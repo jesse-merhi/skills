@@ -10,7 +10,9 @@ metadata:
 
 Turn settled discussion and current project evidence into an implementable Obsidian spec.
 
-Read the repo, glossary, relevant ADRs, and related Obsidian notes before writing the spec. Name the existing functions, service methods, or routes that tests should call. Prefer the highest stable interface that proves the behavior, using as few test entry points as practical. For example, test order creation through the existing service method rather than testing each helper separately.
+Read the parts of the repository, glossary, ADRs, and Obsidian notes that govern the affected contract before writing the spec. Name the existing functions, service methods, or routes that tests should call. Prefer the highest stable interface that proves the behavior, using as few test entry points as practical. For example, test order creation through the existing service method rather than testing each helper separately.
+
+Resolve routine implementation details from that evidence. Record consequential unsettled decisions as open questions rather than guessing them.
 
 Use one PR for a cohesive change. Prefer a stack for dependent parts and separate PRs for independent work. Confirm a proposed stack with the user before publishing. Use the installed `gh stack` tool to deliver it; run `gh stack --help` to discover its commands.
 

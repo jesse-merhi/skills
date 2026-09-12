@@ -19,7 +19,7 @@ Read [adoption.md](references/adoption.md) to choose enforcement, guidance, part
 - **Sync:** reconcile that adoption with current standards and the target's choices, including active configuration. Read [sync.md](references/sync.md).
 - **Translate:** adapt principles to a requested ecosystem using its existing tools. Read [translate.md](references/translate.md). During apply, do this automatically for stacks the catalog does not represent, then resume apply. A standalone translation returns a proposed mapping unless installation was also requested.
 
-For apply or sync, load [apply.md](references/apply.md) and [translate.md](references/translate.md) before executing the mode. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
+For apply or sync, load [apply.md](references/apply.md) before executing the mode because sync reuses its dependency, wiring, and verification contracts. Load [translate.md](references/translate.md) when the target includes an unrepresented ecosystem or translation is explicitly requested, before using its workflow. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
 
 Apply and sync change the target, not the shared catalog. Adding a reusable catalog translation is separate work, done only when explicitly requested; [catalog-format.md](references/catalog-format.md) describes its existing shape.
 

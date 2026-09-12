@@ -22,4 +22,4 @@ Load `grilling` for the interview. Use concrete scenarios to pressure-test feasi
 
 For UI plans, establish audience, design direction, important states/viewports, and the rendered proof needed. Divide a plan only when its scope or unresolved decisions make one session impractical.
 
-Return the tightened plan, remaining gaps, and next questions. Stop once the user confirms it is clear enough to execute. Use the [ADR guidance](references/adr-format.md) to decide whether to offer one and to write it after acceptance.
+Return the tightened plan, remaining gaps, and next questions. Include the relevant inspected paths and the claims or contradictions they support. Stop once the user confirms it is clear enough to execute. Use the [ADR guidance](references/adr-format.md) to decide whether to offer one and to write it after acceptance.
