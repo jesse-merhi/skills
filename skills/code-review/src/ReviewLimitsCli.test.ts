@@ -14,9 +14,12 @@ import { checkedText, checkedTrimmedText } from "../../../packages/effect-cli/Ch
 
 const Output = Schema.fromJsonString(Schema.Struct({
   runId: Schema.optional(Schema.String),
+  reviewId: Schema.optional(Schema.String),
   revision: Schema.optional(Schema.Number),
   status: Schema.optional(Schema.String),
   blocked: Schema.optional(Schema.Boolean),
+  launched: Schema.optional(Schema.Boolean),
+  report: Schema.optional(Schema.String),
   diagnosticWarnings: Schema.optional(Schema.Array(Schema.String)),
   limits: Schema.Struct({
     startedAt: Schema.Number,
@@ -81,7 +84,7 @@ test.effect("scope record commands reject checkout-local databases before creati
 
 for (const changeHead of [false, true]) {
 test.effect(`native diagnostics survive successful output and changed target=${changeHead}`, () => Effect.gen(function*() {
-  const { cli, directory, database, repository } = yield* fixture
+  const { cli, directory, database, repository, git } = yield* fixture
   const fs = yield* FileSystem.FileSystem
   const home = `${directory}/codex-home`
   const day = new Date().toISOString().slice(0, 10).replaceAll("-", "/")
@@ -108,20 +111,42 @@ esac
 `)
   yield* fs.chmod(reviewer, 0o700)
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  yield* fs.writeFileString(`${repository}/sample.txt`, "changed\nextra\nanother\n")
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "native growth diagnostic"])
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-  const child = yield* spawner.spawn(ChildProcess.make(process.execPath, [
-    new URL("review-findings.ts", import.meta.url).pathname, "review", "native", "--db", database,
-    "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--codex-bin", reviewer
-  ], { env: { CODEX_HOME: home }, extendEnv: true }))
-  const result = yield* Effect.all({ code: child.exitCode, stdout: Stream.mkString(Stream.decodeText(child.stdout)), stderr: Stream.mkString(Stream.decodeText(child.stderr)) }, { concurrency: "unbounded" })
+  const runNative = Effect.gen(function*() {
+    const child = yield* spawner.spawn(ChildProcess.make(process.execPath, [
+      new URL("review-findings.ts", import.meta.url).pathname, "review", "native", "--db", database,
+      "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--codex-bin", reviewer
+    ], { env: { CODEX_HOME: home }, extendEnv: true }))
+    return yield* Effect.all({ code: child.exitCode, stdout: Stream.mkString(Stream.decodeText(child.stdout)), stderr: Stream.mkString(Stream.decodeText(child.stderr)) }, { concurrency: "unbounded" })
+  })
+  const result = yield* runNative
   assert.strictEqual(result.code === 0, !changeHead, result.stderr + result.stdout)
   assert.include(result.stderr, "could not archive review session fixture-session")
   assert.strictEqual(yield* fs.readFileString(calls), "review\n")
-  const first = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ report: Schema.String })))(result.stdout.split("\n")[0] ?? "")
+  const responses = result.stdout.split("\n").filter(line => line.startsWith("{")).map(line => decode(line))
+  const first = responses[0]
+  if (first?.reviewId === undefined || first.report === undefined) return assert.fail("Native launch must return its review ID and report")
+  assert.strictEqual(first.launched, true)
+  assert.deepStrictEqual(first.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+  assert.deepStrictEqual(first.limits.stoppingReasons, [])
   assert.include(yield* fs.readFileString(first.report), "Original review output")
   if (changeHead) {
     const sql = yield* SqliteClient.make({ filename: database })
     assert.deepStrictEqual(yield* sql`select status from review_invocations`, [{ status: "blocked" }])
+  } else {
+    const awaiting = responses[1]
+    if (awaiting === undefined) return assert.fail("Completed native launch must return its awaiting-findings status")
+    assert.strictEqual(awaiting.status, "awaiting-findings")
+    assert.deepStrictEqual(awaiting.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+    const resumed = yield* runNative
+    assert.strictEqual(resumed.code, 0, resumed.stderr + resumed.stdout)
+    const resumedResponse = decode(resumed.stdout.trim())
+    assert.strictEqual(resumedResponse.reviewId, first.reviewId)
+    assert.strictEqual(resumedResponse.launched, false)
+    assert.deepStrictEqual(resumedResponse.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+    assert.strictEqual(yield* fs.readFileString(calls), "review\n")
   }
 }).pipe(Effect.scoped), { timeout: 60000 })
 }
@@ -169,6 +194,25 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.strictEqual(decode(yield* cli("progress-status")).revision, 8)
   assert.deepStrictEqual(yield* sql`select status from issues where decision_id = 'D2'`, [{ status: "fixed" }])
   assert.lengthOf(yield* sql`select * from review_finding_matches`, 1)
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("managed review start, resume, status and finish expose persisted growth diagnostics", () => Effect.gen(function*() {
+  const { cli, invoke, reviewStart, repository, git } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  const fs = yield* FileSystem.FileSystem
+  yield* fs.writeFileString(`${repository}/sample.txt`, "changed\nextra\nanother\n")
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "managed review growth"])
+  const started = decode(yield* reviewStart())
+  if (started.reviewId === undefined) return assert.fail("Managed review start must return its review ID")
+  assert.deepStrictEqual(started.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+  assert.deepStrictEqual(started.limits.stoppingReasons, [])
+  const resumed = decode(yield* reviewStart())
+  assert.strictEqual(resumed.reviewId, started.reviewId)
+  assert.deepStrictEqual(resumed.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+  const status = decode(yield* invoke(["review", "status", "--review", started.reviewId]))
+  assert.deepStrictEqual(status.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+  const finished = decode(yield* invoke(["review", "finish", "--review", started.reviewId, "--outcome", "blocked", "--evidence", "fixture close"]))
+  assert.deepStrictEqual(finished.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("native command reviews the full historical range once and exposes its saved report", () => Effect.gen(function*() {
