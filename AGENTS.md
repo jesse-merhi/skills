@@ -50,6 +50,7 @@ Assign review duties by the task, not by whether an agent is a subagent.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
+- When asking questions, use a synchronous tool that waits for the user's reply. In Codex, use `request_user_input` where available and permitted; do not use `request_user_input_async`. If no suitable synchronous tool is available, ask in the final response and wait for the user's reply. This preference avoids missed async-question notifications; it does not require asking about routine choices.
 - Use `feedback-hardening` before closing a substantive task, after a user
   correction, and before reporting a blocked workflow. Tell the user what got in
   the way and what would help next time. This reflection is required after every
@@ -270,3 +271,7 @@ itself model generation.
 Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
 completely. Resolve API questions against the exact installed package source;
 the v4 APIs used here include prerelease `effect/unstable/*` modules.
+
+## Maintaining this repository
+
+Only when editing the source of the `jesse-merhi/skills` repository, consult its root `MAINTENANCE.md` for due upstream checks. This does not apply when installing these skills or using them in another project. Resolve the file from the source checkout, not from an installed global instruction path.
