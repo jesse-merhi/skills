@@ -5,7 +5,7 @@ description: 'Validate behaviour of web or native UI through real interactions, 
 
 # UI validation
 
-Exercise the changed UI and inspect its behaviour, appearance, and relevant states.
+Exercise the changed UI and inspect its behaviour, appearance, and relevant states. After resolving a setup problem, resume the requested interaction and check its outcome; a ready browser, emulator or app is only the starting point for that proof.
 
 ## Web
 
