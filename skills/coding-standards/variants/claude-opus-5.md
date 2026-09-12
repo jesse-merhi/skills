@@ -16,7 +16,7 @@ Adopt the owner's standards through reliable checks already suited to the target
    - **Sync:** use [sync.md](references/sync.md). Reconcile vendored files, active configuration, and the adoption record while preserving local choices.
    - **Translate:** use [translate.md](references/translate.md). Return a proposed mapping to the ecosystem's own tools unless application was also requested.
 
-For apply or sync, load [apply.md](references/apply.md) and [translate.md](references/translate.md) before executing the mode. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
+For apply or sync, load [apply.md](references/apply.md) before executing the mode because sync reuses its dependency, wiring, and verification contracts. Load [translate.md](references/translate.md) when the target includes an unrepresented ecosystem or translation is explicitly requested, before using its workflow. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
 
 Apply and sync change the target only. A shared catalog contribution is separate, explicitly requested work governed by [catalog-format.md](references/catalog-format.md).
 

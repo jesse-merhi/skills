@@ -19,7 +19,7 @@ Apply the owner's standards to the target repository with working checks and sho
 
 Done when the requested mode has a result, not merely a list of next steps.
 
-For apply or sync, load [apply.md](references/apply.md) and [translate.md](references/translate.md) before executing the mode. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
+For apply or sync, load [apply.md](references/apply.md) before executing the mode because sync reuses its dependency, wiring, and verification contracts. Load [translate.md](references/translate.md) when the target includes an unrepresented ecosystem or translation is explicitly requested, before using its workflow. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
 
 ## Scope and permissions
 

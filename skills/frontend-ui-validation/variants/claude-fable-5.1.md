@@ -11,7 +11,7 @@ Exercise the changed UI and inspect its behaviour, appearance, and relevant stat
 
 Use the repository's normal launch workflow and the session's approved browser tools. In Codex use its browser tools; in Claude use the available Chrome integration.
 
-Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, unintended overlap, focus, or unreachable controls. Compare composition, spacing, type, and colour with any supplied reference. Fix source, not a temporary DOM edit.
+Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, unintended overlap, focus, or unreachable controls. Compare composition, spacing, type, and colour with any supplied reference. When the task authorizes repair, fix source rather than a temporary DOM edit. For validation-only work, report the evidence and recommended source repair without editing.
 
 For repeatable URL-state captures, use the existing Playwright helper only when the project already has Playwright and the harness permits it:
 

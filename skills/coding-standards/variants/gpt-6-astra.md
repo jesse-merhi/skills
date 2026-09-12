@@ -19,7 +19,7 @@ Read the principles and [adoption.md](references/adoption.md). Resolve routine c
 - **Sync:** follow [sync.md](references/sync.md) to reconcile the adoption, vendored files, and active configuration while preserving local decisions.
 - **Translate:** follow [translate.md](references/translate.md) to propose a mapping to the requested ecosystem's own tools. Do not install the proposal unless application was also requested.
 
-For apply or sync, load [apply.md](references/apply.md) and [translate.md](references/translate.md) before executing the mode. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
+For apply or sync, load [apply.md](references/apply.md) before executing the mode because sync reuses its dependency, wiring, and verification contracts. Load [translate.md](references/translate.md) when the target includes an unrepresented ecosystem or translation is explicitly requested, before using its workflow. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
 
 Apply and sync modify the target, not the shared catalog. A reusable catalog contribution needs its own explicit request; consult [catalog-format.md](references/catalog-format.md) for that work.
 

@@ -11,9 +11,9 @@ Create one local HTML file with inline CSS and JavaScript, without a build step 
 
 Place code explanations beside the relevant code, outside source comments. Preserve exact source and evidence; hide only optional detail. Explaining a PR is not authority to review it.
 
-Keep text and code line lengths readable, with clear hierarchy, keyboard-accessible controls, and colour plus text for status. Reflow at 320px; let wide code and tables scroll within their containers. Give `pre code` its own style so inline-code pills don't leak into blocks. Respect reduced motion and keep the argument intact when printed.
+Keep text and code line lengths readable, with clear hierarchy, keyboard-accessible controls, and colour plus text for status. Reflow at 320px; let wide code and tables scroll within their containers. Give `pre code` its own style so inline-code pills don't leak into blocks. Respect reduced motion. When printing is part of the requested artifact's use, keep the argument intact in print layout.
 
-Inspect the rendered page, its interactions, console, and narrow layout. Keep private content and assets local. Return the file link, a short explanation, and anything you couldn't verify.
+Inspect the rendered page, its interactions, console, and narrow layout. Inspect print layout when printing is part of the requested use. Keep private content and assets local. Return the file link, a short explanation, and anything you couldn't verify.
 
 ## References
 
