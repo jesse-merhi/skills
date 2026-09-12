@@ -22,6 +22,7 @@ const Output = Schema.fromJsonString(Schema.Struct({
   report: Schema.optional(Schema.String),
   diagnosticWarnings: Schema.optional(Schema.Array(Schema.String)),
   limits: Schema.Struct({
+    runId: Schema.String,
     startedAt: Schema.Number,
     remainingSeconds: Schema.Number,
     consultCap: Schema.Number,
@@ -274,11 +275,21 @@ esac
 test.effect("old handles cannot write evidence into a new run with the same identity", () => Effect.gen(function*() {
   const { cli, invoke, reviewStart, database } = yield* fixture
   const scopeFlags = ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--require-current-head", "--json"]
-  yield* cli("scope-start", scopeFlags)
-  const first = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ reviewId: Schema.String })))(yield* reviewStart())
-  yield* invoke(["review", "finish", "--review", first.reviewId, "--outcome", "clean", "--evidence", "complete result"])
+  const firstScope = decode(yield* cli("scope-start", scopeFlags))
+  if (firstScope.runId === undefined) return assert.fail("First scope must return its run ID")
+  const first = decode(yield* reviewStart())
+  if (first.reviewId === undefined) return assert.fail("Review start must return its review ID")
+  const finished = decode(yield* invoke(["review", "finish", "--review", first.reviewId, "--outcome", "clean", "--evidence", "complete result"]))
+  assert.strictEqual(finished.limits.runId, firstScope.runId)
   yield* cli("scope-complete", ["--reason", "complete", "--json"])
-  yield* cli("scope-start", scopeFlags)
+  const secondScope = decode(yield* cli("scope-start", scopeFlags))
+  assert.notStrictEqual(secondScope.runId, firstScope.runId)
+  const oldStatus = decode(yield* invoke(["review", "status", "--review", first.reviewId]))
+  assert.strictEqual(oldStatus.status, "finished")
+  assert.strictEqual(oldStatus.limits.runId, firstScope.runId)
+  const replay = decode(yield* invoke(["review", "finish", "--review", first.reviewId, "--outcome", "clean", "--evidence", "complete result"]))
+  assert.strictEqual(replay.status, "finished")
+  assert.strictEqual(replay.limits.runId, firstScope.runId)
   const denied = yield* invoke(["record-command", "--review", first.reviewId, "--command", "check", "--result", "pass", "--reason", "old evidence"]).pipe(Effect.flip)
   assert.include(denied.stderr, "different review run")
   const sql = yield* SqliteClient.make({ filename: database })
