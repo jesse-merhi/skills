@@ -50,6 +50,7 @@ Assign review duties by the task, not by whether an agent is a subagent.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
+- When asking questions, use a synchronous tool that waits for the user's reply. In Codex, use `request_user_input` where available and permitted; do not use `request_user_input_async`. If no suitable synchronous tool is available, ask in the final response and wait for the user's reply. This preference avoids missed async-question notifications; it does not require asking about routine choices.
 - Use `feedback-hardening` before closing a substantive task, after a user
   correction, and before reporting a blocked workflow. Tell the user what got in
   the way and what would help next time. This reflection is required after every
