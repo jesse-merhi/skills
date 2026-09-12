@@ -11,7 +11,7 @@ Use the model policy in the applicable `AGENTS.md`. Review launchers own their e
 
 ## 1. Start the review
 
-Check out the PR branch or the commit in question. Use the PR's base, or the requested commit's parent. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
+Check out the branch or commit in question. For a branch review, use the PR's base or the caller's resolved planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
 
 Fill these values from the checkout and PR:
 
