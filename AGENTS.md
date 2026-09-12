@@ -271,7 +271,3 @@ itself model generation.
 Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
 completely. Resolve API questions against the exact installed package source;
 the v4 APIs used here include prerelease `effect/unstable/*` modules.
-
-## Maintaining this repository
-
-Only when editing the source of the `jesse-merhi/skills` repository, consult its root `MAINTENANCE.md` for due upstream checks. This does not apply when installing these skills or using them in another project. Resolve the file from the source checkout, not from an installed global instruction path.

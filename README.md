@@ -21,6 +21,10 @@ AI did not delete software engineering. It moved most of the typing somewhere
 else and made the review problem much sharper. These are the rails I use to stay
 on the right side of that.
 
+## Maintaining this repository
+
+When editing this repository, consult [MAINTENANCE.md](MAINTENANCE.md) for due upstream checks. These checks are for repository contributors, not installation or ordinary skill use.
+
 ## Quick start
 
 For a local, disk-backed skill-editing workspace, run `bun run review:skills`.
