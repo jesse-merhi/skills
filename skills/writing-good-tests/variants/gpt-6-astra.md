@@ -42,9 +42,11 @@ Keep test cleanup tied to the changed behavior and the coverage needed to prove 
 
 Implement the authorized behavior and check its result against the agreed contract. Then write tests that prove it works for valid inputs and relevant failure cases. Reuse existing tests when they already prove it, including for covered refactors.
 
-Run focused checks to resolve uncertainty, diagnose failures or verify repairs. For review fixes, establish a reachable failure and repair authority before editing; a synthetic test alone proves neither.
+Finish the related edits, then run broad tests, lint, typecheck and builds. Run a focused check earlier only to answer a specific question, diagnose a failure or verify a fix. Before fixing a review finding, confirm the bug can happen and the fix is within the authorized task.
 
-Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After review repairs, rerun affected tests and required final checks. Otherwise, repeat or broaden testing only for changed behavior, failures or unresolved concerns. Stop on the first test error and diagnose it before rerunning.
+When delegating, assign one owner for shared validation before workers start checks. Workers return their changes and focused evidence; the owner validates the integrated batch. Reuse results while the relevant code, callers, dependencies, fixtures, configuration and environment still apply.
+
+Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After further edits or review repairs, rerun the affected checks and required final checks; an individual file edit is not a reason to repeat the whole validation set. Broaden verification when the impact cannot be bounded or a failure or unresolved concern requires it. Stop on the first test error and diagnose it before rerunning.
 
 ## Check cost and finish
 
