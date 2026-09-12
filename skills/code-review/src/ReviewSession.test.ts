@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
-import { type FindingInput, getReviewFileCoverage, getScopeBudget, initialize, recordFinding, recordFindingMatch, recordReviewedFiles, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
+import { authorizeScopeBudget, type FindingInput, getReviewFileCoverage, getScopeBudget, initialize, recordFinding, recordFindingMatch, recordReviewedFiles, reviewProgress, startScopeBudget } from "./ReviewFindings.ts"
 import { measureScopeDiff } from "./ReviewScope.ts"
 import { claimNativeLaunch, finishReview, getReview, reviewRun, startReview, withOpenReview } from "./ReviewSession.ts"
 
@@ -54,6 +54,30 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     assert.lengthOf(yield* sql`select * from review_progress_events where run_id = ${run.runId}`, 1)
     assert.strictEqual((yield* startReview(run, "native", "invocation")).reviewId, review.reviewId)
     assert.strictEqual((yield* reviewProgress(run))?.revision, 1)
+  }).pipe(Effect.scoped), { timeout: 30000 })
+
+  test.effect("blocks a managed review for a committed binary path until scope authorization", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture()
+    const currentRun = { ...run, head: "" }
+    yield* fs.writeFile(`${run.repoPath}/helper.bin`, new Uint8Array([0, 1, 2]))
+    yield* git(["add", "helper.bin"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "add binary helper"])
+    const denied = yield* startReview(currentRun, "native", "invocation").pipe(Effect.flip)
+    assert.strictEqual(denied._tag, "ReviewLimitsBlocked")
+    const blocked = yield* getScopeBudget(currentRun)
+    assert.strictEqual(blocked.status, "blocked")
+    assert.deepStrictEqual(blocked.newBinaryProductionPaths, ["helper.bin"])
+    const sql = yield* SqlClient.SqlClient
+    assert.lengthOf(yield* sql`select * from review_invocations where run_id = ${run.runId}`, 0)
+    assert.lengthOf(yield* sql`select * from review_progress_events where run_id = ${run.runId}`, 0)
+    yield* authorizeScopeBudget(currentRun, {
+      scopeSummary: "Include the approved binary helper",
+      authorization: "Owner explicitly approved helper.bin"
+    })
+    const review = yield* startReview(currentRun, "native", "authorized invocation")
+    assert.strictEqual(review.status, "open")
+    assert.lengthOf(yield* sql`select * from review_invocations where run_id = ${run.runId}`, 1)
+    assert.lengthOf(yield* sql`select * from review_progress_events where run_id = ${run.runId}`, 1)
   }).pipe(Effect.scoped), { timeout: 30000 })
 
   test.effect("pins a historical review independently of checkout HEAD", () => Effect.gen(function*() {

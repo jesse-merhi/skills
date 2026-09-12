@@ -2152,36 +2152,63 @@ test_review_scope_budget_can_close_before_a_later_review() {
   assert_contains "$tmp/stderr" "clean committed worktree"
   printf 'feature\n' > "$repo/app.ts"
 
-  # Post-check drift is remeasured and surfaced before the final completion.
-  { printf 'feature\n'; for number in {1..200}; do printf 'post-check change %s\n' "$number"; done; } > "$repo/app.ts"
-  git -C "$repo" add app.ts
-  git -C "$repo" commit --quiet --message "grow past review budget"
-  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
-    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "first review" --base main --reason "Inspect post-check growth before completion.")"
-  assert_output_contains "$out" "SCOPE GROWTH WARNING"
-  assert_output_contains "$out" "baseline=1 current=201 growth=200 allowed-growth=0 maximum=1"
-  printf 'feature\n' > "$repo/app.ts"
-  git -C "$repo" add app.ts
-  git -C "$repo" commit --quiet --message "restore reviewed tree"
-  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
-    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "first review" --base main --reason "Run the final clean review again." >/dev/null
-
   record_maintenance_finding \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
     --target "first review" --base main --decision-id CONSULT-001 \
     --status open --source review --fingerprint "shared parser contract" \
     --summary "Choose the shared parser contract." --decision "Which shared parser contract should the owner approve?" \
     --text "User decision is still required." >/dev/null
+
+  # Completion remeasures committed text drift and persists its diagnostic before
+  # the unresolved finding keeps the scope active.
+  { printf 'feature\n'; for number in {1..200}; do printf 'post-check change %s\n' "$number"; done; } > "$repo/app.ts"
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message "grow past review budget"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "first review" --base main --reason "Unresolved consult remains." \
+    --target "first review" --base main --reason "Complete after committed text drift." \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-complete must reject unresolved findings"
+    fail "scope-complete must retain an active scope with an unresolved finding"
   fi
-  assert_contains "$tmp/stderr" "scope-complete requires every finding to be fixed, rejected, or explicitly deferred"
   assert_contains "$tmp/stderr" "CONSULT-001 [open]: Choose the shared parser contract."
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-status \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main)"
+  assert_output_contains "$out" "SCOPE GROWTH WARNING"
+  assert_output_contains "$out" "baseline=1 current=201 growth=200 allowed-growth=0 maximum=1"
+  assert_output_contains "$out" '"diagnosticWarnings":["DIFF_GROWTH_EXCEEDED"]'
+
+  printf '\0binary helper\n' > "$repo/helper.bin"
+  git -C "$repo" add helper.bin
+  git -C "$repo" commit --quiet --message "add unapproved binary"
+  if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Complete after committed binary drift." \
+    >"$tmp/stdout" 2>"$tmp/stderr"; then
+    fail "scope-complete must reject a new binary path"
+  fi
+  assert_contains "$tmp/stderr" "Binary human-authored paths added since the baseline"
+  assert_contains "$tmp/stderr" "- helper.bin"
+  node --input-type=module - "$db" <<'NODE'
+import assert from 'node:assert/strict'
+import { DatabaseSync } from 'node:sqlite'
+const db = new DatabaseSync(process.argv[2])
+const state = db.prepare(`select review_runs.status as runStatus, review_scope_budgets.status as scopeStatus,
+  (select count(*) from review_scope_locks where review_scope_locks.run_id = review_runs.id) as lockCount
+  from review_runs join review_scope_budgets on review_scope_budgets.run_id = review_runs.id`).get()
+assert.equal(state.runStatus, 'active')
+assert.equal(state.scopeStatus, 'blocked')
+assert.equal(state.lockCount, 1)
+db.close()
+NODE
+
+  printf 'feature\n' > "$repo/app.ts"
+  git -C "$repo" rm --quiet helper.bin
+  git -C "$repo" add app.ts
+  git -C "$repo" commit --quiet --message "restore reviewed tree"
+  "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-check \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "first review" --base main --reason "Run the final clean review again." >/dev/null
 
   node -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); db.prepare("update issues set status = ?, owner_resolution = ? where decision_id = ?").run("deferred", "", "CONSULT-001")' "$db"
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-complete \
