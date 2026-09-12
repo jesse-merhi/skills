@@ -59,6 +59,11 @@ Assign review duties by the task, not by whether an agent is a subagent.
 
 ## Implementation design
 
+- Start with the requested outcome, the changed behavior and its owner. Read
+  callers, dependencies, tests, docs and history as needed to establish the
+  affected contract and resolve uncertainty. Trace complete flows when a change
+  crosses ownership, lifecycle, security or data boundaries; a local text edit
+  does not require the same investigation.
 - Treat backward compatibility as the user's decision. If the preferred design
   requires breaking changes, explain why, what will break, and the migration
   path, then ask before proceeding. Do not add compatibility layers by default.
@@ -109,6 +114,9 @@ resource lifecycle, and graceful shutdown.
 
 ## Test and review design
 
+- Keep test cleanup tied to the changed behavior and the coverage needed to
+  prove it. Touching a test file does not by itself require reorganizing the
+  file or repairing unrelated tests. Preserve required coverage and checks.
 - Before creating, changing, or removing tests or test infrastructure, load
   `writing-good-tests` in test-planning/portfolio mode. During code review, load it for
   every production behavior change and whenever the diff creates, changes, or
@@ -185,6 +193,11 @@ itself model generation.
 
 ## Working rules
 
+- Select skills by the requested action and artifact, not an incidental keyword.
+  Use explicitly requested skills and required workflow lenses. For optional
+  skills, load the smallest set that serves the task; read supporting references
+  when their branch is needed. For example, an iOS bug without a Figma artifact
+  does not need a Figma translation workflow.
 - Work on a branch in a dedicated git worktree. Never push agent-authored
   feature or fix commits directly to the default branch. When publication is
   authorized, push the work to its feature branch and deliver it through a PR.

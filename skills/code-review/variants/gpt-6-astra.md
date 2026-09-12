@@ -25,7 +25,7 @@ review-findings scope-start --repo <owner/repo> --repo-path <checkout> \
 
 For a single-phase request, specify only that phase. Use two clean native passes when explicitly requested.
 
-Prepare the runtime and validation commands once, reusing an authorized worktree. Check tool versions against the repository. Identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
 To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands. Extend an expired timer only under existing explicit user authority, using [the budget-extension command](references/findings-registry.md).
 
