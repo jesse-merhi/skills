@@ -19,4 +19,4 @@ Update internal definitions and usages together. Preserve public contracts unles
 
 Keep related work together and make branches readable. Extract a function when its name makes a useful step clearer; keep it inline when another jump would make the reader work harder.
 
-In review, show the confusing code and a simpler version. Preserve required behavior, including features added on the current branch, unless the user authorizes removing it. Use checks that cover those features. Prefer code a person can follow; avoid extra helpers or edits made only to suit personal taste.
+In review, show the confusing name or flow and the simpler alternative. Preserve behavior and use the existing checks for refactors. Aim for code a human can explain easily, not extra helpers or changes made solely to match personal taste.
