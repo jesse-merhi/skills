@@ -1207,11 +1207,10 @@ export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudg
   const git = yield* trustedExecutable("git", verifiedRun.repoPath)
   const currentBaseOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${revisedRun.base}^{commit}`], { cwd: verifiedRun.repoPath })
   const baseMoved = currentBaseOid !== existing.baseOid || revisedRun.base !== existing.baseRef
-  if (existing.status !== "blocked" && existing.status !== "rebaseline-required" && !baseMoved) {
-    return yield* Effect.fail(new InvalidScopeBudget("scope-authorize is only valid after scope-check has blocked, migration requires rebaseline, or the requested base ref has moved"))
-  }
-  return yield* saveScopeBaseline(revisedRun, { ...input, limitPercent: existing.limitPercent, baseOid: currentBaseOid, event: "authorized", runId, expectedGeneration: existing.generation, allowReady: baseMoved,
-    reason: `Rebaseline from ${existing.baseRef}@${existing.baseOid} to ${revisedRun.base}@${currentBaseOid}` })
+  return yield* saveScopeBaseline(revisedRun, { ...input, limitPercent: existing.limitPercent, baseOid: currentBaseOid, event: "authorized", runId, expectedGeneration: existing.generation, allowReady: true,
+    reason: baseMoved
+      ? `Rebaseline from ${existing.baseRef}@${existing.baseOid} to ${revisedRun.base}@${currentBaseOid}`
+      : `Authorized scope update at ${revisedRun.base}@${currentBaseOid}` })
 })
 
 export const getScopeBudget = Effect.fn("ReviewFindings.getScopeBudget")(function*(run: Pick<ReviewRun, "repoPath" | "branch" | "target" | "base">) {

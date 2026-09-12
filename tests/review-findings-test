@@ -1888,12 +1888,20 @@ test_review_scope_budget_blocks_deterministically() {
 
   if "$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
     --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
-    --target "PR #12" --base main --scope-summary "Premature reset." \
-    --authorization "Not preceded by a blocked check." \
+    --target "PR #12" --base main --scope-summary "Missing authority." \
+    --authorization "" \
     >"$tmp/stdout" 2>"$tmp/stderr"; then
-    fail "scope-authorize must not reset a baseline before scope-check blocks"
+    fail "scope-authorize must require explicit authority"
   fi
-  assert_contains "$tmp/stderr" "only valid after scope-check has blocked"
+  assert_contains "$tmp/stderr" "requires the user's explicit authorization text"
+
+  out="$("$ROOT_DIR/skills/code-review/scripts/review-findings" scope-authorize \
+    --db "$db" --repo sample-app --repo-path "$repo" --branch feature \
+    --target "PR #12" --base main --scope-summary "Approved app entrypoint scope." \
+    --authorization "User explicitly approved the current app entrypoint scope.")"
+  assert_output_contains "$out" "SCOPE BUDGET READY"
+  assert_output_contains "$out" "scope=Approved app entrypoint scope."
+  assert_output_contains "$out" "authorization=User explicitly approved the current app entrypoint scope."
 
   record_maintenance_finding \
     --db "$db" \

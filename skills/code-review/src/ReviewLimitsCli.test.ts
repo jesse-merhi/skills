@@ -410,4 +410,22 @@ test.effect("CLI reports diff growth as a diagnostic and starts review without s
   assert.notInclude(check.limits.stoppingReasons, "DIFF_GROWTH_EXCEEDED")
   assert.strictEqual(decode(yield* cli("progress-record", startArgs)).revision, 1)
 }).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("CLI records explicitly approved same-base scope updates independently of growth warnings", () => Effect.gen(function*() {
+  const { cli, repository, git } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  const approvedBaseline = yield* cli("scope-authorize", ["--authorization", "Owner explicitly approves the current fixture", "--scope-summary", "approved fixture"])
+  assert.include(approvedBaseline, "SCOPE BUDGET READY")
+  assert.include(approvedBaseline, "scope=approved fixture")
+  assert.include(approvedBaseline, "authorization=Owner explicitly approves the current fixture")
+  const fs = yield* FileSystem.FileSystem
+  yield* fs.writeFileString(`${repository}/sample.txt`, "changed\nextra\nanother\n")
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "synthetic scope expansion"])
+  yield* cli("scope-check", ["--reason", "inspect the coherent scope expansion", "--json"])
+  const authorized = yield* cli("scope-authorize", ["--authorization", "Owner explicitly approves the expanded fixture", "--scope-summary", "expanded fixture"])
+  assert.include(authorized, "SCOPE BUDGET READY")
+  assert.include(authorized, "baseline=4 current=4 growth=0 allowed-growth=2 maximum=6")
+  assert.include(authorized, "scope=expanded fixture")
+  assert.include(authorized, "authorization=Owner explicitly approves the expanded fixture")
+}).pipe(Effect.scoped), { timeout: 60000 })
 })
