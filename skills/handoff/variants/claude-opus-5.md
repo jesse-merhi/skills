@@ -12,10 +12,12 @@ Move the work to a fresh full session.
 
 ## Write the brief
 
-Save one compact document in the OS temporary directory containing:
-- Objective and current state.
-- Evidence, blockers, and relevant Obsidian links.
-- Next actions based on the user's request.
+Save one self-contained document in the OS temporary directory containing:
+- Objective, user-visible result, current state and important design decisions.
+- Observed evidence, verification, blockers, PR/proof links and relevant Obsidian links.
+- Remaining work, what the user should inspect and next actions based on the user's request.
+
+Use enough explanation for the complexity. For a pending decision, describe the observed problem, consequences and real alternatives, and recommend a path; counts and hashes alone do not explain it.
 
 Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Carry the user instructions that authorize remaining work and any later corrections that supersede old unanswered questions; a handoff does not require the user to approve the same work again. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
 

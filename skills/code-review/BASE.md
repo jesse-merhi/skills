@@ -11,7 +11,7 @@ Use the model policy in the applicable `AGENTS.md`. Review launchers own their e
 
 ## 1. Start the review
 
-Check out the PR branch or the commit in question. Use the PR's base, or the requested commit's parent. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
+Check out the branch or commit in question. For a branch review, use the PR's base or the caller's resolved planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
 
 Fill these values from the checkout and PR:
 
@@ -54,7 +54,7 @@ review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
   --reason "Requested reviews complete with no open decisions" --json
 ```
 
-Run completion only after all requested reviews and checks pass with no open decisions. If a command blocks work, [handle its reported reason](references/blocked-checks.md).
+Run completion only after all requested reviews and checks pass with no open decisions. For diagnostic growth warnings or blocked work, [handle the reported reason](references/blocked-checks.md). Growth warnings call for internal reassessment while authorized work continues.
 
 [Push authorized fixes](references/publish-fixes.md), then [summarize the saved results](references/final-output.md).
 

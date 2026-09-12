@@ -204,7 +204,7 @@ const scopeCheck = Command.make("scope-check", {
     return yield* Effect.fail(new ScopeBudgetBlocked(check))
   }
   yield* Console.log(args.json ? JSON.stringify({ ...check, limits }) : `${formatScopeBudgetCheck(check)}\n${JSON.stringify({ limits })}`)
-}))).pipe(Command.withDescription("Block review work that exceeds the frozen scope budget"))
+}))).pipe(Command.withDescription("Measure scope growth, warn on line growth, and block unmeasurable binary additions"))
 const scopeAuthorize = Command.make("scope-authorize", {
   db, ...commonRun, scopeSummary, authorization: Flag.string("authorization"), newBase: optionalString("new-base")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
@@ -297,17 +297,17 @@ const reviewStartFlags = { db, ...commonRun, phase: Flag.choice("phase", ReviewP
 const reviewStart = Command.make("start", reviewStartFlags, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
   const review = yield* startReview(toRun(args), args.phase, args.evidence)
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, phase: review.phase, head: review.head, status: review.status, resumed: review.resumed }))
+  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, phase: review.phase, head: review.head, status: review.status, resumed: review.resumed, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewStatus = Command.make("status", reviewHandle, args => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const review = yield* getReview(args.review)
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, phase: review.phase, head: review.head, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(args.db, review.reviewId) } : {}) }))
+  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, phase: review.phase, head: review.head, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(args.db, review.reviewId) } : {}), limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.choice("outcome", ReviewOutcome.literals), evidence: Flag.string("evidence") }, args => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const review = yield* finishReview(args.review, args.outcome, args.evidence)
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, outcome: review.outcome }))
+  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewNative = Command.make("native", {
   db, ...commonRun, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
@@ -316,7 +316,7 @@ const reviewNative = Command.make("native", {
   const review = yield* startReview(toRun(args), "native", "Native reviewer")
   const report = yield* nativeReportPath(args.db, review.reviewId)
   const launch = !review.resumed && (yield* claimNativeLaunch(review.reviewId))
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, launched: launch, report }))
+  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
   if (!launch) return
   const git = yield* trustedExecutable("git", review.repoPath)
   const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
@@ -338,7 +338,7 @@ const reviewNative = Command.make("native", {
     Effect.flatMap(() => requireOpenReview(review.reviewId)),
     Effect.onExit(exit => CauseExit.isFailure(exit) ? finishReview(review.reviewId, "blocked", Cause.pretty(exit.cause)) : Effect.void)
   )
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: "awaiting-findings", report }))
+  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: "awaiting-findings", report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewCommand = Command.make("review").pipe(Command.withSubcommands([reviewStart, reviewStatus, reviewFinish, reviewNative]))
 

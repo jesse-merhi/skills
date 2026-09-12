@@ -2,19 +2,19 @@
 
 Read the command's stopping reasons. Keep the saved run, elapsed time, consumed allowance and completed review results.
 
-## More scope is needed
+## Diff growth needs diagnosis
 
-Use the CLI's measured growth and allowance. Explain the extra change and ask for approval. A new human-authored binary or a legacy `rebaseline-required` result also needs explicit approval.
+A line threshold is an internal warning, not a permission boundary. Inspect why the diff grew and continue authorized work when the design and scope remain coherent. Record the conclusion in the existing scope event reason; do not rebaseline merely to clear a warning.
 
-After approval:
+Use the existing event history to distinguish a new scope expansion from another observation of the same large diff. Repeated upward revisions need deeper reassessment: a wrong approach, patches causing more patches, a missed shared cause, or independent changes that belong in separate cohesive PRs. Explain a meaningful systemic problem and recommend a path when Jesse needs to decide; do not ask for more lines. Actual unrelated work, breaking changes, dependencies and access still require their own authority.
+
+A new human-authored binary or a legacy `rebaseline-required` result retains its explicit authorization requirement. For an authorized scope or baseline change, record the existing authority:
 
 ```sh
 review-findings scope-authorize --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <target> --base <base> \
-  --scope-summary "<approved scope>" --authorization "<user's approval>"
+  --scope-summary "<authorized scope>" --authorization "<existing user authority>"
 ```
-
-If declined, leave the expansion unapplied or revert the blocked repair, record the decision and restore a passing check. Suggest a separate PR when the work is independently useful.
 
 ## A repair failed twice
 
