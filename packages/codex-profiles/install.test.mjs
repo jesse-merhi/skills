@@ -11,7 +11,7 @@ import { installProfiles } from "./install.mjs";
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 
 function fixture(t) {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "codex-profiles-"));
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "codex-profiles-")));
   t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
   return { temporary, root: path.join(temporary, "codex home") };
 }
@@ -101,6 +101,19 @@ test("transfers only links into an explicitly selected previous clone", t => {
   assert.throws(() => installProfiles({ root, previousSource: temporary }), /owned elsewhere/);
   fs.rmSync(previousSource, { recursive: true });
   const result = installProfiles({ root, previousSource });
+  assert.ok(result.links.every(link => link.changed));
+  for (const link of result.links) assert.equal(fs.readlinkSync(link.destination), link.target);
+});
+
+test("transfers an existing previous clone selected through a directory alias", t => {
+  const { temporary, root } = fixture(t);
+  const previousSource = path.join(temporary, "old clone");
+  const alias = path.join(temporary, "old clone alias");
+  fs.mkdirSync(previousSource);
+  fs.cpSync(path.join(repository, "codex"), path.join(previousSource, "codex"), { recursive: true });
+  fs.symlinkSync(previousSource, alias, "dir");
+  installProfiles({ root, source: alias });
+  const result = installProfiles({ root, previousSource: alias });
   assert.ok(result.links.every(link => link.changed));
   for (const link of result.links) assert.equal(fs.readlinkSync(link.destination), link.target);
 });

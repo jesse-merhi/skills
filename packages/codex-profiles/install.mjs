@@ -41,7 +41,8 @@ function planLinks(root, source, previousSource) {
 export function installProfiles({ root = process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), source = repository, previousSource, dryRun = false } = {}) {
   root = path.resolve(root);
   source = fs.realpathSync(source);
-  previousSource = previousSource === undefined ? undefined : path.resolve(previousSource);
+  previousSource = previousSource === undefined ? undefined
+    : fs.existsSync(previousSource) ? fs.realpathSync(previousSource) : path.resolve(previousSource);
   const preview = planLinks(root, source, previousSource);
   const summary = links => ({ root, dryRun, links: links.map(({ destination, target, unchanged }) => ({ destination, target, changed: !unchanged })) });
   if (dryRun) return summary(preview);
