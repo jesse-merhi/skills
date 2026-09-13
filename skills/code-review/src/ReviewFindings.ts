@@ -163,6 +163,20 @@ export type Finding = typeof FindingRecord.Type & FindingOutcome
 
 type FindingAcceptedShapeInput = Pick<Finding, "findingKind" | "status" | "likelihood" | "maintenanceEvidence" | "presentCost" | "disposition" | "ownerResolution">
 
+const FINDING_STATUSES_BY_DISPOSITION: Readonly<Record<FindingDisposition, readonly [Finding["status"], ...Array<Finding["status"]>]>> = {
+  accept: ["open", "fixed", "provisional", "reopened"],
+  investigate: ["open", "reopened"],
+  consult: ["open", "reopened"],
+  "follow-up": ["deferred"],
+  residual: ["deferred"],
+  reject: ["rejected"]
+}
+
+const acceptedFindingStatus = (finding: Pick<Finding, "status" | "disposition">): Finding["status"] => {
+  const statuses = FINDING_STATUSES_BY_DISPOSITION[finding.disposition]
+  return statuses.includes(finding.status) ? finding.status : statuses[0]
+}
+
 export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): string => {
   const repairFields = "--root-cause <cause> --recommended-fix <durable repair> --intervention-justification <why intervention is justified>"
   const consultRepairFields = "--root-cause <cause> --intervention-justification <why intervention is justified> [--recommended-fix <supported repair>]"
@@ -171,6 +185,7 @@ export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): 
   const runtimeEvidence = runtime && finding.likelihood !== "unknown" && finding.likelihood !== "theoretical"
     ? " --production-path <path> --reachability-evidence <reproduction> --actual-consequence <observed result> --contract-evidence <expected behavior>"
     : ""
+  const status = acceptedFindingStatus(finding)
   const ownerResolvable = finding.disposition === "accept" || finding.disposition === "consult"
   if (ownerResolvable && finding.ownerResolution === "approved") {
     const handling = finding.disposition === "consult" ? "consult" : "fix"
@@ -184,21 +199,21 @@ export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): 
   }
   if (finding.disposition === "reject") {
     const supportedMaintenance = !runtime && (finding.maintenanceEvidence.trim().length > 0 || finding.presentCost.trim().length > 0) ? maintenanceEvidence : ""
-    return `--status rejected --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}${runtimeEvidence}; omit repair fields`
+    return `--status ${status} --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}${runtimeEvidence}; omit repair fields`
   }
   if (finding.disposition === "investigate") {
-    return "--status open --handling fix --decision <investigation needed>; omit repair fields until the runtime path is proven"
+    return `--status ${status} --handling fix --decision <investigation needed>; omit repair fields until the runtime path is proven`
   }
   if (finding.disposition === "consult") {
-    return `--status open --handling consult --decision <owner question> ${consultRepairFields}${maintenanceEvidence}${runtimeEvidence}`
+    return `--status ${status} --handling consult --decision <owner question> ${consultRepairFields}${maintenanceEvidence}${runtimeEvidence}`
   }
   if (finding.disposition === "follow-up") {
-    return `--status deferred --handling follow-up --decision <owner or next action> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+    return `--status ${status} --handling follow-up --decision <owner or next action> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
   }
   if (finding.disposition === "residual") {
-    return `--status deferred --handling fix --decision <accepted residual risk> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+    return `--status ${status} --handling fix --decision <accepted residual risk> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
   }
-  return `--status open --handling fix ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  return `--status ${status} --handling fix ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
 }
 
 export class InvalidFinding extends Error {
@@ -1476,14 +1491,6 @@ const deriveFindingOutcome = (finding: DecodedFinding): FindingOutcome | undefin
 }
 
 const findingStatusError = (finding: Finding) => {
-  const allowedStatuses: Readonly<Record<FindingDisposition, ReadonlyArray<Finding["status"]>>> = {
-    accept: ["open", "fixed", "provisional", "reopened"],
-    investigate: ["open", "reopened"],
-    consult: ["open", "reopened"],
-    "follow-up": ["deferred"],
-    residual: ["deferred"],
-    reject: ["rejected"]
-  }
   if (finding.ownerResolution.length > 0) {
     if (finding.decision.trim().length === 0) return "--owner-resolution requires --decision with the owner's decision"
     if (finding.ownerResolution === "approved" && finding.status === "fixed" && ["accept", "consult"].includes(finding.disposition)) return undefined
@@ -1497,7 +1504,7 @@ const findingStatusError = (finding: Finding) => {
   if (finding.disposition === "follow-up" && finding.decision.trim().length === 0) {
     return "follow-up deferrals require --decision with the follow-up owner or next action"
   }
-  if (!allowedStatuses[finding.disposition].includes(finding.status)) {
+  if (!FINDING_STATUSES_BY_DISPOSITION[finding.disposition].includes(finding.status)) {
     return `disposition ${finding.disposition} cannot use status ${finding.status}`
   }
   return undefined

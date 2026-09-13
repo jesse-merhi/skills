@@ -22,7 +22,7 @@ const Output = Schema.fromJsonString(Schema.Struct({
   report: Schema.optional(Schema.String),
   diagnosticWarnings: Schema.optional(Schema.Array(Schema.String)),
   resumed: Schema.optional(Schema.Boolean),
-  identity: Schema.optional(Schema.Struct({ runId: Schema.String, repo: Schema.String, repoPath: Schema.String, branch: Schema.String, target: Schema.String, base: Schema.String, head: Schema.String })),
+  identity: Schema.optional(Schema.Struct({ runId: Schema.String, db: Schema.String, repo: Schema.String, repoPath: Schema.String, branch: Schema.String, target: Schema.String, base: Schema.String, head: Schema.String })),
   scope: Schema.optional(Schema.Struct({ status: Schema.String, resumed: Schema.Boolean })),
   recording: Schema.optional(Schema.Struct({ schemaVersion: Schema.Number, command: Schema.String, matchCommand: Schema.String, schemaCommand: Schema.String })),
   limits: Schema.Struct({
@@ -202,15 +202,18 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
 
 test.effect("managed review start initializes once and resumes with its identity and recording contract", () => Effect.gen(function*() {
   const { invoke, reviewStart, repository, database } = yield* fixture
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const canonicalDatabase = paths.join(yield* fs.realPath(paths.dirname(database)), paths.basename(database))
   const started = decode(yield* reviewStart(["--scope-summary", "fixture review", "--native-clean-target", "1", "--cold-clean-target", "3", "--required-phase", "native", "--required-phase", "cold", "--require-current-head"]))
   if (started.reviewId === undefined || started.runId === undefined || started.identity === undefined || started.scope === undefined || started.recording === undefined) {
     return assert.fail("Managed review start must return reusable review context")
   }
-  assert.deepStrictEqual(started.identity, { runId: started.runId, repo: "fixture", repoPath: repository, branch: "fixture", target: "fixture", base: "main", head: started.identity.head })
+  assert.deepStrictEqual(started.identity, { runId: started.runId, db: canonicalDatabase, repo: "fixture", repoPath: repository, branch: "fixture", target: "fixture", base: "main", head: started.identity.head })
   assert.deepStrictEqual(started.scope, { status: "ok", resumed: false })
   assert.strictEqual(started.recording.schemaVersion, 8)
-  assert.strictEqual(started.recording.command, `review-findings record --review ${started.reviewId}`)
-  assert.include(started.recording.matchCommand, `--review ${started.reviewId} --match-of`)
+  assert.strictEqual(started.recording.command, `review-findings record --db ${canonicalDatabase} --review ${started.reviewId}`)
+  assert.include(started.recording.matchCommand, `--db ${canonicalDatabase} --review ${started.reviewId} --match-of`)
   assert.strictEqual(started.recording.schemaCommand, "review-findings schema")
   assert.deepStrictEqual(started.limits.cleanTargets, { native: 1, cold: 3, clawsweeper: 2 })
   assert.deepStrictEqual(started.limits.incompletePhases, ["native", "cold"])
@@ -229,6 +232,45 @@ test.effect("managed review start initializes once and resumes with its identity
   assert.deepStrictEqual(status.recording, started.recording)
   const finished = decode(yield* invoke(["review", "finish", "--review", started.reviewId, "--outcome", "blocked", "--evidence", "fixture close"]))
   assert.strictEqual(finished.runId, started.runId)
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("managed review recording commands retain a shell-safe nondefault database", () => Effect.gen(function*() {
+  const { directory, repository } = yield* fixture
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const database = `${directory}/custom db's reviews.sqlite`
+  const wrongDatabase = `${directory}/wrong-default.sqlite`
+  const source = new URL("review-findings.ts", import.meta.url).pathname
+  const started = decode(yield* checkedText(process.execPath, [
+    "--disable-warning=ExperimentalWarning", source, "review", "start", "--db", database,
+    "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--phase", "native", "--evidence", "nondefault database"
+  ]))
+  if (started.reviewId === undefined || started.identity === undefined || started.recording === undefined) {
+    return assert.fail("Managed review start must return reusable review context")
+  }
+  const canonicalDatabase = paths.join(yield* fs.realPath(paths.dirname(database)), paths.basename(database))
+  const quotedDatabase = `'${canonicalDatabase.replaceAll("'", "'\\''")}'`
+  assert.strictEqual(started.identity.db, canonicalDatabase)
+  assert.strictEqual(started.recording.command, `review-findings record --db ${quotedDatabase} --review ${started.reviewId}`)
+  assert.include(started.recording.matchCommand, `review-findings record --db ${quotedDatabase} --review ${started.reviewId} --match-of`)
+
+  const scripts = new URL("../scripts", import.meta.url).pathname
+  const environment = {
+    AGENT_REVIEW_FINDINGS_DB: wrongDatabase,
+    PATH: `${scripts}:${paths.dirname(process.execPath)}:/usr/bin:/bin`
+  }
+  const recorded = yield* checkedText("/bin/sh", ["-c", `${started.recording.command} --decision-id DB1 --status open --source fixture --fingerprint db1 --summary db1 --finding-kind maintenance --maintenance-evidence duplicate --present-cost cost --root-cause cause --recommended-fix repair --intervention-justification justified --fix-scope local --handling fix`], { env: environment, extendEnv: true })
+  assert.include(recorded, "decision=DB1")
+  const matched = yield* checkedText("/bin/sh", ["-c", started.recording.matchCommand
+    .replace("<decision-id>", "DB1")
+    .replace("<reviewer/pass>", "fixture-pass")
+    .replace("<result reference>", "result-reference")
+    .replace("<same-cause note>", "same-cause-note")], { env: environment, extendEnv: true })
+  assert.include(matched, "decision=DB1")
+  assert.isFalse(yield* fs.exists(wrongDatabase))
+  const sql = yield* SqliteClient.make({ filename: canonicalDatabase })
+  assert.deepStrictEqual(yield* sql`select decision_id, status from issues where decision_id = 'DB1'`, [{ decision_id: "DB1", status: "open" }])
+  assert.lengthOf(yield* sql`select issue_id from review_finding_matches`, 1)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("managed review responses expose persisted growth diagnostics", () => Effect.gen(function*() {
@@ -379,6 +421,28 @@ test.effect("owner-resolution recovery shapes preserve terminal decisions", () =
     { decision_id: "OWNER-APPROVED", status: "fixed", owner_resolution: "approved" },
     { decision_id: "OWNER-DECLINED", status: "deferred", owner_resolution: "declined" }
   ])
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("fixed finding recovery keeps its terminal status after review finish", () => Effect.gen(function*() {
+  const { reviewStart, invoke, database } = yield* fixture
+  const started = decode(yield* reviewStart())
+  if (started.reviewId === undefined) return assert.fail("Managed review start must return its review ID")
+  const card = [
+    "--review", started.reviewId, "--decision-id", "FIXED", "--source", "fixture", "--fingerprint", "fixed-recovery", "--summary", "Fixed recovery",
+    "--finding-kind", "maintenance", "--maintenance-evidence", "The recovery hint is replayed by the coordinator.", "--present-cost", "An open hint cannot update a closed review.",
+    "--root-cause", "The recovery formatter replaced a valid terminal status.", "--intervention-justification", "Preserving a schema-valid status makes the correction replayable.",
+    "--fix-scope", "local", "--handling", "fix"
+  ]
+  yield* invoke(["record", ...card, "--status", "open", "--recommended-fix", "Preserve valid statuses in recovery shapes."])
+  yield* invoke(["review", "finish", "--review", started.reviewId, "--outcome", "findings", "--evidence", "Finding ready for repair"])
+
+  const missingRepair = yield* invoke(["record", ...card, "--status", "fixed"]).pipe(Effect.flip)
+  assert.include(missingRepair.stderr, "actionable findings require --recommended-fix")
+  assert.include(missingRepair.stderr, "accepted shape: --status fixed --handling fix --root-cause")
+  yield* invoke(["record", ...card, "--status", "fixed", "--recommended-fix", "Preserve valid statuses in recovery shapes."])
+
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.deepStrictEqual(yield* sql`select decision_id, status from issues where decision_id = 'FIXED'`, [{ decision_id: "FIXED", status: "fixed" }])
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("native command reviews the full historical range once and exposes its saved report", () => Effect.gen(function*() {

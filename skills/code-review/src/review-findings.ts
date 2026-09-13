@@ -55,39 +55,42 @@ const resolveCommandRun = Effect.fn("reviewFindings.resolveCommandRun")(function
 })
 const scopeSummary = Flag.string("scope-summary")
 const toRun = (args: typeof commonRun extends infer _ ? { readonly repo: string; readonly repoPath: string; readonly branch: string; readonly target: string; readonly base: string; readonly head: string } : never): ReviewRun => ({ ...args, status: "active", decisionLog: "" })
-const withDb = <A, E, R>(path: string, effect: Effect.Effect<A, E, R>) => {
+const canonicalizePath = Effect.fn("reviewFindings.canonicalizePath")(function*(candidate: string) {
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  let ancestor = paths.resolve(candidate)
+  const missing: Array<string> = []
+  while (!(yield* fs.exists(ancestor))) {
+    const parent = paths.dirname(ancestor)
+    if (parent === ancestor) break
+    missing.unshift(paths.basename(ancestor))
+    ancestor = parent
+  }
+  const canonicalAncestor = yield* fs.realPath(ancestor).pipe(Effect.orElseSucceed(() => ancestor))
+  return paths.join(canonicalAncestor, ...missing)
+})
+const withResolvedDb = <A, E, R>(path: string, effect: (database: string) => Effect.Effect<A, E, R>) => {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const paths = yield* Path.Path
-    const expandedPath = expandHomePath(path)
-    yield* fs.makeDirectory(paths.dirname(expandedPath), { recursive: true })
+    const database = yield* canonicalizePath(expandHomePath(path))
+    yield* fs.makeDirectory(paths.dirname(database), { recursive: true })
     // Dynamic database selection is the application boundary for this command.
     // @effect-diagnostics-next-line strictEffectProvide:off
-    return yield* effect.pipe(Effect.provide(SqliteClient.layer({ filename: expandedPath })))
+    return yield* effect(database).pipe(Effect.provide(SqliteClient.layer({ filename: database })))
   })
 }
-const withScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: Effect.Effect<A, E, R>) => Effect.gen(function*() {
-  const fs = yield* FileSystem.FileSystem
+const withDb = <A, E, R>(path: string, effect: Effect.Effect<A, E, R>) => withResolvedDb(path, () => effect)
+const withResolvedScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: (database: string) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
   const paths = yield* Path.Path
-  const canonicalizeCandidate = (candidate: string) => Effect.gen(function*() {
-    let ancestor = paths.resolve(candidate)
-    const missing: Array<string> = []
-    while (!(yield* fs.exists(ancestor))) {
-      const parent = paths.dirname(ancestor)
-      if (parent === ancestor) break
-      missing.unshift(paths.basename(ancestor))
-      ancestor = parent
-    }
-    const canonicalAncestor = yield* fs.realPath(ancestor).pipe(Effect.orElseSucceed(() => ancestor))
-    return paths.join(canonicalAncestor, ...missing)
-  })
-  const canonicalRepo = yield* canonicalizeCandidate(repoPath)
-  const canonicalDb = yield* canonicalizeCandidate(expandHomePath(dbPath))
+  const canonicalRepo = yield* canonicalizePath(repoPath)
+  const canonicalDb = yield* canonicalizePath(expandHomePath(dbPath))
   const relative = paths.relative(canonicalRepo, canonicalDb)
   const insideRepo = relative === "" || (!paths.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${paths.sep}`))
   if (insideRepo) return yield* new ScopeDatabaseError({ message: "scope database must be outside the reviewed repository so it cannot contaminate diff measurement" })
-  return yield* withDb(canonicalDb, effect)
+  return yield* withResolvedDb(canonicalDb, effect)
 })
+const withScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: Effect.Effect<A, E, R>) => withResolvedScopeDb(dbPath, repoPath, () => effect)
 
 const init = Command.make("init", { db }, ({ db }) => withDb(db, initialize()).pipe(Effect.andThen(Console.log(db))))
 const withReviewScopeDb = <A, E, R>(args: { readonly db: string; readonly repoPath: string; readonly review: string }, effect: Effect.Effect<A, E, R>) => Effect.gen(function*() {
@@ -296,50 +299,51 @@ const scopeInput = (args: { readonly target: string; readonly scopeSummary: stri
   scopeSummary: args.scopeSummary || `Review ${args.target}`,
   limits: { consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget, nativeCleanTarget: args.nativeCleanTarget, requiredPhases: args.requiredPhase, requireCurrentHead: args.requireCurrentHead }
 })
-const recordingContract = (reviewId: string) => ({
+const shellQuote = (value: string) => /^[A-Za-z0-9_./:%-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
+const recordingContract = (reviewId: string, database: string) => ({
   schemaVersion: FINDING_SCHEMA_VERSION,
-  command: `review-findings record --review ${reviewId}`,
-  matchCommand: `review-findings record --review ${reviewId} --match-of <decision-id> --source <reviewer/pass> --evidence <result reference> --match-note <same-cause note>`,
+  command: `review-findings record --db ${shellQuote(database)} --review ${reviewId}`,
+  matchCommand: `review-findings record --db ${shellQuote(database)} --review ${reviewId} --match-of <decision-id> --source <reviewer/pass> --evidence <result reference> --match-note <same-cause note>`,
   schemaCommand: "review-findings schema",
   acceptedValues: { findingKind: FINDING_KINDS, status: FINDING_STATUSES, fixScope: FINDING_FIX_SCOPES, handling: FINDING_HANDLINGS, rejectionGate: FINDING_REJECTION_GATES }
 })
-const reviewContext = (review: Review) => ({
+const reviewContext = (review: Review, database: string) => ({
   runId: review.runId,
   reviewId: review.reviewId,
   head: review.head,
-  identity: { runId: review.runId, repo: review.repo, repoPath: review.repoPath, branch: review.branch, target: review.target, base: review.base, head: review.head },
-  recording: recordingContract(review.reviewId)
+  identity: { runId: review.runId, db: database, repo: review.repo, repoPath: review.repoPath, branch: review.branch, target: review.target, base: review.base, head: review.head },
+  recording: recordingContract(review.reviewId, database)
 })
 const reviewStartFlags = { db, ...commonRun, ...reviewScopeFlags, phase: Flag.choice("phase", ReviewPhase.literals), evidence: Flag.string("evidence") }
-const reviewStart = Command.make("start", reviewStartFlags, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+const reviewStart = Command.make("start", reviewStartFlags, args => withResolvedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
   yield* initialize()
   const run = toRun(args)
   const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
   const review = yield* startReview(run, args.phase, args.evidence)
   const scope = yield* getScopeBudget(run)
-  yield* Console.log(JSON.stringify({ ...reviewContext(review), phase: review.phase, status: review.status, resumed: review.resumed, scope: { status: scope.status, resumed: resolvedScope.resumed }, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), phase: review.phase, status: review.status, resumed: review.resumed, scope: { status: scope.status, resumed: resolvedScope.resumed }, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
-const reviewStatus = Command.make("status", reviewHandle, args => withDb(args.db, Effect.gen(function*() {
+const reviewStatus = Command.make("status", reviewHandle, args => withResolvedDb(args.db, database => Effect.gen(function*() {
   yield* initialize()
   const review = yield* getReview(args.review)
-  yield* Console.log(JSON.stringify({ ...reviewContext(review), phase: review.phase, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(args.db, review.reviewId) } : {}), limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), phase: review.phase, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(database, review.reviewId) } : {}), limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
-const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.choice("outcome", ReviewOutcome.literals), evidence: Flag.string("evidence") }, args => withDb(args.db, Effect.gen(function*() {
+const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.choice("outcome", ReviewOutcome.literals), evidence: Flag.string("evidence") }, args => withResolvedDb(args.db, database => Effect.gen(function*() {
   yield* initialize()
   const review = yield* finishReview(args.review, args.outcome, args.evidence)
-  yield* Console.log(JSON.stringify({ ...reviewContext(review), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewNative = Command.make("native", {
   db, ...commonRun, ...reviewScopeFlags, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
-}, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
+}, args => withResolvedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
   yield* initialize()
   const run = toRun(args)
   const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
   const review = yield* startReview(run, "native", "Native reviewer")
   const scope = yield* getScopeBudget(run)
-  const report = yield* nativeReportPath(args.db, review.reviewId)
+  const report = yield* nativeReportPath(database, review.reviewId)
   const launch = !review.resumed && (yield* claimNativeLaunch(review.reviewId))
-  yield* Console.log(JSON.stringify({ ...reviewContext(review), status: review.status, scope: { status: scope.status, resumed: resolvedScope.resumed }, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, scope: { status: scope.status, resumed: resolvedScope.resumed }, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
   if (!launch) return
   const git = yield* trustedExecutable("git", review.repoPath)
   const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
@@ -361,7 +365,7 @@ const reviewNative = Command.make("native", {
     Effect.flatMap(() => requireOpenReview(review.reviewId)),
     Effect.onExit(exit => CauseExit.isFailure(exit) ? finishReview(review.reviewId, "blocked", Cause.pretty(exit.cause)) : Effect.void)
   )
-  yield* Console.log(JSON.stringify({ ...reviewContext(review), status: "awaiting-findings", scope: { status: scope.status, resumed: resolvedScope.resumed }, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: "awaiting-findings", scope: { status: scope.status, resumed: resolvedScope.resumed }, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewCommand = Command.make("review").pipe(Command.withSubcommands([reviewStart, reviewStatus, reviewFinish, reviewNative]))
 
