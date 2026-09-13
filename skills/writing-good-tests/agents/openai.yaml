@@ -1,4 +1,4 @@
 interface:
   display_name: "Writing Good Tests"
   short_description: "Write useful tests for implemented behavior"
-  default_prompt: "Use $writing-good-tests to prove behavior for valid inputs and failure cases, improve weak tests you encounter, and pass the required checks before pushing."
+  default_prompt: "Use $writing-good-tests to prove changed behavior for valid inputs and failure cases, improve affected coverage, and pass the required checks before pushing."

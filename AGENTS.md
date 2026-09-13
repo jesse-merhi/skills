@@ -50,13 +50,21 @@ Assign review duties by the task, not by whether an agent is a subagent.
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
-- When a user correction or self-detected mistake reveals a reusable agent
-  failure, use `feedback-hardening`. Before closing, the source coordinator must
-  start its recommendation workflow or explain the blocker. Local repairs may
-  continue; systemic changes require approval.
+- When asking questions, use a synchronous tool that waits for the user's reply. In Codex, use `request_user_input` where available and permitted; do not use `request_user_input_async`. If no suitable synchronous tool is available, ask in the final response and wait for the user's reply. This preference avoids missed async-question notifications; it does not require asking about routine choices.
+- Use `feedback-hardening` before closing a substantive task, after a user
+  correction, and before reporting a blocked workflow. Tell the user what got in
+  the way and what would help next time. This reflection is required after every
+  code review, even when the code is clean. The coordinator owns it; findings-only
+  reviewers send observations in their existing report. Follow the skill for
+  reporting and repair authority.
 
 ## Implementation design
 
+- Start with the requested outcome, the changed behavior and its owner. Read
+  callers, dependencies, tests, docs and history as needed to establish the
+  affected contract and resolve uncertainty. Trace complete flows when a change
+  crosses ownership, lifecycle, security or data boundaries; a local text edit
+  does not require the same investigation.
 - Treat backward compatibility as the user's decision. If the preferred design
   requires breaking changes, explain why, what will break, and the migration
   path, then ask before proceeding. Do not add compatibility layers by default.
@@ -107,6 +115,9 @@ resource lifecycle, and graceful shutdown.
 
 ## Test and review design
 
+- Keep test cleanup tied to the changed behavior and the coverage needed to
+  prove it. Touching a test file does not by itself require reorganizing the
+  file or repairing unrelated tests. Preserve required coverage and checks.
 - Before creating, changing, or removing tests or test infrastructure, load
   `writing-good-tests` in test-planning/portfolio mode. During code review, load it for
   every production behavior change and whenever the diff creates, changes, or
@@ -183,6 +194,11 @@ itself model generation.
 
 ## Working rules
 
+- Select skills by the requested action and artifact, not an incidental keyword.
+  Use explicitly requested skills and required workflow lenses. For optional
+  skills, load the smallest set that serves the task; read supporting references
+  when their branch is needed. For example, an iOS bug without a Figma artifact
+  does not need a Figma translation workflow.
 - Work on a branch in a dedicated git worktree. Never push agent-authored
   feature or fix commits directly to the default branch. When publication is
   authorized, push the work to its feature branch and deliver it through a PR.

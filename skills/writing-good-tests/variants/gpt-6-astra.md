@@ -1,6 +1,6 @@
 ---
 name: writing-good-tests
-description: 'Write useful tests for valid inputs and failure cases, improve weak tests, and verify behavior before pushing.'
+description: 'Write useful tests for valid inputs and failure cases, improve affected coverage, and verify behavior before pushing.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
@@ -28,7 +28,7 @@ Keep distinct denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 
 ## Write tests worth keeping
 
-Improve the test files you touch, rather than only appending tests. Rewrite weak tests, reorganize confusing files and remove tests that prove nothing useful. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
+Keep test cleanup tied to the changed behavior and the coverage needed to prove it. Rewrite a weak test when the task depends on that coverage, reorganize a confusing file only when it obscures the affected scenarios, and remove tests that prove nothing useful within this scope. Preserve coverage for required behavior; rewrite a weak test when deleting it would lose that coverage.
 
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.
@@ -42,9 +42,11 @@ Improve the test files you touch, rather than only appending tests. Rewrite weak
 
 Implement the authorized behavior and check its result against the agreed contract. Then write tests that prove it works for valid inputs and relevant failure cases. Reuse existing tests when they already prove it, including for covered refactors.
 
-Run focused checks to resolve uncertainty, diagnose failures or verify repairs. For review fixes, establish a reachable failure and repair authority before editing; a synthetic test alone proves neither.
+Finish the related edits, then run broad tests, lint, typecheck and builds. Run a focused check earlier only to answer a specific question, diagnose a failure or verify a fix. Before fixing a review finding, confirm the bug can happen and the fix is within the authorized task.
 
-Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After review repairs, rerun affected tests and required final checks. Otherwise, repeat or broaden testing only for changed behavior, failures or unresolved concerns. Stop on the first test error and diagnose it before rerunning.
+When delegating, assign one owner for shared validation before workers start checks. Workers return their changes and focused evidence; the owner validates the integrated batch. Reuse results while the relevant code, callers, dependencies, fixtures, configuration and environment still apply.
+
+Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After further edits or review repairs, rerun the affected checks and required final checks; an individual file edit is not a reason to repeat the whole validation set. Broaden verification when the impact cannot be bounded or a failure or unresolved concern requires it. Stop on the first test error and diagnose it before rerunning.
 
 ## Check cost and finish
 

@@ -21,6 +21,10 @@ AI did not delete software engineering. It moved most of the typing somewhere
 else and made the review problem much sharper. These are the rails I use to stay
 on the right side of that.
 
+## Maintaining this repository
+
+When editing this repository, consult [MAINTENANCE.md](MAINTENANCE.md) for due upstream checks. These checks are for repository contributors, not installation or ordinary skill use.
+
 ## Quick start
 
 For a local, disk-backed skill-editing workspace, run `bun run review:skills`.
@@ -230,7 +234,7 @@ Triage and blocked-check handling are now references in `code-review`; the forme
 
 | Skill | What it does |
 | --- | --- |
-| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Implements behavior, tests valid inputs and failure cases, and improves the test files it touches. |
+| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Implements behavior, tests valid inputs and failure cases, and improves affected coverage. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
@@ -245,7 +249,7 @@ Triage and blocked-check handling are now references in `code-review`; the forme
 | [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
-| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Turns evidence-backed user corrections or self-detected mistakes revealing reusable agent failures into one independent systemic-fix recommendation, waits for approval, then implements the selected repair. |
+| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Tells the user what got in the way after tasks and reviews, then verifies authorized improvements. |
 
 ### Frontend and design
 

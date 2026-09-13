@@ -19,7 +19,7 @@ const cli = Command.make("codex-handoff-tmux", {
   file: Flag.string("file"), focus: Flag.string("focus").pipe(Flag.withDefault("")), cwd: Flag.string("cd").pipe(Flag.withDefault(process.cwd())),
   mode: Flag.choice("mode", ["new", "fork-last"] as const).pipe(Flag.withDefault("new")), windowName: Flag.string("window-name").pipe(Flag.withDefault("handoff")),
   relationship: Flag.choice("relationship", ["continuation", "aside"] as const).pipe(Flag.withDefault("continuation")),
-  model: Flag.string("model").pipe(Flag.withDefault("gpt-6-astra")),
+  model: Flag.optional(Flag.string("model")),
   reasoningEffort: Flag.choice("reasoning-effort", ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] as const).pipe(Flag.withDefault("medium")),
   tmuxTarget: Flag.optional(Flag.string("tmux-target")), worktree: Flag.optional(Flag.string("worktree")), worktreeName: Flag.optional(Flag.string("worktree-name")),
   branch: Flag.optional(Flag.string("branch")), base: Flag.string("base").pipe(Flag.withDefault("HEAD")), dryRun: Flag.boolean("dry-run"), runCodex: Flag.boolean("run-codex")
@@ -59,8 +59,9 @@ const cli = Command.make("codex-handoff-tmux", {
   }
 
   const prompt = [`Read the handoff document before acting:\n\n${args.file}\n`, ...(args.focus.length === 0 ? [] : [`Next session focus:\n\n${args.focus}\n`]), `Working directory:\n\n${workdir}\n`, ...(wantsWorktree ? ["This directory was prepared as this session's dedicated git worktree. Do not use the originating worktree for implementation.\n"] : []), "Start by reading the handoff, then continue from it as a full independent session. Keep the final reply short and report what you did."].join("\n")
+  const modelArgs = Option.isSome(args.model) ? ["--model", args.model.value] : []
   if (args.runCodex) {
-    const codexArgs = [...(args.mode === "fork-last" ? ["fork", "--last"] : []), "--cd", workdir, "--model", args.model, "-c", `model_reasoning_effort="${args.reasoningEffort}"`, prompt]
+    const codexArgs = [...(args.mode === "fork-last" ? ["fork", "--last"] : []), "--cd", workdir, ...modelArgs, "-c", `model_reasoning_effort="${args.reasoningEffort}"`, prompt]
     yield* checkedInherit("codex", codexArgs, { cwd: workdir, displayCommand: "codex [handoff prompt]" })
     return
   }
@@ -73,7 +74,7 @@ const cli = Command.make("codex-handoff-tmux", {
   const target = Option.getOrElse(args.tmuxTarget, () => Option.getOrElse(tmuxPane, () => ""))
   if (args.relationship === "continuation" && target.length === 0) return yield* new HandoffError({ message: "A continuation handoff requires TMUX_PANE or --tmux-target." })
   const helper = fileURLToPath(new URL("../scripts/codex-handoff-tmux", import.meta.url))
-  const nested = [helper, "--run-codex", "--file", args.file, ...(args.focus.length === 0 ? [] : ["--focus", args.focus]), "--cd", workdir, "--mode", args.mode, "--model", args.model, "--reasoning-effort", args.reasoningEffort, ...(wantsWorktree ? ["--worktree", workdir] : [])].map(quote).join(" ")
+  const nested = [helper, "--run-codex", "--file", args.file, ...(args.focus.length === 0 ? [] : ["--focus", args.focus]), "--cd", workdir, "--mode", args.mode, ...modelArgs, "--reasoning-effort", args.reasoningEffort, ...(wantsWorktree ? ["--worktree", workdir] : [])].map(quote).join(" ")
   const tmuxArgs = args.relationship === "continuation"
     ? ["split-window", "-h", "-c", workdir, "-t", target, nested]
     : ["new-window", "-c", workdir, "-n", args.windowName, nested]

@@ -11,6 +11,8 @@ metadata:
 
 Write as though you're explaining the job to a capable colleague. Remove unnecessary ideas rather than making sentences denser. Preserve the user's settled decisions and deliberate edits.
 
+Define the requested outcome, required evidence, completion criteria, and decisions reserved for the user. Prescribe steps where order or a domain contract matters; leave routine execution choices to the agent. Remove obsolete model workarounds without weakening required checks or approval boundaries.
+
 ## Write plainly
 
 - Use ordinary English and concrete actions. Introduce an unfamiliar step before referring to it.
@@ -24,11 +26,11 @@ For example, write "Explain what changed, why it matters, and show the result" r
 
 ## Give each instruction one home
 
-Read the relevant skills, AGENTS.md, CLAUDE.md, and linked documents together. Resolve contradictions at their owner instead of adding another rule.
+Read applicable skills and scoped AGENTS.md or CLAUDE.md instructions. Consult linked documents when they govern the current decision. Resolve contradictions at their owner instead of adding another rule.
 
 When another skill or reference owns an instruction, link it and stop. Do not repeat or paraphrase its rules beside the link. Put each link at the step that uses it, and each guardrail beside the action it governs.
 
-Keep short, routinely needed guidance inline. Use references for substantial examples or genuinely conditional material, such as host-specific commands. A standalone skill needs a distinct useful job; keep incidental steps with their owning workflow.
+Keep short, routinely needed guidance inline. Route distinct workflows and substantial examples to references, stating when each is needed rather than requiring every reference upfront. A standalone skill needs a distinct useful job; keep incidental steps with their owning workflow.
 
 Record verified external origins, paths, and known revisions in frontmatter metadata so they can be refreshed. Keep operational links in the body.
 
@@ -42,7 +44,7 @@ Describe the normal path first. For example, check a provider CLI's version if a
 
 ## Maintain the skill
 
-Preserve existing invocation policy unless the user requests a change. Give model-invoked skills precise, distinct triggers. In Codex, explicit-only skills use `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; model-invoked skills omit that policy.
+Preserve existing invocation policy unless the user requests a change. Keep model-invoked descriptions short and front-load the action and artifact that trigger the skill, not a broad topic. In Codex, explicit-only skills use `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; model-invoked skills omit that policy.
 
 Keep every-turn skills in one file and `SKILL.md` within the repository's 500-line ceiling. References may link only to their own `SKILL.md` among files under `skills/`, not to other references.
 

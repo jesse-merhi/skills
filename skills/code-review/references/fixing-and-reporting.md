@@ -20,7 +20,7 @@ Record every checked candidate, including rejected and uncertain ones, through `
 
 Before editing, group the accepted inventory by failed assumption. Trace other callers and sibling implementations, including failure and recovery. Repair the shared cause and confirmed affected instances together, preferring repository or dependency solutions. Check assumptions introduced by the fix: adding a lock also requires checking cancellation, ownership and runtime availability. This is implementation work, not another review invocation.
 
-Fix proven, worthwhile problems accepted by the CLI within existing authority and budget. Keep independent adjacent work as a nonblocking follow-up. Ask about missing permission, expanded scope or concrete high-risk choices; preserve explicit requirements for breaking changes, dependencies, access and publication. `investigate` and `consult` do not authorize edits, including tentative keep/revert repairs.
+Fix proven, worthwhile problems accepted by the CLI within existing authority and budget. Keep independent adjacent work as a nonblocking follow-up. Treat measured diff growth through the scope diagnostic; ask about missing permission, unrelated work or concrete high-risk choices; preserve explicit requirements for breaking changes, dependencies, access and publication. `investigate` and `consult` do not authorize edits, including tentative keep/revert repairs.
 
 Queue unanswered questions and continue independent authorized work. Repeated reports share one question; silence is not approval. Record the owner's answer before dependent work. Wait when nothing independent remains or the CLI blocks continuation.
 

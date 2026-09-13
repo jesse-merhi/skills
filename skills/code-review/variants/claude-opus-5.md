@@ -11,7 +11,7 @@ Use the model policy in the applicable `AGENTS.md`. Review launchers own their e
 
 ## 1. Start the review
 
-Check out the PR branch or the commit in question. Use the PR's base, or the requested commit's parent. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
+Check out the branch or commit in question. For a branch review, use the PR's base or the caller's resolved planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
 
 Fill these values from the checkout and PR:
 
@@ -25,7 +25,7 @@ review-findings scope-start --repo <owner/repo> --repo-path <checkout> \
 
 For a single-phase request, specify only that phase. Use two clean native passes when explicitly requested.
 
-Prepare the runtime and validation commands once, reusing an authorized worktree. Check tool versions against the repository. Identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
 To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands. Extend an expired timer only under existing explicit user authority, using [the budget-extension command](references/findings-registry.md).
 
@@ -39,9 +39,11 @@ Use [the review commands](references/recording-reviews.md) to save the complete 
 
 Follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
 
-## 4. Check, push and summarize
+## 4. Check, reflect and finish
 
 Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Save completed checks with `review-findings record-command --review <review-id>`.
+
+After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
@@ -52,7 +54,7 @@ review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
   --reason "Requested reviews complete with no open decisions" --json
 ```
 
-Run completion only after all requested reviews and checks pass with no open decisions. If a command blocks work, [handle its reported reason](references/blocked-checks.md).
+Run completion only after all requested reviews and checks pass with no open decisions. For diagnostic growth warnings or blocked work, [handle the reported reason](references/blocked-checks.md). Growth warnings call for internal reassessment while authorized work continues.
 
 [Push authorized fixes](references/publish-fixes.md), then [summarize the saved results](references/final-output.md).
 

@@ -2,6 +2,8 @@
 
 Full native-then-cold `code-review` grants one normal final push to an existing PR authored by the authenticated GitHub account. Finish both phases, selected local validation and saved review completion before publishing. Push only reviewed commits; unresolved findings or incomplete validation keep fixes local. Native-only, cold-only and bot-only reviews have no automatic push authority here; separately authorized publication retains its own scope.
 
+Before pushing, inspect actual CI triggers and honor the calling workflow’s inspection-before-CI ordering and spending authority. A push authorization does not override those constraints.
+
 ## Verify the existing destination
 
 ```sh

@@ -1,9 +1,9 @@
 # Codex launch settings
 
-Use the coordinator defaults from the model policy in the applicable `AGENTS.md` when the user has not selected a model or effort. Preserve the user's model and effort choices independently, including choices already made for this task.
+Preserve the user's model and effort choices independently, including choices already made for this task. When no model is specified, or the user asks for their configured default, omit the model override wherever the launcher supports it. Do not replace that omission with a coordinator model from `AGENTS.md` or ask the user to choose again. A new session uses the destination's configured default; a fork may inherit its source session's settings.
 
-Pass settings through the launcher, not just the prompt. `codex-handoff-tmux` already defaults to the coordinator settings; pass `--model` and `--reasoning-effort` when preserving an explicit user choice. Direct interactive and app launchers use their supported model and effort fields.
+Pass explicit choices through the launcher, not just the prompt. `codex-handoff-tmux` accepts an optional `--model` and a separate `--reasoning-effort`; its effort fallback remains `medium`. When effort is unspecified, follow the applicable `AGENTS.md` effort policy within the launcher's supported settings. Direct interactive and app launchers use their supported model and effort fields.
 
-Honor the launcher's authority requirements. If it requires an explicit user model request, ask for that choice rather than treating skill invocation as permission or bypassing the restriction. If a setting is unsupported, preserve the brief and report the limitation rather than switching silently.
+Follow the launcher's contract. For example, Codex app task creation permits a model override only when the user explicitly requests that model; otherwise omit the field. If a destination requires a model and offers no configured-default path, ask only for that missing choice. If an explicit model or effort is unsupported, preserve the brief and report the limitation without silently substituting a setting or launching a replacement session.
 
-Record the selected settings and a short reason for the effort choice in the brief. Report requested settings separately from verified running settings; a queued launch is not proof of the effective configuration.
+Record explicit choices, any omitted settings, and the reason for a selected effort in the brief. Report requested settings separately from verified running settings; a queued launch is not proof of the effective configuration.

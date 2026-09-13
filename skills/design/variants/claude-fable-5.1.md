@@ -18,7 +18,7 @@ Start with what the person is trying to do and the real content they need. Read 
 
 Choose a clear hierarchy, typography, spacing, and palette that fit the subject. Put the important content and actions first. Make distinctive choices where the brief allows them, not a new design system for every small change.
 
-Build a working slice with realistic content and the relevant empty, loading, error, and narrow-screen states. Inspect it while working; refine what looks unclear or awkward.
+For implementation work, build a working slice with realistic content and the relevant empty, loading, error, and narrow-screen states. Inspect it while working; refine what looks unclear or awkward.
 
 A review reports observed problems and suggested changes; it does not authorize implementation. For implementation, use `frontend-ui-validation` or the project's native UI checks. Reuse current evidence from the task rather than launching another identical validation pass.
 

@@ -58,14 +58,17 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   const last = progress.at(-1)
   if (last !== undefined && last.head !== currentHead && !incompletePhases.includes(last.phase)) incompletePhases.push(last.phase)
   const stoppingReasons: Array<string> = []
+  const diagnosticWarnings: Array<string> = []
   if (row?.settings == null || startedAt === null) stoppingReasons.push("LIMITS_NOT_INITIALIZED")
   if (deadline !== null && remainingSeconds === 0) stoppingReasons.push("TIME_EXPIRED")
   if (openQuestions.length >= settings.consultCap) stoppingReasons.push("CONSULT_CAP_REACHED")
   if (last !== undefined && last.head === currentHead && completed.has(last.phase) && openQuestions.length > 0) stoppingReasons.push("QUEUE_FIXED_POINT")
   if (phase !== undefined && completed.has(phase)) stoppingReasons.push("PHASE_TARGET_MET")
   const scope = (yield* sql<{ readonly status: string; readonly growth_lines: number; readonly allowed_growth_lines: number; readonly new_binary_production_paths_json: string }>`select status, growth_lines, allowed_growth_lines, new_binary_production_paths_json from review_scope_budgets where run_id = ${runId}`)[0]
+  if (scope !== undefined && scope.growth_lines > scope.allowed_growth_lines) {
+    diagnosticWarnings.push("DIFF_GROWTH_EXCEEDED")
+  }
   if (scope?.status === "blocked") {
-    if (scope.growth_lines > scope.allowed_growth_lines) stoppingReasons.push("DIFF_GROWTH_EXCEEDED")
     if (scope.new_binary_production_paths_json !== "[]") stoppingReasons.push("NEW_BINARY_PATHS")
   }
   if (scope?.status === "rebaseline-required") stoppingReasons.push("SCOPE_REBASELINE_REQUIRED")
@@ -79,9 +82,9 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   return {
     runId, startedAt, deadline, timeBudgetSeconds, remainingSeconds, extensions, consultCap: settings.consultCap,
     openQuestionCount: openQuestions.length, openQuestions, cleanTargets, incompletePhases, repairAttempts,
-    stoppingReasons, allowed: stoppingReasons.length === 0,
+    diagnosticWarnings, stoppingReasons, allowed: stoppingReasons.length === 0,
     nextAction: stoppingReasons.includes("TIME_EXPIRED") ? "handoff"
-      : stoppingReasons.some(reason => ["CONSULT_CAP_REACHED", "QUEUE_FIXED_POINT", "DIFF_GROWTH_EXCEEDED", "NEW_BINARY_PATHS", "SCOPE_REBASELINE_REQUIRED", "REPAIR_CONSULT_REQUIRED"].includes(reason)) ? "consult"
+      : stoppingReasons.some(reason => ["CONSULT_CAP_REACHED", "QUEUE_FIXED_POINT", "NEW_BINARY_PATHS", "SCOPE_REBASELINE_REQUIRED", "REPAIR_CONSULT_REQUIRED"].includes(reason)) ? "consult"
       : stoppingReasons.includes("PHASE_TARGET_MET") ? "advance-phase-or-complete"
       : stoppingReasons.includes("LIMITS_NOT_INITIALIZED") ? "scope-start" : "continue"
   }
