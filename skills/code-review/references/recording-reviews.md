@@ -2,16 +2,16 @@
 
 Use the coordinator’s database throughout. The review entrypoint initializes missing scope or resumes saved state, returning the run identity, `reviewId` and recording contract. Keep these values for later commands.
 
-For the normal Codex review, `review-findings review native` uses the saved scope flags from setup, launches the reviewer once and returns the report path. Repeating it while the review is open returns the same ID and does not launch again.
+For the normal Codex review, `review-findings review native` resolves the checkout and saved review context, launches the reviewer once and returns the report path. Repeating it while the review is open returns the same ID and does not launch again.
 
 For an independently dispatched reviewer or another native engine, reserve the review first:
 
 ```sh
-review-findings review start <saved scope flags> --phase cold \
+review-findings review start --phase cold \
   --evidence "Report planned at <run-owned-report-path>"
 ```
 
-The reservation evidence identifies the planned report location; it does not claim dispatch or completion. Pass that location to the reviewer and use the actual report reference when finishing. Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
+The reservation evidence identifies the planned report location; it does not claim dispatch or completion. Pass that location to the reviewer and use the actual report reference when finishing. Check that the returned identity matches the requested comparison before dispatch. Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
 
 ## Save the report
 

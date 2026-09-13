@@ -499,6 +499,12 @@ interface UnresolvedFindingRow {
   readonly evidence_version: number
 }
 interface ActiveScopeRow { readonly run_id: string; readonly target: string }
+interface SavedReviewContextRow {
+  readonly repo: string
+  readonly target: string
+  readonly base: string
+  readonly status: string
+}
 interface PriorScopeRow { readonly run_id: string; readonly base_ref: string }
 interface ScopeStatusRow { readonly status: string }
 interface ReviewFileAttestationRow {
@@ -1247,6 +1253,49 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
   const check = yield* checkScopeBudget(verifiedRun, "A repeated review keeps the branch's original LOC budget.")
   if (check.blocked) return yield* Effect.fail(new ScopeBudgetBlocked(check))
   return check
+})
+
+export const findSavedReviewContext = Effect.fn("ReviewFindings.findSavedReviewContext")(function*(
+  repoPath: string,
+  branch: string,
+  filters: { readonly target: string; readonly base: string }
+) {
+  const sql = yield* SqlClient.SqlClient
+  const tables = yield* sql.unsafe<{ readonly name: string }>(
+    "select name from sqlite_master where type = 'table' and name in ('review_runs', 'review_scope_budgets')"
+  )
+  if (tables.length !== 2) return undefined
+  const repoKey = yield* canonicalRepoKey(repoPath)
+  const rows = yield* sql.unsafe<SavedReviewContextRow>(
+    `select review_runs.repo_name as repo, review_runs.target, review_scope_budgets.base_ref as base,
+        review_scope_budgets.status
+      from review_scope_budgets join review_runs on review_runs.id = review_scope_budgets.run_id
+      where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ?
+        and (? = '' or review_runs.target = ?)`,
+    [repoKey, branch, filters.target, filters.target]
+  )
+  const requestedBase = filters.base.length === 0 ? undefined : yield* canonicalBaseIdentity(repoPath, filters.base).pipe(
+    Effect.orElseSucceed(() => `raw:${filters.base}`)
+  )
+  const matches: Array<SavedReviewContextRow> = []
+  for (const row of rows) {
+    if (requestedBase === undefined) {
+      matches.push(row)
+      continue
+    }
+    const savedBase = yield* canonicalBaseIdentity(repoPath, row.base).pipe(Effect.orElseSucceed(() => `raw:${row.base}`))
+    if (savedBase === requestedBase) matches.push(row)
+  }
+  const active = matches.filter((row) => row.status !== "complete")
+  if (active.length > 1) return yield* Effect.fail(new InvalidScopeBudget(`multiple active review contexts match branch '${branch}'; pass --target and --base explicitly`))
+  if (active[0] !== undefined) return active[0]
+  const completed = new Map<string, SavedReviewContextRow>()
+  for (const row of matches) {
+    const baseIdentity = yield* canonicalBaseIdentity(repoPath, row.base).pipe(Effect.orElseSucceed(() => `raw:${row.base}`))
+    completed.set(`${row.target}\0${baseIdentity}`, row)
+  }
+  if (completed.size === 1) return completed.values().next().value
+  return undefined
 })
 
 /** Resolve the persisted scope once, creating it only when this target has no scope yet. */

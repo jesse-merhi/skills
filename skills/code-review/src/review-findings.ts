@@ -14,7 +14,8 @@ import { fileURLToPath } from "node:url"
 
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireFinishedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
+import { completeReviewContext, resolveLocalReviewContext, ReviewContextError, type ReviewContextInput } from "./ReviewContext.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, findSavedReviewContext, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireFinishedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
 import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
@@ -39,6 +40,11 @@ const commonRun = {
   repo: Flag.string("repo"), repoPath: Flag.string("repo-path"), branch: Flag.string("branch").pipe(Flag.withDefault("")),
   target: Flag.string("target"), base: Flag.string("base").pipe(Flag.withDefault("")), head: Flag.string("head").pipe(Flag.withDefault(""))
 }
+const inferredRun = {
+  repo: Flag.string("repo").pipe(Flag.withDefault("")), repoPath: Flag.string("repo-path").pipe(Flag.withDefault("")),
+  branch: Flag.string("branch").pipe(Flag.withDefault("")), target: Flag.string("target").pipe(Flag.withDefault("")),
+  base: Flag.string("base").pipe(Flag.withDefault("")), head: Flag.string("head").pipe(Flag.withDefault(""))
+}
 const recordRunFlags = {
   ...commonRun, review: Flag.string("review").pipe(Flag.withDefault("")),
   repo: commonRun.repo.pipe(Flag.withDefault("")), repoPath: commonRun.repoPath.pipe(Flag.withDefault("")), target: commonRun.target.pipe(Flag.withDefault(""))
@@ -54,7 +60,16 @@ const resolveCommandRun = Effect.fn("reviewFindings.resolveCommandRun")(function
   return toRun(args)
 })
 const scopeSummary = Flag.string("scope-summary")
-const toRun = (args: typeof commonRun extends infer _ ? { readonly repo: string; readonly repoPath: string; readonly branch: string; readonly target: string; readonly base: string; readonly head: string } : never): ReviewRun => ({ ...args, status: "active", decisionLog: "" })
+const toRun = (args: typeof commonRun extends infer _ ? { readonly repo: string; readonly repoPath: string; readonly branch: string; readonly target: string; readonly base: string; readonly head: string } : never): ReviewRun => ({
+  repo: args.repo,
+  repoPath: args.repoPath,
+  branch: args.branch,
+  target: args.target,
+  base: args.base,
+  head: args.head,
+  status: "active",
+  decisionLog: ""
+})
 const canonicalizePath = Effect.fn("reviewFindings.canonicalizePath")(function*(candidate: string) {
   const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
@@ -81,7 +96,7 @@ const withSelectedDb = <A, E, R>(path: string, effect: (database: string) => Eff
   })
 }
 const withDb = <A, E, R>(path: string, effect: Effect.Effect<A, E, R>) => withSelectedDb(path, () => effect)
-const withSelectedScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: (database: string) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
+const selectedScopeDb = Effect.fn("reviewFindings.selectedScopeDb")(function*(dbPath: string, repoPath: string) {
   const paths = yield* Path.Path
   const canonicalRepo = yield* canonicalizePath(repoPath)
   const selectedDb = paths.resolve(expandHomePath(dbPath))
@@ -89,7 +104,10 @@ const withSelectedScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: 
   const relative = paths.relative(canonicalRepo, canonicalDb)
   const insideRepo = relative === "" || (!paths.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${paths.sep}`))
   if (insideRepo) return yield* new ScopeDatabaseError({ message: "scope database must be outside the reviewed repository so it cannot contaminate diff measurement" })
-  return yield* withSelectedDb(selectedDb, effect)
+  return selectedDb
+})
+const withSelectedScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: (database: string) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
+  return yield* withSelectedDb(yield* selectedScopeDb(dbPath, repoPath), effect)
 })
 const withScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: Effect.Effect<A, E, R>) => withSelectedScopeDb(dbPath, repoPath, () => effect)
 
@@ -315,15 +333,35 @@ const reviewContext = (review: Review, database: string) => ({
   identity: { runId: review.runId, db: database, repo: review.repo, repoPath: review.repoPath, branch: review.branch, target: review.target, base: review.base, head: review.head },
   recording: recordingContract(review.reviewId, database)
 })
-const reviewStartFlags = { db, ...commonRun, ...reviewScopeFlags, phase: Flag.choice("phase", ReviewPhase.literals), evidence: Flag.string("evidence") }
-const reviewStart = Command.make("start", reviewStartFlags, args => withSelectedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
-  yield* initialize()
-  const run = toRun(args)
-  const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
-  const review = yield* startReview(run, args.phase, args.evidence)
-  const scope = yield* getScopeBudget(run)
-  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), phase: review.phase, status: review.status, resumed: review.resumed, scope: { status: scope.status, resumed: resolvedScope.resumed }, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
-})))
+const readSavedContext = Effect.fn("reviewFindings.readSavedContext")(function*(database: string, context: ReviewContextInput) {
+  const fs = yield* FileSystem.FileSystem
+  if (!(yield* fs.exists(database))) return undefined
+  return yield* findSavedReviewContext(context.repoPath, context.branch, { target: context.target, base: context.base }).pipe(
+    // Reading inferred context must not initialize or migrate the selected database.
+    // @effect-diagnostics-next-line strictEffectProvide:off
+    Effect.provide(SqliteClient.layer({ filename: database, readonly: true }))
+  )
+})
+const resolveReviewRun = Effect.fn("reviewFindings.resolveReviewRun")(function*(args: ReviewContextInput & { readonly db: string }) {
+  const local = yield* resolveLocalReviewContext(args)
+  const database = yield* selectedScopeDb(args.db, local.repoPath)
+  const saved = yield* readSavedContext(database, local)
+  const resolved = yield* completeReviewContext(local, saved)
+  return { database, run: toRun(resolved) }
+})
+const reviewStartFlags = { db, ...inferredRun, ...reviewScopeFlags, phase: Flag.choice("phase", ReviewPhase.literals), evidence: Flag.string("evidence") }
+const reviewStart = Command.make("start", reviewStartFlags, args => Effect.gen(function*() {
+  if (args.evidence.trim().length === 0) return yield* new ReviewContextError({ message: "review start requires meaningful --evidence describing the review source" })
+  const resolved = yield* resolveReviewRun(args)
+  return yield* withSelectedDb(resolved.database, database => Effect.gen(function*() {
+    yield* initialize()
+    const run = resolved.run
+    const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput({ ...args, target: run.target }))
+    const review = yield* startReview(run, args.phase, args.evidence)
+    const scope = yield* getScopeBudget(run)
+    yield* Console.log(JSON.stringify({ ...reviewContext(review, database), phase: review.phase, status: review.status, resumed: review.resumed, scope: { status: scope.status, resumed: resolvedScope.resumed }, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  }))
+}))
 const reviewStatus = Command.make("status", reviewHandle, args => withSelectedDb(args.db, database => Effect.gen(function*() {
   yield* initialize()
   const review = yield* getReview(args.review)
@@ -335,39 +373,42 @@ const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.cho
   yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewNative = Command.make("native", {
-  db, ...commonRun, ...reviewScopeFlags, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
-}, args => withSelectedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
-  yield* initialize()
-  const run = toRun(args)
-  const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
-  const review = yield* startReview(run, "native", "Native reviewer")
-  const scope = yield* getScopeBudget(run)
-  const report = yield* nativeReportPath(database, review.reviewId)
-  const launch = !review.resumed && (yield* claimNativeLaunch(review.reviewId))
-  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, scope: { status: scope.status, resumed: resolvedScope.resumed }, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
-  if (!launch) return
-  const git = yield* trustedExecutable("git", review.repoPath)
-  const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
-  const launchAt = (cwd: string) => checkedInherit(process.execPath, [fileURLToPath(new URL("./codex-review.ts", import.meta.url)), "--mode", "branch", "--base", review.baseOid, "--once", "--codex-bin", args.codexBin, "--output", report], { cwd })
-  const launchHistorical = Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const parent = yield* fs.makeTempDirectory({ prefix: "native-review." })
-    const checkout = `${parent}/checkout`
-    return yield* Effect.acquireUseRelease(
-      checkedText(git, ["worktree", "add", "--detach", checkout, review.head], { cwd: review.repoPath }),
-      () => launchAt(checkout),
-      () => checkedText(git, ["worktree", "remove", checkout], { cwd: review.repoPath }).pipe(
-        Effect.andThen(fs.remove(parent, { recursive: true })),
-        Effect.catch(error => Console.error(`Could not remove review checkout ${checkout}: ${String(error)}`))
+  db, ...inferredRun, ...reviewScopeFlags, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
+}, args => Effect.gen(function*() {
+  const resolved = yield* resolveReviewRun(args)
+  return yield* withSelectedDb(resolved.database, database => Effect.gen(function*() {
+    yield* initialize()
+    const run = resolved.run
+    const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput({ ...args, target: run.target }))
+    const review = yield* startReview(run, "native", "Native reviewer")
+    const scope = yield* getScopeBudget(run)
+    const report = yield* nativeReportPath(database, review.reviewId)
+    const launch = !review.resumed && (yield* claimNativeLaunch(review.reviewId))
+    yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, scope: { status: scope.status, resumed: resolvedScope.resumed }, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+    if (!launch) return
+    const git = yield* trustedExecutable("git", review.repoPath)
+    const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
+    const launchAt = (cwd: string) => checkedInherit(process.execPath, [fileURLToPath(new URL("./codex-review.ts", import.meta.url)), "--mode", "branch", "--base", review.baseOid, "--once", "--codex-bin", args.codexBin, "--output", report], { cwd })
+    const launchHistorical = Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const parent = yield* fs.makeTempDirectory({ prefix: "native-review." })
+      const checkout = `${parent}/checkout`
+      return yield* Effect.acquireUseRelease(
+        checkedText(git, ["worktree", "add", "--detach", checkout, review.head], { cwd: review.repoPath }),
+        () => launchAt(checkout),
+        () => checkedText(git, ["worktree", "remove", checkout], { cwd: review.repoPath }).pipe(
+          Effect.andThen(fs.remove(parent, { recursive: true })),
+          Effect.catch(error => Console.error(`Could not remove review checkout ${checkout}: ${String(error)}`))
+        )
       )
+    })
+    yield* (checkoutHead === review.head ? launchAt(review.repoPath) : launchHistorical).pipe(
+      Effect.flatMap(() => requireOpenReview(review.reviewId)),
+      Effect.onExit(exit => CauseExit.isFailure(exit) ? finishReview(review.reviewId, "blocked", Cause.pretty(exit.cause)) : Effect.void)
     )
-  })
-  yield* (checkoutHead === review.head ? launchAt(review.repoPath) : launchHistorical).pipe(
-    Effect.flatMap(() => requireOpenReview(review.reviewId)),
-    Effect.onExit(exit => CauseExit.isFailure(exit) ? finishReview(review.reviewId, "blocked", Cause.pretty(exit.cause)) : Effect.void)
-  )
-  yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: "awaiting-findings", scope: { status: scope.status, resumed: resolvedScope.resumed }, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
-})))
+    yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: "awaiting-findings", scope: { status: scope.status, resumed: resolvedScope.resumed }, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  }))
+}))
 const reviewCommand = Command.make("review").pipe(Command.withSubcommands([reviewStart, reviewStatus, reviewFinish, reviewNative]))
 
 const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, reviewCommand, pathCommand]))
@@ -382,5 +423,5 @@ command.pipe(Command.run({ version: "4.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof ReviewContextError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))
