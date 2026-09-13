@@ -12,6 +12,8 @@ Build a shared understanding of the entire decision tree and get the user's conf
 
 Own the factual investigation. If an environmental fact is needed, dispatch a background subagent to establish it while you continue with independent questions. Only questions downstream of that unknown fact wait.
 
+In Codex, select the configured `investigator` through the launcher's role field (`agent_type` on `spawn_agent`). Supply the factual objective, worktree and revision or source, bounded scope, constraints, acceptance criteria and relevant evidence; the role definition supplies reusable instructions, skills and model settings. Keep question sequencing and synthesis with the coordinator and decisions with the user. If that role is unavailable, report it and establish the fact locally. Other harnesses, including OpenClaw, use their own supported launcher settings under `AGENTS.md`; do not assume their spawn API accepts Codex role names.
+
 Own the question order. The next round contains the whole frontier whose prerequisites are already settled. Do not ask a dependent question as though an answer earlier in the same round were known. For each frontier question give a concise recommendation, use the format below, and wait for the user's answers.
 
 ```markdown

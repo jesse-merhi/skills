@@ -9,6 +9,10 @@ Run native review, repair confirmed problems, then obtain native and independent
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
+For useful bounded repair work, select Codex's configured `implementer`; use `investigator` for a specific unresolved code or dependency question. Pass task-specific objective, worktree and revision, owned scope, constraints, acceptance criteria and evidence through the launcher's task message; select the role with `agent_type` on `spawn_agent`. The role definition owns reusable behavior and model settings. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery here. For the cold phase, select `findings_reviewer` under the independent-review instructions; it never replaces this coordinator or the native phase. Delegate only work that benefits from a separate worker.
+
+Use named roles only when exposed by the current launcher. Report missing roles and continue suitable local work without reconstructing role prompts or changing live configuration. Other harnesses, including OpenClaw, use their supported launch settings under `AGENTS.md`; do not pass Codex role selectors to an API that does not support them.
+
 ## 1. Start the review
 
 Check out the branch or commit in question. For a branch review, use the PR's base or the caller's resolved planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.

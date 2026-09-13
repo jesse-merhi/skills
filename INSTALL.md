@@ -130,6 +130,22 @@ does not change tools, approvals, or sandbox permissions, and is not a security 
 
 Skip this step for other harnesses.
 
+### Optional orchestration profile
+
+When the user requests Codex orchestration, install the repo-owned profiles after the runtime prerequisites in step 5:
+
+```sh
+./install-codex-profiles --dry-run
+./install-codex-profiles
+codex --profile orchestration
+```
+
+The command links `orchestration.config.toml`, its `orchestration/` role directory and the existing `findings-reviewer.config.toml`. It preserves `config.toml`, global agents, skills and permissions. Normal sessions do not select these roles; the orchestration profile registers them only when selected. Do not run the command merely to install skills.
+
+Use `--root` for a separate Codex configuration directory. If a destination belongs to a verified earlier clone, use `--previous-source <old-repository-root>` to transfer just those links, including broken links. Local files, directories and foreign links block installation before any profile links change. Use a real directory for the root. Keep the source checkout available; these are links, not copied profiles.
+
+See [Codex orchestration](codex/README.md) for model roles, invocation and harness limits. Installation does not select a profile for an active session or configure OpenClaw's in-chat child launcher.
+
 ## 5. Install repo runtime dependencies
 
 Repo-owned TypeScript helpers require Node 24 or newer and the exact Bun
