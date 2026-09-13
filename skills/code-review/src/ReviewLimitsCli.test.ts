@@ -202,18 +202,17 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
 
 test.effect("managed review start initializes once and resumes with its identity and recording contract", () => Effect.gen(function*() {
   const { invoke, reviewStart, repository, database } = yield* fixture
-  const fs = yield* FileSystem.FileSystem
   const paths = yield* Path.Path
-  const canonicalDatabase = paths.join(yield* fs.realPath(paths.dirname(database)), paths.basename(database))
+  const selectedDatabase = paths.resolve(database)
   const started = decode(yield* reviewStart(["--scope-summary", "fixture review", "--native-clean-target", "1", "--cold-clean-target", "3", "--required-phase", "native", "--required-phase", "cold", "--require-current-head"]))
   if (started.reviewId === undefined || started.runId === undefined || started.identity === undefined || started.scope === undefined || started.recording === undefined) {
     return assert.fail("Managed review start must return reusable review context")
   }
-  assert.deepStrictEqual(started.identity, { runId: started.runId, db: canonicalDatabase, repo: "fixture", repoPath: repository, branch: "fixture", target: "fixture", base: "main", head: started.identity.head })
+  assert.deepStrictEqual(started.identity, { runId: started.runId, db: selectedDatabase, repo: "fixture", repoPath: repository, branch: "fixture", target: "fixture", base: "main", head: started.identity.head })
   assert.deepStrictEqual(started.scope, { status: "ok", resumed: false })
   assert.strictEqual(started.recording.schemaVersion, 8)
-  assert.strictEqual(started.recording.command, `review-findings record --db ${canonicalDatabase} --review ${started.reviewId}`)
-  assert.include(started.recording.matchCommand, `--db ${canonicalDatabase} --review ${started.reviewId} --match-of`)
+  assert.strictEqual(started.recording.command, `review-findings record --db ${selectedDatabase} --review ${started.reviewId}`)
+  assert.include(started.recording.matchCommand, `--db ${selectedDatabase} --review ${started.reviewId} --match-of`)
   assert.strictEqual(started.recording.schemaCommand, "review-findings schema")
   assert.deepStrictEqual(started.limits.cleanTargets, { native: 1, cold: 3, clawsweeper: 2 })
   assert.deepStrictEqual(started.limits.incompletePhases, ["native", "cold"])
@@ -248,9 +247,9 @@ test.effect("managed review recording commands retain a shell-safe nondefault da
   if (started.reviewId === undefined || started.identity === undefined || started.recording === undefined) {
     return assert.fail("Managed review start must return reusable review context")
   }
-  const canonicalDatabase = paths.join(yield* fs.realPath(paths.dirname(database)), paths.basename(database))
-  const quotedDatabase = `'${canonicalDatabase.replaceAll("'", "'\\''")}'`
-  assert.strictEqual(started.identity.db, canonicalDatabase)
+  const selectedDatabase = paths.resolve(database)
+  const quotedDatabase = `'${selectedDatabase.replaceAll("'", "'\\''")}'`
+  assert.strictEqual(started.identity.db, selectedDatabase)
   assert.strictEqual(started.recording.command, `review-findings record --db ${quotedDatabase} --review ${started.reviewId}`)
   assert.include(started.recording.matchCommand, `review-findings record --db ${quotedDatabase} --review ${started.reviewId} --match-of`)
 
@@ -268,9 +267,54 @@ test.effect("managed review recording commands retain a shell-safe nondefault da
     .replace("<same-cause note>", "same-cause-note")], { env: environment, extendEnv: true })
   assert.include(matched, "decision=DB1")
   assert.isFalse(yield* fs.exists(wrongDatabase))
-  const sql = yield* SqliteClient.make({ filename: canonicalDatabase })
+  const sql = yield* SqliteClient.make({ filename: selectedDatabase })
   assert.deepStrictEqual(yield* sql`select decision_id, status from issues where decision_id = 'DB1'`, [{ decision_id: "DB1", status: "open" }])
   assert.lengthOf(yield* sql`select issue_id from review_finding_matches`, 1)
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("native review keeps a symlinked database alias as its report and command identity", () => Effect.gen(function*() {
+  const { directory, repository } = yield* fixture
+  const fs = yield* FileSystem.FileSystem
+  const paths = yield* Path.Path
+  const aliasDirectory = `${directory}/alias`
+  const storageDirectory = `${directory}/storage`
+  const database = `${aliasDirectory}/reviews.sqlite`
+  yield* fs.makeDirectory(aliasDirectory)
+  yield* fs.makeDirectory(storageDirectory)
+  yield* fs.symlink("../storage/reviews.sqlite", database)
+  const calls = `${directory}/symlink-review-calls`
+  const reviewer = `${directory}/symlink-reviewer`
+  yield* fs.writeFileString(reviewer, `#!/bin/sh
+case " $* " in
+  *" review "*) printf 'review\n' >> "${calls}"; printf 'No findings\n' ;;
+  *) exit 0 ;;
+esac
+`)
+  yield* fs.chmod(reviewer, 0o700)
+  const source = new URL("review-findings.ts", import.meta.url).pathname
+  const invoke = (args: ReadonlyArray<string>) => checkedText(process.execPath, ["--disable-warning=ExperimentalWarning", source, ...args, "--db", database])
+  const native = ["review", "native", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--scope-summary", "fixture", "--codex-bin", reviewer]
+  const launched = decode((yield* invoke(native)).split("\n")[0] ?? "")
+  if (launched.reviewId === undefined || launched.identity === undefined || launched.recording === undefined || launched.report === undefined) {
+    return assert.fail("Native review must return reusable report context")
+  }
+  const selectedDatabase = paths.resolve(database)
+  const report = paths.join(aliasDirectory, "review-output", `${launched.reviewId}.txt`)
+  assert.strictEqual(launched.launched, true)
+  assert.strictEqual(launched.identity.db, selectedDatabase)
+  assert.include(launched.recording.command, `--db ${selectedDatabase}`)
+  assert.strictEqual(launched.report, report)
+  assert.isTrue(yield* fs.exists(report))
+
+  const status = decode(yield* invoke(["review", "status", "--review", launched.reviewId]))
+  assert.strictEqual(status.identity?.db, selectedDatabase)
+  assert.strictEqual(status.recording?.command, launched.recording.command)
+  assert.strictEqual(status.report, report)
+  const resumed = decode((yield* invoke(native)).trim())
+  assert.strictEqual(resumed.reviewId, launched.reviewId)
+  assert.strictEqual(resumed.launched, false)
+  assert.strictEqual(resumed.report, report)
+  assert.strictEqual(yield* fs.readFileString(calls), "review\n")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("managed review responses expose persisted growth diagnostics", () => Effect.gen(function*() {

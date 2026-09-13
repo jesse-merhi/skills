@@ -69,28 +69,29 @@ const canonicalizePath = Effect.fn("reviewFindings.canonicalizePath")(function*(
   const canonicalAncestor = yield* fs.realPath(ancestor).pipe(Effect.orElseSucceed(() => ancestor))
   return paths.join(canonicalAncestor, ...missing)
 })
-const withResolvedDb = <A, E, R>(path: string, effect: (database: string) => Effect.Effect<A, E, R>) => {
+const withSelectedDb = <A, E, R>(path: string, effect: (database: string) => Effect.Effect<A, E, R>) => {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const paths = yield* Path.Path
-    const database = yield* canonicalizePath(expandHomePath(path))
+    const database = paths.resolve(expandHomePath(path))
     yield* fs.makeDirectory(paths.dirname(database), { recursive: true })
     // Dynamic database selection is the application boundary for this command.
     // @effect-diagnostics-next-line strictEffectProvide:off
     return yield* effect(database).pipe(Effect.provide(SqliteClient.layer({ filename: database })))
   })
 }
-const withDb = <A, E, R>(path: string, effect: Effect.Effect<A, E, R>) => withResolvedDb(path, () => effect)
-const withResolvedScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: (database: string) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
+const withDb = <A, E, R>(path: string, effect: Effect.Effect<A, E, R>) => withSelectedDb(path, () => effect)
+const withSelectedScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: (database: string) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
   const paths = yield* Path.Path
   const canonicalRepo = yield* canonicalizePath(repoPath)
-  const canonicalDb = yield* canonicalizePath(expandHomePath(dbPath))
+  const selectedDb = paths.resolve(expandHomePath(dbPath))
+  const canonicalDb = yield* canonicalizePath(selectedDb)
   const relative = paths.relative(canonicalRepo, canonicalDb)
   const insideRepo = relative === "" || (!paths.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${paths.sep}`))
   if (insideRepo) return yield* new ScopeDatabaseError({ message: "scope database must be outside the reviewed repository so it cannot contaminate diff measurement" })
-  return yield* withResolvedDb(canonicalDb, effect)
+  return yield* withSelectedDb(selectedDb, effect)
 })
-const withScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: Effect.Effect<A, E, R>) => withResolvedScopeDb(dbPath, repoPath, () => effect)
+const withScopeDb = <A, E, R>(dbPath: string, repoPath: string, effect: Effect.Effect<A, E, R>) => withSelectedScopeDb(dbPath, repoPath, () => effect)
 
 const init = Command.make("init", { db }, ({ db }) => withDb(db, initialize()).pipe(Effect.andThen(Console.log(db))))
 const withReviewScopeDb = <A, E, R>(args: { readonly db: string; readonly repoPath: string; readonly review: string }, effect: Effect.Effect<A, E, R>) => Effect.gen(function*() {
@@ -315,7 +316,7 @@ const reviewContext = (review: Review, database: string) => ({
   recording: recordingContract(review.reviewId, database)
 })
 const reviewStartFlags = { db, ...commonRun, ...reviewScopeFlags, phase: Flag.choice("phase", ReviewPhase.literals), evidence: Flag.string("evidence") }
-const reviewStart = Command.make("start", reviewStartFlags, args => withResolvedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
+const reviewStart = Command.make("start", reviewStartFlags, args => withSelectedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
   yield* initialize()
   const run = toRun(args)
   const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
@@ -323,19 +324,19 @@ const reviewStart = Command.make("start", reviewStartFlags, args => withResolved
   const scope = yield* getScopeBudget(run)
   yield* Console.log(JSON.stringify({ ...reviewContext(review, database), phase: review.phase, status: review.status, resumed: review.resumed, scope: { status: scope.status, resumed: resolvedScope.resumed }, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
-const reviewStatus = Command.make("status", reviewHandle, args => withResolvedDb(args.db, database => Effect.gen(function*() {
+const reviewStatus = Command.make("status", reviewHandle, args => withSelectedDb(args.db, database => Effect.gen(function*() {
   yield* initialize()
   const review = yield* getReview(args.review)
   yield* Console.log(JSON.stringify({ ...reviewContext(review, database), phase: review.phase, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(database, review.reviewId) } : {}), limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
-const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.choice("outcome", ReviewOutcome.literals), evidence: Flag.string("evidence") }, args => withResolvedDb(args.db, database => Effect.gen(function*() {
+const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.choice("outcome", ReviewOutcome.literals), evidence: Flag.string("evidence") }, args => withSelectedDb(args.db, database => Effect.gen(function*() {
   yield* initialize()
   const review = yield* finishReview(args.review, args.outcome, args.evidence)
   yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewNative = Command.make("native", {
   db, ...commonRun, ...reviewScopeFlags, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
-}, args => withResolvedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
+}, args => withSelectedScopeDb(args.db, args.repoPath, database => Effect.gen(function*() {
   yield* initialize()
   const run = toRun(args)
   const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
