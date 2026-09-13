@@ -16,6 +16,8 @@ Use the tool's exposed maximum, or its documented default if no maximum is given
 - CI: use one [GitHub watch command](references/github-actions.md).
 - Requested delays: use the host's `sleep` tool or `quiet-wait 5m` for the requested duration.
 
+Retain command-session IDs and run-owned log/result paths before waiting. An outer execution cell and its inner command have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
+
 On timeout, resume the same handle. Send required updates from known state. Read logs to check a result, diagnose failure or investigate a stall, not just because a timer expired.
 
 ## Commands and agents

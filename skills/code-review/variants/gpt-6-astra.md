@@ -15,23 +15,22 @@ Use `spawn_agent` with `agent_type: "findings_reviewer"` for the fresh independe
 
 ## 1. Start the review
 
-Check out the branch or commit in question. For a branch review, use the PR's base or the caller's resolved planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
+Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them.
 
-Fill these values from the checkout and PR:
+Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+
+Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the normal Codex native review:
 
 ```sh
-review-findings scope-start --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --head <starting-sha> --scope-summary "<requested change and allowed repairs>" \
+review-findings review native \
+  --scope-summary "<requested change and allowed repairs>" \
   --native-clean-target 1 --required-phase native --required-phase cold \
   --require-current-head
 ```
 
-For a single-phase request, specify only that phase. Use two clean native passes when explicitly requested.
+For another engine, reserve with `review start --phase native --evidence "Report planned at <run-owned-report-path>"` with the requested scope settings, check the returned identity before dispatch, then follow the native-launch instructions. For a cold-only request, reserve with `review start --phase cold --evidence "Report planned at <run-owned-report-path>"` at independent dispatch and check the returned identity before launching the reviewer. Specify only the requested phases; use two clean native passes when explicitly requested.
 
-Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
-
-To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands. Extend an expired timer only under existing explicit user authority, using [the budget-extension command](references/findings-registry.md).
+The entrypoint initializes missing scope and returns the run/review identity and recording contract. Check the resolved identity, keep it for later commands, and save its head as the starting commit for the final diff summary. Repeating an open review returns its existing handle and saved state; initialization flags do not rewrite a resumed run's settings or evidence. Use `review status --review <id>` to inspect it. No preliminary `scope-start`/`scope-status` sequence is needed. If the returned identity differs from the requested comparison, finish that invocation as blocked with the mismatch as evidence, then correct the scope through the review commands before retrying. Do not count its result as clean. A blocked or unusable invocation must be resolved under the review commands before starting another.
 
 ## 2. Review and repair
 

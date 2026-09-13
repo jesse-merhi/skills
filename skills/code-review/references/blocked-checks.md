@@ -1,6 +1,6 @@
 # When a check blocks work
 
-Read the command's stopping reasons. Keep the saved run, elapsed time, consumed allowance and completed review results.
+Read the command's stopping reasons. Keep the saved run and completed review results.
 
 ## Diff growth needs diagnosis
 
@@ -27,8 +27,8 @@ review-findings progress-record --review <id> --outcome repair-authorized \
 
 Use the finding's `decisionId`; the CLI supplies the saved phase, head and revision. This clears only that finding's failed-attempt count.
 
-## Time or unanswered questions
+## Unanswered questions
 
-At expiry, stop reviews and repairs and report what remains. For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker; it does not restart time or grant unrelated permission.
+For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker. Explicit user task deadlines apply independently of the review workflow.
 
 A completed clean-pass target stops further review of unchanged code, not progression to the next requested review. Keep completed evidence even when the next action is blocked.
