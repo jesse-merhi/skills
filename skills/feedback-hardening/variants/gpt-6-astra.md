@@ -25,6 +25,8 @@ Check the owning tools, instructions and available prior feedback. Reuse open re
 
 Name the change, its owner and how to tell whether it helped. State missing evidence when the cause is uncertain. Use one independent, read-only recommendation worker only for competing causes or consequential tradeoffs; it advises without editing.
 
+In Codex, select the configured `investigator` (`agent_type="investigator"` on `spawn_agent`) for that bounded recommendation, without inherited conversation. Supply the question, worktree and revision or source, scope, constraints, acceptance criteria and neutral evidence; the role owns reusable guidance and settings. The coordinator keeps decisions and repairs. If the role is unavailable, report it and assess the evidence locally, disclosing the lack of independence. Other harnesses use their supported launcher settings under `AGENTS.md`; Codex role names are not portable spawn arguments.
+
 ## 4. Apply and follow through
 
 Use existing user instructions to resolve scope and implement authorized changes without asking again. Record that authority. Ask only for additional permission or a material user decision. Feedback or investigation alone does not authorize broader changes. Reporting grants no installation, publication, merge or other separate authority. Recheck the target and preserve concurrent work through its normal implementation workflow. Use revision or ETag preconditions for managed writes; stop if concurrent changes cannot be protected.

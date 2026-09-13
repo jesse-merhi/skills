@@ -21,6 +21,8 @@ Use enough explanation for the complexity. For a pending decision, describe the 
 
 Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Carry the user instructions that authorize remaining work and any later corrections that supersede old unanswered questions; a handoff does not require the user to approve the same work again. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
 
+After the initial brief and launch prompt, parent and child sessions must not communicate unless the user explicitly requests it, and only within that request's scope. Both report directly to the user. Include this rule in the brief and launch prompt.
+
 ## Get the launch command
 
 Run `detect-handoff-surface`. It detects the current session and prints the recommended command or native app tool. If the user specified a destination, pass `--destination codex-app|claude-app|codex-cli|claude-cli`.
@@ -35,4 +37,4 @@ Run the recommended command or use the recommended native tool. Use a new worktr
 
 Launch a full interactive session, never ACPX, subagents, or background agents. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
 
-Confirm the new agent has started and only one new session was created. Report the brief path, session/worktree location, and observed status.
+Use the launch result or read-only status to confirm the new agent has started and only one session was created. Report the brief path, session/worktree location, and observed status.

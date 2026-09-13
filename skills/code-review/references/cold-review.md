@@ -28,7 +28,7 @@ If several reviewers are needed, assign each a feature or execution path and spe
 
 ## Fresh context
 
-- Codex CLI: use the installed `findings-reviewer` profile in a fresh session. It disables memory injection, generation, dedicated memory tools and session recall.
+- Codex: select the configured `findings_reviewer` role with `agent_type="findings_reviewer"` on `spawn_agent`, using `fork_turns="none"`. The definition owns reusable review instructions, required skill references, model/effort and memory exclusions; pass only the task-specific target, scope, constraints, acceptance criteria, neutral checklist and evidence described above. Do not supply model overrides or copy the role prompt into the brief. When named dispatch is unavailable, a fresh Codex CLI session with the installed `findings-reviewer` profile is the supported alternative. If neither is available, report the cold phase as blocked. Never use this role for native review or an until-clean coordinator.
 - Claude subagents: use a fresh findings-only agent without a `memory` field. For a separately authorized fresh Claude CLI session, set `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` for that process only.
 - Other hosts: use their supported fresh-context option and disclose unverified memory isolation.
 
