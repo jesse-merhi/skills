@@ -284,6 +284,58 @@ test.effect("record errors show the accepted shape and do not write an invalid f
   assert.lengthOf(yield* sql`select id from issues`, 0)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
+test.effect("record recovery shapes follow the derived runtime disposition", () => Effect.gen(function*() {
+  const { reviewStart, invoke, database } = yield* fixture
+  const started = decode(yield* reviewStart())
+  if (started.reviewId === undefined) return assert.fail("Managed review start must return its review ID")
+  const handle = ["--review", started.reviewId]
+  const runtimeEvidence = [
+    "--production-path", "fixture command -> record",
+    "--reachability-evidence", "The public record command reaches finding validation.",
+    "--actual-consequence", "The command reports an invalid finding.",
+    "--contract-evidence", "The recovery shape must pass the same finding schema."
+  ]
+  const cases = [
+    {
+      name: "reject",
+      invalid: ["--decision-id", "R1", "--status", "open", "--source", "fixture", "--fingerprint", "rare low", "--summary", "Rare low candidate", "--finding-kind", "runtime", ...runtimeEvidence,
+        "--likelihood", "rare", "--impact", "low", "--root-cause", "The hint ignored the derived disposition.", "--recommended-fix", "Use the derived disposition.",
+        "--intervention-justification", "The recovery command must be valid.", "--fix-scope", "local", "--handling", "fix"],
+      expectedShape: ["--status rejected --handling reject", "--rejection-gate <reality|importance|contract|repair|duplicate>", "; omit repair fields"],
+      recovery: ["--decision-id", "R1", "--status", "rejected", "--source", "fixture", "--fingerprint", "rare low", "--summary", "Rare low candidate", "--finding-kind", "runtime", ...runtimeEvidence,
+        "--likelihood", "rare", "--impact", "low", "--decision", "The measured likelihood and impact do not meet the intervention threshold.",
+        "--rejection-gate", "importance", "--fix-scope", "local", "--handling", "reject"]
+    },
+    {
+      name: "consult",
+      invalid: ["--decision-id", "R2", "--status", "open", "--source", "fixture", "--fingerprint", "rare high", "--summary", "Rare high candidate", "--finding-kind", "runtime", ...runtimeEvidence,
+        "--likelihood", "rare", "--impact", "high", "--root-cause", "The owner must choose the repair.",
+        "--intervention-justification", "The high impact warrants an owner decision.", "--fix-scope", "local", "--handling", "fix"],
+      expectedShape: ["--status open --handling consult --decision <owner question>", "--root-cause <cause> --intervention-justification", "[--recommended-fix <supported repair>]"],
+      recovery: ["--decision-id", "R2", "--status", "open", "--source", "fixture", "--fingerprint", "rare high", "--summary", "Rare high candidate", "--finding-kind", "runtime", ...runtimeEvidence,
+        "--likelihood", "rare", "--impact", "high", "--decision", "Which owning component should contain the repair?", "--root-cause", "The owner must choose the repair.",
+        "--intervention-justification", "The high impact warrants an owner decision.", "--fix-scope", "local", "--handling", "consult"]
+    },
+    {
+      name: "investigate",
+      invalid: ["--decision-id", "R3", "--status", "rejected", "--source", "fixture", "--fingerprint", "unknown low", "--summary", "Unknown path candidate", "--finding-kind", "runtime",
+        "--likelihood", "unknown", "--impact", "low", "--decision", "The runtime path still needs investigation.", "--rejection-gate", "reality", "--fix-scope", "local", "--handling", "reject"],
+      expectedShape: ["--status open --handling fix --decision <investigation needed>", "omit repair fields until the runtime path is proven"],
+      recovery: ["--decision-id", "R3", "--status", "open", "--source", "fixture", "--fingerprint", "unknown low", "--summary", "Unknown path candidate", "--finding-kind", "runtime",
+        "--likelihood", "unknown", "--impact", "low", "--decision", "Trace the runtime path before deciding whether to repair.", "--fix-scope", "local", "--handling", "fix"]
+    }
+  ] as const
+  const sql = yield* SqliteClient.make({ filename: database })
+  for (const testCase of cases) {
+    const rejected = yield* invoke(["record", ...handle, ...testCase.invalid]).pipe(Effect.flip)
+    assert.include(rejected.stderr, "accepted shape:", testCase.name)
+    for (const expected of testCase.expectedShape) assert.include(rejected.stderr, expected, testCase.name)
+    assert.lengthOf(yield* sql`select id from issues where decision_id = ${testCase.invalid[1]}`, 0, testCase.name)
+    yield* invoke(["record", ...handle, ...testCase.recovery])
+    assert.lengthOf(yield* sql`select id from issues where decision_id = ${testCase.recovery[1]}`, 1, testCase.name)
+  }
+}).pipe(Effect.scoped), { timeout: 60000 })
+
 test.effect("native command reviews the full historical range once and exposes its saved report", () => Effect.gen(function*() {
   const { cli, invoke, directory, repository, reviewStart, database, git } = yield* fixture
   const fs = yield* FileSystem.FileSystem

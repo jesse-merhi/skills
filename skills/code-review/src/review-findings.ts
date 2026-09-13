@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url"
 
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, formatFindingAcceptedShape, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireFinishedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireFinishedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
 import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
@@ -133,7 +133,7 @@ const record = Command.make("record", {
   const result = args.review.length > 0 && !repair ? yield* withOpenReview(args.review, write) : yield* write()
   const limits = yield* readReviewLimits(result.runId, run.head)
   yield* Console.log(args.json ? JSON.stringify({ ...result, limits }) : `recorded run=${result.runId} issue=${result.issueId} decision=${args.matchOf || args.decisionId} db=${args.db}\n${JSON.stringify({ limits })}`)
-}).pipe(Effect.catchTag("InvalidFinding", error => Effect.fail(new InvalidFinding(error.reason, error.acceptedShape ?? formatFindingAcceptedShape(args)))))))
+})))
 const recordCommandCli = Command.make("record-command", {
   db, ...recordRunFlags, command: Flag.string("command"), result: Flag.string("result"), reason: Flag.string("reason"), decisionId: Flag.string("decision-id").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {

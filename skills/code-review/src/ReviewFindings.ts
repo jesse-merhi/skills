@@ -159,33 +159,36 @@ export interface FindingInput {
   readonly ownerResolution: string
 }
 
-export const formatFindingAcceptedShape = (finding: Pick<FindingInput, "findingKind" | "status" | "likelihood" | "handling" | "maintenanceEvidence" | "presentCost">): string => {
+export type Finding = typeof FindingRecord.Type & FindingOutcome
+
+type FindingAcceptedShapeInput = Pick<Finding, "findingKind" | "likelihood" | "maintenanceEvidence" | "presentCost" | "disposition">
+
+export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): string => {
   const repairFields = "--root-cause <cause> --recommended-fix <durable repair> --intervention-justification <why intervention is justified>"
+  const consultRepairFields = "--root-cause <cause> --intervention-justification <why intervention is justified> [--recommended-fix <supported repair>]"
   const runtime = finding.findingKind === "runtime"
   const maintenanceEvidence = runtime ? "" : " --maintenance-evidence <current evidence> --present-cost <current cost>"
   const runtimeEvidence = runtime && finding.likelihood !== "unknown" && finding.likelihood !== "theoretical"
     ? " --production-path <path> --reachability-evidence <reproduction> --actual-consequence <observed result> --contract-evidence <expected behavior>"
     : ""
-  if (finding.handling === "reject" || finding.status === "rejected" || (runtime && finding.likelihood === "theoretical")) {
+  if (finding.disposition === "reject") {
     const supportedMaintenance = !runtime && (finding.maintenanceEvidence.trim().length > 0 || finding.presentCost.trim().length > 0) ? maintenanceEvidence : ""
-    return `--status rejected --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}; omit repair fields`
+    return `--status rejected --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}${runtimeEvidence}; omit repair fields`
   }
-  if (runtime && finding.likelihood === "unknown") {
-    return "--status open --decision <investigation needed>; omit repair fields until the runtime path is proven"
+  if (finding.disposition === "investigate") {
+    return "--status open --handling fix --decision <investigation needed>; omit repair fields until the runtime path is proven"
   }
-  if (finding.handling === "consult") {
-    return `--status open --handling consult --decision <owner question> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  if (finding.disposition === "consult") {
+    return `--status open --handling consult --decision <owner question> ${consultRepairFields}${maintenanceEvidence}${runtimeEvidence}`
   }
-  if (finding.handling === "follow-up") {
+  if (finding.disposition === "follow-up") {
     return `--status deferred --handling follow-up --decision <owner or next action> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
   }
-  if (finding.status === "deferred") {
+  if (finding.disposition === "residual") {
     return `--status deferred --handling fix --decision <accepted residual risk> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
   }
   return `--status open --handling fix ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
 }
-
-export type Finding = typeof FindingRecord.Type & FindingOutcome
 
 export class InvalidFinding extends Error {
   readonly _tag = "InvalidFinding"
@@ -1548,16 +1551,17 @@ const decodeFindingInput = Effect.fn("ReviewFindings.decodeFindingInput")(functi
   const finding = yield* Schema.decodeUnknownEffect(FindingRecord)(normalized).pipe(
     Effect.mapError(() => new InvalidFinding(`one or more enum fields are outside schema v${FINDING_SCHEMA_VERSION}`))
   )
-  const inputError = findingInputError(finding)
-  if (inputError !== undefined) return yield* Effect.fail(new InvalidFinding(inputError))
   const outcome = deriveFindingOutcome(finding)
   if (outcome === undefined) return yield* Effect.fail(new InvalidFinding("runtime findings require --likelihood and --impact"))
   const completeFinding = { ...finding, ...outcome } satisfies Finding
+  const acceptedShape = formatFindingAcceptedShape(completeFinding)
+  const inputError = findingInputError(completeFinding)
+  if (inputError !== undefined) return yield* Effect.fail(new InvalidFinding(inputError, acceptedShape))
   const actionabilityError = findingActionabilityError(completeFinding)
-  if (actionabilityError !== undefined && !skipActionability) return yield* Effect.fail(new InvalidFinding(actionabilityError))
+  if (actionabilityError !== undefined && !skipActionability) return yield* Effect.fail(new InvalidFinding(actionabilityError, acceptedShape))
   const statusError = findingStatusError(completeFinding)
   if (statusError !== undefined) {
-    return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`))
+    return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`, acceptedShape))
   }
   return completeFinding
 })
@@ -1617,7 +1621,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     return yield* Effect.fail(new InvalidScopeBudget("review run is complete and terminal; start a new user-authorized review before recording more findings"))
   }
   const actionabilityError = findingActionabilityError(input)
-  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError))
+  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError, formatFindingAcceptedShape(input)))
   const runId = yield* upsertRun(run)
   const scope = yield* sql<ScopeStatusRow>`select status from review_scope_budgets where run_id = ${runId}`
   if (scope[0]?.status === "complete") {
