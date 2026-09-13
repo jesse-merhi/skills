@@ -28,10 +28,6 @@ Use this format, separating questions with a horizontal rule:
 
 When an environmental fact blocks a frontier question, dispatch a background subagent to establish it. Continue with independent frontier questions while that work runs; only dependent questions wait.
 
-In Codex, select the configured `investigator` through the launcher's role field (`agent_type` on `spawn_agent`). Supply the factual objective, worktree and revision or source, bounded scope, constraints, acceptance criteria and relevant evidence; the role definition supplies reusable instructions, skills and model settings. Keep question sequencing and synthesis with the coordinator and decisions with the user. If that role is unavailable, report it and establish the fact locally.
-
-In Claude Code, invoke the native `Agent` tool with `subagent_type: "investigator"` when the optional named definition is available. Put the same bounded factual assignment in `prompt`; the definition owns reusable role instructions. Use it only when independent fact-finding can unblock a frontier question. Keep question sequencing and synthesis with the coordinator and decisions with the user. If the definition is unavailable, report it and establish the fact locally.
-
-Other harnesses, including OpenClaw, use their own supported launcher settings under `AGENTS.md`; do not assume their spawn API accepts Codex or Claude role names.
+Use the configured investigator for that bounded factual question. Supply the objective, worktree and revision or source, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance in the role definition, question sequencing and synthesis with the coordinator, and decisions with the user. If the role is unavailable, report it and establish the fact locally.
 
 Finish when the frontier is empty, every branch has been visited, and no assumption remains silently decided. Obtain the user's confirmation of shared understanding before acting on the result.
