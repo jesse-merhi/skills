@@ -14,7 +14,7 @@ Compare applicable recorded counterevidence before repeating an investigation. A
 
 Use `review-findings schema` for evidence and rating requirements. Assess likelihood and impact even when the reviewer supplied a priority; rare destructive failures matter. Keep maintenance cost separate. The CLI derives severity and disposition but cannot verify the evidence. Accept runtime findings only with the proof above; leave unresolved candidates unrated and explain rejections.
 
-Record every checked candidate, including rejected and uncertain ones, through `record --review <id>` in the code-mode call for the complete report. Match repeated reports to the same open or rejected cause with `record --match-of`. Include the revision and why the cause and counterevidence still apply. Changed facts requiring a new judgment, or recurrence after a fix, need a new decision linked to the earlier ID.
+Record every checked candidate, including rejected and uncertain ones, through `record --review <id>` in batches as evidence becomes available, then reconcile the complete report. Match repeated reports to the same open or rejected cause with `record --match-of`. Include the revision and why the cause and counterevidence still apply. Changed facts requiring a new judgment, or recurrence after a fix, need a new decision linked to the earlier ID.
 
 ## Choose and verify repairs
 

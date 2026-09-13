@@ -883,13 +883,13 @@ const requireRepairAuthorization = Effect.fn("ReviewFindings.requireRepairAuthor
   }
 })
 
-/** Repairs wait for a complete assessment; legacy runs without managed reviews retain their workflow. */
-export const requireFinishedReview = Effect.fn("ReviewFindings.requireFinishedReview")(function*(run: ReviewRun) {
+/** Stop discovery before repairs; an interrupted assessment keeps its incomplete status. */
+export const requireClosedReview = Effect.fn("ReviewFindings.requireClosedReview")(function*(run: ReviewRun) {
   const runId = yield* exactRunId(yield* resolveRecordRun(run))
   if (runId === undefined) return
   const sql = yield* SqlClient.SqlClient
   const latest = (yield* sql<{ readonly status: string }>`select status from review_invocations where run_id = ${runId} order by start_revision desc limit 1`)[0]
-  if (latest !== undefined && latest.status !== "finished") return yield* new ProgressConflict({ message: "Finish the complete review before recording repairs; a blocked review is incomplete" })
+  if (latest !== undefined && latest.status === "open") return yield* new ProgressConflict({ message: "Finish the complete review or close it as blocked before recording repairs" })
 })
 
 const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {
@@ -1530,7 +1530,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const run = yield* resolveRecordRun(rawRun)
-  if (input.status === "fixed" || input.status === "provisional" || input.ownerResolution.length > 0) yield* requireFinishedReview(run)
+  if (input.status === "fixed" || input.status === "provisional" || input.ownerResolution.length > 0) yield* requireClosedReview(run)
   const existingRunId = yield* exactRunId(run)
   if (existingRunId !== undefined) {
     yield* requireReviewWriter(existingRunId, reviewId)
@@ -1547,10 +1547,10 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingIssue = existingIssues[0]
   if (reviewId !== undefined) {
     const invocation = (yield* sql<{ readonly status: string }>`select status from review_invocations where id = ${reviewId}`)[0]
-    if (invocation?.status === "finished") {
-      yield* requireFinishedReview(run)
-      if (existingIssue === undefined) return yield* Effect.fail(new InvalidFinding("A finished review can update only an existing finding"))
-      if (input.status === "reopened" && existingIssue.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A finished review can reopen only an existing provisional repair"))
+    if (invocation !== undefined && invocation.status !== "open" && (input.status === "fixed" || input.status === "provisional" || input.status === "reopened" || input.ownerResolution.length > 0)) {
+      yield* requireClosedReview(run)
+      if (existingIssue === undefined) return yield* Effect.fail(new InvalidFinding("A closed review can update only an existing finding"))
+      if (input.status === "reopened" && existingIssue.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A closed review can reopen only an existing provisional repair"))
     }
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
@@ -1661,14 +1661,14 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   return yield* sql.withTransaction(Effect.gen(function*() {
   if (event !== undefined) {
     yield* requireReviewWriter(runId, reviewId)
-    if (event.outcome.startsWith("repair-")) yield* requireFinishedReview(run)
+    if (event.outcome.startsWith("repair-")) yield* requireClosedReview(run)
     if (event.outcome === "repair-applied") yield* requireRepairAuthorization(runId, event.findingId ?? "")
     const state = (yield* sql<{ readonly status: string; readonly scope_status: string }>`select review_runs.status, coalesce(review_scope_budgets.status, '') as scope_status from review_runs
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
     if (state?.status === "complete" || state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("Completed review progress is immutable"))
     if (event.outcome.startsWith("repair-")) {
-      const issue = yield* sql`select id from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional')`
-      if (issue.length === 0) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open finding"))
+      const issue = yield* sql`select id from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional') and (disposition = 'accept' or (disposition = 'consult' and owner_resolution = 'approved'))`
+      if (issue.length === 0) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open accepted finding or approved consultation"))
     }
     if (event.outcome === "started") {
       yield* checkReviewLimits(yield* readReviewLimits(runId, event.head, event.phase))

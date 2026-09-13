@@ -117,3 +117,13 @@ export const claimNativeLaunch = Effect.fn("ReviewSession.claimNativeLaunch")(fu
     return true
   }))
 })
+
+/** Recover evidence against the saved revision without reopening or crediting the interrupted review. */
+export const withBlockedReview = <A, E, R>(reviewId: string, action: (review: Review) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  return yield* sql.withTransaction(Effect.gen(function*() {
+    const review = yield* getReview(reviewId)
+    if (review.status !== "blocked") return yield* new ProgressConflict({ message: "Recovery requires a blocked review; preserve its interruption evidence first" })
+    return yield* action(review)
+  }))
+})
