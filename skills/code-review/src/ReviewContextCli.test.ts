@@ -94,7 +94,7 @@ describe("review CLI Git context", () => {
       await git(fixture.repo, ["update-ref", "refs/remotes/upstream/stack-base", "stack-base"])
       await git(fixture.repo, ["config", "branch.stack-base.remote", "upstream"])
       await git(fixture.repo, ["config", "branch.stack-base.merge", "refs/heads/stack-base"])
-      await writeFile(gh, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${ghCalls}'\nprintf '{"url":"https://ghe.example.com/acme/widget/pull/7","baseRefName":"stack-base","baseRefOid":"%s","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse stack-base)" "$(git rev-parse HEAD)"\n`, { mode: 0o700 })
+      await writeFile(gh, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${ghCalls}'\nif [ "$2" = list ]; then printf '[{"url":"https://ghe.example.com/acme/widget/pull/7"}]'; exit 0; fi\nprintf '{"url":"https://ghe.example.com/acme/widget/pull/7","baseRefName":"stack-base","baseRefOid":"%s","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse stack-base)" "$(git rev-parse HEAD)"\n`, { mode: 0o700 })
       await writeFile(codex, "#!/bin/sh\nprintf 'native review complete\\n'\n", { mode: 0o700 })
 
       const result = await runReview(fixture.nested, [
@@ -124,7 +124,7 @@ describe("review CLI Git context", () => {
         target: "https://ghe.example.com/acme/widget/pull/7",
         base: "upstream/stack-base"
       })
-      expect((await readFile(ghCalls, "utf8")).trim().split("\n")).toHaveLength(1)
+      expect((await readFile(ghCalls, "utf8")).trim().split("\n")).toHaveLength(2)
     } finally {
       await rm(fixture.directory, { recursive: true, force: true })
     }
@@ -149,7 +149,7 @@ describe("review CLI Git context", () => {
     }
   }, 45_000)
 
-  it("uses an explicitly targeted pull request to infer its base", async () => {
+  it("rejects ambiguous PR discovery and uses an explicit target to infer its base", async () => {
     const fixture = await createRepository()
     const gh = join(fixture.directory, "gh")
     const calls = join(fixture.directory, "gh-calls")
@@ -160,12 +160,22 @@ describe("review CLI Git context", () => {
       const stack = (await git(fixture.repo, ["rev-parse", "stack-base"])).stdout.trim()
       await writeFile(gh, `#!/bin/sh
 printf '%s\\n' "$*" >> '${calls}'
+if [ "$2" = list ]; then
+  printf '[{"url":"https://github.com/acme/widget/pull/8"},{"url":"${target}"}]'
+  exit 0
+fi
 if [ "$3" = '${target}' ]; then
   printf '{"url":"${target}","baseRefName":"stack-base","baseRefOid":"${stack}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
 else
   printf '{"url":"https://github.com/acme/widget/pull/8","baseRefName":"main","baseRefOid":"${main}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
 fi
 `, { mode: 0o700 })
+
+      await expect(runReview(fixture.nested, [
+        "review", "start", "--db", fixture.db,
+        "--phase", "native", "--evidence", "Ambiguous PR discovery"
+      ], { GH_BIN: gh })).rejects.toMatchObject({ stderr: expect.stringContaining("prevent a unique comparison") })
+      expect(await missing(fixture.db)).toBe(true)
 
       const result = await runReview(fixture.nested, [
         "review", "start", "--db", fixture.db, "--target", target,
@@ -186,6 +196,7 @@ fi
       await git(fixture.repo, ["config", "branch.feature.remote", "origin"])
       const main = (await git(fixture.repo, ["rev-parse", "main"])).stdout.trim()
       await writeFile(gh, `#!/bin/sh
+if [ "$2" = list ]; then printf '[{"url":"https://github.com/acme/widget/pull/7"}]'; exit 0; fi
 printf '{"url":"https://github.com/acme/widget/pull/7","baseRefName":"main","baseRefOid":"${main}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"contributor/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
 `, { mode: 0o700 })
 

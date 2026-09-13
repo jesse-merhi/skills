@@ -50,6 +50,7 @@ const PullRequest = Schema.Struct({
   state: Schema.Literal("OPEN")
 })
 const PullRequestResponse = Schema.fromJsonString(PullRequest)
+const PullRequestCandidates = Schema.fromJsonString(Schema.Array(Schema.Struct({ url: Schema.NonEmptyString })))
 
 const gitText = Effect.fn("ReviewContext.gitText")(function*(repoPath: string, args: ReadonlyArray<string>, message: string) {
   const git = yield* trustedExecutable("git", repoPath)
@@ -173,6 +174,20 @@ const lookupPullRequest = Effect.fn("ReviewContext.lookupPullRequest")(function*
   const headMatches = yield* checkedTrimmedText(git, ["merge-base", "--is-ancestor", pullRequest.headRefOid, context.currentHead], { cwd: context.repoPath }).pipe(Effect.option)
   if (headMatches._tag === "None") {
     return yield* new ReviewContextError({ message: "The resolved pull request head is not the checked-out HEAD or its ancestor; update the checkout or pass --target and --base explicitly" })
+  }
+  if (requestedPullRequest._tag === "None" && !matchesPullRef) {
+    const candidatesJson = yield* checkedTrimmedText(gh, [
+      "pr", "list", "--repo", `${resolvedUrl.hostname}/${resolvedParts.repository}`,
+      "--head", pullRequest.headRefName, "--state", "open", "--limit", "2", "--json", "url"
+    ], { cwd: context.repoPath }).pipe(
+      Effect.mapError(() => new ReviewContextError({ message: "Could not establish a unique pull request comparison; pass --target <PR-URL> or --base <ref> explicitly" }))
+    )
+    const candidates = yield* Schema.decodeUnknownEffect(PullRequestCandidates)(candidatesJson).pipe(
+      Effect.mapError(() => new ReviewContextError({ message: "GitHub returned invalid pull request candidates; pass --target <PR-URL> or --base <ref> explicitly" }))
+    )
+    if (candidates.length !== 1 || candidates[0]?.url !== pullRequest.url) {
+      return yield* new ReviewContextError({ message: "Multiple or changing pull request candidates prevent a unique comparison; pass --target <PR-URL> or --base <ref> explicitly" })
+    }
   }
   return pullRequest
 })
