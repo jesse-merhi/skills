@@ -13,21 +13,21 @@ Use the model policy in the applicable `AGENTS.md`. Review launchers own their e
 
 Check out the branch or commit in question. For a branch review, use the PR's base or the caller's resolved planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them. Save `git rev-parse HEAD` as the starting commit for the final diff summary.
 
-Fill these values from the checkout and PR:
+Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+
+Start or resume through the existing review entrypoint. For the normal Codex native review:
 
 ```sh
-review-findings scope-start --repo <owner/repo> --repo-path <checkout> \
+review-findings review native --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --head <starting-sha> --scope-summary "<requested change and allowed repairs>" \
+  --scope-summary "<requested change and allowed repairs>" \
   --native-clean-target 1 --required-phase native --required-phase cold \
   --require-current-head
 ```
 
-For a single-phase request, specify only that phase. Use two clean native passes when explicitly requested.
+For another engine, reserve with `review start --phase native --evidence "Report planned at <run-owned-report-path>"` using the same scope flags, then follow the native-launch instructions. For a cold-only request, reserve with `review start --phase cold --evidence "Report planned at <run-owned-report-path>"` at independent dispatch. Specify only the requested phases; use two clean native passes when explicitly requested.
 
-Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
-
-To resume, use `review-findings scope-status --repo <owner/repo> --repo-path <checkout> --branch <branch> --target <PR-URL-or-commit> --base <base> --json`. Keep the saved values in later commands. Extend an expired timer only under existing explicit user authority, using [the budget-extension command](references/findings-registry.md).
+The entrypoint initializes missing scope and returns the run/review identity and recording contract. Keep those values for later commands. Repeating an open review returns its existing handle and saved state; initialization flags do not rewrite a resumed run's settings or evidence. Use `review status --review <id>` to inspect it. No preliminary `scope-start`/`scope-status` sequence is needed. A blocked or unusable invocation must be resolved under the review commands before starting another.
 
 ## 2. Review and repair
 

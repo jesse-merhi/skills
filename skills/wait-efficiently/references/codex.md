@@ -10,15 +10,57 @@ Command launch and resume tools have separate limits. The outer cell's deadline 
 
 ## Commands
 
-1. Launch once with `exec_command`, using its allowed `yield_time_ms`.
-2. If it returns `session_id`, resume with `write_stdin({ session_id, chars: "", yield_time_ms })`. Use the resume tool's own limit, not the shorter launch limit.
-3. Await launch and resume in a loop inside one `functions.exec` cell. If it returns a running cell ID, continue that cell with `functions.wait` and the calculated deadline.
-4. Collect the terminal exit code and output. Keep full validation/review output in a run-owned file; inspect it when output is truncated. A timeout or session ID is not success.
+1. Choose a unique run-owned directory outside the checkout. Save the command's full output there and write its exit status to a result file only when it finishes. Retain these paths before launch.
+2. Launch once with `exec_command`, using its allowed `yield_time_ms`. When it returns `session_id`, retain and emit that inner command ID before awaiting `write_stdin`.
+3. Await launch and resume in a loop inside one `functions.exec` cell. A running cell ID belongs to `functions.wait`; a command `session_id` belongs to `write_stdin`. Recalculate the outer wait before continuing.
+4. Collect the exit code and inspect the saved log for the needed evidence. A timeout, missing handle or session ID is not success.
 
-Do not replace code mode with separate launch and polling calls. Use direct calls only for tools the host excludes from code mode, such as native agent controls. Do not use `notify` or `yield_control` for unchanged progress.
+For example, after choosing a fresh directory, adapt this validation launch to the task's authorized command. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
+
+```javascript
+// @exec: {"yield_time_ms": 30000, "max_output_tokens": 1500}
+const recovery = {
+  logPath: "/tmp/review-run-unique/validation.log",
+  resultPath: "/tmp/review-run-unique/validation.exit"
+};
+store("validationRecovery", recovery);
+notify(recovery);
+let result = await tools.exec_command({
+  cmd: "mkdir -p /tmp/review-run-unique && (bun run validate:effect > /tmp/review-run-unique/validation.log 2>&1; command_exit=$?; printf '%s\n' \"$command_exit\" > /tmp/review-run-unique/validation.exit; exit \"$command_exit\")",
+  yield_time_ms: 1000,
+  max_output_tokens: 1000
+});
+while (result.session_id !== undefined) {
+  if (recovery.sessionId !== result.session_id) {
+    recovery.sessionId = result.session_id;
+    store("validationRecovery", recovery);
+    notify(recovery); // Recovery identity before entering the inner wait.
+  }
+  result = await tools.write_stdin({
+    session_id: result.session_id, chars: "", yield_time_ms: 60000,
+    max_output_tokens: 1000
+  });
+}
+store("validationResult", result);
+text({ exitCode: result.exit_code, ...recovery });
+```
+
+The short launch exposes its command ID promptly; calculate outer and resume waits for the current update deadline and tool limits. Emit the recovery identity on launch or when it changes, not on every unchanged timeout. A run-owned log preserves shell output even if the outer cell's in-memory result disappears.
+
+If `functions.wait` reports that its cell is unavailable, retrieve the retained recovery record (or the emitted paths/ID after a context transition). Try `write_stdin` with the command session ID, then inspect the saved exit status and log. For CI, query the same remote run's terminal status. Recover that existing result before considering another launch. If neither the session nor a terminal result is available, inspect the original process or external operation and report what remains unknown; a missing cell alone does not authorize duplicating work.
+
+Do not replace code mode with separate launch and polling calls. Use direct calls only for tools the host excludes from code mode, such as native agent controls. `notify` above exposes recovery pointers; do not use it or `yield_control` for unchanged progress. This repository cannot restore the host's outer-cell registry or guarantee retention across host resets.
 
 ## Required agent results
 
 Dispatch once, finish independent work, then use the exposed native agent event wait. For existing Desktop tasks, use `wait_threads` with returned handles and cursors; do not create a new task just to wait. Batch required targets within the tool's limit and resume after timeouts or unrelated messages instead of repeatedly listing status. Inspect status only for errors or repeated timeouts.
 
 Keep the parent turn active until required work is terminal unless the current host explicitly guarantees completion will wake an ended turn. Parallel subagent support and `notify` do not establish that guarantee.
+
+## Bound task-status output
+
+For existing Desktop tasks, prefer a compact `wait_threads` snapshot (`timeoutMs: 0`) when only status is needed. Keep returned IDs and cursors for later waits. When history is needed, request only relevant turns and output detail.
+
+Batch independent reads with `Promise.allSettled` and store each full result before emitting anything. Inspect each fulfilled result or error, then emit only status, the latest relevant result and recovery handles from the tool's returned schema. Keep large histories and logs in stored results or run-owned files so a later question can select more detail without refetching. Budget the combined emitted text against `functions.exec`'s `max_output_tokens`; per-call limits do not bound the whole batch.
+
+Required instruction documents must still be read in full. Split them into output-sized batches or consecutive ranges, inspect each part, and resume from the last fully read range if a response is clipped. Do not replace required document text with a summary to fit more calls in one cell.

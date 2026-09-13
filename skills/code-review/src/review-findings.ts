@@ -14,12 +14,11 @@ import { fileURLToPath } from "node:url"
 
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_STATUSES, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordReviewedFiles, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startScopeBudget } from "./ReviewFindings.ts"
-import { extendReviewBudget, recordFindingMatch, requireFinishedReview, reviewLimits, reviewProgress } from "./ReviewFindings.ts"
-import { BudgetExtensionConflict, DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, formatFindingAcceptedShape, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireFinishedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
+import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
-import { checkReviewTarget, claimNativeLaunch, finishReview, getReview, requireOpenReview, ReviewOutcome, ReviewPhase, reviewRun, startReview, withOpenReview } from "./ReviewSession.ts"
+import { checkReviewTarget, claimNativeLaunch, finishReview, getReview, requireOpenReview, type Review, ReviewOutcome, ReviewPhase, reviewRun, startReview, withOpenReview } from "./ReviewSession.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
 class CloseoutOptionError extends Schema.TaggedError<CloseoutOptionError>()("CloseoutOptionError", { message: Schema.String }) {}
@@ -123,8 +122,9 @@ const record = Command.make("record", {
 }, (args) => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const run = yield* resolveCommandRun(args)
-  if (args.matchOf.length > 0 && (args.decisionId.length > 0 || args.status.length > 0 || args.ownerResolution.length > 0 || args.handling.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-of appends evidence only; omit decision/status/handling/owner-resolution fields"))
-  if (args.matchOf.length === 0 && (args.matchNote.length > 0 || args.evidence.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-note and --evidence require --match-of"))
+  const matchShape = "--review <id> --match-of <decision-id> --source <reviewer/pass> --evidence <result reference> --match-note <same-cause note>"
+  if (args.matchOf.length > 0 && (args.decisionId.length > 0 || args.status.length > 0 || args.ownerResolution.length > 0 || args.handling.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-of appends evidence only; omit decision/status/handling/owner-resolution fields", matchShape))
+  if (args.matchOf.length === 0 && (args.matchNote.length > 0 || args.evidence.length > 0)) return yield* Effect.fail(new InvalidFinding("--match-note and --evidence require --match-of", matchShape))
   const write = () => Effect.gen(function*() {
     return args.matchOf.length > 0 ? yield* recordFindingMatch(run, args, args.review || undefined) : yield* recordFinding({ ...run, decisionLog: args.decisionLog }, args, args.review || undefined)
   })
@@ -133,7 +133,7 @@ const record = Command.make("record", {
   const result = args.review.length > 0 && !repair ? yield* withOpenReview(args.review, write) : yield* write()
   const limits = yield* readReviewLimits(result.runId, run.head)
   yield* Console.log(args.json ? JSON.stringify({ ...result, limits }) : `recorded run=${result.runId} issue=${result.issueId} decision=${args.matchOf || args.decisionId} db=${args.db}\n${JSON.stringify({ limits })}`)
-})))
+}).pipe(Effect.catchTag("InvalidFinding", error => Effect.fail(new InvalidFinding(error.reason, error.acceptedShape ?? formatFindingAcceptedShape(args)))))))
 const recordCommandCli = Command.make("record-command", {
   db, ...recordRunFlags, command: Flag.string("command"), result: Flag.string("result"), reason: Flag.string("reason"), decisionId: Flag.string("decision-id").pipe(Flag.withDefault(""))
 }, (args) => withDb(args.db, Effect.gen(function*() {
@@ -181,7 +181,6 @@ const prune = Command.make("prune", {
 })))
 const scopeStart = Command.make("scope-start", {
   db, ...commonRun, scopeSummary, json: Flag.boolean("json"),
-  timeBudgetHours: Flag.float("time-budget-hours").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.timeBudgetHours)),
   consultCap: Flag.integer("consult-cap").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.consultCap)),
   coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.coldCleanTarget)),
   nativeCleanTarget: Flag.integer("native-clean-target").pipe(Flag.withDefault(2)),
@@ -189,7 +188,7 @@ const scopeStart = Command.make("scope-start", {
   requireCurrentHead: Flag.boolean("require-current-head")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const budget = yield* startScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, limits: { timeBudgetHours: args.timeBudgetHours, consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget, nativeCleanTarget: args.nativeCleanTarget, requiredPhases: args.requiredPhase, requireCurrentHead: args.requireCurrentHead } })
+  const budget = yield* startScopeBudget(toRun(args), { scopeSummary: args.scopeSummary, limits: { consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget, nativeCleanTarget: args.nativeCleanTarget, requiredPhases: args.requiredPhase, requireCurrentHead: args.requireCurrentHead } })
   const limits = yield* reviewLimits(toRun(args))
   yield* Console.log(args.json ? JSON.stringify({ ...budget, limits }) : `${formatReadyScopeBudget(budget)}\n${JSON.stringify({ limits })}`)
 }))).pipe(Command.withDescription("Freeze the review scope and deterministic diff-growth baseline"))
@@ -213,14 +212,6 @@ const scopeAuthorize = Command.make("scope-authorize", {
     ...(Option.isSome(args.newBase) ? { newBase: args.newBase.value } : {}) })
   yield* Console.log(formatReadyScopeBudget(budget))
 }))).pipe(Command.withDescription("Reset a blocked baseline after explicit user authorization"))
-const budgetExtend = Command.make("budget-extend", {
-  db, ...commonRun, runId: Flag.string("run-id"), requestId: Flag.string("request-id"), additionalSeconds: Flag.integer("additional-seconds"), authorization: Flag.string("authorization")
-}, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
-  yield* initialize()
-  const extension = yield* extendReviewBudget({ ...toRun(args), runId: args.runId }, args)
-  yield* Console.log(JSON.stringify({ ...extension, limits: yield* reviewLimits(toRun(args)) }))
-}))).pipe(Command.withDescription("Append explicitly user-authorized time to an existing run; exact request replay adds no time"))
-
 const scopeStatus = Command.make("scope-status", {
   db, ...commonRun, json: Flag.boolean("json")
 }, (args) => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
@@ -293,30 +284,62 @@ const nativeReportPath = Effect.fn("reviewFindings.nativeReportPath")(function*(
   return paths.join(paths.dirname(paths.resolve(expandHomePath(dbPath))), "review-output", `${reviewId}.txt`)
 })
 const reviewHandle = { db, review: Flag.string("review") }
-const reviewStartFlags = { db, ...commonRun, phase: Flag.choice("phase", ReviewPhase.literals), evidence: Flag.string("evidence") }
+const reviewScopeFlags = {
+  scopeSummary: Flag.string("scope-summary").pipe(Flag.withDefault("")),
+  consultCap: Flag.integer("consult-cap").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.consultCap)),
+  coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.withDefault(DEFAULT_REVIEW_LIMITS.coldCleanTarget)),
+  nativeCleanTarget: Flag.integer("native-clean-target").pipe(Flag.withDefault(2)),
+  requiredPhase: Flag.choice("required-phase", ["native", "cold"]).pipe(Flag.atLeast(0)),
+  requireCurrentHead: Flag.boolean("require-current-head")
+}
+const scopeInput = (args: { readonly target: string; readonly scopeSummary: string; readonly consultCap: number; readonly coldCleanTarget: number; readonly nativeCleanTarget: number; readonly requiredPhase: ReadonlyArray<"native" | "cold">; readonly requireCurrentHead: boolean }) => ({
+  scopeSummary: args.scopeSummary || `Review ${args.target}`,
+  limits: { consultCap: args.consultCap, coldCleanTarget: args.coldCleanTarget, nativeCleanTarget: args.nativeCleanTarget, requiredPhases: args.requiredPhase, requireCurrentHead: args.requireCurrentHead }
+})
+const recordingContract = (reviewId: string) => ({
+  schemaVersion: FINDING_SCHEMA_VERSION,
+  command: `review-findings record --review ${reviewId}`,
+  matchCommand: `review-findings record --review ${reviewId} --match-of <decision-id> --source <reviewer/pass> --evidence <result reference> --match-note <same-cause note>`,
+  schemaCommand: "review-findings schema",
+  acceptedValues: { findingKind: FINDING_KINDS, status: FINDING_STATUSES, fixScope: FINDING_FIX_SCOPES, handling: FINDING_HANDLINGS, rejectionGate: FINDING_REJECTION_GATES }
+})
+const reviewContext = (review: Review) => ({
+  runId: review.runId,
+  reviewId: review.reviewId,
+  head: review.head,
+  identity: { runId: review.runId, repo: review.repo, repoPath: review.repoPath, branch: review.branch, target: review.target, base: review.base, head: review.head },
+  recording: recordingContract(review.reviewId)
+})
+const reviewStartFlags = { db, ...commonRun, ...reviewScopeFlags, phase: Flag.choice("phase", ReviewPhase.literals), evidence: Flag.string("evidence") }
 const reviewStart = Command.make("start", reviewStartFlags, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const review = yield* startReview(toRun(args), args.phase, args.evidence)
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, phase: review.phase, head: review.head, status: review.status, resumed: review.resumed, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  const run = toRun(args)
+  const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
+  const review = yield* startReview(run, args.phase, args.evidence)
+  const scope = yield* getScopeBudget(run)
+  yield* Console.log(JSON.stringify({ ...reviewContext(review), phase: review.phase, status: review.status, resumed: review.resumed, scope: { status: scope.status, resumed: resolvedScope.resumed }, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewStatus = Command.make("status", reviewHandle, args => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const review = yield* getReview(args.review)
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, phase: review.phase, head: review.head, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(args.db, review.reviewId) } : {}), limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review), phase: review.phase, status: review.status, outcome: review.outcome, evidence: review.evidence, launched: review.launched === 1, ...(review.launched === 1 ? { report: yield* nativeReportPath(args.db, review.reviewId) } : {}), limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.choice("outcome", ReviewOutcome.literals), evidence: Flag.string("evidence") }, args => withDb(args.db, Effect.gen(function*() {
   yield* initialize()
   const review = yield* finishReview(args.review, args.outcome, args.evidence)
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewNative = Command.make("native", {
-  db, ...commonRun, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
+  db, ...commonRun, ...reviewScopeFlags, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
 }, args => withScopeDb(args.db, args.repoPath, Effect.gen(function*() {
   yield* initialize()
-  const review = yield* startReview(toRun(args), "native", "Native reviewer")
+  const run = toRun(args)
+  const resolvedScope = yield* startOrResumeScopeBudget(run, scopeInput(args))
+  const review = yield* startReview(run, "native", "Native reviewer")
+  const scope = yield* getScopeBudget(run)
   const report = yield* nativeReportPath(args.db, review.reviewId)
   const launch = !review.resumed && (yield* claimNativeLaunch(review.reviewId))
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: review.status, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review), status: review.status, scope: { status: scope.status, resumed: resolvedScope.resumed }, launched: launch, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
   if (!launch) return
   const git = yield* trustedExecutable("git", review.repoPath)
   const checkoutHead = yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath })
@@ -338,11 +361,11 @@ const reviewNative = Command.make("native", {
     Effect.flatMap(() => requireOpenReview(review.reviewId)),
     Effect.onExit(exit => CauseExit.isFailure(exit) ? finishReview(review.reviewId, "blocked", Cause.pretty(exit.cause)) : Effect.void)
   )
-  yield* Console.log(JSON.stringify({ reviewId: review.reviewId, status: "awaiting-findings", report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
+  yield* Console.log(JSON.stringify({ ...reviewContext(review), status: "awaiting-findings", scope: { status: scope.status, resumed: resolvedScope.resumed }, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const reviewCommand = Command.make("review").pipe(Command.withSubcommands([reviewStart, reviewStatus, reviewFinish, reviewNative]))
 
-const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, budgetExtend, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, reviewCommand, pathCommand]))
+const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, reviewCommand, pathCommand]))
 const Live = Layer.mergeAll(NodeServices.layer)
 const rootDb = process.argv[2]
 if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== undefined) {
@@ -350,9 +373,9 @@ if (rootDb === "--db" && process.argv[3] !== undefined && process.argv[4] !== un
 } else if (rootDb?.startsWith("--db=") && process.argv[3] !== undefined) {
   process.argv.splice(2, 2, process.argv[3], rootDb)
 }
-command.pipe(Command.run({ version: "3.2.0" }),
+command.pipe(Command.run({ version: "4.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof BudgetExtensionConflict || error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))

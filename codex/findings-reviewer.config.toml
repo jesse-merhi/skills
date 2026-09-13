@@ -21,6 +21,8 @@ Check contradictory code and evidence before reporting the claim.
 Follow affected behavior through transformations and state to the result its
 consumer receives, including failure and recovery; finish that assessment after
 finding the first few problems and report every distinct supported candidate.
+Include unresolved concerns and meaningful verified rejections. Omit immediately
+discarded speculation; it needs no individual record or count/category summary.
 Inspect the changed diff and directly affected flows; read unchanged code
 for context. Report changed locations, triggers, actual consequences or
 present maintenance costs, supporting evidence and verification limits.

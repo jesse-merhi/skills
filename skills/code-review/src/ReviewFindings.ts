@@ -10,7 +10,7 @@ import { createHash } from "node:crypto"
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
-import { type BudgetExtension, BudgetExtensionConflict, checkReviewLimits, DEFAULT_REVIEW_LIMITS, extendReviewTimeBudget, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
+import { checkReviewLimits, DEFAULT_REVIEW_LIMITS, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
 import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
@@ -159,12 +159,42 @@ export interface FindingInput {
   readonly ownerResolution: string
 }
 
+export const formatFindingAcceptedShape = (finding: Pick<FindingInput, "findingKind" | "status" | "likelihood" | "handling" | "maintenanceEvidence" | "presentCost">): string => {
+  const repairFields = "--root-cause <cause> --recommended-fix <durable repair> --intervention-justification <why intervention is justified>"
+  const runtime = finding.findingKind === "runtime"
+  const maintenanceEvidence = runtime ? "" : " --maintenance-evidence <current evidence> --present-cost <current cost>"
+  const runtimeEvidence = runtime && finding.likelihood !== "unknown" && finding.likelihood !== "theoretical"
+    ? " --production-path <path> --reachability-evidence <reproduction> --actual-consequence <observed result> --contract-evidence <expected behavior>"
+    : ""
+  if (finding.handling === "reject" || finding.status === "rejected" || (runtime && finding.likelihood === "theoretical")) {
+    const supportedMaintenance = !runtime && (finding.maintenanceEvidence.trim().length > 0 || finding.presentCost.trim().length > 0) ? maintenanceEvidence : ""
+    return `--status rejected --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}; omit repair fields`
+  }
+  if (runtime && finding.likelihood === "unknown") {
+    return "--status open --decision <investigation needed>; omit repair fields until the runtime path is proven"
+  }
+  if (finding.handling === "consult") {
+    return `--status open --handling consult --decision <owner question> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (finding.handling === "follow-up") {
+    return `--status deferred --handling follow-up --decision <owner or next action> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (finding.status === "deferred") {
+    return `--status deferred --handling fix --decision <accepted residual risk> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  return `--status open --handling fix ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+}
+
 export type Finding = typeof FindingRecord.Type & FindingOutcome
 
 export class InvalidFinding extends Error {
   readonly _tag = "InvalidFinding"
-  constructor(message: string) {
-    super(`invalid finding: ${message}; run review-findings schema for the current record contract`)
+  readonly reason: string
+  readonly acceptedShape: string | undefined
+  constructor(reason: string, acceptedShape?: string) {
+    super(`invalid finding: ${reason}${acceptedShape === undefined ? "" : `\naccepted shape: ${acceptedShape}`}\nfull contract: review-findings schema`)
+    this.reason = reason
+    this.acceptedShape = acceptedShape
   }
 }
 
@@ -661,7 +691,6 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
-    `create table if not exists review_budget_extensions (run_id text not null references review_runs(id) on delete cascade, request_id text not null, receipt text not null, primary key(run_id, request_id))`,
     `create table if not exists review_invocations (id text primary key, run_id text not null references review_runs(id) on delete cascade, head text not null, base_oid text not null, phase text not null, start_revision integer not null, status text not null, outcome text not null, evidence text not null, launched integer not null default 0)`,
     `create table if not exists review_progress_events (run_id text not null references review_runs(id) on delete cascade, revision integer not null, payload text not null, primary key(run_id, revision))`,
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
@@ -1191,6 +1220,22 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
   return check
 })
 
+/** Resolve the persisted scope once, creating it only when this target has no scope yet. */
+export const startOrResumeScopeBudget = Effect.fn("ReviewFindings.startOrResumeScopeBudget")(function*(run: ReviewRun, input: {
+  readonly scopeSummary: string
+  readonly limits?: Partial<LimitSettings>
+}) {
+  return yield* getScopeBudget(run).pipe(
+    Effect.map((budget) => ({ budget, resumed: true })),
+    Effect.catchTag("MissingScopeBudget", () => startScopeBudget(run, input).pipe(
+      Effect.map((budget) => ({ budget, resumed: false })),
+      Effect.catchTag("ScopeBudgetAlreadyStarted", () => getScopeBudget(run).pipe(
+        Effect.map((budget) => ({ budget, resumed: true }))
+      ))
+    ))
+  )
+})
+
 export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudget")(function*(run: ReviewRun, input: {
   readonly scopeSummary: string
   readonly authorization: string
@@ -1685,13 +1730,6 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   }
   return yield* readProgress(runId)
   }))
-})
-
-export const extendReviewBudget = Effect.fn("ReviewFindings.extendBudget")(function*(run: ReviewRun & { readonly runId: string }, extension: typeof BudgetExtension.Type) {
-  const runId = yield* exactRunId(yield* verifyScopeRun(run))
-  if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
-  if (run.runId !== runId) return yield* new BudgetExtensionConflict({ message: "Saved run ID does not match the resolved scope; authorization cannot extend a different review run" })
-  return yield* extendReviewTimeBudget(runId, extension)
 })
 
 export const reviewLimits = Effect.fn("ReviewFindings.limits")(function*(run: ReviewRun, phase?: ReviewPhase) {

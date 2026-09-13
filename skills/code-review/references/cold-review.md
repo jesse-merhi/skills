@@ -6,9 +6,9 @@ Tell the reviewer which runtime versions and commands you used, which commit you
 
 Follow the model policy in the applicable `AGENTS.md` unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change fixed launcher settings. Report an unavailable configuration rather than silently substituting another model.
 
-A brief can say: “Review this target with the supplied skills. Trace changed behavior through real callers and system events. Return distinct problems, changed locations, triggers, consequences, likelihood and impact evidence, uncertainty, and rejected candidates with reasons. Report what you could not verify. Do not edit code or manage repairs.”
+A brief can say: “Review this target with the supplied skills. Trace changed behavior through real callers and system events. Return distinct problems, changed locations, triggers, consequences, likelihood and impact evidence, uncertainty, and meaningful verified rejections with reasons. Report what you could not verify. Do not edit code or manage repairs.”
 
-Require one complete report after assessing all assigned behaviors. Include every distinct candidate and rejected claim; do not send findings one at a time or stop after the first few.
+Require one complete report after assessing all assigned behaviors. Include actionable findings, unresolved concerns and meaningful verified rejections: observed limitations or claims whose verification materially affects confidence in the changed behavior. Omit ideas immediately discarded for lack of a reachable trigger, changed behavior or supported contract. No discarded-thought count or category summary is required. Assess the full assigned scope before returning the report.
 
 Ask reviewers to establish intended behavior from the task, documentation, callers, tests and base revision. Intentional contract changes are not automatically regressions; material conflicts become questions. Evidence should name the expected result, reachable inputs or state, and observed outcome. Missing, unexecuted or stale proof is not an observed failure.
 

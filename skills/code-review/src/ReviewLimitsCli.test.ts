@@ -21,13 +21,16 @@ const Output = Schema.fromJsonString(Schema.Struct({
   launched: Schema.optional(Schema.Boolean),
   report: Schema.optional(Schema.String),
   diagnosticWarnings: Schema.optional(Schema.Array(Schema.String)),
+  resumed: Schema.optional(Schema.Boolean),
+  identity: Schema.optional(Schema.Struct({ runId: Schema.String, repo: Schema.String, repoPath: Schema.String, branch: Schema.String, target: Schema.String, base: Schema.String, head: Schema.String })),
+  scope: Schema.optional(Schema.Struct({ status: Schema.String, resumed: Schema.Boolean })),
+  recording: Schema.optional(Schema.Struct({ schemaVersion: Schema.Number, command: Schema.String, matchCommand: Schema.String, schemaCommand: Schema.String })),
   limits: Schema.Struct({
     runId: Schema.String,
-    startedAt: Schema.Number,
-    remainingSeconds: Schema.Number,
     consultCap: Schema.Number,
     openQuestionCount: Schema.Number,
     cleanTargets: Schema.Struct({ native: Schema.Number, cold: Schema.Number, clawsweeper: Schema.Number }),
+    incompletePhases: Schema.Array(Schema.String),
     diagnosticWarnings: Schema.Array(Schema.String),
     stoppingReasons: Schema.Array(Schema.String)
   })
@@ -58,7 +61,7 @@ const fixture = Effect.gen(function*() {
     "--head", head, "--expected-revision", String(revision), "--phase", phase, "--outcome", outcome, "--evidence", `synthetic-${phase}-${revision}`, ...extra
   ])
   const invoke = (args: ReadonlyArray<string>) => checkedText(process.execPath, ["--disable-warning=ExperimentalWarning", new URL("review-findings.ts", import.meta.url).pathname, ...args, "--db", database])
-  const reviewStart = () => invoke(["review", "start", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--phase", "native", "--evidence", "invocation"])
+  const reviewStart = (extra: ReadonlyArray<string> = []) => invoke(["review", "start", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--phase", "native", "--evidence", "invocation", ...extra])
   return { directory, database, repository, git, cli, progress, invoke, reviewStart }
 
 })
@@ -197,7 +200,38 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.lengthOf(yield* sql`select * from review_finding_matches`, 1)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
-test.effect("managed review start, resume, status and finish expose persisted growth diagnostics", () => Effect.gen(function*() {
+test.effect("managed review start initializes once and resumes with its identity and recording contract", () => Effect.gen(function*() {
+  const { invoke, reviewStart, repository, database } = yield* fixture
+  const started = decode(yield* reviewStart(["--scope-summary", "fixture review", "--native-clean-target", "1", "--cold-clean-target", "3", "--required-phase", "native", "--required-phase", "cold", "--require-current-head"]))
+  if (started.reviewId === undefined || started.runId === undefined || started.identity === undefined || started.scope === undefined || started.recording === undefined) {
+    return assert.fail("Managed review start must return reusable review context")
+  }
+  assert.deepStrictEqual(started.identity, { runId: started.runId, repo: "fixture", repoPath: repository, branch: "fixture", target: "fixture", base: "main", head: started.identity.head })
+  assert.deepStrictEqual(started.scope, { status: "ok", resumed: false })
+  assert.strictEqual(started.recording.schemaVersion, 8)
+  assert.strictEqual(started.recording.command, `review-findings record --review ${started.reviewId}`)
+  assert.include(started.recording.matchCommand, `--review ${started.reviewId} --match-of`)
+  assert.strictEqual(started.recording.schemaCommand, "review-findings schema")
+  assert.deepStrictEqual(started.limits.cleanTargets, { native: 1, cold: 3, clawsweeper: 2 })
+  assert.deepStrictEqual(started.limits.incompletePhases, ["native", "cold"])
+  assert.deepStrictEqual(started.limits.stoppingReasons, [])
+  const sql = yield* SqliteClient.make({ filename: database })
+  const persisted = yield* sql`select review_runs.id, review_invocations.evidence, review_run_limits.settings from review_runs join review_invocations on review_invocations.run_id = review_runs.id join review_run_limits on review_run_limits.run_id = review_runs.id`
+  const resumed = decode(yield* reviewStart())
+  assert.strictEqual(resumed.reviewId, started.reviewId)
+  assert.strictEqual(resumed.runId, started.runId)
+  assert.strictEqual(resumed.resumed, true)
+  assert.deepStrictEqual(resumed.scope, { status: "ok", resumed: true })
+  assert.deepStrictEqual(resumed.limits.cleanTargets, started.limits.cleanTargets)
+  assert.deepStrictEqual(yield* sql`select review_runs.id, review_invocations.evidence, review_run_limits.settings from review_runs join review_invocations on review_invocations.run_id = review_runs.id join review_run_limits on review_run_limits.run_id = review_runs.id`, persisted)
+  const status = decode(yield* invoke(["review", "status", "--review", started.reviewId]))
+  assert.deepStrictEqual(status.identity, started.identity)
+  assert.deepStrictEqual(status.recording, started.recording)
+  const finished = decode(yield* invoke(["review", "finish", "--review", started.reviewId, "--outcome", "blocked", "--evidence", "fixture close"]))
+  assert.strictEqual(finished.runId, started.runId)
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("managed review responses expose persisted growth diagnostics", () => Effect.gen(function*() {
   const { cli, invoke, reviewStart, repository, git } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
   const fs = yield* FileSystem.FileSystem
@@ -214,6 +248,40 @@ test.effect("managed review start, resume, status and finish expose persisted gr
   assert.deepStrictEqual(status.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
   const finished = decode(yield* invoke(["review", "finish", "--review", started.reviewId, "--outcome", "blocked", "--evidence", "fixture close"]))
   assert.deepStrictEqual(finished.limits.diagnosticWarnings, ["DIFF_GROWTH_EXCEEDED"])
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("managed review start rejects a dirty checkout without stranding scope state", () => Effect.gen(function*() {
+  const { reviewStart, repository, database } = yield* fixture
+  const fs = yield* FileSystem.FileSystem
+  yield* fs.writeFileString(`${repository}/untracked.txt`, "not part of the review\n")
+  const rejected = yield* reviewStart().pipe(Effect.flip)
+  assert.include(rejected.stderr, "clean committed worktree")
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.lengthOf(yield* sql`select id from review_runs`, 0)
+  assert.lengthOf(yield* sql`select run_id from review_scope_budgets`, 0)
+  assert.lengthOf(yield* sql`select id from review_invocations`, 0)
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("record errors show the accepted shape and do not write an invalid finding", () => Effect.gen(function*() {
+  const { reviewStart, invoke, database } = yield* fixture
+  const started = decode(yield* reviewStart())
+  if (started.reviewId === undefined) return assert.fail("Managed review start must return its review ID")
+  const rejected = yield* invoke(["record", "--review", started.reviewId, "--decision-id", "D1", "--status", "open", "--source", "fixture", "--fingerprint", "unsupported candidate", "--summary", "Unsupported candidate",
+    "--finding-kind", "maintenance", "--maintenance-evidence", "A duplicate owner exists", "--present-cost", "Every change updates two owners",
+    "--fix-scope", "local", "--handling", "reject", "--rejection-gate", "reality", "--decision", "The repair is disproportionate to the current cost"]).pipe(Effect.flip)
+  assert.include(rejected.stderr, "disposition reject cannot use status open")
+  assert.include(rejected.stderr, "accepted shape: --status rejected --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>")
+  assert.include(rejected.stderr, "--maintenance-evidence <current evidence> --present-cost <current cost>; omit repair fields")
+  assert.include(rejected.stderr, "full contract: review-findings schema")
+  const mixedKinds = yield* invoke(["record", "--review", started.reviewId, "--decision-id", "D2", "--status", "open", "--source", "fixture", "--fingerprint", "maintenance candidate", "--summary", "Maintenance candidate",
+    "--finding-kind", "maintenance", "--likelihood", "unknown", "--maintenance-evidence", "Duplicate owner exists", "--present-cost", "Every change updates two owners",
+    "--root-cause", "Duplicated ownership", "--recommended-fix", "Use the existing owner", "--intervention-justification", "Remove duplicated change cost", "--fix-scope", "local", "--handling", "fix"]).pipe(Effect.flip)
+  assert.include(mixedKinds.stderr, "maintenance findings must omit runtime risk field --likelihood")
+  assert.include(mixedKinds.stderr, "accepted shape: --status open --handling fix --root-cause")
+  assert.include(mixedKinds.stderr, "--maintenance-evidence <current evidence> --present-cost <current cost>")
+  assert.notInclude(mixedKinds.stderr, "runtime path")
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.lengthOf(yield* sql`select id from issues`, 0)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("native command reviews the full historical range once and exposes its saved report", () => Effect.gen(function*() {
@@ -237,8 +305,7 @@ case " $* " in
 esac
 `)
   yield* fs.chmod(reviewer, 0o700)
-  yield* cli("scope-start", ["--scope-summary", "fixture", "--head", historicalHead, "--json"])
-  const args = ["review", "native", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--codex-bin", reviewer]
+  const args = ["review", "native", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--head", historicalHead, "--scope-summary", "fixture", "--codex-bin", reviewer]
   const launched = yield* invoke(args)
   const Receipt = Schema.fromJsonString(Schema.Struct({ reviewId: Schema.String, launched: Schema.Boolean, report: Schema.String }))
   const first = Schema.decodeUnknownSync(Receipt)(launched.split("\n")[0] ?? "")
@@ -296,46 +363,6 @@ test.effect("old handles cannot write evidence into a new run with the same iden
   assert.lengthOf(yield* sql`select id from commands`, 0)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
-test.effect("CLI extends an expired existing run with a replayable receipt and preserves its history", () => Effect.gen(function*() {
-  const { cli, progress, database } = yield* fixture
-  const requestFlags = ["--request-id", "authorized-resume", "--additional-seconds", "7200", "--authorization", "Owner explicitly approves continuing the existing run"]
-  const missing = yield* cli("budget-extend", ["--run-id", "missing", ...requestFlags]).pipe(Effect.flip)
-  assert.notStrictEqual(missing.exitCode, 0)
-  const started = decode(yield* cli("scope-start", ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--required-phase", "cold", "--require-current-head", "--json"]))
-  const request = ["--run-id", started.runId ?? "", ...requestFlags]
-  yield* progress(0, "started")
-  yield* progress(1, "clean")
-  const sql = yield* SqliteClient.make({ filename: database })
-  yield* sql`update review_runs set started_at = started_at - 28800`
-  const before = yield* sql`select * from review_runs`
-  const scopeBefore = yield* sql`select * from review_scope_budgets`
-  const tables = yield* sql<{ readonly name: string }>`select name from sqlite_master where type = 'table' order by name`
-  const beforeWrongRun = yield* Effect.forEach(tables, table => sql.unsafe(`select * from "${table.name}"`))
-  const wrongRun = yield* cli("budget-extend", ["--run-id", "earlier-run", ...requestFlags]).pipe(Effect.flip)
-  assert.include(wrongRun.stderr, "different review run")
-  assert.deepStrictEqual(yield* Effect.forEach(tables, table => sql.unsafe(`select * from "${table.name}"`)), beforeWrongRun)
-  const expired = yield* progress(2, "started", "cold").pipe(Effect.flip)
-  assert.include(expired.stderr, "TIME_EXPIRED")
-  const receiptSchema = Schema.fromJsonString(Schema.Struct({ requestId: Schema.String, oldDeadline: Schema.Number, newDeadline: Schema.Number, replayed: Schema.Boolean }))
-  const first = Schema.decodeUnknownSync(receiptSchema)(yield* cli("budget-extend", request))
-  assert.strictEqual(first.newDeadline - first.oldDeadline, 7200)
-  assert.strictEqual(first.replayed, false)
-  const replay = Schema.decodeUnknownSync(receiptSchema)(yield* cli("budget-extend", request))
-  assert.deepStrictEqual(replay, { ...first, replayed: true })
-  const changed = yield* cli("budget-extend", ["--run-id", started.runId ?? "", "--request-id", "authorized-resume", "--additional-seconds", "3600", "--authorization", "Different authorization"]).pipe(Effect.flip)
-  assert.include(changed.stderr, "immutable")
-  const noAuthority = yield* cli("budget-extend", ["--run-id", started.runId ?? "", "--request-id", "new", "--additional-seconds", "3600"]).pipe(Effect.flip)
-  assert.notStrictEqual(noAuthority.exitCode, 0)
-  assert.deepStrictEqual(yield* sql`select * from review_runs`, before)
-  assert.deepStrictEqual(yield* sql`select * from review_scope_budgets`, scopeBefore)
-  assert.lengthOf(yield* sql`select * from review_budget_extensions`, 1)
-  const status = decode(yield* cli("progress-status"))
-  assert.strictEqual(status.revision, 2)
-  const samePhase = yield* progress(2, "started").pipe(Effect.flip)
-  assert.include(samePhase.stderr, "PHASE_TARGET_MET")
-  assert.strictEqual(decode(yield* progress(2, "started", "cold")).revision, 3)
-}).pipe(Effect.scoped), { timeout: 60000 })
-
 test.effect("CLI preserves native2/cold1/claws2, prevents completion bypass and unchanged reruns", () => Effect.gen(function*() {
   const { cli, progress } = yield* fixture
   const invalid = yield* cli("scope-start", ["--scope-summary", "fixture", "--consult-cap", "0", "--json"]).pipe(Effect.flip)
@@ -370,8 +397,8 @@ test.effect("CLI preserves native2/cold1/claws2, prevents completion bypass and 
   assert.include(terminal.stderr, "immutable")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
-test.effect("CLI stops at the consult cap, appends matches once, and accepts owner decisions after expiry", () => Effect.gen(function*() {
-  const { cli, progress, database } = yield* fixture
+test.effect("CLI stops at the consult cap, appends matches once, and accepts owner decisions", () => Effect.gen(function*() {
+  const { cli, progress } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--consult-cap", "1", "--cold-clean-target", "3", "--json"])
   yield* progress(0, "started")
   const card = ["--decision-id", "D1", "--source", "fixture", "--fingerprint", "sample owner repeated policy", "--summary", "Fixture issue",
@@ -393,38 +420,17 @@ test.effect("CLI stops at the consult cap, appends matches once, and accepts own
   const blocked = yield* progress(2, "started").pipe(Effect.flip)
   assert.include(blocked.stderr, "CONSULT_CAP_REACHED")
   assert.strictEqual(decode(yield* cli("progress-status")).revision, 2)
-  const sql = yield* SqliteClient.make({ filename: database })
-  yield* sql`update review_runs set started_at = started_at - 28800`
   const resolved = decode(yield* cli("record", [...card, "--status", "fixed", "--owner-resolution", "approved", "--decision", "Keep the fixture repair", "--json"]))
   assert.strictEqual(resolved.limits.openQuestionCount, 0)
-  assert.strictEqual(resolved.limits.remainingSeconds, 0)
   assert.strictEqual(resolved.limits.cleanTargets.cold, 3)
   const terminalMatch = yield* cli("record", ["--match-of", "D1", "--source", "fixture-pass3", "--match-note", "Same cause", "--evidence", "synthetic-pass3"]).pipe(Effect.flip)
   assert.include(terminalMatch.stderr, "existing open finding")
-  const expired = yield* cli("scope-check", ["--reason", "fixture", "--json"]).pipe(Effect.flip)
-  assert.include(expired.stderr, "TIME_EXPIRED")
-  const next = yield* progress(2, "started").pipe(Effect.flip)
-  assert.include(next.stderr, "TIME_EXPIRED")
   yield* cli("record-command", ["--command", "fixture-check", "--result", "passed", "--reason", "late result"])
-}).pipe(Effect.scoped), { timeout: 60000 })
-
-test.effect("CLI records a completed result after expiry without permitting a further start", () => Effect.gen(function*() {
-  const { cli, progress, database } = yield* fixture
-  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
-  yield* progress(0, "started")
-  const sql = yield* SqliteClient.make({ filename: database })
-  yield* sql`update review_runs set started_at = started_at - 28800`
-  const finished = decode(yield* progress(1, "clean"))
-  assert.strictEqual(finished.revision, 2)
-  assert.include(finished.limits.stoppingReasons, "TIME_EXPIRED")
-  const stopped = yield* progress(2, "started").pipe(Effect.flip)
-  assert.include(stopped.stderr, "TIME_EXPIRED")
-  assert.strictEqual(decode(yield* cli("progress-status")).revision, 2)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("CLI gates evidenced repair failures and accepts a scoped owner decision without resetting limits", () => Effect.gen(function*() {
   const { cli, progress } = yield* fixture
-  const baseline = decode(yield* cli("scope-start", ["--scope-summary", "fixture", "--json"]))
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
   yield* cli("record", ["--decision-id", "D1", "--source", "fixture", "--fingerprint", "owner cause", "--summary", "Fixture repair",
     "--finding-kind", "maintenance", "--maintenance-evidence", "Synthetic duplicate policy", "--present-cost", "Synthetic change cost", "--root-cause", "Synthetic shared cause",
     "--recommended-fix", "Synthetic owning repair", "--intervention-justification", "Synthetic removal cost", "--fix-scope", "local", "--handling", "fix", "--status", "open"])
@@ -435,16 +441,12 @@ test.effect("CLI gates evidenced repair failures and accepts a scoped owner deci
   yield* progress(2, "repair-applied", "native", attempt2)
   const failed = decode(yield* progress(3, "repair-unsuccessful", "native", attempt2))
   assert.include(failed.limits.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
-  const extended = decode(yield* cli("budget-extend", ["--run-id", baseline.runId ?? "", "--request-id", "more-time", "--additional-seconds", "3600", "--authorization", "Owner approved more review time only"]))
-  assert.include(extended.limits.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
-  assert.strictEqual(extended.limits.startedAt, baseline.limits.startedAt)
   const stopped = yield* progress(4, "started").pipe(Effect.flip)
   assert.include(stopped.stderr, "REPAIR_CONSULT_REQUIRED")
   const scopeStopped = yield* cli("scope-check", ["--reason", "fixture", "--json"]).pipe(Effect.flip)
   assert.include(scopeStopped.stderr, "REPAIR_CONSULT_REQUIRED")
   const authorized = decode(yield* progress(4, "repair-authorized", "native", ["--finding-id", "D1", "--authorization", "Owner approves the next scoped attempt"]))
   assert.notInclude(authorized.limits.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
-  assert.strictEqual(authorized.limits.startedAt, baseline.limits.startedAt)
   assert.strictEqual(authorized.limits.consultCap, 5)
   yield* progress(5, "started")
 }).pipe(Effect.scoped), { timeout: 60000 })
