@@ -21,11 +21,7 @@ Use enough explanation for the complexity. For a pending decision, describe the 
 
 Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Carry the user instructions that authorize remaining work and any later corrections that supersede old unanswered questions; a handoff does not require the user to approve the same work again. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
 
-## Communication between sessions
-
-The originating (parent) session and the new (child) session must not communicate with each other unless the user explicitly requests it. A handoff request authorizes the initial brief and launch prompt only; it does not authorize later messages, acknowledgements, progress reports, questions, or replies between sessions. Both sessions report to the user directly. If the user requests communication, keep it within that request's scope.
-
-Include this rule in both the saved brief and the child's launch prompt so the child receives it even without reading this skill.
+After the initial brief and launch prompt, parent and child sessions must not communicate unless the user explicitly requests it, and only within that request's scope. Both report directly to the user. Include this rule in the brief and launch prompt.
 
 ## Get the launch command
 
@@ -41,4 +37,4 @@ Run the recommended command or use the recommended native tool. Use a new worktr
 
 Launch a full interactive session, never ACPX, subagents, or background agents. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
 
-Confirm the new agent has started and only one new session was created using the launch result or read-only session status; do not send a message to request confirmation. Report the brief path, session/worktree location, and observed status.
+Use the launch result or read-only status to confirm the new agent has started and only one session was created. Report the brief path, session/worktree location, and observed status.
