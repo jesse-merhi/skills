@@ -13,7 +13,7 @@ wait_ms = min(tool_limit_ms, update_due_in_ms - 5000)
 
 Use the tool's exposed maximum, or its documented default if no maximum is given. Without a required update, use that limit. If the result is zero, negative or below the tool's minimum, send the update first. Completion returns early; no runtime estimate is needed.
 
-- Commands and agents: use [Codex](references/codex.md) or [Claude Code](references/claude.md).
+- Commands and agents: wait on their existing completion handles.
 - CI: use one [GitHub watch command](references/github-actions.md).
 - Requested delays: use the host's `sleep` tool or `quiet-wait 5m` for the requested duration.
 

@@ -25,9 +25,7 @@ Check the owning tools, instructions and available prior feedback. Reuse open re
 
 Keep the recommendation tied to the observed problem. Name the change, its owner and how to tell whether it helped. State missing evidence when the cause is uncertain. Use one independent, read-only recommendation worker only for competing causes or consequential tradeoffs; it advises without editing.
 
-In Codex, select the configured `investigator` (`agent_type="investigator"` on `spawn_agent`) for that bounded recommendation, without inherited conversation. Supply the question, worktree and revision or source, scope, constraints, acceptance criteria and neutral evidence; the role owns reusable guidance and settings. The coordinator keeps decisions and repairs. If the role is unavailable, report it and assess the evidence locally, disclosing the lack of independence.
-
-In Claude Code, invoke the native `Agent` tool with `subagent_type: "investigator"` when the optional named definition is available. Use a fresh invocation and put the same bounded question and neutral evidence in `prompt`; the definition owns reusable role instructions. Do not rely on profile memory or skill-exclusion controls. The coordinator keeps decisions and repairs. If the definition is unavailable, report it and assess the evidence locally, disclosing the lack of independence. Other harnesses use their supported launcher settings under `AGENTS.md`; Codex and Claude role selectors are not portable spawn arguments.
+Use `Agent` with `subagent_type: "investigator"` for that recommendation. Start a fresh invocation. Pass the question, worktree and revision or source, scope, constraints, acceptance criteria and neutral evidence. Keep decisions and repairs here. If independent dispatch is unavailable, assess locally and disclose the lack of independence.
 
 ## 4. Apply and follow through
 

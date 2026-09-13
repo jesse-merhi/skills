@@ -9,11 +9,9 @@ Run native review, repair confirmed problems, then obtain native and independent
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
-For useful bounded repair work, select Codex's configured `implementer`; use `investigator` for a specific unresolved code or dependency question. Pass task-specific objective, worktree and revision, owned scope, constraints, acceptance criteria and evidence through the launcher's task message; select the role with `agent_type` on `spawn_agent`. The role definition owns reusable behavior and model settings. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery here. For the cold phase, select `findings_reviewer` under the independent-review instructions; it never replaces this coordinator or the native phase. Delegate only work that benefits from a separate worker.
+Use `Agent` with `subagent_type: "implementer"` for useful bounded repairs and `Agent` with `subagent_type: "investigator"` for unresolved code or dependency questions. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery here.
 
-In Claude Code, invoke the native `Agent` tool with `subagent_type: "implementer"` for a bounded repair or `subagent_type: "investigator"` for a specific unresolved question when the matching optional named definition is available. Put the task-specific assignment in `prompt`; the definition owns reusable role instructions. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery with this coordinator. For the cold phase, use `subagent_type: "findings-reviewer"` under the independent-review instructions; it never replaces this coordinator or the native phase. Invoke each role only when its bounded work benefits from a separate worker.
-
-Use named roles only when exposed by the current launcher. Report missing roles and continue suitable local work without reconstructing role prompts or changing live configuration. OpenClaw and other harnesses use their supported launch settings under `AGENTS.md`; do not pass Codex or Claude role selectors to an API that does not support them.
+Use `Agent` with `subagent_type: "findings-reviewer"` for the fresh independent phase under the independent-review instructions. It does not replace this coordinator or native review. If the role is unavailable, report it and continue suitable work locally. Do not rebuild role prompts or change live configuration; local review cannot satisfy independent review.
 
 ## 1. Start the review
 

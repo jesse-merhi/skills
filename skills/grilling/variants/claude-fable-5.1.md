@@ -14,11 +14,8 @@ Interview the user until the decision tree is settled. Do not make the user's de
 2. Find every question whose prerequisites are settled. This is the current frontier. Leave questions that depend on unanswered choices for later.
 3. If a frontier question needs an environmental fact, send a background subagent to find it. Batch independent fact-finding where useful. Continue asking questions that do not depend on the missing fact.
 
-In Codex, select the configured `investigator` through the launcher's role field (`agent_type` on `spawn_agent`). Supply the factual objective, worktree and revision or source, bounded scope, constraints, acceptance criteria and relevant evidence; the role definition supplies reusable instructions, skills and model settings. Keep question sequencing and synthesis with the coordinator and decisions with the user. If that role is unavailable, report it and establish the fact locally.
+Use `Agent` with `subagent_type: "investigator"` for the blocking factual question. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Continue independent questions while it runs; keep synthesis here and decisions with the user. If the role is unavailable, report it and continue suitable work locally.
 
-In Claude Code, invoke the native `Agent` tool with `subagent_type: "investigator"` when the optional named definition is available. Put the same bounded factual assignment in `prompt`; the definition owns reusable role instructions. Use it only when independent fact-finding can unblock a frontier question. Keep question sequencing and synthesis with the coordinator and decisions with the user. If the definition is unavailable, report it and establish the fact locally.
-
-Other harnesses, including OpenClaw, use their own supported launcher settings under `AGENTS.md`; do not assume their spawn API accepts Codex or Claude role names.
 4. Ask the whole available frontier in one numbered round. Give a recommended answer for every question. Use a horizontal rule between questions:
 
    ```markdown
