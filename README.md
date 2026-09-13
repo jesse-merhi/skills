@@ -95,6 +95,12 @@ custom main or reviewer agents. Shared owner and worker policy lives in
 `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
 `handoff` transfers work to a fresh full session.
 
+For opt-in Codex orchestration, run `./install-codex-profiles`, then
+`codex --profile orchestration`. This pins Astra for coordination, Sol for
+implementation and tests, Luna for investigation, and Astra for independent
+findings-only review. It does not edit your base configuration or install global
+agents. See [Codex orchestration](codex/README.md) for the role settings and limits.
+
 Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
 sessions. After installation, use `codex --profile findings-reviewer review
 --base main`, or the normal `skills/code-review/scripts/codex-review` helper,

@@ -777,7 +777,8 @@ JS
 
 test_model_skill_variant_materializer() {
   node --test "$ROOT_DIR/skills/writing-for-agents/scripts/materialize-skill-variants.test.mjs" \
-    "$ROOT_DIR/skills/writing-for-agents/scripts/install-skills.test.mjs"
+    "$ROOT_DIR/skills/writing-for-agents/scripts/install-skills.test.mjs" \
+    "$ROOT_DIR/packages/codex-profiles/install.test.mjs"
 }
 
 test_skill_frontmatter_is_valid
