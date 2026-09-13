@@ -188,6 +188,32 @@ fi
     }
   }, 45_000)
 
+  it("passes the explicit repository ahead of GitHub defaults", async () => {
+    const fixture = await createRepository()
+    const gh = join(fixture.directory, "gh")
+    try {
+      await git(fixture.repo, ["remote", "add", "origin", "git@github.com:acme/widget.git"])
+      const base = (await git(fixture.repo, ["rev-parse", "main"])).stdout.trim()
+      await writeFile(gh, `#!/bin/sh
+if [ "$2" = list ]; then printf '[{"url":"https://github.com/acme/widget/pull/7"}]'; exit 0; fi
+if [ "$3" != feature ] || [ "$4" != --repo ] || [ "$5" != acme/widget ]; then
+  printf 'Inherited repository %s or checkout branch was selected' "$GH_REPO" >&2
+  exit 1
+fi
+printf '{"url":"https://github.com/acme/widget/pull/7","baseRefName":"main","baseRefOid":"${base}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
+`, { mode: 0o700 })
+      const result = await runReview(fixture.nested, [
+        "review", "start", "--db", fixture.db, "--repo", "acme/widget", "--branch", "feature",
+        "--phase", "cold", "--evidence", "Explicit repository and branch review"
+      ], { GH_BIN: gh, GH_REPO: "wrong/widget" })
+      expect(reviewOutput(result.stdout).identity).toMatchObject({
+        repo: "acme/widget", branch: "feature", target: "https://github.com/acme/widget/pull/7", base: "main"
+      })
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true })
+    }
+  }, 45_000)
+
   it("resolves fork clones and configured upstream pull refs while rejecting unrelated forks", async () => {
     const fixture = await createRepository()
     const gh = join(fixture.directory, "gh")

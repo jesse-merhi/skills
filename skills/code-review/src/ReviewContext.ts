@@ -25,6 +25,7 @@ export interface SavedReviewContext {
 
 export interface LocalReviewContext extends ReviewContextInput {
   readonly currentHead: string
+  readonly repositoryOverride: string
   readonly remote?: string
 }
 
@@ -113,7 +114,7 @@ export const resolveLocalReviewContext = Effect.fn("ReviewContext.resolveLocal")
     ? input.branch
     : yield* gitText(repoPath, ["symbolic-ref", "--quiet", "--short", "HEAD"], "review start cannot infer a branch from detached HEAD; check out the review branch or pass --branch <branch>")
   const currentHead = yield* gitText(repoPath, ["rev-parse", "--verify", "HEAD^{commit}"], "review start requires a committed HEAD or an explicit --head <commit>")
-  return { ...input, repoPath, branch, currentHead } satisfies LocalReviewContext
+  return { ...input, repoPath, branch, currentHead, repositoryOverride: input.repo } satisfies LocalReviewContext
 })
 
 const resolveRepository = Effect.fn("ReviewContext.resolveRepository")(function*(context: LocalReviewContext) {
@@ -136,11 +137,11 @@ const pullRequestParts = (url: URL) => {
   return { repository: parts.slice(0, 2).join("/"), number: parts[3] ?? "" }
 }
 
-const isConfiguredPullRef = Effect.fn("ReviewContext.isConfiguredPullRef")(function*(context: LocalReviewContext, pullRequestNumber: string) {
-  if (context.remote === undefined) return false
+const configuredPullRefNumber = Effect.fn("ReviewContext.configuredPullRefNumber")(function*(context: LocalReviewContext) {
+  if (context.remote === undefined) return undefined
   const configuredRemote = yield* gitText(context.repoPath, ["config", "--get", `branch.${context.branch}.remote`], "").pipe(Effect.orElseSucceed(() => ""))
   const configuredMerge = yield* gitText(context.repoPath, ["config", "--get", `branch.${context.branch}.merge`], "").pipe(Effect.orElseSucceed(() => ""))
-  return configuredRemote === context.remote && configuredMerge === `refs/pull/${pullRequestNumber}/head`
+  return configuredRemote === context.remote ? /^refs\/pull\/([1-9][0-9]*)\/head$/u.exec(configuredMerge)?.[1] : undefined
 })
 
 const lookupPullRequest = Effect.fn("ReviewContext.lookupPullRequest")(function*(context: LocalReviewContext) {
@@ -148,8 +149,13 @@ const lookupPullRequest = Effect.fn("ReviewContext.lookupPullRequest")(function*
     Effect.mapError(() => new ReviewContextError({ message: `Could not resolve GitHub CLI for '${context.repo}'; install or configure gh, or pass --target and --base explicitly` }))
   )
   const requestedPullRequest = yield* Schema.decodeUnknownEffect(PullRequestUrl)(context.target).pipe(Effect.option)
+  const pullRefNumber = yield* configuredPullRefNumber(context)
+  const selector = requestedPullRequest._tag === "Some"
+    ? requestedPullRequest.value.href
+    : context.repositoryOverride.length > 0 ? pullRefNumber ?? context.branch : ""
   const output = yield* checkedTrimmedText(gh, [
-    "pr", "view", ...(requestedPullRequest._tag === "Some" ? [requestedPullRequest.value.href] : []),
+    "pr", "view", ...(selector.length > 0 ? [selector] : []),
+    ...(context.repositoryOverride.length > 0 ? ["--repo", context.repositoryOverride] : []),
     "--json", "url,baseRefName,baseRefOid,headRefName,headRefOid,headRepository,state"
   ], { cwd: context.repoPath }).pipe(
     Effect.mapError(() => new ReviewContextError({ message: `GitHub could not resolve one open pull request for the current branch '${context.branch}'; resolve the PR or provider failure, or pass --base <ref> explicitly` }))
@@ -166,7 +172,7 @@ const lookupPullRequest = Effect.fn("ReviewContext.lookupPullRequest")(function*
   const expectedHost = contextParts.length === 2 ? "github.com" : contextParts[0] ?? ""
   const resolvedParts = pullRequestParts(resolvedUrl)
   const matchesHeadBranch = pullRequest.headRepository.nameWithOwner === repository && pullRequest.headRefName === context.branch
-  const matchesPullRef = resolvedParts.repository === repository && (yield* isConfiguredPullRef(context, resolvedParts.number))
+  const matchesPullRef = resolvedParts.repository === repository && pullRefNumber === resolvedParts.number
   if (resolvedUrl.hostname !== expectedHost || (!matchesHeadBranch && !matchesPullRef)) {
     return yield* new ReviewContextError({ message: `GitHub resolved a pull request from a different head branch or repository; pass --target and --base explicitly` })
   }
