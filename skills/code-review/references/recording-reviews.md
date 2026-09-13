@@ -1,22 +1,25 @@
 # Record review evidence
 
-Use the coordinator’s database throughout. The CLI saves review state and returns a `reviewId`; keep that ID for later commands.
+Use the coordinator’s database throughout. The review entrypoint initializes missing scope or resumes saved state, returning the run identity, `reviewId` and recording contract. Keep these values for later commands.
 
-For the normal Codex review, `review-findings review native` uses the saved scope flags from setup, launches the reviewer once and returns the report path. Repeating it while the review is open returns the same ID and does not launch again.
+For the normal Codex review, `review-findings review native` resolves the checkout and saved review context, launches the reviewer once and returns the report path. Repeating it while the review is open returns the same ID and does not launch again.
 
 For an independently dispatched reviewer or another native engine, reserve the review first:
 
 ```sh
-review-findings review start <saved scope flags> --phase cold --evidence "<invocation reference>"
+review-findings review start --phase cold \
+  --evidence "Report planned at <run-owned-report-path>"
 ```
 
-Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
+For another native engine, including Claude Code's built-in review workflow, reserve the review with the same command and `--phase native`. Keep that native review separate from the findings-only cold reviewer.
+
+The reservation evidence identifies the planned report location; it does not claim dispatch or completion. Pass that location to the reviewer and use the actual report reference when finishing. Check that the returned identity matches the requested comparison before dispatch. Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
 
 ## Save the report
 
-Checkpoint assessed candidates and probe evidence as they become available, using the findings guide. Preserve raw output outside the checkout with the invocation ID, exact head, observed results and unchecked scope; use `record-command --review <id>` for completed probes. Batch available `record`, repeated-evidence and `coverage-record` commands in one code-mode call. Reconcile the complete assessment before finishing. Keep writes serial and inspect every exit code. Successful records remain saved if a later command fails; correct the failed record and finish the remaining commands before proceeding.
+Checkpoint assessed candidates and probe evidence as they become available, using the findings guide. Preserve raw output outside the checkout with the invocation ID, exact head, observed results and unchecked scope; use `record-command --review <id>` for completed probes. Record actionable findings, unresolved concerns and meaningful verified rejections; immediately discarded speculation needs no registry entry or summary. Batch available `record`, repeated-evidence and `coverage-record` commands in one code-mode call. Reconcile the complete assessment before finishing. Keep writes serial and inspect every exit code. Successful records remain saved if a later command fails; use the diagnostic’s accepted shape to correct the failed record and finish the remaining commands before proceeding.
 
-Use `--review <id>` instead of repeating repository fields. `review-findings schema` owns finding fields and ratings; each command’s `--help` owns its flags. Record accepted, rejected and uncertain candidates. For repeat reports, use `record --review <id> --match-of <finding-id>` with source, evidence and match note. For coverage, provide the observed files and change IDs; the review ID comes from the handle. Coverage counts only after a complete assessment is saved with status `finished`; finding-bearing coverage is separate from clean-pass credit.
+Use `--review <id>` instead of repeating repository fields. `review-findings schema` owns finding fields and ratings; each command’s `--help` owns its flags. For meaningful repeat reports, use `record --review <id> --match-of <finding-id>` with source, evidence and match note. For coverage, provide the observed files and change IDs; the review ID comes from the handle. Coverage counts only after a complete assessment is saved with status `finished`; finding-bearing coverage is separate from clean-pass credit.
 
 ```sh
 review-findings review finish --review <id> --outcome findings --evidence "<complete report>"

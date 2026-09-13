@@ -9,7 +9,7 @@ Exercise the changed UI and inspect its behaviour, appearance, and relevant stat
 
 ## Web
 
-Use the repository's normal launch workflow and the session's approved browser tools. In Codex use its browser tools; in Claude use the available Chrome integration.
+Use the repository's normal launch workflow and the session's approved browser tools.
 
 Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, unintended overlap, focus, or unreachable controls. Compare composition, spacing, type, and colour with any supplied reference. When the task authorizes repair, fix source rather than a temporary DOM edit. For validation-only work, report the evidence and recommended source repair without editing.
 

@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 import { initialize } from "./ReviewFindings.ts"
-import { checkReviewLimits, extendReviewTimeBudget, freezeReviewLimits, readReviewLimits } from "./ReviewLimits.ts"
+import { checkReviewLimits, freezeReviewLimits, readReviewLimits } from "./ReviewLimits.ts"
 import { type ProgressEvent, recordProgress } from "./ReviewProgress.ts"
 
 const database = Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory:" }))
@@ -20,90 +20,23 @@ const setup = Effect.gen(function*() {
 const start = { expectedRevision: 0, phase: "native", head: "head-a", outcome: "started", evidence: "synthetic result reference" } satisfies ProgressEvent
 
 layer(database)("review limits", test => {
-test.effect("extends expired time once per authorized request while preserving saved limits and clean evidence", () => Effect.gen(function*() {
+test.effect("ignores legacy timer settings and extension records without changing other review controls", () => Effect.gen(function*() {
   yield* setup
-  yield* freezeReviewLimits("run", { timeBudgetHours: 1, consultCap: 3, coldCleanTarget: 2, nativeCleanTarget: 1, requiredPhases: ["native", "cold"], requireCurrentHead: true })
+  const sql = yield* SqlClient.SqlClient
+  assert.deepStrictEqual(yield* sql`select name from sqlite_master where type = 'table' and name = 'review_budget_extensions'`, [])
+  yield* sql`insert into review_run_limits (run_id, settings) values ('run', ${JSON.stringify({ timeBudgetHours: 1, consultCap: 3, coldCleanTarget: 2, nativeCleanTarget: 1, requiredPhases: ["native", "cold"], requireCurrentHead: true })})`
+  yield* sql`create table review_budget_extensions (run_id text not null, request_id text not null, receipt text not null, primary key(run_id, request_id))`
+  yield* sql`insert into review_budget_extensions (run_id, request_id, receipt) values ('run', 'legacy', ${JSON.stringify({ requestId: "legacy", additionalSeconds: 1800, authorization: "Historical authorization", runId: "run", oldDeadline: 0, newDeadline: 1800, createdAt: 0 })})`
   yield* recordProgress("run", start)
   yield* recordProgress("run", { ...start, expectedRevision: 1, outcome: "clean" })
-  const sql = yield* SqlClient.SqlClient
-  yield* sql`update review_runs set started_at = -3600 where id = 'run'`
-  const runBefore = yield* sql`select * from review_runs`
-  const settingsBefore = yield* sql`select * from review_run_limits`
-  const progressBefore = yield* sql`select * from review_progress_events`
-  assert.include((yield* readReviewLimits("run")).stoppingReasons, "TIME_EXPIRED")
-  const request = { requestId: "owner-extension-1", additionalSeconds: 1800, authorization: "Owner explicitly authorized continuing this run" }
-  const first = yield* extendReviewTimeBudget("run", request)
-  assert.deepStrictEqual(first, { ...request, runId: "run", oldDeadline: 0, newDeadline: 1800, createdAt: 0, replayed: false })
-  const second = yield* extendReviewTimeBudget("run", { ...request, requestId: "owner-extension-2", additionalSeconds: 900 })
-  assert.strictEqual(second.oldDeadline, 1800)
-  assert.strictEqual(second.newDeadline, 2700)
-  assert.deepStrictEqual(yield* extendReviewTimeBudget("run", request), { ...first, replayed: true })
+  yield* sql`update review_runs set started_at = null where id = 'run'`
   const report = yield* readReviewLimits("run", "head-a", "native")
-  assert.strictEqual(report.startedAt, -3600)
-  assert.strictEqual(report.timeBudgetSeconds, 6300)
-  assert.strictEqual(report.remainingSeconds, 2700)
   assert.strictEqual(report.consultCap, 3)
   assert.deepStrictEqual(report.cleanTargets, { native: 1, cold: 2, clawsweeper: 2 })
   assert.deepStrictEqual(report.incompletePhases, ["cold"])
   assert.deepStrictEqual(report.stoppingReasons, ["PHASE_TARGET_MET"])
-  assert.lengthOf(report.extensions, 2)
-  assert.deepStrictEqual(yield* sql`select * from review_runs`, runBefore)
-  assert.deepStrictEqual(yield* sql`select * from review_run_limits`, settingsBefore)
-  assert.deepStrictEqual(yield* sql`select * from review_progress_events`, progressBefore)
   yield* initialize()
-  assert.deepStrictEqual((yield* readReviewLimits("run")).extensions, report.extensions)
-  for (const changed of [{ ...request, additionalSeconds: 3600 }, { ...request, authorization: "Different authority" }]) {
-    const denied = yield* extendReviewTimeBudget("run", changed).pipe(Effect.flip)
-    assert.include(denied.message, "immutable")
-  }
-  assert.deepStrictEqual((yield* readReviewLimits("run")).extensions, report.extensions)
-}))
-
-test.effect("serializes competing extensions and exact replays into one auditable deadline chain", () => Effect.gen(function*() {
-  yield* setup
-  yield* freezeReviewLimits("run", { timeBudgetHours: 1 })
-  const request = { requestId: "concurrent-first", additionalSeconds: 60, authorization: "Owner authorized additional time" }
-  const receipts = yield* Effect.all([
-    extendReviewTimeBudget("run", request),
-    extendReviewTimeBudget("run", request),
-    extendReviewTimeBudget("run", { ...request, requestId: "concurrent-second", additionalSeconds: 120 })
-  ], { concurrency: 3 })
-  assert.lengthOf(receipts.filter(receipt => receipt.replayed), 1)
-  const report = yield* readReviewLimits("run")
-  assert.strictEqual(report.deadline, 3780)
-  assert.lengthOf(report.extensions, 2)
-  assert.strictEqual(report.extensions[0]?.oldDeadline, 3600)
-  assert.strictEqual(report.extensions[1]?.oldDeadline, report.extensions[0]?.newDeadline)
-  assert.strictEqual(report.extensions[1]?.newDeadline, 3780)
-}))
-
-test.effect("rejects invalid authorization, durations and uninitialized or completed runs without extension writes", () => Effect.gen(function*() {
-  yield* setup
-  const request = { requestId: "extension", additionalSeconds: 3600, authorization: "Explicit owner authority" }
-  const missing = yield* extendReviewTimeBudget("missing", request).pipe(Effect.flip)
-  assert.include(missing.message, "existing review run")
-  const uninitialized = yield* extendReviewTimeBudget("run", request).pipe(Effect.flip)
-  assert.include(uninitialized.message, "initialized")
-  yield* freezeReviewLimits("run", {})
-  for (const invalid of [
-    { ...request, additionalSeconds: 0 }, { ...request, additionalSeconds: -1 },
-    { ...request, additionalSeconds: 0.5 }, { ...request, additionalSeconds: Infinity },
-    { ...request, additionalSeconds: Number.MAX_SAFE_INTEGER },
-    { ...request, authorization: "" }, { ...request, authorization: " \n " },
-    { ...request, requestId: "" }, { ...request, requestId: " " }
-  ]) {
-    const denied = yield* extendReviewTimeBudget("run", invalid).pipe(Effect.flip)
-    assert.isDefined(denied)
-  }
-  const sql = yield* SqlClient.SqlClient
-  yield* sql`update review_runs set started_at = null where id = 'run'`
-  const noStart = yield* extendReviewTimeBudget("run", request).pipe(Effect.flip)
-  assert.include(noStart.message, "original start timestamp")
-  yield* sql`update review_runs set started_at = 0, status = 'complete' where id = 'run'`
-  const complete = yield* extendReviewTimeBudget("run", request).pipe(Effect.flip)
-  assert.include(complete.message, "terminal")
-  assert.deepStrictEqual(yield* sql`select * from review_budget_extensions`, [])
-  assert.strictEqual((yield* readReviewLimits("run")).timeBudgetSeconds, 28800)
+  assert.deepStrictEqual(yield* sql`select request_id from review_budget_extensions`, [{ request_id: "legacy" }])
 }))
 
 test.effect("requires every requested phase on the final head without manufacturing an unstarted clean pass", () => Effect.gen(function*() {
@@ -119,29 +52,25 @@ test.effect("requires every requested phase on the final head without manufactur
   assert.deepStrictEqual((yield* readReviewLimits("run", "head-b")).incompletePhases, ["native", "cold"])
 }))
 
-test.effect("freezes defaults and explicit limits without granting time on resume", () => Effect.gen(function*() {
+test.effect("freezes defaults and explicit progress limits once", () => Effect.gen(function*() {
   yield* setup
-  yield* freezeReviewLimits("run", { timeBudgetHours: 2, consultCap: 3, coldCleanTarget: 4 })
-  yield* freezeReviewLimits("run", { timeBudgetHours: 8, consultCap: 5, coldCleanTarget: 1 })
+  yield* freezeReviewLimits("run", { consultCap: 3, coldCleanTarget: 4 })
+  yield* freezeReviewLimits("run", { consultCap: 5, coldCleanTarget: 1 })
   const report = yield* readReviewLimits("run", "head-a")
-  assert.strictEqual(report.timeBudgetSeconds, 7200)
-  assert.strictEqual(report.startedAt, 0)
-  assert.strictEqual(report.remainingSeconds, 7200)
   assert.strictEqual(report.consultCap, 3)
   assert.deepStrictEqual(report.cleanTargets, { native: 2, cold: 4, clawsweeper: 2 })
 }))
 
-test.effect("expiry gates work but allows the started pass result to be saved", () => Effect.gen(function*() {
+test.effect("missing review start timestamps do not block progress", () => Effect.gen(function*() {
   yield* setup
   yield* freezeReviewLimits("run", {})
   yield* recordProgress("run", start)
   const sql = yield* SqlClient.SqlClient
-  yield* sql`update review_runs set started_at = -28800 where id = 'run'`
+  yield* sql`update review_runs set started_at = null where id = 'run'`
   const report = yield* readReviewLimits("run", "head-a", "native")
-  assert.strictEqual(report.remainingSeconds, 0)
-  assert.include(report.stoppingReasons, "TIME_EXPIRED")
-  const denied = yield* checkReviewLimits(report).pipe(Effect.flip)
-  assert.strictEqual(denied._tag, "ReviewLimitsBlocked")
+  yield* checkReviewLimits(report)
+  assert.strictEqual(report.allowed, true)
+  assert.deepStrictEqual(report.stoppingReasons, [])
   const clean = yield* recordProgress("run", { ...start, expectedRevision: 1, outcome: "clean" })
   assert.strictEqual(clean.cleanStreak, 1)
 }))
@@ -198,15 +127,11 @@ test.effect("queue fixed points block phase switching below the consult cap unti
   assert.deepStrictEqual(resolved.incompletePhases, [])
 }))
 
-test.effect("migration retains the original timestamp and freezes defaults only once", () => Effect.gen(function*() {
+test.effect("migration preserves stored progress controls", () => Effect.gen(function*() {
   yield* setup
-  yield* freezeReviewLimits("run", { timeBudgetHours: 1, consultCap: 4, coldCleanTarget: 2 })
-  const sql = yield* SqlClient.SqlClient
-  yield* sql`update review_runs set started_at = -100 where id = 'run'`
+  yield* freezeReviewLimits("run", { consultCap: 4, coldCleanTarget: 2 })
   yield* initialize()
   const report = yield* readReviewLimits("run", "head-a")
-  assert.strictEqual(report.startedAt, -100)
-  assert.strictEqual(report.remainingSeconds, 3500)
   assert.strictEqual(report.consultCap, 4)
   assert.strictEqual(report.cleanTargets.cold, 2)
 }))
@@ -237,6 +162,5 @@ test.effect("counts evidenced failed repairs, not review passes, and resumes onl
   yield* recordProgress("run", { ...start, expectedRevision: 6, outcome: "repair-authorized", findingId: "D1", authorization: "Owner approves another contained attempt" })
   const resumed = yield* readReviewLimits("run", "head-a")
   assert.notInclude(resumed.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
-  assert.strictEqual(resumed.remainingSeconds, 28800)
 }))
 })

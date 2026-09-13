@@ -10,7 +10,7 @@ import { createHash } from "node:crypto"
 import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
-import { type BudgetExtension, BudgetExtensionConflict, checkReviewLimits, DEFAULT_REVIEW_LIMITS, extendReviewTimeBudget, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
+import { checkReviewLimits, DEFAULT_REVIEW_LIMITS, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
 import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
@@ -161,10 +161,69 @@ export interface FindingInput {
 
 export type Finding = typeof FindingRecord.Type & FindingOutcome
 
+type FindingAcceptedShapeInput = Pick<Finding, "findingKind" | "status" | "likelihood" | "maintenanceEvidence" | "presentCost" | "disposition" | "ownerResolution">
+
+const FINDING_STATUSES_BY_DISPOSITION: Readonly<Record<FindingDisposition, readonly [Finding["status"], ...Array<Finding["status"]>]>> = {
+  accept: ["open", "fixed", "provisional", "reopened"],
+  investigate: ["open", "reopened"],
+  consult: ["open", "reopened"],
+  "follow-up": ["deferred"],
+  residual: ["deferred"],
+  reject: ["rejected"]
+}
+
+const acceptedFindingStatus = (finding: Pick<Finding, "status" | "disposition">): Finding["status"] => {
+  const statuses = FINDING_STATUSES_BY_DISPOSITION[finding.disposition]
+  return statuses.includes(finding.status) ? finding.status : statuses[0]
+}
+
+export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): string => {
+  const repairFields = "--root-cause <cause> --recommended-fix <durable repair> --intervention-justification <why intervention is justified>"
+  const consultRepairFields = "--root-cause <cause> --intervention-justification <why intervention is justified> [--recommended-fix <supported repair>]"
+  const runtime = finding.findingKind === "runtime"
+  const maintenanceEvidence = runtime ? "" : " --maintenance-evidence <current evidence> --present-cost <current cost>"
+  const runtimeEvidence = runtime && finding.likelihood !== "unknown" && finding.likelihood !== "theoretical"
+    ? " --production-path <path> --reachability-evidence <reproduction> --actual-consequence <observed result> --contract-evidence <expected behavior>"
+    : ""
+  const status = acceptedFindingStatus(finding)
+  const ownerResolvable = finding.disposition === "accept" || finding.disposition === "consult"
+  if (ownerResolvable && finding.ownerResolution === "approved") {
+    const handling = finding.disposition === "consult" ? "consult" : "fix"
+    return `--status fixed --handling ${handling} --owner-resolution approved --decision <owner decision> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (ownerResolvable && finding.ownerResolution === "declined") {
+    const status = finding.status === "deferred" && finding.disposition === "consult" ? "deferred" : "rejected"
+    const handling = finding.disposition === "consult" ? "consult" : "fix"
+    const ownerRepairFields = finding.disposition === "consult" ? consultRepairFields : repairFields
+    return `--status ${status} --handling ${handling} --owner-resolution declined --decision <owner decision> ${ownerRepairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (finding.disposition === "reject") {
+    const supportedMaintenance = !runtime && (finding.maintenanceEvidence.trim().length > 0 || finding.presentCost.trim().length > 0) ? maintenanceEvidence : ""
+    return `--status ${status} --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}${runtimeEvidence}; omit repair fields`
+  }
+  if (finding.disposition === "investigate") {
+    return `--status ${status} --handling fix --decision <investigation needed>; omit repair fields until the runtime path is proven`
+  }
+  if (finding.disposition === "consult") {
+    return `--status ${status} --handling consult --decision <owner question> ${consultRepairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (finding.disposition === "follow-up") {
+    return `--status ${status} --handling follow-up --decision <owner or next action> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (finding.disposition === "residual") {
+    return `--status ${status} --handling fix --decision <accepted residual risk> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  return `--status ${status} --handling fix ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+}
+
 export class InvalidFinding extends Error {
   readonly _tag = "InvalidFinding"
-  constructor(message: string) {
-    super(`invalid finding: ${message}; run review-findings schema for the current record contract`)
+  readonly reason: string
+  readonly acceptedShape: string | undefined
+  constructor(reason: string, acceptedShape?: string) {
+    super(`invalid finding: ${reason}${acceptedShape === undefined ? "" : `\naccepted shape: ${acceptedShape}`}\nfull contract: review-findings schema`)
+    this.reason = reason
+    this.acceptedShape = acceptedShape
   }
 }
 
@@ -440,6 +499,12 @@ interface UnresolvedFindingRow {
   readonly evidence_version: number
 }
 interface ActiveScopeRow { readonly run_id: string; readonly target: string }
+interface SavedReviewContextRow {
+  readonly repo: string
+  readonly target: string
+  readonly base: string
+  readonly status: string
+}
 interface PriorScopeRow { readonly run_id: string; readonly base_ref: string }
 interface ScopeStatusRow { readonly status: string }
 interface ReviewFileAttestationRow {
@@ -661,7 +726,6 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const tables = [
-    `create table if not exists review_budget_extensions (run_id text not null references review_runs(id) on delete cascade, request_id text not null, receipt text not null, primary key(run_id, request_id))`,
     `create table if not exists review_invocations (id text primary key, run_id text not null references review_runs(id) on delete cascade, head text not null, base_oid text not null, phase text not null, start_revision integer not null, status text not null, outcome text not null, evidence text not null, launched integer not null default 0)`,
     `create table if not exists review_progress_events (run_id text not null references review_runs(id) on delete cascade, revision integer not null, payload text not null, primary key(run_id, revision))`,
     `create table if not exists review_runs (id text primary key, repo_name text not null, repo_key text not null, repo_path text not null, branch text, target text not null, base text, head text, status text not null, decision_log_path text, started_at integer, update_seq integer not null default 0, updated_at integer not null)`,
@@ -1191,6 +1255,66 @@ export const startScopeBudget = Effect.fn("ReviewFindings.startScopeBudget")(fun
   return check
 })
 
+export const findSavedReviewContext = Effect.fn("ReviewFindings.findSavedReviewContext")(function*(
+  repoPath: string,
+  branch: string,
+  filters: { readonly target: string; readonly base: string }
+) {
+  const sql = yield* SqlClient.SqlClient
+  const tables = yield* sql.unsafe<{ readonly name: string }>(
+    "select name from sqlite_master where type = 'table' and name in ('review_runs', 'review_scope_budgets')"
+  )
+  if (tables.length !== 2) return undefined
+  const repoKey = yield* canonicalRepoKey(repoPath)
+  const rows = yield* sql.unsafe<SavedReviewContextRow>(
+    `select review_runs.repo_name as repo, review_runs.target, review_scope_budgets.base_ref as base,
+        review_scope_budgets.status
+      from review_scope_budgets join review_runs on review_runs.id = review_scope_budgets.run_id
+      where review_runs.repo_key = ? and coalesce(review_runs.branch, '') = ?
+        and (? = '' or review_runs.target = ?)`,
+    [repoKey, branch, filters.target, filters.target]
+  )
+  const requestedBase = filters.base.length === 0 ? undefined : yield* canonicalBaseIdentity(repoPath, filters.base).pipe(
+    Effect.orElseSucceed(() => `raw:${filters.base}`)
+  )
+  const matches: Array<SavedReviewContextRow> = []
+  for (const row of rows) {
+    if (requestedBase === undefined) {
+      matches.push(row)
+      continue
+    }
+    const savedBase = yield* canonicalBaseIdentity(repoPath, row.base).pipe(Effect.orElseSucceed(() => `raw:${row.base}`))
+    if (savedBase === requestedBase) matches.push(row)
+  }
+  const active = matches.filter((row) => row.status !== "complete")
+  if (active.length > 1) return yield* Effect.fail(new InvalidScopeBudget(`multiple active review contexts match branch '${branch}'; pass --target and --base explicitly`))
+  if (active[0] !== undefined) return active[0]
+  const completed = new Map<string, SavedReviewContextRow>()
+  for (const row of matches) {
+    const baseIdentity = yield* canonicalBaseIdentity(repoPath, row.base).pipe(Effect.orElseSucceed(() => `raw:${row.base}`))
+    completed.set(`${row.target}\0${baseIdentity}`, row)
+  }
+  if (completed.size === 1) return completed.values().next().value
+  return undefined
+})
+
+/** Resolve the persisted scope once, creating it only when this target has no scope yet. */
+export const startOrResumeScopeBudget = Effect.fn("ReviewFindings.startOrResumeScopeBudget")(function*(run: ReviewRun, input: {
+  readonly scopeSummary: string
+  readonly limits?: Partial<LimitSettings>
+}) {
+  const start = () => startScopeBudget(run, input).pipe(
+    Effect.map((budget) => ({ budget, resumed: false })),
+    Effect.catchTag("ScopeBudgetAlreadyStarted", () => getScopeBudget(run).pipe(
+      Effect.map((budget) => ({ budget, resumed: true }))
+    ))
+  )
+  return yield* getScopeBudget(run).pipe(
+    Effect.flatMap((budget) => budget.status === "complete" ? start() : Effect.succeed({ budget, resumed: true })),
+    Effect.catchTag("MissingScopeBudget", start)
+  )
+})
+
 export const authorizeScopeBudget = Effect.fn("ReviewFindings.authorizeScopeBudget")(function*(run: ReviewRun, input: {
   readonly scopeSummary: string
   readonly authorization: string
@@ -1416,14 +1540,6 @@ const deriveFindingOutcome = (finding: DecodedFinding): FindingOutcome | undefin
 }
 
 const findingStatusError = (finding: Finding) => {
-  const allowedStatuses: Readonly<Record<FindingDisposition, ReadonlyArray<Finding["status"]>>> = {
-    accept: ["open", "fixed", "provisional", "reopened"],
-    investigate: ["open", "reopened"],
-    consult: ["open", "reopened"],
-    "follow-up": ["deferred"],
-    residual: ["deferred"],
-    reject: ["rejected"]
-  }
   if (finding.ownerResolution.length > 0) {
     if (finding.decision.trim().length === 0) return "--owner-resolution requires --decision with the owner's decision"
     if (finding.ownerResolution === "approved" && finding.status === "fixed" && ["accept", "consult"].includes(finding.disposition)) return undefined
@@ -1437,7 +1553,7 @@ const findingStatusError = (finding: Finding) => {
   if (finding.disposition === "follow-up" && finding.decision.trim().length === 0) {
     return "follow-up deferrals require --decision with the follow-up owner or next action"
   }
-  if (!allowedStatuses[finding.disposition].includes(finding.status)) {
+  if (!FINDING_STATUSES_BY_DISPOSITION[finding.disposition].includes(finding.status)) {
     return `disposition ${finding.disposition} cannot use status ${finding.status}`
   }
   return undefined
@@ -1503,16 +1619,17 @@ const decodeFindingInput = Effect.fn("ReviewFindings.decodeFindingInput")(functi
   const finding = yield* Schema.decodeUnknownEffect(FindingRecord)(normalized).pipe(
     Effect.mapError(() => new InvalidFinding(`one or more enum fields are outside schema v${FINDING_SCHEMA_VERSION}`))
   )
-  const inputError = findingInputError(finding)
-  if (inputError !== undefined) return yield* Effect.fail(new InvalidFinding(inputError))
   const outcome = deriveFindingOutcome(finding)
   if (outcome === undefined) return yield* Effect.fail(new InvalidFinding("runtime findings require --likelihood and --impact"))
   const completeFinding = { ...finding, ...outcome } satisfies Finding
+  const acceptedShape = formatFindingAcceptedShape(completeFinding)
+  const inputError = findingInputError(completeFinding)
+  if (inputError !== undefined) return yield* Effect.fail(new InvalidFinding(inputError, acceptedShape))
   const actionabilityError = findingActionabilityError(completeFinding)
-  if (actionabilityError !== undefined && !skipActionability) return yield* Effect.fail(new InvalidFinding(actionabilityError))
+  if (actionabilityError !== undefined && !skipActionability) return yield* Effect.fail(new InvalidFinding(actionabilityError, acceptedShape))
   const statusError = findingStatusError(completeFinding)
   if (statusError !== undefined) {
-    return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`))
+    return yield* Effect.fail(new InvalidFinding(`${completeFinding.likelihood || "maintenance"}+${completeFinding.impact || "no impact"} derives ${completeFinding.severity || "no severity"}/${completeFinding.disposition}; ${statusError}`, acceptedShape))
   }
   return completeFinding
 })
@@ -1572,7 +1689,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     return yield* Effect.fail(new InvalidScopeBudget("review run is complete and terminal; start a new user-authorized review before recording more findings"))
   }
   const actionabilityError = findingActionabilityError(input)
-  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError))
+  if (actionabilityError !== undefined) return yield* Effect.fail(new InvalidFinding(actionabilityError, formatFindingAcceptedShape(input)))
   const runId = yield* upsertRun(run)
   const scope = yield* sql<ScopeStatusRow>`select status from review_scope_budgets where run_id = ${runId}`
   if (scope[0]?.status === "complete") {
@@ -1685,13 +1802,6 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   }
   return yield* readProgress(runId)
   }))
-})
-
-export const extendReviewBudget = Effect.fn("ReviewFindings.extendBudget")(function*(run: ReviewRun & { readonly runId: string }, extension: typeof BudgetExtension.Type) {
-  const runId = yield* exactRunId(yield* verifyScopeRun(run))
-  if (runId === undefined) return yield* Effect.fail(new MissingReviewRun())
-  if (run.runId !== runId) return yield* new BudgetExtensionConflict({ message: "Saved run ID does not match the resolved scope; authorization cannot extend a different review run" })
-  return yield* extendReviewTimeBudget(runId, extension)
 })
 
 export const reviewLimits = Effect.fn("ReviewFindings.limits")(function*(run: ReviewRun, phase?: ReviewPhase) {

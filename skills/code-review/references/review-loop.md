@@ -10,7 +10,7 @@ Gather independent findings before repairs only when a named unresolved flow or 
 
 Assess changed behavior from real entry points through state, dependencies, failure and recovery to outcomes. Distinguish inspected code, executed behavior and unresolved coverage; file counts and finding counts do not prove completeness.
 
-Checkpoint available assessed findings and probe evidence through the review commands. Reconcile all findings, repeated reports and coverage before completion, checking each command. Then use `review finish` with the outcome:
+Checkpoint available assessed findings and probe evidence through the review commands. Reconcile findings, meaningful repeated reports and coverage before completion, checking each command. Then use `review finish` with the outcome:
 
 - `clean`: no supported findings or unresolved decisions remain.
 - `clean-except-queue`: only recorded owner questions remain.
@@ -29,4 +29,4 @@ Require the phase targets frozen at setup: normally one clean native and one cle
 
 Reuse supporting proof only while its relevant code, callers, dependencies, fixtures, configuration and environment still apply. Broaden verification when the impact cannot be bounded.
 
-Complete only after the requested reviews, applicable checks and decisions are resolved. A spending or time limit leaves work incomplete: preserve the patch, evidence and next action without resetting the run or waiving findings.
+Complete only after the requested reviews, applicable checks and decisions are resolved. An explicit user spending limit or task deadline leaves work incomplete: preserve the patch, evidence and next action without resetting the run or waiving findings.

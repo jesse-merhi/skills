@@ -12,6 +12,9 @@ Build a shared understanding of the entire decision tree and get the user's conf
 
 Own the factual investigation. If an environmental fact is needed, dispatch a background subagent to establish it while you continue with independent questions. Only questions downstream of that unknown fact wait.
 
+Use `spawn_agent` with `agent_type: "investigator"` for the blocking factual question. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Continue independent questions while it runs; keep synthesis here and decisions with the user. If the role is unavailable, report it and continue suitable work locally.
+
+
 Own the question order. The next round contains the whole frontier whose prerequisites are already settled. Do not ask a dependent question as though an answer earlier in the same round were known. For each frontier question give a concise recommendation, use the format below, and wait for the user's answers.
 
 ```markdown

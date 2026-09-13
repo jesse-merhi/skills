@@ -13,6 +13,9 @@ Interview the user until the decision tree is settled. Do not make the user's de
 1. Map the plan, idea, or decision into a tree. Separate environmental facts you can investigate from choices the user must make.
 2. Find every question whose prerequisites are settled. This is the current frontier. Leave questions that depend on unanswered choices for later.
 3. If a frontier question needs an environmental fact, send a background subagent to find it. Batch independent fact-finding where useful. Continue asking questions that do not depend on the missing fact.
+
+Use `Agent` with `subagent_type: "investigator"` for the blocking factual question. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Continue independent questions while it runs; keep synthesis here and decisions with the user. If the role is unavailable, report it and continue suitable work locally.
+
 4. Ask the whole available frontier in one numbered round. Give a recommended answer for every question. Use a horizontal rule between questions:
 
    ```markdown
