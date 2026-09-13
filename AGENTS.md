@@ -207,8 +207,9 @@ itself model generation.
   the user explicitly asks to push after the fix, publish, ship, or update the PR,
   or when a named workflow explicitly grants final-push authority. Otherwise,
   stop at a local checkpoint and show the result.
-- For authorized GitHub or Bitbucket Cloud PR merges on this machine, use the
-  installed `repo-queue` skill before the final update from the target branch,
+- Always use the installed `repo-queue` skill for authorized GitHub or Bitbucket
+  Cloud PR merges on this machine, even when the user does not mention the queue.
+  Acquire the repository turn before the final update from the target branch,
   merge-validation run, and merge. Its [installation and supported surfaces](external.md#local-pr-turns)
   are maintained separately. If it is unavailable, report the setup blocker
   instead of silently bypassing the queue. Implementation and review alone do
