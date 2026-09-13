@@ -9,9 +9,9 @@ Run native review, repair confirmed problems, then obtain native and independent
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
-For useful bounded repair work, select Codex's configured `implementer`; use `investigator` for a specific unresolved code or dependency question. Pass task-specific objective, worktree and revision, owned scope, constraints, acceptance criteria and evidence through the launcher's task message; select the role with `agent_type` on `spawn_agent`. The role definition owns reusable behavior and model settings. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery here. For the cold phase, select `findings_reviewer` under the independent-review instructions; it never replaces this coordinator or the native phase. Delegate only work that benefits from a separate worker.
+Delegate useful bounded repairs to the configured implementer and unresolved code or dependency questions to the investigator. Supply the objective, worktree and revision, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance and settings in the role definitions. The coordinator retains the findings registry, repair decisions, sequencing, integration, validation and delivery.
 
-Use named roles only when exposed by the current launcher. Report missing roles and continue suitable local work without reconstructing role prompts or changing live configuration. Other harnesses, including OpenClaw, use their supported launch settings under `AGENTS.md`; do not pass Codex role selectors to an API that does not support them.
+Use a fresh findings-only reviewer for the independent phase under the independent-review instructions. It does not replace the coordinator or native review. Report unavailable roles and continue suitable local work without reconstructing prompts or changing live configuration; local review cannot satisfy an independent-review requirement.
 
 ## 1. Start the review
 
@@ -19,7 +19,7 @@ Check out the branch or commit in question. For a branch review, check that the 
 
 Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
-Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the normal Codex native review:
+Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the default native review:
 
 ```sh
 review-findings review native \

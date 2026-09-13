@@ -58,8 +58,7 @@ step when installing only into OpenClaw.
 ## 3. Preserve Claude's normal session
 
 Claude Code uses its normal main session and the global instructions linked
-above. Do not install custom main or reviewer agents. Install the matching
-skills without changing unrelated Claude settings or the selected model.
+above. Install the matching skills without changing unrelated Claude settings or the selected model. When the user requests named workers, follow [Claude named workers](claude/README.md) to install the optional native subagent definitions. Do not set a custom main agent.
 
 For upgrades, remove `agent` from `~/.claude/settings.json` only when its value
 is exactly `fable-orchestrator`. Within `~/.claude/agents/`, remove

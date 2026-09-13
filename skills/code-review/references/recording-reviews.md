@@ -11,6 +11,8 @@ review-findings review start --phase cold \
   --evidence "Report planned at <run-owned-report-path>"
 ```
 
+For another native engine, including Claude Code's built-in review workflow, reserve the review with the same command and `--phase native`. Keep that native review separate from the findings-only cold reviewer.
+
 The reservation evidence identifies the planned report location; it does not claim dispatch or completion. Pass that location to the reviewer and use the actual report reference when finishing. Check that the returned identity matches the requested comparison before dispatch. Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
 
 ## Save the report
