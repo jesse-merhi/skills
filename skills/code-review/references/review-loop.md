@@ -25,7 +25,7 @@ Apply the findings guide to the full accepted inventory. Repair related causes t
 
 ## Review the final code
 
-Require the phase targets frozen at setup: normally one clean native and one clean independent result on the final head. An earlier independent discovery pass does not cover later repairs. A new repair invalidates both final-head phase results; an unchanged clean discovery result already counts. Domain lenses do not each require another agent.
+Require the phase targets frozen at setup: normally one clean native and one clean independent result on the final head. An earlier independent discovery pass does not cover later repairs. A new repair invalidates both final-head phase results; an unchanged clean discovery result already counts. Domain lenses do not each require another agent. The registry keeps a separate pass count and clean streak per phase, so recording one phase's start or result never resets another phase's streak.
 
 Reuse supporting proof only while its relevant code, callers, dependencies, fixtures, configuration and environment still apply. Broaden verification when the impact cannot be bounded.
 
