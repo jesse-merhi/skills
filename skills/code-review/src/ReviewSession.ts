@@ -36,7 +36,8 @@ export const checkReviewTarget = Effect.fn("ReviewSession.checkTarget")(function
   const scope = yield* getScopeBudget(reviewRun(review))
   const git = yield* trustedExecutable("git", review.repoPath)
   const head = scope.pinnedHeadOid || (yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath }))
-  if (head !== review.head || scope.baseOid !== review.baseOid) return yield* new ProgressConflict({ message: "Review target changed; finish this review as blocked and review the intended commit" })
+  // Blocked handles retain their historical head while supported repairs advance the checkout.
+  if ((review.status !== "blocked" && head !== review.head) || scope.baseOid !== review.baseOid) return yield* new ProgressConflict({ message: "Review target changed; finish this review as blocked and review the intended commit" })
 })
 
 export const requireOpenReview = Effect.fn("ReviewSession.requireOpen")(function*(reviewId: string) {

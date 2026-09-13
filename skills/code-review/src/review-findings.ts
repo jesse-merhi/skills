@@ -129,8 +129,8 @@ const record = Command.make("record", {
   const write = () => Effect.gen(function*() {
     return args.matchOf.length > 0 ? yield* recordFindingMatch(run, args, args.review || undefined) : yield* recordFinding({ ...run, decisionLog: args.decisionLog }, args, args.review || undefined)
   })
-  const finishedReopen = args.review.length > 0 && args.status === "reopened" && (yield* getReview(args.review)).status !== "open"
-  const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0 || finishedReopen
+  const closedReopen = args.review.length > 0 && args.status === "reopened" && (yield* getReview(args.review)).status !== "open"
+  const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0 || closedReopen
   if (args.recover && (!args.review || repair || args.matchOf || !["open", "rejected"].includes(args.status))) return yield* Effect.fail(new InvalidFinding("--recover requires --review and a candidate status (open or rejected); record repairs separately"))
   const result = args.recover ? yield* withBlockedReview(args.review, current => Effect.gen(function*() {
     const recorded = yield* write()
