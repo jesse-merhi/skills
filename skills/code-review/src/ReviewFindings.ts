@@ -876,10 +876,10 @@ const requireReviewWriter = Effect.fn("ReviewFindings.requireReviewWriter")(func
   if (pending !== undefined && pending.id !== reviewId) return yield* new ProgressConflict({ message: `Use --review ${pending.id} to record this review; finish it before another phase or repair` })
 })
 
-const requireRepairAuthorization = Effect.fn("ReviewFindings.requireRepairAuthorization")(function*(runId: string, findingId: string) {
+const requireRepairReplan = Effect.fn("ReviewFindings.requireRepairReplan")(function*(runId: string, findingId: string) {
   const limits = yield* readReviewLimits(runId)
   if (limits.repairAttempts.some(attempt => attempt.findingId === findingId && attempt.unsuccessfulAttempts >= 2)) {
-    return yield* new ProgressConflict({ message: "Two unsuccessful repairs require owner authorization before another attempt or a fixed result" })
+    return yield* new ProgressConflict({ message: "Two unsuccessful repairs require a recorded diagnosis and changed approach before another attempt or a fixed result" })
   }
 })
 
@@ -1534,7 +1534,7 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
   const existingRunId = yield* exactRunId(run)
   if (existingRunId !== undefined) {
     yield* requireReviewWriter(existingRunId, reviewId)
-    if (input.status === "fixed" || input.status === "provisional") yield* requireRepairAuthorization(existingRunId, input.decisionId)
+    if (input.status === "fixed" || input.status === "provisional") yield* requireRepairReplan(existingRunId, input.decisionId)
   }
   const existingRun = existingRunId === undefined
     ? undefined
@@ -1662,7 +1662,7 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   if (event !== undefined) {
     yield* requireReviewWriter(runId, reviewId)
     if (event.outcome.startsWith("repair-")) yield* requireFinishedReview(run)
-    if (event.outcome === "repair-applied") yield* requireRepairAuthorization(runId, event.findingId ?? "")
+    if (event.outcome === "repair-applied") yield* requireRepairReplan(runId, event.findingId ?? "")
     const state = (yield* sql<{ readonly status: string; readonly scope_status: string }>`select review_runs.status, coalesce(review_scope_budgets.status, '') as scope_status from review_runs
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
     if (state?.status === "complete" || state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("Completed review progress is immutable"))

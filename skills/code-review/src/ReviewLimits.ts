@@ -74,17 +74,18 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   if (scope?.status === "rebaseline-required") stoppingReasons.push("SCOPE_REBASELINE_REQUIRED")
   const activeFindings = yield* sql<{ readonly decision_id: string }>`select decision_id from issues where run_id = ${runId} and status in ('open', 'reopened', 'provisional')`
   const repairAttempts = activeFindings.map(finding => {
-    const authorized = progress.findLastIndex(event => event.outcome === "repair-authorized" && event.findingId === finding.decision_id)
-    const failures = progress.slice(authorized + 1).filter(event => event.outcome === "repair-unsuccessful" && event.findingId === finding.decision_id)
+    const latestReplan = progress.findLastIndex(event => ["repair-replanned", "repair-authorized"].includes(event.outcome) && event.findingId === finding.decision_id)
+    const failures = progress.slice(latestReplan + 1).filter(event => event.outcome === "repair-unsuccessful" && event.findingId === finding.decision_id)
     return { findingId: finding.decision_id, unsuccessfulAttempts: failures.length, evidence: failures.map(event => ({ attempt: event.repairAttempt, head: event.head, reference: event.evidence })) }
   }).filter(attempt => attempt.unsuccessfulAttempts > 0)
-  if (repairAttempts.some(attempt => attempt.unsuccessfulAttempts >= 2)) stoppingReasons.push("REPAIR_CONSULT_REQUIRED")
+  if (repairAttempts.some(attempt => attempt.unsuccessfulAttempts >= 2)) stoppingReasons.push("REPAIR_DIAGNOSIS_REQUIRED")
   return {
     runId, startedAt, deadline, timeBudgetSeconds, remainingSeconds, extensions, consultCap: settings.consultCap,
     openQuestionCount: openQuestions.length, openQuestions, cleanTargets, incompletePhases, repairAttempts,
     diagnosticWarnings, stoppingReasons, allowed: stoppingReasons.length === 0,
     nextAction: stoppingReasons.includes("TIME_EXPIRED") ? "handoff"
-      : stoppingReasons.some(reason => ["CONSULT_CAP_REACHED", "QUEUE_FIXED_POINT", "NEW_BINARY_PATHS", "SCOPE_REBASELINE_REQUIRED", "REPAIR_CONSULT_REQUIRED"].includes(reason)) ? "consult"
+      : stoppingReasons.includes("REPAIR_DIAGNOSIS_REQUIRED") ? "diagnose-repair"
+      : stoppingReasons.some(reason => ["CONSULT_CAP_REACHED", "QUEUE_FIXED_POINT", "NEW_BINARY_PATHS", "SCOPE_REBASELINE_REQUIRED"].includes(reason)) ? "consult"
       : stoppingReasons.includes("PHASE_TARGET_MET") ? "advance-phase-or-complete"
       : stoppingReasons.includes("LIMITS_NOT_INITIALIZED") ? "scope-start" : "continue"
   }

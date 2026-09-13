@@ -211,7 +211,7 @@ test.effect("migration retains the original timestamp and freezes defaults only 
   assert.strictEqual(report.cleanTargets.cold, 2)
 }))
 
-test.effect("counts evidenced failed repairs, not review passes, and resumes only after an owner decision", () => Effect.gen(function*() {
+test.effect("counts evidenced failed repairs, not review passes, and resumes after a changed repair plan", () => Effect.gen(function*() {
   yield* setup
   yield* freezeReviewLimits("run", {})
   const sql = yield* SqlClient.SqlClient
@@ -226,17 +226,22 @@ test.effect("counts evidenced failed repairs, not review passes, and resumes onl
   assert.include(duplicate.message, "already")
   yield* recordProgress("run", { ...start, expectedRevision: 2 })
   yield* recordProgress("run", { ...start, expectedRevision: 3, outcome: "findings" })
-  assert.notInclude((yield* readReviewLimits("run", "head-a")).stoppingReasons, "REPAIR_CONSULT_REQUIRED")
+  assert.notInclude((yield* readReviewLimits("run", "head-a")).stoppingReasons, "REPAIR_DIAGNOSIS_REQUIRED")
   yield* recordProgress("run", { ...applied, expectedRevision: 4, repairAttempt: "patch-2" })
   yield* recordProgress("run", { ...applied, expectedRevision: 5, repairAttempt: "patch-2", outcome: "repair-unsuccessful" })
   const report = yield* readReviewLimits("run", "head-a")
-  assert.include(report.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
+  assert.include(report.stoppingReasons, "REPAIR_DIAGNOSIS_REQUIRED")
   assert.strictEqual(report.repairAttempts[0]?.unsuccessfulAttempts, 2)
-  const unauthorized = yield* recordProgress("run", { ...start, expectedRevision: 6, outcome: "repair-authorized", findingId: "D1" }).pipe(Effect.flip)
-  assert.include(unauthorized.message, "authorization")
-  yield* recordProgress("run", { ...start, expectedRevision: 6, outcome: "repair-authorized", findingId: "D1", authorization: "Owner approves another contained attempt" })
+  assert.strictEqual(report.nextAction, "diagnose-repair")
+  const undiagnosed = yield* recordProgress("run", { ...start, expectedRevision: 6, outcome: "repair-replanned", findingId: "D1" }).pipe(Effect.flip)
+  assert.include(undiagnosed.message, "diagnosis")
+  yield* recordProgress("run", {
+    ...start, expectedRevision: 6, outcome: "repair-replanned", findingId: "D1",
+    evidence: "failure trace", diagnosis: "Both attempts edited the downstream formatter",
+    changedApproach: "Repair the malformed value at its parser boundary"
+  })
   const resumed = yield* readReviewLimits("run", "head-a")
-  assert.notInclude(resumed.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
+  assert.notInclude(resumed.stoppingReasons, "REPAIR_DIAGNOSIS_REQUIRED")
   assert.strictEqual(resumed.remainingSeconds, 28800)
 }))
 })

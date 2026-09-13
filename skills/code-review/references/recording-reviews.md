@@ -26,6 +26,6 @@ Choose `clean`, `clean-except-queue`, `findings` or `blocked` under the review l
 
 ## Repairs and checks
 
-After finish, record repair events with `progress-record --review <id>`. Supply the outcome, finding ID, patch ID (`--repair-attempt`) and observed evidence; the CLI supplies phase, head and revision. Record the applied attempt while the finding is open. After verification, update a successful finding through `record --review <id> --status fixed`; for a failed attempt, record `repair-unsuccessful` and leave the finding open. Two failures require the existing owner-authorization command before another attempt.
+After finish, record repair events with `progress-record --review <id>`. Supply the outcome, finding ID, patch ID (`--repair-attempt`) and observed evidence; the CLI supplies phase, head and revision. Record the applied attempt while the finding is open. After verification, update a successful finding through `record --review <id> --status fixed`; for a failed attempt, record `repair-unsuccessful` and leave the finding open. Two failures require a `repair-replanned` event with the diagnosis and materially changed approach before another attempt.
 
 Save actual check commands and results through `record-command --review <id>`. Run the record commands for completed repairs and checks together in code mode, checking each result. These commands record evidence; they do not perform edits or run the checks themselves.

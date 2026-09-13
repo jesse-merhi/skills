@@ -18,14 +18,17 @@ review-findings scope-authorize --repo <owner/repo> --repo-path <checkout> \
 
 ## A repair failed twice
 
-Ask before another attempt. After approval, record:
+Stop repeating the same repair. Read both saved failure records, reproduce the current failure when practical, and trace why the approach did not work. Choose a materially different approach that stays within the existing repair authority, then record the diagnosis and new approach:
 
 ```sh
-review-findings progress-record --review <id> --outcome repair-authorized \
-  --finding-id <decision-id> --authorization "<user's approval>" --evidence <decision-reference>
+review-findings progress-record --review <id> --outcome repair-replanned \
+  --finding-id <decision-id> --diagnosis "<why the attempts failed>" \
+  --changed-approach "<what will be done differently>" --evidence <diagnostic-reference>
 ```
 
-Use the finding's `decisionId`; the CLI supplies the saved phase, head and revision. This clears only that finding's failed-attempt count.
+Use the finding's `decisionId`; the CLI supplies the saved phase, head and revision. This clears only that finding's failed-attempt count. Two more failures require another diagnosis and changed approach rather than a blind retry.
+
+Do not ask again solely because two authorized local attempts failed. Ask when the changed approach itself needs a decision or authority, including an explicit user limit, unrelated scope, a new dependency, access, spending, a breaking change or publication. After the user supplies that separate authority, add `--authorization "<user's approval>"` to `repair-replanned` so the saved event retains it. Preserve the failed-attempt evidence and every other saved stopping reason.
 
 ## Time or unanswered questions
 

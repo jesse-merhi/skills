@@ -268,7 +268,8 @@ const progressStatus = Command.make("progress-status", { db, ...commonRun, phase
 const progressRecord = Command.make("progress-record", {
   db, ...recordRunFlags, revision: Flag.integer("expected-revision").pipe(Flag.withDefault(-1)), phase: Flag.choice("phase", ["native", "cold", "clawsweeper"]).pipe(Flag.withDefault("native")),
   outcome: Flag.choice("outcome", PROGRESS_OUTCOMES), evidence: Flag.string("evidence"),
-  findingId: optionalString("finding-id"), repairAttempt: optionalString("repair-attempt"), authorization: optionalString("authorization")
+  findingId: optionalString("finding-id"), repairAttempt: optionalString("repair-attempt"),
+  diagnosis: optionalString("diagnosis"), changedApproach: optionalString("changed-approach"), authorization: optionalString("authorization")
 }, args => withReviewScopeDb(args, Effect.gen(function*() {
   yield* initialize()
   const run = yield* resolveCommandRun(args)
@@ -282,6 +283,8 @@ const progressRecord = Command.make("progress-record", {
   const event = yield* Schema.decodeUnknownEffect(ProgressEvent)({ expectedRevision: args.review ? saved?.revision ?? 0 : args.revision, phase, head, outcome: args.outcome, evidence: args.evidence,
     ...(Option.isSome(args.findingId) ? { findingId: args.findingId.value } : {}),
     ...(Option.isSome(args.repairAttempt) ? { repairAttempt: args.repairAttempt.value } : {}),
+    ...(Option.isSome(args.diagnosis) ? { diagnosis: args.diagnosis.value } : {}),
+    ...(Option.isSome(args.changedApproach) ? { changedApproach: args.changedApproach.value } : {}),
     ...(Option.isSome(args.authorization) ? { authorization: args.authorization.value } : {})
   })
   const progress = yield* reviewProgress(run, event)
