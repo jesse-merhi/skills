@@ -161,7 +161,7 @@ export interface FindingInput {
 
 export type Finding = typeof FindingRecord.Type & FindingOutcome
 
-type FindingAcceptedShapeInput = Pick<Finding, "findingKind" | "likelihood" | "maintenanceEvidence" | "presentCost" | "disposition">
+type FindingAcceptedShapeInput = Pick<Finding, "findingKind" | "status" | "likelihood" | "maintenanceEvidence" | "presentCost" | "disposition" | "ownerResolution">
 
 export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): string => {
   const repairFields = "--root-cause <cause> --recommended-fix <durable repair> --intervention-justification <why intervention is justified>"
@@ -171,6 +171,17 @@ export const formatFindingAcceptedShape = (finding: FindingAcceptedShapeInput): 
   const runtimeEvidence = runtime && finding.likelihood !== "unknown" && finding.likelihood !== "theoretical"
     ? " --production-path <path> --reachability-evidence <reproduction> --actual-consequence <observed result> --contract-evidence <expected behavior>"
     : ""
+  const ownerResolvable = finding.disposition === "accept" || finding.disposition === "consult"
+  if (ownerResolvable && finding.ownerResolution === "approved") {
+    const handling = finding.disposition === "consult" ? "consult" : "fix"
+    return `--status fixed --handling ${handling} --owner-resolution approved --decision <owner decision> ${repairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
+  if (ownerResolvable && finding.ownerResolution === "declined") {
+    const status = finding.status === "deferred" && finding.disposition === "consult" ? "deferred" : "rejected"
+    const handling = finding.disposition === "consult" ? "consult" : "fix"
+    const ownerRepairFields = finding.disposition === "consult" ? consultRepairFields : repairFields
+    return `--status ${status} --handling ${handling} --owner-resolution declined --decision <owner decision> ${ownerRepairFields}${maintenanceEvidence}${runtimeEvidence}`
+  }
   if (finding.disposition === "reject") {
     const supportedMaintenance = !runtime && (finding.maintenanceEvidence.trim().length > 0 || finding.presentCost.trim().length > 0) ? maintenanceEvidence : ""
     return `--status rejected --handling reject --rejection-gate <reality|importance|contract|repair|duplicate> --decision <rationale>${supportedMaintenance}${runtimeEvidence}; omit repair fields`
@@ -1228,14 +1239,15 @@ export const startOrResumeScopeBudget = Effect.fn("ReviewFindings.startOrResumeS
   readonly scopeSummary: string
   readonly limits?: Partial<LimitSettings>
 }) {
-  return yield* getScopeBudget(run).pipe(
-    Effect.map((budget) => ({ budget, resumed: true })),
-    Effect.catchTag("MissingScopeBudget", () => startScopeBudget(run, input).pipe(
-      Effect.map((budget) => ({ budget, resumed: false })),
-      Effect.catchTag("ScopeBudgetAlreadyStarted", () => getScopeBudget(run).pipe(
-        Effect.map((budget) => ({ budget, resumed: true }))
-      ))
+  const start = () => startScopeBudget(run, input).pipe(
+    Effect.map((budget) => ({ budget, resumed: false })),
+    Effect.catchTag("ScopeBudgetAlreadyStarted", () => getScopeBudget(run).pipe(
+      Effect.map((budget) => ({ budget, resumed: true }))
     ))
+  )
+  return yield* getScopeBudget(run).pipe(
+    Effect.flatMap((budget) => budget.status === "complete" ? start() : Effect.succeed({ budget, resumed: true })),
+    Effect.catchTag("MissingScopeBudget", start)
   )
 })
 

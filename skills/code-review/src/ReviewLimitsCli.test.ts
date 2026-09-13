@@ -300,8 +300,9 @@ test.effect("record recovery shapes follow the derived runtime disposition", () 
       name: "reject",
       invalid: ["--decision-id", "R1", "--status", "open", "--source", "fixture", "--fingerprint", "rare low", "--summary", "Rare low candidate", "--finding-kind", "runtime", ...runtimeEvidence,
         "--likelihood", "rare", "--impact", "low", "--root-cause", "The hint ignored the derived disposition.", "--recommended-fix", "Use the derived disposition.",
-        "--intervention-justification", "The recovery command must be valid.", "--fix-scope", "local", "--handling", "fix"],
+        "--intervention-justification", "The recovery command must be valid.", "--fix-scope", "local", "--handling", "fix", "--owner-resolution", "approved"],
       expectedShape: ["--status rejected --handling reject", "--rejection-gate <reality|importance|contract|repair|duplicate>", "; omit repair fields"],
+      unexpectedShape: ["--owner-resolution"],
       recovery: ["--decision-id", "R1", "--status", "rejected", "--source", "fixture", "--fingerprint", "rare low", "--summary", "Rare low candidate", "--finding-kind", "runtime", ...runtimeEvidence,
         "--likelihood", "rare", "--impact", "low", "--decision", "The measured likelihood and impact do not meet the intervention threshold.",
         "--rejection-gate", "importance", "--fix-scope", "local", "--handling", "reject"]
@@ -312,6 +313,7 @@ test.effect("record recovery shapes follow the derived runtime disposition", () 
         "--likelihood", "rare", "--impact", "high", "--root-cause", "The owner must choose the repair.",
         "--intervention-justification", "The high impact warrants an owner decision.", "--fix-scope", "local", "--handling", "fix"],
       expectedShape: ["--status open --handling consult --decision <owner question>", "--root-cause <cause> --intervention-justification", "[--recommended-fix <supported repair>]"],
+      unexpectedShape: [],
       recovery: ["--decision-id", "R2", "--status", "open", "--source", "fixture", "--fingerprint", "rare high", "--summary", "Rare high candidate", "--finding-kind", "runtime", ...runtimeEvidence,
         "--likelihood", "rare", "--impact", "high", "--decision", "Which owning component should contain the repair?", "--root-cause", "The owner must choose the repair.",
         "--intervention-justification", "The high impact warrants an owner decision.", "--fix-scope", "local", "--handling", "consult"]
@@ -319,8 +321,9 @@ test.effect("record recovery shapes follow the derived runtime disposition", () 
     {
       name: "investigate",
       invalid: ["--decision-id", "R3", "--status", "rejected", "--source", "fixture", "--fingerprint", "unknown low", "--summary", "Unknown path candidate", "--finding-kind", "runtime",
-        "--likelihood", "unknown", "--impact", "low", "--decision", "The runtime path still needs investigation.", "--rejection-gate", "reality", "--fix-scope", "local", "--handling", "reject"],
+        "--likelihood", "unknown", "--impact", "low", "--decision", "The runtime path still needs investigation.", "--rejection-gate", "reality", "--fix-scope", "local", "--handling", "reject", "--owner-resolution", "declined"],
       expectedShape: ["--status open --handling fix --decision <investigation needed>", "omit repair fields until the runtime path is proven"],
+      unexpectedShape: ["--owner-resolution"],
       recovery: ["--decision-id", "R3", "--status", "open", "--source", "fixture", "--fingerprint", "unknown low", "--summary", "Unknown path candidate", "--finding-kind", "runtime",
         "--likelihood", "unknown", "--impact", "low", "--decision", "Trace the runtime path before deciding whether to repair.", "--fix-scope", "local", "--handling", "fix"]
     }
@@ -328,12 +331,54 @@ test.effect("record recovery shapes follow the derived runtime disposition", () 
   const sql = yield* SqliteClient.make({ filename: database })
   for (const testCase of cases) {
     const rejected = yield* invoke(["record", ...handle, ...testCase.invalid]).pipe(Effect.flip)
-    assert.include(rejected.stderr, "accepted shape:", testCase.name)
-    for (const expected of testCase.expectedShape) assert.include(rejected.stderr, expected, testCase.name)
+    const acceptedShape = rejected.stderr.split("\n").find((line) => line.startsWith("accepted shape:"))
+    if (acceptedShape === undefined) return assert.fail(`${testCase.name}: expected an accepted shape`)
+    for (const expected of testCase.expectedShape) assert.include(acceptedShape, expected, testCase.name)
+    for (const unexpected of testCase.unexpectedShape) assert.notInclude(acceptedShape, unexpected, testCase.name)
     assert.lengthOf(yield* sql`select id from issues where decision_id = ${testCase.invalid[1]}`, 0, testCase.name)
     yield* invoke(["record", ...handle, ...testCase.recovery])
     assert.lengthOf(yield* sql`select id from issues where decision_id = ${testCase.recovery[1]}`, 1, testCase.name)
   }
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("owner-resolution recovery shapes preserve terminal decisions", () => Effect.gen(function*() {
+  const { reviewStart, invoke, database } = yield* fixture
+  const started = decode(yield* reviewStart())
+  if (started.reviewId === undefined) return assert.fail("Managed review start must return its review ID")
+  const handle = ["--review", started.reviewId]
+  const runtimeEvidence = [
+    "--finding-kind", "runtime", "--production-path", "fixture command -> record", "--reachability-evidence", "The public record command reaches finding validation.",
+    "--likelihood", "rare", "--impact", "high", "--actual-consequence", "The recovery hint cannot be replayed.", "--contract-evidence", "Owner decisions must retain a legal terminal status.",
+    "--intervention-justification", "The high impact warrants the recorded owner decision.", "--fix-scope", "local", "--handling", "consult"
+  ]
+  const card = (decisionId: string) => ["--decision-id", decisionId, "--source", "fixture", "--fingerprint", decisionId, "--summary", `Owner consult ${decisionId}`, ...runtimeEvidence]
+  for (const decisionId of ["OWNER-APPROVED", "OWNER-DECLINED"]) {
+    yield* invoke(["record", ...handle, ...card(decisionId), "--status", "open", "--root-cause", "The owner must choose the repair.", "--decision", "Which repair should own this?"])
+  }
+  yield* invoke(["review", "finish", ...handle, "--outcome", "findings", "--evidence", "Owner decisions pending"])
+
+  const approved = yield* invoke(["record", ...handle, ...card("OWNER-APPROVED"), "--status", "fixed", "--root-cause", "The owner approved the repair.",
+    "--owner-resolution", "approved", "--decision", "Apply the approved repair."]).pipe(Effect.flip)
+  assert.include(approved.stderr, "actionable findings require --recommended-fix")
+  assert.include(approved.stderr, "accepted shape: --status fixed --handling consult --owner-resolution approved --decision <owner decision>")
+  assert.include(approved.stderr, "--recommended-fix <durable repair>")
+  assert.notInclude(approved.stderr, "[--recommended-fix")
+  yield* invoke(["record", ...handle, ...card("OWNER-APPROVED"), "--status", "fixed", "--root-cause", "The owner approved the repair.",
+    "--recommended-fix", "Apply the approved repair.", "--owner-resolution", "approved", "--decision", "Apply the approved repair."])
+
+  const declined = yield* invoke(["record", ...handle, ...card("OWNER-DECLINED"), "--status", "deferred",
+    "--owner-resolution", "declined", "--decision", "Accept the deferred risk."]).pipe(Effect.flip)
+  assert.include(declined.stderr, "actionable findings require --root-cause")
+  assert.include(declined.stderr, "accepted shape: --status deferred --handling consult --owner-resolution declined --decision <owner decision>")
+  assert.include(declined.stderr, "[--recommended-fix <supported repair>]")
+  yield* invoke(["record", ...handle, ...card("OWNER-DECLINED"), "--status", "deferred", "--root-cause", "The owner declined the repair.",
+    "--owner-resolution", "declined", "--decision", "Accept the deferred risk."])
+
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.deepStrictEqual(yield* sql`select decision_id, status, owner_resolution from issues where decision_id like 'OWNER-%' order by decision_id`, [
+    { decision_id: "OWNER-APPROVED", status: "fixed", owner_resolution: "approved" },
+    { decision_id: "OWNER-DECLINED", status: "deferred", owner_resolution: "declined" }
+  ])
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("native command reviews the full historical range once and exposes its saved report", () => Effect.gen(function*() {
@@ -392,7 +437,7 @@ esac
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("old handles cannot write evidence into a new run with the same identity", () => Effect.gen(function*() {
-  const { cli, invoke, reviewStart, database } = yield* fixture
+  const { cli, invoke, reviewStart, database, git } = yield* fixture
   const scopeFlags = ["--scope-summary", "fixture", "--native-clean-target", "1", "--required-phase", "native", "--require-current-head", "--json"]
   const firstScope = decode(yield* cli("scope-start", scopeFlags))
   if (firstScope.runId === undefined) return assert.fail("First scope must return its run ID")
@@ -401,8 +446,10 @@ test.effect("old handles cannot write evidence into a new run with the same iden
   const finished = decode(yield* invoke(["review", "finish", "--review", first.reviewId, "--outcome", "clean", "--evidence", "complete result"]))
   assert.strictEqual(finished.limits.runId, firstScope.runId)
   yield* cli("scope-complete", ["--reason", "complete", "--json"])
-  const secondScope = decode(yield* cli("scope-start", scopeFlags))
-  assert.notStrictEqual(secondScope.runId, firstScope.runId)
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "-m", "new review head"])
+  const second = decode(yield* reviewStart())
+  assert.notStrictEqual(second.runId, firstScope.runId)
+  assert.deepStrictEqual(second.scope, { status: "ok", resumed: false })
   const oldStatus = decode(yield* invoke(["review", "status", "--review", first.reviewId]))
   assert.strictEqual(oldStatus.status, "finished")
   assert.strictEqual(oldStatus.limits.runId, firstScope.runId)
