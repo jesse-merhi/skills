@@ -64,32 +64,33 @@ repo.
 
 ## Local PR turns
 
-- **Source:** [jesse-merhi/repo-queue](https://github.com/jesse-merhi/repo-queue), a private repository requiring the user's GitHub access.
-- **Pinned revision:** `12d1214a123c7bf25dfdff1604174cea7e246de7` from [draft PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This is an explicit preview pin, not a reviewed release. Update it deliberately after validation; do not track a moving branch.
+- **Source:** [jesse-merhi/repo-queue](https://github.com/jesse-merhi/repo-queue), the upstream RepoQ project.
+- **Pinned revision:** `144d192b055fdf6710c61653d10e632d6fb29ffd` from [draft PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This pins the TypeScript package and complete skill variants. Update it deliberately after validation; do not track a moving branch.
 - **Ownership:** repo-queue owns the CLI and complete skill variants. This repository owns the default merge-routing rule in `AGENTS.md`. Do not copy the workflow into a repo-owned skill or change dotfiles to install it.
-- **Verified scope:** Codex desktop end-turn → wake → claim → done passed. Claude Code's full end-turn → wake → claim → done flow also passed after the account limit reset, using the pinned revision and an isolated synthetic queue. A live Claude interactive/background process must exit before resume; an idle terminal is still live. Follow upstream recovery guidance after delivery failure. Claude desktop/web and Codex cloud are unsupported.
+- **Verified scope:** Codex desktop end-turn → wake → claim → done passed. Claude Code's full end-turn → wake → claim → done flow also passed using an isolated synthetic queue. A live Claude interactive/background process must exit before resume; an idle terminal is still live. Follow upstream recovery guidance after delivery failure. Claude desktop/web and Codex cloud are unsupported.
 
 ### Install the pinned CLI and skill
 
 This entry is for Codex and Claude Code only. Run installation when the user requests queue setup or installation of this skills repository; a merge request alone does not authorize installing missing dependencies. Preserve unrelated skills and settings. Start by checking `command -v repo-queue`, `~/.local/bin/repo-queue`, and the harness's `skills/repo-queue`. If any existing destination has another owner or local edits, stop before replacing it. Treat a foreign executable as an unavailable queue, not as the trusted transport. An unchanged installation at this pin needs no reinstall.
 
-Use the authenticated GitHub account to obtain the exact revision in a stable directory. Do not run the CLI from a temporary development worktree:
+Obtain the exact revision, build its package, and install the compiled command in a stable prefix. Node 24.13+ and npm are prerequisites; install missing prerequisites only with the user's authority. Do not run the background service from a temporary development worktree:
 
 ```sh
-queue_revision=12d1214a123c7bf25dfdff1604174cea7e246de7
+queue_revision=144d192b055fdf6710c61653d10e632d6fb29ffd
 queue_checkout="$HOME/.local/share/repo-queue/$queue_revision"
 mkdir -p "$HOME/.local/share/repo-queue" "$HOME/.local/bin"
 gh repo clone jesse-merhi/repo-queue "$queue_checkout" -- --no-checkout
 git -C "$queue_checkout" checkout --detach "$queue_revision"
 test "$(git -C "$queue_checkout" rev-parse HEAD)" = "$queue_revision"
-ln -s "$queue_checkout/bin/repo-queue" "$HOME/.local/bin/repo-queue"
+(cd "$queue_checkout" && npm ci --ignore-scripts && npm run validate && npm pack)
+npm install --global --prefix "$HOME/.local" --ignore-scripts "$queue_checkout/repoq-0.1.0.tgz"
 ```
 
-These commands assume the checked destinations are absent. On reinstall, inspect and reuse a clean matching checkout and link; never overwrite an unrelated path. The CLI needs Python 3.9+ and the relevant authenticated agent CLI, with no Python packages. If `~/.local/bin` is absent from PATH, use its absolute executable path and report that fact rather than editing shell configuration implicitly.
+These commands assume the checked destinations are absent. On reinstall, inspect and reuse a clean matching checkout and package installation; never overwrite an unrelated path. For an existing Python preview, follow the ordered upgrade and outstanding-wake reconciliation in upstream `docs/installation.md`. Move only the verified owned Python bin symlink to an unused backup name before npm installation, retaining its resolved target. Preserve reservations and the old executable for outstanding wake commands. The TypeScript CLI supports macOS and Linux, uses built-in SQLite, and has no third-party runtime dependencies. The relevant agent CLI must be authenticated. If `~/.local/bin` is absent from PATH, use its absolute executable path and report that fact rather than editing shell configuration implicitly.
 
 Install the **whole** `skills/repo-queue` directory from that revision into the harness's skill directory. For Codex, use the available Skill Installer helper with the repository, revision and path above. For Claude, its `--dest ~/.claude/skills` option installs to the correct location as well. The helper's authenticated archive-download mode supports exact revisions. Select the complete `variants/gpt-6-astra.md`, `variants/gpt-5.6.md`, `variants/claude-fable-5.1.md`, or `variants/claude-opus-5.md` as the installed `SKILL.md` according to the harness's current model; preserve the source `BASE.md` and other variants. Do not change the model. Other installers may copy the directory from the verified checkout and select the same variant.
 
-Verify `repo-queue --help`, the installed skill and selected variant, then run:
+Materialize the selected variant by copying it to the installed `SKILL.md`; unlink a verified RepoQ `SKILL.md` symlink first so its target is preserved. The npm tarball includes the variants but omits that source symlink. Verify `repo-queue --help`, the installed skill and selected variant, then run:
 
 ```sh
 repo-queue start
