@@ -1,6 +1,10 @@
+// Executable-level compatibility tests intentionally exercise Node process boundaries.
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { execFile as execFileCallback } from "node:child_process"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
+// @effect-diagnostics-next-line nodeBuiltinImport:off
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
@@ -36,8 +40,6 @@ const createRepository = async () => {
 }
 
 const environment = (overrides: Readonly<Record<string, string>>) => ({
-  // Test process boundaries need the real host tool path plus explicit external fakes.
-  // @effect-diagnostics-next-line processEnv:off
   ...process.env,
   ...overrides
 })
@@ -147,6 +149,82 @@ describe("review CLI Git context", () => {
     }
   }, 45_000)
 
+  it("uses an explicitly targeted pull request to infer its base", async () => {
+    const fixture = await createRepository()
+    const gh = join(fixture.directory, "gh")
+    const calls = join(fixture.directory, "gh-calls")
+    const target = "https://github.com/acme/widget/pull/7"
+    try {
+      await git(fixture.repo, ["remote", "add", "origin", "git@github.com:acme/widget.git"])
+      const main = (await git(fixture.repo, ["rev-parse", "main"])).stdout.trim()
+      const stack = (await git(fixture.repo, ["rev-parse", "stack-base"])).stdout.trim()
+      await writeFile(gh, `#!/bin/sh
+printf '%s\\n' "$*" >> '${calls}'
+if [ "$3" = '${target}' ]; then
+  printf '{"url":"${target}","baseRefName":"stack-base","baseRefOid":"${stack}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
+else
+  printf '{"url":"https://github.com/acme/widget/pull/8","baseRefName":"main","baseRefOid":"${main}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"acme/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
+fi
+`, { mode: 0o700 })
+
+      const result = await runReview(fixture.nested, [
+        "review", "start", "--db", fixture.db, "--target", target,
+        "--phase", "native", "--evidence", "Explicit pull request review"
+      ], { GH_BIN: gh })
+      expect(reviewOutput(result.stdout).identity).toMatchObject({ target, base: "stack-base" })
+      expect(await readFile(calls, "utf8")).toContain(`pr view ${target} --json`)
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true })
+    }
+  }, 45_000)
+
+  it("resolves fork clones and configured upstream pull refs while rejecting unrelated forks", async () => {
+    const fixture = await createRepository()
+    const gh = join(fixture.directory, "gh")
+    try {
+      await git(fixture.repo, ["remote", "add", "origin", "git@github.com:acme/widget.git"])
+      await git(fixture.repo, ["config", "branch.feature.remote", "origin"])
+      const main = (await git(fixture.repo, ["rev-parse", "main"])).stdout.trim()
+      await writeFile(gh, `#!/bin/sh
+printf '{"url":"https://github.com/acme/widget/pull/7","baseRefName":"main","baseRefOid":"${main}","headRefName":"feature","headRefOid":"%s","headRepository":{"nameWithOwner":"contributor/widget"},"state":"OPEN"}\\n' "$(git rev-parse HEAD)"
+`, { mode: 0o700 })
+
+      await git(fixture.repo, ["config", "branch.feature.merge", "refs/heads/feature"])
+      await expect(runReview(fixture.nested, [
+        "review", "start", "--db", fixture.db, "--phase", "native", "--evidence", "Unrelated fork probe"
+      ], { GH_BIN: gh })).rejects.toMatchObject({ stderr: expect.stringContaining("different head branch or repository") })
+      expect(await missing(fixture.db)).toBe(true)
+
+      await git(fixture.repo, ["config", "branch.feature.merge", "refs/pull/8/head"])
+      await expect(runReview(fixture.nested, [
+        "review", "start", "--db", fixture.db, "--phase", "native", "--evidence", "Wrong pull ref probe"
+      ], { GH_BIN: gh })).rejects.toMatchObject({ stderr: expect.stringContaining("different head branch or repository") })
+      expect(await missing(fixture.db)).toBe(true)
+
+      await git(fixture.repo, ["config", "branch.feature.merge", "refs/pull/7/head"])
+      await git(fixture.repo, ["branch", "-m", "review-contribution"])
+      const result = await runReview(fixture.nested, [
+        "review", "start", "--db", fixture.db, "--phase", "native", "--evidence", "Upstream pull ref review"
+      ], { GH_BIN: gh })
+      expect(reviewOutput(result.stdout).identity).toMatchObject({
+        repo: "acme/widget", branch: "review-contribution", target: "https://github.com/acme/widget/pull/7", base: "main"
+      })
+
+      await git(fixture.repo, ["branch", "-m", "feature"])
+      await git(fixture.repo, ["remote", "set-url", "origin", "git@github.com:contributor/widget.git"])
+      await git(fixture.repo, ["config", "branch.feature.merge", "refs/heads/feature"])
+      const fork = await runReview(fixture.nested, [
+        "review", "start", "--db", join(fixture.directory, "fork.sqlite"),
+        "--phase", "native", "--evidence", "Contributor clone review"
+      ], { GH_BIN: gh })
+      expect(reviewOutput(fork.stdout).identity).toMatchObject({
+        repo: "contributor/widget", branch: "feature", target: "https://github.com/acme/widget/pull/7", base: "main"
+      })
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true })
+    }
+  }, 45_000)
+
   it("uses an explicit base with a stable branch target without GitHub access", async () => {
     const fixture = await createRepository()
     const marker = join(fixture.directory, "gh-ran")
@@ -154,6 +232,8 @@ describe("review CLI Git context", () => {
     try {
       await git(fixture.repo, ["remote", "add", "origin", "https://github.com/acme/widget.git"])
       await writeFile(gh, `#!/bin/sh\nprintf called > '${marker}'\nexit 7\n`, { mode: 0o700 })
+      await mkdir(dirname(fixture.db), { recursive: true })
+      await writeFile(fixture.db, "")
       const result = await runReview(fixture.nested, [
         "review", "start", "--db", fixture.db, "--base", "stack-base",
         "--phase", "native", "--evidence", "Manual native review"

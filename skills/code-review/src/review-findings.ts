@@ -339,7 +339,7 @@ const readSavedContext = Effect.fn("reviewFindings.readSavedContext")(function*(
   return yield* findSavedReviewContext(context.repoPath, context.branch, { target: context.target, base: context.base }).pipe(
     // Reading inferred context must not initialize or migrate the selected database.
     // @effect-diagnostics-next-line strictEffectProvide:off
-    Effect.provide(SqliteClient.layer({ filename: database, readonly: true }))
+    Effect.provide(SqliteClient.layer({ filename: database, readonly: true, disableWAL: true }))
   )
 })
 const resolveReviewRun = Effect.fn("reviewFindings.resolveReviewRun")(function*(args: ReviewContextInput & { readonly db: string }) {

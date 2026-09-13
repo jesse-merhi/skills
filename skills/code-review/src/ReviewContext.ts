@@ -29,6 +29,17 @@ export interface LocalReviewContext extends ReviewContextInput {
 }
 
 const GitOid = Schema.String.pipe(Schema.check(Schema.isPattern(/^[0-9a-f]{40}$/u)))
+const PullRequestUrl = Schema.URLFromString.pipe(Schema.check(Schema.makeFilter((url) =>
+  url.protocol === "https:" &&
+    url.port === "" &&
+    url.username === "" &&
+    url.password === "" &&
+    url.search === "" &&
+    url.hash === "" &&
+    /^\/[^/]+\/[^/]+\/pull\/[1-9][0-9]*$/u.test(url.pathname)
+    ? undefined
+    : "Expected a full HTTPS pull request URL"
+)))
 const PullRequest = Schema.Struct({
   url: Schema.NonEmptyString,
   baseRefName: Schema.NonEmptyString,
@@ -115,20 +126,47 @@ const resolveRepository = Effect.fn("ReviewContext.resolveRepository")(function*
   return { ...context, repo: parsed.repository, remote }
 })
 
+const parsePullRequestUrl = (input: string) => Schema.decodeUnknownEffect(PullRequestUrl)(input).pipe(
+  Effect.mapError(() => new ReviewContextError({ message: "GitHub returned an invalid pull request URL; pass --target and --base explicitly" }))
+)
+
+const pullRequestParts = (url: URL) => {
+  const parts = url.pathname.split("/").filter((part) => part.length > 0)
+  return { repository: parts.slice(0, 2).join("/"), number: parts[3] ?? "" }
+}
+
+const isConfiguredPullRef = Effect.fn("ReviewContext.isConfiguredPullRef")(function*(context: LocalReviewContext, pullRequestNumber: string) {
+  if (context.remote === undefined) return false
+  const configuredRemote = yield* gitText(context.repoPath, ["config", "--get", `branch.${context.branch}.remote`], "").pipe(Effect.orElseSucceed(() => ""))
+  const configuredMerge = yield* gitText(context.repoPath, ["config", "--get", `branch.${context.branch}.merge`], "").pipe(Effect.orElseSucceed(() => ""))
+  return configuredRemote === context.remote && configuredMerge === `refs/pull/${pullRequestNumber}/head`
+})
+
 const lookupPullRequest = Effect.fn("ReviewContext.lookupPullRequest")(function*(context: LocalReviewContext) {
   const gh = yield* trustedExecutable("gh", context.repoPath).pipe(
     Effect.mapError(() => new ReviewContextError({ message: `Could not resolve GitHub CLI for '${context.repo}'; install or configure gh, or pass --target and --base explicitly` }))
   )
+  const requestedPullRequest = yield* Schema.decodeUnknownEffect(PullRequestUrl)(context.target).pipe(Effect.option)
   const output = yield* checkedTrimmedText(gh, [
-    "pr", "view", "--json", "url,baseRefName,baseRefOid,headRefName,headRefOid,headRepository,state"
+    "pr", "view", ...(requestedPullRequest._tag === "Some" ? [requestedPullRequest.value.href] : []),
+    "--json", "url,baseRefName,baseRefOid,headRefName,headRefOid,headRepository,state"
   ], { cwd: context.repoPath }).pipe(
     Effect.mapError(() => new ReviewContextError({ message: `GitHub could not resolve one open pull request for the current branch '${context.branch}'; resolve the PR or provider failure, or pass --base <ref> explicitly` }))
   )
   const pullRequest = yield* Schema.decodeUnknownEffect(PullRequestResponse)(output).pipe(
     Effect.mapError(() => new ReviewContextError({ message: "GitHub returned an invalid open pull request response; pass --base <ref> explicitly" }))
   )
-  const repository = context.repo.split("/").slice(-2).join("/")
-  if (pullRequest.headRefName !== context.branch || pullRequest.headRepository.nameWithOwner !== repository) {
+  const resolvedUrl = yield* parsePullRequestUrl(pullRequest.url)
+  if (requestedPullRequest._tag === "Some" && resolvedUrl.href !== requestedPullRequest.value.href) {
+    return yield* new ReviewContextError({ message: "GitHub resolved a different pull request than --target; pass the intended --target and --base explicitly" })
+  }
+  const contextParts = context.repo.split("/")
+  const repository = contextParts.slice(-2).join("/")
+  const expectedHost = contextParts.length === 2 ? "github.com" : contextParts[0] ?? ""
+  const resolvedParts = pullRequestParts(resolvedUrl)
+  const matchesHeadBranch = pullRequest.headRepository.nameWithOwner === repository && pullRequest.headRefName === context.branch
+  const matchesPullRef = resolvedParts.repository === repository && (yield* isConfiguredPullRef(context, resolvedParts.number))
+  if (resolvedUrl.hostname !== expectedHost || (!matchesHeadBranch && !matchesPullRef)) {
     return yield* new ReviewContextError({ message: `GitHub resolved a pull request from a different head branch or repository; pass --target and --base explicitly` })
   }
   const git = yield* trustedExecutable("git", context.repoPath)
