@@ -4,7 +4,7 @@
 
 Use installed `review-findings`, never resolve a skill directory. SQLite owns durable findings from users, native/cold reviewers and lenses, run identities, decisions, verification and the open queue; chat history does not. Keep the database outside the reviewed repository; `path` reports its location (default `~/.local/state/agent-review-findings/reviews.sqlite`).
 
-Read `review-findings --help`, then subcommand `--help` for flags. Run `review-findings schema` before the first finding record in every review; it owns field catalogs, allowed combinations and rating consistency. Follow it over remembered examples. If the installed command lacks this catalog, report the installation mismatch rather than falling back to a skill-dir launcher or silently using an older contract.
+Read `review-findings --help`, then subcommand `--help` for flags. Use the recording contract returned by review setup and consult `review-findings schema` for field catalogs, allowed combinations and rating consistency. Follow it over remembered examples. If the installed command lacks this catalog, report the installation mismatch rather than falling back to a skill-dir launcher or silently using an older contract.
 
 ## 2. Choose the command
 
@@ -12,9 +12,9 @@ Read `review-findings --help`, then subcommand `--help` for flags. Run `review-f
 | --- | --- |
 | Locate or initialize SQLite | `path`, `init` |
 | Read the record contract | `schema` |
-| Freeze authorized scope / resume its state | `scope-start` / `scope-status --json` |
+| Start or resume with scope setup | `review native` / `review start` |
+| Inspect scope / explicitly initialize without a review | `scope-status --json` / `scope-start` |
 | Check scope / record approved expansion / finish | `scope-check` / `scope-authorize` / `scope-complete` |
-| Append explicitly authorized review time | `budget-extend` |
 | Read pass state / record passes, repairs or decisions | `progress-status` / `progress-record` |
 | Start, inspect or finish a review | `review native`, `review start`, `review status`, `review finish` |
 | Record owner decisions or exceptional transitions | `record`, `progress-record` |
@@ -30,17 +30,16 @@ Follow the pass-recording, fixing and blocked-check instructions linked where th
 
 When an authorized main sync changes an existing run's base, use `scope-authorize --base <old-base> --new-base <new-base>` with the user's explicit authorization. It remeasures the baseline while preserving findings, commands, the branch lock and event history. Use the new base afterward and restart the current review phase. Completed scopes remain terminal; an existing destination run is rejected rather than overwritten. A migrated budget marked as requiring rebaseline also needs explicit authorization through `scope-authorize`; `scope-check` cannot clear that state.
 
-For an explicitly user-authorized time extension, run `review-findings budget-extend` with the saved run identity, `--run-id <saved-run-id> --request-id <unique-request-id> --additional-seconds <positive-integer> --authorization "<existing explicit user authority>"`. This appends time to the saved deadline, including after expiry; choose enough authorized time to cover any elapsed overrun. The command does not supply authority itself or extend time automatically. It preserves the original start, frozen settings, findings, repair attempts and phase evidence. Its JSON output includes the old/new deadline, authorization receipt and current limits. Exact replay returns the original receipt without adding time; changed reuse of an ID is rejected. The run ID must match the resolved existing run, so a later review with the same target cannot receive an earlier authorization. Other stopping reasons and completed-run terminal state remain binding. Extensions require this updated CLI for later lifecycle commands: older versions ignore the extension ledger and still report the original deadline.
 
 ## 3. Record findings and decisions
 
-1. Check all candidates before recording the complete report in one code-mode call, using `schema` for kind and disposition; never invent evidence to fill a template. Apply `speak-fking-english` to each batch without changing technical claims. Give the owner the premise, what goes wrong/where, who experiences it, and the repair, rejection reason or outstanding decision. Keep reviewer shorthand, engine names, severity and fingerprints in structured fields.
+1. Check reported candidates before recording actionable findings, unresolved concerns and meaningful verified rejections in one code-mode call, using `schema` for kind and disposition; never invent evidence to fill a template. Apply `speak-fking-english` to each batch without changing technical claims. Give the owner the premise, what goes wrong/where, who experiences it, and the repair, rejection reason or outstanding decision. Keep reviewer shorthand, engine names, severity and fingerprints in structured fields.
 2. Mark findings material when they affect visible behavior, workflows, access/permissions, data correctness, audit integrity, finance, schemas/migrations or API contracts. Record affected files/behavior, source, owner/next action and validation. Use the main skill's findings guide for evidence and repair decisions.
-3. Let the CLI derive severity/disposition; do not pass priority, severity or disposition. Handling cannot turn rejected or unproven risk into work. Keep runtime and maintenance evidence separate. Use the schema's rejection contract for unsupported candidates, including the failed gate and rationale rather than fabricated proof.
+3. Let the CLI derive severity/disposition; do not pass priority, severity or disposition. Handling cannot turn rejected or unproven risk into work. Keep runtime and maintenance evidence separate. For a meaningful verified rejection, use the schema's rejection contract, including the failed gate and rationale rather than fabricated proof.
 4. Use `fix` for accepted contained work, `consult` for owner decisions and deferred `follow-up` for nonblocking adjacent work. An accepted local `fix` deferred as residual risk requires a decision explaining that acceptance. An unanswered consult stays open; deferral requires `--owner-resolution declined` and the owner's explicit decision.
 5. Close an approved consulted repair as fixed with `--owner-resolution approved`; close a rejected finding with `declined`, always recording the owner's decision. Use the same explicit approval when keeping a provisional fix. Declining a provisional repair means revert it and record `reopened` with decision text but no owner resolution: the finding remains active.
 6. Preserve terminal current-schema owner decisions: exact replay is a no-op even after scope completion; changing any field requires a new decision ID. Active legacy findings remain open until re-recorded with current evidence. An evidence-only upgrade must preserve status, source identity, owner decision, disposition, fix scope and handling; completed legacy history remains terminal and labelled legacy.
-7. Append recurring reports through `record --review <id> --match-of <finding-id>`. Matching preserves the earlier decision and outstanding question. Save completed validation with its result, reason and related finding through `record-command --review <id>`.
+7. Append meaningful recurring reports through `record --review <id> --match-of <finding-id>`. Matching preserves the earlier decision and outstanding question. Save completed validation with its result, reason and related finding through `record-command --review <id>`.
 
 ## 4. Assign and record file coverage
 
