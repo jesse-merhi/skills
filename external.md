@@ -67,7 +67,7 @@ repo.
 - **Source:** [jesse-merhi/repo-queue](https://github.com/jesse-merhi/repo-queue), a private repository requiring the user's GitHub access.
 - **Pinned revision:** `12d1214a123c7bf25dfdff1604174cea7e246de7` from [draft PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This is an explicit preview pin, not a reviewed release. Update it deliberately after validation; do not track a moving branch.
 - **Ownership:** repo-queue owns the CLI and complete skill variants. This repository owns the default merge-routing rule in `AGENTS.md`. Do not copy the workflow into a repo-owned skill or change dotfiles to install it.
-- **Verified scope:** Codex desktop end-turn → wake → claim → done passed. Claude Code's same-session resume passed, but its full queue round trip remains blocked by the account session limit. A live Claude interactive/background process must exit before resume; an idle terminal is still live. Follow upstream recovery guidance after delivery failure. Claude desktop/web and Codex cloud are unsupported.
+- **Verified scope:** Codex desktop end-turn → wake → claim → done passed. Claude Code's full end-turn → wake → claim → done flow also passed after the account limit reset, using the pinned revision and an isolated synthetic queue. A live Claude interactive/background process must exit before resume; an idle terminal is still live. Follow upstream recovery guidance after delivery failure. Claude desktop/web and Codex cloud are unsupported.
 
 ### Install the pinned CLI and skill
 
