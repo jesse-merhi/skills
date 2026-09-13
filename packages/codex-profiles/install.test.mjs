@@ -40,7 +40,9 @@ test("installs selectable model roles and preserves base configuration and globa
       ["findings_reviewer", "gpt-6-astra", "xhigh"],
     ];
     for (const [name, model, effort] of expected) {
-      const { default: role } = await import(path.join(root, profile.agents[name].config_file));
+      const rolePath = path.join(root, profile.agents[name].config_file);
+      assert.ok((await import("node:fs")).lstatSync(rolePath).isFile(), "role loader requires a regular final path component");
+      const { default: role } = await import(rolePath);
       assert.equal(role.model, model);
       assert.equal(role.model_reasoning_effort, effort);
       assert.equal(typeof role.developer_instructions, "string");
@@ -57,7 +59,7 @@ test("installs selectable model roles and preserves base configuration and globa
   assert.equal(fs.readFileSync(path.join(root, "config.toml"), "utf8"), base);
   assert.deepEqual(fs.readdirSync(path.join(root, "agents")), ["personal.toml"]);
   assert.equal(fs.existsSync(path.join(root, "skills")), false);
-  assert.equal(fs.realpathSync(path.join(root, "findings-reviewer.config.toml")), path.join(repository, "codex/findings-reviewer.config.toml"));
+  assert.equal(fs.realpathSync(path.join(root, "findings-reviewer.config.toml")), path.join(repository, "codex/orchestration/findings-reviewer.toml"));
   const inode = fs.lstatSync(path.join(root, "orchestration.config.toml")).ino;
   assert.ok(installProfiles({ root }).links.every(link => !link.changed));
   assert.equal(fs.lstatSync(path.join(root, "orchestration.config.toml")).ino, inode);

@@ -17,4 +17,4 @@ config_file = "orchestration/investigator.toml"
 
 [agents.findings_reviewer]
 description = "Independent findings-only Astra reviewer. Not a coordinator or an until-clean workflow."
-config_file = "findings-reviewer.config.toml"
+config_file = "orchestration/findings-reviewer.toml"

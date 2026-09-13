@@ -35,7 +35,7 @@ Evidence: <local reproduction output and relevant source paths>.
 
 The role definition supplies reusable behavior, skill references, boundaries and expected outputs. A task name alone does not select a role. Report missing roles instead of rebuilding their prompts or changing live settings; continue suitable work locally. For a user-selected model exception, use the explicit settings route above rather than pretending a pinned role changed.
 
-Use `findings_reviewer` only for an authorized findings-only review in fresh context, never for a delegated until-clean workflow. It reuses `findings-reviewer.config.toml`, including its skill exclusions and memory settings. This does not replace the native and independent phases required by `code-review`.
+Use `findings_reviewer` only for an authorized findings-only review in fresh context, never for a delegated until-clean workflow. Its regular file is `orchestration/findings-reviewer.toml`; the standalone `findings-reviewer.config.toml` profile links to that same definition, including its skill exclusions and memory settings. The named-role loader rejects a file symlink as its final path component, so role paths go through the linked directory. This does not replace the native and independent phases required by `code-review`.
 
 ## What installation changes
 
