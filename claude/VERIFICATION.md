@@ -15,3 +15,11 @@ These exercises prove native named loading, model selection and simple delegated
 Supporting local records: `/tmp/claude-named-proof/{investigator,implementer,reviewer}.jsonl`. The repository materializer suite passed all 17 tests; skill layout lint passed. No deterministic tests of instruction prose were added.
 
 An independent reviewer inspected the definitions and installation guidance, then all five workflow BASE files, 20 variants and both review references. No supported issues were found. Instruction-tracing exercises covered ambiguous implementation scope with concurrent edits, an investigator asked to fix a defect, a reviewer assigned until-clean work, and prior findings in project instructions. Expected boundaries were preserved; these scenarios were inspected, not executed in Claude.
+
+## Prompt cleanup follow-up
+
+Removed coordinator-brief narration and generic process advice from all three roles in both harnesses. Required skill references, role boundaries, review evidence and configuration settings remain. Independent inspection and reasoned exercises found no supported regressions for ambiguity, concurrent edits, failed checks, read-only investigation, until-clean misassignment, prior findings or unreachable corrupted fixtures. Configuration outside the instruction bodies was unchanged.
+
+Fresh Claude runs with the shortened prompts again returned `427`, corrected the assigned greeting, and identified the subtraction defect without reviewer edits. Child models remained Fable 5.1 for investigation and implementation and Opus 5 for review. Each run completed one named agent successfully. The reviewer again disclosed permission-blocked Node execution. Records are in `/tmp/claude-lean-proof/`; these runs do not establish effective effort, memory isolation or the full native review gate. The final explicit test-infrastructure skill clause was checked independently after these fixtures were copied; the fixtures exercise ordinary behavior, not test infrastructure. Both harness configurations were reviewed, but the shortened prompts were executed only in Claude.
+
+The materializer suite passed 17 tests again, role TOML parsed through Bun, and skill layout lint passed.
