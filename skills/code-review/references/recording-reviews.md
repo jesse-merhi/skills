@@ -4,11 +4,13 @@ Use the coordinator’s database throughout. The CLI saves review state and retu
 
 For the normal Codex review, `review-findings review native` uses the saved scope flags from setup, launches the reviewer once and returns the report path. Repeating it while the review is open returns the same ID and does not launch again.
 
-For an independently dispatched reviewer or another native engine, reserve the review first:
+For an independently dispatched cold reviewer, reserve the review first:
 
 ```sh
 review-findings review start <saved scope flags> --phase cold --evidence "<invocation reference>"
 ```
+
+For another native engine, including Claude Code's built-in review workflow, reserve the review with the same command and `--phase native`. Keep that native review separate from the findings-only cold reviewer.
 
 Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
 

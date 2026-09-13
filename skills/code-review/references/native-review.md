@@ -28,6 +28,8 @@ Workflow({ name: "code-review", args: "high <target>" })
 
 Use this fixed-high workflow only when the user selects Claude review and authorizes high effort. Use a base range such as `main...HEAD`, a commit SHA or the checked-out PR number. Call the built-in workflow rather than a similarly named personal slash command. Supply the target, not a custom prompt. Wait for completion and follow its documented cleanup.
 
+This built-in workflow is the native phase. Do not substitute the optional `findings-reviewer` Agent; that findings-only role is reserved for the independent cold phase.
+
 Check both `CONFIRMED` and `PLAUSIBLE` candidates. An interrupted or missing result is incomplete. Do not assume the native reviewer read the same skill inputs as a custom reviewer.
 
 Wait on the existing invocation instead of starting another. Record the result and check its findings before running the next pass.
