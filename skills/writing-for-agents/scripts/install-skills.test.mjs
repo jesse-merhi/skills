@@ -27,6 +27,64 @@ function selected(root) {
   return fs.readFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "utf8");
 }
 
+function spawnInstaller(installer, installation, barrier, environment) {
+  const script = `
+    import fs from "node:fs";
+    import { installSkills } from ${JSON.stringify(installer)};
+
+    if (${JSON.stringify(barrier)} === "publisher") {
+      const originalSymlink = fs.symlinkSync.bind(fs);
+      fs.symlinkSync = (target, destination, ...rest) => {
+        const result = originalSymlink(target, destination, ...rest);
+        if (destination === process.env.INSTALL_TEST_ALIAS) {
+          fs.writeFileSync(process.env.INSTALL_TEST_PUBLISHED, "published", { flag: "wx" });
+          const deadline = Date.now() + 5_000;
+          while (!fs.existsSync(process.env.INSTALL_TEST_RELEASE)) {
+            if (Date.now() >= deadline) throw new Error("timed out waiting to release partial command publication");
+            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+          }
+        }
+        return result;
+      };
+    } else {
+      const originalMkdtemp = fs.mkdtempSync.bind(fs);
+      fs.mkdtempSync = (prefix, ...rest) => {
+        const result = originalMkdtemp(prefix, ...rest);
+        if (prefix === process.env.INSTALL_TEST_CANDIDATE_PREFIX) {
+          fs.writeFileSync(process.env.INSTALL_TEST_WAITING, "waiting", { flag: "wx" });
+        }
+        return result;
+      };
+    }
+
+    console.log(JSON.stringify(installSkills(${JSON.stringify(installation)})));
+  `;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", script], {
+    timeout: 15_000,
+    env: { ...process.env, ...environment },
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", chunk => { stdout += chunk; });
+  child.stderr.on("data", chunk => { stderr += chunk; });
+  const completed = new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", code => resolve({ code, stdout, stderr }));
+  });
+  return { completed };
+}
+
+async function waitForPath(file, run, description) {
+  let completed;
+  run.completed.then(result => { completed = result; });
+  const deadline = Date.now() + 5_000;
+  while (!fs.existsSync(file)) {
+    if (completed !== undefined) throw new Error(`${description} exited before reaching its barrier:\n${completed.stderr}`);
+    if (Date.now() >= deadline) throw new Error(`timed out waiting for ${description}`);
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+}
+
 function commandFixture(context) {
   const current = fixture(context);
   const sourceRoot = path.join(current.temporary, "source with ' quotes");
@@ -218,15 +276,35 @@ test("concurrent harness installs serialize command publication under one owner"
     { ...current, harness: "codex", model: "astra" },
     { ...current, root: path.join(current.temporary, "claude"), harness: "claude", model: "opus" },
   ];
-  const runs = await Promise.all(options.map(installation => new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["--input-type=module", "-e", `import { installSkills } from ${JSON.stringify(installer)}; console.log(JSON.stringify(installSkills(${JSON.stringify(installation)})));`], { timeout: 15000 });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", chunk => { stdout += chunk; });
-    child.stderr.on("data", chunk => { stderr += chunk; });
-    child.on("error", reject);
-    child.on("close", code => resolve({ code, stdout, stderr }));
-  })));
+  const alias = path.join(current.binDir, "codex-review");
+  const published = path.join(current.temporary, "command-published");
+  const waiting = path.join(current.temporary, "command-waiting");
+  const release = path.join(current.temporary, "release-command-publication");
+  const candidatePrefix = path.join(current.binDir, ".jesse-merhi-skills-commands.lock.candidate-");
+  const publisher = spawnInstaller(installer, options[0], "publisher", {
+    INSTALL_TEST_ALIAS: alias,
+    INSTALL_TEST_PUBLISHED: published,
+    INSTALL_TEST_RELEASE: release,
+  });
+  const processes = [publisher];
+  let barrierError;
+  try {
+    await waitForPath(published, publisher, "partial command publication");
+    assert.equal(fs.lstatSync(alias).isSymbolicLink(), true);
+    assert.equal(fs.existsSync(path.join(current.binDir, ".jesse-merhi-skills-commands")), false);
+    const waiter = spawnInstaller(installer, options[1], "waiter", {
+      INSTALL_TEST_CANDIDATE_PREFIX: candidatePrefix,
+      INSTALL_TEST_WAITING: waiting,
+    });
+    processes.push(waiter);
+    await waitForPath(waiting, waiter, "competing command lock acquisition");
+  } catch (error) {
+    barrierError = error;
+  } finally {
+    fs.writeFileSync(release, "release", { flag: "wx" });
+  }
+  const runs = await Promise.all(processes.map(run => run.completed));
+  if (barrierError !== undefined) throw barrierError;
   for (const run of runs) assert.equal(run.code, 0, run.stderr);
   assert.deepEqual(runs.map(run => JSON.parse(run.stdout).commandsChanged).sort(), [0, 4]);
   assert.equal(fs.readFileSync(path.join(options[0].root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:gpt-6-astra\n");

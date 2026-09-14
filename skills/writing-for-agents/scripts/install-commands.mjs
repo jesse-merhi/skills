@@ -31,6 +31,7 @@ export const commandCatalog = [
   .sort((left, right) => left.name.localeCompare(right.name, "en"));
 
 const MARKER = "manifest.json";
+const OWNER = ".jesse-merhi-skills-commands";
 const CommandName = Schema.String.pipe(Schema.check(Schema.isPattern(/^[a-z][a-z0-9-]*$/)));
 const ManifestJson = Schema.fromJsonString(Schema.Struct({
   schemaVersion: Schema.Literal(1),
@@ -76,17 +77,8 @@ function readManifest(outputRoot) {
   return manifest;
 }
 
-export function planCommands({ binDir, sourceRoot, skills, skillNames, previousSourceRoot }) {
-  const directory = path.resolve(binDir);
-  assertDirectory(directory);
-  const outputRoot = path.join(directory, ".jesse-merhi-skills-commands");
-  const previous = readManifest(outputRoot);
-  const approvedPrevious = previousSourceRoot === undefined ? undefined
-    : fs.existsSync(previousSourceRoot) ? fs.realpathSync(previousSourceRoot) : path.resolve(previousSourceRoot);
-  if (previous !== undefined && previous.sourceRoot !== sourceRoot && (skillNames !== undefined || previous.sourceRoot !== approvedPrevious)) {
-    throw new Error(`commands owned by another source: ${previous.sourceRoot}; use a full install with --previous-source to transfer ownership`);
-  }
-  const commands = skillNames === undefined ? [] : (previous?.commands ?? []).filter(command => !skillNames.includes(command.skill));
+function discoverCommands(skills) {
+  const commands = [];
   for (const entry of commandCatalog) {
     const skill = skills.find(candidate => candidate.name === entry.skill);
     if (skill === undefined) continue;
@@ -96,6 +88,21 @@ export function planCommands({ binDir, sourceRoot, skills, skillNames, previousS
     }
     commands.push({ name: entry.name, skill: entry.skill, target, runtime: entry.runtime });
   }
+  return commands;
+}
+
+export function planCommands({ binDir, sourceRoot, skills, skillNames, previousSourceRoot }) {
+  const directory = path.resolve(binDir);
+  assertDirectory(directory);
+  const outputRoot = path.join(directory, OWNER);
+  const previous = readManifest(outputRoot);
+  const approvedPrevious = previousSourceRoot === undefined ? undefined
+    : fs.existsSync(previousSourceRoot) ? fs.realpathSync(previousSourceRoot) : path.resolve(previousSourceRoot);
+  if (previous !== undefined && previous.sourceRoot !== sourceRoot && (skillNames !== undefined || previous.sourceRoot !== approvedPrevious)) {
+    throw new Error(`commands owned by another source: ${previous.sourceRoot}; use a full install with --previous-source to transfer ownership`);
+  }
+  const commands = skillNames === undefined ? [] : (previous?.commands ?? []).filter(command => !skillNames.includes(command.skill));
+  commands.push(...discoverCommands(skills));
   commands.sort((left, right) => left.name.localeCompare(right.name, "en"));
   const names = new Set(commands.map(command => command.name));
   if (names.size !== commands.length) throw new Error("duplicate command aliases in catalog");
@@ -129,9 +136,15 @@ export function commandSummary(plan) {
 }
 
 export function withInstalledCommands(options, operation) {
-  const preview = planCommands(options);
-  if (preview.previous === undefined && preview.manifest.commands.length === 0) return { ...operation(), ...commandSummary(preview) };
-  return withOutputLock(preview.outputRoot, () => {
+  const directory = path.resolve(options.binDir);
+  assertDirectory(directory);
+  const outputRoot = path.join(directory, OWNER);
+  const commands = discoverCommands(options.skills);
+  if (commands.length === 0 && fs.lstatSync(outputRoot, { throwIfNoEntry: false }) === undefined) {
+    const plan = { directory, outputRoot, previous: undefined, manifest: { schemaVersion: 1, sourceRoot: options.sourceRoot, commands }, links: [], retired: [], commandsChanged: 0 };
+    return { ...operation(), ...commandSummary(plan) };
+  }
+  return withOutputLock(outputRoot, () => {
     const plan = planCommands(options);
     const summary = commandSummary(plan);
     if (JSON.stringify(plan.previous) === JSON.stringify(plan.manifest) && plan.links.length === 0 && plan.retired.length === 0) {
