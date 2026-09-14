@@ -97,7 +97,9 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   const diagnosticWarnings: Array<string> = []
   if (row?.settings == null) stoppingReasons.push("LIMITS_NOT_INITIALIZED")
   if (openQuestions.length >= settings.consultCap) stoppingReasons.push("CONSULT_CAP_REACHED")
-  if (last !== undefined && last.head === currentHead && completed.has(last.phase) && openQuestions.length > 0) stoppingReasons.push("QUEUE_FIXED_POINT")
+  const lastCompletionApplies = last !== undefined && completed.has(last.phase)
+    && (last.head === currentHead || (last.phase !== "clawsweeper" && inheritedPhases.has(last.phase)))
+  if (lastCompletionApplies && openQuestions.length > 0) stoppingReasons.push("QUEUE_FIXED_POINT")
   if (phase !== undefined && completed.has(phase)) stoppingReasons.push("PHASE_TARGET_MET")
   const scope = (yield* sql<{ readonly status: string; readonly growth_lines: number; readonly allowed_growth_lines: number; readonly new_binary_production_paths_json: string }>`select status, growth_lines, allowed_growth_lines, new_binary_production_paths_json from review_scope_budgets where run_id = ${runId}`)[0]
   if (scope !== undefined && scope.growth_lines > scope.allowed_growth_lines) {

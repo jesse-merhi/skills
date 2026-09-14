@@ -481,4 +481,31 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     yield* completeScopeBudget(destination, "Fresh target count reached on changed destination")
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
+  test.effect("allows assessment of a partial-only phase but never inherits it below target", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 2, false)
+    yield* cleanPhase(run, "native")
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    assert.strictEqual(prepared.source.reviews.length, 1)
+    assert.include((yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Partial source" }).pipe(Effect.flip)).message, "missing completed source evidence for: native")
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "Partial native evidence invalidated" })
+    yield* cleanPhase(run, "native")
+    assert.include((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, "native")
+    yield* cleanPhase(run, "native")
+    yield* checkScopeBudget(run, "Fresh native target checked")
+    yield* completeScopeBudget(run, "Both fresh passes completed")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("keeps unanswered consultations stopped when native completion is inherited", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    const native = yield* startReview(run, "native", "Native consultation review")
+    yield* recordFinding(run, { ...contractFinding, decisionId: "owner-question", handling: "consult", decision: "Owner must choose the contract", material: true }, native.reviewId)
+    yield* finishReview(native.reviewId, "clean-except-queue", "Only owner decision remains")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent pending decision"])
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "focused", affectedPhases: ["cold"], semanticImpactEvidence: "Equivalent native evidence; cold remains missing" })
+    const limits = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.include(limits.stoppingReasons, "QUEUE_FIXED_POINT")
+    assert.include((yield* startReview(run, "cold", "Must remain stopped").pipe(Effect.flip)).message, "QUEUE_FIXED_POINT")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
 })

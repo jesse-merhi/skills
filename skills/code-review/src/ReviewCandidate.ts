@@ -160,6 +160,7 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
       ? []
       : inherited.source.reviews.filter(review => review.phase === phase).slice(0, requirements.targets[phase])
     if (carried.length === requirements.targets[phase]) eligible.push(...carried)
+    else eligible.push(...yield* Schema.decodeUnknownEffect(Schema.Array(SourceReview))(direct))
   }
   return eligible
 })
