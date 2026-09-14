@@ -21,7 +21,7 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 
 At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit spawn arguments override unnamed-child defaults, but named roles retain their pinned model and effort. For an approved exception, use an unnamed child with explicit settings or a separately configured role.
 
-For established validation batches, `writing-good-tests` selects `test_executor` and owns receipts, reuse and failure escalation. Its explicit-settings fallback works when the named role is unavailable; verify the launch model and effort.
+For established validation, `writing-good-tests` selects `test_executor` and defines the batch, receipt and failure handoff. It also describes the explicit-settings fallback for launchers without the named role.
 
 The existing workflow owners select these roles: `just-do-it` delegates bounded implementation and investigation, `grilling` delegates factual questions, and `code-review` delegates repairs and its independent phase. They keep sequencing, integration, shared verification and delivery with the coordinator.
 

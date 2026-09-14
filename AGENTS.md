@@ -162,8 +162,9 @@ itself model generation.
   For meaningful delegated work, use Sol at high for implementation, test design
   and substantive debugging or repairs; use Luna at max for established test,
   lint, typecheck and prepared acceptance execution, bounded investigation and
-  focused research. `writing-good-tests` owns execution batching and result reuse. Use Astra at
-  xhigh only for independent review when the task or delivery gate requires it.
+  focused research. `writing-good-tests` owns execution batches and receipts.
+  Use Astra at xhigh only for independent review when the task or delivery gate
+  requires it.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that
