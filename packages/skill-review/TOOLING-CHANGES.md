@@ -154,7 +154,7 @@ This section supersedes the older claims that internal references belong in meta
 
 ## Remaining jobs — completed September 6
 
-This is the current status; the older sections below are history, not an open task list.
+This records the September 6 status; the older sections below are history, not an open task list. The September 13 workflow update removes the review timer entirely, including expiry and extension commands; the remaining review-progress controls still apply.
 
 - **Review guardrails:** the existing findings CLI now enforces the saved eight-hour budget, five-open-question cap, phase targets and two-unsuccessful-repair consultation rule. Initial overrides stay frozen across resumes. Native and ClawSweeper require two clean passes; cold defaults to one, configurable at initialization. Repeated findings attach evidence to their existing record rather than creating duplicates.
 - **Native review loop:** shortened all four prompts and consolidated target, counters and transitions into one loop reference. Engine references now cover invocation, completion and cleanup. Evidence-rejected findings count as clean; this fixes contradictory wording, not a new policy. The user's separately edited audit master keeps its omitted one-off-review paragraph.

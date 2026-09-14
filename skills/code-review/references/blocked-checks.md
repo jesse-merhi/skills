@@ -1,6 +1,6 @@
 # When a check blocks work
 
-Read the command's stopping reasons. Keep the saved run, elapsed time, consumed allowance and completed review results.
+Read the command's stopping reasons. Keep the saved run and completed review results.
 
 ## Diff growth needs diagnosis
 
@@ -30,8 +30,8 @@ Use the finding's `decisionId`; the CLI supplies the saved phase, head and revis
 
 Do not ask again solely because two authorized local attempts failed. Ask when the changed approach itself needs a decision or authority, including an explicit user limit, unrelated scope, a new dependency, access, spending, a breaking change or publication. After the user supplies that separate authority, add `--authorization "<user's approval>"` to `repair-replanned` so the saved event retains it. Preserve the failed-attempt evidence and every other saved stopping reason.
 
-## Time or unanswered questions
+## Unanswered questions
 
-At expiry, stop reviews and repairs and report what remains. For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker; it does not restart time or grant unrelated permission.
+For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker. Explicit user task deadlines apply independently of the review workflow.
 
 A completed clean-pass target stops further review of unchanged code, not progression to the next requested review. Keep completed evidence even when the next action is blocked.
