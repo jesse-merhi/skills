@@ -41,7 +41,7 @@ review-findings review candidate-assess --candidate <candidate-id> \
 
 Use `reuse` only for an equivalent exact branch patch identity with enough applicable source invocations to meet every configured phase target. Use `focused` with every required phase whose earlier evidence no longer covers the affected behavior; missing required phases are also included. An unaffected phase is carried only when its applicable source invocations meet that phase's configured target. Use `broad` when all configured required phases and previously performed phases must run again, including phases with only partial progress. Every assessed affected phase remains mandatory even when the run uses default phase requirements. The assessment carries only eligible completed phase evidence and preserves the source invocation IDs. It does not turn inherited evidence into a current-candidate invocation or carry validation command records. Reuse validation only through separately recorded evidence whose relevant behavior and assumptions still apply.
 
-Close any outstanding review invocation before assessment. Creating a new scope and preparing its candidate are atomic: a preparation failure leaves no partially initialized destination scope. Preparation and assessment are compare-and-set operations over the saved progress and Git candidate. If either changes, do not retry with the stale candidate ID or copy its decision forward. Prepare and assess the new candidate. Review launchers still own their actual scope: the default native helper reviews its full comparator. A focused native phase requires a separately reserved `review start --phase native` invocation and a launcher that supports the targeted brief; otherwise run the broader native review and report that scope accurately.
+Close any outstanding review invocation before assessment. Creating a new scope and preparing its candidate are atomic: a preparation failure leaves no partially initialized destination scope. Preparation and assessment are compare-and-set operations over the saved progress and Git candidate. A saved assessment supersedes other prepared snapshots that depend on that run. If the snapshot is superseded or either boundary changes, do not retry with the stale candidate ID or copy its decision forward. Prepare and assess the new candidate. Review launchers still own their actual scope: the default native helper reviews its full comparator. A focused native phase requires a separately reserved `review start --phase native` invocation and a launcher that supports the targeted brief; otherwise run the broader native review and report that scope accurately.
 
 ## Save the report
 
@@ -70,3 +70,15 @@ After discovery closes (complete or blocked), record repair events with `progres
 For a consulted finding, include the actual approval receipt in `--authorization` on its first `repair-applied` event. Later attempts for that finding reuse the saved receipt within its approved scope. After successful verification, record the final `fixed` status with `--owner-resolution approved` and the owner’s decision.
 
 Save actual check commands and results through `record-command --review <id>`. Run the record commands for completed repairs and checks together in code mode, checking each result. These commands record evidence; they do not perform edits or run the checks themselves.
+
+A reuse-only destination has no new review invocation. Record applicable verification against its returned run identity, before completing the scope:
+
+```sh
+review-findings record-command --db <database> --repo <owner/repo> \
+  --repo-path <checkout> --branch <branch> --target <target> --base <base> \
+  --head <current-candidate-sha> --command "<actual check>" \
+  --result "<observed result or retained evidence reference>" \
+  --reason "<why this verification applies to the destination candidate>"
+```
+
+Use the destination identity from preparation, not the completed source run's review handle. When reusing a check, state where and when it actually ran; do not describe it as a fresh execution.
