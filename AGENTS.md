@@ -226,17 +226,23 @@ itself model generation.
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
 - Review gate: before marking any PR ready, asking for human sign-off, or
-  merging, verify that `code-review` completed on the exact current head unless
-  the user explicitly waived that review. A
-  valid closeout names that head and records the native phase, cold phase,
-  findings, review fixes, verification, and anything still open. Treat missing,
-  stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
-  review do not count. Infer review authority from the user's intended outcome
-  and existing session authorization, including the ordinary review needed to
-  complete that outcome. No exact phrase or named workflow is required. Continue
-  authorized review after repairs or new commits: a changed head needs fresh
-  evidence, not automatically fresh permission. Honor explicit waivers and
-  narrower requests; a status question alone does not authorize a new review.
+  merging, verify that the saved `code-review` evidence applies to the exact
+  current candidate unless the user explicitly waived that review. A changed
+  head requires an auditable candidate assessment, not automatically a complete
+  new review cycle. Follow `code-review`'s applicability assessment: reuse only
+  evidence it marks applicable, rerun affected required phases and checks, and
+  broaden when prior evidence is invalid or the impact cannot be bounded. A
+  valid closeout identifies the current and source candidates, evidence reused,
+  the assessment reason, additional review and validation, findings, fixes, and
+  anything still open. Treat missing, stale, unverifiable or unbounded evidence
+  as not reviewed; CI, proof-pack, and ad hoc review do not count. Preserve
+  exact-candidate checks for race safety; if the candidate changes during
+  assessment or review, assess the new candidate before delivery. Infer review
+  authority from the user's intended outcome and existing session authorization,
+  including the ordinary review needed to complete that outcome. No exact phrase
+  or named workflow is required. Continue authorized review after repairs or new
+  commits without asking again. Honor explicit waivers and narrower requests; a
+  status question alone does not authorize a new review.
   Ask only when authority or a material decision is genuinely missing, explaining
   the unresolved choice. Until resolved, do not mark ready or merge. Record an
   explicit waiver and its scope in the task or PR closeout; a waiver-only

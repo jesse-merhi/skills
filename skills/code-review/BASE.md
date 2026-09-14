@@ -5,7 +5,7 @@ description: 'Review changed behavior, repair confirmed problems together, and i
 
 # Code review
 
-Run native review, repair confirmed problems, then obtain native and independent review of the final code. Honor a request for only one phase or pass and report its limits.
+Run native review, repair confirmed problems, then establish applicable native and independent review evidence for the final candidate. Honor a request for only one phase or pass and report its limits.
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
@@ -18,6 +18,8 @@ Use a fresh findings-only reviewer for the independent phase under the independe
 Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them.
 
 Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+
+Before launching another review, compare the committed candidate with any candidate covered by saved completed evidence. If it changed, assess applicability first. Record the source and current candidates, their patch and integration differences, affected behavior, evidence that still applies, and the reason for reuse or additional review. A new SHA by itself does not invalidate a review. Follow the review loop for the decision and use the review commands for its durable record.
 
 Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the default native review:
 

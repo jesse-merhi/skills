@@ -467,6 +467,7 @@ interface IssueIdRow {
 interface ScopeBudgetRow {
   readonly run_id: string
   readonly generation: number
+  readonly evidence_revision: number
   readonly line_metric: string
   readonly base_ref: string
   readonly base_oid: string
@@ -529,6 +530,7 @@ const isDeferredWork = (finding: Pick<CloseoutFinding, "status" | "disposition" 
 export interface ScopeBudgetStatus {
   readonly runId: string
   readonly generation: number
+  readonly evidenceRevision: number
   readonly lineMetric: ScopeLineMetric
   readonly baseRef: string
   readonly baseOid: string
@@ -733,10 +735,11 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     `create table if not exists review_finding_matches (id integer primary key autoincrement, issue_id text not null references issues(id) on delete cascade, source text not null, evidence text not null, note text not null, created_at integer not null, unique(issue_id, source, evidence))`,
     `create table if not exists issues (id text primary key, run_id text not null references review_runs(id) on delete cascade, decision_id text not null, status text not null, source text not null, fingerprint text not null, summary text not null, impact text, priority text, material integer not null default 0, user_impact text, decision text, text text not null, finding_kind text not null default '', production_path text not null default '', reachability_evidence text not null default '', likelihood text not null default '', risk_impact text not null default '', actual_consequence text not null default '', maintenance_evidence text not null default '', present_cost text not null default '', contract_evidence text not null default '', root_cause text not null default '', recommended_fix text not null default '', intervention_justification text not null default '', rejection_gate text not null default '', disposition text not null default '', fix_scope text not null default '', handling text not null default '', owner_resolution text not null default '', evidence_version integer not null default ${FINDING_SCHEMA_VERSION}, decision_log_path text, first_seen_at integer, last_seen_at integer, seen_count integer not null default 1, updated_at integer not null, unique(run_id, decision_id))`,
     `create table if not exists commands (id text primary key, run_id text not null references review_runs(id) on delete cascade, command text not null, result text not null, reason text not null, decision_id text, updated_at integer not null)`,
-    `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
+    `create table if not exists review_scope_budgets (run_id text primary key references review_runs(id) on delete cascade, generation integer not null default 0, evidence_revision integer not null default 0, line_metric text not null default 'total-human-authored', base_ref text not null, base_oid text not null, pinned_head_oid text not null default '', limit_percent integer not null, scope_summary text not null, authorization text not null default '', baseline_production_lines integer not null, baseline_test_lines integer not null, baseline_generated_lines integer not null, baseline_paths_json text not null, baseline_binary_paths_json text not null default '[]', status text not null, current_production_lines integer not null, current_test_lines integer not null, current_generated_lines integer not null, growth_lines integer not null, allowed_growth_lines integer not null, new_production_paths_json text not null, new_binary_production_paths_json text not null default '[]', last_reason text not null default '', started_at integer not null, updated_at integer not null)`,
     `create table if not exists review_scope_locks (repo_key text not null, branch text not null, run_id text not null references review_runs(id) on delete cascade, primary key(repo_key, branch), unique(run_id))`,
     `create table if not exists review_scope_events (id integer primary key autoincrement, run_id text not null references review_runs(id) on delete cascade, event text not null, line_metric text not null default 'total-human-authored', baseline_production_lines integer not null, baseline_test_lines integer not null default 0, current_production_lines integer not null, current_test_lines integer not null default 0, allowed_growth_lines integer not null, new_production_paths_json text not null, reason text not null, scope_summary text not null, authorization text not null, created_at integer not null)`,
-    `create table if not exists review_file_attestations (id text primary key, run_id text not null references review_runs(id) on delete cascade, review_id text not null, reviewer text not null, path text not null, change_id text not null, reviewed_at integer not null, unique(run_id, review_id, path))`
+    `create table if not exists review_file_attestations (id text primary key, run_id text not null references review_runs(id) on delete cascade, review_id text not null, reviewer text not null, path text not null, change_id text not null, reviewed_at integer not null, unique(run_id, review_id, path))`,
+    `create table if not exists review_candidates (id text primary key, run_id text not null references review_runs(id) on delete cascade, source_run_id text not null references review_runs(id) on delete cascade, source_progress_revision integer not null, source_base_oid text not null, source_head_oid text not null, source_tree_oid text not null, source_patch_id text not null, source_reviews_json text not null, candidate_base_oid text not null, candidate_head_oid text not null, candidate_tree_oid text not null, candidate_patch_id text not null, target_progress_revision integer not null, scope_generation integer not null, status text not null, decision text not null, affected_phases_json text not null, semantic_impact_evidence text not null, created_at integer not null, assessed_at integer not null)`
   ]
   yield* Effect.forEach(tables, (statement) => sql.unsafe(statement), { discard: true })
   yield* sql`insert or ignore into review_run_limits (run_id, settings)
@@ -755,7 +758,7 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     ["issues", "disposition", "text not null default ''"], ["issues", "fix_scope", "text not null default ''"], ["issues", "handling", "text not null default ''"],
     ["issues", "owner_resolution", "text not null default ''"],
     ["issues", "evidence_version", "integer not null default 7"],
-    ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "line_metric", "text not null default 'production-only'"],
+    ["review_scope_budgets", "generation", "integer not null default 0"], ["review_scope_budgets", "evidence_revision", "integer not null default 0"], ["review_scope_budgets", "line_metric", "text not null default 'production-only'"],
     ["review_scope_budgets", "pinned_head_oid", "text not null default ''"], ["review_scope_budgets", "baseline_binary_paths_json", "text not null default '[]'"],
     ["review_scope_budgets", "new_binary_production_paths_json", "text not null default '[]'"],
     ["review_scope_events", "line_metric", "text not null default 'production-only'"], ["review_scope_events", "baseline_test_lines", "integer not null default 0"],
@@ -806,7 +809,8 @@ export const initialize = Effect.fn("ReviewFindings.initialize")(function*() {
     `create index if not exists issues_status_idx on issues(status)`,
     `create index if not exists commands_run_idx on commands(run_id)`,
     `create index if not exists review_scope_events_run_idx on review_scope_events(run_id)`,
-    `create index if not exists review_file_attestations_run_path_idx on review_file_attestations(run_id, path, change_id)`
+    `create index if not exists review_file_attestations_run_path_idx on review_file_attestations(run_id, path, change_id)`,
+    `create index if not exists review_candidates_run_idx on review_candidates(run_id, status, candidate_head_oid, candidate_base_oid)`
   ]
   yield* Effect.forEach(indexes, (statement) => sql.unsafe(statement), { discard: true })
   }))
@@ -969,6 +973,7 @@ const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(ru
   return {
     runId: row.run_id,
     generation: row.generation,
+    evidenceRevision: row.evidence_revision,
     lineMetric,
     baseRef: row.base_ref,
     baseOid: row.base_oid,
@@ -1176,10 +1181,10 @@ const saveScopeBaseline = Effect.fn("ReviewFindings.saveScopeBaseline")(function
     }
   }
   yield* sql`
-    insert into review_scope_budgets (run_id, generation, line_metric, base_ref, base_oid, pinned_head_oid, limit_percent, scope_summary, authorization, baseline_production_lines, baseline_test_lines, baseline_generated_lines, baseline_paths_json, baseline_binary_paths_json, status, current_production_lines, current_test_lines, current_generated_lines, growth_lines, allowed_growth_lines, new_production_paths_json, new_binary_production_paths_json, last_reason, started_at, updated_at)
-    values (${runId}, 0, ${TOTAL_LOC_LINE_METRIC}, ${run.base}, ${baseOid}, ${pinnedHeadOid}, ${limitPercent}, ${input.scopeSummary}, ${authorization}, ${baselineProductionLines}, ${baselineTestLines}, ${baselineGeneratedLines}, ${JSON.stringify(baselinePaths)}, ${JSON.stringify(baselineBinaryPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${growthLines}, ${allowedGrowthLines}, ${JSON.stringify(newHumanAuthoredPaths)}, ${JSON.stringify(newBinaryHumanAuthoredPaths)}, '', ${timestamp}, ${timestamp})
+    insert into review_scope_budgets (run_id, generation, evidence_revision, line_metric, base_ref, base_oid, pinned_head_oid, limit_percent, scope_summary, authorization, baseline_production_lines, baseline_test_lines, baseline_generated_lines, baseline_paths_json, baseline_binary_paths_json, status, current_production_lines, current_test_lines, current_generated_lines, growth_lines, allowed_growth_lines, new_production_paths_json, new_binary_production_paths_json, last_reason, started_at, updated_at)
+    values (${runId}, 0, 0, ${TOTAL_LOC_LINE_METRIC}, ${run.base}, ${baseOid}, ${pinnedHeadOid}, ${limitPercent}, ${input.scopeSummary}, ${authorization}, ${baselineProductionLines}, ${baselineTestLines}, ${baselineGeneratedLines}, ${JSON.stringify(baselinePaths)}, ${JSON.stringify(baselineBinaryPaths)}, 'ready', ${measurement.production.changedLines}, ${measurement.tests.changedLines}, ${measurement.generated.changedLines}, ${growthLines}, ${allowedGrowthLines}, ${JSON.stringify(newHumanAuthoredPaths)}, ${JSON.stringify(newBinaryHumanAuthoredPaths)}, '', ${timestamp}, ${timestamp})
     on conflict(run_id) do update set
-      generation=review_scope_budgets.generation + 1, line_metric=excluded.line_metric, base_ref=excluded.base_ref, base_oid=excluded.base_oid, pinned_head_oid=excluded.pinned_head_oid, limit_percent=excluded.limit_percent, scope_summary=excluded.scope_summary,
+      generation=review_scope_budgets.generation + 1, evidence_revision=(select coalesce(max(revision), 0) from review_progress_events where review_progress_events.run_id = review_scope_budgets.run_id), line_metric=excluded.line_metric, base_ref=excluded.base_ref, base_oid=excluded.base_oid, pinned_head_oid=excluded.pinned_head_oid, limit_percent=excluded.limit_percent, scope_summary=excluded.scope_summary,
       authorization=excluded.authorization, baseline_production_lines=excluded.baseline_production_lines,
       baseline_test_lines=excluded.baseline_test_lines, baseline_generated_lines=excluded.baseline_generated_lines,
       baseline_paths_json=excluded.baseline_paths_json, baseline_binary_paths_json=excluded.baseline_binary_paths_json, status='ready', current_production_lines=excluded.current_production_lines,
@@ -1423,6 +1428,13 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
     if (current.generation !== check.generation || current.status !== "ok") {
       return yield* Effect.fail(new InvalidScopeBudget("scope budget changed before scope-complete could commit; rerun the final scope-check"))
     }
+    const finalCleanHead = yield* requireCleanReviewTree(run.repoPath).pipe(Effect.mapError((error) => new InvalidScopeBudget(error.message)))
+    const git = yield* trustedExecutable("git", run.repoPath)
+    const finalBaseOid = yield* checkedTrimmedText(git, ["rev-parse", "--verify", `${current.baseRef}^{commit}`], { cwd: run.repoPath })
+    const expectedHead = current.pinnedHeadOid || cleanHead
+    if (finalBaseOid !== current.baseOid || (current.pinnedHeadOid.length === 0 && finalCleanHead !== expectedHead)) {
+      return yield* Effect.fail(new InvalidScopeBudget("review base or head moved before scope-complete could commit; prepare and assess the current candidate"))
+    }
     const findings = yield* sql<UnresolvedFindingRow>`select decision_id, status, summary, coalesce(disposition, '') as disposition, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${check.runId} order by decision_id`
     const unresolved = findings.filter((finding) => !isFindingTerminal(finding) || hasLegacyEvidence(finding))
     if (unresolved.length > 0) {
@@ -1431,7 +1443,7 @@ export const completeScopeBudget = Effect.fn("ReviewFindings.completeScopeBudget
     }
     const limits = yield* readReviewLimits(check.runId, current.pinnedHeadOid || cleanHead)
     if (limits.incompletePhases.length > 0) return yield* Effect.fail(new InvalidScopeBudget(JSON.stringify({ limits, stoppingReasons: ["PHASE_TARGET_NOT_MET"] })))
-    yield* sql`update review_runs set head = ${current.pinnedHeadOid.length > 0 ? current.pinnedHeadOid : cleanHead} where id = ${check.runId}`
+    yield* sql`update review_runs set head = ${expectedHead} where id = ${check.runId}`
     yield* sql`update review_scope_budgets set generation = generation + 1, status = 'complete', last_reason = ${reason}, updated_at = ${nowSeconds()} where run_id = ${check.runId}`
     yield* sql`delete from review_scope_locks where run_id = ${check.runId}`
     yield* writeScopeEvent({
