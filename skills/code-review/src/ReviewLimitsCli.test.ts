@@ -726,8 +726,8 @@ test.effect("CLI requires a consultation repair receipt and preserves it across 
   yield* progress(0, "repair-applied", "native", firstRepair)
   yield* progress(1, "repair-unsuccessful", "native", firstRepair)
   yield* progress(2, "repair-applied", "native", secondRepair)
-  yield* progress(3, "repair-unsuccessful", "native", secondRepair)
   yield* cli("record", [...finding, "--handling", "consult", "--status", "open", "--decision", "Should this repair proceed?"])
+  yield* progress(3, "repair-unsuccessful", "native", secondRepair)
   yield* progress(4, "repair-authorized", "native", ["--finding-id", "D1", "--authorization", "Owner approves another retry"])
 
   const denied = yield* progress(5, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "consult-1"]).pipe(Effect.flip)

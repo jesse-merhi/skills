@@ -1788,8 +1788,8 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
     if (event.outcome.startsWith("repair-")) {
       const issue = (yield* sql<{ readonly disposition: string }>`select disposition from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional') and disposition in ('accept', 'consult')`)[0]
       if (issue === undefined) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open accepted finding or consultation"))
-      if (issue.disposition === "consult" && event.outcome !== "repair-authorized") {
-        const currentReceipt = event.outcome === "repair-applied" && event.authorization !== undefined && event.authorization.trim().length > 0
+      if (issue.disposition === "consult" && event.outcome === "repair-applied") {
+        const currentReceipt = event.authorization !== undefined && event.authorization.trim().length > 0
         const savedReceipt = currentReceipt || (yield* readProgressHistory(runId)).some(saved =>
           saved.outcome === "repair-applied" && saved.findingId === event.findingId && saved.authorization !== undefined && saved.authorization.trim().length > 0
         )
