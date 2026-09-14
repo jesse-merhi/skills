@@ -184,11 +184,9 @@ itself model generation.
   part; truncation is not a completed read. In Codex, use `Promise.allSettled`
   inside code mode for independent reads. Keep dependent calls, writes and
   approval-sensitive actions serial.
-- Resume existing operations using completion notifications or bounded waits;
-  avoid repeated status polling. Load `wait-efficiently` for CI monitoring,
-  prolonged commands, timed delays, or coordinating pending agents. Ordinary
-  batches of quick commands need no extra skill read. Keep waits within tool
-  limits and the current communication requirements.
+- Use `wait-efficiently` for worker assignments and results, pending agents, CI
+  monitoring, long-running commands and timed delays. Quick command batches
+  need no extra skill read.
 
 ## Outcome and completion
 
