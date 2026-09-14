@@ -380,7 +380,6 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
       return yield* new CandidateConflict({ message: "Candidate base, head, tree, or patch moved after preparation; prepare the current candidate again" })
     }
     if (input.decision === "reuse") {
-      if (candidate.source.patchId !== candidate.candidate.patchId) return yield* new CandidateConflict({ message: "Whole-candidate reuse requires an equivalent stable patch; choose focused or broad and identify invalidated review phases" })
       if (missing.length > 0) return yield* new CandidateConflict({ message: `Whole-candidate reuse is missing completed source evidence for: ${missing.join(", ")}` })
     }
     if (input.decision === "focused" && affected.length === 0) return yield* new CandidateConflict({ message: "A focused assessment requires at least one affected or missing phase" })

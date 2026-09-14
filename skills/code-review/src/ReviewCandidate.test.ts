@@ -86,6 +86,29 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     assert.deepStrictEqual(new Set(limits.candidateAssessment?.sourceReviews.map(review => review.reviewId)), new Set([native.reviewId, cold.reviewId]))
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
+  test.effect("reuses a changed patch when assessment finds no invalidated review conclusions", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    const native = yield* cleanPhase(run, "native")
+    const cold = yield* cleanPhase(run, "cold")
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "import { value } from './contract.js'\n// Add one to the shared value.\nexport const feature = value + 1\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "document the reviewed computation"])
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    assert.notStrictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    const assessment = {
+      candidateId: prepared.candidateId,
+      decision: "reuse" as const,
+      affectedPhases: [],
+      semanticImpactEvidence: "Only an ordinary source comment was added; exports, computation, callers and dependencies are unchanged. Neither review conclusion is invalidated. Inspection resolves the change without rerunning tests."
+    }
+    yield* assessCandidate(assessment)
+    const limits = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.deepStrictEqual(limits.incompletePhases, [])
+    assert.deepStrictEqual(new Set(limits.candidateAssessment?.sourceReviews.map(review => review.reviewId)), new Set([native.reviewId, cold.reviewId]))
+    yield* checkScopeBudget(run, "Final check for the assessed comment change")
+    yield* completeScopeBudget(run, "Changed patch assessment preserves all review conclusions")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
   test.effect("requires focused review when disjoint upstream work changes a shared contract", () => Effect.gen(function*() {
     const { run, fs, git } = yield* fixture()
     yield* cleanPhase(run, "native")
@@ -420,8 +443,6 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     yield* git(["config", "diff.ignoreSubmodules", "all"])
     const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
     assert.notStrictEqual(prepared.source.patchId, prepared.candidate.patchId)
-    const error = yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Dependency pin changed" }).pipe(Effect.flip)
-    assert.include(error.message, "equivalent stable patch")
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
   test.effect("does not restore invalidated evidence by falling back to an older amended head", () => Effect.gen(function*() {
