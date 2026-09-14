@@ -306,4 +306,25 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     })
     assert.include((yield* readReviewLimits(run.runId, currentHead)).incompletePhases, "clawsweeper")
   }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("selects the newest fully reviewed head before the original scope baseline", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "import { value } from './contract.js'\nexport const feature = value + 2\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "repair feature"])
+    const reviewedHead = yield* git(["rev-parse", "HEAD"])
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "equivalent repaired feature"])
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    assert.strictEqual(prepared.source.head, reviewedHead)
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "Only the repaired commit message changed after native and cold review completed on the repaired tree."
+    })
+  }).pipe(Effect.scoped), { timeout: 30_000 })
 })

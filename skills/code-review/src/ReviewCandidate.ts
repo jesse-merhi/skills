@@ -8,6 +8,7 @@ import type { ReviewRun, ScopeBudgetStatus } from "./ReviewFindings.ts"
 import { checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { requireCleanReviewTree } from "./NativeReview.ts"
 import { trustedExecutable } from "./ReviewEnvironment.ts"
+import { LimitSettings } from "./ReviewLimits.ts"
 import { readProgressHistory } from "./ReviewProgress.ts"
 
 const Text = Schema.String.check(Schema.isMinLength(1))
@@ -77,6 +78,11 @@ interface InvocationRow {
 }
 
 interface RevisionRow { readonly revision: number }
+interface SourceIdentityRow {
+  readonly head: string
+  readonly base_oid: string
+  readonly revision: number
+}
 
 const progressRevision = Effect.fn("ReviewCandidate.progressRevision")(function*(runId: string) {
   const sql = yield* SqlClient.SqlClient
@@ -160,15 +166,22 @@ const resolveSource = Effect.fn("ReviewCandidate.resolveSource")(function*(run: 
           and coalesce(review_runs.branch, '') = ${run.branch} and review_runs.target = ${run.target}`
   for (const candidate of candidates) {
     if (candidate.head.length === 0 || candidate.base_oid.length === 0) continue
-    const reviews = yield* sourceReviews(candidate.id, candidate.head, candidate.base_oid)
-    if (reviews.length > 0) return { runId: candidate.id, head: candidate.head, baseOid: candidate.base_oid, reviews }
-    const prior = (yield* sql<{ readonly head: string; readonly base_oid: string }>`select head, base_oid from review_invocations
+    const assessed = yield* sql<SourceIdentityRow>`select candidate_head_oid as head, candidate_base_oid as base_oid,
+        target_progress_revision as revision from review_candidates
+      where run_id = ${candidate.id} and status = 'assessed' order by target_progress_revision desc, rowid desc`
+    const invoked = yield* sql<SourceIdentityRow>`select head, base_oid, max(start_revision) + 1 as revision from review_invocations
       where run_id = ${candidate.id} and status = 'finished' and outcome in ('clean', 'clean-except-queue')
-      order by start_revision desc limit 1`)[0]
-    if (prior !== undefined) {
-      const sameIdentity = prior.head === candidate.head && prior.base_oid === candidate.base_oid
-      const priorReviews = yield* sourceReviews(candidate.id, prior.head, prior.base_oid, sameIdentity)
-      if (priorReviews.length > 0) return { runId: candidate.id, head: prior.head, baseOid: prior.base_oid, reviews: priorReviews }
+      group by head, base_oid order by revision desc`
+    const identities = [...assessed, ...invoked, { head: candidate.head, base_oid: candidate.base_oid, revision: -1 }]
+      .sort((left, right) => right.revision - left.revision)
+    const seen = new Set<string>()
+    for (const identity of identities) {
+      const key = `${identity.head}\0${identity.base_oid}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const sameIdentity = identity.head === candidate.head && identity.base_oid === candidate.base_oid
+      const reviews = yield* sourceReviews(candidate.id, identity.head, identity.base_oid, sameIdentity)
+      if (reviews.length > 0) return { runId: candidate.id, head: identity.head, baseOid: identity.base_oid, reviews }
     }
   }
   return yield* new CandidateConflict({ message: "No earlier completed native or cold review evidence exists for this branch and target" })
@@ -221,7 +234,8 @@ export const prepareCandidate = Effect.fn("ReviewCandidate.prepare")(function*(
   run: ReviewRun & { readonly runId: string },
   scope: ScopeBudgetStatus,
   requestedSourceRun?: string,
-  freshScope = false
+  freshScope = false,
+  explicitLimits: Partial<LimitSettings> = {}
 ) {
   const sql = yield* SqlClient.SqlClient
   const git = yield* trustedExecutable("git", run.repoPath)
@@ -240,10 +254,10 @@ export const prepareCandidate = Effect.fn("ReviewCandidate.prepare")(function*(
     const targetRevision = source.runId === run.runId ? sourceRevision : yield* progressRevision(run.runId)
     if (freshScope) {
       const sourceLimits = (yield* sql<{ readonly settings: string }>`select settings from review_run_limits where run_id = ${source.runId}`)[0]
-      const targetLimits = (yield* sql<{ readonly settings: string }>`select settings from review_run_limits where run_id = ${run.runId}`)[0]
-      const defaults = JSON.stringify({ consultCap: 5, coldCleanTarget: 1, nativeCleanTarget: 2, requiredPhases: [], requireCurrentHead: false })
-      if (sourceLimits !== undefined && targetLimits?.settings === defaults) {
-        yield* sql`update review_run_limits set settings = ${sourceLimits.settings} where run_id = ${run.runId}`
+      if (sourceLimits !== undefined) {
+        const inherited = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(LimitSettings))(sourceLimits.settings)
+        const settings = yield* Schema.decodeUnknownEffect(LimitSettings)({ ...inherited, ...explicitLimits })
+        yield* sql`update review_run_limits set settings = ${JSON.stringify(settings)} where run_id = ${run.runId}`
       }
     }
     const candidateId = randomUUID()

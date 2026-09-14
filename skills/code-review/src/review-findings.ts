@@ -384,14 +384,28 @@ const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.cho
   yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
 const candidatePrepare = Command.make("candidate-prepare", {
-  db, ...inferredRun, ...reviewScopeFlags, sourceRun: optionalString("source-run")
+  db, ...inferredRun, ...reviewScopeFlags, sourceRun: optionalString("source-run"),
+  consultCap: Flag.integer("consult-cap").pipe(Flag.optional),
+  coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.optional),
+  nativeCleanTarget: Flag.integer("native-clean-target").pipe(Flag.optional),
+  requireCurrentHead: Flag.boolean("require-current-head").pipe(Flag.optional)
 }, args => Effect.gen(function*() {
   const resolved = yield* resolveReviewRun(args)
   return yield* withSelectedDb(resolved.database, () => Effect.gen(function*() {
     yield* initialize()
-    const resolvedScope = yield* startOrResumeScopeBudget(resolved.run, scopeInput({ ...args, target: resolved.run.target }))
+    const explicitLimits = {
+      ...(Option.isSome(args.consultCap) ? { consultCap: args.consultCap.value } : {}),
+      ...(Option.isSome(args.coldCleanTarget) ? { coldCleanTarget: args.coldCleanTarget.value } : {}),
+      ...(Option.isSome(args.nativeCleanTarget) ? { nativeCleanTarget: args.nativeCleanTarget.value } : {}),
+      ...(Option.isSome(args.requireCurrentHead) ? { requireCurrentHead: args.requireCurrentHead.value } : {}),
+      ...(args.requiredPhase.length > 0 ? { requiredPhases: args.requiredPhase } : {})
+    }
+    const resolvedScope = yield* startOrResumeScopeBudget(resolved.run, {
+      scopeSummary: args.scopeSummary || `Review ${resolved.run.target}`,
+      limits: explicitLimits
+    })
     const run = { ...resolved.run, runId: resolvedScope.budget.runId }
-    const candidate = yield* prepareCandidate(run, resolvedScope.budget, Option.getOrUndefined(args.sourceRun), !resolvedScope.resumed)
+    const candidate = yield* prepareCandidate(run, resolvedScope.budget, Option.getOrUndefined(args.sourceRun), !resolvedScope.resumed, explicitLimits)
     yield* Console.log(JSON.stringify(candidate))
   }))
 }))

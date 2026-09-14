@@ -6,7 +6,7 @@ import { candidateCoverage, type CandidatePhase } from "./ReviewCandidate.ts"
 import { type Progress, type ProgressEvent, readProgressHistory } from "./ReviewProgress.ts"
 
 const PositiveCount = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0))
-const LimitSettings = Schema.Struct({
+export const LimitSettings = Schema.Struct({
   consultCap: PositiveCount,
   coldCleanTarget: PositiveCount,
   nativeCleanTarget: Schema.optionalKey(PositiveCount),

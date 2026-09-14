@@ -23,7 +23,7 @@ After a rebase, main sync, repair, merge-group rebuild or other committed head c
 review-findings review candidate-prepare --source-run <run-id>
 ```
 
-Omit `--source-run` when the current run contains the source evidence. Inspect the returned source and candidate base, head, tree and patch identities, progress revision, finished review invocations and candidate ID. Establish semantic impact under the review loop; the command does not infer behavior from file overlap.
+Omit `--source-run` to select the latest eligible evidence for this branch and target. A new run inherits omitted phase settings from its source; explicit settings take precedence, including values equal to CLI defaults. Inspect the returned source and candidate base, head, tree and patch identities, progress revision, finished review invocations and candidate ID. Establish semantic impact under the review loop; the command does not infer behavior from file overlap.
 
 Record exactly one decision against that snapshot:
 
