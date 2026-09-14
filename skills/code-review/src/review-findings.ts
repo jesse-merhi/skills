@@ -410,7 +410,14 @@ const candidatePrepare = Command.make("candidate-prepare", {
       const run = { ...resolved.run, runId: resolvedScope.budget.runId }
       return yield* prepareCandidate(run, resolvedScope.budget, Option.getOrUndefined(args.sourceRun), !resolvedScope.resumed, explicitLimits)
     }))
-    yield* Console.log(JSON.stringify(candidate))
+    yield* Console.log(JSON.stringify({
+      ...candidate,
+      identity: {
+        runId: candidate.runId, db: resolved.database, repo: resolved.run.repo,
+        repoPath: resolved.run.repoPath, branch: resolved.run.branch,
+        target: resolved.run.target, base: resolved.run.base, head: candidate.candidate.head
+      }
+    }))
   }))
 }))
 const candidateAssess = Command.make("candidate-assess", {

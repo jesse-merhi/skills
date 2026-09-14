@@ -99,14 +99,23 @@ describe("review CLI Git context", () => {
       await runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Source complete"])
       await git(fixture.repo, ["commit", "--amend", "-m", "Equivalent candidate"])
       if (failPreparation) await expect(runReview(fixture.repo, ["review", "candidate-prepare", ...identity, "--source-run", "mistyped-source"])).rejects.toMatchObject({ stderr: expect.stringContaining("No earlier completed") })
-      const prepared: unknown = JSON.parse((await runReview(fixture.repo, ["review", "candidate-prepare", ...identity, ...flags])).stdout)
-      if (typeof prepared !== "object" || prepared === null || !("candidateId" in prepared)) throw new Error("Missing candidate ID")
+      const prepared = reviewOutput((await runReview(fixture.repo, ["review", "candidate-prepare", ...identity, ...flags])).stdout)
       const assessment = runReview(fixture.repo, ["review", "candidate-assess", "--db", fixture.db, "--candidate", String(prepared.candidateId), "--decision", "reuse", "--semantic-impact-evidence", "Only the commit message changed"])
       if (succeeds) await assessment
       else await expect(assessment).rejects.toMatchObject({ stderr: expect.stringContaining("missing completed source evidence for: native") })
       const status: unknown = JSON.parse((await runReview(fixture.repo, ["scope-status", ...identity, "--json"])).stdout)
       expect(status).toMatchObject({ limits: { cleanTargets: { native: target } } })
-      if (succeeds) await runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Equivalent evidence applies"])
+      if (succeeds) {
+        const destination = prepared.identity
+        if (typeof destination !== "object" || destination === null) throw new Error("Missing destination identity")
+        expect(destination).toMatchObject({ db: fixture.db, repo: "acme/widget", repoPath: fixture.repo, branch: "feature", target: "candidate-targets", base: "main", runId: prepared.runId })
+        const recordingFlags = Object.entries(destination).flatMap(([key, value]) =>
+          key === "runId" ? [] : [`--${key === "repoPath" ? "repo-path" : key}`, String(value)])
+        const recorded = await runReview(fixture.repo, ["record-command", ...recordingFlags,
+          "--command", "synthetic validation", "--result", "Synthetic successful receipt", "--reason", "Equivalent evidence applies"])
+        expect(recorded.stdout).toContain(`run=${String(prepared.runId)} `)
+        await runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Equivalent evidence applies"])
+      }
       else await expect(runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Insufficient evidence"])).rejects.toMatchObject({ stderr: expect.stringContaining("native") })
     } finally {
       await rm(fixture.directory, { recursive: true, force: true })
