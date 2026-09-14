@@ -34,12 +34,8 @@ For external state without tracked completion, use a host scheduling tool only w
 
 ## Required agent results
 
-Give each worker a bounded assignment with a revision/build, acceptance evidence and reserved decisions. When it finishes, fails or needs a decision, require one final result: outcome, examined revision/build and relevant uncommitted changes, evidence locations, findings, verification and unresolved choices. State when a revision or evidence is unavailable. A new assignment needs a new brief.
+Give workers bounded assignments. Return one final result with the outcome, revision/build, evidence, findings, verification and unresolved decisions; identify missing evidence. Send interim messages only when they change someone's next action.
 
-Workers send interim messages only for blockers, scope changes or information that changes another worker's action. Honor required host updates; routine progress needs no coordinator acknowledgement.
+Finish independent work, then wait on existing worker handles. Preserve handles and results for recovery. Act on completion, failure, decisions or user input; resume after routine messages and timeouts without check-ins. Diagnose errors or concrete stalls, not elapsed waits alone.
 
-Finish useful independent work, then wait on the existing worker. Save handles, cursors and evidence locations in the task's notes or session storage for recovery. When a result arrives, preserve its evidence and integrate, diagnose or resolve the decision within existing authority. If a worker fails without a result, retrieve its available error and report missing evidence. Act on user input before resuming the wait.
-
-After a timeout or routine message, resume the event wait without a status query or acknowledgement. Repeated timeouts alone do not prove a stall. Inspect status or logs for a tool error, missed task deadline or concrete evidence that progress stopped. Give required host updates from known state; do not request worker check-ins for them.
-
-Use the longest event wait allowed by the tool and the host's update and blocking-call limits. Keep the parent turn active while required work is pending unless the host explicitly guarantees that completion wakes an ended turn. Background execution and completion notifications alone do not guarantee this. Report unsupported suspension as a host limit; do not emulate it with polling agents, timers or orchestration services.
+Honor host wait limits and required updates. Keep the parent active unless the host guarantees completion will wake an ended turn. Do not build a polling workaround for missing suspension support.
