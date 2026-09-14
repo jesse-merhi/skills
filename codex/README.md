@@ -49,6 +49,12 @@ The role prompts describe assignments, not filesystem isolation. They inherit th
 
 These are native Codex CLI profile and role files. See the official [profile documentation](https://learn.chatgpt.com/docs/config-file/config-advanced#profiles) and [subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents). Project and command-line overrides can supersede a profile.
 
+Worker reporting and coordinator waits follow [wait-efficiently](../skills/wait-efficiently/SKILL.md#required-agent-results). These profile files configure prompts and model selection; they do not implement a scheduler or change the user's active model settings.
+
+The inspected Codex CLI 0.154.0 app-server protocol exposes `turn/completed` and `thread/status/changed` events. The current Desktop tools expose bounded event waits: `wait_agent` wakes for mailbox messages as well as completion, while `wait_threads` filters commentary and supports result cursors. Neither exposed tool contract guarantees that child completion resumes an ended parent turn. Treat that guarantee as unverified and keep required work in the active turn under the host's wait and commentary limits.
+
+Full coordinator suspension needs host support: retain pending child handles and final evidence, keep routine progress in the UI, and resume the coordinator only for completion, failure, a required decision or user input. The host would also need to exempt a suspended coordinator from periodic commentary and wait-timeout generations. Skill wording and these profiles cannot provide that behavior.
+
 OpenClaw's in-chat spawn API does not expose a profile or named-role selector in this environment. Installing these files does not configure those children or give them the reviewer filter. Their launcher must select the model and effort explicitly under the shared policy. No live OpenClaw settings are changed by this installer.
 
 The profile structure was inspired by [donvito/codex-astra-luna-orchestrator](https://github.com/donvito/codex-astra-luna-orchestrator). The settings and prompts here implement this repository's policy; no upstream installer or skill is copied.

@@ -30,4 +30,16 @@ Use the current host's exposed schemas.
 
 Use `Monitor` only if exposed and repeated actionable events are needed, not for one completion. Filter its output for meaningful changes and failures, and respect its lifetime and timeout limits.
 
-For external state without tracked completion, use a host scheduling tool only when the user requested a later check. Do not add a timer for an already-tracked command or agent. A background notification does not by itself guarantee an ended parent turn will wake. Missing tools are a limitation to report, not permission to install replacements or change authentication.
+For external state without tracked completion, use a host scheduling tool only when the user requested a later check. Do not add a timer for an already-tracked command or agent. Missing tools are a limitation to report, not permission to install replacements or change authentication.
+
+## Required agent results
+
+At dispatch, define the bounded assignment, revision or build, acceptance evidence and decisions reserved for the coordinator or user. Require one final result when the assignment completes, fails or needs a decision. The result states that outcome, the revision/build actually examined (including relevant uncommitted changes), evidence locations and any unresolved choice. If work stops before a revision or evidence exists, say so. Keep domain-specific findings and verification in that result; a status label alone is insufficient.
+
+Workers send interim messages only for blockers, changed scope or information that changes another worker's action, while honoring required host updates. Routine progress needs no coordinator acknowledgement. A worker returns when its assignment is finished or blocked; a new assignment requires a new brief.
+
+Finish useful independent work, then wait on the existing worker's native completion mechanism. Retain worker handles, cursors and result/evidence locations in the task's existing notes or session storage so recovery does not require rereading full histories. On a terminal result, preserve the evidence and integrate, diagnose or resolve the decision within existing authority. Worker failure without a final result still requires action: retrieve the available error and report missing evidence. User intervention takes priority over continuing the wait.
+
+On a timeout or routine progress message, resume the event wait without a status query or acknowledgement. A timeout alone, even repeated, is not evidence of a stall. Inspect status or logs for a tool error, a missed task-specific deadline or other concrete evidence that progress stopped. Send host-required updates from known state; they do not require worker check-ins.
+
+Use the longest event wait allowed by both the exposed tool and the host's update and blocking-call limits. A tool's larger maximum does not override the host. Keep the parent turn active while required work is pending unless the host explicitly guarantees completion will wake an ended turn. Completion notifications, parallel agents and background execution do not alone establish that guarantee. Report unsupported suspension as a host limitation; do not add polling agents, timers or orchestration services to emulate it.
