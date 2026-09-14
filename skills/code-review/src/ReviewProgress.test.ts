@@ -57,4 +57,46 @@ test.effect("counts ClawSweeper passes across an interleaved native start so the
   assert.strictEqual(exhausted._tag, "Failure")
   assert.strictEqual((yield* sql`select * from review_progress_events where run_id = 'claws'`).length, 7)
 }))
+
+test.effect("requires an evidenced diagnosis and changed approach after two failed repairs", () => Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  yield* sql`create table if not exists review_progress_events (run_id text, revision integer, payload text, primary key(run_id, revision))`
+  const repair = { expectedRevision: 0, phase: "native", head: "head-a", outcome: "repair-applied", evidence: "patch one", findingId: "D1", repairAttempt: "patch-1" } satisfies ProgressEvent
+  yield* recordProgress("repair", repair)
+  yield* recordProgress("repair", { ...repair, expectedRevision: 1, outcome: "repair-unsuccessful", evidence: "first verification failure" })
+  yield* recordProgress("repair", { ...repair, expectedRevision: 2, repairAttempt: "patch-2", evidence: "patch two" })
+  yield* recordProgress("repair", { ...repair, expectedRevision: 3, repairAttempt: "patch-2", outcome: "repair-unsuccessful", evidence: "second verification failure" })
+
+  const missingApproach = yield* recordProgress("repair", {
+    ...repair, expectedRevision: 4, outcome: "repair-replanned", repairAttempt: undefined,
+    diagnosis: "Both patches changed the parser after validation"
+  }).pipe(Effect.flip)
+  assert.include(missingApproach.message, "--diagnosis and --changed-approach")
+  const repeatedClaim = yield* recordProgress("repair", {
+    ...repair, expectedRevision: 4, outcome: "repair-replanned", repairAttempt: undefined,
+    diagnosis: "The repair changed the wrong boundary", changedApproach: "The repair changed the wrong boundary"
+  }).pipe(Effect.flip)
+  assert.include(repeatedClaim.message, "distinct")
+
+  const replanned = yield* recordProgress("repair", {
+    ...repair, expectedRevision: 4, outcome: "repair-replanned", repairAttempt: undefined,
+    evidence: "trace from the failing entry point", diagnosis: "Both patches changed the parser after validation",
+    changedApproach: "Move the correction into the validated input adapter",
+    authorization: "Owner authorized the newly required dependency"
+  })
+  assert.strictEqual(replanned.diagnosis, "Both patches changed the parser after validation")
+  assert.strictEqual(replanned.changedApproach, "Move the correction into the validated input adapter")
+  assert.strictEqual(replanned.authorization, "Owner authorized the newly required dependency")
+}))
+
+test.effect("reads legacy repair authorization events without exposing them as new outcomes", () => Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  yield* sql`create table if not exists review_progress_events (run_id text, revision integer, payload text, primary key(run_id, revision))`
+  const legacy = {
+    revision: 1, phase: "native", head: "head-a", pass: 0, totalPasses: 0, cleanStreak: 0, diamondAttempts: 0,
+    outcome: "repair-authorized", evidence: "historical owner decision", findingId: "D1", authorization: "Owner approved"
+  } as const
+  yield* sql`insert into review_progress_events (run_id, revision, payload) values ('legacy', 1, ${JSON.stringify(legacy)})`
+  assert.deepStrictEqual(yield* readProgress("legacy"), legacy)
+}))
 })

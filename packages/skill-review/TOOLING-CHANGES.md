@@ -1,5 +1,9 @@
 # Skill tooling improvements
 
+## Failed repair diagnosis — September 14
+
+After two unsuccessful repairs, `review-findings` now preserves the failure evidence and requires a recorded diagnosis plus a materially changed approach before another attempt. Already-authorized local repair work no longer stops for an automatic owner approval. Explicit user limits and decisions about scope, dependencies, access, spending, breaking changes and publication remain binding.
+
 ## Reference duplication removed — September 7
 
 Checked all 28 managed skills and their linked instructions. Removed repeated instructions in nine skills without adding another writing rule: the existing writing guidance already says each instruction should have one home.

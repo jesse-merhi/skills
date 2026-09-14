@@ -32,7 +32,13 @@ const Output = Schema.fromJsonString(Schema.Struct({
     cleanTargets: Schema.Struct({ native: Schema.Number, cold: Schema.Number, clawsweeper: Schema.Number }),
     incompletePhases: Schema.Array(Schema.String),
     diagnosticWarnings: Schema.Array(Schema.String),
-    stoppingReasons: Schema.Array(Schema.String)
+    stoppingReasons: Schema.Array(Schema.String),
+    nextAction: Schema.String,
+    repairAttempts: Schema.Array(Schema.Struct({
+      findingId: Schema.String,
+      unsuccessfulAttempts: Schema.Number,
+      evidence: Schema.Array(Schema.Struct({ attempt: Schema.optional(Schema.String), head: Schema.String, reference: Schema.String }))
+    }))
   })
 }))
 const decode = Schema.decodeUnknownSync(Output)
@@ -188,11 +194,11 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
     yield* invoke(["progress-record", ...handle, "--outcome", "repair-unsuccessful", "--finding-id", "D2", "--repair-attempt", patch, "--evidence", "verification failed"])
   }
   const third = yield* invoke(["progress-record", ...handle, "--outcome", "repair-applied", "--finding-id", "D2", "--repair-attempt", "patch-3", "--evidence", "third patch"]).pipe(Effect.flip)
-  assert.include(third.stderr, "owner authorization")
+  assert.include(third.stderr, "diagnosis and changed approach")
   const prematureFixed = yield* invoke(["record", ...handle, ...accepted, "--status", "fixed"]).pipe(Effect.flip)
-  assert.include(prematureFixed.stderr, "owner authorization")
+  assert.include(prematureFixed.stderr, "diagnosis and changed approach")
   assert.strictEqual(decode(yield* cli("progress-status")).revision, 6)
-  yield* invoke(["progress-record", ...handle, "--outcome", "repair-authorized", "--finding-id", "D2", "--authorization", "Owner approves another attempt", "--evidence", "owner decision"])
+  yield* invoke(["progress-record", ...handle, "--outcome", "repair-replanned", "--finding-id", "D2", "--diagnosis", "Both patches changed only the symptom", "--changed-approach", "Repair the duplicated policy owner", "--evidence", "trace of both failed checks"])
   yield* invoke(["progress-record", ...handle, "--outcome", "repair-applied", "--finding-id", "D2", "--repair-attempt", "patch-3", "--evidence", "verified patch"])
   yield* invoke(["record", ...handle, ...accepted, "--status", "fixed"])
   assert.strictEqual(decode(yield* cli("progress-status")).revision, 8)
@@ -691,7 +697,7 @@ test.effect("CLI stops at the consult cap, appends matches once, and accepts own
   yield* cli("record-command", ["--command", "fixture-check", "--result", "passed", "--reason", "late result"])
 }).pipe(Effect.scoped), { timeout: 60000 })
 
-test.effect("CLI gates evidenced repair failures and accepts a scoped owner decision without resetting limits", () => Effect.gen(function*() {
+test.effect("CLI gates evidenced repair failures until diagnosis changes the repair approach", () => Effect.gen(function*() {
   const { cli, progress } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
   yield* cli("record", ["--decision-id", "D1", "--source", "fixture", "--fingerprint", "owner cause", "--summary", "Fixture repair",
@@ -703,15 +709,31 @@ test.effect("CLI gates evidenced repair failures and accepts a scoped owner deci
   yield* progress(1, "repair-unsuccessful", "native", attempt1)
   yield* progress(2, "repair-applied", "native", attempt2)
   const failed = decode(yield* progress(3, "repair-unsuccessful", "native", attempt2))
-  assert.include(failed.limits.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
+  assert.include(failed.limits.stoppingReasons, "REPAIR_DIAGNOSIS_REQUIRED")
+  assert.strictEqual(failed.limits.nextAction, "diagnose-repair")
+  assert.deepStrictEqual(failed.limits.repairAttempts[0]?.evidence.map(item => item.reference), ["synthetic-native-1", "synthetic-native-3"])
   const stopped = yield* progress(4, "started").pipe(Effect.flip)
-  assert.include(stopped.stderr, "REPAIR_CONSULT_REQUIRED")
+  assert.include(stopped.stderr, "REPAIR_DIAGNOSIS_REQUIRED")
   const scopeStopped = yield* cli("scope-check", ["--reason", "fixture", "--json"]).pipe(Effect.flip)
-  assert.include(scopeStopped.stderr, "REPAIR_CONSULT_REQUIRED")
-  const authorized = decode(yield* progress(4, "repair-authorized", "native", ["--finding-id", "D1", "--authorization", "Owner approves the next scoped attempt"]))
-  assert.notInclude(authorized.limits.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
-  assert.strictEqual(authorized.limits.consultCap, 5)
-  yield* progress(5, "started")
+  assert.include(scopeStopped.stderr, "REPAIR_DIAGNOSIS_REQUIRED")
+  const missingDiagnosis = yield* progress(4, "repair-replanned", "native", ["--finding-id", "D1", "--changed-approach", "Repair at the shared boundary"]).pipe(Effect.flip)
+  assert.include(missingDiagnosis.stderr, "--diagnosis")
+  const replanned = decode(yield* progress(4, "repair-replanned", "native", [
+    "--finding-id", "D1", "--diagnosis", "Both patches changed consumers independently",
+    "--changed-approach", "Repair the shared producer once"
+  ]))
+  assert.notInclude(replanned.limits.stoppingReasons, "REPAIR_DIAGNOSIS_REQUIRED")
+  assert.strictEqual(replanned.limits.consultCap, 5)
+  const attempt3 = ["--finding-id", "D1", "--repair-attempt", "D1-3"]
+  const attempt4 = ["--finding-id", "D1", "--repair-attempt", "D1-4"]
+  yield* progress(5, "repair-applied", "native", attempt3)
+  yield* progress(6, "repair-unsuccessful", "native", attempt3)
+  yield* progress(7, "repair-applied", "native", attempt4)
+  const repeatedFailure = decode(yield* progress(8, "repair-unsuccessful", "native", attempt4))
+  assert.include(repeatedFailure.limits.stoppingReasons, "REPAIR_DIAGNOSIS_REQUIRED")
+  assert.deepStrictEqual(repeatedFailure.limits.repairAttempts[0]?.evidence.map(item => item.reference), ["synthetic-native-6", "synthetic-native-8"])
+  const blindRetry = yield* progress(9, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "D1-5"]).pipe(Effect.flip)
+  assert.include(blindRetry.stderr, "diagnosis and changed approach")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("CLI requires a consultation repair receipt and preserves it across a failed attempt", () => Effect.gen(function*() {
@@ -728,7 +750,11 @@ test.effect("CLI requires a consultation repair receipt and preserves it across 
   yield* progress(2, "repair-applied", "native", secondRepair)
   yield* cli("record", [...finding, "--handling", "consult", "--status", "open", "--decision", "Should this repair proceed?"])
   yield* progress(3, "repair-unsuccessful", "native", secondRepair)
-  yield* progress(4, "repair-authorized", "native", ["--finding-id", "D1", "--authorization", "Owner approves another retry"])
+  yield* progress(4, "repair-replanned", "native", [
+    "--finding-id", "D1", "--diagnosis", "Both local repairs changed the downstream symptom",
+    "--changed-approach", "Apply the owner's approved repair at the shared boundary",
+    "--authorization", "Owner approved the revised repair scope"
+  ])
 
   const denied = yield* progress(5, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "consult-1"]).pipe(Effect.flip)
   assert.include(denied.stderr, "requires --authorization")
