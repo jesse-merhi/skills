@@ -19,7 +19,7 @@ Check out the branch or commit in question. For a branch review, check that the 
 
 Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
-Before launching another review, use the review loop to assess changes since the last applicable review, including relevant upstream interactions. Identify which earlier conclusions, if any, the changes invalidate. A new commit or a different patch does not itself require another review. Record the assessment and retain unaffected evidence through the review commands.
+Use the review loop to decide whether another review is needed, and record that decision through the review commands.
 
 Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the default native review:
 
@@ -46,7 +46,7 @@ Follow [the independent-review instructions](references/cold-review.md) and [the
 
 ## 4. Check, reflect and finish
 
-Reuse passing checks while their covered inputs and behavior remain applicable. Run relevant tests, typecheck, lint or build commands to verify changed behavior, resolve a named uncertainty, or satisfy a required check. Follow the review loop for their role in the impact assessment; passing tests alone do not prove that every review conclusion still applies. Add regression coverage for confirmed behavior gaps; this workflow does not require a failing-test-first cycle. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
+Decide what validation the change needs. Reuse applicable passing results and satisfy required checks. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
 
 After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
 
