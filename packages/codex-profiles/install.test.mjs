@@ -37,7 +37,7 @@ test("installs selectable model roles and preserves base configuration and globa
     const expected = [
       ["implementer", "gpt-5.6-sol", "high"],
       ["investigator", "gpt-5.6-luna", "max"],
-      ["findings_reviewer", "gpt-6-astra", "xhigh"],
+      ["findings_reviewer", "gpt-6-astra", "high"],
     ];
     for (const [name, model, effort] of expected) {
       const rolePath = path.join(root, profile.agents[name].config_file);

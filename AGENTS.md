@@ -161,7 +161,7 @@ itself model generation.
   coordinator may complete small local steps when delegation would not help.
   For meaningful delegated work, use Sol at high for implementation and tests,
   and Luna at max for bounded investigation and focused research. Use Astra at
-  xhigh only for independent review when the task or delivery gate requires it.
+  high for review; use xhigh only when the user explicitly requests it.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that
