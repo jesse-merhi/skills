@@ -11,6 +11,10 @@ default_subagent_reasoning_effort = "high"
 description = "Implement a bounded change and its tests with Sol."
 config_file = "orchestration/implementer.toml"
 
+[agents.test_executor]
+description = "Run an established validation batch with Luna; retain evidence and stop on failure."
+config_file = "orchestration/test-executor.toml"
+
 [agents.investigator]
 description = "Investigate a bounded code or documentation question with Luna; return evidence without edits."
 config_file = "orchestration/investigator.toml"

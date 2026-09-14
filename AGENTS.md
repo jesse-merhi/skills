@@ -117,6 +117,13 @@ resource lifecycle, and graceful shutdown.
 
 ## Test and review design
 
+- Run tests to verify changed behavior, investigate a concrete failure or
+  uncertainty, or satisfy an applicable required check. Reuse passing results
+  while the code, dependencies, configuration and environment they cover remain
+  applicable. Before repeating or broadening a run, identify what invalidated
+  that evidence or what question remains unanswered. A new commit, rebase or
+  metadata-only edit alone does not justify rerunning unrelated suites. Preserve
+  checks explicitly required on the final revision.
 - Keep test cleanup tied to the changed behavior and the coverage needed to
   prove it. Touching a test file does not by itself require reorganizing the
   file or repairing unrelated tests. Preserve required coverage and checks.
@@ -152,9 +159,12 @@ itself model generation.
 
 - Use Astra at medium for coordination, integration, and verification. The
   coordinator may complete small local steps when delegation would not help.
-  For meaningful delegated work, use Sol at high for implementation and tests,
-  and Luna at max for bounded investigation and focused research. Use Astra at
-  xhigh only for independent review when the task or delivery gate requires it.
+  For meaningful delegated work, use Sol at high for implementation, test design
+  and substantive debugging or repairs; use Luna at max for established test,
+  lint, typecheck and prepared acceptance execution, bounded investigation and
+  focused research. `writing-good-tests` owns execution batches and receipts.
+  Use Astra at xhigh only for independent review when the task or delivery gate
+  requires it.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that

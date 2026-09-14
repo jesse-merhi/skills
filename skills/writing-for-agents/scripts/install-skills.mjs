@@ -22,6 +22,22 @@ function harnessDirectory(harness) {
   }
 }
 
+function withHarnessInstallationLock(harnessRoot, operation) {
+  const rootExisted = fs.lstatSync(harnessRoot, { throwIfNoEntry: false }) !== undefined;
+  try {
+    return withOutputLock(path.join(harnessRoot, ".skills-installation"), operation);
+  } catch (error) {
+    if (!rootExisted) {
+      try {
+        fs.rmdirSync(harnessRoot);
+      } catch (cleanupError) {
+        if (!(cleanupError instanceof Error) || !Object.hasOwn(cleanupError, "code") || !["ENOENT", "ENOTEMPTY", "EEXIST"].includes(cleanupError.code)) throw cleanupError;
+      }
+    }
+    throw error;
+  }
+}
+
 function inspectLinks(skillsDirectory, viewRoot, skills, sourceRoot, previousSourceRoot, targeted) {
   const directory = fs.lstatSync(skillsDirectory, { throwIfNoEntry: false });
   if (directory !== undefined && (!directory.isDirectory() || directory.isSymbolicLink())) {
@@ -73,14 +89,16 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
   };
   const preview = preflight();
   const commandOptions = { binDir, sourceRoot: plan.sourceRoot, previousSourceRoot, skills: plan.skills, skillNames };
-  const commandPreview = planCommands(commandOptions);
-  if (dryRun) return {
-    dryRun: true, harness, root: harnessRoot, model, profile: plan.profile.id,
-    exact: plan.exact && plan.fallbackSkills.length === 0, skillCount: plan.skills.length,
-    linksToChange: preview.links.length, linksToRetire: preview.retired.length,
-    ...commandSummary(commandPreview),
-  };
-  return withOutputLock(path.join(harnessRoot, ".skills-installation"), () => withInstalledCommands(commandOptions, () => {
+  if (dryRun) {
+    const commandPreview = planCommands(commandOptions);
+    return {
+      dryRun: true, harness, root: harnessRoot, model, profile: plan.profile.id,
+      exact: plan.exact && plan.fallbackSkills.length === 0, skillCount: plan.skills.length,
+      linksToChange: preview.links.length, linksToRetire: preview.retired.length,
+      ...commandSummary(commandPreview),
+    };
+  }
+  return withHarnessInstallationLock(harnessRoot, () => withInstalledCommands(commandOptions, () => {
     const { links, retired } = preflight();
     fs.mkdirSync(skillsDirectory, { recursive: true });
     const changed = [];
