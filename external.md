@@ -65,7 +65,7 @@ repo.
 ## Local PR turns
 
 - **Source:** [jesse-merhi/repo-queue](https://github.com/jesse-merhi/repo-queue), the upstream RepoQ project.
-- **Pinned revision:** `b79fc3a7e0a86f30a6ff18dee7fd204ea9289dfa` from [draft PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This pins the TypeScript package and complete skill variants. Update it deliberately after validation; do not track a moving branch.
+- **Pinned revision:** `6f1d25a9035ef57b87e54696d0664e45f9dd3bd3` from [draft PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This pins the TypeScript package and complete skill variants. Update it deliberately after validation; do not track a moving branch.
 - **Ownership:** repo-queue owns the CLI and complete skill variants. This repository owns the default merge-routing rule in `AGENTS.md`. Do not copy the workflow into a repo-owned skill or change dotfiles to install it.
 - **Verified scope:** Codex desktop end-turn → wake → claim → done passed. Claude Code's full end-turn → wake → claim → done flow also passed using an isolated synthetic queue. A live Claude interactive/background process must exit before resume; an idle terminal is still live. Follow upstream recovery guidance after delivery failure. Claude desktop/web and Codex cloud are unsupported.
 
@@ -76,7 +76,7 @@ This entry is for Codex and Claude Code only. Run installation when the user req
 Obtain the exact revision, build its package, and install the compiled command in a stable prefix. Node 24.13+ and npm are prerequisites; install missing prerequisites only with the user's authority. Do not run the background service from a temporary development worktree:
 
 ```sh
-queue_revision=b79fc3a7e0a86f30a6ff18dee7fd204ea9289dfa
+queue_revision=6f1d25a9035ef57b87e54696d0664e45f9dd3bd3
 queue_checkout="$HOME/.local/share/repo-queue/$queue_revision"
 mkdir -p "$HOME/.local/share/repo-queue" "$HOME/.local/bin"
 gh repo clone jesse-merhi/repo-queue "$queue_checkout" -- --no-checkout
