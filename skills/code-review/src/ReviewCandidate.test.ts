@@ -457,4 +457,28 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     yield* completeScopeBudget(run, "Fresh native review covers restored candidate")
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
+  test.effect("keeps inherited obligations when a reuse-only destination advances to unreviewed code", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture([], 2, false)
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "native")
+    yield* checkScopeBudget(run, "Source checked")
+    yield* completeScopeBudget(run, "Source complete")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Reuse-only destination"])
+    const { runId: _sourceRun, ...identity } = run
+    const scope = yield* startScopeBudget(identity, { scopeSummary: "Reuse-only destination" })
+    const destination = { ...identity, runId: scope.runId }
+    const prepared = yield* prepareCandidate(destination, scope, undefined, true)
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Only commit message changed" })
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "export const feature = 999\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "Change behavior after assessment"])
+    const current = yield* git(["rev-parse", "HEAD"])
+    assert.deepStrictEqual((yield* readReviewLimits(destination.runId, current)).incompletePhases, ["native"])
+    yield* checkScopeBudget(destination, "Changed destination checked")
+    assert.include((yield* completeScopeBudget(destination, "Unreviewed destination").pipe(Effect.flip)).message, "native")
+    yield* cleanPhase(destination, "native")
+    assert.include((yield* readReviewLimits(destination.runId, current)).incompletePhases, "native")
+    yield* cleanPhase(destination, "native")
+    yield* completeScopeBudget(destination, "Fresh target count reached on changed destination")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
 })

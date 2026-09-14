@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
-import { candidateCoverage, type CandidatePhase, phaseInvalidations } from "./ReviewCandidate.ts"
+import { candidateCoverage, type CandidatePhase, candidatePhaseState } from "./ReviewCandidate.ts"
 import { type Progress, type ProgressEvent, readProgressHistory } from "./ReviewProgress.ts"
 
 const PositiveCount = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0))
@@ -41,7 +41,7 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   const progress = yield* readProgressHistory(runId)
   const cleanTargets = { native: settings.nativeCleanTarget ?? 2, cold: settings.coldCleanTarget, clawsweeper: 2 } as const
   const candidate = row === undefined ? undefined : yield* candidateCoverage(runId, currentHead, row.base_oid)
-  const invalidations = yield* phaseInvalidations(runId)
+  const { invalidations, obligations } = yield* candidatePhaseState(runId)
   const inheritedCounts: Readonly<Record<CandidatePhase, number>> = candidate === undefined ? { native: 0, cold: 0 } : {
     native: candidate.source.reviews.filter(review => review.phase === "native").length,
     cold: candidate.source.reviews.filter(review => review.phase === "cold").length
@@ -85,7 +85,7 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
     if (maximum >= cleanTargets[savedPhase]) completed.add(savedPhase)
   }
   const incompletePhases = [...latest].filter(([savedPhase, event]) => !completed.has(savedPhase) && (settings.requireCurrentHead === true || event.cleanStreak < cleanTargets[savedPhase])).map(([savedPhase]) => savedPhase)
-  for (const affected of new Set([...(candidate?.affectedPhases ?? []), ...invalidations.keys()])) {
+  for (const affected of obligations) {
     if (!completed.has(affected) && !incompletePhases.includes(affected)) incompletePhases.push(affected)
   }
   for (const required of settings.requiredPhases ?? []) {

@@ -104,18 +104,22 @@ const commitIdentity = Effect.fn("ReviewCandidate.commitIdentity")(function*(rep
   return { baseOid: base, comparisonBaseOid, headOid: head, treeOid: tree, patchId }
 })
 
-export const phaseInvalidations = Effect.fn("ReviewCandidate.phaseInvalidations")(function*(runId: string) {
+export const candidatePhaseState = Effect.fn("ReviewCandidate.phaseState")(function*(runId: string) {
   const sql = yield* SqlClient.SqlClient
-  const rows = yield* sql<{ readonly target_progress_revision: number; readonly affected_phases_json: string; readonly sequence: number }>`select target_progress_revision, affected_phases_json, rowid as sequence
+  const rows = yield* sql<{ readonly target_progress_revision: number; readonly affected_phases_json: string; readonly source_reviews_json: string; readonly sequence: number }>`select target_progress_revision, affected_phases_json, source_reviews_json, rowid as sequence
     from review_candidates where run_id = ${runId} and status = 'assessed'`
   const cutoffs = new Map<CandidatePhase, { readonly progressRevision: number; readonly sequence: number }>()
+  const obligations = new Set<CandidatePhase>()
   for (const row of rows) {
+    const sources = yield* Schema.decodeUnknownEffect(SourceReviewsJson)(row.source_reviews_json)
+    for (const source of sources) obligations.add(source.phase)
     const phases = yield* Schema.decodeUnknownEffect(PhasesJson)(row.affected_phases_json)
+    for (const phase of phases) obligations.add(phase)
     for (const phase of phases) {
       if (row.sequence > (cutoffs.get(phase)?.sequence ?? 0)) cutoffs.set(phase, { progressRevision: row.target_progress_revision, sequence: row.sequence })
     }
   }
-  return cutoffs
+  return { invalidations: cutoffs, obligations }
 })
 
 const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId: string, head: string, baseOid: string) {
@@ -130,7 +134,7 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
     order by assessed_at desc, created_at desc, rowid desc limit 1`
   const inheritedRow = (yield* Schema.decodeUnknownEffect(Schema.Array(CandidateRow))(inheritedRows))[0]
   const inherited = inheritedRow === undefined ? undefined : yield* decodeCandidate(inheritedRow)
-  const invalidations = yield* phaseInvalidations(runId)
+  const { invalidations } = yield* candidatePhaseState(runId)
   const eligible: Array<SourceReview> = []
   for (const phase of ["native", "cold"] as const) {
     const invalidation = invalidations.get(phase)
@@ -325,7 +329,7 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
     if (input.decision === "reuse" && requestedAffected.length > 0) return yield* new CandidateConflict({ message: "A reuse decision cannot name affected phases; choose focused when earlier phase evidence is invalidated" })
     if (input.decision === "broad" && requestedAffected.length > 0) return yield* new CandidateConflict({ message: "A broad decision invalidates every required phase; omit --affected-phase" })
     const requirements = yield* targetRequirements(candidate.runId)
-    const invalidations = yield* phaseInvalidations(candidate.runId)
+    const { invalidations, obligations } = yield* candidatePhaseState(candidate.runId)
     const currentRunReviews = yield* sql<{ readonly id: string }>`select id from review_invocations where run_id = ${candidate.runId}`
     const currentRunIds = new Set(currentRunReviews.map(review => review.id))
     const applicable = candidate.source.reviews.filter(review => {
@@ -338,7 +342,7 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
     const performedPhases = [...sourceProgress, ...targetProgress]
       .map(event => event.phase).filter((phase): phase is CandidatePhase => phase === "native" || phase === "cold")
     const reviewedPhases = candidate.source.reviews.map(review => review.phase)
-    const effectivePhases = [...new Set([...requirements.required, ...reviewedPhases, ...performedPhases])]
+    const effectivePhases = [...new Set([...requirements.required, ...obligations, ...reviewedPhases, ...performedPhases])]
     const missing = effectivePhases.filter(phase => counts[phase] < requirements.targets[phase])
     const affected = input.decision === "broad"
       ? effectivePhases
