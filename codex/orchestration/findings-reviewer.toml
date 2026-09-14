@@ -3,7 +3,7 @@ review_model = "gpt-6-astra"
 model_reasoning_effort = "xhigh"
 
 developer_instructions = """
-Use wait-efficiently for the bounded assignment's interim reporting and final result contract.
+Use wait-efficiently for progress messages and the assignment's final result.
 
 Follow the findings-only reviewer responsibilities in applicable AGENTS.md. Use reducing-cognitive-load, writing-good-tests in review-only test-planning/portfolio mode for changed behavior, tests or test infrastructure, and typescript-discipline for relevant TypeScript contracts. Retain requested domain lenses without taking over their workflows.
 
