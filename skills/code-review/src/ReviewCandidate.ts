@@ -103,6 +103,18 @@ const commitIdentity = Effect.fn("ReviewCandidate.commitIdentity")(function*(rep
   return { baseOid: base, comparisonBaseOid, headOid: head, treeOid: tree, patchId }
 })
 
+const phaseInvalidations = Effect.fn("ReviewCandidate.phaseInvalidations")(function*(runId: string) {
+  const sql = yield* SqlClient.SqlClient
+  const rows = yield* sql<{ readonly target_progress_revision: number; readonly affected_phases_json: string }>`select target_progress_revision, affected_phases_json
+    from review_candidates where run_id = ${runId} and status = 'assessed'`
+  const cutoffs = new Map<CandidatePhase, number>()
+  for (const row of rows) {
+    const phases = yield* Schema.decodeUnknownEffect(PhasesJson)(row.affected_phases_json)
+    for (const phase of phases) cutoffs.set(phase, Math.max(cutoffs.get(phase) ?? 0, row.target_progress_revision))
+  }
+  return cutoffs
+})
+
 const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId: string, head: string, baseOid: string) {
   const sql = yield* SqlClient.SqlClient
   const rows = yield* sql<InvocationRow>`select id as reviewId, phase, head, base_oid as baseOid, outcome, evidence, start_revision as startRevision
@@ -115,9 +127,10 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
     order by assessed_at desc, created_at desc, rowid desc limit 1`
   const inheritedRow = (yield* Schema.decodeUnknownEffect(Schema.Array(CandidateRow))(inheritedRows))[0]
   const inherited = inheritedRow === undefined ? undefined : yield* decodeCandidate(inheritedRow)
+  const invalidations = yield* phaseInvalidations(runId)
   const eligible: Array<SourceReview> = []
   for (const phase of ["native", "cold"] as const) {
-    const cutoff = inherited?.affectedPhases.includes(phase) === true ? inherited.targetProgressRevision : 0
+    const cutoff = invalidations.get(phase) ?? 0
     let sequence: Array<number> = []
     let best: Array<number> = []
     for (const event of history) {
@@ -135,7 +148,7 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
       eligible.push(...yield* Schema.decodeUnknownEffect(Schema.Array(SourceReview))(direct))
       continue
     }
-    const carried = inherited === undefined || inherited.decision === "broad" || inherited.affectedPhases.includes(phase)
+    const carried = inherited === undefined || inherited.targetProgressRevision < cutoff || inherited.decision === "broad" || inherited.affectedPhases.includes(phase)
       ? []
       : inherited.source.reviews.filter(review => review.phase === phase).slice(0, requirements.targets[phase])
     if (carried.length === requirements.targets[phase]) eligible.push(...carried)
@@ -307,7 +320,14 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
     if (input.decision === "reuse" && requestedAffected.length > 0) return yield* new CandidateConflict({ message: "A reuse decision cannot name affected phases; choose focused when earlier phase evidence is invalidated" })
     if (input.decision === "broad" && requestedAffected.length > 0) return yield* new CandidateConflict({ message: "A broad decision invalidates every required phase; omit --affected-phase" })
     const requirements = yield* targetRequirements(candidate.runId)
-    const counts = phaseCounts(candidate.source.reviews)
+    const invalidations = yield* phaseInvalidations(candidate.runId)
+    const currentRunReviews = yield* sql<{ readonly id: string }>`select id from review_invocations where run_id = ${candidate.runId}`
+    const currentRunIds = new Set(currentRunReviews.map(review => review.id))
+    const applicable = candidate.source.reviews.filter(review => {
+      const cutoff = invalidations.get(review.phase)
+      return cutoff === undefined || (currentRunIds.has(review.reviewId) && review.startRevision >= cutoff)
+    })
+    const counts = phaseCounts(applicable)
     const sourceProgress = yield* readProgressHistory(candidate.source.runId)
     const targetProgress = candidate.source.runId === candidate.runId ? [] : yield* readProgressHistory(candidate.runId)
     const performedPhases = [...sourceProgress, ...targetProgress]

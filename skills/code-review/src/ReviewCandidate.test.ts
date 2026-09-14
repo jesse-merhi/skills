@@ -424,4 +424,19 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     assert.include(error.message, "equivalent stable patch")
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
+  test.effect("does not restore invalidated evidence by falling back to an older amended head", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture(["native"])
+    yield* cleanPhase(run, "native")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Candidate B"])
+    const first = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: first.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "Earlier native coverage invalidated" })
+    assert.include((yield* prepareCandidate(run, yield* getScopeBudget(run)).pipe(Effect.flip)).message, "No earlier completed")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Candidate C"])
+    assert.include((yield* prepareCandidate(run, yield* getScopeBudget(run)).pipe(Effect.flip)).message, "No earlier completed")
+    yield* cleanPhase(run, "native")
+    const fresh = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: fresh.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "New native review covers the current candidate" })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, fresh.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
 })
