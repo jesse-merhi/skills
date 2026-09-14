@@ -28,4 +28,6 @@ Use this format, separating questions with a horizontal rule:
 
 When an environmental fact blocks a frontier question, dispatch a background subagent to establish it. Continue with independent frontier questions while that work runs; only dependent questions wait.
 
+Use the configured investigator for that bounded factual question. Supply the objective, worktree and revision or source, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance in the role definition, question sequencing and synthesis with the coordinator, and decisions with the user. If the role is unavailable, report it and establish the fact locally.
+
 Finish when the frontier is empty, every branch has been visited, and no assumption remains silently decided. Obtain the user's confirmation of shared understanding before acting on the result.

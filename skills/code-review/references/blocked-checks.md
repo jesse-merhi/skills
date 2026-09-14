@@ -1,6 +1,6 @@
 # When a check blocks work
 
-Read the command's stopping reasons. Keep the saved run, elapsed time, consumed allowance and completed review results.
+Read the command's stopping reasons. Keep the saved run and completed review results.
 
 ## Diff growth needs diagnosis
 
@@ -18,17 +18,20 @@ review-findings scope-authorize --repo <owner/repo> --repo-path <checkout> \
 
 ## A repair failed twice
 
-Ask before another attempt. After approval, record:
+Stop repeating the same repair. Read both saved failure records, reproduce the current failure when practical, and trace why the approach did not work. Choose a materially different approach that stays within the existing repair authority, then record the diagnosis and new approach:
 
 ```sh
-review-findings progress-record --review <id> --outcome repair-authorized \
-  --finding-id <decision-id> --authorization "<user's approval>" --evidence <decision-reference>
+review-findings progress-record --review <id> --outcome repair-replanned \
+  --finding-id <decision-id> --diagnosis "<why the attempts failed>" \
+  --changed-approach "<what will be done differently>" --evidence <diagnostic-reference>
 ```
 
-Use the finding's `decisionId`; the CLI supplies the saved phase, head and revision. This clears only that finding's failed-attempt count.
+Use the finding's `decisionId`; the CLI supplies the saved phase, head and revision. This clears only that finding's failed-attempt count. Two more failures require another diagnosis and changed approach rather than a blind retry.
 
-## Time or unanswered questions
+Do not ask again solely because two authorized local attempts failed. Ask when the changed approach itself needs a decision or authority, including an explicit user limit, unrelated scope, a new dependency, access, spending, a breaking change or publication. After the user supplies that separate authority, add `--authorization "<user's approval>"` to `repair-replanned` so the saved event retains it. Preserve the failed-attempt evidence and every other saved stopping reason.
 
-At expiry, stop reviews and repairs and report what remains. For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker; it does not restart time or grant unrelated permission.
+## Unanswered questions
+
+For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker. Explicit user task deadlines apply independently of the review workflow.
 
 A completed clean-pass target stops further review of unchanged code, not progression to the next requested review. Keep completed evidence even when the next action is blocked.

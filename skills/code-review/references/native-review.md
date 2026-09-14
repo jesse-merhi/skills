@@ -7,12 +7,12 @@ Use the requested engine, model and effort. Otherwise follow the model policy in
 For normal Codex review, use the launcher that owns the saved review:
 
 ```sh
-review-findings review native <saved scope flags>
+review-findings review native
 ```
 
 It runs the existing `codex-review` helper with the native model and effort pinned by that launcher, saves the output outside the checkout and returns a review ID and report path. The helper uses the host's standalone Codex identity and attempts to archive its successful sessions. Repeating the command while that review is open returns its state without another model request. Record the complete report through the review commands before finishing it.
 
-For an explicit model or effort override, reserve a native review with `review start --phase native`, then use a supported launcher that honors the selection. The pinned helper cannot override its model settings. Pass the exact target and disclose an unavailable configuration.
+For an explicit model or effort override, reserve a native review with `review start --phase native --evidence "Report planned at <run-owned-report-path>"`, then use a supported launcher that honors the selection. The pinned helper cannot override its model settings. Pass the exact target and disclose an unavailable configuration.
 
 The standalone helper remains available for separately requested use: `codex-review --mode branch --base <base>` or `codex-review --mode commit --commit <sha>`. Check the target before and after a standalone invocation. A changed target, dirty checkout, nonzero exit or missing result is incomplete. Preserve its output and finish the reserved review as blocked when the result cannot apply to its saved target.
 
@@ -27,6 +27,8 @@ Workflow({ name: "code-review", args: "high <target>" })
 ```
 
 Use this fixed-high workflow only when the user selects Claude review and authorizes high effort. Use a base range such as `main...HEAD`, a commit SHA or the checked-out PR number. Call the built-in workflow rather than a similarly named personal slash command. Supply the target, not a custom prompt. Wait for completion and follow its documented cleanup.
+
+This built-in workflow is the native phase. Do not substitute the optional `findings-reviewer` Agent; that findings-only role is reserved for the independent cold phase.
 
 Check both `CONFIRMED` and `PLAUSIBLE` candidates. An interrupted or missing result is incomplete. Do not assume the native reviewer read the same skill inputs as a custom reviewer.
 

@@ -46,6 +46,8 @@ Finish the related edits, then run broad tests, lint, typecheck and builds. Run 
 
 When delegating, assign one owner for shared validation before workers start checks. Workers return their changes and focused evidence; the owner validates the integrated batch. Reuse results while the relevant code, callers, dependencies, fixtures, configuration and environment still apply.
 
+When delegation is useful, use `Agent` with `subagent_type: "implementer"` for an owned implementation/test slice. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. If the role is unavailable, report it and continue suitable work locally.
+
 Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After further edits or review repairs, rerun the affected checks and required final checks; an individual file edit is not a reason to repeat the whole validation set. Broaden verification when the impact cannot be bounded or a failure or unresolved concern requires it. Stop on the first test error and diagnose it before rerunning.
 
 ## Check cost and finish

@@ -28,4 +28,7 @@ Use this format, separating questions with a horizontal rule:
 
 When an environmental fact blocks a frontier question, dispatch a background subagent to establish it. Continue with independent frontier questions while that work runs; only dependent questions wait.
 
+Use `spawn_agent` with `agent_type: "investigator"` for the blocking factual question. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Continue independent questions while it runs; keep synthesis here and decisions with the user. If the role is unavailable, report it and continue suitable work locally.
+
+
 Finish when the frontier is empty, every branch has been visited, and no assumption remains silently decided. Obtain the user's confirmation of shared understanding before acting on the result.

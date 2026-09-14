@@ -1,5 +1,7 @@
 # Final output
 
+If the user explicitly waived review, record the waiver and its scope in the task or PR closeout. Do not invent completed phases or a review run for a waiver-only result. For performed review work, report its actual evidence and limits using the saved records below.
+
 Use the saved run identity, including `--db <path>` if the run uses a nondefault database. Retrieve the completed records:
 
 ```sh
@@ -17,13 +19,7 @@ Explain what changed for the user, what was observed, why it matters, important 
 
 Lead with whether review finished and fixes were pushed or remain local. Give the exact target and final SHA, native/cold phase results and evidence, validation, unresolved decisions and limits. A missing `reviewed_head` means the saved run is incomplete; an exact SHA alone does not prove both phases ran. Keep enough evidence for a later workflow to check the reviewed head without relying on chat memory.
 
-Include these whole-run counts from the full JSON:
-
-- **Raised:** `review_candidates.length`, counting each finding ID once; repeated `finding_matches` are not new findings.
-- **Fixed:** candidates whose `status` is `fixed`.
-- **Discarded:** candidates whose `status` is `rejected`, with brief reasons. Investigating, deferred and provisional work is not discarded or fixed.
-
-The summary's `total_findings` excludes rejected and investigating candidates; it is not the raised count. Reconcile other statuses with the full candidate list. Keep unanswered decisions, nonblocking follow-ups, owner-declined deferred work and accepted residual risk distinct. State last-pass results separately: a clean last pass does not erase earlier findings or repairs.
+Summarize the whole run's actionable findings, fixes, unresolved concerns and meaningful verified rejections where they help explain the outcome. Immediately discarded ideas need no report, count or category summary. Use saved candidate IDs and statuses; repeated `finding_matches` are not new findings. The summary's `total_findings` excludes rejected and investigating candidates. Keep unanswered decisions, nonblocking follow-ups, owner-declined deferred work and accepted residual risk distinct. State last-pass results separately: a clean last pass does not erase earlier findings or repairs.
 
 Optionally show up to three highest-priority and three lowest-priority rated runtime findings, with IDs, outcomes and why they matter. Use CLI ratings; choose the highest group first and the lowest from the remaining IDs so fewer than six never produces duplicates. Maintenance findings have no runtime priority: describe their reading/change cost separately.
 
@@ -36,4 +32,4 @@ git diff --numstat "<starting-sha>" "<final-sha>"
 
 Sum numeric additions/deletions; report binary changes separately. If the starting SHA is unavailable, say the review-only count is unavailable rather than guessing.
 
-Include the fully populated `review-findings closeout --json` command above to retrieve the complete audit. Add any other useful explanation freely; no fixed extra sections are required. Run the draft through `speak-fking-english` without losing counts, evidence or open work.
+Include the fully populated `review-findings closeout --json` command above to retrieve the complete audit. Add any other useful explanation freely; no fixed extra sections are required. Run the draft through `speak-fking-english` without losing evidence or open work.

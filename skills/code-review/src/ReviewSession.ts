@@ -36,7 +36,8 @@ export const checkReviewTarget = Effect.fn("ReviewSession.checkTarget")(function
   const scope = yield* getScopeBudget(reviewRun(review))
   const git = yield* trustedExecutable("git", review.repoPath)
   const head = scope.pinnedHeadOid || (yield* checkedTrimmedText(git, ["rev-parse", "HEAD"], { cwd: review.repoPath }))
-  if (head !== review.head || scope.baseOid !== review.baseOid) return yield* new ProgressConflict({ message: "Review target changed; finish this review as blocked and review the intended commit" })
+  // Blocked handles retain their historical head while supported repairs advance the checkout.
+  if ((review.status !== "blocked" && head !== review.head) || scope.baseOid !== review.baseOid) return yield* new ProgressConflict({ message: "Review target changed; finish this review as blocked and review the intended commit" })
 })
 
 export const requireOpenReview = Effect.fn("ReviewSession.requireOpen")(function*(reviewId: string) {
@@ -115,5 +116,15 @@ export const claimNativeLaunch = Effect.fn("ReviewSession.claimNativeLaunch")(fu
     const sql = yield* SqlClient.SqlClient
     yield* sql`update review_invocations set launched = 1 where id = ${reviewId}`
     return true
+  }))
+})
+
+/** Recover evidence against the saved revision without reopening or crediting the interrupted review. */
+export const withBlockedReview = <A, E, R>(reviewId: string, action: (review: Review) => Effect.Effect<A, E, R>) => Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  return yield* sql.withTransaction(Effect.gen(function*() {
+    const review = yield* getReview(reviewId)
+    if (review.status !== "blocked") return yield* new ProgressConflict({ message: "Recovery requires a blocked review; preserve its interruption evidence first" })
+    return yield* action(review)
   }))
 })

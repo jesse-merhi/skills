@@ -14,7 +14,7 @@ Compare applicable recorded counterevidence before repeating an investigation. A
 
 Use `review-findings schema` for evidence and rating requirements. Assess likelihood and impact even when the reviewer supplied a priority; rare destructive failures matter. Keep maintenance cost separate. The CLI derives severity and disposition but cannot verify the evidence. Accept runtime findings only with the proof above; leave unresolved candidates unrated and explain rejections.
 
-Record every checked candidate, including rejected and uncertain ones, through `record --review <id>` in the code-mode call for the complete report. Match repeated reports to the same open or rejected cause with `record --match-of`. Include the revision and why the cause and counterevidence still apply. Changed facts requiring a new judgment, or recurrence after a fix, need a new decision linked to the earlier ID.
+Record actionable findings, unresolved concerns and meaningful verified rejections through `record --review <id>` in batches as evidence becomes available, then reconcile the complete report. Omit immediately discarded speculation without individual records or summary counts. Match meaningful repeated reports to the same open or rejected cause with `record --match-of`. Include the revision and why the cause and counterevidence still apply. Changed facts requiring a new judgment, or recurrence after a fix, need a new decision linked to the earlier ID.
 
 ## Choose and verify repairs
 
@@ -28,6 +28,6 @@ Use `writing-good-tests` for behavior or test changes, `reducing-cognitive-load`
 
 Verify the repaired behavior, affected siblings and behavior the fix must preserve. For validation, authorization or selection changes, test the intended accepted case and a realistic near-match that must stay rejected. Trace downstream decisions and effects; acceptance alone is insufficient. Add coverage for distinct realistic regressions not already protected. Stop on the first failure and diagnose before rerunning. Check the combined patch once per affected check set.
 
-Record repair attempts and checks through the review commands, using `decisionId`, not database `issueId`. Record the applied attempt while the finding is open, then record verification. Mark a successful repair fixed; record a failed attempt as `repair-unsuccessful` and keep its finding open. Two failures require owner authorization before a third. Record the owner's decision through the existing authorization command; do not duplicate saved attempts.
+Record repair attempts and checks through the review commands, using `decisionId`, not database `issueId`. Record the applied attempt while the finding is open, then record verification. Mark a successful repair fixed; record a failed attempt as `repair-unsuccessful` and keep its finding open. After two failures, use the blocked-check instructions to diagnose the failures and record a materially changed approach before continuing. Do not duplicate saved attempts or turn the failed-repair threshold into another approval request for already-authorized local work.
 
 Run `review-findings scope-check` with the saved scope after the repairs or a failed attempt. Resolve blockers before continuing, then commit and return to review. Preserve unrelated edits.

@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+import { runInstaller } from "./packages/codex-profiles/install.mjs";
+
+runInstaller();

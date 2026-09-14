@@ -41,6 +41,26 @@ const candidate = (overrides: Partial<FindingInput> = {}): FindingInput => ({
 const accepted = candidate({ decisionId: "D2", status: "open", fingerprint: "duplicate owner", summary: "Duplicated policy", handling: "fix", rejectionGate: "", decision: "", maintenanceEvidence: "Same policy has two owners", presentCost: "Both owners require changes for one update", rootCause: "Duplicated authority", recommendedFix: "Use the existing owner", interventionJustification: "Remove the duplicate while preserving behavior" })
 
 layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory:" })))("managed review sessions", test => {
+  test.effect("resumes and completes a legacy timed review without changing its saved history", () => Effect.gen(function*() {
+    const { run } = yield* fixture()
+    const sql = yield* SqlClient.SqlClient
+    yield* sql`update review_runs set started_at = -28800 where id = ${run.runId}`
+    yield* sql`update review_run_limits set settings = ${JSON.stringify({ timeBudgetHours: 1, consultCap: 5, coldCleanTarget: 1, nativeCleanTarget: 1, requiredPhases: ["native"], requireCurrentHead: true })} where run_id = ${run.runId}`
+    yield* sql`create table if not exists review_budget_extensions (run_id text not null, request_id text not null, receipt text not null, primary key(run_id, request_id))`
+    yield* sql`insert into review_budget_extensions (run_id, request_id, receipt) values (${run.runId}, 'legacy-extension', ${JSON.stringify({ requestId: "legacy-extension", additionalSeconds: 3600, authorization: "Historical authorization", runId: run.runId, oldDeadline: -25200, newDeadline: -21600, createdAt: 0 })})`
+    yield* recordFinding(run, candidate())
+    const findingsBefore = yield* sql`select decision_id, status from issues where run_id = ${run.runId}`
+    const review = yield* startReview(run, "native", "legacy review invocation")
+    const resumed = yield* startReview(run, "native", "resumed legacy review invocation")
+    assert.strictEqual(resumed.reviewId, review.reviewId)
+    assert.strictEqual(resumed.resumed, true)
+    yield* finishReview(review.reviewId, "clean", "legacy review completed")
+    assert.strictEqual((yield* getReview(review.reviewId)).status, "finished")
+    assert.deepStrictEqual(yield* sql`select request_id from review_budget_extensions where run_id = ${run.runId}`, [{ request_id: "legacy-extension" }])
+    assert.deepStrictEqual(yield* sql`select decision_id, status from issues where run_id = ${run.runId}`, findingsBefore)
+    assert.strictEqual((yield* reviewProgress(run))?.revision, 2)
+  }).pipe(Effect.scoped), { timeout: 30000 })
+
   test.effect("records diff growth as a diagnostic and continues the authorized review", () => Effect.gen(function*() {
     const { run, git, fs } = yield* fixture()
     yield* fs.writeFileString(`${run.repoPath}/sample.txt`, "changed\nextra\nanother\n")

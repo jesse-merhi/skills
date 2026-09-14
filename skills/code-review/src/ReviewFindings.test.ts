@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 
-import { allowedScopeGrowth, decodeFinding, DEFAULT_SCOPE_GROWTH_PERCENT, deriveRuntimeOutcome, type FindingInput } from "./ReviewFindings.ts"
+import { allowedScopeGrowth, decodeFinding, DEFAULT_SCOPE_GROWTH_PERCENT, deriveRuntimeOutcome, type FindingInput, formatFindingAcceptedShape } from "./ReviewFindings.ts"
 
 const runtimeFinding = {
   decisionId: "D1",
@@ -46,6 +46,27 @@ describe("review scope growth", () => {
 })
 
 describe("review finding risk outcomes", () => {
+  it("preserves every status already valid for the derived disposition in recovery shapes", () => {
+    const cases = [
+      ["accept", "open"], ["accept", "fixed"], ["accept", "provisional"], ["accept", "reopened"],
+      ["investigate", "open"], ["investigate", "reopened"],
+      ["consult", "open"], ["consult", "reopened"],
+      ["follow-up", "deferred"], ["residual", "deferred"], ["reject", "rejected"]
+    ] as const
+    for (const [disposition, status] of cases) {
+      const acceptedShape = formatFindingAcceptedShape({
+        findingKind: "runtime",
+        status,
+        likelihood: "likely",
+        maintenanceEvidence: "",
+        presentCost: "",
+        disposition,
+        ownerResolution: ""
+      })
+      assert.include(acceptedShape, `--status ${status}`, disposition)
+    }
+  })
+
   it("derives every severity and disposition from likelihood and impact", () => {
     const cases = [
       ["certain", "low", "p3", "accept"], ["certain", "medium", "p2", "accept"],

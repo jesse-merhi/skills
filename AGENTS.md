@@ -20,8 +20,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
   consulting relevant domain skills and retaining the mandatory review lenses
   below. The coordinator uses code-review's findings guide for those candidates;
   the findings CLI owns severity and disposition.
-- The reviewer returns candidates with their rating evidence, rejected candidates,
-  verification limits, and requested coverage evidence to the coordinator. It
+- The reviewer returns supported candidates with their rating evidence, unresolved
+  concerns, meaningful verified rejections, verification limits and requested
+  coverage evidence. Omit immediately discarded speculation; no individual
+  record or discarded-thought summary is required. It
   does not edit code, write the findings registry, manage fixes or reruns,
   publish, or run writing and handoff workflows for its internal report. The coordinator records the
   returned evidence, obtains CLI-derived severity and disposition, and handles
@@ -164,11 +166,14 @@ itself model generation.
   with the coordinator. A worker stops and returns evidence on failure or
   ambiguity.
 
-- Batch independent calls into one turn. Reads, greps, and status checks that do
-  not depend on each other belong in a single request: `Promise.all` inside one
-  Codex code-mode cell, or several tool calls in one response where the harness
-  runs them natively. Keep dependent calls, writes, and approval-sensitive
-  actions serial.
+- Batch independent calls while bounding their combined output. Retain full
+  structured results in session storage or run-owned files, inspect every result,
+  and emit the fields needed for the next decision. Size the combined response
+  against the outer tool's output allowance, not only each inner call's limit.
+  Split required document text into batches that fit and read every required
+  part; truncation is not a completed read. In Codex, use `Promise.allSettled`
+  inside code mode for independent reads. Keep dependent calls, writes and
+  approval-sensitive actions serial.
 - Resume existing operations using completion notifications or bounded waits;
   avoid repeated status polling. Load `wait-efficiently` for CI monitoring,
   prolonged commands, timed delays, or coordinating pending agents. Ordinary
@@ -221,17 +226,22 @@ itself model generation.
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
 - Review gate: before marking any PR ready, asking for human sign-off, or
-  merging, verify that `code-review` completed on the exact current head. A
+  merging, verify that `code-review` completed on the exact current head unless
+  the user explicitly waived that review. A
   valid closeout names that head and records the native phase, cold phase,
   findings, review fixes, verification, and anything still open. Treat missing,
   stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
-  review do not count. Tell the user and use the native structured question UI
-  to ask whether to run `code-review` or proceed without it for this PR and
-  head. Do not start the expensive review automatically. An explicitly invoked
-  named workflow that requires `code-review` and grants that authority counts
-  as the user's review decision; record it and continue without asking again.
-  An unanswered review decision blocks readiness and merge. Record an explicit
-  waiver in closeout.
+  review do not count. Infer review authority from the user's intended outcome
+  and existing session authorization, including the ordinary review needed to
+  complete that outcome. No exact phrase or named workflow is required. Continue
+  authorized review after repairs or new commits: a changed head needs fresh
+  evidence, not automatically fresh permission. Honor explicit waivers and
+  narrower requests; a status question alone does not authorize a new review.
+  Ask only when authority or a material decision is genuinely missing, explaining
+  the unresolved choice. Until resolved, do not mark ready or merge. Record an
+  explicit waiver and its scope in the task or PR closeout; a waiver-only
+  closeout needs no fabricated review run. The waiver satisfies only this review
+  gate, leaving validation, sign-off and other delivery requirements in force.
 - Sign-off gate: after the review decision, proof, validation, and CI pass,
   summarize the review findings and fixes or the explicit waiver, then check
   for a thumbs-up (`+1`) reaction. Resolve the expected human login from task or
