@@ -391,3 +391,7 @@ If you find a secret, unsafe install behaviour, a private path that should not
 be public, or a helper script that can mutate a machine without clear consent,
 please use GitHub private vulnerability reporting rather than a public issue.
 See [`SECURITY.md`](SECURITY.md).
+
+## Local PR turn queue
+
+Authorized PR merges use the external `repo-queue` skill to wait their turn before final validation and merge. [Pinned installation and supported agent surfaces](external.md#local-pr-turns) live in the external ownership table; the queue code and skill stay in their own repository.
