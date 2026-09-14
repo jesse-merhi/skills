@@ -299,8 +299,10 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
     const requirements = yield* targetRequirements(candidate.runId)
     const counts = phaseCounts(candidate.source.reviews)
     const missing = requirements.required.filter((phase) => counts[phase] < requirements.targets[phase])
+    const reviewedPhases = candidate.source.reviews.map(review => review.phase)
+    const effectivePhases = [...new Set([...requirements.required, ...reviewedPhases])]
     const affected = input.decision === "broad"
-      ? requirements.required
+      ? effectivePhases
       : input.decision === "focused"
       ? [...new Set([...requestedAffected, ...missing])]
       : []

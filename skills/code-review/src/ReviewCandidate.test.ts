@@ -9,9 +9,10 @@ import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.
 import { assessCandidate, prepareCandidate } from "./ReviewCandidate.ts"
 import { authorizeScopeBudget, checkScopeBudget, completeScopeBudget, type FindingInput, getScopeBudget, initialize, recordFinding, type ReviewRun, startScopeBudget } from "./ReviewFindings.ts"
 import { readReviewLimits } from "./ReviewLimits.ts"
+import { type ProgressEvent, recordProgress } from "./ReviewProgress.ts"
 import { finishReview, startReview } from "./ReviewSession.ts"
 
-const fixture = Effect.fn("ReviewCandidate.fixture")(function*(requiredPhases: ReadonlyArray<"native" | "cold"> = ["native", "cold"], cleanTarget = 1) {
+const fixture = Effect.fn("ReviewCandidate.fixture")(function*(requiredPhases: ReadonlyArray<"native" | "cold"> = ["native", "cold"], cleanTarget = 1, requireCurrentHead = true) {
   yield* initialize()
   const fs = yield* FileSystem.FileSystem
   const repoPath = yield* fs.makeTempDirectoryScoped({ prefix: "review-candidate." })
@@ -29,7 +30,7 @@ const fixture = Effect.fn("ReviewCandidate.fixture")(function*(requiredPhases: R
   const run: ReviewRun = { repo: "fixture", repoPath, branch: "feature", target: "fixture", base: "main", head: "", status: "active", decisionLog: "" }
   const scope = yield* startScopeBudget(run, {
     scopeSummary: "Candidate evidence fixture",
-    limits: { nativeCleanTarget: cleanTarget, coldCleanTarget: cleanTarget, requiredPhases, requireCurrentHead: true }
+    limits: { nativeCleanTarget: cleanTarget, coldCleanTarget: cleanTarget, requiredPhases, requireCurrentHead }
   })
   const savedRun = { ...run, runId: scope.runId }
   return { fs, git, run: savedRun }
@@ -251,5 +252,58 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
     yield* cleanPhase(run, "native")
     assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("requires an explicitly affected phase with default completion settings", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "focused",
+      affectedPhases: ["native"],
+      semanticImpactEvidence: "Native evidence is explicitly invalidated under the default optional phase settings."
+    })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("broad assessment invalidates phases already run under default settings", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    const assessed = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "broad",
+      affectedPhases: [],
+      semanticImpactEvidence: "All review evidence already gathered for this candidate is invalidated."
+    })
+    assert.deepStrictEqual(assessed.affectedPhases, ["native"])
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("does not combine ClawSweeper clean passes separated by another head", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture(["native"], 1, false)
+    yield* cleanPhase(run, "native")
+    const currentHead = yield* git(["rev-parse", "HEAD"])
+    const bot = (expectedRevision: number, head: string, outcome: ProgressEvent["outcome"]) => ({
+      expectedRevision, phase: "clawsweeper" as const, head, outcome, evidence: `${head} ${outcome}`
+    })
+    yield* recordProgress(run.runId, bot(2, currentHead, "started"))
+    yield* recordProgress(run.runId, bot(3, currentHead, "clean"))
+    yield* recordProgress(run.runId, bot(4, "other-head", "started"))
+    yield* recordProgress(run.runId, bot(5, "other-head", "blocked"))
+    yield* recordProgress(run.runId, bot(6, currentHead, "started"))
+    yield* recordProgress(run.runId, bot(7, currentHead, "clean"))
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "Native evidence still applies; bot convergence remains independently required."
+    })
+    assert.include((yield* readReviewLimits(run.runId, currentHead)).incompletePhases, "clawsweeper")
   }).pipe(Effect.scoped), { timeout: 30_000 })
 })

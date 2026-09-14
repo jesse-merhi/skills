@@ -64,7 +64,11 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
     let sequence = 0
     let maximum = 0
     for (const event of progress) {
-      if (event.revision <= cutoff || event.phase !== savedPhase || event.head !== currentHead) continue
+      if (event.revision <= cutoff || event.phase !== savedPhase) continue
+      if (event.head !== currentHead) {
+        if (savedPhase === "clawsweeper") sequence = 0
+        continue
+      }
       if (event.outcome === "clean" || event.outcome === "clean-except-queue") {
         sequence++
         maximum = Math.max(maximum, sequence)
@@ -75,6 +79,9 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
     if (maximum >= cleanTargets[savedPhase]) completed.add(savedPhase)
   }
   const incompletePhases = [...latest].filter(([savedPhase, event]) => !completed.has(savedPhase) && (settings.requireCurrentHead === true || event.cleanStreak < cleanTargets[savedPhase])).map(([savedPhase]) => savedPhase)
+  for (const affected of candidate?.affectedPhases ?? []) {
+    if (!completed.has(affected) && !incompletePhases.includes(affected)) incompletePhases.push(affected)
+  }
   for (const required of settings.requiredPhases ?? []) {
     if (!completed.has(required) && !incompletePhases.includes(required)) incompletePhases.push(required)
   }
