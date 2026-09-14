@@ -439,4 +439,22 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     assert.deepStrictEqual((yield* readReviewLimits(run.runId, fresh.candidate.head)).incompletePhases, [])
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
+  test.effect("blocks completion after restoring a head whose evidence was invalidated", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    const original = yield* git(["rev-parse", "HEAD"])
+    const inherited = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: inherited.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Earlier candidate inherited its clean review" })
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Invalidated candidate B"])
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "Earlier native coverage is invalid" })
+    yield* git(["reset", "--hard", original])
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, original)).incompletePhases, ["native"])
+    yield* checkScopeBudget(run, "Restored candidate checked")
+    const blocked = yield* completeScopeBudget(run, "Must not complete invalidated evidence").pipe(Effect.flip)
+    assert.include(blocked.message, "native")
+    yield* cleanPhase(run, "native")
+    yield* completeScopeBudget(run, "Fresh native review covers restored candidate")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
 })

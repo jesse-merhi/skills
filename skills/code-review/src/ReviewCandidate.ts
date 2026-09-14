@@ -29,6 +29,7 @@ const SourceReview = Schema.Struct({
 export type SourceReview = typeof SourceReview.Type
 
 const CandidateRow = Schema.Struct({
+  sequence: Schema.Number,
   id: Text,
   run_id: Text,
   source_run_id: Text,
@@ -103,14 +104,16 @@ const commitIdentity = Effect.fn("ReviewCandidate.commitIdentity")(function*(rep
   return { baseOid: base, comparisonBaseOid, headOid: head, treeOid: tree, patchId }
 })
 
-const phaseInvalidations = Effect.fn("ReviewCandidate.phaseInvalidations")(function*(runId: string) {
+export const phaseInvalidations = Effect.fn("ReviewCandidate.phaseInvalidations")(function*(runId: string) {
   const sql = yield* SqlClient.SqlClient
-  const rows = yield* sql<{ readonly target_progress_revision: number; readonly affected_phases_json: string }>`select target_progress_revision, affected_phases_json
+  const rows = yield* sql<{ readonly target_progress_revision: number; readonly affected_phases_json: string; readonly sequence: number }>`select target_progress_revision, affected_phases_json, rowid as sequence
     from review_candidates where run_id = ${runId} and status = 'assessed'`
-  const cutoffs = new Map<CandidatePhase, number>()
+  const cutoffs = new Map<CandidatePhase, { readonly progressRevision: number; readonly sequence: number }>()
   for (const row of rows) {
     const phases = yield* Schema.decodeUnknownEffect(PhasesJson)(row.affected_phases_json)
-    for (const phase of phases) cutoffs.set(phase, Math.max(cutoffs.get(phase) ?? 0, row.target_progress_revision))
+    for (const phase of phases) {
+      if (row.sequence > (cutoffs.get(phase)?.sequence ?? 0)) cutoffs.set(phase, { progressRevision: row.target_progress_revision, sequence: row.sequence })
+    }
   }
   return cutoffs
 })
@@ -122,7 +125,7 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
       and outcome in ('clean', 'clean-except-queue') and head = ${head} and base_oid = ${baseOid} order by start_revision desc`
   const requirements = yield* targetRequirements(runId)
   const history = yield* readProgressHistory(runId)
-  const inheritedRows = yield* sql`select * from review_candidates where run_id = ${runId} and status = 'assessed'
+  const inheritedRows = yield* sql`select *, rowid as sequence from review_candidates where run_id = ${runId} and status = 'assessed'
     and candidate_head_oid = ${head} and candidate_base_oid = ${baseOid}
     order by assessed_at desc, created_at desc, rowid desc limit 1`
   const inheritedRow = (yield* Schema.decodeUnknownEffect(Schema.Array(CandidateRow))(inheritedRows))[0]
@@ -130,7 +133,8 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
   const invalidations = yield* phaseInvalidations(runId)
   const eligible: Array<SourceReview> = []
   for (const phase of ["native", "cold"] as const) {
-    const cutoff = invalidations.get(phase) ?? 0
+    const invalidation = invalidations.get(phase)
+    const cutoff = invalidation?.progressRevision ?? 0
     let sequence: Array<number> = []
     let best: Array<number> = []
     for (const event of history) {
@@ -148,7 +152,7 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
       eligible.push(...yield* Schema.decodeUnknownEffect(Schema.Array(SourceReview))(direct))
       continue
     }
-    const carried = inherited === undefined || inherited.targetProgressRevision < cutoff || inherited.decision === "broad" || inherited.affectedPhases.includes(phase)
+    const carried = inherited === undefined || inherited.sequence <= (invalidation?.sequence ?? 0) || inherited.decision === "broad" || inherited.affectedPhases.includes(phase)
       ? []
       : inherited.source.reviews.filter(review => review.phase === phase).slice(0, requirements.targets[phase])
     if (carried.length === requirements.targets[phase]) eligible.push(...carried)
@@ -201,6 +205,7 @@ const decodeCandidate = Effect.fn("ReviewCandidate.decode")(function*(row: Candi
   const decision = row.decision.length === 0 ? undefined : yield* Schema.decodeUnknownEffect(CandidateDecision)(row.decision)
   return {
     candidateId: row.id,
+    sequence: row.sequence,
     runId: row.run_id,
     status: row.status,
     source: {
@@ -232,7 +237,7 @@ export type ReviewCandidate = Effect.Success<ReturnType<typeof decodeCandidate>>
 
 export const getCandidate = Effect.fn("ReviewCandidate.get")(function*(candidateId: string) {
   const sql = yield* SqlClient.SqlClient
-  const rows = yield* sql`select * from review_candidates where id = ${candidateId}`
+  const rows = yield* sql`select *, rowid as sequence from review_candidates where id = ${candidateId}`
   const row = (yield* Schema.decodeUnknownEffect(Schema.Array(CandidateRow))(rows))[0]
   if (row === undefined) return yield* new CandidateConflict({ message: "Unknown candidate ID; use the ID returned by review candidate-prepare" })
   return yield* decodeCandidate(row)
@@ -325,7 +330,7 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
     const currentRunIds = new Set(currentRunReviews.map(review => review.id))
     const applicable = candidate.source.reviews.filter(review => {
       const cutoff = invalidations.get(review.phase)
-      return cutoff === undefined || (currentRunIds.has(review.reviewId) && review.startRevision >= cutoff)
+      return cutoff === undefined || (currentRunIds.has(review.reviewId) && review.startRevision >= cutoff.progressRevision)
     })
     const counts = phaseCounts(applicable)
     const sourceProgress = yield* readProgressHistory(candidate.source.runId)
@@ -387,7 +392,7 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
 
 export const candidateCoverage = Effect.fn("ReviewCandidate.coverage")(function*(runId: string, head: string, baseOid: string) {
   const sql = yield* SqlClient.SqlClient
-  const rows = yield* sql`select * from review_candidates where run_id = ${runId} and status = 'assessed'
+  const rows = yield* sql`select *, rowid as sequence from review_candidates where run_id = ${runId} and status = 'assessed'
     and candidate_head_oid = ${head} and candidate_base_oid = ${baseOid} order by assessed_at desc, created_at desc, rowid desc limit 1`
   const row = (yield* Schema.decodeUnknownEffect(Schema.Array(CandidateRow))(rows))[0]
   if (row === undefined) return undefined

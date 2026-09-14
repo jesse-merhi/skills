@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import * as SqlClient from "effect/unstable/sql/SqlClient"
 
-import { candidateCoverage, type CandidatePhase } from "./ReviewCandidate.ts"
+import { candidateCoverage, type CandidatePhase, phaseInvalidations } from "./ReviewCandidate.ts"
 import { type Progress, type ProgressEvent, readProgressHistory } from "./ReviewProgress.ts"
 
 const PositiveCount = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0))
@@ -41,6 +41,7 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   const progress = yield* readProgressHistory(runId)
   const cleanTargets = { native: settings.nativeCleanTarget ?? 2, cold: settings.coldCleanTarget, clawsweeper: 2 } as const
   const candidate = row === undefined ? undefined : yield* candidateCoverage(runId, currentHead, row.base_oid)
+  const invalidations = yield* phaseInvalidations(runId)
   const inheritedCounts: Readonly<Record<CandidatePhase, number>> = candidate === undefined ? { native: 0, cold: 0 } : {
     native: candidate.source.reviews.filter(review => review.phase === "native").length,
     cold: candidate.source.reviews.filter(review => review.phase === "cold").length
@@ -48,18 +49,23 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
   const inheritedPhases = candidate === undefined || candidate.decision === "broad"
     ? new Set<CandidatePhase>()
     : new Set((["native", "cold"] as const).filter(savedPhase =>
-      !candidate.affectedPhases.includes(savedPhase) && inheritedCounts[savedPhase] >= cleanTargets[savedPhase]
+      !candidate.affectedPhases.includes(savedPhase) && candidate.sequence > (invalidations.get(savedPhase)?.sequence ?? 0)
+      && inheritedCounts[savedPhase] >= cleanTargets[savedPhase]
     ))
   const latest = new Map<ReviewPhase, Progress>()
   const completed = new Set<ReviewPhase>(inheritedPhases)
   for (const event of progress) {
     latest.set(event.phase, event)
-    if ((row?.evidence_revision ?? 0) === 0 && candidate === undefined && event.head === currentHead && event.cleanStreak >= cleanTargets[event.phase]) completed.add(event.phase)
+    const invalidated = event.phase !== "clawsweeper" && invalidations.has(event.phase)
+    if ((row?.evidence_revision ?? 0) === 0 && candidate === undefined && !invalidated
+      && event.head === currentHead && event.cleanStreak >= cleanTargets[event.phase]) completed.add(event.phase)
   }
   for (const savedPhase of ["native", "cold", "clawsweeper"] as const) {
-    const cutoff = candidate?.affectedPhases.some(phase => phase === savedPhase) === true
-      ? Math.max(row?.evidence_revision ?? 0, candidate.targetProgressRevision)
-      : row?.evidence_revision ?? 0
+    const cutoff = Math.max(
+      row?.evidence_revision ?? 0,
+      savedPhase === "clawsweeper" ? 0 : invalidations.get(savedPhase)?.progressRevision ?? 0,
+      candidate?.affectedPhases.some(phase => phase === savedPhase) === true ? candidate.targetProgressRevision : 0
+    )
     if (cutoff === 0 && candidate === undefined) continue
     let sequence = 0
     let maximum = 0
@@ -79,7 +85,7 @@ export const readReviewLimits = Effect.fn("ReviewLimits.read")(function*(runId: 
     if (maximum >= cleanTargets[savedPhase]) completed.add(savedPhase)
   }
   const incompletePhases = [...latest].filter(([savedPhase, event]) => !completed.has(savedPhase) && (settings.requireCurrentHead === true || event.cleanStreak < cleanTargets[savedPhase])).map(([savedPhase]) => savedPhase)
-  for (const affected of candidate?.affectedPhases ?? []) {
+  for (const affected of new Set([...(candidate?.affectedPhases ?? []), ...invalidations.keys()])) {
     if (!completed.has(affected) && !incompletePhases.includes(affected)) incompletePhases.push(affected)
   }
   for (const required of settings.requiredPhases ?? []) {
