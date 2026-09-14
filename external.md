@@ -65,7 +65,7 @@ repo.
 ## Local PR turns
 
 - **Source:** [jesse-merhi/repo-queue](https://github.com/jesse-merhi/repo-queue), the upstream RepoQ project.
-- **Pinned revision:** `0ea788bd5e34db320b06641761a460fbd652b72d` from [PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This pins the TypeScript package and complete skill variants. Update it deliberately after validation; do not track a moving branch.
+- **Pinned revision:** `2a6dd31aba4edc193abb638c0ac5d7acb761fb7f` from [PR #1](https://github.com/jesse-merhi/repo-queue/pull/1). This pins the TypeScript package and complete skill variants. Update it deliberately after validation; do not track a moving branch.
 - **Ownership:** repo-queue owns the CLI and complete skill variants. This repository owns the default merge-routing rule in `AGENTS.md`. Do not copy the workflow into a repo-owned skill or change dotfiles to install it.
 - **Verified scope:** Codex desktop and live Claude Code each passed registration → original-session wake → claim → done in isolated synthetic queues. Live Claude stays open; a restricted native sender uses its normal configured permission mode and consumes an extra sender model turn. Native acceptance can still be held or refused by Claude; only a successful claim proves owner action. Exited Claude sessions retain resume support. Desktop Code is eligible when it exposes a compatible local inbox; general Chat/Cowork and cloud sessions are separate surfaces. Follow upstream recovery guidance instead of forcing delivery.
 
@@ -76,7 +76,7 @@ This entry is for Codex and Claude Code only. Run installation when the user req
 Obtain the exact revision, build its package, and install the compiled command in a stable prefix. Node 24.13+ and npm are prerequisites; install missing prerequisites only with the user's authority. Do not run the background service from a temporary development worktree:
 
 ```sh
-queue_revision=0ea788bd5e34db320b06641761a460fbd652b72d
+queue_revision=2a6dd31aba4edc193abb638c0ac5d7acb761fb7f
 queue_checkout="$HOME/.local/share/repo-queue/$queue_revision"
 mkdir -p "$HOME/.local/share/repo-queue" "$HOME/.local/bin"
 gh repo clone jesse-merhi/repo-queue "$queue_checkout" -- --no-checkout
