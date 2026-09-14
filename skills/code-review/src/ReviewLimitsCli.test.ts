@@ -200,6 +200,62 @@ test.effect("CLI records a whole report with a handle, repairs only after finish
   assert.lengthOf(yield* sql`select * from review_finding_matches`, 1)
 }).pipe(Effect.scoped), { timeout: 60000 })
 
+test.effect("interrupted review retains findings and permits repair without crediting incomplete coverage", () => Effect.gen(function*() {
+  const { cli, invoke, reviewStart, database, repository, git } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture repairs", "--native-clean-target", "1", "--required-phase", "native", "--required-phase", "cold", "--require-current-head", "--json"])
+  const started = decode(yield* reviewStart())
+  assert.isDefined(started.reviewId)
+  const handle = ["--review", started.reviewId ?? ""]
+  const finding = ["--decision-id", "RECOVERED", "--source", "saved reviewer output", "--fingerprint", "duplicate owner", "--summary", "Duplicated policy", "--finding-kind", "maintenance", "--maintenance-evidence", "Two owners for policy", "--present-cost", "Every policy update needs two edits", "--root-cause", "Duplicated authority", "--recommended-fix", "Use existing owner", "--intervention-justification", "Remove duplicate while preserving behavior", "--fix-scope", "local", "--handling", "fix"]
+  const prematureRecovery = yield* invoke(["record", ...handle, ...finding, "--status", "open", "--recover", "partial output"]).pipe(Effect.flip)
+  assert.include(prematureRecovery.stderr, "blocked review")
+  yield* invoke(["record", ...handle, ...finding, "--status", "open"])
+  const files = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Array(Schema.Struct({ path: Schema.String, changeId: Schema.String }))))(yield* cli("coverage-status", ["--json"]))
+  for (const file of files) yield* invoke(["coverage-record", ...handle, "--reviewer", "fixture", "--file", file.path, "--change-id", file.changeId])
+  yield* invoke(["review", "finish", ...handle, "--outcome", "blocked", "--evidence", "Reviewer interrupted after supported candidate; remaining scope unchecked"])
+  const sql = yield* SqliteClient.make({ filename: database })
+  const coverage = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Array(Schema.Struct({ reviews: Schema.Number }))))(yield* cli("coverage-status", ["--json"]))
+  assert.strictEqual(coverage[0]?.reviews, 0)
+  const speculative = ["--decision-id", "MAYBE", "--source", "partial output", "--summary", "Unverified candidate", "--fingerprint", "maybe", "--finding-kind", "runtime", "--fix-scope", "local", "--handling", "fix", "--likelihood", "unknown", "--impact", "high", "--decision", "Evidence missing"]
+  yield* invoke(["record", ...handle, ...speculative, "--status", "open", "--recover", "partial-output.txt:10"])
+  const denied = yield* invoke(["progress-record", ...handle, "--outcome", "repair-applied", "--finding-id", "MAYBE", "--repair-attempt", "speculative", "--evidence", "Unverified"]).pipe(Effect.flip)
+  assert.include(denied.stderr, "accepted finding")
+  assert.lengthOf(yield* sql`select * from review_progress_events where payload like '%speculative%'`, 0)
+  yield* invoke(["record", ...handle, ...speculative.map(value => value === "unknown" ? "theoretical" : value === "fix" ? "reject" : value), "--status", "rejected", "--rejection-gate", "reality", "--recover", "partial-output.txt:11; claim disproved"])
+  yield* invoke(["progress-record", ...handle, "--outcome", "repair-applied", "--finding-id", "RECOVERED", "--repair-attempt", "retained-patch", "--evidence", "Supported local repair"])
+  const fs = yield* FileSystem.FileSystem
+  yield* fs.writeFileString(`${repository}/sample.txt`, "repaired\n")
+  const recovered = finding.map(value => value === "RECOVERED" ? "LATE" : value)
+  const ordinary = yield* invoke(["record", ...handle, ...recovered, "--status", "open"]).pipe(Effect.flip)
+  assert.include(ordinary.stderr, "closed")
+  yield* invoke(["record", ...handle, ...recovered, "--status", "open", "--recover", "saved-output.txt:42; verified against original revision"])
+  const provenance = yield* sql<{ readonly source: string; readonly evidence: string; readonly note: string }>`select source, evidence, note from review_finding_matches where source = ${`recovery:${started.reviewId}`} and evidence like 'saved-output%'`
+  assert.strictEqual(provenance[0]?.source, `recovery:${started.reviewId}`)
+  assert.include(provenance[0]?.note ?? "", "review remains incomplete")
+  assert.include(provenance[0]?.note ?? "", yield* git(["rev-parse", "HEAD"]))
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "retained repair"])
+  yield* invoke(["record", ...handle, ...recovered, "--status", "fixed"])
+  yield* invoke(["record", ...handle, ...recovered, "--status", "open", "--recover", "saved-output.txt:42; verified against original revision"])
+  assert.deepStrictEqual(yield* sql`select status from issues where decision_id = 'LATE'`, [{ status: "fixed" }])
+  assert.lengthOf(yield* sql`select id from review_finding_matches where source = ${`recovery:${started.reviewId}`} and evidence like 'saved-output%'`, 1)
+  const changedRecovery = recovered.map(value => value === "Duplicated policy" ? "Changed recovered summary" : value)
+  const changedTerminal = yield* invoke(["record", ...handle, ...changedRecovery, "--status", "open", "--recover", "saved-output.txt:42; verified against original revision"]).pipe(Effect.flip)
+  assert.include(changedTerminal.stderr, "fixed finding")
+  assert.deepStrictEqual(yield* sql`select status, summary from issues where decision_id = 'LATE'`, [{ status: "fixed", summary: "Duplicated policy" }])
+  yield* invoke(["record", ...handle, ...finding, "--status", "fixed"])
+  assert.deepStrictEqual(yield* sql`select status from review_invocations`, [{ status: "blocked" }])
+  assert.deepStrictEqual(yield* sql`select status from issues order by decision_id`, [{ status: "fixed" }, { status: "rejected" }, { status: "fixed" }])
+  const incomplete = yield* cli("scope-complete", ["--reason", "repairs done", "--json"]).pipe(Effect.flip)
+  assert.include(incomplete.stderr, "PHASE_TARGET_NOT_MET")
+  const next = decode(yield* reviewStart())
+  assert.notStrictEqual(next.reviewId, started.reviewId)
+  yield* invoke(["review", "finish", "--review", next.reviewId ?? "", "--outcome", "clean", "--evidence", "Complete fresh native result"])
+  const cold = decode(yield* invoke(["review", "start", "--repo", "fixture", "--repo-path", repository, "--branch", "fixture", "--target", "fixture", "--base", "main", "--phase", "cold", "--evidence", "fresh independent invocation"]))
+  yield* invoke(["review", "finish", "--review", cold.reviewId ?? "", "--outcome", "clean", "--evidence", "Complete fresh cold result"])
+  yield* cli("scope-complete", ["--reason", "Final head reviewed", "--json"])
+  assert.deepStrictEqual(yield* sql`select status from review_invocations order by start_revision`, [{ status: "blocked" }, { status: "finished" }, { status: "finished" }])
+}).pipe(Effect.scoped), { timeout: 60000 })
+
 test.effect("managed review start initializes once and resumes with its identity and recording contract", () => Effect.gen(function*() {
   const { invoke, reviewStart, repository, database } = yield* fixture
   const paths = yield* Path.Path
@@ -656,6 +712,44 @@ test.effect("CLI gates evidenced repair failures and accepts a scoped owner deci
   assert.notInclude(authorized.limits.stoppingReasons, "REPAIR_CONSULT_REQUIRED")
   assert.strictEqual(authorized.limits.consultCap, 5)
   yield* progress(5, "started")
+}).pipe(Effect.scoped), { timeout: 60000 })
+
+test.effect("CLI requires a consultation repair receipt and preserves it across a failed attempt", () => Effect.gen(function*() {
+  const { cli, database, progress } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  const finding = ["--decision-id", "D1", "--source", "fixture", "--fingerprint", "owner cause", "--summary", "Fixture repair",
+    "--finding-kind", "maintenance", "--maintenance-evidence", "Synthetic duplicate policy", "--present-cost", "Synthetic change cost", "--root-cause", "Synthetic shared cause",
+    "--recommended-fix", "Synthetic owning repair", "--intervention-justification", "Synthetic removal cost", "--fix-scope", "local"]
+  yield* cli("record", [...finding, "--handling", "fix", "--status", "open"])
+  const firstRepair = ["--finding-id", "D1", "--repair-attempt", "D1-1"]
+  const secondRepair = ["--finding-id", "D1", "--repair-attempt", "D1-2"]
+  yield* progress(0, "repair-applied", "native", firstRepair)
+  yield* progress(1, "repair-unsuccessful", "native", firstRepair)
+  yield* progress(2, "repair-applied", "native", secondRepair)
+  yield* cli("record", [...finding, "--handling", "consult", "--status", "open", "--decision", "Should this repair proceed?"])
+  yield* progress(3, "repair-unsuccessful", "native", secondRepair)
+  yield* progress(4, "repair-authorized", "native", ["--finding-id", "D1", "--authorization", "Owner approves another retry"])
+
+  const denied = yield* progress(5, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "consult-1"]).pipe(Effect.flip)
+  assert.include(denied.stderr, "requires --authorization")
+
+  const receipt = ["--finding-id", "D1", "--repair-attempt", "consult-1", "--authorization", "Owner approved this consulted repair"]
+  yield* progress(5, "repair-applied", "native", receipt)
+  const otherFinding = finding.map(value => value === "D1" ? "D2" : value)
+  yield* cli("record", [...otherFinding, "--handling", "consult", "--status", "open", "--decision", "Should the other repair proceed?"])
+  const otherDenied = yield* progress(6, "repair-applied", "native", ["--finding-id", "D2", "--repair-attempt", "other-consult"]).pipe(Effect.flip)
+  assert.include(otherDenied.stderr, "requires --authorization")
+  const blankReceipt = yield* progress(6, "repair-applied", "native", ["--finding-id", "D2", "--repair-attempt", "other-consult", "--authorization", " "]).pipe(Effect.flip)
+  assert.include(blankReceipt.stderr, "requires --authorization")
+  const invalidFailure = yield* progress(6, "repair-unsuccessful", "native", receipt).pipe(Effect.flip)
+  assert.include(invalidFailure.stderr, "cannot carry --authorization")
+  yield* progress(6, "repair-unsuccessful", "native", ["--finding-id", "D1", "--repair-attempt", "consult-1"])
+  yield* progress(7, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "consult-2"])
+  yield* cli("record", [...finding, "--handling", "consult", "--status", "fixed", "--owner-resolution", "approved", "--decision", "Apply the approved repair"])
+
+  assert.strictEqual(decode(yield* cli("progress-status")).revision, 8)
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.deepStrictEqual(yield* sql`select status, owner_resolution from issues where decision_id = 'D1'`, [{ status: "fixed", owner_resolution: "approved" }])
 }).pipe(Effect.scoped), { timeout: 60000 })
 
 test.effect("CLI reports diff growth as a diagnostic and starts review without scope authorization", () => Effect.gen(function*() {

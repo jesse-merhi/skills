@@ -11,7 +11,7 @@ import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
 import { checkReviewLimits, DEFAULT_REVIEW_LIMITS, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
-import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
+import { ProgressConflict, type ProgressEvent, readProgress, readProgressHistory, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
@@ -947,13 +947,13 @@ const requireRepairAuthorization = Effect.fn("ReviewFindings.requireRepairAuthor
   }
 })
 
-/** Repairs wait for a complete assessment; legacy runs without managed reviews retain their workflow. */
-export const requireFinishedReview = Effect.fn("ReviewFindings.requireFinishedReview")(function*(run: ReviewRun) {
+/** Stop discovery before repairs; an interrupted assessment keeps its incomplete status. */
+export const requireClosedReview = Effect.fn("ReviewFindings.requireClosedReview")(function*(run: ReviewRun) {
   const runId = yield* exactRunId(yield* resolveRecordRun(run))
   if (runId === undefined) return
   const sql = yield* SqlClient.SqlClient
   const latest = (yield* sql<{ readonly status: string }>`select status from review_invocations where run_id = ${runId} order by start_revision desc limit 1`)[0]
-  if (latest !== undefined && latest.status !== "finished") return yield* new ProgressConflict({ message: "Finish the complete review before recording repairs; a blocked review is incomplete" })
+  if (latest !== undefined && latest.status === "open") return yield* new ProgressConflict({ message: "Finish the complete review or close it as blocked before recording repairs" })
 })
 
 const readScopeBudget = Effect.fn("ReviewFindings.readScopeBudget")(function*(runId: string) {
@@ -1642,12 +1642,17 @@ const decodeFindingForReplay = Effect.fn("ReviewFindings.decodeFindingForReplay"
   return yield* decodeFindingInput(input, true)
 })
 
+const readExistingIssue = Effect.fn("ReviewFindings.readExistingIssue")(function*(runId: string, decisionId: string) {
+  const sql = yield* SqlClient.SqlClient
+  return (yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${runId} and decision_id = ${decisionId} limit 1`)[0]
+})
+
 export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput, reviewId?: string) {
   const input = yield* decodeFindingForReplay(rawInput)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
   const run = yield* resolveRecordRun(rawRun)
-  if (input.status === "fixed" || input.status === "provisional" || input.ownerResolution.length > 0) yield* requireFinishedReview(run)
+  if (input.status === "fixed" || input.status === "provisional" || input.ownerResolution.length > 0) yield* requireClosedReview(run)
   const existingRunId = yield* exactRunId(run)
   if (existingRunId !== undefined) {
     yield* requireReviewWriter(existingRunId, reviewId)
@@ -1658,16 +1663,13 @@ export const recordFinding = Effect.fn("ReviewFindings.recordFinding")(function*
     : (yield* sql<RunStatusRow>`select status from review_runs where id = ${existingRunId}`)[0]
   const material = input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity)
   const text = findingText(input, input.severity)
-  const existingIssues = existingRunId === undefined
-    ? []
-    : yield* sql<ExistingIssueRow>`select id, decision_id, status, source, fingerprint, summary, coalesce(impact, '') as area, coalesce(priority, '') as severity, coalesce(material, 0) as material, coalesce(user_impact, '') as user_impact, coalesce(decision, '') as decision, text, coalesce(finding_kind, '') as finding_kind, coalesce(production_path, '') as production_path, coalesce(reachability_evidence, '') as reachability_evidence, coalesce(likelihood, '') as likelihood, coalesce(risk_impact, '') as impact, coalesce(actual_consequence, '') as actual_consequence, coalesce(maintenance_evidence, '') as maintenance_evidence, coalesce(present_cost, '') as present_cost, coalesce(contract_evidence, '') as contract_evidence, coalesce(root_cause, '') as root_cause, coalesce(recommended_fix, '') as recommended_fix, coalesce(intervention_justification, '') as intervention_justification, coalesce(rejection_gate, '') as rejection_gate, coalesce(disposition, '') as disposition, coalesce(fix_scope, '') as fix_scope, coalesce(handling, '') as handling, coalesce(owner_resolution, '') as owner_resolution, coalesce(evidence_version, 7) as evidence_version from issues where run_id = ${existingRunId} and decision_id = ${input.decisionId} limit 1`
-  const existingIssue = existingIssues[0]
+  const existingIssue = existingRunId === undefined ? undefined : yield* readExistingIssue(existingRunId, input.decisionId)
   if (reviewId !== undefined) {
     const invocation = (yield* sql<{ readonly status: string }>`select status from review_invocations where id = ${reviewId}`)[0]
-    if (invocation?.status === "finished") {
-      yield* requireFinishedReview(run)
-      if (existingIssue === undefined) return yield* Effect.fail(new InvalidFinding("A finished review can update only an existing finding"))
-      if (input.status === "reopened" && existingIssue.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A finished review can reopen only an existing provisional repair"))
+    if (invocation !== undefined && invocation.status !== "open" && (input.status === "fixed" || input.status === "provisional" || input.status === "reopened" || input.ownerResolution.length > 0)) {
+      yield* requireClosedReview(run)
+      if (existingIssue === undefined) return yield* Effect.fail(new InvalidFinding("A closed review can update only an existing finding"))
+      if (input.status === "reopened" && existingIssue.status !== "provisional") return yield* Effect.fail(new InvalidFinding("A closed review can reopen only an existing provisional repair"))
     }
   }
   if (existingIssue !== undefined && existingIssue.owner_resolution.length > 0 && input.ownerResolution.length === 0) {
@@ -1778,14 +1780,21 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
   return yield* sql.withTransaction(Effect.gen(function*() {
   if (event !== undefined) {
     yield* requireReviewWriter(runId, reviewId)
-    if (event.outcome.startsWith("repair-")) yield* requireFinishedReview(run)
+    if (event.outcome.startsWith("repair-")) yield* requireClosedReview(run)
     if (event.outcome === "repair-applied") yield* requireRepairAuthorization(runId, event.findingId ?? "")
     const state = (yield* sql<{ readonly status: string; readonly scope_status: string }>`select review_runs.status, coalesce(review_scope_budgets.status, '') as scope_status from review_runs
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
     if (state?.status === "complete" || state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("Completed review progress is immutable"))
     if (event.outcome.startsWith("repair-")) {
-      const issue = yield* sql`select id from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional')`
-      if (issue.length === 0) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open finding"))
+      const issue = (yield* sql<{ readonly disposition: string }>`select disposition from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional') and disposition in ('accept', 'consult')`)[0]
+      if (issue === undefined) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open accepted finding or consultation"))
+      if (issue.disposition === "consult" && event.outcome === "repair-applied") {
+        const currentReceipt = event.authorization !== undefined && event.authorization.trim().length > 0
+        const savedReceipt = currentReceipt || (yield* readProgressHistory(runId)).some(saved =>
+          saved.outcome === "repair-applied" && saved.findingId === event.findingId && saved.authorization !== undefined && saved.authorization.trim().length > 0
+        )
+        if (!savedReceipt) return yield* Effect.fail(new InvalidFinding("A consulted finding requires --authorization on its first repair-applied event"))
+      }
     }
     if (event.outcome === "started") {
       yield* checkReviewLimits(yield* readReviewLimits(runId, event.head, event.phase))
@@ -1853,6 +1862,47 @@ export const recordFindingMatch = Effect.fn("ReviewFindings.recordMatch")(functi
     yield* sql`insert into review_finding_matches (issue_id, source, evidence, note, created_at) values (${issue.id}, ${input.source}, ${input.evidence}, ${input.matchNote}, ${timestamp})`
     yield* sql`update issues set seen_count = seen_count + 1, last_seen_at = ${timestamp} where id = ${issue.id}`
     return { runId, issueId: issue.id }
+  }))
+})
+
+const isSameRecoveryCandidate = (existing: ExistingIssueRow, finding: Finding, material: boolean) => {
+  if (finding.status !== "open") return false
+  const ownerResolution = existing.owner_resolution === "approved" || existing.owner_resolution === "declined"
+    ? existing.owner_resolution
+    : ""
+  return isExactResolvedReplay(existing, {
+    ...finding,
+    status: "fixed",
+    decision: existing.decision,
+    ownerResolution
+  }, material)
+}
+
+export const recordRecoveredFinding = Effect.fn("ReviewFindings.recordRecoveredFinding")(function*(rawRun: ReviewRun, rawInput: FindingInput, recovery: {
+  readonly source: string; readonly evidence: string; readonly matchNote: string
+}, reviewId: string) {
+  const input = yield* decodeFindingForReplay(rawInput)
+  const sql = yield* SqlClient.SqlClient
+  return yield* sql.withTransaction(Effect.gen(function*() {
+    const run = yield* resolveRecordRun(rawRun)
+    const runId = yield* exactRunId(run)
+    if (runId !== undefined) {
+      yield* requireReviewWriter(runId, reviewId)
+      const state = (yield* sql<CommandRunStateRow>`select review_runs.status as run_status, coalesce(review_scope_budgets.status, '') as scope_status from review_runs left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
+      if (state?.run_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("review run is complete and terminal; start a new user-authorized review before recording more findings"))
+      if (state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("scope budget is complete and terminal; start a new user-authorized review before recording more findings"))
+      const existing = yield* readExistingIssue(runId, input.decisionId)
+      if (existing?.status === "fixed") {
+        const saved = (yield* sql<{ readonly note: string }>`select note from review_finding_matches where issue_id = ${existing.id} and source = ${recovery.source} and evidence = ${recovery.evidence}`)[0]
+        if (saved === undefined || saved.note !== recovery.matchNote || !isSameRecoveryCandidate(existing, input, input.material || isUserVisible(input.area) || isSensitive(input.area) || materialSeverities.has(input.severity))) {
+          return yield* Effect.fail(new InvalidFinding("A fixed finding accepts only an unchanged replay of its recorded recovery evidence"))
+        }
+        return { runId, issueId: existing.id }
+      }
+    }
+    const recorded = yield* recordFinding(run, rawInput, reviewId)
+    yield* recordFindingMatch(run, { matchOf: rawInput.decisionId, ...recovery }, reviewId)
+    return recorded
   }))
 })
 

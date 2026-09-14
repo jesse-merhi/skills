@@ -15,11 +15,11 @@ import { fileURLToPath } from "node:url"
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
 import { completeReviewContext, resolveLocalReviewContext, ReviewContextError, type ReviewContextInput } from "./ReviewContext.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, findSavedReviewContext, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireFinishedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, findSavedReviewContext, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordRecoveredFinding, recordReviewedFiles, requireClosedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
 import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
-import { checkReviewTarget, claimNativeLaunch, finishReview, getReview, requireOpenReview, type Review, ReviewOutcome, ReviewPhase, reviewRun, startReview, withOpenReview } from "./ReviewSession.ts"
+import { checkReviewTarget, claimNativeLaunch, finishReview, getReview, requireOpenReview, type Review, ReviewOutcome, ReviewPhase, reviewRun, startReview, withBlockedReview, withOpenReview } from "./ReviewSession.ts"
 
 class QueryScopeError extends Schema.TaggedError<QueryScopeError>()("QueryScopeError", { message: Schema.String }) {}
 class CloseoutOptionError extends Schema.TaggedError<CloseoutOptionError>()("CloseoutOptionError", { message: Schema.String }) {}
@@ -126,6 +126,7 @@ const findingSchema = Command.make("schema", {}, () => Console.log(formatFinding
 const record = Command.make("record", {
   db, ...recordRunFlags, decisionLog: Flag.string("decision-log").pipe(Flag.withDefault("")),
   decisionId: Flag.string("decision-id").pipe(Flag.withDefault("")), status: Flag.choice("status", FINDING_STATUSES).pipe(Flag.withDefault("")), source: Flag.string("source"), fingerprint: Flag.string("fingerprint").pipe(Flag.withDefault("")), summary: Flag.string("summary").pipe(Flag.withDefault("")),
+  recover: Flag.string("recover").pipe(Flag.withDefault("")),
   matchOf: Flag.string("match-of").pipe(Flag.withDefault("")), matchNote: Flag.string("match-note").pipe(Flag.withDefault("")), evidence: Flag.string("evidence").pipe(Flag.withDefault("")), json: Flag.boolean("json"),
   area: Flag.string("area").pipe(Flag.withDefault("")), impact: Flag.string("impact").pipe(Flag.withDefault("")), material: Flag.boolean("material"),
   userImpact: Flag.string("user-impact").pipe(Flag.withDefault("")), decision: Flag.string("decision").pipe(Flag.withDefault("")), text: Flag.string("text").pipe(Flag.withDefault("")),
@@ -150,9 +151,15 @@ const record = Command.make("record", {
   const write = () => Effect.gen(function*() {
     return args.matchOf.length > 0 ? yield* recordFindingMatch(run, args, args.review || undefined) : yield* recordFinding({ ...run, decisionLog: args.decisionLog }, args, args.review || undefined)
   })
-  const finishedReopen = args.review.length > 0 && args.status === "reopened" && (yield* getReview(args.review)).status === "finished"
-  const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0 || finishedReopen
-  const result = args.review.length > 0 && !repair ? yield* withOpenReview(args.review, write) : yield* write()
+  const closedReopen = args.review.length > 0 && args.status === "reopened" && (yield* getReview(args.review)).status !== "open"
+  const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0 || closedReopen
+  if (args.recover && (!args.review || repair || args.matchOf || !["open", "rejected"].includes(args.status))) return yield* Effect.fail(new InvalidFinding("--recover requires --review and a candidate status (open or rejected); record repairs separately"))
+  const result = args.recover ? yield* withBlockedReview(args.review, current => Effect.gen(function*() {
+    return yield* recordRecoveredFinding({ ...run, decisionLog: args.decisionLog }, args, {
+      source: `recovery:${current.reviewId}`, evidence: args.recover,
+      matchNote: `Recovered from interrupted ${current.phase} review at head ${current.head}, base ${current.baseOid}; review remains incomplete`
+    }, current.reviewId)
+  })) : args.review.length > 0 && !repair ? yield* withOpenReview(args.review, write) : yield* write()
   const limits = yield* readReviewLimits(result.runId, run.head)
   yield* Console.log(args.json ? JSON.stringify({ ...result, limits }) : `recorded run=${result.runId} issue=${result.issueId} decision=${args.matchOf || args.decisionId} db=${args.db}\n${JSON.stringify({ limits })}`)
 })))
@@ -286,7 +293,7 @@ const progressRecord = Command.make("progress-record", {
   yield* initialize()
   const run = yield* resolveCommandRun(args)
   if (args.review && !args.outcome.startsWith("repair-")) return yield* Effect.fail(new InvalidFinding("Use review start and review finish for review results; progress-record --review records repair events"))
-  if (args.review) yield* requireFinishedReview(run)
+  if (args.review) yield* requireClosedReview(run)
   const saved = args.review ? yield* reviewProgress(run) : undefined
   const scoped = args.review ? yield* getScopeBudget(run) : undefined
   const git = args.review ? yield* trustedExecutable("git", run.repoPath) : ""

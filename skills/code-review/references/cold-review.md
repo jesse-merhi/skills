@@ -8,6 +8,8 @@ Follow the model policy in the applicable `AGENTS.md` unless the user selects an
 
 A brief can say: “Review this target with the supplied skills. Trace changed behavior through real callers and system events. Return distinct problems, changed locations, triggers, consequences, likelihood and impact evidence, uncertainty, and meaningful verified rejections with reasons. Report what you could not verify. Do not edit code or manage repairs.”
 
+Require durable checkpoints of assessed candidates, probe results and remaining coverage during discovery, with the invocation ID and exact head. Keep them in the assigned output artifact for coordinator recovery; checkpoints do not finish the review or authorize early repairs.
+
 Require one complete report after assessing all assigned behaviors. Include actionable findings, unresolved concerns and meaningful verified rejections: observed limitations or claims whose verification materially affects confidence in the changed behavior. Omit ideas immediately discarded for lack of a reachable trigger, changed behavior or supported contract. No discarded-thought count or category summary is required. Assess the full assigned scope before returning the report.
 
 Ask reviewers to establish intended behavior from the task, documentation, callers, tests and base revision. Intentional contract changes are not automatically regressions; material conflicts become questions. Evidence should name the expected result, reachable inputs or state, and observed outcome. Missing, unexecuted or stale proof is not an observed failure.

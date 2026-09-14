@@ -36,7 +36,7 @@ The entrypoint initializes missing scope and returns the run/review identity and
 
 Use [the native reviewer](references/native-review.md) and [the review loop](references/review-loop.md) to schedule reviews and repairs. Follow [the findings guide](references/fixing-and-reporting.md) to check candidates, repair shared causes and verify preserved behavior.
 
-Use [the review commands](references/recording-reviews.md) to save the complete report. Run its finding, repeat-evidence and coverage commands together in one code-mode call. Check every result, then finish the review before repairing.
+Use [the review commands](references/recording-reviews.md) to checkpoint assessed findings and probe evidence during discovery, then save the complete report. Batch available records in one code-mode call and check every result. Close discovery before repairing; interrupted reviews retain their incomplete status while supported findings can be recovered and repaired through those commands.
 
 ## 3. Run an independent review
 
