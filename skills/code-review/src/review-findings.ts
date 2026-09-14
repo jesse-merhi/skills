@@ -10,6 +10,7 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 import { Argument, Command, Flag } from "effect/unstable/cli"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { fileURLToPath } from "node:url"
 
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
@@ -400,12 +401,15 @@ const candidatePrepare = Command.make("candidate-prepare", {
       ...(Option.isSome(args.requireCurrentHead) ? { requireCurrentHead: args.requireCurrentHead.value } : {}),
       ...(args.requiredPhase.length > 0 ? { requiredPhases: args.requiredPhase } : {})
     }
-    const resolvedScope = yield* startOrResumeScopeBudget(resolved.run, {
-      scopeSummary: args.scopeSummary || `Review ${resolved.run.target}`,
-      limits: explicitLimits
-    })
-    const run = { ...resolved.run, runId: resolvedScope.budget.runId }
-    const candidate = yield* prepareCandidate(run, resolvedScope.budget, Option.getOrUndefined(args.sourceRun), !resolvedScope.resumed, explicitLimits)
+    const sql = yield* SqlClient.SqlClient
+    const candidate = yield* sql.withTransaction(Effect.gen(function*() {
+      const resolvedScope = yield* startOrResumeScopeBudget(resolved.run, {
+        scopeSummary: args.scopeSummary || `Review ${resolved.run.target}`,
+        limits: explicitLimits
+      })
+      const run = { ...resolved.run, runId: resolvedScope.budget.runId }
+      return yield* prepareCandidate(run, resolvedScope.budget, Option.getOrUndefined(args.sourceRun), !resolvedScope.resumed, explicitLimits)
+    }))
     yield* Console.log(JSON.stringify(candidate))
   }))
 }))

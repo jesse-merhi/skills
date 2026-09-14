@@ -313,8 +313,12 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
     const requirements = yield* targetRequirements(candidate.runId)
     const counts = phaseCounts(candidate.source.reviews)
     const missing = requirements.required.filter((phase) => counts[phase] < requirements.targets[phase])
+    const sourceProgress = yield* readProgressHistory(candidate.source.runId)
+    const targetProgress = candidate.source.runId === candidate.runId ? [] : yield* readProgressHistory(candidate.runId)
+    const performedPhases = [...sourceProgress, ...targetProgress]
+      .map(event => event.phase).filter((phase): phase is CandidatePhase => phase === "native" || phase === "cold")
     const reviewedPhases = candidate.source.reviews.map(review => review.phase)
-    const effectivePhases = [...new Set([...requirements.required, ...reviewedPhases])]
+    const effectivePhases = [...new Set([...requirements.required, ...reviewedPhases, ...performedPhases])]
     const affected = input.decision === "broad"
       ? effectivePhases
       : input.decision === "focused"
@@ -328,6 +332,9 @@ export const assessCandidate = Effect.fn("ReviewCandidate.assess")(function*(inp
       if (!same) return yield* new CandidateConflict({ message: "The saved candidate assessment is immutable" })
       return candidate
     }
+    const pending = yield* sql<{ readonly id: string }>`select id from review_invocations
+      where run_id in (${candidate.runId}, ${candidate.source.runId}) and status = 'open' limit 1`
+    if (pending.length > 0) return yield* new CandidateConflict({ message: "Close the open review invocation before assessing candidate evidence" })
     const scope = (yield* sql<{ readonly generation: number; readonly base_ref: string; readonly base_oid: string; readonly pinned_head_oid: string }>`select generation, base_ref, base_oid, pinned_head_oid from review_scope_budgets where run_id = ${candidate.runId}`)[0]
     const run = (yield* sql<{ readonly repo_path: string }>`select repo_path from review_runs where id = ${candidate.runId}`)[0]
     if (scope === undefined || run === undefined || scope.generation !== candidate.scopeGeneration) return yield* new CandidateConflict({ message: "Candidate scope moved after preparation; prepare the current candidate again" })

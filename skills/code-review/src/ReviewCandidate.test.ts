@@ -327,4 +327,33 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
       semanticImpactEvidence: "Only the repaired commit message changed after native and cold review completed on the repaired tree."
     })
   }).pipe(Effect.scoped), { timeout: 30_000 })
+  test.effect("broad invalidation resets partial progress as well as complete evidence", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 2, false)
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* cleanPhase(run, "cold")
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    const assessed = yield* assessCandidate({ candidateId: prepared.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "All earlier coverage is invalidated" })
+    assert.deepStrictEqual(new Set(assessed.affectedPhases), new Set(["native", "cold"]))
+    yield* cleanPhase(run, "native")
+    assert.include((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, "native")
+    yield* cleanPhase(run, "native")
+    assert.notInclude((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, "native")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("rejects reuse while an invocation is open and permits it after explicit closure", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent pending candidate"])
+    const pending = yield* startReview(run, "native", "Pending review")
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    const input = { candidateId: prepared.candidateId, decision: "reuse" as const, affectedPhases: [], semanticImpactEvidence: "Only the commit message changed" }
+    assert.include((yield* assessCandidate(input).pipe(Effect.flip)).message, "open review invocation")
+    yield* finishReview(pending.reviewId, "blocked", "Explicitly cancelled before using earlier evidence")
+    const retry = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ ...input, candidateId: retry.candidateId })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, retry.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
 })

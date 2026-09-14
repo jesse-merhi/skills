@@ -81,20 +81,24 @@ const missing = async (path: string) => {
 
 describe("review CLI Git context", () => {
   it.each([
-    { flags: [], target: 1, succeeds: true },
-    { flags: ["--native-clean-target", "2"], target: 2, succeeds: false }
-  ])("preserves omitted or explicit candidate targets: $target", async ({ flags, target, succeeds }) => {
+    { flags: [], target: 1, sourceTarget: 1, failPreparation: false, succeeds: true },
+    { flags: ["--native-clean-target", "2"], target: 2, sourceTarget: 1, failPreparation: false, succeeds: false },
+    { flags: [], target: 3, sourceTarget: 3, failPreparation: true, succeeds: true }
+  ])("preserves omitted or explicit candidate targets: $target", async ({ flags, target, sourceTarget, failPreparation, succeeds }) => {
     const fixture = await createRepository()
     const identity = scopeIdentity(fixture, "candidate-targets")
     try {
-      const started = reviewOutput((await runReview(fixture.repo, [
-        "review", "start", ...identity, "--phase", "native", "--evidence", "Synthetic source review",
-        "--native-clean-target", "1", "--required-phase", "native", "--require-current-head"
-      ])).stdout)
-      await runReview(fixture.repo, ["review", "finish", "--db", fixture.db, "--review", String(started.reviewId), "--outcome", "clean", "--evidence", "Synthetic clean source"])
+      for (let pass = 0; pass < sourceTarget; pass++) {
+        const started = reviewOutput((await runReview(fixture.repo, [
+          "review", "start", ...identity, "--phase", "native", "--evidence", "Synthetic source review",
+          "--native-clean-target", String(sourceTarget), "--required-phase", "native", "--require-current-head"
+        ])).stdout)
+        await runReview(fixture.repo, ["review", "finish", "--db", fixture.db, "--review", String(started.reviewId), "--outcome", "clean", "--evidence", "Synthetic clean source"])
+      }
       await runReview(fixture.repo, ["scope-check", ...identity, "--reason", "Source checked"])
       await runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Source complete"])
       await git(fixture.repo, ["commit", "--amend", "-m", "Equivalent candidate"])
+      if (failPreparation) await expect(runReview(fixture.repo, ["review", "candidate-prepare", ...identity, "--source-run", "mistyped-source"])).rejects.toMatchObject({ stderr: expect.stringContaining("No earlier completed") })
       const prepared: unknown = JSON.parse((await runReview(fixture.repo, ["review", "candidate-prepare", ...identity, ...flags])).stdout)
       if (typeof prepared !== "object" || prepared === null || !("candidateId" in prepared)) throw new Error("Missing candidate ID")
       const assessment = runReview(fixture.repo, ["review", "candidate-assess", "--db", fixture.db, "--candidate", String(prepared.candidateId), "--decision", "reuse", "--semantic-impact-evidence", "Only the commit message changed"])
@@ -107,7 +111,7 @@ describe("review CLI Git context", () => {
     } finally {
       await rm(fixture.directory, { recursive: true, force: true })
     }
-  }, 60_000)
+  }, 90_000)
 
   it("starts native review from a nested checkout using the matching stacked PR", async () => {
     const fixture = await createRepository()
