@@ -117,6 +117,13 @@ resource lifecycle, and graceful shutdown.
 
 ## Test and review design
 
+- Run tests to verify changed behavior, investigate a concrete failure or
+  uncertainty, or satisfy an applicable required check. Reuse passing results
+  while the code, dependencies, configuration and environment they cover remain
+  applicable. Before repeating or broadening a run, identify what invalidated
+  that evidence or what question remains unanswered. A new commit, rebase or
+  metadata-only edit alone does not justify rerunning unrelated suites. Preserve
+  checks explicitly required on the final revision.
 - Keep test cleanup tied to the changed behavior and the coverage needed to
   prove it. Touching a test file does not by itself require reorganizing the
   file or repairing unrelated tests. Preserve required coverage and checks.
