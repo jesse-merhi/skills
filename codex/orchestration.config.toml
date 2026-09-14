@@ -1,5 +1,5 @@
 model = "gpt-6-astra"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "xhigh"
 
 [agents]
 enabled = true
@@ -10,6 +10,10 @@ default_subagent_reasoning_effort = "high"
 [agents.implementer]
 description = "Implement a bounded change and its tests with Sol."
 config_file = "orchestration/implementer.toml"
+
+[agents.test_executor]
+description = "Run an established validation batch with Luna; retain evidence and stop on failure."
+config_file = "orchestration/test-executor.toml"
 
 [agents.investigator]
 description = "Investigate a bounded code or documentation question with Luna; return evidence without edits."
