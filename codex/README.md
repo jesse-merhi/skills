@@ -13,12 +13,15 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 | Role | Model | Reasoning |
 | --- | --- | --- |
 | Coordinator | GPT-6 Astra | medium |
-| `implementer` — implementation and tests | GPT-5.6 Sol | high |
+| `implementer` — implementation, test design and repairs | GPT-5.6 Sol | high |
+| `test_executor` — established validation execution | GPT-5.6 Luna | max |
 | `investigator` — bounded investigation and research | GPT-5.6 Luna | max |
 | `findings_reviewer` — independent findings only | GPT-6 Astra | xhigh |
 | Unnamed child | GPT-5.6 Sol | high |
 
 At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit spawn arguments override unnamed-child defaults, but named roles retain their pinned model and effort. For an approved exception, use an unnamed child with explicit settings or a separately configured role.
+
+For established validation batches, `writing-good-tests` selects `test_executor` and owns receipts, reuse and failure escalation. Its explicit-settings fallback works when the named role is unavailable; verify the launch model and effort.
 
 The existing workflow owners select these roles: `just-do-it` delegates bounded implementation and investigation, `grilling` delegates factual questions, and `code-review` delegates repairs and its independent phase. They keep sequencing, integration, shared verification and delivery with the coordinator.
 
