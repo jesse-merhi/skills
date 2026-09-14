@@ -42,13 +42,27 @@ Keep test cleanup tied to the changed behavior and the coverage needed to prove 
 
 Implement the authorized behavior and check its result against the agreed contract. Then write tests that prove it works for valid inputs and relevant failure cases. Reuse existing tests when they already prove it, including for covered refactors.
 
-Finish the related edits, then run broad tests, lint, typecheck and builds. Run a focused check earlier only to answer a specific question, diagnose a failure or verify a fix. Before fixing a review finding, confirm the bug can happen and the fix is within the authorized task.
+Use the [global test policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#test-and-review-design) to select checks and decide when results need refreshing. Before fixing a review finding, confirm the bug can happen and the repair is authorized.
 
-When delegating, assign one owner for shared validation before workers start checks. Workers return their changes and focused evidence; the owner validates the integrated batch. Reuse results while the relevant code, callers, dependencies, fixtures, configuration and environment still apply.
+The coordinator chooses coverage and accepts results. Assign one owner to run shared validation after integration; implementation workers return their changes and focused evidence.
 
-When delegation is useful, use `Agent` with `subagent_type: "implementer"` for an owned implementation/test slice. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. If the role is unavailable, report it and continue suitable work locally.
+## Run established checks
 
-Before pushing, cover the required behavior and pass the relevant tests and required repository checks. After further edits or review repairs, rerun the affected checks and required final checks; an individual file edit is not a reason to repeat the whole validation set. Broaden verification when the impact cannot be bounded or a failure or unresolved concern requires it. Stop on the first test error and diagnose it before rerunning.
+Give Luna/max a batch of known tests, lint, typechecks or prepared acceptance flows when delegation saves work. Keep small checks with their current owner. Supply the checkout, revision and dirty changes, ordered commands, expected results, environment, time limits and log location. Assign the batch once, rather than a worker per command.
+
+Use the configured `test_executor` role at GPT-5.6 Luna, max effort. If it is unavailable, use a fresh unnamed worker with explicit model and effort settings and point it to this skill. Check the actual launch settings. If neither route is available, report the limitation and keep suitable execution local; do not change live configuration. Claude’s native `Agent` selector cannot select GPT models. Use an already-authorized launcher that supports these settings, or report the limitation and keep suitable execution local.
+
+Check the checkout and inputs before running the batch under repository permissions, including manual E2E/Maestro triggers. Stop on the first failure, timeout, input change or ambiguity. Return the command, exit status, relevant output and checks not run. Do not retry, debug, repair, install dependencies or start external or paid jobs. The coordinator assigns substantive diagnosis, new test design and authorized repairs to Sol/high before arranging further execution.
+
+Use `wait-efficiently` for prolonged runs. Return completion, failure or a decision needed, with useful progress updates.
+
+## Record the results
+
+Save each check’s command, selection and coverage, checkout, revision and dirty-content identity, relevant source/callers, tests/fixtures, dependencies, configuration, runtime/environment, outcome, exit status and log path. Compare input identity at the start and finish; changed inputs prevent the result from proving the final checkout. Use existing check-result storage, or the task’s evidence directory. Review coverage is not test evidence.
+
+When applying an earlier result to a later revision, retain the original receipt and record the input-flow evidence supporting reuse. A filename alone does not establish independence; do not describe old execution as a fresh run.
+
+Before pushing, verify required behavior and satisfy applicable checks under the global test policy.
 
 ## Check cost and finish
 

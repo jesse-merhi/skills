@@ -37,6 +37,7 @@ test("installs selectable model roles and preserves base configuration and globa
     const expected = [
       ["implementer", "gpt-5.6-sol", "high"],
       ["investigator", "gpt-5.6-luna", "max"],
+      ["test_executor", "gpt-5.6-luna", "max"],
       ["findings_reviewer", "gpt-6-astra", "xhigh"],
     ];
     for (const [name, model, effort] of expected) {
