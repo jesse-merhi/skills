@@ -508,4 +508,24 @@ layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory
     assert.include((yield* startReview(run, "cold", "Must remain stopped").pipe(Effect.flip)).message, "QUEUE_FIXED_POINT")
   }).pipe(Effect.scoped), { timeout: 30_000 })
 
+  test.effect("selects fresh comparator evidence after base migration and a blocked retry", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture(["native"])
+    yield* git(["branch", "new-base", "HEAD"])
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "export const feature = 3\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "Feature above new comparator"])
+    yield* cleanPhase(run, "native")
+    yield* authorizeScopeBudget(run, { scopeSummary: "Migrate comparator", authorization: "Fixture owner selected new base", newBase: "new-base" })
+    const migrated = { ...run, base: "new-base" }
+    const interrupted = yield* startReview(migrated, "native", "Interrupted new comparator review")
+    yield* finishReview(interrupted.reviewId, "blocked", "Fixture interruption")
+    const fresh = yield* cleanPhase(migrated, "native")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent new comparator candidate"])
+    const prepared = yield* prepareCandidate(migrated, yield* getScopeBudget(migrated))
+    assert.deepStrictEqual(prepared.source.reviews.map(review => review.reviewId), [fresh.reviewId])
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Fresh review covered the selected comparator; only commit message changed" })
+    yield* checkScopeBudget(migrated, "Migrated comparator checked")
+    yield* completeScopeBudget(migrated, "Fresh comparator evidence remains applicable")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
 })

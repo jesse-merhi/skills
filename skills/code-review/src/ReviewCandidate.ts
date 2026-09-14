@@ -139,11 +139,12 @@ const sourceReviews = Effect.fn("ReviewCandidate.sourceReviews")(function*(runId
   for (const phase of ["native", "cold"] as const) {
     const invalidation = invalidations.get(phase)
     const cutoff = invalidation?.progressRevision ?? 0
+    const matchingRevisions = new Set(rows.filter(review => review.phase === phase).map(review => review.startRevision + 1))
     let sequence: Array<number> = []
     let best: Array<number> = []
     for (const event of history) {
       if (event.revision <= cutoff || event.phase !== phase || event.head !== head) continue
-      if (event.outcome === "clean" || event.outcome === "clean-except-queue") {
+      if ((event.outcome === "clean" || event.outcome === "clean-except-queue") && matchingRevisions.has(event.revision)) {
         sequence.push(event.revision)
         if (sequence.length > best.length) best = [...sequence]
       } else if (event.outcome !== "started") {
