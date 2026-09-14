@@ -25,20 +25,22 @@ export const Progress = Schema.Struct({
 export type Progress = typeof Progress.Type
 export class ProgressConflict extends Schema.TaggedError<ProgressConflict>()("ProgressConflict", { message: Schema.String }) {}
 
-export const advanceProgress = (previous: Progress | undefined, event: ProgressEvent): Progress => {
-  const continuing = previous?.head === event.head && previous.phase === event.phase
-  const attempts = previous?.diamondAttempts ?? 0
+export const advanceProgress = (history: ReadonlyArray<Progress>, event: ProgressEvent): Progress => {
+  const previous = history.at(-1)
+  const latestInPhase = history.findLast(saved => saved.phase === event.phase)
+  const continuing = latestInPhase?.head === event.head
+  const started = event.outcome === "started" ? 1 : 0
   return {
     revision: (previous?.revision ?? 0) + 1,
     phase: event.phase, head: event.head, outcome: event.outcome, evidence: event.evidence,
     ...(event.findingId === undefined ? {} : { findingId: event.findingId }),
     ...(event.repairAttempt === undefined ? {} : { repairAttempt: event.repairAttempt }),
     ...(event.authorization === undefined ? {} : { authorization: event.authorization }),
-    pass: event.outcome === "diamond-attempt" ? 0 : (previous?.phase === event.phase ? previous.pass : 0) + (event.outcome === "started" ? 1 : 0),
-    totalPasses: (previous?.totalPasses ?? 0) + (event.outcome === "started" ? 1 : 0),
-    cleanStreak: event.outcome === "clean" || event.outcome === "clean-except-queue" ? (continuing ? previous.cleanStreak : 0) + 1
-      : event.outcome === "started" && continuing ? previous.cleanStreak : 0,
-    diamondAttempts: attempts + (event.outcome === "diamond-attempt" ? 1 : 0)
+    pass: event.outcome === "diamond-attempt" ? 0 : (latestInPhase?.pass ?? 0) + started,
+    totalPasses: (previous?.totalPasses ?? 0) + started,
+    cleanStreak: event.outcome === "clean" || event.outcome === "clean-except-queue" ? (continuing ? latestInPhase.cleanStreak : 0) + 1
+      : event.outcome === "started" && continuing ? latestInPhase.cleanStreak : 0,
+    diamondAttempts: (previous?.diamondAttempts ?? 0) + (event.outcome === "diamond-attempt" ? 1 : 0)
   }
 }
 
@@ -58,13 +60,14 @@ export const recordProgress = Effect.fn("ReviewProgress.record")(function*(runId
   const event = yield* Schema.decodeUnknownEffect(ProgressEvent)(input)
   const sql = yield* SqlClient.SqlClient
   return yield* sql.withTransaction(Effect.gen(function*() {
-    const previous = yield* readProgress(runId)
+    const history = yield* readProgressHistory(runId)
+    const previous = history.at(-1)
+    const latestInPhase = history.findLast(saved => saved.phase === event.phase)
     if ((previous?.revision ?? 0) !== event.expectedRevision) return yield* new ProgressConflict({ message: "Progress changed; reload the saved state before recording another event" })
     const repairEvent = event.outcome.startsWith("repair-")
     if (!repairEvent && (event.findingId !== undefined || event.repairAttempt !== undefined || event.authorization !== undefined)) return yield* new ProgressConflict({ message: "Repair fields belong only to repair events" })
     if (repairEvent) {
       if (event.findingId === undefined || event.findingId.trim().length === 0) return yield* new ProgressConflict({ message: "Repair events require --finding-id" })
-      const history = yield* readProgressHistory(runId)
       if (event.outcome === "repair-authorized") {
         if (event.authorization === undefined || event.authorization.trim().length === 0 || event.repairAttempt !== undefined) return yield* new ProgressConflict({ message: "repair-authorized requires --authorization with the owner's decision and no --repair-attempt" })
         const latestAuthorization = history.findLastIndex(saved => saved.outcome === "repair-authorized" && saved.findingId === event.findingId)
@@ -82,17 +85,17 @@ export const recordProgress = Effect.fn("ReviewProgress.record")(function*(runId
         }
       }
     }
-    if ((event.outcome === "clean" || event.outcome === "clean-except-queue") && (previous?.outcome !== "started" || previous.head !== event.head || previous.phase !== event.phase)) {
+    if ((event.outcome === "clean" || event.outcome === "clean-except-queue") && (latestInPhase?.outcome !== "started" || latestInPhase.head !== event.head)) {
       return yield* new ProgressConflict({ message: "A clean result requires a distinct started pass on the same phase and head" })
     }
     if (event.outcome === "diamond-attempt" && (previous?.diamondAttempts ?? 0) >= 3) {
       return yield* new ProgressConflict({ message: "The three saved diamond attempts are exhausted" })
     }
     if (event.phase === "clawsweeper" && event.outcome === "started"
-      && ((previous?.phase === "clawsweeper" && previous.pass >= 6) || (previous?.totalPasses ?? 0) >= 24)) {
+      && ((latestInPhase?.pass ?? 0) >= 6 || (previous?.totalPasses ?? 0) >= 24)) {
       return yield* new ProgressConflict({ message: "Saved ClawSweeper convergence budget is exhausted" })
     }
-    const next = advanceProgress(previous, event)
+    const next = advanceProgress(history, event)
     yield* sql`insert into review_progress_events (run_id, revision, payload) values (${runId}, ${next.revision}, ${JSON.stringify(next)})`
     return next
   }))
