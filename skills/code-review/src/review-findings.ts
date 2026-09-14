@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url"
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
 import { completeReviewContext, resolveLocalReviewContext, ReviewContextError, type ReviewContextInput } from "./ReviewContext.ts"
-import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, findSavedReviewContext, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordReviewedFiles, requireClosedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
+import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, findSavedReviewContext, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordRecoveredFinding, recordReviewedFiles, requireClosedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
 import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
 import { PROGRESS_OUTCOMES, ProgressEvent } from "./ReviewProgress.ts"
 import { UnsupportedHistoricalGitVersion } from "./ReviewScope.ts"
@@ -155,10 +155,10 @@ const record = Command.make("record", {
   const repair = args.status === "fixed" || args.status === "provisional" || args.ownerResolution.length > 0 || closedReopen
   if (args.recover && (!args.review || repair || args.matchOf || !["open", "rejected"].includes(args.status))) return yield* Effect.fail(new InvalidFinding("--recover requires --review and a candidate status (open or rejected); record repairs separately"))
   const result = args.recover ? yield* withBlockedReview(args.review, current => Effect.gen(function*() {
-    const recorded = yield* write()
-    yield* recordFindingMatch(run, { matchOf: args.decisionId, source: `recovery:${current.reviewId}`, evidence: args.recover,
-      matchNote: `Recovered from interrupted ${current.phase} review at head ${current.head}, base ${current.baseOid}; review remains incomplete` }, current.reviewId)
-    return recorded
+    return yield* recordRecoveredFinding({ ...run, decisionLog: args.decisionLog }, args, {
+      source: `recovery:${current.reviewId}`, evidence: args.recover,
+      matchNote: `Recovered from interrupted ${current.phase} review at head ${current.head}, base ${current.baseOid}; review remains incomplete`
+    }, current.reviewId)
   })) : args.review.length > 0 && !repair ? yield* withOpenReview(args.review, write) : yield* write()
   const limits = yield* readReviewLimits(result.runId, run.head)
   yield* Console.log(args.json ? JSON.stringify({ ...result, limits }) : `recorded run=${result.runId} issue=${result.issueId} decision=${args.matchOf || args.decisionId} db=${args.db}\n${JSON.stringify({ limits })}`)
