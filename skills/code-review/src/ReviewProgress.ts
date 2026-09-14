@@ -71,7 +71,9 @@ export const recordProgress = Effect.fn("ReviewProgress.record")(function*(runId
         const failures = history.slice(latestAuthorization + 1).filter(saved => saved.outcome === "repair-unsuccessful" && saved.findingId === event.findingId)
         if (failures.length < 2) return yield* new ProgressConflict({ message: "Repair authorization requires two recorded unsuccessful attempts" })
       } else {
-        if (event.repairAttempt === undefined || event.repairAttempt.trim().length === 0 || event.authorization !== undefined) return yield* new ProgressConflict({ message: "Repair attempts require --repair-attempt and no --authorization" })
+        if (event.repairAttempt === undefined || event.repairAttempt.trim().length === 0) return yield* new ProgressConflict({ message: "Repair attempts require --repair-attempt" })
+        if (event.outcome === "repair-unsuccessful" && event.authorization !== undefined) return yield* new ProgressConflict({ message: "repair-unsuccessful cannot carry --authorization" })
+        if (event.outcome === "repair-applied" && event.authorization !== undefined && event.authorization.trim().length === 0) return yield* new ProgressConflict({ message: "repair-applied --authorization must contain the consultation receipt" })
         const applied = history.find(saved => saved.outcome === "repair-applied" && saved.repairAttempt === event.repairAttempt)
         if (event.outcome === "repair-applied" && applied !== undefined) return yield* new ProgressConflict({ message: "Repair attempt already recorded; use its result event" })
         if (event.outcome === "repair-unsuccessful") {

@@ -708,6 +708,44 @@ test.effect("CLI gates evidenced repair failures and accepts a scoped owner deci
   yield* progress(5, "started")
 }).pipe(Effect.scoped), { timeout: 60000 })
 
+test.effect("CLI requires a consultation repair receipt and preserves it across a failed attempt", () => Effect.gen(function*() {
+  const { cli, database, progress } = yield* fixture
+  yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])
+  const finding = ["--decision-id", "D1", "--source", "fixture", "--fingerprint", "owner cause", "--summary", "Fixture repair",
+    "--finding-kind", "maintenance", "--maintenance-evidence", "Synthetic duplicate policy", "--present-cost", "Synthetic change cost", "--root-cause", "Synthetic shared cause",
+    "--recommended-fix", "Synthetic owning repair", "--intervention-justification", "Synthetic removal cost", "--fix-scope", "local"]
+  yield* cli("record", [...finding, "--handling", "fix", "--status", "open"])
+  const firstRepair = ["--finding-id", "D1", "--repair-attempt", "D1-1"]
+  const secondRepair = ["--finding-id", "D1", "--repair-attempt", "D1-2"]
+  yield* progress(0, "repair-applied", "native", firstRepair)
+  yield* progress(1, "repair-unsuccessful", "native", firstRepair)
+  yield* progress(2, "repair-applied", "native", secondRepair)
+  yield* progress(3, "repair-unsuccessful", "native", secondRepair)
+  yield* progress(4, "repair-authorized", "native", ["--finding-id", "D1", "--authorization", "Owner approves another retry"])
+  yield* cli("record", [...finding, "--handling", "consult", "--status", "open", "--decision", "Should this repair proceed?"])
+
+  const denied = yield* progress(5, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "consult-1"]).pipe(Effect.flip)
+  assert.include(denied.stderr, "requires --authorization")
+
+  const receipt = ["--finding-id", "D1", "--repair-attempt", "consult-1", "--authorization", "Owner approved this consulted repair"]
+  yield* progress(5, "repair-applied", "native", receipt)
+  const otherFinding = finding.map(value => value === "D1" ? "D2" : value)
+  yield* cli("record", [...otherFinding, "--handling", "consult", "--status", "open", "--decision", "Should the other repair proceed?"])
+  const otherDenied = yield* progress(6, "repair-applied", "native", ["--finding-id", "D2", "--repair-attempt", "other-consult"]).pipe(Effect.flip)
+  assert.include(otherDenied.stderr, "requires --authorization")
+  const blankReceipt = yield* progress(6, "repair-applied", "native", ["--finding-id", "D2", "--repair-attempt", "other-consult", "--authorization", " "]).pipe(Effect.flip)
+  assert.include(blankReceipt.stderr, "requires --authorization")
+  const invalidFailure = yield* progress(6, "repair-unsuccessful", "native", receipt).pipe(Effect.flip)
+  assert.include(invalidFailure.stderr, "cannot carry --authorization")
+  yield* progress(6, "repair-unsuccessful", "native", ["--finding-id", "D1", "--repair-attempt", "consult-1"])
+  yield* progress(7, "repair-applied", "native", ["--finding-id", "D1", "--repair-attempt", "consult-2"])
+  yield* cli("record", [...finding, "--handling", "consult", "--status", "fixed", "--owner-resolution", "approved", "--decision", "Apply the approved repair"])
+
+  assert.strictEqual(decode(yield* cli("progress-status")).revision, 8)
+  const sql = yield* SqliteClient.make({ filename: database })
+  assert.deepStrictEqual(yield* sql`select status, owner_resolution from issues where decision_id = 'D1'`, [{ status: "fixed", owner_resolution: "approved" }])
+}).pipe(Effect.scoped), { timeout: 60000 })
+
 test.effect("CLI reports diff growth as a diagnostic and starts review without scope authorization", () => Effect.gen(function*() {
   const { cli, repository, git } = yield* fixture
   yield* cli("scope-start", ["--scope-summary", "fixture", "--json"])

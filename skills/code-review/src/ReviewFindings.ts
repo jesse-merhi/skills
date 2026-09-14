@@ -11,7 +11,7 @@ import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.
 import { requireCleanReviewTree, trustedExecutable } from "./NativeReview.ts"
 import { changedFileManifest, type ReviewFileIdentity } from "./ReviewFileCoverage.ts"
 import { checkReviewLimits, DEFAULT_REVIEW_LIMITS, freezeReviewLimits, type LimitSettings, readReviewLimits, type ReviewLimitsReport, type ReviewPhase } from "./ReviewLimits.ts"
-import { ProgressConflict, type ProgressEvent, readProgress, recordProgress } from "./ReviewProgress.ts"
+import { ProgressConflict, type ProgressEvent, readProgress, readProgressHistory, recordProgress } from "./ReviewProgress.ts"
 import { measureScopeDiff, type ScopeMeasurement } from "./ReviewScope.ts"
 
 export interface ReviewRun {
@@ -1784,8 +1784,15 @@ export const reviewProgress = Effect.fn("ReviewFindings.progress")(function*(run
       left join review_scope_budgets on review_scope_budgets.run_id = review_runs.id where review_runs.id = ${runId}`)[0]
     if (state?.status === "complete" || state?.scope_status === "complete") return yield* Effect.fail(new InvalidScopeBudget("Completed review progress is immutable"))
     if (event.outcome.startsWith("repair-")) {
-      const issue = yield* sql`select id from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional') and (disposition = 'accept' or (disposition = 'consult' and owner_resolution = 'approved'))`
-      if (issue.length === 0) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open accepted finding or approved consultation"))
+      const issue = (yield* sql<{ readonly disposition: string }>`select disposition from issues where run_id = ${runId} and decision_id = ${event.findingId ?? ''} and status in ('open', 'reopened', 'provisional') and disposition in ('accept', 'consult')`)[0]
+      if (issue === undefined) return yield* Effect.fail(new InvalidFinding("Repair events require an existing open accepted finding or consultation"))
+      if (issue.disposition === "consult") {
+        const currentReceipt = event.outcome === "repair-applied" && event.authorization !== undefined && event.authorization.trim().length > 0
+        const savedReceipt = currentReceipt || (yield* readProgressHistory(runId)).some(saved =>
+          saved.outcome === "repair-applied" && saved.findingId === event.findingId && saved.authorization !== undefined && saved.authorization.trim().length > 0
+        )
+        if (!savedReceipt) return yield* Effect.fail(new InvalidFinding("A consulted finding requires --authorization on its first repair-applied event"))
+      }
     }
     if (event.outcome === "started") {
       yield* checkReviewLimits(yield* readReviewLimits(runId, event.head, event.phase))

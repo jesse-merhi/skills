@@ -39,4 +39,6 @@ Preserve and verify any existing patch. Record supported repairs through the clo
 
 After discovery closes (complete or blocked), record repair events with `progress-record --review <id>`. Supply the outcome, finding ID, patch ID (`--repair-attempt`) and observed evidence; the CLI supplies phase, head and revision. Record the applied attempt while the finding is open. After verification, update a successful finding through `record --review <id> --status fixed`; for a failed attempt, record `repair-unsuccessful` and leave the finding open. Two failures require the existing owner-authorization command before another attempt.
 
+For a consulted finding, include the actual approval receipt in `--authorization` on its first `repair-applied` event. Later attempts for that finding reuse the saved receipt within its approved scope. After successful verification, record the final `fixed` status with `--owner-resolution approved` and the owner’s decision.
+
 Save actual check commands and results through `record-command --review <id>`. Run the record commands for completed repairs and checks together in code mode, checking each result. These commands record evidence; they do not perform edits or run the checks themselves.
