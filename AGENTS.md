@@ -76,6 +76,14 @@ Assign review duties by the task, not by whether an agent is a subagent.
   end, and add each new capability on top of a product that already works.
   Never trade a working product for unfinished complexity.
 - Keep components modular and concerns clearly separated.
+- Make code and CLIs explain their usage and behavior themselves. Use clear
+  names and control flow, discoverable command help with useful examples and
+  defaults, and actionable errors. Put non-obvious implementation rationale
+  beside the relevant code. Do not add companion Markdown merely to explain
+  implementation details or command usage; improve the code or CLI instead.
+  Keep explicitly requested documents, required artifacts, and separate
+  architecture or design explanations in their proper place. This rule does
+  not authorize deleting existing documentation.
 - Make architectural decisions for the long term. Do not implement a stopgap
   intended to be replaced later without the user's explicit approval. Explain
   the durable alternative and why the stopgap is necessary.
