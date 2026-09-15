@@ -229,10 +229,9 @@ itself model generation.
   merging, verify that the saved `code-review` evidence applies to the exact
   current candidate unless the user explicitly waived that review. A changed
   head requires an auditable candidate assessment, not automatically a complete
-  new review cycle. Favor reuse; require further review for a concrete gap in
-  applicable evidence or an invalidated conclusion. The coordinator decides
-  applicability, further review and validation within the authorized task
-  without asking the user to choose or approve those decisions. Follow
+  new review cycle. Favor reuse; require further review only for an invalidated
+  conclusion or concrete evidence gap. The coordinator decides reuse, further
+  review and validation within the authorized task without asking the user. Follow
   `code-review`'s applicability assessment and preserve required coverage. A
   valid closeout identifies the current and source candidates, evidence reused,
   the assessment reason, additional review and validation, findings, fixes, and

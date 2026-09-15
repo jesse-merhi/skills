@@ -2,7 +2,7 @@
 
 Give a fresh reviewer the exact target, base, head, changed files and requested evidence. Use a findings-only agent with no inherited conversation or resumed session. Keep prior findings, attempted fixes and implementation discussion out of its brief.
 
-Tell the reviewer which runtime versions and commands you used, which commit you checked, and what passed, failed or remains unchecked. Link the output. Leave out earlier findings, verdicts and repair explanations. Passing tests do not replace reviewing the code. Use your judgment to decide what further validation is needed, reusing results that still apply. If the reviewer cannot run a check, report that to the coordinator; do not repair the environment.
+Tell the reviewer which runtime versions and commands you used, which commit you checked, and what passed, failed or remains unchecked. Link the output. Leave out earlier findings, verdicts and repair explanations. Passing tests do not replace reviewing the code. Choose any further validation needed; reuse applicable results. If the reviewer cannot run a check, report that to the coordinator; do not repair the environment.
 
 Follow the model policy in the applicable `AGENTS.md` unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change fixed launcher settings. Report an unavailable configuration rather than silently substituting another model.
 

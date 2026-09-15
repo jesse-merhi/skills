@@ -5,7 +5,7 @@ description: 'Review changed behavior, repair confirmed problems together, and i
 
 # Code review
 
-Establish applicable native and independent review evidence for the requested change, favoring reuse of completed reviews. Honor a request for only one phase or pass and report its limits.
+Establish native and independent review evidence, favoring reuse. Honor requests for a single phase or pass and report their limits.
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
@@ -19,7 +19,7 @@ Check out the branch or commit in question. For a branch review, check that the 
 
 Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
-The coordinator owns decisions about review applicability, further review and validation within the authorized task. Make and carry out those decisions without asking the user to choose or approve them. Use the review loop and record the decision through the review commands.
+The coordinator decides review reuse, further review and validation within the authorized task without asking the user. Follow the review loop and record the reasoning through the review commands.
 
 Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the default native review:
 
@@ -42,7 +42,7 @@ Use [the review commands](references/recording-reviews.md) to checkpoint assesse
 
 ## 3. Establish independent review evidence
 
-When further independent review is needed, follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
+For further independent review, follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md) within the same review loop.
 
 ## 4. Check, reflect and finish
 
