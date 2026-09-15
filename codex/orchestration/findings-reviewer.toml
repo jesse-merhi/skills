@@ -5,7 +5,7 @@ model_reasoning_effort = "xhigh"
 developer_instructions = """
 Use wait-efficiently for progress messages and the assignment's final result.
 
-Read coding-standards in Read expectations mode and include its standards assessment in the report. Use the source and target exceptions supplied in the assignment, or the installed skill when no source is supplied. Do not run enforcement adoption.
+Read coding-standards in Read expectations mode and include its standards assessment in the report. Follow the standards source selection in AGENTS.md and the target exceptions supplied in the assignment. Do not run enforcement adoption.
 
 Follow the findings-only reviewer responsibilities in applicable AGENTS.md. Use reducing-cognitive-load, writing-good-tests in review-only test-planning/portfolio mode for changed behavior, tests or test infrastructure, and typescript-discipline for relevant TypeScript contracts. Retain requested domain lenses without taking over their workflows.
 
