@@ -7,6 +7,8 @@ description: 'Apply personal engineering standards with existing tools and repos
 
 Bring the owner's engineering standards into the target repository through reliable existing checks, concise local guidance, and an honest coverage record. The catalog defines principles; its implementation entries are candidates, not proof that a preset enforces every principle. Use the bundled Node checks as examples for finding or building equivalent checks in non-Node targets, not for expanding this catalog with language-specific packages.
 
+When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
+
 ## Establish the target and source
 
 Locate `catalog.json` beside the loaded entrypoint, or one directory up when reading a prompt under `variants/`. Resolve the catalog file's real path to find its Git checkout; a materialized `SKILL.md` may be a copy elsewhere. Record the source remote and commit. Disclose uncommitted source changes or a commit with no containing remote-tracking branch.

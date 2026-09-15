@@ -72,6 +72,20 @@
 					]
 				}
 			},
+			"tailwind-v4": {
+				"file": "eslint/presets/tailwind-v4.mjs",
+				"packages": {
+					"@shadcn/lint": "0.1.0"
+				},
+				"applies": {
+					"dependencies": [
+						"tailwindcss"
+					],
+					"devDependencies": [
+						"tailwindcss"
+					]
+				}
+			},
 			"zod": {
 				"file": "eslint/presets/zod.mjs",
 				"packages": {},
@@ -390,6 +404,132 @@
 						"rule": "eslint/rules/no-wide-arbitrary-breakpoints.mjs",
 						"presets": [
 							"tailwind"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-component-restyling",
+			"title": "Use component variants for appearance",
+			"principle": "Keep reusable components responsible for their appearance. At call sites, use their variants and sizes, and limit className to layout or the component's documented contract. Components can style their own internals.",
+			"scope": "tailwind",
+			"origin": "https://github.com/shadcn-ui/lint — @shadcn/lint 0.1.0",
+			"enforcement": {
+				"javascript": [
+					{
+						"kind": "plugin",
+						"package": "@shadcn/lint",
+						"rules": [
+							"shadcn/no-restyle"
+						],
+						"presets": [
+							"tailwind-v4"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-raw-tailwind-colors",
+			"title": "Use semantic Tailwind theme colors",
+			"principle": "Raw palette utilities and literal colors bypass the design system. Use semantic tokens from the application's theme so colors follow theme changes; record narrow exceptions for intentional fixed colors.",
+			"scope": "tailwind",
+			"origin": "https://github.com/shadcn-ui/lint — @shadcn/lint 0.1.0",
+			"enforcement": {
+				"javascript": [
+					{
+						"kind": "plugin",
+						"package": "@shadcn/lint",
+						"rules": [
+							"shadcn/no-raw-colors"
+						],
+						"presets": [
+							"tailwind-v4"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-arbitrary-tailwind-values",
+			"title": "Use the Tailwind theme scale",
+			"principle": "One-off arbitrary values scatter design decisions through components. Use the shared theme scale or CSS variable utilities, and document values that a real component or library contract requires.",
+			"scope": "tailwind",
+			"origin": "https://github.com/shadcn-ui/lint — @shadcn/lint 0.1.0",
+			"enforcement": {
+				"javascript": [
+					{
+						"kind": "plugin",
+						"package": "@shadcn/lint",
+						"rules": [
+							"shadcn/no-arbitrary-values"
+						],
+						"presets": [
+							"tailwind-v4"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-inline-web-styles",
+			"title": "Use classes for web styling",
+			"principle": "Keep web appearance in classes and pass runtime values through CSS custom properties. Use narrow, documented exceptions when a library owns an inline property; preserve its positioning, animation and interaction behavior.",
+			"scope": "tailwind",
+			"origin": "https://github.com/shadcn-ui/lint — @shadcn/lint 0.1.0",
+			"enforcement": {
+				"javascript": [
+					{
+						"kind": "plugin",
+						"package": "@shadcn/lint",
+						"rules": [
+							"shadcn/no-inline-styles"
+						],
+						"presets": [
+							"tailwind-v4"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "no-unknown-tailwind-classes",
+			"title": "Use classes that the application can render",
+			"principle": "Check classes against the installed Tailwind compiler and the application's actual theme. Fix misspelled utilities and variants; allow external classes only when their stylesheet is loaded. Resolve theme-loading failures before claiming compiler-backed coverage.",
+			"scope": "tailwind",
+			"origin": "https://github.com/shadcn-ui/lint — @shadcn/lint 0.1.0",
+			"enforcement": {
+				"javascript": [
+					{
+						"kind": "plugin",
+						"package": "@shadcn/lint",
+						"rules": [
+							"shadcn/no-unknown-classes"
+						],
+						"presets": [
+							"tailwind-v4"
+						]
+					}
+				]
+			}
+		},
+		{
+			"id": "static-component-classes",
+			"title": "Keep component class choices statically readable",
+			"principle": "Use complete class strings and explicit variant maps so Tailwind and design-system checks can read every choice. Avoid constructing fragments such as a color inside a utility name; use CSS custom properties for genuinely dynamic values.",
+			"scope": "tailwind",
+			"origin": "https://github.com/shadcn-ui/lint — @shadcn/lint 0.1.0",
+			"enforcement": {
+				"javascript": [
+					{
+						"kind": "plugin",
+						"package": "@shadcn/lint",
+						"rules": [
+							"shadcn/require-static-classes"
+						],
+						"presets": [
+							"tailwind-v4"
 						]
 					}
 				]
