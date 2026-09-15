@@ -12,7 +12,7 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 
 | Role | Model | Reasoning |
 | --- | --- | --- |
-| Coordinator | GPT-6 Astra | medium |
+| Coordinator | GPT-6 Astra | xhigh |
 | `implementer` — implementation, test design and repairs | GPT-5.6 Sol | high |
 | `test_executor` — established validation execution | GPT-5.6 Luna | max |
 | `investigator` — bounded investigation and research | GPT-5.6 Luna | max |
