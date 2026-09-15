@@ -25,7 +25,8 @@ The ids, titles, and principles express the owner's standards. Enforcement colum
   - `principle` — what to do instead and why, in the words an agent would use when the rule fires.
   - `scope` — one of the literals listed in `catalog.schema.ts`.
   - `origin` — where the standard came from.
-  - `enforcement.<ecosystem>` — an array, one column per ecosystem, keyed by the same names as `ecosystems`. `script` is the one exception: it holds the shell twin of a rule, for file types no ecosystem linter parses. Each column admits only its ecosystem's kinds. Never empty in this schema. The catalog supplies Node/JavaScript implementations and shell helpers; other stacks receive target-owned mappings during adoption, not placeholder columns or prebuilt language packages here.
+  - `enforcement` — optional. Omit it when the standard has no bundled mechanical check; the principle still applies during implementation, review, and adoption. Its absence makes no claim of tool enforcement. Do not add a syntax check for a decision that requires judgment.
+  - `enforcement.<ecosystem>` — when enforcement is present, an array for every ecosystem, keyed by the same names as `ecosystems`. `script` is the one exception: it holds the shell twin of a rule, for file types no ecosystem linter parses. Each column admits only its ecosystem's kinds and must be nonempty. The catalog supplies Node/JavaScript implementations and shell helpers; other stacks receive target-owned mappings during adoption, not placeholder columns or prebuilt language packages here.
 
 ## Enforcement kinds
 
@@ -52,8 +53,8 @@ The ids, titles, and principles express the owner's standards. Enforcement colum
 - every `plugin` rule id exists in the installed package.
 - each preset `packages` list equals the packages that preset file imports, at the version installed in this repository.
 - every rule id a preset emits resolves against the plugins that preset declares.
-- every standard carries a column for every ecosystem in `ecosystems`.
+- every standard with bundled enforcement carries a column for every ecosystem in `ecosystems`.
 
 ## Adding an entry
 
-Add the enforcement and the file it names in the same change: the catalog tests treat a catalog row with no file, and a rule file with no catalog row, as a failure. Non-Node adoption belongs in the target repository and does not require extending this schema or adding another language package.
+For a standard with bundled enforcement, add the enforcement and the file it names in the same change: the catalog tests treat a missing referenced file, and a rule file with no catalog row, as a failure. A standard without a bundled checker needs only its id, title, principle, scope, and origin. Non-Node adoption belongs in the target repository and does not require extending this schema or adding another language package.

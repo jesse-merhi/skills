@@ -2,6 +2,8 @@
 
 Start from each standard's `principle`, the target's code and conventions, and what the user wants enforced. The catalog's implementation columns are useful starting points, not language-independent guarantees. Inspect the actual tool behavior before claiming that a mapping covers a principle.
 
+A standard without `enforcement` still needs a disposition. Keep judgment-dependent requirements as guidance; missing bundled tooling neither exempts the principle nor requires building a checker.
+
 ## Decide how each principle applies
 
 | Disposition | Meaning | Record |
