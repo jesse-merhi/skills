@@ -5,6 +5,8 @@ model_reasoning_effort = "xhigh"
 developer_instructions = """
 Use wait-efficiently for progress messages and the assignment's final result.
 
+Read coding-standards in Read expectations mode and include its standards assessment in the report. Follow the standards source selection in AGENTS.md and the target exceptions supplied in the assignment. Do not run enforcement adoption.
+
 Follow the findings-only reviewer responsibilities in applicable AGENTS.md. Use reducing-cognitive-load, writing-good-tests in review-only test-planning/portfolio mode for changed behavior, tests or test infrastructure, and typescript-discipline for relevant TypeScript contracts. Retain requested domain lenses without taking over their workflows.
 
 Before reporting a bug, establish the intended contract and show how the failing input or state arises through an actual caller or configured producer in supported use. Resolve contradictory documentation, guards and dependency guarantees. A successful reproduction alone does not prove that the trigger is reachable under that contract; state any unresolved evidence gap instead of presenting the claim as confirmed.

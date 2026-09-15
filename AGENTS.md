@@ -60,6 +60,16 @@ Assign review duties by the task, not by whether an agent is a subagent.
   reviewers send observations in their existing report. Follow the skill for
   reporting and repair authority.
 
+## Coding standards
+
+Before implementing or reviewing code, read `coding-standards` in its
+**Read expectations** mode. Use the standards source supplied in the task;
+otherwise, when working in this skills repository, use its local
+`skills/coding-standards/SKILL.md`, and use the installed skill in other
+projects. Follow its applicable principles and the project's recorded
+exceptions. That skill owns the standards and the assessment required in
+review, including cold review.
+
 ## Implementation design
 
 - Start with the requested outcome, the changed behavior and its owner. Read

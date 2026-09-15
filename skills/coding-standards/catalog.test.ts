@@ -47,8 +47,8 @@ const catalog: Catalog = decodeCatalog(readFileSync(join(standardsDirectory, "ca
 const javascriptPresets = catalog.presets.javascript ?? {}
 
 const enforcements = catalog.standards.flatMap((standard) => [
-  ...standard.enforcement.javascript,
-  ...(standard.enforcement.script ?? [])
+  ...(standard.enforcement?.javascript ?? []),
+  ...(standard.enforcement?.script ?? [])
 ])
 
 const ruleEntries = enforcements.flatMap((entry) => (entry.kind === "rule" ? [entry] : []))
@@ -115,7 +115,7 @@ const isEnabled = (setting: typeof RuleSetting.Type): boolean => {
 }
 
 interface MutableStandard {
-  enforcement: { javascript: Array<Record<string, unknown>> }
+  enforcement?: { javascript: Array<Record<string, unknown>> }
 }
 
 // The schema, not a test, is what has to reject a hand-edited catalog, so each
@@ -124,14 +124,16 @@ const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandar
   [
     "a standard whose javascript column is empty",
     (standards) => {
-      for (const standard of standards) standard.enforcement.javascript = []
+      for (const standard of standards) {
+        if (standard.enforcement) standard.enforcement.javascript = []
+      }
     }
   ],
   [
     "an enforcement entry carrying a key its kind does not define",
     (standards) => {
       for (const standard of standards) {
-        for (const entry of standard.enforcement.javascript) entry.severity = "error"
+        for (const entry of standard.enforcement?.javascript ?? []) entry.severity = "error"
       }
     }
   ],
@@ -139,7 +141,7 @@ const rejectedMutations: ReadonlyArray<[string, (standards: Array<MutableStandar
     "a shell script entry pasted into the javascript column",
     (standards) => {
       for (const standard of standards) {
-        standard.enforcement.javascript.push({ kind: "script", file: "check.sh", languages: ["sh"] })
+        standard.enforcement?.javascript.push({ kind: "script", file: "check.sh", languages: ["sh"] })
       }
     }
   ]
@@ -150,6 +152,23 @@ const ruleFiles = readdirSync(join(standardsDirectory, "eslint/rules"))
   .map((entry) => `eslint/rules/${entry}`)
 
 describe("coding standards catalog", () => {
+  it("preserves guidance without claiming bundled enforcement", () => {
+    const standard = catalog.standards.find((entry) => entry.enforcement !== undefined)
+    assert.isDefined(standard)
+    const { enforcement, ...guidance } = standard
+    const decoded = decodeCatalog(JSON.stringify({ ...catalog, standards: [guidance, standard] }))
+    assert.deepEqual(decoded.standards, [guidance, standard])
+    assert.notProperty(decoded.standards[0], "enforcement")
+    assert.deepEqual(decoded.standards[1]?.enforcement, enforcement)
+  })
+
+  it("rejects an explicitly empty enforcement mapping", () => {
+    const [standard] = catalog.standards
+    assert.isDefined(standard)
+    const source = { ...catalog, standards: [{ ...standard, enforcement: {} }] }
+    assert.throws(() => decodeCatalog(JSON.stringify(source)))
+  })
+
   it("resolves every referenced rule, script, baseline, and preset file", () => {
     for (const path of referencedPaths) {
       assert.isTrue(existsSync(join(standardsDirectory, path)), `missing catalog path ${path}`)
@@ -268,8 +287,9 @@ describe("coding standards catalog", () => {
     assert.throws(() => decodeCatalog(JSON.stringify(raw)))
   })
 
-  it("gives every standard a column for every ecosystem", () => {
+  it("gives every bundled enforcement a column for every ecosystem", () => {
     for (const standard of catalog.standards) {
+      if (!standard.enforcement) continue
       for (const ecosystem of Object.keys(catalog.ecosystems)) {
         assert.property(standard.enforcement, ecosystem, `${standard.id} lacks a ${ecosystem} column`)
       }
