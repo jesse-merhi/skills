@@ -5,7 +5,7 @@ description: 'Review changed behavior, repair confirmed problems together, and i
 
 # Code review
 
-Run native review, repair confirmed problems, then obtain native and independent review of the final code. Honor a request for only one phase or pass and report its limits.
+Establish native and independent review evidence, favoring reuse. Honor requests for a single phase or pass and report their limits.
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
@@ -17,9 +17,11 @@ Use `Agent` with `subagent_type: "findings-reviewer"` for the fresh independent 
 
 ## 1. Start the review
 
-Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them.
+Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout. Commit authorized task edits for review and preserve unrelated uncommitted work.
 
 Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+
+The coordinator decides review reuse, further review and validation within the authorized task without asking the user. Follow the review loop and record the reasoning through the review commands.
 
 Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the normal Codex native review:
 
@@ -40,13 +42,13 @@ Use [the native reviewer](references/native-review.md) and [the review loop](ref
 
 Use [the review commands](references/recording-reviews.md) to checkpoint assessed findings and probe evidence during discovery, then save the complete report. Batch available records in one code-mode call and check every result. Close discovery before repairing; interrupted reviews retain their incomplete status while supported findings can be recovered and repaired through those commands.
 
-## 3. Run an independent review
+## 3. Establish independent review evidence
 
-Follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
+For further independent review, follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md) within the same review loop.
 
 ## 4. Check, reflect and finish
 
-Run the relevant repository tests, typecheck, lint and build commands. Reuse earlier proof only under the review loop's applicability rules. Confirm behavior and add effective regression coverage before delivery; this workflow does not require a failing-test-first cycle. Save completed checks with `review-findings record-command --review <review-id>`.
+Decide what validation the change needs. Reuse applicable passing results and satisfy required checks. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
 
 After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
 

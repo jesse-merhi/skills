@@ -10,10 +10,12 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Schema from "effect/Schema"
 import { Argument, Command, Flag } from "effect/unstable/cli"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 import { fileURLToPath } from "node:url"
 
 import { checkedInherit, checkedText, checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
 import { trustedExecutable } from "./NativeReview.ts"
+import { assessCandidate, CandidateConflict, CandidateDecision, CandidatePhase, prepareCandidate } from "./ReviewCandidate.ts"
 import { completeReviewContext, resolveLocalReviewContext, ReviewContextError, type ReviewContextInput } from "./ReviewContext.ts"
 import { ActiveScopeBudgetExists, authorizeScopeBudget, buildCloseout, checkScopeBudget, completeScopeBudget, FINDING_FIX_SCOPES, FINDING_HANDLINGS, FINDING_KINDS, FINDING_REJECTION_GATES, FINDING_SCHEMA_VERSION, FINDING_STATUSES, findSavedReviewContext, formatFindingSchema, formatReadyScopeBudget, formatReviewFileCoverage, formatScopeBudgetCheck, formatScopeBudgetStatus, getReviewFileCoverage, getScopeBudget, initialize, InvalidFinding, InvalidReviewCoverage, InvalidScopeBudget, MissingReviewRun, MissingScopeBudget, printCloseout, printQueryResults, pruneFindings, queryFindings, recordCommand, recordFinding, recordFindingMatch, recordRecoveredFinding, recordReviewedFiles, requireClosedReview, reviewLimits, reviewProgress, type ReviewRun, ScopeBudgetAlreadyStarted, ScopeBudgetBlocked, startOrResumeScopeBudget, startScopeBudget } from "./ReviewFindings.ts"
 import { DEFAULT_REVIEW_LIMITS, readReviewLimits, ReviewLimitsBlocked } from "./ReviewLimits.ts"
@@ -382,6 +384,55 @@ const reviewFinish = Command.make("finish", { ...reviewHandle, outcome: Flag.cho
   const review = yield* finishReview(args.review, args.outcome, args.evidence)
   yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: review.status, outcome: review.outcome, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
 })))
+const candidatePrepare = Command.make("candidate-prepare", {
+  db, ...inferredRun, ...reviewScopeFlags, sourceRun: optionalString("source-run"),
+  consultCap: Flag.integer("consult-cap").pipe(Flag.optional),
+  coldCleanTarget: Flag.integer("cold-clean-target").pipe(Flag.optional),
+  nativeCleanTarget: Flag.integer("native-clean-target").pipe(Flag.optional),
+  requireCurrentHead: Flag.boolean("require-current-head").pipe(Flag.optional)
+}, args => Effect.gen(function*() {
+  const resolved = yield* resolveReviewRun(args)
+  return yield* withSelectedDb(resolved.database, () => Effect.gen(function*() {
+    yield* initialize()
+    const explicitLimits = {
+      ...(Option.isSome(args.consultCap) ? { consultCap: args.consultCap.value } : {}),
+      ...(Option.isSome(args.coldCleanTarget) ? { coldCleanTarget: args.coldCleanTarget.value } : {}),
+      ...(Option.isSome(args.nativeCleanTarget) ? { nativeCleanTarget: args.nativeCleanTarget.value } : {}),
+      ...(Option.isSome(args.requireCurrentHead) ? { requireCurrentHead: args.requireCurrentHead.value } : {}),
+      ...(args.requiredPhase.length > 0 ? { requiredPhases: args.requiredPhase } : {})
+    }
+    const sql = yield* SqlClient.SqlClient
+    const candidate = yield* sql.withTransaction(Effect.gen(function*() {
+      const resolvedScope = yield* startOrResumeScopeBudget(resolved.run, {
+        scopeSummary: args.scopeSummary || `Review ${resolved.run.target}`,
+        limits: explicitLimits
+      })
+      const run = { ...resolved.run, runId: resolvedScope.budget.runId }
+      return yield* prepareCandidate(run, resolvedScope.budget, Option.getOrUndefined(args.sourceRun), !resolvedScope.resumed, explicitLimits)
+    }))
+    yield* Console.log(JSON.stringify({
+      ...candidate,
+      identity: {
+        runId: candidate.runId, db: resolved.database, repo: resolved.run.repo,
+        repoPath: resolved.run.repoPath, branch: resolved.run.branch,
+        target: resolved.run.target, base: resolved.run.base, head: candidate.candidate.head
+      }
+    }))
+  }))
+}))
+const candidateAssess = Command.make("candidate-assess", {
+  db, candidate: Flag.string("candidate"), decision: Flag.choice("decision", CandidateDecision.literals),
+  affectedPhase: Flag.choice("affected-phase", CandidatePhase.literals).pipe(Flag.atLeast(0)),
+  semanticImpactEvidence: Flag.string("semantic-impact-evidence")
+}, args => withSelectedDb(args.db, () => Effect.gen(function*() {
+  yield* initialize()
+  yield* Console.log(JSON.stringify(yield* assessCandidate({
+    candidateId: args.candidate,
+    decision: args.decision,
+    affectedPhases: args.affectedPhase,
+    semanticImpactEvidence: args.semanticImpactEvidence
+  })))
+})))
 const reviewNative = Command.make("native", {
   db, ...inferredRun, ...reviewScopeFlags, codexBin: Flag.string("codex-bin").pipe(Flag.withDefault("codex"))
 }, args => Effect.gen(function*() {
@@ -419,7 +470,7 @@ const reviewNative = Command.make("native", {
     yield* Console.log(JSON.stringify({ ...reviewContext(review, database), status: "awaiting-findings", scope: { status: scope.status, resumed: resolvedScope.resumed }, report, limits: yield* readReviewLimits(review.runId, review.head, review.phase) }))
   }))
 }))
-const reviewCommand = Command.make("review").pipe(Command.withSubcommands([reviewStart, reviewStatus, reviewFinish, reviewNative]))
+const reviewCommand = Command.make("review").pipe(Command.withSubcommands([reviewStart, reviewStatus, reviewFinish, reviewNative, candidatePrepare, candidateAssess]))
 
 const command = Command.make("review-findings").pipe(Command.withDescription("Local SQLite registry for review findings"), Command.withSubcommands([init, findingSchema, record, recordCommandCli, query, closeout, prune, scopeStart, scopeCheck, scopeAuthorize, scopeStatus, scopeComplete, coverageRecord, coverageStatus, progressStatus, progressRecord, reviewCommand, pathCommand]))
 const Live = Layer.mergeAll(NodeServices.layer)
@@ -433,5 +484,5 @@ command.pipe(Command.run({ version: "4.0.0" }),
   // @effect-diagnostics-next-line strictEffectProvide:off
   Effect.provide(Live), Effect.tapCause((cause) => {
     const error = Cause.squash(cause)
-    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof ReviewContextError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
+    return Console.error(error instanceof ReviewLimitsBlocked || error instanceof CandidateConflict || error instanceof ActiveScopeBudgetExists || error instanceof MissingReviewRun || error instanceof MissingScopeBudget || error instanceof ScopeBudgetAlreadyStarted || error instanceof ScopeBudgetBlocked || error instanceof InvalidFinding || error instanceof InvalidReviewCoverage || error instanceof InvalidScopeBudget || error instanceof QueryScopeError || error instanceof CloseoutOptionError || error instanceof ScopeDatabaseError || error instanceof ReviewContextError || error instanceof UnsupportedHistoricalGitVersion ? error.message : Cause.pretty(cause))
   }), NodeRuntime.runMain({ disableErrorReporting: true }))

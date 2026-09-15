@@ -242,23 +242,10 @@ itself model generation.
   and discover commands through `gh stack --help`. Keep independent or
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
-- Review gate: before marking any PR ready, asking for human sign-off, or
-  merging, verify that `code-review` completed on the exact current head unless
-  the user explicitly waived that review. A
-  valid closeout names that head and records the native phase, cold phase,
-  findings, review fixes, verification, and anything still open. Treat missing,
-  stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
-  review do not count. Infer review authority from the user's intended outcome
-  and existing session authorization, including the ordinary review needed to
-  complete that outcome. No exact phrase or named workflow is required. Continue
-  authorized review after repairs or new commits: a changed head needs fresh
-  evidence, not automatically fresh permission. Honor explicit waivers and
-  narrower requests; a status question alone does not authorize a new review.
-  Ask only when authority or a material decision is genuinely missing, explaining
-  the unresolved choice. Until resolved, do not mark ready or merge. Record an
-  explicit waiver and its scope in the task or PR closeout; a waiver-only
-  closeout needs no fabricated review run. The waiver satisfies only this review
-  gate, leaving validation, sign-off and other delivery requirements in force.
+- Review gate: before marking ready, requesting sign-off or merging, ensure
+  `code-review` covers the current changes unless the user explicitly waives it.
+  The agent decides whether more review or tests are needed, favors reuse, and
+  records its reasoning without asking permission within the authorized task.
 - Sign-off gate: after the review decision, proof, validation, and CI pass,
   summarize the review findings and fixes or the explicit waiver, then check
   for a thumbs-up (`+1`) reaction. Resolve the expected human login from task or

@@ -17,6 +17,7 @@ Read `review-findings --help`, then subcommand `--help` for flags. Use the recor
 | Check scope / record approved expansion / finish | `scope-check` / `scope-authorize` / `scope-complete` |
 | Read pass state / record passes, repairs or decisions | `progress-status` / `progress-record` |
 | Start, inspect or finish a review | `review native`, `review start`, `review status`, `review finish` |
+| Prepare and assess a changed candidate | `review candidate-prepare` / `review candidate-assess` |
 | Record owner decisions or exceptional transitions | `record`, `progress-record` |
 | Save finished validation | `record-command` |
 | Search before dispatch, resume or answering review questions | `query` |
@@ -28,7 +29,7 @@ Use the saved repository name/path, branch, target and base to avoid mixing runs
 
 Follow the pass-recording, fixing and blocked-check instructions linked where they are used in the main skill. Historical-head measurement without checking it out needs Git 2.41+ for target binary attributes; otherwise check out that head or obtain an authorized Git update.
 
-When an authorized main sync changes an existing run's base, use `scope-authorize --base <old-base> --new-base <new-base>` with the user's explicit authorization. It remeasures the baseline while preserving findings, commands, the branch lock and event history. Use the new base afterward and restart the current review phase. Completed scopes remain terminal; an existing destination run is rejected rather than overwritten. A migrated budget marked as requiring rebaseline also needs explicit authorization through `scope-authorize`; `scope-check` cannot clear that state.
+When an authorized main sync changes the run's base, record existing authority with `scope-authorize --base <old-base> --new-base <new-base>`; do not ask again. It remeasures the baseline while preserving findings, commands, the branch lock and event history. Use the new base afterward and assess whether the current candidate can reuse that evidence under the review loop. Do not restart a phase solely because the base or commit identities changed. Candidate assessment does not authorize or hide a scope migration. Completed scopes remain terminal; an existing destination run is rejected rather than overwritten. A migrated budget marked as requiring rebaseline also needs explicit authorization through `scope-authorize`; `scope-check` cannot clear that state.
 
 
 ## 3. Record findings and decisions
