@@ -5,7 +5,7 @@ description: 'Review changed behavior, repair confirmed problems together, and i
 
 # Code review
 
-Establish native and independent review evidence for the requested change. When a completed review already exists, first decide whether changes since that review invalidate any of its conclusions; reuse what still applies. Honor a request for only one phase or pass and report its limits.
+Establish applicable native and independent review evidence for the requested change, favoring reuse of completed reviews. Honor a request for only one phase or pass and report its limits.
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
@@ -15,11 +15,11 @@ Use `spawn_agent` with `agent_type: "findings_reviewer"` for the fresh independe
 
 ## 1. Start the review
 
-Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout; preserve uncommitted edits and ask before committing or discarding them.
+Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout. Commit authorized task edits for review and preserve unrelated uncommitted work.
 
 Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
 
-Use the review loop to decide whether another review is needed, and record that decision through the review commands.
+The coordinator owns decisions about review applicability, further review and validation within the authorized task. Make and carry out those decisions without asking the user to choose or approve them. Use the review loop and record the decision through the review commands.
 
 Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the normal Codex native review:
 
@@ -40,9 +40,9 @@ Use [the native reviewer](references/native-review.md) and [the review loop](ref
 
 Use [the review commands](references/recording-reviews.md) to checkpoint assessed findings and probe evidence during discovery, then save the complete report. Batch available records in one code-mode call and check every result. Close discovery before repairing; interrupted reviews retain their incomplete status while supported findings can be recovered and repaired through those commands.
 
-## 3. Run an independent review
+## 3. Establish independent review evidence
 
-Follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
+When further independent review is needed, follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md), continuing the same review loop.
 
 ## 4. Check, reflect and finish
 

@@ -22,7 +22,7 @@ Before editing, group the accepted inventory by failed assumption. Trace other c
 
 Fix proven, worthwhile problems accepted by the CLI within existing authority and budget. Keep independent adjacent work as a nonblocking follow-up. Treat measured diff growth through the scope diagnostic; ask about missing permission, unrelated work or concrete high-risk choices; preserve explicit requirements for breaking changes, dependencies, access and publication. `investigate` and `consult` do not authorize edits, including tentative keep/revert repairs.
 
-Queue unanswered questions and continue independent authorized work. Repeated reports share one question; silence is not approval. Record the owner's answer before dependent work. Wait when nothing independent remains or the CLI blocks continuation.
+Resolve technical questions yourself; queue only decisions that require the owner and continue independent authorized work. Repeated reports share one question; silence is not approval. Record the owner's answer before dependent work. Wait when nothing independent remains or the CLI blocks continuation.
 
 Use `writing-good-tests` for behavior or test changes, `reducing-cognitive-load` for repairs, and `typescript-discipline` for TypeScript. Reuse applicable `frontend-ui-validation` evidence for UI changes and request missing states.
 
@@ -30,4 +30,4 @@ Verify the repaired behavior, affected siblings and behavior the fix must preser
 
 Record repair attempts and checks through the review commands, using `decisionId`, not database `issueId`. Record the applied attempt while the finding is open, then record verification. Mark a successful repair fixed; record a failed attempt as `repair-unsuccessful` and keep its finding open. After two failures, use the blocked-check instructions to diagnose the failures and record a materially changed approach before continuing. Do not duplicate saved attempts or turn the failed-repair threshold into another approval request for already-authorized local work.
 
-Run `review-findings scope-check` with the saved scope after the repairs or a failed attempt. Resolve blockers before continuing, then commit and return to review. Preserve unrelated edits.
+Run `review-findings scope-check` with the saved scope after the repairs or a failed attempt. Resolve blockers before continuing, then commit and assess review applicability. Preserve unrelated edits.

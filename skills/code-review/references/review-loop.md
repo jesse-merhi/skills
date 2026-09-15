@@ -4,7 +4,7 @@ Keep one saved run. Each `review native` or `review start` invocation targets an
 
 ## Finish discovery before repairs
 
-Collect and adjudicate the entire native result before editing. Normally repair its accepted findings together, obtain the required native result on the repaired head, then run independent review. Honor single-phase and single-pass requests.
+Collect and adjudicate the entire native result before editing. Normally repair its accepted findings together, establish applicable required native evidence for the repaired candidate, then establish independent evidence. Honor single-phase and single-pass requests.
 
 Gather independent findings before repairs only when a named unresolved flow or shared boundary could materially change the repair. Record that reason; size or reassurance alone is insufficient. Dispatch serially, keep native findings out of the independent brief, and combine both inventories before repairing.
 
@@ -27,7 +27,7 @@ Apply the findings guide to the full accepted inventory. After interruption, use
 
 Keep the phase targets frozen at setup. Each required phase must meet its configured clean target through results applicable to the final candidate; normally this is one clean native and one clean independent result. A result may have been produced on an earlier candidate when the recorded assessment shows that its reviewed behavior and integration still apply. Do not relabel inherited evidence as a fresh review of the new candidate.
 
-Determine whether changes since the last reviewed candidate invalidate any earlier review conclusions. Use your judgment to decide how to establish that and what further review or validation is needed. Reuse evidence that still applies and record the reasoning. When applicability cannot be established, review the affected scope again.
+Favor reusing completed reviews. Assess changes since the last reviewed candidate and require further review only for a concrete reason: an invalidated conclusion or a gap in applicable required evidence. Use your judgment to decide what investigation or validation is needed, and record the reasoning.
 
 A repair invalidates only evidence whose reviewed behavior or assumptions it changes. New findings or fixes reopen the affected evidence and checks, while unrelated completed evidence remains available. An earlier independent discovery pass does not cover a later repair that affects its scope. Domain lenses do not each require another agent. The registry keeps separate pass counts and clean streaks per phase.
 

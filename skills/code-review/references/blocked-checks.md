@@ -32,6 +32,6 @@ Do not ask again solely because two authorized local attempts failed. Ask when t
 
 ## Unanswered questions
 
-For open decisions, present the actual questions together and record the answers before continuing. Each answer or scope approval clears only its own blocker. Explicit user task deadlines apply independently of the review workflow.
+Resolve technical review and validation questions within existing authority yourself. Present only decisions reserved for the user, and record those answers before dependent work. Each answer or scope approval clears only its own blocker. Explicit user task deadlines apply independently of the review workflow.
 
-A completed clean-pass target stops further review of unchanged code, not progression to the next requested review. Keep completed evidence even when the next action is blocked.
+A completed clean-pass target stops further review while its evidence applies, not progression to a required phase whose evidence is missing. Keep completed evidence even when the next action is blocked.
