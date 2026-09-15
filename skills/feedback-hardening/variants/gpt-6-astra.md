@@ -25,11 +25,11 @@ Check the owning tools, instructions and available prior feedback. Reuse open re
 
 Name the change, its owner and how to tell whether it helped. State missing evidence when the cause is uncertain. Use one independent, read-only recommendation worker only for competing causes or consequential tradeoffs; it advises without editing.
 
-Use `spawn_agent` with `agent_type: "investigator"` for that recommendation. Set `fork_turns: "none"`. Pass the question, worktree and revision or source, scope, constraints, acceptance criteria and neutral evidence. Keep decisions and repairs here. If independent dispatch is unavailable, assess locally and disclose the lack of independence.
+Use `spawn_agent` with `agent_type: "investigator"` for that recommendation. Set `fork_turns: "none"`. Pass the question, worktree and revision or source, scope, constraints, acceptance criteria and neutral evidence. Keep user-facing decisions with the main coordinator and repairs with the current execution owner. If independent dispatch is unavailable, assess locally and disclose the lack of independence.
 
 ## 4. Apply and follow through
 
-Use existing user instructions to resolve scope and implement authorized changes without asking again. Record that authority. Ask only for additional permission or a material user decision. Feedback or investigation alone does not authorize broader changes. Reporting grants no installation, publication, merge or other separate authority. Recheck the target and preserve concurrent work through its normal implementation workflow. Use revision or ETag preconditions for managed writes; stop if concurrent changes cannot be protected.
+Have the current execution owner use existing user instructions to resolve scope and implement authorized changes without asking again. That owner records the authority. The main coordinator asks only for additional permission or a material user decision. Feedback or investigation alone does not authorize broader changes. Reporting grants no installation, publication, merge or other separate authority. Recheck the target and preserve concurrent work through its normal implementation workflow. Use revision or ETag preconditions for managed writes; stop if concurrent changes cannot be protected.
 
 Verify the change against the original failure. Keep evidence, pending recommendations, approval state and next actions in the existing task notes for resumption or handoff. Include later instructions that supersede pending questions without treating them as approval of the old proposal. Consult that record on the next relevant run when available: changing an instruction alone does not prove improvement.
 
