@@ -73,12 +73,6 @@ If `functions.wait` reports that its cell is unavailable, retrieve the retained 
 
 Do not replace code mode with separate launch and polling calls. Use direct calls only for tools the host excludes from code mode, such as native agent controls. `notify` above exposes recovery pointers; do not use it or `yield_control` for unchanged progress. This repository cannot restore the host's outer-cell registry or guarantee retention across host resets.
 
-### Required agent results
-
-Dispatch once, finish independent work, then use the exposed native agent event wait. For existing Desktop tasks, use `wait_threads` with returned handles and cursors; do not create a new task just to wait. Batch required targets within the tool's limit and resume after timeouts or unrelated messages instead of repeatedly listing status. Inspect status only for errors or repeated timeouts.
-
-Keep the parent turn active until required work is terminal unless the current host explicitly guarantees completion will wake an ended turn. Parallel subagent support and `notify` do not establish that guarantee.
-
 ### Bound task-status output
 
 For existing Desktop tasks, prefer a compact `wait_threads` snapshot (`timeoutMs: 0`) when only status is needed. Keep returned IDs and cursors for later waits. When history is needed, request only relevant turns and output detail.
@@ -86,3 +80,13 @@ For existing Desktop tasks, prefer a compact `wait_threads` snapshot (`timeoutMs
 Batch independent reads with `Promise.allSettled` and store each full result before emitting anything. Inspect each fulfilled result or error, then emit only status, the latest relevant result and recovery handles from the tool's returned schema. Keep large histories and logs in stored results or run-owned files so a later question can select more detail without refetching. Budget the combined emitted text against `functions.exec`'s `max_output_tokens`; per-call limits do not bound the whole batch.
 
 Required instruction documents must still be read in full. Split them into output-sized batches or consecutive ranges, inspect each part, and resume from the last fully read range if a response is clipped. Do not replace required document text with a summary to fit more calls in one cell.
+
+## Required agent results
+
+Give workers bounded assignments. Return one final result with the outcome, revision/build, evidence, findings, verification and unresolved decisions; identify missing evidence. Send interim messages only when they change someone's next action.
+
+Finish independent work, then wait on existing worker handles. Preserve handles and results for recovery. Act on completion, failure, decisions or user input; resume after routine messages and timeouts without check-ins. Diagnose errors or concrete stalls, not elapsed waits alone.
+
+Honor host wait limits and required updates. Keep the parent active unless the host guarantees completion will wake an ended turn. Do not build a polling workaround for missing suspension support.
+
+Use `wait_agent` directly when the host excludes agent controls from code mode. It can wake for any mailbox message; resume after routine messages. For existing Desktop tasks, use `wait_threads` with saved IDs and cursors, batching targets within its limit. Commentary does not wake it. Reserve zero-time snapshots for status requests or diagnosis. Do not create a Desktop task just to wait.

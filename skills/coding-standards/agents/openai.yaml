@@ -1,7 +1,4 @@
 interface:
   display_name: "Coding Standards"
-  short_description: "Apply standards with native checks and local guidance."
-  default_prompt: "Use $coding-standards to apply my engineering standards to this repository: prefer existing tools for reliable checks, write concise local agent guidance for judgment calls, and record partial coverage, gaps, and exceptions. Translate unrepresented stacks on demand."
-
-policy:
-  allow_implicit_invocation: false
+  short_description: "Read engineering expectations for implementation and review."
+  default_prompt: "Use $coding-standards in Read expectations mode for this implementation or review. Read the catalog principles and project exceptions; keep enforcement adoption separate unless I explicitly request it."

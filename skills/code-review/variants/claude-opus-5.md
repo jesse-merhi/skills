@@ -9,6 +9,8 @@ Establish native and independent review evidence, favoring reuse. Honor requests
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
+Read `coding-standards` in **Read expectations** mode before assessing the diff. Use its required standards assessment throughout this review and include it in the final report. Loading expectations does not invoke enforcement adoption or authorize extra repairs.
+
 Use `Agent` with `subagent_type: "implementer"` for useful bounded repairs and `Agent` with `subagent_type: "investigator"` for unresolved code or dependency questions. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery here.
 
 Use `Agent` with `subagent_type: "findings-reviewer"` for the fresh independent phase under the independent-review instructions. It does not replace this coordinator or native review. If the role is unavailable, report it and continue suitable work locally. Do not rebuild role prompts or change live configuration; local review cannot satisfy independent review.

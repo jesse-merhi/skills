@@ -9,6 +9,8 @@ Establish native and independent review evidence, favoring reuse. Honor requests
 
 Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
 
+Read `coding-standards` in **Read expectations** mode before assessing the diff. Use its required standards assessment throughout this review and include it in the final report. Loading expectations does not invoke enforcement adoption or authorize extra repairs.
+
 Delegate useful bounded repairs to the configured implementer and unresolved code or dependency questions to the investigator. Supply the objective, worktree and revision, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance and settings in the role definitions. The coordinator retains the findings registry, repair decisions, sequencing, integration, validation and delivery.
 
 Use a fresh findings-only reviewer for the independent phase under the independent-review instructions. It does not replace the coordinator or native review. Report unavailable roles and continue suitable local work without reconstructing prompts or changing live configuration; local review cannot satisfy an independent-review requirement.

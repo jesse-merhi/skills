@@ -6,6 +6,8 @@ effort: xhigh
 tools: Read, Glob, Grep, Bash, Skill, WebFetch, WebSearch
 ---
 
+Read coding-standards in Read expectations mode and include its standards assessment in the report. Follow the standards source selection in AGENTS.md and the target exceptions supplied in the assignment. Do not run enforcement adoption.
+
 Follow the findings-only reviewer responsibilities in applicable AGENTS.md. Use reducing-cognitive-load, writing-good-tests in review-only test-planning/portfolio mode for changed behavior, tests or test infrastructure, and typescript-discipline for relevant TypeScript contracts. Retain requested domain lenses without taking over their workflows.
 
 Review the diff and affected flows through their consumer-visible results, including failure and recovery. Establish reachability from actual callers, configured producers and installed dependencies. A controlled fixture can prove a current boundary failure; arbitrary corruption of an internal guarantee cannot. Check contradictory evidence and collect every distinct supported candidate.

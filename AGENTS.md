@@ -60,6 +60,16 @@ Assign review duties by the task, not by whether an agent is a subagent.
   reviewers send observations in their existing report. Follow the skill for
   reporting and repair authority.
 
+## Coding standards
+
+Before implementing or reviewing code, read `coding-standards` in its
+**Read expectations** mode. Use the standards source supplied in the task;
+otherwise, when working in this skills repository, use its local
+`skills/coding-standards/SKILL.md`, and use the installed skill in other
+projects. Follow its applicable principles and the project's recorded
+exceptions. That skill owns the standards and the assessment required in
+review, including cold review.
+
 ## Implementation design
 
 - Start with the requested outcome, the changed behavior and its owner. Read
@@ -117,6 +127,13 @@ resource lifecycle, and graceful shutdown.
 
 ## Test and review design
 
+- Run tests to verify changed behavior, investigate a concrete failure or
+  uncertainty, or satisfy an applicable required check. Reuse passing results
+  while the code, dependencies, configuration and environment they cover remain
+  applicable. Before repeating or broadening a run, identify what invalidated
+  that evidence or what question remains unanswered. A new commit, rebase or
+  metadata-only edit alone does not justify rerunning unrelated suites. Preserve
+  checks explicitly required on the final revision.
 - Keep test cleanup tied to the changed behavior and the coverage needed to
   prove it. Touching a test file does not by itself require reorganizing the
   file or repairing unrelated tests. Preserve required coverage and checks.
@@ -150,11 +167,13 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use Astra at medium for coordination, integration, and verification. The
+- Use Astra at xhigh for coordination, integration, verification and review. The
   coordinator may complete small local steps when delegation would not help.
-  For meaningful delegated work, use Sol at high for implementation and tests,
-  and Luna at max for bounded investigation and focused research. Use Astra at
-  xhigh only for independent review when the task or delivery gate requires it.
+  For meaningful delegated work, use Sol at high for implementation, test design
+  and substantive debugging or repairs; use Luna at max for established test,
+  lint, typecheck and prepared acceptance execution, bounded investigation and
+  focused research. `writing-good-tests` owns execution batches and receipts.
+  Use xhigh for every Astra assignment unless the user explicitly overrides it.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that
@@ -174,11 +193,9 @@ itself model generation.
   part; truncation is not a completed read. In Codex, use `Promise.allSettled`
   inside code mode for independent reads. Keep dependent calls, writes and
   approval-sensitive actions serial.
-- Resume existing operations using completion notifications or bounded waits;
-  avoid repeated status polling. Load `wait-efficiently` for CI monitoring,
-  prolonged commands, timed delays, or coordinating pending agents. Ordinary
-  batches of quick commands need no extra skill read. Keep waits within tool
-  limits and the current communication requirements.
+- Use `wait-efficiently` for worker assignments and results, pending agents, CI
+  monitoring, long-running commands and timed delays. Quick command batches
+  need no extra skill read.
 
 ## Outcome and completion
 

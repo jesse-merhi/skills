@@ -18,6 +18,7 @@ Ask reviewers to establish intended behavior from the task, documentation, calle
 
 Give reviewers these inputs:
 
+- `coding-standards` in **Read expectations** mode, including its required standards assessment in the report. Supply the skill/catalog source and any target adoption record or explicit exceptions with the neutral brief.
 - `reducing-cognitive-load` for readable code and simple, accurate names.
 - `writing-good-tests` in review-only test-planning/portfolio mode for behavior, test or test-infrastructure changes.
 - `typescript-discipline` for TypeScript code, shared types, schemas and API contracts.
