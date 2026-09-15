@@ -60,6 +60,16 @@ Assign review duties by the task, not by whether an agent is a subagent.
   reviewers send observations in their existing report. Follow the skill for
   reporting and repair authority.
 
+## Coding standards
+
+Before implementing or reviewing code, read `coding-standards` in its
+**Read expectations** mode. Use the standards source supplied in the task;
+otherwise, when working in this skills repository, use its local
+`skills/coding-standards/SKILL.md`, and use the installed skill in other
+projects. Follow its applicable principles and the project's recorded
+exceptions. That skill owns the standards and the assessment required in
+review, including cold review.
+
 ## Implementation design
 
 - Start with the requested outcome, the changed behavior and its owner. Read
@@ -157,14 +167,13 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use Astra at medium for coordination, integration, and verification. The
+- Use Astra at xhigh for coordination, integration, verification and review. The
   coordinator may complete small local steps when delegation would not help.
   For meaningful delegated work, use Sol at high for implementation, test design
   and substantive debugging or repairs; use Luna at max for established test,
   lint, typecheck and prepared acceptance execution, bounded investigation and
   focused research. `writing-good-tests` owns execution batches and receipts.
-  Use Astra at xhigh only for independent review when the task or delivery gate
-  requires it.
+  Use xhigh for every Astra assignment unless the user explicitly overrides it.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that
@@ -233,23 +242,10 @@ itself model generation.
   and discover commands through `gh stack --help`. Keep independent or
   unrelated work in separate PRs or stacks; never invent a dependency merely
   to group changes.
-- Review gate: before marking any PR ready, asking for human sign-off, or
-  merging, verify that `code-review` completed on the exact current head unless
-  the user explicitly waived that review. A
-  valid closeout names that head and records the native phase, cold phase,
-  findings, review fixes, verification, and anything still open. Treat missing,
-  stale, or unverifiable evidence as not reviewed; CI, proof-pack, and ad hoc
-  review do not count. Infer review authority from the user's intended outcome
-  and existing session authorization, including the ordinary review needed to
-  complete that outcome. No exact phrase or named workflow is required. Continue
-  authorized review after repairs or new commits: a changed head needs fresh
-  evidence, not automatically fresh permission. Honor explicit waivers and
-  narrower requests; a status question alone does not authorize a new review.
-  Ask only when authority or a material decision is genuinely missing, explaining
-  the unresolved choice. Until resolved, do not mark ready or merge. Record an
-  explicit waiver and its scope in the task or PR closeout; a waiver-only
-  closeout needs no fabricated review run. The waiver satisfies only this review
-  gate, leaving validation, sign-off and other delivery requirements in force.
+- Review gate: before marking ready, requesting sign-off or merging, ensure
+  `code-review` covers the current changes unless the user explicitly waives it.
+  The agent decides whether more review or tests are needed, favors reuse, and
+  records its reasoning without asking permission within the authorized task.
 - Sign-off gate: after the review decision, proof, validation, and CI pass,
   summarize the review findings and fixes or the explicit waiver, then check
   for a thumbs-up (`+1`) reaction. Resolve the expected human login from task or

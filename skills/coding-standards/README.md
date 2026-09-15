@@ -1,7 +1,10 @@
 # Coding standards catalog
 
 `catalog.json` lists the standards, preset files, and exact dependency versions.
-Select the presets your project needs and install their packages alongside the
+Use the skill's **Read expectations** mode during implementation and review.
+Standards without bundled enforcement still apply as guidance. Applying or
+syncing checks requires an explicit request. For an authorized adoption,
+select the presets your project needs and install their packages alongside the
 ecosystem packages. Copy the entire `eslint/` directory together so preset,
 plugin, rule, and helper imports remain intact.
 

@@ -2,7 +2,7 @@
 
 Give a fresh reviewer the exact target, base, head, changed files and requested evidence. Use a findings-only agent with no inherited conversation or resumed session. Keep prior findings, attempted fixes and implementation discussion out of its brief.
 
-Tell the reviewer which runtime versions and commands you used, which commit you checked, and what passed, failed or remains unchecked. Link the output. Leave out earlier findings, verdicts and repair explanations. Passing tests do not replace reviewing the code. Reuse results that still apply; run more checks when something changed or a specific question remains unanswered. If the reviewer cannot run a check, report that to the coordinator; do not repair the environment.
+Tell the reviewer which runtime versions and commands you used, which commit you checked, and what passed, failed or remains unchecked. Link the output. Leave out earlier findings, verdicts and repair explanations. Passing tests do not replace reviewing the code. Choose any further validation needed; reuse applicable results. If the reviewer cannot run a check, report that to the coordinator; do not repair the environment.
 
 Follow the model policy in the applicable `AGENTS.md` unless the user selects another reviewer. Set model and effort through the launcher, including from Claude; a prompt cannot change fixed launcher settings. Report an unavailable configuration rather than silently substituting another model.
 
@@ -18,6 +18,7 @@ Ask reviewers to establish intended behavior from the task, documentation, calle
 
 Give reviewers these inputs:
 
+- `coding-standards` in **Read expectations** mode, including its required standards assessment in the report. Supply the skill/catalog source and any target adoption record or explicit exceptions with the neutral brief.
 - `reducing-cognitive-load` for readable code and simple, accurate names.
 - `writing-good-tests` in review-only test-planning/portfolio mode for behavior, test or test-infrastructure changes.
 - `typescript-discipline` for TypeScript code, shared types, schemas and API contracts.

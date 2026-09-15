@@ -1,0 +1,552 @@
+import { NodeServices } from "@effect/platform-node"
+import * as SqliteClient from "@effect/sql-sqlite-node/SqliteClient"
+import { assert, layer } from "@effect/vitest"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
+
+import { checkedTrimmedText } from "../../../packages/effect-cli/CheckedProcess.ts"
+import { assessCandidate, prepareCandidate } from "./ReviewCandidate.ts"
+import { authorizeScopeBudget, checkScopeBudget, completeScopeBudget, type FindingInput, getScopeBudget, initialize, recordFinding, type ReviewRun, startScopeBudget } from "./ReviewFindings.ts"
+import { readReviewLimits } from "./ReviewLimits.ts"
+import { type ProgressEvent, recordProgress } from "./ReviewProgress.ts"
+import { finishReview, startReview } from "./ReviewSession.ts"
+
+const fixture = Effect.fn("ReviewCandidate.fixture")(function*(requiredPhases: ReadonlyArray<"native" | "cold"> = ["native", "cold"], cleanTarget = 1, requireCurrentHead = true) {
+  yield* initialize()
+  const fs = yield* FileSystem.FileSystem
+  const repoPath = yield* fs.makeTempDirectoryScoped({ prefix: "review-candidate." })
+  const git = (args: ReadonlyArray<string>) => checkedTrimmedText("git", args, { cwd: repoPath })
+  yield* git(["init", "-b", "main"])
+  yield* git(["config", "user.email", "fixture@example.invalid"])
+  yield* git(["config", "user.name", "Fixture"])
+  yield* fs.writeFileString(`${repoPath}/contract.ts`, "export const value = 1\n")
+  yield* git(["add", "contract.ts"])
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "base"])
+  yield* git(["switch", "-c", "feature"])
+  yield* fs.writeFileString(`${repoPath}/feature.ts`, "import { value } from './contract.js'\nexport const feature = value + 1\n")
+  yield* git(["add", "feature.ts"])
+  yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "feature"])
+  const run: ReviewRun = { repo: "fixture", repoPath, branch: "feature", target: "fixture", base: "main", head: "", status: "active", decisionLog: "" }
+  const scope = yield* startScopeBudget(run, {
+    scopeSummary: "Candidate evidence fixture",
+    limits: { nativeCleanTarget: cleanTarget, coldCleanTarget: cleanTarget, requiredPhases, requireCurrentHead }
+  })
+  const savedRun = { ...run, runId: scope.runId }
+  return { fs, git, run: savedRun }
+})
+
+const cleanPhase = Effect.fn("ReviewCandidate.cleanPhase")(function*(run: ReviewRun & { readonly runId: string }, phase: "native" | "cold") {
+  const review = yield* startReview(run, phase, `${phase} fixture reviewer`)
+  return yield* finishReview(review.reviewId, "clean", `${phase} fixture clean result`)
+})
+
+const rebaselineCurrentCandidate = Effect.fn("ReviewCandidate.rebaselineCurrentCandidate")(function*(run: ReviewRun & { readonly runId: string }) {
+  yield* authorizeScopeBudget(run, {
+    scopeSummary: "Assess the changed committed candidate",
+    authorization: "Fixture owner authorized the changed candidate baseline"
+  })
+  return yield* getScopeBudget(run)
+})
+
+const contractFinding: FindingInput = {
+  decisionId: "contract-result", status: "open", source: "focused cold review", fingerprint: "consumer assumes old contract value",
+  summary: "Feature result changed after the upstream contract update", findingKind: "runtime", fixScope: "local", handling: "fix",
+  rejectionGate: "", decision: "", area: "api-contract", material: false, userImpact: "Feature callers receive a different value",
+  text: "", productionPath: "feature.ts", reachabilityEvidence: "feature imports contract.value at module load", likelihood: "certain",
+  impact: "low", actualConsequence: "feature changes from 2 to 3", maintenanceEvidence: "", presentCost: "",
+  contractEvidence: "the exported feature value is part of the fixture contract", rootCause: "upstream changed the imported constant",
+  recommendedFix: "accept and verify the new result", interventionJustification: "record the intentional contract update before completing focused review",
+  ownerResolution: ""
+}
+
+layer(Layer.mergeAll(NodeServices.layer, SqliteClient.layer({ filename: ":memory:" })))("candidate evidence reuse", test => {
+  test.effect("reuses completed phase evidence for an equivalent amended candidate without relabelling it as fresh", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    const native = yield* cleanPhase(run, "native")
+    const cold = yield* cleanPhase(run, "cold")
+    const oldHead = yield* git(["rev-parse", "HEAD"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "equivalent feature commit"])
+    const newHead = yield* git(["rev-parse", "HEAD"])
+    assert.notStrictEqual(newHead, oldHead)
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope, run.runId)
+    assert.strictEqual(prepared.source.tree, prepared.candidate.tree)
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    const assessed = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "Only the commit message changed; candidate tree and exact branch patch are unchanged."
+    })
+    assert.strictEqual(assessed.status, "assessed")
+    const limits = yield* readReviewLimits(run.runId, newHead)
+    assert.deepStrictEqual(limits.incompletePhases, [])
+    assert.deepStrictEqual(new Set(limits.candidateAssessment?.inheritedPhases), new Set(["native", "cold"]))
+    assert.deepStrictEqual(new Set(limits.candidateAssessment?.sourceReviews.map(review => review.reviewId)), new Set([native.reviewId, cold.reviewId]))
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("reuses a changed patch when assessment finds no invalidated review conclusions", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    const native = yield* cleanPhase(run, "native")
+    const cold = yield* cleanPhase(run, "cold")
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "import { value } from './contract.js'\n// Add one to the shared value.\nexport const feature = value + 1\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "document the reviewed computation"])
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    assert.notStrictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    const assessment = {
+      candidateId: prepared.candidateId,
+      decision: "reuse" as const,
+      affectedPhases: [],
+      semanticImpactEvidence: "Only an ordinary source comment was added; exports, computation, callers and dependencies are unchanged. Neither review conclusion is invalidated. Inspection resolves the change without rerunning tests."
+    }
+    yield* assessCandidate(assessment)
+    const limits = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.deepStrictEqual(limits.incompletePhases, [])
+    assert.deepStrictEqual(new Set(limits.candidateAssessment?.sourceReviews.map(review => review.reviewId)), new Set([native.reviewId, cold.reviewId]))
+    yield* checkScopeBudget(run, "Final check for the assessed comment change")
+    yield* completeScopeBudget(run, "Changed patch assessment preserves all review conclusions")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("requires focused review when disjoint upstream work changes a shared contract", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    const originalHead = yield* git(["rev-parse", "HEAD"])
+    yield* git(["switch", "main"])
+    yield* fs.writeFileString(`${run.repoPath}/contract.ts`, "export const value = 2\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "change shared contract"])
+    yield* git(["switch", "feature"])
+    yield* git(["rebase", "main"])
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "focused",
+      affectedPhases: ["cold"],
+      semanticImpactEvidence: "Upstream changed contract.ts while the branch consumes that exported value; cold review must inspect the runtime interaction despite an unchanged branch patch."
+    })
+    const before = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.deepStrictEqual(before.incompletePhases, ["cold"])
+    assert.deepStrictEqual(before.candidateAssessment?.inheritedPhases, ["native"])
+    const findingPass = yield* startReview(run, "cold", "Focused contract review")
+    yield* recordFinding(run, contractFinding, findingPass.reviewId)
+    yield* finishReview(findingPass.reviewId, "findings", "Contract interaction needs repair")
+    const afterFinding = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.deepStrictEqual(afterFinding.incompletePhases, ["cold"])
+    assert.deepStrictEqual(afterFinding.candidateAssessment?.inheritedPhases, ["native"])
+    yield* recordFinding(run, { ...contractFinding, status: "fixed" })
+    yield* cleanPhase(run, "cold")
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, [])
+    const focusedHead = yield* git(["rev-parse", "HEAD"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "equivalent rebased feature"])
+    const nextScope = yield* rebaselineCurrentCandidate(run)
+    const next = yield* prepareCandidate(run, nextScope)
+    yield* assessCandidate({
+      candidateId: next.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "Only the commit message changed after focused review; the exact branch patch and candidate tree are unchanged."
+    })
+    const chained = yield* readReviewLimits(run.runId, next.candidate.head)
+    assert.deepStrictEqual(chained.incompletePhases, [])
+    assert.deepStrictEqual(new Set(chained.candidateAssessment?.sourceReviews.map(review => review.head)), new Set([originalHead, focusedHead]))
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("reuses a completed run after rebasing the same patch over unrelated upstream work", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* checkScopeBudget(run, "Final source scope check")
+    yield* completeScopeBudget(run, "Source review completed cleanly")
+    yield* git(["switch", "main"])
+    yield* fs.writeFileString(`${run.repoPath}/upstream.ts`, "export const upstream = true\n")
+    yield* git(["add", "upstream.ts"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "unrelated upstream"])
+    yield* git(["switch", "feature"])
+    yield* git(["rebase", "main"])
+    const { runId: _completedRunId, ...completedIdentity } = run
+    const candidateRun = { ...completedIdentity, head: "" }
+    const scope = yield* startScopeBudget(candidateRun, {
+      scopeSummary: "Rebased candidate",
+      limits: { nativeCleanTarget: 1, coldCleanTarget: 1, requiredPhases: ["native", "cold"], requireCurrentHead: true }
+    })
+    const currentRun = { ...candidateRun, runId: scope.runId }
+    const prepared = yield* prepareCandidate(currentRun, scope, undefined, true)
+    assert.notStrictEqual(prepared.source.runId, prepared.runId)
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "The exact feature patch is unchanged and upstream added an independent module with no shared contract or runtime edge."
+    })
+    const limits = yield* readReviewLimits(scope.runId, prepared.candidate.head)
+    assert.deepStrictEqual(limits.incompletePhases, [])
+    assert.deepStrictEqual(new Set(limits.candidateAssessment?.inheritedPhases), new Set(["native", "cold"]))
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("fails whole reuse closed when a required source phase has no eligible evidence", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "equivalent feature commit"])
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    const error = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "The patch is equivalent."
+    }).pipe(Effect.flip)
+    assert.include(error.message, "missing completed source evidence for: cold")
+    const focused = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "focused",
+      affectedPhases: ["native"],
+      semanticImpactEvidence: "Repeat native review and fill the missing cold review before completion."
+    })
+    assert.deepStrictEqual(new Set(focused.affectedPhases), new Set(["native", "cold"]))
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("requires the selected focused phase when the branch patch changes", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "import { value } from './contract.js'\nexport const feature = value + 2\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "change feature behavior"])
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    assert.notStrictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "focused",
+      affectedPhases: ["native"],
+      semanticImpactEvidence: "The branch changes its exported runtime result; native review must assess the changed behavior."
+    })
+    const limits = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.deepStrictEqual(limits.incompletePhases, ["native"])
+    assert.deepStrictEqual(limits.candidateAssessment?.inheritedPhases, ["cold"])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("rejects an assessment when the committed candidate changes after preparation", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "equivalent feature commit"])
+    const scope = yield* rebaselineCurrentCandidate(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    yield* fs.writeFileString(`${run.repoPath}/late.ts`, "export const late = true\n")
+    yield* git(["add", "late.ts"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "move after prepare"])
+    const error = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "This evidence is stale."
+    }).pipe(Effect.flip)
+    assert.include(error.message, "moved after preparation")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("broad assessment at the same head requires the full clean target after its cutoff", () => Effect.gen(function*() {
+    const { run } = yield* fixture(["native"], 2)
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "native")
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    const assessed = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "broad",
+      affectedPhases: [],
+      semanticImpactEvidence: "The previous evidence is broadly invalidated even though the candidate commit is unchanged."
+    })
+    assert.deepStrictEqual(assessed.affectedPhases, ["native"])
+    assert.strictEqual((yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "broad",
+      affectedPhases: [],
+      semanticImpactEvidence: "The previous evidence is broadly invalidated even though the candidate commit is unchanged."
+    })).candidateId, prepared.candidateId)
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
+    const noOldSource = yield* prepareCandidate(run, scope).pipe(Effect.flip)
+    assert.include(noOldSource.message, "No earlier completed")
+    yield* cleanPhase(run, "native")
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
+    yield* cleanPhase(run, "native")
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("requires an explicitly affected phase with default completion settings", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "focused",
+      affectedPhases: ["native"],
+      semanticImpactEvidence: "Native evidence is explicitly invalidated under the default optional phase settings."
+    })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("broad assessment invalidates phases already run under default settings", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    const assessed = yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "broad",
+      affectedPhases: [],
+      semanticImpactEvidence: "All review evidence already gathered for this candidate is invalidated."
+    })
+    assert.deepStrictEqual(assessed.affectedPhases, ["native"])
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, ["native"])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("does not combine ClawSweeper clean passes separated by another head", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture(["native"], 1, false)
+    yield* cleanPhase(run, "native")
+    const currentHead = yield* git(["rev-parse", "HEAD"])
+    const bot = (expectedRevision: number, head: string, outcome: ProgressEvent["outcome"]) => ({
+      expectedRevision, phase: "clawsweeper" as const, head, outcome, evidence: `${head} ${outcome}`
+    })
+    yield* recordProgress(run.runId, bot(2, currentHead, "started"))
+    yield* recordProgress(run.runId, bot(3, currentHead, "clean"))
+    yield* recordProgress(run.runId, bot(4, "other-head", "started"))
+    yield* recordProgress(run.runId, bot(5, "other-head", "blocked"))
+    yield* recordProgress(run.runId, bot(6, currentHead, "started"))
+    yield* recordProgress(run.runId, bot(7, currentHead, "clean"))
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "Native evidence still applies; bot convergence remains independently required."
+    })
+    assert.include((yield* readReviewLimits(run.runId, currentHead)).incompletePhases, "clawsweeper")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("selects the newest fully reviewed head before the original scope baseline", () => Effect.gen(function*() {
+    const { run, fs, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "import { value } from './contract.js'\nexport const feature = value + 2\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "repair feature"])
+    const reviewedHead = yield* git(["rev-parse", "HEAD"])
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "equivalent repaired feature"])
+    const scope = yield* getScopeBudget(run)
+    const prepared = yield* prepareCandidate(run, scope)
+    assert.strictEqual(prepared.source.head, reviewedHead)
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({
+      candidateId: prepared.candidateId,
+      decision: "reuse",
+      affectedPhases: [],
+      semanticImpactEvidence: "Only the repaired commit message changed after native and cold review completed on the repaired tree."
+    })
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+  test.effect("broad invalidation resets partial progress as well as complete evidence", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 2, false)
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* cleanPhase(run, "cold")
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    const assessed = yield* assessCandidate({ candidateId: prepared.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "All earlier coverage is invalidated" })
+    assert.deepStrictEqual(new Set(assessed.affectedPhases), new Set(["native", "cold"]))
+    yield* cleanPhase(run, "native")
+    assert.include((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, "native")
+    yield* cleanPhase(run, "native")
+    assert.notInclude((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, "native")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("rejects reuse while an invocation is open and permits it after explicit closure", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent pending candidate"])
+    const pending = yield* startReview(run, "native", "Pending review")
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    const input = { candidateId: prepared.candidateId, decision: "reuse" as const, affectedPhases: [], semanticImpactEvidence: "Only the commit message changed" }
+    assert.include((yield* assessCandidate(input).pipe(Effect.flip)).message, "open review invocation")
+    yield* finishReview(pending.reviewId, "blocked", "Explicitly cancelled before using earlier evidence")
+    const retry = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ ...input, candidateId: retry.candidateId })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, retry.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("rejects sibling snapshots after broad invalidation and keeps that invalidation across rebaselining", () => Effect.gen(function*() {
+    const { run } = yield* fixture(["native"])
+    yield* cleanPhase(run, "native")
+    const scope = yield* getScopeBudget(run)
+    const first = yield* prepareCandidate(run, scope)
+    const sibling = yield* prepareCandidate(run, scope)
+    yield* assessCandidate({ candidateId: first.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "All native evidence invalidated" })
+    const stale = yield* assessCandidate({ candidateId: sibling.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Earlier patch was equivalent" }).pipe(Effect.flip)
+    assert.include(stale.message, "superseded")
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, first.candidate.head)).incompletePhases, ["native"])
+    const rebaselined = yield* rebaselineCurrentCandidate(run)
+    assert.include((yield* prepareCandidate(run, rebaselined).pipe(Effect.flip)).message, "No earlier completed")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("keeps unchanged source evidence available after equivalent base alias authorization", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    const native = yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* git(["branch", "equivalent-base", "main"])
+    const scope = yield* authorizeScopeBudget(run, { scopeSummary: "Equivalent base ref", authorization: "Fixture owner selected alias", newBase: "equivalent-base" })
+    const prepared = yield* prepareCandidate({ ...run, base: "equivalent-base" }, scope)
+    assert.include(prepared.source.reviews.map(review => review.reviewId), native.reviewId)
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Only base ref name changed; head and base OID are unchanged" })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("preserves performed phase obligations when a new run raises the target", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    yield* checkScopeBudget(run, "Source checked")
+    yield* completeScopeBudget(run, "Source complete")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent raised target"])
+    const { runId: _sourceRun, ...identity } = run
+    const scope = yield* startScopeBudget(identity, { scopeSummary: "Raised target", limits: { nativeCleanTarget: 2 } })
+    const target = { ...identity, runId: scope.runId }
+    const prepared = yield* prepareCandidate(target, scope, undefined, true, { nativeCleanTarget: 2 })
+    const error = yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Same patch but target increased" }).pipe(Effect.flip)
+    assert.include(error.message, "missing completed source evidence for: native")
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "focused", affectedPhases: [], semanticImpactEvidence: "Native must meet the raised target" })
+    assert.deepStrictEqual((yield* readReviewLimits(target.runId, prepared.candidate.head)).incompletePhases, ["native"])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("includes committed dependency pins despite ignoreSubmodules configuration", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture()
+    const dependency = `${run.repoPath}/dependency`
+    yield* fs.makeDirectory(dependency)
+    const depGit = (args: ReadonlyArray<string>) => checkedTrimmedText("git", args, { cwd: dependency })
+    yield* depGit(["init", "-b", "main"])
+    yield* depGit(["config", "user.email", "fixture@example.invalid"])
+    yield* depGit(["config", "user.name", "Fixture"])
+    yield* fs.writeFileString(`${dependency}/value.ts`, "export const value = 1\n")
+    yield* depGit(["add", "value.ts"])
+    yield* depGit(["-c", "core.hooksPath=/dev/null", "commit", "-m", "dependency1"])
+    yield* git(["add", "dependency"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "pin dependency1"])
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "cold")
+    yield* fs.writeFileString(`${dependency}/value.ts`, "export const value = 2\n")
+    yield* depGit(["-c", "core.hooksPath=/dev/null", "commit", "-am", "dependency2"])
+    yield* git(["add", "dependency"])
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-m", "pin dependency2"])
+    yield* git(["config", "diff.ignoreSubmodules", "all"])
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    assert.notStrictEqual(prepared.source.patchId, prepared.candidate.patchId)
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("does not restore invalidated evidence by falling back to an older amended head", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture(["native"])
+    yield* cleanPhase(run, "native")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Candidate B"])
+    const first = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: first.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "Earlier native coverage invalidated" })
+    assert.include((yield* prepareCandidate(run, yield* getScopeBudget(run)).pipe(Effect.flip)).message, "No earlier completed")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Candidate C"])
+    assert.include((yield* prepareCandidate(run, yield* getScopeBudget(run)).pipe(Effect.flip)).message, "No earlier completed")
+    yield* cleanPhase(run, "native")
+    const fresh = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: fresh.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "New native review covers the current candidate" })
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, fresh.candidate.head)).incompletePhases, [])
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("blocks completion after restoring a head whose evidence was invalidated", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture([], 1, false)
+    yield* cleanPhase(run, "native")
+    const original = yield* git(["rev-parse", "HEAD"])
+    const inherited = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: inherited.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Earlier candidate inherited its clean review" })
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Invalidated candidate B"])
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "Earlier native coverage is invalid" })
+    yield* git(["reset", "--hard", original])
+    assert.deepStrictEqual((yield* readReviewLimits(run.runId, original)).incompletePhases, ["native"])
+    yield* checkScopeBudget(run, "Restored candidate checked")
+    const blocked = yield* completeScopeBudget(run, "Must not complete invalidated evidence").pipe(Effect.flip)
+    assert.include(blocked.message, "native")
+    yield* cleanPhase(run, "native")
+    yield* completeScopeBudget(run, "Fresh native review covers restored candidate")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("keeps inherited obligations when a reuse-only destination advances to unreviewed code", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture([], 2, false)
+    yield* cleanPhase(run, "native")
+    yield* cleanPhase(run, "native")
+    yield* checkScopeBudget(run, "Source checked")
+    yield* completeScopeBudget(run, "Source complete")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Reuse-only destination"])
+    const { runId: _sourceRun, ...identity } = run
+    const scope = yield* startScopeBudget(identity, { scopeSummary: "Reuse-only destination" })
+    const destination = { ...identity, runId: scope.runId }
+    const prepared = yield* prepareCandidate(destination, scope, undefined, true)
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Only commit message changed" })
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "export const feature = 999\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "Change behavior after assessment"])
+    const current = yield* git(["rev-parse", "HEAD"])
+    assert.deepStrictEqual((yield* readReviewLimits(destination.runId, current)).incompletePhases, ["native"])
+    yield* checkScopeBudget(destination, "Changed destination checked")
+    assert.include((yield* completeScopeBudget(destination, "Unreviewed destination").pipe(Effect.flip)).message, "native")
+    yield* cleanPhase(destination, "native")
+    assert.include((yield* readReviewLimits(destination.runId, current)).incompletePhases, "native")
+    yield* cleanPhase(destination, "native")
+    yield* completeScopeBudget(destination, "Fresh target count reached on changed destination")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("allows assessment of a partial-only phase but never inherits it below target", () => Effect.gen(function*() {
+    const { run } = yield* fixture([], 2, false)
+    yield* cleanPhase(run, "native")
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    assert.strictEqual(prepared.source.reviews.length, 1)
+    assert.include((yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Partial source" }).pipe(Effect.flip)).message, "missing completed source evidence for: native")
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "broad", affectedPhases: [], semanticImpactEvidence: "Partial native evidence invalidated" })
+    yield* cleanPhase(run, "native")
+    assert.include((yield* readReviewLimits(run.runId, prepared.candidate.head)).incompletePhases, "native")
+    yield* cleanPhase(run, "native")
+    yield* checkScopeBudget(run, "Fresh native target checked")
+    yield* completeScopeBudget(run, "Both fresh passes completed")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("keeps unanswered consultations stopped when native completion is inherited", () => Effect.gen(function*() {
+    const { run, git } = yield* fixture()
+    const native = yield* startReview(run, "native", "Native consultation review")
+    yield* recordFinding(run, { ...contractFinding, decisionId: "owner-question", handling: "consult", decision: "Owner must choose the contract", material: true }, native.reviewId)
+    yield* finishReview(native.reviewId, "clean-except-queue", "Only owner decision remains")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent pending decision"])
+    const prepared = yield* prepareCandidate(run, yield* getScopeBudget(run))
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "focused", affectedPhases: ["cold"], semanticImpactEvidence: "Equivalent native evidence; cold remains missing" })
+    const limits = yield* readReviewLimits(run.runId, prepared.candidate.head)
+    assert.include(limits.stoppingReasons, "QUEUE_FIXED_POINT")
+    assert.include((yield* startReview(run, "cold", "Must remain stopped").pipe(Effect.flip)).message, "QUEUE_FIXED_POINT")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+  test.effect("selects fresh comparator evidence after base migration and a blocked retry", () => Effect.gen(function*() {
+    const { run, git, fs } = yield* fixture(["native"])
+    yield* git(["branch", "new-base", "HEAD"])
+    yield* fs.writeFileString(`${run.repoPath}/feature.ts`, "export const feature = 3\n")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "-am", "Feature above new comparator"])
+    yield* cleanPhase(run, "native")
+    yield* authorizeScopeBudget(run, { scopeSummary: "Migrate comparator", authorization: "Fixture owner selected new base", newBase: "new-base" })
+    const migrated = { ...run, base: "new-base" }
+    const interrupted = yield* startReview(migrated, "native", "Interrupted new comparator review")
+    yield* finishReview(interrupted.reviewId, "blocked", "Fixture interruption")
+    const fresh = yield* cleanPhase(migrated, "native")
+    yield* git(["-c", "core.hooksPath=/dev/null", "commit", "--amend", "-m", "Equivalent new comparator candidate"])
+    const prepared = yield* prepareCandidate(migrated, yield* getScopeBudget(migrated))
+    assert.deepStrictEqual(prepared.source.reviews.map(review => review.reviewId), [fresh.reviewId])
+    assert.strictEqual(prepared.source.patchId, prepared.candidate.patchId)
+    yield* assessCandidate({ candidateId: prepared.candidateId, decision: "reuse", affectedPhases: [], semanticImpactEvidence: "Fresh review covered the selected comparator; only commit message changed" })
+    yield* checkScopeBudget(migrated, "Migrated comparator checked")
+    yield* completeScopeBudget(migrated, "Fresh comparator evidence remains applicable")
+  }).pipe(Effect.scoped), { timeout: 30_000 })
+
+})

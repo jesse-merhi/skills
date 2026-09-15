@@ -1,9 +1,21 @@
 ---
 name: coding-standards
-description: 'Apply personal engineering standards with existing tools and repository-specific guidance, sync an adoption, or translate the principles to a new stack. Use only when explicitly invoked.'
+description: 'Read engineering expectations before implementation or review. Apply, sync, or translate repository enforcement only when explicitly requested.'
 ---
 
 # Coding standards
+
+Use the owner's engineering standards while implementing and reviewing code. Read expectations by default; applying, syncing, or translating enforcement is a separate, explicitly requested mode.
+
+## Read expectations
+
+Locate `catalog.json` beside the loaded skill entrypoint, or one directory up when reading a prompt under `variants/`. Read every standard's `id`, `title`, `scope`, and `principle`. Use the principles relevant to the changed behavior, including standards without bundled enforcement. Read the target's scoped agent guidance and existing `lint/standards/ADOPTION.md`, if present, and preserve explicit project exceptions. A missing adoption record does not prevent reading or using the standards.
+
+During implementation, use those expectations in the authorized change. During review, including cold review, compare the changed behavior with them and include a concise standards assessment in the report: the relevant standard ids, evidence for the assessment, and any applicable exceptions or verification gaps. Report supported violations through the review workflow's findings criteria; a missing linter or a style preference alone is not a finding. Do not claim compliance for behavior you did not assess.
+
+This mode reads expectations only. It does not install tools, change configuration, create adoption records, sync files, or authorize unrelated repairs. Return to the calling task after reading and applying the relevant guidance. Load the adoption references below only for an explicitly requested enforcement mode; shared-catalog edits use [catalog-format.md](references/catalog-format.md).
+
+## Apply, sync, or translate
 
 Apply the owner's engineering standards to the repository. Enforce what can be checked reliably, leave judgment calls as concise agent guidance, and state what remains unenforced. The deliverable is a usable repository, not a new cross-language lint framework.
 
@@ -11,7 +23,7 @@ Apply the owner's engineering standards to the repository. Enforce what can be c
 
 When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
 
-## Start
+### Start
 
 Locate `catalog.json` beside the skill entrypoint, or one directory up when loading a file under `variants/`. In a materialized harness view, resolve the catalog file's real path; the copied `SKILL.md` need not live in its source checkout. Record that checkout's remote URL and commit. Report a dirty source or a commit with no containing remote-tracking branch rather than presenting it as a reproducible published source.
 
@@ -25,13 +37,13 @@ For apply or sync, load [apply.md](references/apply.md) before executing the mod
 
 Apply and sync change the target, not the shared catalog. Adding a reusable catalog translation is separate work, done only when explicitly requested; [catalog-format.md](references/catalog-format.md) describes its existing shape.
 
-## Boundaries
+### Boundaries
 
 - Prefer repository-owned and dependency-owned tools. Ask before installing, replacing, or upgrading dependencies. Declined tools become recorded gaps.
 - Preserve existing checks, source code, configuration, and user exceptions. Do not silently weaken enforcement to fit the new adoption model.
 - During apply, create a small target-owned check when existing tooling cannot express a selected, reliable mechanical requirement. Follow the shared adoption policy; judgment calls remain guidance, not syntax checks.
 - Existing bundled checkers are optional: use one only when its actual behavior fits the target and adds reliable coverage worth maintaining.
 
-## Done
+### Done
 
 Report the source commit, active checks and observed results, where future agents read the local guidance, and remaining gaps or exceptions. Every relevant principle must have a recorded disposition, but need not have a linter. A standalone translation reports a proposal, never installed coverage.

@@ -15,6 +15,34 @@ For another native engine, including Claude Code's built-in review workflow, res
 
 The reservation evidence identifies the planned report location; it does not claim dispatch or completion. Pass that location to the reviewer and use the actual report reference when finishing. Check that the returned identity matches the requested comparison before dispatch. Dispatch only when `resumed` is false. Otherwise use the existing invocation. Inspect it with `review-findings review status --review <id>`. If the process stopped without a usable result, finish it with `--outcome blocked` and the observed error. A blocked review remains incomplete.
 
+## Assess a changed candidate
+
+After a rebase, main sync, repair, merge-group rebuild or other committed head change, snapshot the current candidate and the saved evidence it may inherit:
+
+```sh
+review-findings review candidate-prepare --source-run <run-id>
+```
+
+Omit `--source-run` to select the latest eligible evidence for this branch and target. A new run inherits omitted phase settings from its source; explicit settings take precedence, including values equal to CLI defaults. Inspect the returned source and candidate base, head, tree and patch identities, progress revision, finished review invocations and candidate ID. Establish semantic impact under the review loop; the command does not infer behavior from file overlap.
+
+Record exactly one decision against that snapshot:
+
+```sh
+review-findings review candidate-assess --candidate <candidate-id> \
+  --decision reuse --semantic-impact-evidence "<why prior evidence still applies>"
+
+review-findings review candidate-assess --candidate <candidate-id> \
+  --decision focused --affected-phase native --affected-phase cold \
+  --semantic-impact-evidence "<changed integration, affected behavior and required review>"
+
+review-findings review candidate-assess --candidate <candidate-id> \
+  --decision broad --semantic-impact-evidence "<why impact cannot be bounded>"
+```
+
+Use `reuse` when the coordinator establishes that the changes invalidate no required review conclusions and enough applicable source invocations meet every configured phase target. A different patch is allowed: patch identities describe the delta and protect against candidate movement, while the coordinator assesses its meaning. Use `focused` with every required phase whose earlier evidence no longer covers the affected behavior; missing required phases are also included. An unaffected phase is carried only when its applicable source invocations meet that phase's configured target. Use `broad` when all configured required phases and previously performed phases must run again, including phases with only partial progress. Every assessed affected phase remains mandatory even when the run uses default phase requirements. The assessment carries only eligible completed phase evidence and preserves the source invocation IDs. It does not turn inherited evidence into a current-candidate invocation or carry validation command records. Reuse validation only through separately recorded evidence whose relevant behavior and assumptions still apply.
+
+Close any outstanding review invocation before assessment. Creating a new scope and preparing its candidate are atomic: a preparation failure leaves no partially initialized destination scope. Preparation and assessment are compare-and-set operations over the saved progress and Git candidate. A saved assessment supersedes other prepared snapshots that depend on that run. If the snapshot is superseded or either boundary changes, do not retry with the stale candidate ID or copy its decision forward. Prepare and assess the new candidate. Review launchers still own their actual scope: the default native helper reviews its full comparator. A focused native phase requires a separately reserved `review start --phase native` invocation and a launcher that supports the targeted brief; otherwise run the broader native review and report that scope accurately.
+
 ## Save the report
 
 Checkpoint assessed candidates and probe evidence as they become available, using the findings guide. Preserve raw output outside the checkout with the invocation ID, exact head, observed results and unchecked scope; use `record-command --review <id>` for completed probes. Record actionable findings, unresolved concerns and meaningful verified rejections; immediately discarded speculation needs no registry entry or summary. Batch available `record`, repeated-evidence and `coverage-record` commands in one code-mode call. Reconcile the complete assessment before finishing. Keep writes serial and inspect every exit code. Successful records remain saved if a later command fails; use the diagnostic’s accepted shape to correct the failed record and finish the remaining commands before proceeding.
@@ -33,7 +61,7 @@ Close the interrupted invocation with `review finish --outcome blocked` and the 
 
 For a candidate recovered after closure, use `record --review <id> --recover "<saved output and verification reference>"` with the usual finding fields and an `open` or `rejected` status. The CLI appends immutable provenance containing the original invocation, head and base. It permits recovery while a tested patch is present, without checking out old code or reopening the review. Keep unresolved evidence open with the CLI-derived `investigate` disposition; only accepted findings or approved consultations permit repair events.
 
-Preserve and verify any existing patch. Record supported repairs through the closed handle, then commit authorized repairs and start fresh required reviews of the repaired head in the same scope. Do not recreate old code for bookkeeping, reset phase targets or label the interrupted report complete. Explicit user deadlines, limits and permission boundaries still apply.
+Preserve and verify any existing patch. Record supported repairs through the closed handle, then commit authorized repairs and assess the repaired candidate under the review loop. Run the phases whose evidence the repair invalidated. Do not recreate old code for bookkeeping, reset unaffected phase evidence or label the interrupted report complete. Explicit user deadlines, limits and permission boundaries still apply.
 
 ## Repairs and checks
 
@@ -42,3 +70,15 @@ After discovery closes (complete or blocked), record repair events with `progres
 For a consulted finding, include the actual approval receipt in `--authorization` on its first `repair-applied` event. Later attempts for that finding reuse the saved receipt within its approved scope. After successful verification, record the final `fixed` status with `--owner-resolution approved` and the owner’s decision.
 
 Save actual check commands and results through `record-command --review <id>`. Run the record commands for completed repairs and checks together in code mode, checking each result. These commands record evidence; they do not perform edits or run the checks themselves.
+
+A reuse-only destination has no new review invocation. Record applicable verification against its returned run identity, before completing the scope:
+
+```sh
+review-findings record-command --db <database> --repo <owner/repo> \
+  --repo-path <checkout> --branch <branch> --target <target> --base <base> \
+  --head <current-candidate-sha> --command "<actual check>" \
+  --result "<observed result or retained evidence reference>" \
+  --reason "<why this verification applies to the destination candidate>"
+```
+
+Use the destination identity from preparation, not the completed source run's review handle. When reusing a check, state where and when it actually ran; do not describe it as a fresh execution.

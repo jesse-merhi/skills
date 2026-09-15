@@ -80,6 +80,48 @@ const missing = async (path: string) => {
 }
 
 describe("review CLI Git context", () => {
+  it.each([
+    { flags: [], target: 1, sourceTarget: 1, failPreparation: false, succeeds: true },
+    { flags: ["--native-clean-target", "2"], target: 2, sourceTarget: 1, failPreparation: false, succeeds: false },
+    { flags: [], target: 3, sourceTarget: 3, failPreparation: true, succeeds: true }
+  ])("preserves omitted or explicit candidate targets: $target", async ({ flags, target, sourceTarget, failPreparation, succeeds }) => {
+    const fixture = await createRepository()
+    const identity = scopeIdentity(fixture, "candidate-targets")
+    try {
+      for (let pass = 0; pass < sourceTarget; pass++) {
+        const started = reviewOutput((await runReview(fixture.repo, [
+          "review", "start", ...identity, "--phase", "native", "--evidence", "Synthetic source review",
+          "--native-clean-target", String(sourceTarget), "--required-phase", "native", "--require-current-head"
+        ])).stdout)
+        await runReview(fixture.repo, ["review", "finish", "--db", fixture.db, "--review", String(started.reviewId), "--outcome", "clean", "--evidence", "Synthetic clean source"])
+      }
+      await runReview(fixture.repo, ["scope-check", ...identity, "--reason", "Source checked"])
+      await runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Source complete"])
+      await git(fixture.repo, ["commit", "--amend", "-m", "Equivalent candidate"])
+      if (failPreparation) await expect(runReview(fixture.repo, ["review", "candidate-prepare", ...identity, "--source-run", "mistyped-source"])).rejects.toMatchObject({ stderr: expect.stringContaining("No earlier completed") })
+      const prepared = reviewOutput((await runReview(fixture.repo, ["review", "candidate-prepare", ...identity, ...flags])).stdout)
+      const assessment = runReview(fixture.repo, ["review", "candidate-assess", "--db", fixture.db, "--candidate", String(prepared.candidateId), "--decision", "reuse", "--semantic-impact-evidence", "Only the commit message changed"])
+      if (succeeds) await assessment
+      else await expect(assessment).rejects.toMatchObject({ stderr: expect.stringContaining("missing completed source evidence for: native") })
+      const status: unknown = JSON.parse((await runReview(fixture.repo, ["scope-status", ...identity, "--json"])).stdout)
+      expect(status).toMatchObject({ limits: { cleanTargets: { native: target } } })
+      if (succeeds) {
+        const destination = prepared.identity
+        if (typeof destination !== "object" || destination === null) throw new Error("Missing destination identity")
+        expect(destination).toMatchObject({ db: fixture.db, repo: "acme/widget", repoPath: fixture.repo, branch: "feature", target: "candidate-targets", base: "main", runId: prepared.runId })
+        const recordingFlags = Object.entries(destination).flatMap(([key, value]) =>
+          key === "runId" ? [] : [`--${key === "repoPath" ? "repo-path" : key}`, String(value)])
+        const recorded = await runReview(fixture.repo, ["record-command", ...recordingFlags,
+          "--command", "synthetic validation", "--result", "Synthetic successful receipt", "--reason", "Equivalent evidence applies"])
+        expect(recorded.stdout).toContain(`run=${String(prepared.runId)} `)
+        await runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Equivalent evidence applies"])
+      }
+      else await expect(runReview(fixture.repo, ["scope-complete", ...identity, "--reason", "Insufficient evidence"])).rejects.toMatchObject({ stderr: expect.stringContaining("native") })
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true })
+    }
+  }, 90_000)
+
   it("starts native review from a nested checkout using the matching stacked PR", async () => {
     const fixture = await createRepository()
     const bin = join(fixture.directory, "bin")

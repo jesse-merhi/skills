@@ -48,7 +48,7 @@ const Baseline = Schema.Struct({
 })
 
 const Standard = Schema.Struct({
-  enforcement: Enforcement,
+  enforcement: Schema.optionalKey(Enforcement),
   id: Schema.NonEmptyString,
   origin: Schema.NonEmptyString,
   principle: Schema.NonEmptyString,

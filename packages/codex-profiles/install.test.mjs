@@ -29,7 +29,7 @@ test("installs selectable model roles and preserves base configuration and globa
     const root = process.argv[1];
     const { default: profile } = await import(path.join(root, "orchestration.config.toml"));
     assert.equal(profile.model, "gpt-6-astra");
-    assert.equal(profile.model_reasoning_effort, "medium");
+    assert.equal(profile.model_reasoning_effort, "xhigh");
     assert.equal(profile.agents.enabled, true);
     assert.equal(profile.agents.max_concurrent_threads_per_session, 4);
     assert.equal(profile.agents.default_subagent_model, "gpt-5.6-sol");
