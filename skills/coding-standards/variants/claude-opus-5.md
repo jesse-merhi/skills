@@ -19,6 +19,8 @@ This mode reads expectations only. It does not install tools, change configurati
 
 Adopt the owner's standards through reliable checks already suited to the target, short local agent guidance, and a record of actual coverage. Complete the requested adoption work without turning it into a lint framework project. The bundled Node checks are examples for equivalent enforcement in other stacks. Find or build checks in the target repository; do not add a shared language package to make that adoption work.
 
+When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
+
 ### Source and mode
 
 1. Find `catalog.json` beside the loaded entrypoint, or one directory up if reading a prompt under `variants/`. Resolve that file's real path to locate its Git checkout; a materialized entrypoint may be a copy outside it. Record the remote and commit, including whether the source is dirty or the commit has no containing remote-tracking branch.

@@ -21,6 +21,8 @@ Apply the owner's engineering standards to the repository. Enforce what can be c
 
 `catalog.json` supplies the standards' ids, titles, and principles. Its enforcement entries and bundled presets are implementation candidates, not a requirement to install everything or proof of equivalent coverage. Translate the principle, not the syntax of its JavaScript checker. The bundled Node checks are concrete examples for finding or building equivalent checks in non-Node targets, not a mandate to add language packages to this catalog.
 
+When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
+
 ### Start
 
 Locate `catalog.json` beside the skill entrypoint, or one directory up when loading a file under `variants/`. In a materialized harness view, resolve the catalog file's real path; the copied `SKILL.md` need not live in its source checkout. Record that checkout's remote URL and commit. Report a dirty source or a commit with no containing remote-tracking branch rather than presenting it as a reproducible published source.

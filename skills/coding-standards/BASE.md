@@ -19,6 +19,8 @@ This mode reads expectations only. It does not install tools, change configurati
 
 ## Apply, sync, or translate
 
+When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
+
 Locate `catalog.json` beside the skill entrypoint, or one directory up when loading a file under `variants/`. In a materialized harness view, resolve the catalog file's real path; the copied `SKILL.md` need not live in its source checkout. Record that checkout's remote URL and commit. Report a dirty source or a commit with no containing remote-tracking branch rather than presenting it as a reproducible published source.
 
 Read [adoption.md](references/adoption.md) to choose enforcement, guidance, partial coverage, gaps, and exceptions. Then take the requested path:

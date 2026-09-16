@@ -19,6 +19,8 @@ This mode reads expectations only. It does not install tools, change configurati
 
 Apply the owner's standards to the target repository with working checks and short, repository-specific guidance. Do not turn the task into building a lint framework. Enforce a principle only where a reliable check exists; record the rest as guidance, partial coverage, an uncovered requirement, or an exception. Use the bundled Node rules as examples. For non-Node repositories, find or build equivalent checks in that repository instead of adding another language package to the shared catalog.
 
+When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
+
 ### Workflow
 
 1. Find `catalog.json` beside the entrypoint, or one directory up if you loaded a prompt under `variants/`. Resolve the catalog file's real path before identifying its Git checkout. A materialized `SKILL.md` may be a copy outside that checkout. Record its remote and commit; disclose a dirty source or a commit with no containing remote-tracking branch.

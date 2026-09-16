@@ -16,6 +16,32 @@ JavaScript, pass matching `typeCheckedFiles` globs to `jest({ typeChecked: true 
 Playwright defaults cover `tests/`, `e2e/`, `playwright/`, and `*.e2e.{spec,test}.*`.
 For mixed-runner projects, pass `files` scoped to your Playwright suite.
 
+## Tailwind v4 design-system checks
+
+The `tailwind-v4` preset adds the six checks from [`@shadcn/lint`](https://github.com/shadcn-ui/lint), pinned to `0.1.0`. It requires Tailwind v4, Node.js 20.19 or later, and ESLint 9.30 or later. Select it only for compatible web packages; the catalog's package-name hint cannot distinguish Tailwind versions. Keep the existing `tailwind` preset for its separate typography, elevation, breakpoint and light/dark color checks. This addition does not cover Tailwind v3 or React Native styling.
+
+The dependency is MIT-licensed development tooling with no application bundle import. Version 0.1.0 is an early release; verify diagnostics against the target's actual components and theme. It brings its own parser and class-analysis dependencies. For a target that already uses Oxlint, the same plugin supports Oxlint 1.80 or later through its alpha JS plugin API. Configure it there directly instead of adding a second lint runner; this bundled preset is ESLint-only.
+
+Compose the preset with the target's existing parser configuration. Scope each app separately so its `components.json`, TypeScript aliases and Tailwind theme can be discovered:
+
+```js
+import tailwindV4 from "./eslint/presets/tailwind-v4.mjs";
+
+export default [
+  // Keep the project's existing parser and other checks here.
+  ...tailwindV4({
+    files: ["src/**/*.{ts,tsx}"],
+    componentFiles: ["src/components/ui/**"],
+  }),
+];
+```
+
+The preset enables `no-restyle`, `no-raw-colors`, `no-arbitrary-values`, `no-inline-styles`, `no-unknown-classes` and `require-static-classes` as errors. Component call sites allow layout changes by default. Only `no-restyle` is disabled in `componentFiles`, which defaults to `**/components/ui/**`; the other checks still apply to component implementations within `files`.
+
+Use `settings` for native `settings.shadcn` values such as `ui`, `componentImports`, and `note`. When components live elsewhere, set both their recognition settings and `componentFiles`. Use `rules` for native rule configurations, including component contracts and narrow exceptions. A contract's `allow` list replaces the inherited list, so include `layout` when the component should retain it. Consult the upstream [rule options](https://github.com/shadcn-ui/lint/blob/main/docs/rules.md) for matching semantics.
+
+Run the chosen checks over the real target, inspect each finding, and fix valid violations within the authorized repair scope. Preserve library-owned positioning and animation; allow external class names only when their stylesheet actually loads. Record justified exceptions and any uncovered requirements. Fix theme-loading warnings before treating `no-unknown-classes` as compiler-backed verification: its fallback grammar provides weaker coverage. Compare overlapping existing checks before removing anything; these six rules do not replace the existing minimum text size, elevation, breakpoint or explicit dark-mode protections. A passing run in this skills repository validates the integration, not an application's theme or appearance.
+
 ## React Native with npm
 
 The React Native preset retains seven accessibility checks plus the shared
