@@ -11,7 +11,9 @@ Start the operation once. For waits that return on completion, calculate:
 wait_ms = min(tool_limit_ms, update_due_in_ms - 5000)
 ```
 
-Use the tool's exposed maximum, or its documented default if no maximum is given. Without a required update, use that limit. If the result is zero, negative or below the tool's minimum, send the update first. Completion returns early; no runtime estimate is needed.
+Use an exposed maximum as `tool_limit_ms`. A documented default is a fallback, not a maximum: when the schema accepts an explicit duration, use the longest duration already confirmed on that host, bounded by the required update deadline. If longer values are unverified, start with the default. Without a required update, use the exposed maximum or longest confirmed duration. If the result is zero, negative or below the tool's minimum, send the update first. Completion returns early; no runtime estimate is needed.
+
+When one wait runs inside an outer execution cell, give the outer cell the full `wait_ms`. A shorter outer default wakes the model without changing the operation's state.
 
 - CI: use one [GitHub watch command](references/github-actions.md).
 - Requested delays: use the host's `sleep` tool or `quiet-wait 5m` for the requested duration.

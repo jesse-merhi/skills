@@ -11,7 +11,9 @@ Start the operation once. For waits that return on completion, calculate:
 wait_ms = min(tool_limit_ms, update_due_in_ms - 5000)
 ```
 
-Use the tool's exposed maximum, or its documented default if no maximum is given. Without a required update, use that limit. If the result is zero, negative or below the tool's minimum, send the update first. Completion returns early; no runtime estimate is needed.
+Use an exposed maximum as `tool_limit_ms`. A documented default is a fallback, not a maximum: when the schema accepts an explicit duration, use the longest duration already confirmed on that host, bounded by the required update deadline. If longer values are unverified, start with the default. Without a required update, use the exposed maximum or longest confirmed duration. If the result is zero, negative or below the tool's minimum, send the update first. Completion returns early; no runtime estimate is needed.
+
+When one wait runs inside an outer execution cell, give the outer cell the full `wait_ms`. A shorter outer default wakes the model without changing the operation's state.
 
 - CI: use one [GitHub watch command](references/github-actions.md).
 - Requested delays: use the host's `sleep` tool or `quiet-wait 5m` for the requested duration.
@@ -26,7 +28,7 @@ Use code mode for command execution and waiting. If `functions.exec` and `functi
 
 ### Choose the outer wait
 
-Apply the wait calculation above to `functions.exec` and each `functions.wait` continuation. Set the exec deadline with a first-line pragma, such as `// @exec: {"yield_time_ms": 30000}`. Recalculate before each continuation so time already spent counts toward the next update.
+Apply the wait calculation above to `functions.exec` and each `functions.wait` continuation. Set the full calculated deadline with a first-line pragma; omitting it inherits the shorter default. With an update due every 60 seconds, use `// @exec: {"yield_time_ms": 55000}`. Recalculate before each continuation so time already spent counts toward the next update.
 
 Command launch and resume tools have separate limits. The outer cell's deadline controls when it yields to the model, even if an inner wait is longer.
 
@@ -40,7 +42,7 @@ Command launch and resume tools have separate limits. The outer cell's deadline 
 For example, after choosing a fresh directory, adapt this validation launch to the task's authorized command. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
 
 ```javascript
-// @exec: {"yield_time_ms": 30000, "max_output_tokens": 1500}
+// @exec: {"yield_time_ms": 55000, "max_output_tokens": 1500}
 const recovery = {
   logPath: "/tmp/review-run-unique/validation.log",
   resultPath: "/tmp/review-run-unique/validation.exit"
@@ -59,7 +61,7 @@ while (result.session_id !== undefined) {
     notify(recovery); // Recovery identity before entering the inner wait.
   }
   result = await tools.write_stdin({
-    session_id: result.session_id, chars: "", yield_time_ms: 60000,
+    session_id: result.session_id, chars: "", yield_time_ms: 55000,
     max_output_tokens: 1000
   });
 }
@@ -67,7 +69,7 @@ store("validationResult", result);
 text({ exitCode: result.exit_code, ...recovery });
 ```
 
-The short launch exposes its command ID promptly; calculate outer and resume waits for the current update deadline and tool limits. Emit the recovery identity on launch or when it changes, not on every unchanged timeout. A run-owned log preserves shell output even if the outer cell's in-memory result disappears.
+The short launch exposes its command ID promptly; calculate outer and resume waits for the current update deadline and tool limits. Keep every continuation in the looped cell: one cell containing one `write_stdin` call is only a partial wait. Emit the recovery identity on launch or when it changes, not on every unchanged timeout. A run-owned log preserves shell output even if the outer cell's in-memory result disappears.
 
 If `functions.wait` reports that its cell is unavailable, retrieve the retained recovery record (or the emitted paths/ID after a context transition). Try `write_stdin` with the command session ID, then inspect the saved exit status and log. For CI, query the same remote run's terminal status. Recover that existing result before considering another launch. If neither the session nor a terminal result is available, inspect the original process or external operation and report what remains unknown; a missing cell alone does not authorize duplicating work.
 
