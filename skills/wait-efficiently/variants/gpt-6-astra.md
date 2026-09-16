@@ -5,13 +5,17 @@ description: 'Manage CI monitoring, prolonged commands, timed delays, and pendin
 
 # Wait efficiently
 
-Start the operation once. For waits that return on completion, calculate:
+Start the operation once. For a wait that returns as soon as the operation completes, choose:
 
 ```text
-wait_ms = min(tool_limit_ms, update_due_in_ms - 5000)
+wait_ms = no update deadline
+  ? supported_hold_ms
+  : min(supported_hold_ms, update_due_in_ms - safety_margin_ms)
 ```
 
-Use an exposed maximum as `tool_limit_ms`. A documented default is a fallback, not a maximum: when the schema accepts an explicit duration, use the longest duration already confirmed on that host, bounded by the required update deadline. If longer values are unverified, start with the default. Without a required update, use the exposed maximum or longest confirmed duration. If the result is zero, negative or below the tool's minimum, send the update first. Completion returns early; no runtime estimate is needed.
+Derive `supported_hold_ms` from the tool schema and the current host's actual constraints. Use an exposed maximum when allowed. If the tool accepts an explicit duration without exposing a maximum, choose a meaningful long hold for the operation, such as minutes for a minutes-long command, within known blocking limits. A documented default is a starting value, not a cap. If the host rejects or clamps the duration, adjust the next wait on the same handle. State the uncertainty when tool behavior is unknown.
+
+A completion wait returns early, so an estimate must not shorten it. Use runtime estimates only to choose among otherwise-supported long holds or to size a check for a system that can only poll. For example, an early-return tool with a one-hour maximum and no update deadline should receive one hour even when the operation usually takes five minutes. On a host that requires an update within 60 seconds and disallows longer blocking calls, use a hold such as 55 seconds to leave time for the update; that host constraint does not apply elsewhere. If the calculation is zero, negative or below the tool's minimum, send the update first.
 
 When one wait runs inside an outer execution cell, give the outer cell the full `wait_ms`. A shorter outer default wakes the model without changing the operation's state.
 
@@ -28,7 +32,7 @@ Use code mode for command execution and waiting. If `functions.exec` and `functi
 
 ### Choose the outer wait
 
-Apply the wait calculation above to `functions.exec` and each `functions.wait` continuation. Set the full calculated deadline with a first-line pragma; omitting it inherits the shorter default. With an update due every 60 seconds, use `// @exec: {"yield_time_ms": 55000}`. Recalculate before each continuation so time already spent counts toward the next update.
+Apply the wait calculation above to `functions.exec` and each `functions.wait` continuation. Set the full calculated deadline with a first-line pragma; omitting it inherits the default even when a longer hold is supported. Recalculate before each continuation so time already spent counts toward the next update.
 
 Command launch and resume tools have separate limits. The outer cell's deadline controls when it yields to the model, even if an inner wait is longer.
 
@@ -39,10 +43,11 @@ Command launch and resume tools have separate limits. The outer cell's deadline 
 3. Await launch and resume in a loop inside one `functions.exec` cell. A running cell ID belongs to `functions.wait`; a command `session_id` belongs to `write_stdin`. Recalculate the outer wait before continuing.
 4. Collect the exit code and inspect the saved log for the needed evidence. A timeout, missing handle or session ID is not success.
 
-For example, after choosing a fresh directory, adapt this validation launch to the task's authorized command. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
+For example, after choosing a fresh directory, adapt this validation launch to the task's authorized command. For this example, assume the host requires an update within 60 seconds, making the calculated hold 55 seconds. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
 
 ```javascript
 // @exec: {"yield_time_ms": 55000, "max_output_tokens": 1500}
+const waitMs = 55000;
 const recovery = {
   logPath: "/tmp/review-run-unique/validation.log",
   resultPath: "/tmp/review-run-unique/validation.exit"
@@ -61,7 +66,7 @@ while (result.session_id !== undefined) {
     notify(recovery); // Recovery identity before entering the inner wait.
   }
   result = await tools.write_stdin({
-    session_id: result.session_id, chars: "", yield_time_ms: 55000,
+    session_id: result.session_id, chars: "", yield_time_ms: waitMs,
     max_output_tokens: 1000
   });
 }
@@ -87,7 +92,7 @@ Required instruction documents must still be read in full. Split them into outpu
 
 Give workers bounded assignments. Return one final result with the outcome, revision/build, evidence, findings, verification and unresolved decisions; identify missing evidence. Send interim messages only when they change someone's next action.
 
-Finish independent work, then wait on existing worker handles. Preserve handles and results for recovery. Act on completion, failure, decisions or user input; resume after routine messages and timeouts without check-ins. Diagnose errors or concrete stalls, not elapsed waits alone.
+Finish independent work, then wait on existing worker handles. Preserve handles and results for recovery. Act on completion, failure, decisions or user input; resume the same long wait after routine messages and quiet timeouts without check-ins. Use an immediate snapshot only to answer a status-only request or diagnose a concrete stall. Diagnose errors or concrete stalls, not elapsed waits alone.
 
 Honor host wait limits and required updates. Keep the parent active unless the host guarantees completion will wake an ended turn. Do not build a polling workaround for missing suspension support.
 
