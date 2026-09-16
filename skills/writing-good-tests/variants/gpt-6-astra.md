@@ -44,15 +44,15 @@ Implement the authorized behavior and check its result against the agreed contra
 
 Use the [global test policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#test-and-review-design) to select checks and decide when results need refreshing. Before fixing a review finding, confirm the bug can happen and the repair is authorized.
 
-The coordinator chooses coverage and accepts results. Assign one owner to run shared validation after integration; implementation workers return their changes and focused evidence.
+The main coordinator chooses coverage while planning or reviewing and accepts the evidence. The execution owner integrates the change and owns shared validation; bounded test workers return focused evidence to that owner.
 
 ## Run established checks
 
-Give Luna/max a batch of known tests, lint, typechecks or prepared acceptance flows when delegation saves work. Keep small checks with their current owner. Supply the checkout, revision and dirty changes, ordered commands, expected results, environment, time limits and log location. Assign the batch once, rather than a worker per command.
+The execution owner may give Luna/max a batch of known tests, lint, typechecks or prepared acceptance flows when delegation saves work. Keep small checks with that owner. Supply the checkout, revision and dirty changes, ordered commands, expected results, environment, time limits and log location. Assign the batch once, rather than a worker per command.
 
-Use `spawn_agent` with `agent_type: "test_executor"`. If unavailable, launch a fresh `default` agent with `model: "gpt-5.6-luna"`, `reasoning_effort: "max"`, and `fork_turns: "none"`, pointing it to this skill. Check the actual launch settings. If explicit settings are also unavailable, report the limitation and keep suitable execution local; do not change live configuration.
+Use `spawn_agent` with `agent_type: "test_executor"`. If unavailable, launch a fresh `default` agent with `model: "gpt-5.6-luna"`, `reasoning_effort: "max"`, and `fork_turns: "none"`, pointing it to this skill. Check the actual launch settings. If explicit settings are also unavailable, the execution owner runs suitable checks itself; do not change live configuration.
 
-Check the checkout and inputs before running the batch under repository permissions, including manual E2E/Maestro triggers. Stop on the first failure, timeout, input change or ambiguity. Return the command, exit status, relevant output and checks not run. Do not retry, debug, repair, install dependencies or start external or paid jobs. The coordinator assigns substantive diagnosis, new test design and authorized repairs to Sol/high before arranging further execution.
+Check the checkout and inputs before running the batch under repository permissions, including manual E2E/Maestro triggers. Stop on the first failure, timeout, input change or ambiguity. Return the command, exit status, relevant output and checks not run to the assigning execution owner. Do not retry, debug, repair, install dependencies or start external or paid jobs. That owner handles substantive diagnosis, new test design and authorized repairs before arranging further execution.
 
 Use `wait-efficiently` for prolonged runs. Return completion, failure or a decision needed, with useful progress updates.
 

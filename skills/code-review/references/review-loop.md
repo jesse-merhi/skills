@@ -21,7 +21,7 @@ Preserve this reviewer's actual result in its artifact even when earlier issues 
 
 ## Repair shared causes
 
-Apply the findings guide to the full accepted inventory. After interruption, use the review commands to recover supported evidence and retain the incomplete history before repairing; final-candidate applicability requirements still apply. Repair related causes together, verify affected and preserved behavior, then record the attempts and results through the review commands. Record each attempt before closing its finding. Check scope, inspect the combined diff and commit authorized repairs together. Repair workers return patches and evidence; the coordinator owns the registry and review scheduling.
+Apply the findings guide to the full accepted inventory. After interruption, use the review commands to recover supported evidence and retain the incomplete history before repairing; final-candidate applicability requirements still apply. The review coordinator judges findings and schedules review passes. The execution owner repairs related causes together, verifies affected and preserved behavior, records attempts and results, checks scope, inspects the combined diff and commits authorized repairs together. If a repair fails, return it to that owner or reassign the remaining execution. A worker assigned the whole until-clean workflow owns both roles within that assignment.
 
 ## Establish evidence for the final candidate
 
