@@ -109,8 +109,8 @@ which selects the preset automatically when its file is installed in
 review's normal configuration; `--dry-run` shows the selected command. It hides
 a short list of coordination, publication, and handoff
 skills by name, while keeping domain skills discoverable on demand.
-Reviewers return candidates; coordinators apply code-review's triage instructions. Coordinators and delegated until-clean
-workflows keep their normal profile; in-chat spawn tools without profile
+Findings-only reviewers return candidates; review coordinators apply code-review's triage instructions, and execution owners handle records and repairs. Main coordinators and delegated until-clean
+execution owners keep their normal profile; in-chat spawn tools without profile
 selection are not filtered. This is a relevance filter, not a permission
 boundary, and it does not override the selected model or sandbox.
 

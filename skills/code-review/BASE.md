@@ -11,9 +11,11 @@ Use the model policy in the applicable `AGENTS.md`. Review launchers own their e
 
 Read `coding-standards` in **Read expectations** mode before assessing the diff. Use its required standards assessment throughout this review and include it in the final report. Loading expectations does not invoke enforcement adoption or authorize extra repairs.
 
-Delegate useful bounded repairs to the configured implementer and unresolved code or dependency questions to the investigator. Supply the objective, worktree and revision, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance and settings in the role definitions. The coordinator retains the findings registry, repair decisions, sequencing, integration, validation and delivery.
+The main coordinator judges findings, repair decisions and phase completion. Assign the execution owner review-record commands, authorized repairs, integration, validation, commits and delivery. Return a failed repair or check to that owner for diagnosis; if the owner cannot continue, reassign the remaining execution instead of moving it into the main session. A worker explicitly assigned the whole until-clean workflow owns both review coordination and execution within that assignment.
 
-Use a fresh findings-only reviewer for the independent phase under the independent-review instructions. It does not replace the coordinator or native review. Report unavailable roles and continue suitable local work without reconstructing prompts or changing live configuration; local review cannot satisfy an independent-review requirement.
+Use the configured investigator for unresolved code or dependency questions and another implementer only when the remaining execution must be reassigned. Supply the objective, worktree and revision, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance and settings in the role definitions.
+
+Use a fresh findings-only reviewer for the independent phase under the independent-review instructions. It does not replace the review coordinator or native review. Report unavailable roles without reconstructing prompts or changing live configuration; local review cannot satisfy an independent-review requirement.
 
 ## 1. Start the review
 
@@ -48,9 +50,11 @@ For further independent review, follow [the independent-review instructions](ref
 
 ## 4. Check, reflect and finish
 
-Decide what validation the change needs. Reuse applicable passing results and satisfy required checks. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
+The review coordinator decides what validation the change needs. The execution owner runs the relevant tests, typecheck, lint and build commands, reusing applicable passing results and satisfying required checks. That owner confirms behavior, adds effective regression coverage before delivery and saves completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation; this workflow does not require a failing-test-first cycle. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
 
 After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
+
+After the review coordinator decides the requested reviews and checks are complete, the execution owner runs the completion commands:
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
@@ -63,7 +67,7 @@ review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
 
 Run completion only after all requested reviews and checks pass with no open decisions. For diagnostic growth warnings or blocked work, [handle the reported reason](references/blocked-checks.md). Growth warnings call for internal reassessment while authorized work continues.
 
-[Push authorized fixes](references/publish-fixes.md), then [summarize the saved results](references/final-output.md).
+The execution owner follows [the authorized-fix publication instructions](references/publish-fixes.md) and retrieves [the saved results](references/final-output.md). The main coordinator gives the user the final review summary and any decision still needed.
 
 Use [the findings commands](references/findings-registry.md) when recording or retrieving evidence.
 

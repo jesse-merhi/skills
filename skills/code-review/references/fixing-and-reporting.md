@@ -22,7 +22,7 @@ Before editing, group the accepted inventory by failed assumption. Trace other c
 
 Fix proven, worthwhile problems accepted by the CLI within existing authority and budget. Keep independent adjacent work as a nonblocking follow-up. Treat measured diff growth through the scope diagnostic; ask about missing permission, unrelated work or concrete high-risk choices; preserve explicit requirements for breaking changes, dependencies, access and publication. `investigate` and `consult` do not authorize edits, including tentative keep/revert repairs.
 
-Resolve technical questions yourself. Queue owner decisions and continue independent authorized work. Repeated reports share one question; silence is not approval. Record the owner's answer before dependent work. Wait when nothing independent remains or the CLI blocks continuation.
+The execution owner resolves technical questions. Queue material owner decisions for the main coordinator to present and continue independent authorized work. Repeated reports share one question; silence is not approval. The execution owner records the answer before dependent work. Wait when nothing independent remains or the CLI blocks continuation.
 
 Use `writing-good-tests` for behavior or test changes, `reducing-cognitive-load` for repairs, and `typescript-discipline` for TypeScript. Reuse applicable `frontend-ui-validation` evidence for UI changes and request missing states.
 

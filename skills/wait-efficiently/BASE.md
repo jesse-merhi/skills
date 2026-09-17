@@ -29,7 +29,7 @@ On timeout, resume the same handle. Send required updates from known state. Read
 
 ## Required agent results
 
-Give workers bounded assignments. Return one final result with the outcome, revision/build, evidence, findings, verification and unresolved decisions; identify missing evidence. Send interim messages only when they change someone's next action.
+Give workers bounded assignments. Route each result to the agent that made the assignment: for example, a test executor returns to the execution owner, and the execution owner returns to the main coordinator. Return one final result with the outcome, revision/build, evidence, findings, verification and unresolved decisions; identify missing evidence. Do not copy routine state to ancestor agents. Send an interim message only when it changes the immediate owner's next action.
 
 Finish independent work, then wait on existing worker handles. Preserve handles and results for recovery. Act on completion, failure, decisions or user input; resume the same long wait after routine messages and quiet timeouts without check-ins. Use an immediate snapshot only to answer a status-only request or diagnose a concrete stall. Diagnose errors or concrete stalls, not elapsed waits alone.
 

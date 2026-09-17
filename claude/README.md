@@ -4,7 +4,7 @@ The normal Claude Code session coordinates the work. These optional native subag
 
 | Name | Model | Effort | Assignment |
 | --- | --- | --- | --- |
-| `implementer` | `fable` | `high` | An owned code or test change with focused verification |
+| `implementer` | `fable` | `high` | A cohesive change through verification and authorized delivery |
 | `investigator` | `fable` | `medium` | A bounded question answered with current evidence |
 | `findings-reviewer` | `opus` | `xhigh` | Independent inspection and findings only |
 
@@ -31,8 +31,8 @@ Use the `Agent` tool with `subagent_type` equal to the configured name. For exam
 
 > Objective: explain why an empty search returns all records. Worktree: /work/project; revision: abc123. Scope: search handler and callers. Constraints: read only. Acceptance: identify the reachable cause and cite the relevant lines. Evidence: the request returned HTTP 200 with all records.
 
-The role already supplies the investigation process and report expectations. Delegate useful bounded work on demand. The coordinator keeps sequencing, integration, validation and delivery. These roles are usable beyond the skills that explicitly route to them.
+The role already supplies the investigation process and report expectations. Assign one `implementer` as execution owner for a cohesive change and delegate other useful bounded work on demand. The main coordinator keeps planning, user communication and code-review judgment; it dispatches independent investigators and reviewers because the execution owner cannot use `Agent`. The execution owner keeps sequencing, integration, validation, review-record mechanics, commits and authorized delivery. These roles are usable beyond the skills that explicitly route to them.
 
-Start `findings-reviewer` fresh with the target, neutral checklist and requested evidence. Omit implementation rationale and earlier findings; do not resume an implementer as a reviewer. Persistent agent memory is not enabled, but Claude can load project instructions and discover skills. This is not the other harness's skill exclusion or memory isolation mechanism. Disclose prior findings in the review context. Tool restrictions are not a filesystem sandbox: Bash remains available for inspection and verification under read-only duties.
+The main coordinator starts `findings-reviewer` fresh with the target, neutral checklist and requested evidence, then judges its result. Omit implementation rationale and earlier findings; do not resume an implementer as a reviewer. Persistent agent memory is not enabled, but Claude can load project instructions and discover skills. This is not the other harness's skill exclusion or memory isolation mechanism. Disclose prior findings in the review context. Tool restrictions are not a filesystem sandbox: Bash remains available for inspection and verification under read-only duties.
 
-The report does not complete `code-review`: its coordinator still owns the native phase, registry, repairs, reruns and delivery gates. Other harnesses must use their own launcher; OpenClaw's spawn API is not Claude's `Agent` tool.
+The findings-only report does not complete `code-review`: the review coordinator still judges the native phase and findings, while the execution owner handles registry mechanics, repairs, reruns and authorized delivery. A worker assigned the whole until-clean workflow owns both responsibilities within that assignment. Other harnesses must use their own launcher; OpenClaw's spawn API is not Claude's `Agent` tool.

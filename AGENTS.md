@@ -4,30 +4,46 @@ Shared instructions for every coding harness (Claude Code, Codex,
 opencode, Pi). Keep this file harness-agnostic. Anything Claude-specific belongs
 in `CLAUDE.md`, which imports this file and layers on top of it.
 
-## Review responsibilities
+## Work ownership
 
-Assign review duties by the task, not by whether an agent is a subagent.
+Assign one execution owner to each cohesive change. Assign review duties by the
+task, not by whether an agent is a subagent.
 
-- The coordinator owns the review loop, findings registry, approval requests,
-  authorized fixes, validation, commits, publication, handoffs, and user-facing
-  summary. A subagent assigned an until-clean workflow is a coordinator for
-  that workflow; it is not a findings-only reviewer.
+- The main coordinator plans the work, talks with the user, reserves material
+  decisions for them, and judges code review. It may use small read-only probes
+  needed for planning or review. It does not implement, integrate, run routine
+  validation, maintain review records, commit, publish, merge, clean up or hand
+  off the change.
+- The execution owner carries the change through implementation, in-scope
+  diagnosis and repairs, integration, test and acceptance execution and
+  receipts, review-record mechanics, commits, and delivery already authorized
+  by the user or the invoked workflow. Existing dependency, breaking-change,
+  publication, paid-CI, sign-off and merge gates still apply. The owner may use
+  bounded workers for useful parts of this assignment and remains responsible
+  for their results.
+- When execution fails, return diagnosis and repair to its current owner or
+  reassign the remaining execution to a replacement. The main coordinator does
+  not absorb routine execution merely because a worker failed or a role is
+  unavailable. A worker assigned an until-clean workflow is the execution owner
+  and review coordinator for that workflow; this does not turn the main
+  coordinator into its implementer.
 - A findings-only reviewer is assigned to inspect and report, not to run the
   fix-and-rerun workflow. Use a findings-only reviewer preset when the harness
   exposes one; never select it for an until-clean coordinator. Give it the
   target, neutral checklist, and requested evidence without implementation
   rationale or prior findings. It reports candidates and supporting evidence,
   consulting relevant domain skills and retaining the mandatory review lenses
-  below. The coordinator uses code-review's findings guide for those candidates;
-  the findings CLI owns severity and disposition.
+  below. The review coordinator uses code-review's findings guide for those
+  candidates; the findings CLI owns severity and disposition.
 - The reviewer returns supported candidates with their rating evidence, unresolved
   concerns, meaningful verified rejections, verification limits and requested
   coverage evidence. Omit immediately discarded speculation; no individual
   record or discarded-thought summary is required. It
   does not edit code, write the findings registry, manage fixes or reruns,
-  publish, or run writing and handoff workflows for its internal report. The coordinator records the
-  returned evidence, obtains CLI-derived severity and disposition, and handles
-  user-facing presentation and delivery gates.
+  publish, or run writing and handoff workflows for its internal report. The
+  review coordinator adjudicates the returned evidence. The execution owner
+  records it and performs any authorized repairs, verification and delivery;
+  the main coordinator handles user-facing presentation and decisions.
 - Reading a skill does not expand the assignment or authorize its workflow.
   Safety, security, permission boundaries, and applicable repository constraints
   remain binding on every agent; role instructions are not a sandbox.
@@ -167,10 +183,11 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use Astra at xhigh for coordination, integration, verification and review. The
-  coordinator may complete small local steps when delegation would not help.
-  For meaningful delegated work, use Sol at high for implementation, test design
-  and substantive debugging or repairs; use Luna at max for established test,
+- Use Astra at xhigh for main-session planning, user communication and code
+  review. Give one Sol/high execution owner the cohesive change, including
+  implementation, test design, substantive diagnosis and repairs, integration,
+  validation, review-record mechanics, commits and already-authorized delivery.
+  That owner may use Luna at max for useful established test,
   lint, typecheck and prepared acceptance execution, bounded investigation and
   focused research. `writing-good-tests` owns execution batches and receipts.
   Use xhigh for every Astra assignment unless the user explicitly overrides it.
@@ -178,12 +195,11 @@ itself model generation.
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that
   limitation instead of silently substituting another model or effort.
-- Delegate useful independent work on demand. Do not create the full model tree
-  automatically. Delegate only when briefing the worker and checking its output
-  costs less than doing the work directly. Give each worker a bounded task and
-  completion condition, keep dependent work sequential, and leave integration
-  with the coordinator. A worker stops and returns evidence on failure or
-  ambiguity.
+- Do not create a fixed agent tree or rename the coordinator to force one. The
+  execution owner delegates only useful bounded work, keeps dependent work
+  sequential, and integrates the results. Workers return completion, failure or
+  a required decision to their immediate assigning owner. The execution owner
+  sends the main coordinator one final receipt or an actionable blocker.
 
 - Batch independent calls while bounding their combined output. Retain full
   structured results in session storage or run-owned files, inspect every result,
