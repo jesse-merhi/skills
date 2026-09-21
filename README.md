@@ -83,6 +83,10 @@ Where the skills land, per harness:
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
 | OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
 
+Claude Code 2.1.277+ can also discover project `AGENTS.md` files. This repo keeps
+the global Claude wrapper for its browser and worker instructions; see
+[project instruction loading](INSTALL.md#claude-code-project-instructions).
+
 The install model is deliberately boring. In the four link-based harnesses,
 your skills directory stays a real directory and every repo skill is one
 symlink into a generated view. Codex, opencode, Pi, and OpenClaw receive a

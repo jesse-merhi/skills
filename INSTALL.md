@@ -49,8 +49,27 @@ files with local edits):
 
 The extra `~/.claude/AGENTS.md` symlink exists only so the relative
 `@AGENTS.md` import in `CLAUDE.md` resolves regardless of whether the harness
-resolves imports against the symlink location or the real file. Claude Code
-does not load `~/.claude/AGENTS.md` by itself.
+resolves imports against the symlink location or the real file. Keep this global
+import: native project discovery does not replace it or the Claude-specific
+guidance in `CLAUDE.md`.
+
+### Claude Code project instructions
+
+[Claude Code 2.1.277](https://github.com/anthropics/claude-code/releases/tag/v2.1.277)
+added project `AGENTS.md` support (not yet on Bedrock, Vertex or Foundry at
+release). Check `claude --version` before relying on it.
+
+The default loads project `AGENTS.md` files when no `CLAUDE.md`,
+`.claude/CLAUDE.md` or `CLAUDE.local.md` exists along the ancestor path to the
+working directory. A user-global `~/.claude/CLAUDE.md` does not block that
+fallback. Projects with only shared instructions can use `AGENTS.md` alone.
+
+This repository retains `CLAUDE.md` and its `@AGENTS.md` import because it also
+owns Claude-specific browser and worker instructions. For projects that need
+both files discovered independently, `/config` → **Project instructions**
+offers `claude-md-and-agents-md`; already imported files are deduplicated.
+See Anthropic's [instruction-loading modes and limitations](https://github.com/anthropics/claude-code/tree/main/mods/agents-md).
+Do not change the user's existing mode as part of a skills installation.
 
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
