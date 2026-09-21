@@ -57,7 +57,11 @@ guidance in `CLAUDE.md`.
 
 [Claude Code 2.1.277](https://github.com/anthropics/claude-code/releases/tag/v2.1.277)
 added project `AGENTS.md` support (not yet on Bedrock, Vertex or Foundry at
-release). Check `claude --version` before relying on it.
+release). Check `claude --version` and confirm **Project instructions** appears
+in `/config` before relying on it. Some sessions cannot fetch the feature,
+including those with telemetry disabled; see [availability](https://code.claude.com/docs/en/memory#when-agentsmd-support-is-unavailable).
+When unavailable, keep a project `CLAUDE.md` beside `AGENTS.md` with an
+`@AGENTS.md` import. Preserve the user's telemetry and other settings.
 
 The default loads project `AGENTS.md` files when no `CLAUDE.md`,
 `.claude/CLAUDE.md` or `CLAUDE.local.md` exists along the ancestor path to the
