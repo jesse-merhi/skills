@@ -1,8 +1,8 @@
 # Global agent instructions
 
-Shared instructions for every coding harness (Claude Code, Codex,
-opencode, Pi). Keep this file harness-agnostic. Anything Claude-specific belongs
-in `CLAUDE.md`, which imports this file and layers on top of it.
+This file owns the instructions for every coding harness (Claude Code, Codex,
+opencode, Pi). Keep shared rules here and scope harness-specific rules to their
+named harness. `CLAUDE.md` is only an import entrypoint; do not add rules there.
 
 ## Review responsibilities
 
@@ -292,3 +292,26 @@ itself model generation.
 Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
 completely. Resolve API questions against the exact installed package source;
 the v4 APIs used here include prerelease `effect/unstable/*` modules.
+
+## Claude Code
+
+Apply this section only when running in Claude Code. Other harnesses use the
+shared rules above and their own available tools.
+
+### Browser work
+
+Use the available Claude Chrome integration for website interaction,
+authenticated browser state, screenshots, and browser-driven validation.
+Select the intended tab from the integration's current state. If it is
+unavailable, report the missing capability; do not install another browser
+harness, change authentication, or bypass connection consent.
+
+For UI changes, the implementation owner follows `frontend-ui-validation`.
+Review and proof-pack work reuse that evidence rather than starting duplicate
+browser sessions.
+
+### Named workers
+
+Keep the normal main session as coordinator and preserve the user's selected model. When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for a useful bounded assignment. Their native definitions select Fable at high for implementation, Fable at medium for investigation, and Opus at xhigh for independent review; these Claude worker settings replace the shared GPT worker mapping in this harness. Honor explicit user overrides through the launcher and report unavailable settings instead of silently substituting.
+
+The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings; never use it as an until-clean coordinator or a replacement for the required native review phase.

@@ -84,7 +84,7 @@ Where the skills land, per harness:
 | OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
 
 Claude Code 2.1.277+ can also discover project `AGENTS.md` files. This repo keeps
-the global Claude wrapper for its browser and worker instructions; see
+an import-only global Claude entrypoint; all rules live in `AGENTS.md`. See
 [project instruction loading](INSTALL.md#claude-code-project-instructions).
 
 The install model is deliberately boring. In the four link-based harnesses,

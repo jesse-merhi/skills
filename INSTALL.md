@@ -32,11 +32,10 @@ fallback, including a missing variant in one skill.
 
 This repo owns the user's global agent instructions:
 
-- `REPO/AGENTS.md` holds shared instructions for every harness.
-- `REPO/CLAUDE.md` is Claude Code only. It imports `AGENTS.md` via
-  `@AGENTS.md` and layers Claude-specific browser guidance on top. Keep
-  harness-specific content there; `AGENTS.md` owns shared model and completion
-  policy.
+- `REPO/AGENTS.md` owns all instructions, including explicitly scoped
+  harness-specific sections. Edit rules there.
+- `REPO/CLAUDE.md` contains only `@AGENTS.md`, providing the user-global
+  entrypoint that Claude Code loads. Do not add instructions to this file.
 
 Link per harness (replace existing dead symlinks; ask before replacing real
 files with local edits):
@@ -50,8 +49,8 @@ files with local edits):
 The extra `~/.claude/AGENTS.md` symlink exists only so the relative
 `@AGENTS.md` import in `CLAUDE.md` resolves regardless of whether the harness
 resolves imports against the symlink location or the real file. Keep this global
-import: native project discovery does not replace it or the Claude-specific
-guidance in `CLAUDE.md`.
+import: native project discovery does not replace Claude Code's user-global
+`~/.claude/CLAUDE.md` entrypoint.
 
 ### Claude Code project instructions
 
@@ -68,9 +67,9 @@ The default loads project `AGENTS.md` files when no `CLAUDE.md`,
 working directory. A user-global `~/.claude/CLAUDE.md` does not block that
 fallback. Projects with only shared instructions can use `AGENTS.md` alone.
 
-This repository retains `CLAUDE.md` and its `@AGENTS.md` import because it also
-owns Claude-specific browser and worker instructions. For projects that need
-both files discovered independently, `/config` → **Project instructions**
+This repository keeps an import-only `CLAUDE.md` for that global entrypoint;
+its browser and worker rules live in the Claude Code section of `AGENTS.md`.
+For projects that need both files discovered independently, `/config` → **Project instructions**
 offers `claude-md-and-agents-md`; already imported files are deduplicated.
 See Anthropic's [instruction-loading modes and limitations](https://github.com/anthropics/claude-code/tree/main/mods/agents-md).
 Do not change the user's existing mode as part of a skills installation.
