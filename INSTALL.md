@@ -10,7 +10,7 @@ repository.
 
 Figure out which harness you're running in:
 
-- **Claude Code**: `~/.claude/`, `CLAUDE.md`, a `skills/` directory,
+- **Claude Code**: `~/.claude/`, a `skills/` directory,
   `plugins/`
 - **Codex CLI**: `~/.codex/`, `config.toml`, a `skills/` directory
 - **opencode**: `~/.config/opencode/`, `AGENTS.md`, a `skills/` directory
@@ -32,32 +32,50 @@ fallback, including a missing variant in one skill.
 
 This repo owns the user's global agent instructions:
 
-- `REPO/AGENTS.md` holds shared instructions for every harness.
-- `REPO/CLAUDE.md` is Claude Code only. It imports `AGENTS.md` via
-  `@AGENTS.md` and layers Claude-specific browser guidance on top. Keep
-  harness-specific content there; `AGENTS.md` owns shared model and completion
-  policy.
+- `REPO/AGENTS.md` owns all instructions, including explicitly scoped
+  harness-specific sections. Edit rules there.
 
 Link per harness (replace existing dead symlinks; ask before replacing real
 files with local edits):
 
 | Harness | Command |
 | --- | --- |
-| Claude Code | `ln -sf REPO/CLAUDE.md ~/.claude/CLAUDE.md` and `ln -sf REPO/AGENTS.md ~/.claude/AGENTS.md` |
 | Codex | `ln -sf REPO/AGENTS.md ~/.codex/AGENTS.md` |
 | opencode | `ln -sf REPO/AGENTS.md ~/.config/opencode/AGENTS.md` |
 
-The extra `~/.claude/AGENTS.md` symlink exists only so the relative
-`@AGENTS.md` import in `CLAUDE.md` resolves regardless of whether the harness
-resolves imports against the symlink location or the real file. Claude Code
-does not load `~/.claude/AGENTS.md` by itself.
+Claude Code uses project `AGENTS.md` discovery; this repo no longer installs
+Claude user-global instruction links. During an authorized installation upgrade,
+remove `~/.claude/CLAUDE.md` and `~/.claude/AGENTS.md` only when they are symlinks
+to this repo or a verified earlier clone, including broken links. Preserve real
+files and foreign links.
+
+### Claude Code project instructions
+
+[Claude Code 2.1.277](https://github.com/anthropics/claude-code/releases/tag/v2.1.277)
+added project `AGENTS.md` support (not yet on Bedrock, Vertex or Foundry at
+release). Check `claude --version` and confirm **Project instructions** appears
+in `/config` before relying on it. Some sessions cannot fetch the feature,
+including those with telemetry disabled; see [availability](https://code.claude.com/docs/en/memory#when-agentsmd-support-is-unavailable).
+When unavailable, report that project instructions cannot load natively.
+Preserve the user's telemetry and other settings.
+
+The default loads project `AGENTS.md` files when no `CLAUDE.md`,
+`.claude/CLAUDE.md` or `CLAUDE.local.md` exists along the ancestor path to the
+working directory. A user-global `~/.claude/CLAUDE.md` does not block that
+fallback. Projects with only shared instructions can use `AGENTS.md` alone.
+
+Browser and worker rules live in the Claude Code section of `AGENTS.md`.
+These instructions apply when Claude discovers this file in the project tree;
+installing skills does not make them global instructions for unrelated projects.
+See Anthropic's [instruction-loading modes and limitations](https://github.com/anthropics/claude-code/tree/main/mods/agents-md).
+Do not change the user's existing mode as part of a skills installation.
 
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
 
 ## 3. Preserve Claude's normal session
 
-Claude Code uses its normal main session and the global instructions linked
+Claude Code uses its normal main session and project instructions described
 above. Install the matching skills without changing unrelated Claude settings or the selected model. When the user requests named workers, follow [Claude named workers](claude/README.md) to install the optional native subagent definitions. Do not set a custom main agent.
 
 For upgrades, remove `agent` from `~/.claude/settings.json` only when its value
