@@ -3,8 +3,8 @@
 ![Abstract banner for a repository of agent skills](assets/skills-banner.png)
 
 This repo is my working set of agent skills: Markdown workflows that coding
-agents load on demand, plus the global instruction files ([`AGENTS.md`](AGENTS.md),
-[`CLAUDE.md`](CLAUDE.md)) and a few helper scripts they lean on.
+agents load on demand, plus [`AGENTS.md`](AGENTS.md) instructions and a few
+helper scripts they lean on.
 
 It exists because of a rule I keep rediscovering. Asking an agent to do
 something once is fine. Twice is laziness. The third time, one of three things
@@ -77,14 +77,14 @@ Where the skills land, per harness:
 
 | Harness | Skills directory | Global instructions | Personal agents |
 | --- | --- | --- | --- |
-| Claude Code | `~/.claude/skills` | `~/.claude/CLAUDE.md` + `~/.claude/AGENTS.md` | not linked |
+| Claude Code | `~/.claude/skills` | not linked; project `AGENTS.md` | not linked |
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
 | OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
 
-Claude Code 2.1.277+ can also discover project `AGENTS.md` files. This repo keeps
-an import-only global Claude entrypoint; all rules live in `AGENTS.md`. See
+Claude Code 2.1.277+ can discover project `AGENTS.md` files. All rules live in
+`AGENTS.md`; Claude no longer receives global instruction links from this repo. See
 [project instruction loading](INSTALL.md#claude-code-project-instructions).
 
 The install model is deliberately boring. In the four link-based harnesses,

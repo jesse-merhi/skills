@@ -2,7 +2,7 @@
 
 This file owns the instructions for every coding harness (Claude Code, Codex,
 opencode, Pi). Keep shared rules here and scope harness-specific rules to their
-named harness. `CLAUDE.md` is only an import entrypoint; do not add rules there.
+named harness. Edit instructions here.
 
 ## Review responsibilities
 
