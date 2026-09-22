@@ -11,7 +11,7 @@ review-findings closeout --json --repo <owner/repo> --repo-path <checkout> \
   --branch <branch> --target <target> --base <base>
 ```
 
-Include the observed outcome of the `feedback-hardening` handoff in your reply to the user.
+Include only a launch receipt for the separate `feedback-hardening` task, if any; its work is reported in that task.
 
 The JSON's `verification_run` contains `command`, `result`, `reason` and `decision_id`; use these records rather than inventing a validation result. Validation must be recorded before completion; report missing records rather than trying to write to a closed run.
 

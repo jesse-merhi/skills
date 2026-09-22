@@ -1,4 +1,4 @@
 interface:
   display_name: "Feedback Hardening"
-  short_description: "Hand feedback to a fresh session to solve"
-  default_prompt: "Use $feedback-hardening to immediately hand off to a fresh session, @mention this original session in its launch prompt, and say solve."
+  short_description: "Move feedback into a separate task"
+  default_prompt: "Use $feedback-hardening to launch a separate task with this session referenced and solve, then continue the main task independently."
