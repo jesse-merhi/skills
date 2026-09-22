@@ -1,4 +1,4 @@
 interface:
   display_name: "Feedback Hardening"
-  short_description: "Tell the user what got in the way"
-  default_prompt: "Use $feedback-hardening after this task or code review. Tell the user what made the work harder and what would help next time, then apply improvements within existing authorization."
+  short_description: "Hand feedback to a fresh session to solve"
+  default_prompt: "Use $feedback-hardening to immediately hand off to a fresh session, @mention this original session in its launch prompt, and say solve."

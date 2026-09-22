@@ -46,11 +46,11 @@ Use [the review commands](references/recording-reviews.md) to checkpoint assesse
 
 For further independent review, follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md) within the same review loop.
 
-## 4. Check, reflect and finish
+## 4. Check and finish
 
 Decide what validation the change needs. Reuse applicable passing results and satisfy required checks. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
 
-After the review, use `feedback-hardening` and tell the user what made the work harder and what would help next time. Include observations from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
+After the review, use [feedback-hardening](../feedback-hardening/SKILL.md), passing observations already available from reviewers and validation. This is required for clean, partial, single-phase, bot-only and blocked reviews too.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
