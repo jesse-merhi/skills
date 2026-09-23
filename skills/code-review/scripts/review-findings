@@ -1,2 +1,0 @@
-#!/usr/bin/env -S node --disable-warning=ExperimentalWarning
-import "../src/review-findings.ts"

@@ -1,72 +1,49 @@
 ---
 name: code-review
-description: 'Review changed behavior, repair confirmed problems together, and independently verify the final code.'
+description: 'Simplify changed code, then independently review standards and requirements/correctness.'
+metadata:
+  source: https://github.com/mattpocock/skills
+  source-path: skills/engineering/code-review
+  source-revision: c55ee46073ed923f86ce59a5eb3b6d895095d1b7
 ---
 
 # Code review
 
-Establish native and independent review evidence, favoring reuse. Honor requests for a single phase or pass and report their limits.
+Finish the scoped simplification, independent assessments, confirmed repairs and verification without stopping at a proposal or asking again for authority already granted. The coordinator owns integration, findings decisions, validation and delivery. Use the model policy in `AGENTS.md`.
 
-Use the model policy in the applicable `AGENTS.md`. Review launchers own their executable defaults.
+## 1. Establish the change
 
-Read `coding-standards` in **Read expectations** mode before assessing the diff. Use its required standards assessment throughout this review and include it in the final report. Loading expectations does not invoke enforcement adoption or authorize extra repairs.
+Use the requested PR, branch, commit or working changes. Resolve the PR's actual or planned base; use a commit's parent only for a single-commit review. Include the whole intended change and preserve unrelated work. Record the base and reviewed commit or patch with the results.
 
-Use `spawn_agent` with `agent_type: "implementer"` for useful bounded repairs and `spawn_agent` with `agent_type: "investigator"` for unresolved code or dependency questions. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Keep the findings registry, repair decisions, sequencing, integration, validation and delivery here.
+Find requirements in the task, issue, spec, documentation and callers. Resolve ordinary questions from repository evidence; ask only when an intended behavior or authority needs the user. Without a formal spec, state the inferred contract and still review correctness.
 
-Use `spawn_agent` with `agent_type: "findings_reviewer"` for the fresh independent phase under the independent-review instructions. It does not replace this coordinator or native review. If the role is unavailable, report it and continue suitable work locally. Do not rebuild role prompts or change live configuration; local review cannot satisfy independent review.
+Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode and [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md). Identify relevant existing checks and reusable evidence. Honor narrower requests: findings-only means no edits; a requested single reviewer or native-only pass runs only that review and reports its coverage limits. For a specifically requested native review, use the harness's native command directly. Separately requested bot review uses [ClawSweeper](references/clawsweeper.md).
 
-## 1. Start the review
+## 2. Simplify first
 
-Check out the branch or commit in question. For a branch review, check that the resolved comparison uses the PR's base or the caller's planned PR base before publication. Use the commit's parent only for a requested single-commit review. Start from a clean, committed checkout. Commit authorized task edits for review and preserve unrelated uncommitted work.
+Give one implementation agent the target, requirements, owned files, repair authority and checks, with this goal:
 
-Prepare the validation commands once, reusing an authorized worktree. When the diff changes executable behavior or relevant test or runtime setup, check tool versions against the repository, identify the production runtime from the changed entry point's launcher or deployment configuration, and verify runtime-specific APIs and imports there. When a changed test needs a browser or another runtime component, check its local and CI setup; a warm cache does not prove fresh setup works.
+> Simplify the changed code and directly affected code while preserving required behavior. Remove unnecessary abstractions, indirection, duplication and speculative flexibility. Prefer existing repository or dependency capabilities. Make the flow easier to explain and change. Verify meaningful edits. Finish when no further simplification is justified by the current requirements; leave useful complexity alone.
 
-The coordinator decides review reuse, further review and validation within the authorized task without asking the user. Follow the review loop and record the reasoning through the review commands.
+Use `spawn_agent` for this owned implementation task, selecting the configured `implementer` role when the launcher supports it. The agent edits code and returns the patch, a concrete before/after explanation, checks and unresolved concerns. For findings-only work, it reports proposed simplifications instead. Keep other writers off its files until integration.
 
-Start or resume from the checkout through the review entrypoint. It resolves the repository root, branch and HEAD from Git, reuses saved review context, and otherwise uses a matching PR for the target and base. Saved context that supplies the identity needs no PR lookup. Explicit identity flags override inference. If the comparison is ambiguous, supply the intended `--base`; do not guess the default branch. For the normal Codex native review:
+Follow [writing-good-tests](../writing-good-tests/SKILL.md) for coverage and verification. Inspect callers before deleting guards, cleanup, error handling, public contracts or tests. Preserve required safety and failure behavior. Fewer lines alone is not success, and unfamiliar code is not proof of unnecessary complexity. Stop for actual authority gaps such as breaking changes, dependencies or unrelated scope.
 
-```sh
-review-findings review native \
-  --scope-summary "<requested change and allowed repairs>" \
-  --native-clean-target 1 --required-phase native --required-phase cold \
-  --require-current-head
-```
+Integrate the patch and resolve verification failures before independent review. If no independent implementation agent is available, report it and simplify locally; the later reviews must still be independent.
 
-For another engine, reserve with `review start --phase native --evidence "Report planned at <run-owned-report-path>"` with the requested scope settings, check the returned identity before dispatch, then follow the native-launch instructions. For a cold-only request, reserve with `review start --phase cold --evidence "Report planned at <run-owned-report-path>"` at independent dispatch and check the returned identity before launching the reviewer. Specify only the requested phases; use two clean native passes when explicitly requested.
+## 3. Review the result in parallel
 
-The entrypoint initializes missing scope and returns the run/review identity and recording contract. Check the resolved identity, keep it for later commands, and save its head as the starting commit for the final diff summary. Repeating an open review returns its existing handle and saved state; initialization flags do not rewrite a resumed run's settings or evidence. Use `review status --review <id>` to inspect it. No preliminary `scope-start`/`scope-status` sequence is needed. If the returned identity differs from the requested comparison, finish that invocation as blocked with the mismatch as evidence, then correct the scope through the review commands before retrying. Do not count its result as clean. A blocked or unusable invocation must be resolved under the review commands before starting another.
+Use `spawn_agent` with `fork_turns="none"` for two fresh findings-only reviewers against the same stable result. Select the configured `findings_reviewer` role when supported; otherwise use fresh agents under the AGENTS.md model policy. Supply the target, base, diff, requirements, standards, relevant validation evidence and each assignment below. Exclude implementation rationale, simplifier conclusions and prior findings. Reviewers can inspect callers and dependencies to establish behavior; they do not edit or manage the workflow. Record the commit or patch each reviewer receives and check it again on return. If it changed, keep the report tied to the version reviewed and reassess the affected conclusions before completion. If independent dispatch is unavailable, disclose the missing review instead of counting self-review as independent.
 
-## 2. Review and repair
+- **Standards:** assess the repository's actual standards and remaining unnecessary complexity. Use reducing-cognitive-load and report the required standards assessment, including relevant standard IDs and exceptions. Show the confusing code and a simpler alternative for a maintenance finding; skip preferences and checks already settled by tooling.
+- **Requirements and correctness:** check missing, partial, incorrect or unrequested behavior, including regressions, failure and recovery through actual callers. Run this review even without a spec. Use writing-good-tests for changed behavior or test infrastructure, typescript-discipline for TypeScript, and reuse frontend-ui-validation evidence for UI changes; other domain lenses follow the affected contract.
 
-Use [the native reviewer](references/native-review.md) and [the review loop](references/review-loop.md) to schedule reviews and repairs. Follow [the findings guide](references/fixing-and-reporting.md) to check candidates, repair shared causes and verify preserved behavior.
+Each returns supported findings with location, expected behavior, reachable trigger, consequence and evidence, plus unresolved concerns and verification limits. Distinguish source inspection from executed proof. An empty findings report is valid. Neither a clean report nor a finding count proves coverage.
 
-Use [the review commands](references/recording-reviews.md) to checkpoint assessed findings and probe evidence during discovery, then save the complete report. Batch available records in one code-mode call and check every result. Close discovery before repairing; interrupted reviews retain their incomplete status while supported findings can be recovered and repaired through those commands.
+## 4. Resolve and finish
 
-## 3. Establish independent review evidence
+Keep the two assessments visible and confirm their findings before editing. Reproduce bugs or establish the failure through real callers and supported inputs; type-permitted or invented states are insufficient. Check counterevidence. For complexity findings, establish a present reading or change cost and a simpler behavior-preserving alternative.
 
-For further independent review, follow [the independent-review instructions](references/cold-review.md) and [the changed-file checks](references/pr-rubbish-audit.md) within the same review loop.
+Fix confirmed in-scope problems, grouping shared causes. Preserve user-owned decisions about scope, contracts, dependencies and publication. Verify repaired and preserved behavior using relevant checks; stop at the first failure and diagnose. Reuse applicable passing results. Request focused independent follow-up only where repairs invalidate a review conclusion or leave a concrete coverage gap. Do not chase a pass count or keep searching for new objections after the required evidence is established.
 
-## 4. Check and finish
-
-Decide what validation the change needs. Reuse applicable passing results and satisfy required checks. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity as documented in [recording reviews](references/recording-reviews.md#repairs-and-checks); do not record against an inherited source handle.
-
-After the review, launch [feedback-hardening](../feedback-hardening/SKILL.md) as a separate task with observations already available from reviewers and validation. Its status and outcome do not gate this review or its delivery. This applies to clean, partial, single-phase, bot-only and blocked reviews too.
-
-```sh
-review-findings scope-check --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --reason "Final checks and requested reviews complete" --json
-review-findings scope-complete --repo <owner/repo> --repo-path <checkout> \
-  --branch <branch> --target <PR-URL-or-commit> --base <base> \
-  --reason "Requested reviews complete with no open decisions" --json
-```
-
-Run completion only after all requested reviews and checks pass with no open decisions. For diagnostic growth warnings or blocked work, [handle the reported reason](references/blocked-checks.md). Growth warnings call for internal reassessment while authorized work continues.
-
-[Push authorized fixes](references/publish-fixes.md), then [summarize the saved results](references/final-output.md).
-
-Use [the findings commands](references/findings-registry.md) when recording or retrieving evidence.
-
-## Separately requested bot review
-
-For a separately requested bot review, use [the ClawSweeper workflow](references/clawsweeper.md) and [its ratings](references/clawsweeper-ratings.md).
+Keep findings, decisions and check evidence with the task so interrupted work can resume. Findings-only work ends with its report; a single-review request needs only its requested assessment. For the full workflow, finish when scoped simplification is complete, both assessments apply to the resulting code, confirmed in-scope problems are resolved, and required checks pass. Otherwise report exactly what remains and why. Summarize the useful simplifications, each review's findings and fixes, proof, final target and remaining limits. Publication follows existing user or calling-workflow authority; this skill grants no automatic push.

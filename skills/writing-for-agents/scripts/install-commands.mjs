@@ -9,8 +9,6 @@ export const commandCatalog = [
   ["ask-claude", "ask-claude", "ask-claude", ["bash"]],
   ["ask-codex", "ask-codex", "ask-codex", ["bash"]],
   ["skill-cleanup-inventory", "cleanup", "inventory.mjs"],
-  ["codex-review", "code-review", "codex-review"],
-  ["review-findings", "code-review", "review-findings", ["node", "--disable-warning=ExperimentalWarning"]],
   ["skill-render-diagram", "design-technical-diagrams", "render-diagram.mjs"],
   ["skill-check-rendered-diagram", "design-technical-diagrams", "check-rendered-diagram.mjs"],
   ["skill-audit-layout", "frontend-ui-validation", "audit-layout.mjs"],
