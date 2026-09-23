@@ -73,7 +73,7 @@ Keep an export on another device or a backed-up drive for that risk.
 
 Each retained repository skill has a regular `BASE.md`: the human-owned baseline.
 Read that base and the model's writing guide, then morph it into a complete variant.
-The runtime `SKILL.md` remains a link to the GPT-5.6 variant; the installer selects
+The runtime `SKILL.md` remains a link to the GPT-6 Astra variant; the installer selects
 variants and excludes the base. Neither the editor nor installer calls a model.
 
 New reviews start from `BASE.md`. Legacy or external sources without one retain

@@ -19,7 +19,7 @@ function fixture(t) {
 test("installs selectable model roles and preserves base configuration and global agents", t => {
   const { root } = fixture(t);
   fs.mkdirSync(path.join(root, "agents"), { recursive: true });
-  const base = 'model = "gpt-5.6-terra"\napproval_policy = "on-request"\n';
+  const base = 'model = "gpt-6-sol"\napproval_policy = "on-request"\n';
   fs.writeFileSync(path.join(root, "config.toml"), base);
   fs.writeFileSync(path.join(root, "agents", "personal.toml"), "# user-owned\n");
   installProfiles({ root });

@@ -84,8 +84,8 @@ describe("skill-cleaner", () => {
     temporaryDirectories.push(temporary);
     const skill = join(temporary, "demo");
     mkdirSync(join(skill, "variants"), { recursive: true });
-    writeFileSync(join(skill, "variants/gpt-5.6.md"), "---\nname: demo\ndescription: fixture\n---\n");
-    symlinkSync("variants/gpt-5.6.md", join(skill, "SKILL.md"));
+    writeFileSync(join(skill, "variants/gpt-6-astra.md"), "---\nname: demo\ndescription: fixture\n---\n");
+    symlinkSync("variants/gpt-6-astra.md", join(skill, "SKILL.md"));
 
     expect(walkFiles(temporary, (file) => file.endsWith("/SKILL.md"))).toEqual([join(skill, "SKILL.md")]);
   });

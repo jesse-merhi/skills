@@ -173,6 +173,23 @@ itself model generation.
   lint, typecheck and prepared acceptance execution, bounded investigation and
   focused research. `writing-good-tests` owns execution batches and receipts.
   Use xhigh for every Astra assignment unless the user explicitly overrides it.
+- Assign skill execution by the work, not by which model variants are installed.
+  Use Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
+  Use Luna/max for bounded retrieval and inventory work, such as `session-recall`
+  searches and `skill-cleaner` inventories, and for prepared validation batches,
+  including UI and local-preview checks when the worker has the required tools.
+  Keep test design and failure diagnosis with Sol; `writing-good-tests` owns the
+  executor's batch and failure boundaries. Apply the harness-specific worker
+  mapping below where it replaces the shared model choices.
+- Keep coordination, review decisions, integration, final verification,
+  permission decisions and delivery with the coordinator. Complete `handoff`,
+  `ask-codex` and cleanup workflows retain their existing owners and authority;
+  only suitable bounded steps may be delegated when their contracts allow it.
+  Shared standards and domain skills remain available to every consuming model:
+  reading one does not make that model the execution owner. Keep existing
+  findings-only reviewer exclusions. Small local steps and unavailable worker
+  capabilities follow the delegation and launcher rules here; do not spawn a
+  worker solely to load a skill or wait.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that

@@ -13,9 +13,9 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   const directory = path.join(root, "skills/example");
   fs.mkdirSync(path.join(directory, "variants"), { recursive: true });
   const original = "---\nname: example\ndescription: Fixture\n---\nOriginal\n";
-  const profiles = ["gpt-5.6", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"];
+  const profiles = ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"];
   for (const profile of profiles) fs.writeFileSync(path.join(directory, "variants", profile + ".md"), original);
-  fs.symlinkSync(path.join(directory, "variants/gpt-5.6.md"), path.join(directory, "SKILL.md"));
+  fs.symlinkSync(path.join(directory, "variants/gpt-6-astra.md"), path.join(directory, "SKILL.md"));
   const master = original.replace("Original\n", "Audited café → baseline\r\nKeep trailing spaces.  ");
   const record = { source: captureSkill({ name: "example", directory }, "head"), draft: { revision: 2, content: { status: "ready", decision: "edit", master, notes: "Keep this comment", files: {}, reviewedFiles: [] } } };
   const readDetail = async () => record;

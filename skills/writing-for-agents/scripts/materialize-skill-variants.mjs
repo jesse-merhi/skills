@@ -23,12 +23,6 @@ const LockOwnerJson = Schema.fromJsonString(Schema.Struct({
 
 export const profiles = [
   {
-    id: "gpt-5.6",
-    family: "openai-gpt",
-    version: [5, 6],
-    matches: /^(?:openai\/)?gpt-5\.6(?:-(?:sol|terra|luna))?(?:-\d{4}-\d{2}-\d{2})?$/i,
-  },
-  {
     id: "gpt-6-astra",
     family: "openai-gpt",
     version: [6, 0],
@@ -103,7 +97,7 @@ export function resolveProfile(model) {
   }
   const requestedVersion = modelVersion(model, family);
   if (exact === undefined && (requestedVersion === undefined || compareVersions(requestedVersion, earliest.version) < 0)) {
-    throw new Error(`model ${model} is older than the earliest supported ${family} profile`);
+    throw new Error(`model ${model} is older than the earliest supported ${family} profile (${earliest.id}); choose a supported model before installing skills`);
   }
   const fallback = exact ?? familyProfiles.findLast((profile) => profile.fallback !== false
     && compareVersions(profile.version, requestedVersion) <= 0);

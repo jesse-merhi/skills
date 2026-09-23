@@ -22,11 +22,16 @@ If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
-configuration, not from writing style. This repository supports GPT-5.6,
-GPT-6 Astra, GPT-6 Sol, GPT-6 Luna, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
+configuration, not from writing style. This repository supports GPT-6 Astra, GPT-6 Sol, GPT-6 Luna, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
 Installation stops on an unknown family. `--require-exact` also rejects any
 fallback, including a missing variant in one skill.
+
+GPT-5.6 support is retired, including its Sol, Luna and Terra IDs. Select a supported
+model, then rerun the full installer for that root with `--model astra`, `--model sol`
+or `--model luna`; omit `--skill` when switching profiles. Existing managed links
+stay stable while their installed prompts are replaced. The installer does not
+change the harness's configured model or remove saved review history.
 
 ## 2. Link global instructions
 
@@ -215,7 +220,6 @@ From `REPO`, use the repository's installer after the prerequisites above:
 ./install-skills --harness codex --model astra
 ./install-skills --harness codex --model sol
 ./install-skills --harness codex --model luna
-./install-skills --harness codex --model gpt-5.6
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
 ```

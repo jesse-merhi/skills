@@ -1,1 +1,1 @@
-variants/gpt-5.6.md
+variants/gpt-6-astra.md

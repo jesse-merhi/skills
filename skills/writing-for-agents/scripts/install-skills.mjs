@@ -137,7 +137,7 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
 export function runInstaller() {
   const command = Command.make("install-skills", {
     harness: Flag.choice("harness", ["codex", "claude"]),
-    model: Flag.string("model").pipe(Flag.withDescription("gpt-5.6, astra, sol, luna, fable, opus, or a full model ID")),
+    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, or a full model ID")),
     root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Harness configuration root; defaults to CODEX_HOME or CLAUDE_CONFIG_DIR")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),

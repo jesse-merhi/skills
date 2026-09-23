@@ -15,7 +15,7 @@ function fixture(t) {
     const skill = path.join(sourceRoot, name);
     fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
     fs.writeFileSync(path.join(skill, "SKILL.md"), `---\nname: ${path.basename(name)}\ndescription: fixture\n---\n`);
-    for (const model of ["gpt-5.6", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"]) {
+    for (const model of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"]) {
       fs.writeFileSync(path.join(skill, "variants", `${model}.md`), `selected:${model}\n`);
     }
   }
@@ -212,7 +212,7 @@ test("modified owned launchers and malformed manifests are preserved", (context)
     const file = path.join(owner, kind === "launcher" ? "codex-review" : "manifest.json");
     const contents = kind === "launcher" ? "user changes\n" : '{"schemaVersion":1,"sourceRoot":"/elsewhere","commands":[{"name":"../escape","skill":"code-review","target":"/bin/sh","runtime":[]}]}';
     fs.writeFileSync(file, contents);
-    assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6" }));
+    assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }));
     assert.equal(fs.readFileSync(file, "utf8"), contents);
     assert.equal(selected(current.root), "selected:gpt-6-astra\n");
   }
@@ -228,7 +228,7 @@ test("command publication failure restores commands and leaves prompts unchanged
     if (source.includes(".jesse-merhi-skills-commands.staging-")) throw new Error("injected command publication failure");
     return originalRename(source, destination);
   });
-  assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6" }), /injected command publication failure/);
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), /injected command publication failure/);
   assert.equal(selected(current.root), "selected:gpt-6-astra\n");
   assert.equal(fs.lstatSync(alias, { throwIfNoEntry: false }), undefined);
   assert.match(fs.readFileSync(path.join(current.binDir, "review-findings"), "utf8"), /review-findings/);
@@ -248,7 +248,7 @@ test("view failure rolls back new aliases and restores retired aliases and the c
     if (source.startsWith(first.viewRoot + ".staging-") && destination === first.viewRoot) throw new Error("injected view failure");
     return originalRename(source, destination);
   });
-  assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6" }), /injected view failure/);
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), /injected view failure/);
   assert.equal(selected(current.root), "selected:gpt-6-astra\n");
   assert.equal(fs.lstatSync(alias, { throwIfNoEntry: false }), undefined);
   assert.equal(fs.readFileSync(manifest, "utf8"), before);
@@ -340,7 +340,7 @@ test("targeted installation preserves other prompts and rejects partial model sw
   assert.equal(result.linksRetired, 0);
   assert.equal(selected(current.root), "updated\n");
   assert.equal(fs.readFileSync(beta, "utf8"), originalBeta);
-  assert.throws(() => installSkills({ ...options, model: "gpt-5.6" }), /cannot switch model or source/);
+  assert.throws(() => installSkills({ ...options, model: "sol" }), /cannot switch model or source/);
   assert.throws(() => installSkills({ ...options, skillNames: ["missing"] }), /known skill names/);
   assert.throws(() => installSkills({ ...options, skillNames: [] }), /known skill names/);
   assert.equal(fs.readFileSync(beta, "utf8"), originalBeta);
@@ -366,11 +366,11 @@ test("switches Fable to Opus through stable links without changing other skills 
 test("keeps different harness roots isolated while switching GPT profiles", (t) => {
   const current = fixture(t);
   const second = path.join(current.temporary, "another-codex");
-  installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
-  installSkills({ ...current, root: second, harness: "codex", model: "gpt-5.6" });
+  installSkills({ ...current, harness: "codex", model: "gpt-6-astra" });
+  installSkills({ ...current, root: second, harness: "codex", model: "gpt-6-astra" });
   installSkills({ ...current, harness: "codex", model: "openai/gpt-6-sol-2026-09-23", requireExact: true });
   assert.equal(selected(current.root), "selected:gpt-6-sol\n");
-  assert.equal(selected(second), "selected:gpt-5.6\n");
+  assert.equal(selected(second), "selected:gpt-6-astra\n");
   installSkills({ ...current, harness: "codex", model: "luna", requireExact: true });
   assert.equal(selected(current.root), "selected:gpt-6-luna\n");
 });
@@ -392,12 +392,12 @@ test("installer safely falls back for a missing worker variant and can require e
 
 test("refuses collisions before changing any installed prompt or link", (t) => {
   const current = fixture(t);
-  installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  installSkills({ ...current, harness: "codex", model: "sol" });
   fs.unlinkSync(path.join(current.root, "skills", "beta"));
   fs.mkdirSync(path.join(current.root, "skills", "beta"));
   fs.writeFileSync(path.join(current.root, "skills", "beta", "SKILL.md"), "user copy");
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /preserving existing local skill/);
-  assert.equal(selected(current.root), "selected:gpt-5.6\n");
+  assert.equal(selected(current.root), "selected:gpt-6-sol\n");
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "beta", "SKILL.md"), "utf8"), "user copy");
 });
 
@@ -407,8 +407,8 @@ test("dry run validates coverage and collisions without creating an installation
   assert.equal(result.profile, "gpt-6-astra");
   assert.equal(result.linksToChange, 2);
   assert.equal(fs.existsSync(current.root), false);
-  fs.unlinkSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6-astra.md"));
-  assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra", dryRun: true, requireExact: true }), /complete exact skill coverage/);
+  fs.unlinkSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6-sol.md"));
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol", dryRun: true, requireExact: true }), /complete exact skill coverage/);
   assert.equal(fs.existsSync(current.root), false);
 });
 
@@ -416,6 +416,45 @@ test("rejects a model from the other harness without creating files", (t) => {
   const current = fixture(t);
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "opus" }), /not a supported codex model/);
   assert.equal(fs.existsSync(current.root), false);
+});
+
+test("rejects retired GPT-5.6 identifiers before creating an installation", (t) => {
+  const current = fixture(t);
+  for (const model of ["gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "openai/gpt-5.6", "azure-openai/gpt-5.6-sol-2026-09-01"]) {
+    assert.throws(() => installSkills({ ...current, harness: "codex", model }), /earliest supported openai-gpt profile \(gpt-6-astra\)/);
+    assert.equal(fs.existsSync(current.root), false);
+    assert.equal(fs.existsSync(current.binDir), false);
+  }
+});
+
+test("migrates a stored GPT-5.6 view through stable links without changing model settings", (t) => {
+  const current = fixture(t);
+  const first = installSkills({ ...current, harness: "codex", model: "astra" });
+  const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+  const legacyMarker = JSON.stringify({ schemaVersion: 1, sourceRoot: fs.realpathSync(current.sourceRoot), profile: "gpt-5.6" }) + "\n";
+  fs.writeFileSync(marker, legacyMarker);
+  for (const name of ["alpha", "beta"]) fs.writeFileSync(path.join(first.viewRoot, name, "SKILL.md"), "selected:gpt-5.6\n");
+  const config = path.join(current.root, "config.toml");
+  const settings = 'model = "gpt-5.6-sol"\n';
+  fs.writeFileSync(config, settings);
+  const alpha = path.join(current.root, "skills", "alpha");
+  const originalLink = fs.readlinkSync(alpha);
+
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6-sol" }), /earliest supported/);
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol", skillNames: ["alpha"] }), /cannot switch model or source/);
+  assert.equal(selected(current.root), "selected:gpt-5.6\n");
+  assert.equal(fs.readFileSync(marker, "utf8"), legacyMarker);
+
+  const migrated = installSkills({ ...current, harness: "codex", model: "sol", requireExact: true });
+  assert.equal(migrated.exact, true);
+  assert.equal(migrated.profile, "gpt-6-sol");
+  assert.equal(migrated.linksChanged, 0);
+  assert.equal(fs.readlinkSync(alpha), originalLink);
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:gpt-6-sol\n");
+  }
+  assert.equal(JSON.parse(fs.readFileSync(marker, "utf8")).profile, "gpt-6-sol");
+  assert.equal(fs.readFileSync(config, "utf8"), settings);
 });
 
 test("retires only links owned by this installation", (t) => {
@@ -431,7 +470,7 @@ test("retires only links owned by this installation", (t) => {
 
 test("restores migrated and retired links when view publication fails", (t) => {
   const current = fixture(t);
-  const first = installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  const first = installSkills({ ...current, harness: "codex", model: "sol" });
   const alpha = path.join(current.root, "skills", "alpha");
   const legacy = path.join(current.sourceRoot, "alpha");
   fs.unlinkSync(alpha);
@@ -447,12 +486,12 @@ test("restores migrated and retired links when view publication fails", (t) => {
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /injected publication failure/);
   assert.equal(fs.readlinkSync(alpha), legacy);
   assert.equal(fs.readlinkSync(retired), path.join(first.viewRoot, "retired"));
-  assert.equal(fs.readFileSync(path.join(first.viewRoot, "alpha", "SKILL.md"), "utf8"), "selected:gpt-5.6\n");
+  assert.equal(fs.readFileSync(path.join(first.viewRoot, "alpha", "SKILL.md"), "utf8"), "selected:gpt-6-sol\n");
 });
 
 test("keeps published prompts and links when the fallback notice cannot be saved", (t) => {
   const current = fixture(t);
-  const first = installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  const first = installSkills({ ...current, harness: "codex", model: "sol" });
   const alpha = path.join(current.root, "skills", "alpha");
   fs.unlinkSync(alpha);
   fs.symlinkSync(path.join(current.sourceRoot, "alpha"), alpha);

@@ -21,9 +21,11 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 
 At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit spawn arguments override unnamed-child defaults, but named roles retain their pinned model and effort. For an approved exception, use an unnamed child with explicit settings or a separately configured role.
 
-GPT-6 Sol and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting a GPT-5.6 model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
+GPT-6 Sol and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting another model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
 
 Roles sharing a Codex configuration root also share its installed skill view. Changing the role's model does not rematerialize skills. The GPT-6 variants preserve the same workflow contracts; keep the coordinator's view for mixed-model orchestration. For a separate Sol or Luna session with exact variant selection, use `./install-skills --harness codex --model sol` or `--model luna` with the matching separate root described in [INSTALL.md](../INSTALL.md#codex-and-claude-code).
+
+The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. Skill availability does not select an execution role or expand its permissions.
 
 For established validation, `writing-good-tests` selects `test_executor` and defines the batch, receipt and failure handoff. It also describes the explicit-settings fallback for launchers without the named role.
 
