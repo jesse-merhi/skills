@@ -24,6 +24,10 @@ When one wait runs inside an outer execution cell, give the outer cell the full 
 
 Retain command-session IDs and run-owned log/result paths before waiting. An outer execution cell and its inner command have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
 
+When user action is needed, stop work. Tell the user what is wrong and what they must do, then wait.
+
+For commands that may request user input, keep prompts visible while retaining full logs. Commands sharing an interactive sign-in step depend on that step: complete it with one command before batching the others. Reserve file-only output and completion-only notifications for commands known to run unattended.
+
 On timeout, resume the same handle. Send required updates from known state. Read logs to check a result, diagnose failure or investigate a stall, not just because a timer expired.
 
 ## Commands and agents
@@ -43,7 +47,7 @@ Command launch and resume tools have separate limits. The outer cell's deadline 
 3. Await launch and resume in a loop inside one `functions.exec` cell. A running cell ID belongs to `functions.wait`; a command `session_id` belongs to `write_stdin`. Recalculate the outer wait before continuing.
 4. Collect the exit code and inspect the saved log for the needed evidence. A timeout, missing handle or session ID is not success.
 
-For example, after choosing a fresh directory, adapt this validation launch to the task's authorized command. For this example, assume the host requires an update within 60 seconds, making the calculated hold 55 seconds. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
+For a command known to run unattended, adapt this validation launch after choosing a fresh directory. For this example, assume the host requires an update within 60 seconds, making the calculated hold 55 seconds. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
 
 ```javascript
 // @exec: {"yield_time_ms": 55000, "max_output_tokens": 1500}
@@ -84,7 +88,7 @@ Do not replace code mode with separate launch and polling calls. Use direct call
 
 For existing Desktop tasks, prefer a compact `wait_threads` snapshot (`timeoutMs: 0`) when only status is needed. Keep returned IDs and cursors for later waits. When history is needed, request only relevant turns and output detail.
 
-Batch independent reads with `Promise.allSettled` and store each full result before emitting anything. Inspect each fulfilled result or error, then emit only status, the latest relevant result and recovery handles from the tool's returned schema. Keep large histories and logs in stored results or run-owned files so a later question can select more detail without refetching. Budget the combined emitted text against `functions.exec`'s `max_output_tokens`; per-call limits do not bound the whole batch.
+Batch independent unattended reads with `Promise.allSettled` and store each full result as it arrives. If a result requires user action, use `yield_control` to return control for the user-facing request before awaiting the remaining results. Inspect each fulfilled result or error, then emit only status, the latest relevant result and recovery handles from the tool's returned schema. Keep large histories and logs in stored results or run-owned files so a later question can select more detail without refetching. Budget the combined emitted text against `functions.exec`'s `max_output_tokens`; per-call limits do not bound the whole batch.
 
 Required instruction documents must still be read in full. Split them into output-sized batches or consecutive ranges, inspect each part, and resume from the last fully read range if a response is clipped. Do not replace required document text with a summary to fit more calls in one cell.
 

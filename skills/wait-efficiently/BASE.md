@@ -25,6 +25,10 @@ When one wait runs inside an outer execution cell, give the outer cell the full 
 
 Retain command-session IDs and run-owned log/result paths before waiting. An outer execution cell and its inner command have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
 
+When user action is needed, stop work. Tell the user what is wrong and what they must do, then wait.
+
+For commands that may request user input, keep prompts visible while retaining full logs. Commands sharing an interactive sign-in step depend on that step: complete it with one command before batching the others. Reserve file-only output and completion-only notifications for commands known to run unattended.
+
 On timeout, resume the same handle. Send required updates from known state. Read logs to check a result, diagnose failure or investigate a stall, not just because a timer expired.
 
 ## Required agent results
