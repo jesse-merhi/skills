@@ -180,7 +180,7 @@ does not need a bundled linter for every language. Standalone `translate`
 proposes a mapping; shared-catalog changes require a separate explicit request.
 
 Every skill has three complete profiles: GPT-6 (shared by Astra, Sol and Luna),
-Claude Fable 5.1, and Claude Opus 5. Selection
+Claude Fable 5.1, and Claude Opus 5.5. Selection
 happens locally before the model sees the workflow, so there is no router turn
 or unused prompt in context. Harness views expose the selected prompt directly.
 A newer model in a supported family falls back to the newest family variant and
@@ -343,7 +343,7 @@ PRs are welcome.
   will not load it at the right moment.
 - Give every skill a complete prompt in `variants/gpt-6.md`,
   `variants/claude-fable-5.1.md`, and
-  `variants/claude-opus-5.md`. Preserve one
+  `variants/claude-opus-5.5.md`. Preserve one
   behavior contract while following the applicable official prompting guide. The
   [`writing-for-agents`](skills/writing-for-agents/SKILL.md) skill owns the
   guide links, selector, fallback order, and new-model workflow.

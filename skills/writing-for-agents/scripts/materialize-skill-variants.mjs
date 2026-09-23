@@ -35,10 +35,10 @@ export const profiles = [
     matches: /^(?:(?:anthropic\/)?claude-fable-5(?:(?:[.-]1)(?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
   },
   {
-    id: "claude-opus-5",
+    id: "claude-opus-5.5",
     family: "anthropic-opus",
-    version: [5, 0],
-    matches: /^(?:claude-opus-5(?:-\d{8})?|opus)$/i,
+    version: [5, 5],
+    matches: /^(?:claude-opus-5[.-]5(?:-\d{8})?|opus)$/i,
   },
 ];
 

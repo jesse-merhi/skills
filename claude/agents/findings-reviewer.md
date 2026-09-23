@@ -1,7 +1,7 @@
 ---
 name: findings-reviewer
 description: Independently inspect a specified revision and return findings only.
-model: opus
+model: claude-opus-5-5
 effort: xhigh
 tools: Read, Glob, Grep, Bash, Skill, WebFetch, WebSearch
 ---

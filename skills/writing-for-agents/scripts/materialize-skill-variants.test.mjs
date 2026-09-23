@@ -75,9 +75,14 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
     assert.equal(resolved.profile.id, "gpt-6");
     assert.equal(resolved.exact, false);
   }
-  assert.equal(resolveProfile("opus").profile.id, "claude-opus-5");
-  assert.equal(resolveProfile("anthropic/claude-opus-5").exact, true);
-  assert.equal(resolveProfile("claude-opus-5.1").profile.id, "claude-opus-5");
+  for (const model of ["opus", "claude-opus-5-5", "claude-opus-5.5", "anthropic/claude-opus-5-5", "anthropic/claude-opus-5-5-20260922"]) {
+    const resolved = resolveProfile(model);
+    assert.equal(resolved.profile.id, "claude-opus-5.5", model);
+    assert.equal(resolved.exact, true);
+  }
+  const futureOpus = resolveProfile("claude-opus-5-6");
+  assert.equal(futureOpus.profile.id, "claude-opus-5.5");
+  assert.equal(futureOpus.exact, false);
   const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
   const configuredFable = resolveProfile("claude-fable-5[1m]");
   const futureFable = resolveProfile("claude-fable-5.2");
@@ -415,7 +420,7 @@ test("materializes the repository corpus and keeps installed links stable across
     fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", "gpt-6.md"), "utf8"),
   );
 
-  for (const model of ["gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"]) {
+  for (const model of ["gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5-5"]) {
     materializeSkillVariants({ model, outputRoot: current.output, sourceRoot: repositorySkills, requireExact: true });
     const profile = resolveProfile(model).profile.id;
     assert.equal(
