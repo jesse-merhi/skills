@@ -9,18 +9,18 @@ Assess the observations already available before creating a task. Hand off when 
 
 When a handoff is warranted, use [handoff](../handoff/SKILL.md) to open a separate full session dedicated to that objective. The original task keeps its own work and delivery; it supplies the existing evidence and launches the feedback task without doing that investigation first.
 
+Explain the follow-up in the original task's launch update: name the agent behavior or workflow issue being examined and say that the original work remains there. Give the new task a descriptive title identifying it as a feedback follow-up and naming that behavior. For a warranted follow-up about unsupported restart advice, review the diagnostic method; leave the missing-model investigation in the original task.
+
 Use `detect-handoff-surface --relationship aside` for this separate objective. For repository changes, start from the owning repository's normal PR base in a separate branch and worktree, with a separate PR when publication is authorized. Treat the original checkout, branch and PR as read-only context; keep its unfinished work and delivery plan with the original task. Carry this separation into the brief and launch prompt.
 
-In the new session's launch prompt, @mention the original session and say `solve`:
+Write a self-contained launch prompt explaining what triggered the follow-up, the agent behavior or workflow to improve, and the original objective retained elsewhere. Describe uncertainty about the workflow issue or proposed fix without inventing a fault. Reference the original session with its actual @mention when supported, otherwise its verified link or ID. The reference supplies context; the prompt must identify the feedback objective rather than leave `solve` to imply the original task's objective.
 
-```text
-@<original session> solve
-```
+Include an explicit instruction in every launch prompt for the receiving task to explain in its first user-facing reply why the feedback task exists and which work stays in the original task. This applies to queued launches and follow-ups whose proposed fix is still uncertain.
 
-Use the actual session mention when supported; otherwise include its verified link or ID. This is a reference in the new session's prompt, not a message sent back to the original session.
+Include observations already available and the user's applicable authorization. The feedback task owns investigation, recommendations, authorized repairs, verification, permission questions and reporting to the user in its own session. The handoff grants no broader repair, installation or publication permission. Use the supplied evidence and existing authority to finish supported repairs and verification without asking again for permission already granted. When only a recommendation is authorized, identify a concrete proposed change. If no useful change is supported, say so briefly and finish.
 
-Set the handoff objective to solving the workflow problems and corrections evidenced in the original session. Include observations already available. The feedback task owns investigation, recommendations, repairs, verification, permission questions and reporting to the user in its own session. Carry only existing authority applicable to that feedback; the handoff grants no broader repair, installation or publication permission. If no useful change is supported, report that there and finish.
+The receiving task investigates the workflow using the supplied evidence and any needed context; it does not take over or duplicate the original investigation. Report directly in chat unless a saved report is requested or materially useful. In the final response, distinguish what was changed, what was recommended, and any remaining decision; do not imply that reviewing the workflow resolved the original task.
 
-In the original session, report only the new task's link or observed launch status, then continue or close the original work. A queued or failed launch stays reported as such; preserve the brief without delaying the main task or doing the feedback work there. Do not monitor, review or integrate feedback work from the original task. Feedback findings, questions, failures and completion never gate its delivery.
+After launch, report the new task's descriptive link or observed launch status in the original session, then continue or close the original work. A queued or failed launch stays reported as such; preserve the brief without delaying the main task or doing the feedback work there. Do not monitor, review or integrate feedback work from the original task. Feedback findings, questions, failures and completion never gate its delivery.
 
 Hand off once per source task; the receiving session finishes this follow-up without invoking feedback-hardening again. Findings-only workers include observations in their existing report and leave the launch to their coordinator.
