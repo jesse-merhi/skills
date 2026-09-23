@@ -15,7 +15,7 @@ Use `detect-handoff-surface --relationship aside` for this separate objective. F
 
 Write a self-contained launch prompt explaining what triggered the follow-up, the agent behavior or workflow to improve, and the original objective retained elsewhere. Describe uncertainty about the workflow issue or proposed fix without inventing a fault. Reference the original session with its actual @mention when supported, otherwise its verified link or ID. The reference supplies context; the prompt must identify the feedback objective rather than leave `solve` to imply the original task's objective.
 
-End every launch prompt with an instruction to explain, in the receiving task's first user-facing reply, why this feedback task exists and which work stays in the original task. Include this instruction even when the launch is queued or the proposed fix is still uncertain.
+Include an explicit instruction in every launch prompt for the receiving task to explain in its first user-facing reply why the feedback task exists and which work stays in the original task. This applies to queued launches and follow-ups whose proposed fix is still uncertain.
 
 Include observations already available and the user's applicable authorization. The feedback task owns investigation, recommendations, authorized repairs, verification, permission questions and reporting to the user in its own session. The handoff grants no broader repair, installation or publication permission. Bound the investigation and repair to the observed feedback and finish supported repairs within existing authority. When only a recommendation is authorized, identify a concrete proposed change. If no useful change is supported, say so briefly and finish.
 
