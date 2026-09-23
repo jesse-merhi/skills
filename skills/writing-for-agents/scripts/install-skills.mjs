@@ -93,7 +93,7 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
     const commandPreview = planCommands(commandOptions);
     return {
       dryRun: true, harness, root: harnessRoot, model, profile: plan.profile.id,
-      exact: plan.exact && plan.fallbackSkills.length === 0, skillCount: plan.skills.length,
+      exact: plan.exact, skillCount: plan.skills.length,
       linksToChange: preview.links.length, linksToRetire: preview.retired.length,
       ...commandSummary(commandPreview),
     };
@@ -137,12 +137,12 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
 export function runInstaller() {
   const command = Command.make("install-skills", {
     harness: Flag.choice("harness", ["codex", "claude"]),
-    model: Flag.string("model").pipe(Flag.withDescription("gpt-5.6, astra, fable, opus, or a full model ID")),
+    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, or a full model ID")),
     root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Harness configuration root; defaults to CODEX_HOME or CLAUDE_CONFIG_DIR")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),
     session: Flag.string("session").pipe(Flag.optional),
-    skills: Flag.string("skill").pipe(Flag.atLeast(0), Flag.withDescription("Update only these skills; repeat for multiple names. Requires the same installed model and source.")),
+    skills: Flag.string("skill").pipe(Flag.atLeast(0), Flag.withDescription("Update only these skills; repeat for multiple names. Requires the same installed profile and source.")),
     requireExact: Flag.boolean("require-exact").pipe(Flag.withDescription("Refuse fallback if the model or any skill lacks an exact variant")),
     dryRun: Flag.boolean("dry-run"),
     json: Flag.boolean("json"),

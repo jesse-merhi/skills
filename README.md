@@ -57,7 +57,8 @@ To install or switch just this repo's skills, run one command from the clone:
 
 ```sh
 ./install-skills --harness codex --model astra
-./install-skills --harness codex --model gpt-5.6
+./install-skills --harness codex --model sol
+./install-skills --harness codex --model luna
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
 ```
@@ -134,12 +135,13 @@ with their source commits. They are reference copies, separate from the maintain
 model variants, and are never included in model-specific installations.
 
 A skill's `BASE.md` is its human-owned, model-neutral source of truth. The flow is
-**read the base → adapt it for each model → install the selected variant**.
+**read the base → adapt it for each profile → install the selected variant**.
 The audited masters are kept here, not only in the local review database.
 `coding-standards` arrived from main outside the audit; its initial base is its existing source prompt.
 
-Complete model prompts live under `variants/`. Root `SKILL.md` still points at
-the GPT-5.6 variant for runtime discovery; it is not the base. Installation
+Complete model prompts live under `variants/`; identical variants share a file through
+relative symlinks. Root `SKILL.md` points at
+the shared GPT-6 variant for runtime discovery; it is not the base. Installation
 selects an already-authored variant as the harness-visible `SKILL.md`; the
 frontmatter carries a `name` and one-line `description`, and the body contains
 the workflow, constraints, stop conditions, and reference pointers. The installer
@@ -177,8 +179,8 @@ in the target repository, asking before installing dependencies. This catalog
 does not need a bundled linter for every language. Standalone `translate`
 proposes a mapping; shared-catalog changes require a separate explicit request.
 
-Every skill has full GPT-5.6, GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5
-variants. Selection
+Every skill has three complete profiles: GPT-6 (shared by Astra, Sol and Luna),
+Claude Fable 5.1, and Claude Opus 5. Selection
 happens locally before the model sees the workflow, so there is no router turn
 or unused prompt in context. Harness views expose the selected prompt directly.
 A newer model in a supported family falls back to the newest family variant and
@@ -339,13 +341,13 @@ PRs are welcome.
 - Read [`writing-for-agents`](skills/writing-for-agents/SKILL.md) first. Skill
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
-- Give every skill a complete prompt in `variants/gpt-5.6.md`,
-  `variants/gpt-6-astra.md`, `variants/claude-fable-5.1.md`, and
+- Give every skill a complete prompt in `variants/gpt-6.md`,
+  `variants/claude-fable-5.1.md`, and
   `variants/claude-opus-5.md`. Preserve one
-  behavior contract while following each model's official prompting guide. The
+  behavior contract while following the applicable official prompting guide. The
   [`writing-for-agents`](skills/writing-for-agents/SKILL.md) skill owns the
   guide links, selector, fallback order, and new-model workflow.
-- One skill per directory, root `SKILL.md` linked to the GPT-5.6 variant, and
+- One skill per directory, root `SKILL.md` linked to the shared GPT-6 variant, and
   `name` unique across the repo. Keep each complete variant short. Put anything
   every use needs inline; put conditional or advanced detail in `references/`,
   linked one hop from the variant only. A reference file must not link to

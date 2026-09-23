@@ -1,0 +1,103 @@
+---
+name: wait-efficiently
+description: 'Manage CI monitoring, prolonged commands, timed delays, and pending agents with bounded waits.'
+---
+
+# Wait efficiently
+
+Start the operation once. For an early-return completion wait, choose:
+
+```text
+wait_ms = no update deadline
+  ? supported_hold_ms
+  : min(supported_hold_ms, update_due_in_ms - safety_margin_ms)
+```
+
+Derive `supported_hold_ms` from the tool schema and actual host limits. Use the exposed maximum when allowed. Without one, choose a meaningful long hold within known blocking limits; defaults are not caps. If rejected or clamped, adjust the next wait on the same handle and state unknown behavior.
+
+Do not shorten an early-return wait to a runtime estimate. Use estimates only to choose among supported long holds or size a poll-only check. A one-hour maximum with no update deadline means one hour, even for a five-minute operation. If the host requires updates within 60 seconds and forbids longer blocks, use about 55 seconds; that constraint is host-specific. If the calculation falls below the tool minimum, update first.
+
+Give an outer execution cell the full inner `wait_ms`; a shorter outer default wakes the model without advancing the operation.
+
+- CI: use one [GitHub watch command](references/github-actions.md).
+- Requested delays: use the host's `sleep` tool or `quiet-wait 5m` for the requested duration.
+
+Save command-session IDs and run-owned log/result paths before waiting. Outer cells and inner commands have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
+
+When user action is needed, stop work. Tell the user what is wrong and what they must do, then wait.
+
+For commands that may request user input, keep prompts visible while retaining full logs. Commands sharing an interactive sign-in step depend on that step: complete it with one command before batching the others. Reserve file-only output and completion-only notifications for commands known to run unattended.
+
+On timeout, resume the same handle and update from known state. Read logs for a result, failure or concrete stall, not merely because time passed.
+
+## Commands and agents
+
+Use code mode for command execution and waiting. If `functions.exec` and `functions.wait` are unavailable, report the missing capability before starting a long-running command. Command sessions, CLI agents, and Desktop tasks have different handles.
+
+### Choose the outer wait
+
+Apply the wait calculation above to `functions.exec` and each `functions.wait` continuation. Set the full calculated deadline with a first-line pragma; omitting it inherits the default even when a longer hold is supported. Recalculate before each continuation so time already spent counts toward the next update.
+
+Command launch and resume tools have separate limits. The outer cell's deadline controls when it yields to the model, even if an inner wait is longer.
+
+### Commands
+
+1. Choose a unique run-owned directory outside the checkout. Save the command's full output there and write its exit status to a result file only when it finishes. Retain these paths before launch.
+2. Launch once with `exec_command`, using its allowed `yield_time_ms`. When it returns `session_id`, retain and emit that inner command ID before awaiting `write_stdin`.
+3. Await launch and resume in a loop inside one `functions.exec` cell. A running cell ID belongs to `functions.wait`; a command `session_id` belongs to `write_stdin`. Recalculate the outer wait before continuing.
+4. Collect the exit code and inspect the saved log for the needed evidence. A timeout, missing handle or session ID is not success.
+
+For a command known to run unattended, adapt this validation launch after choosing a fresh directory. For this example, assume the host requires an update within 60 seconds, making the calculated hold 55 seconds. The shell wrapper saves the command's exit status even when validation fails. Keep untrusted values out of shell interpolation; use proper shell quoting when paths or commands vary.
+
+```javascript
+// @exec: {"yield_time_ms": 55000, "max_output_tokens": 1500}
+const waitMs = 55000;
+const recovery = {
+  logPath: "/tmp/review-run-unique/validation.log",
+  resultPath: "/tmp/review-run-unique/validation.exit"
+};
+store("validationRecovery", recovery);
+notify(recovery);
+let result = await tools.exec_command({
+  cmd: "mkdir -p /tmp/review-run-unique && (bun run validate:effect > /tmp/review-run-unique/validation.log 2>&1; command_exit=$?; printf '%s\n' \"$command_exit\" > /tmp/review-run-unique/validation.exit; exit \"$command_exit\")",
+  yield_time_ms: 1000,
+  max_output_tokens: 1000
+});
+while (result.session_id !== undefined) {
+  if (recovery.sessionId !== result.session_id) {
+    recovery.sessionId = result.session_id;
+    store("validationRecovery", recovery);
+    notify(recovery); // Recovery identity before entering the inner wait.
+  }
+  result = await tools.write_stdin({
+    session_id: result.session_id, chars: "", yield_time_ms: waitMs,
+    max_output_tokens: 1000
+  });
+}
+store("validationResult", result);
+text({ exitCode: result.exit_code, ...recovery });
+```
+
+The short launch exposes its command ID promptly; calculate outer and resume waits for the current update deadline and tool limits. Keep every continuation in the looped cell: one cell containing one `write_stdin` call is only a partial wait. Emit the recovery identity on launch or when it changes, not on every unchanged timeout. A run-owned log preserves shell output even if the outer cell's in-memory result disappears.
+
+If `functions.wait` reports that its cell is unavailable, retrieve the retained recovery record (or the emitted paths/ID after a context transition). Try `write_stdin` with the command session ID, then inspect the saved exit status and log. For CI, query the same remote run's terminal status. Recover that existing result before considering another launch. If neither the session nor a terminal result is available, inspect the original process or external operation and report what remains unknown; a missing cell alone does not authorize duplicating work.
+
+Do not replace code mode with separate launch and polling calls. Use direct calls only for tools the host excludes from code mode, such as native agent controls. `notify` above exposes recovery pointers; do not use it or `yield_control` for unchanged progress. This repository cannot restore the host's outer-cell registry or guarantee retention across host resets.
+
+### Bound task-status output
+
+For existing Desktop tasks, prefer a compact `wait_threads` snapshot (`timeoutMs: 0`) when only status is needed. Keep returned IDs and cursors for later waits. When history is needed, request only relevant turns and output detail.
+
+Batch independent unattended reads with `Promise.allSettled` and store each full result as it arrives. If a result requires user action, use `yield_control` to return control for the user-facing request before awaiting the remaining results. Inspect each fulfilled result or error, then emit only status, the latest relevant result and recovery handles from the tool's returned schema. Keep large histories and logs in stored results or run-owned files so a later question can select more detail without refetching. Budget the combined emitted text against `functions.exec`'s `max_output_tokens`; per-call limits do not bound the whole batch.
+
+Required instruction documents must still be read in full. Split them into output-sized batches or consecutive ranges, inspect each part, and resume from the last fully read range if a response is clipped. Do not replace required document text with a summary to fit more calls in one cell.
+
+## Required agent results
+
+Give workers bounded assignments. Return one result with outcome, revision/build, evidence, findings, verification, unresolved decisions and missing evidence. Interim messages should change someone's next action.
+
+Finish independent work before waiting on saved worker handles. Act on completion, failure, decisions or user input. After routine messages or quiet timeouts, resume the same wait without check-ins. Snapshot immediately only for status requests or concrete stalls; elapsed time alone is not a stall.
+
+Honor host wait limits and required updates. Keep the parent active unless the host guarantees completion will wake an ended turn. Do not build a polling workaround for missing suspension support.
+
+Use `wait_agent` directly when the host excludes agent controls from code mode. It can wake for any mailbox message; resume after routine messages. For existing Desktop tasks, use `wait_threads` with saved IDs and cursors, batching targets within its limit. Commentary does not wake it. Reserve zero-time snapshots for status requests or diagnosis. Do not create a Desktop task just to wait.

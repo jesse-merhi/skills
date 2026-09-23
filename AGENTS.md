@@ -93,7 +93,8 @@ review, including cold review.
 - Before creating or changing agent instructions, use `writing-for-agents`
   to select the applicable authoring guidance. For skill changes, read the
   skill's `BASE.md` first and keep shared behaviour there, then adapt every
-  supported model variant complete; variant file presence is the coverage record.
+  supported profile complete; a profile may cover a model family. Variant files
+  or shared-content links record coverage.
 
 ## Dependency-first implementation
 
@@ -168,13 +169,30 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use Astra at xhigh for coordination, integration, verification and review. The
+- Use GPT-6 Astra at xhigh for coordination, integration, verification and review. The
   coordinator may complete small local steps when delegation would not help.
-  For meaningful delegated work, use Sol at high for implementation, test design
-  and substantive debugging or repairs; use Luna at max for established test,
+  For meaningful delegated work, use GPT-6 Sol at high for implementation, test design
+  and substantive debugging or repairs; use GPT-6 Luna at max for established test,
   lint, typecheck and prepared acceptance execution, bounded investigation and
   focused research. `writing-good-tests` owns execution batches and receipts.
   Use xhigh for every Astra assignment unless the user explicitly overrides it.
+- Assign skill execution by the work, not by which model variants are installed.
+  Use Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
+  Use Luna/max for bounded retrieval and inventory work, such as `session-recall`
+  searches and `skill-cleaner` inventories, and for prepared validation batches,
+  including UI and local-preview checks when the worker has the required tools.
+  Keep test design and failure diagnosis with Sol; `writing-good-tests` owns the
+  executor's batch and failure boundaries. Apply the harness-specific worker
+  mapping below where it replaces the shared model choices.
+- Keep coordination, review decisions, integration, final verification,
+  permission decisions and delivery with the coordinator. Complete `handoff`,
+  `ask-codex` and cleanup workflows retain their existing owners and authority;
+  only suitable bounded steps may be delegated when their contracts allow it.
+  Shared standards and domain skills remain available to every consuming model:
+  reading one does not make that model the execution owner. Keep existing
+  findings-only reviewer exclusions. Small local steps and unavailable worker
+  capabilities follow the delegation and launcher rules here; do not spawn a
+  worker solely to load a skill or wait.
 - Apply an explicit user model or effort override only to its named task. Set
   model and effort through the launcher; a prompt cannot override a launcher's
   fixed settings. If the selected configuration is unavailable, report that
