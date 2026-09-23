@@ -8,33 +8,31 @@ metadata:
 
 # Handoff
 
-Move the work to a fresh full session.
-
 ## Write the brief
 
-Save one self-contained document in the OS temporary directory containing:
-- Objective, user-visible result, current state and important design decisions.
-- Observed evidence, verification, blockers, PR/proof links and relevant Obsidian links.
-- Remaining work, what the user should inspect and next actions based on the user's request.
+Save a self-contained brief in the OS temporary directory with:
+- Objective, user-visible result, current state, and design decisions.
+- Evidence, verification, blockers, PR/proof links, and relevant Obsidian links.
+- Remaining work, what the user should inspect, and next actions.
 
-Use enough explanation for the complexity. For a pending decision, describe the observed problem, consequences and real alternatives, and recommend a path; counts and hashes alone do not explain it.
+For a pending decision, explain the observed problem, consequences, alternatives, and recommended path; counts and hashes alone are not enough.
 
-Include the paths, unfinished changes, decisions, and existing permissions the next session needs. Carry the user instructions that authorize remaining work and any later corrections that supersede old unanswered questions; a handoff does not require the user to approve the same work again. Link artifacts and omit secrets. Carry the existing PR or review plan; do not copy its workflow into the brief.
+Include paths, unfinished changes, decisions, and user instructions authorizing remaining work, including later corrections that supersede unanswered questions. Do not ask the user to reapprove authorized work. Link artifacts, omit secrets, and carry the PR or review plan without copying its workflow.
 
-After the initial brief and launch prompt, parent and child sessions must not communicate unless the user explicitly requests it, and only within that request's scope. Both report directly to the user. Include this rule in the brief and launch prompt.
+State in the brief and launch prompt: after launch, parent and child do not communicate unless the user explicitly requests it, and only within that request's scope; both report to the user.
 
 ## Get the launch command
 
-Run `detect-handoff-surface`. It detects the current session and prints the recommended command or native app tool. If the user specified a destination, pass `--destination codex-app|claude-app|codex-cli|claude-cli`.
+Run `detect-handoff-surface` for the recommended command or native app tool. For a user-specified destination, pass `--destination codex-app|claude-app|codex-cli|claude-cli`.
 
-Use `continuation` by default. Pass `--relationship aside` only for a substantially unrelated user objective. The script handles pane/window placement; do not repeat its detection logic.
+Use `continuation` by default and `--relationship aside` only for a substantially unrelated objective. Let the script choose pane/window placement.
 
 ## Launch and confirm
 
 For a Codex destination, read [Codex launch settings](references/codex-settings.md) before launch.
 
-Run the recommended command or use the recommended native tool. Use a new worktree only when required; preserve needed uncommitted changes and their base revision in the brief or linked patch.
+Run the recommended command or native tool. Use a new worktree only when required; preserve needed uncommitted changes and base revision in the brief or linked patch.
 
-Launch a full interactive session, never ACPX, subagents, or background agents. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
+Launch a full interactive session, not ACPX, a subagent, or a background agent. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
 
-Use the launch result or read-only status to confirm the new agent has started and only one session was created. Report the brief path, session/worktree location, and observed status.
+Confirm from launch result or read-only status that one new session started. Report brief path, session/worktree location, and observed status.

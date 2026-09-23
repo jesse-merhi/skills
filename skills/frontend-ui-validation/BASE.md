@@ -5,21 +5,21 @@ description: 'Validate behaviour of web or native UI through real interactions, 
 
 # UI validation
 
-Exercise the changed UI and inspect its behaviour, appearance, and relevant states.
+Exercise the changed UI and inspect behaviour, appearance, and relevant states.
 
 ## Web
 
 Use the repository's normal launch workflow and the session's approved browser tools.
 
-Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, unintended overlap, focus, or unreachable controls. Compare composition, spacing, type, and colour with any supplied reference. When the task authorizes repair, fix source rather than a temporary DOM edit. For validation-only work, report the evidence and recommended source repair without editing.
+Check relevant loading, empty, error, keyboard, scrolling, and narrow-screen states. Inspect screenshots and console output for clipping, overlap, focus, and unreachable controls; compare composition, spacing, type, and colour with supplied references. Repair source when authorized, not the temporary DOM. For validation-only work, report evidence and recommended repairs without editing.
 
-For repeatable URL-state captures, use the existing Playwright helper only when the project already has Playwright and the harness permits it:
+For repeatable URL-state captures, use the Playwright helper only if the project already has Playwright and the harness permits it:
 
 ```sh
 skill-audit-layout <URL> --state <name>=<URL> --viewport 390x844 --wait-for <ready-selector> --output-dir <new-directory>
 ```
 
-Use `--help` for controls. Make sure to exercise menus, dialogs, forms, or transitions with real interactions.
+Use `--help` for controls. Exercise menus, dialogs, forms, and transitions through real interactions.
 
 ## Native
 
@@ -27,9 +27,9 @@ Follow [Native checks](references/native-expo.md) for the changed native flow.
 
 ## Keep evidence useful
 
-Record the build or revision, relevant local changes, environment, web viewport or native device, interaction, expected and observed outcomes, and capture paths. Include failures and unavailable checks. Screenshots prove appearance; recordings help prove motion and interaction. Layout warnings and passing tests support that evidence but do not establish visual quality.
+Record build or revision, local changes, environment, viewport or device, interaction, expected and observed results, and capture paths. Include failures and unavailable checks. Screenshots show appearance; recordings help show motion and interaction. Layout warnings and tests do not prove visual quality.
 
-Share the same evidence paths and coverage notes with downstream tickets, reviewers, and proof-pack work.
+Reuse those evidence paths and coverage notes in downstream tickets, reviews, and proof-pack work.
 
 ## References
 

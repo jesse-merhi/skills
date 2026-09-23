@@ -10,17 +10,15 @@ metadata:
 
 # De-slop
 
-Use this for a requested rewrite, de-slop pass or removal of AI-sounding prose. Match the intended reader and voice. Work on the supplied writing, not identifiers, APIs or unrelated code.
+Match the reader and voice. Rewrite the supplied prose, not identifiers, APIs, or unrelated code.
 
-- Replace grand claims and vague metaphors with the specific event, mechanism or consequence. If the text supplies no supporting fact, remove the claim rather than inventing one.
-- Cut promotional adjectives, empty importance claims, generic conclusions and chatbot praise or greetings.
-- Remove repeated ideas, synonym cycling and forced patterns such as three-part lists or “not just X, but Y” when they add no meaning.
-- Name the actor and action. Split sentences that need rereading; vary sentence length naturally instead of imposing one rhythm.
-- Make attribution specific. Keep the source and what it supports; do not substitute “experts say” or a publication name for evidence.
-- Keep the actual uncertainty. Remove stacked hedges without turning an estimate or possibility into a fact.
-- Keep formatting and punctuation that help the reader. Remove decorative emphasis and mechanical sectioning; do not treat a punctuation mark as proof that prose is AI-written.
-- Preserve useful personality and the author's opinions. Do not replace a distinctive voice with bland professional boilerplate.
+- Replace grand claims and vague metaphors with the specific event, mechanism, or consequence; remove unsupported claims rather than inventing facts.
+- Cut promotional adjectives, empty importance claims, generic conclusions, greetings, and praise.
+- Remove repeated ideas, synonym cycling, and forced patterns such as needless three-part lists or “not just X, but Y.”
+- Name the actor and action. Split tangled sentences without imposing a uniform rhythm.
+- Name the source and what it supports, rather than saying “experts say.” Keep real uncertainty without stacked hedges.
+- Keep useful formatting, personality, and opinions. Remove decorative emphasis, not punctuation on principle; avoid bland boilerplate.
 
-Preserve facts, scope, material qualifications, evidence and requested next actions. Keep quotations, code, logs, commands, proper names and bug-significant characters exact. Do not invent measurements, sources or personal experience.
+Preserve facts, scope, qualifications, evidence, and next actions. Keep quotations, code, logs, commands, proper names, and bug-significant characters exact. Invent no measurements, sources, or experience.
 
-Finish with `speak-fking-english` for concise, understandable language. That skill does not call this one. Return the revised text in the requested format, not a catalogue of edits or an extra review workflow.
+Finish with `speak-fking-english` (which does not call this skill). Return the requested format, not an edit catalogue or extra review workflow.

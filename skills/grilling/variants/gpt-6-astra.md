@@ -8,14 +8,11 @@ metadata:
 
 # Grilling
 
-Build a shared understanding of the entire decision tree and get the user's confirmation before acting. Every decision belongs to the user; routine-autonomy guidance must not silently decide an interview branch.
+Map the full decision tree and get the user's confirmation before acting. Investigate facts yourself; every decision remains the user's, even with a confident recommendation.
 
-Own the factual investigation. If an environmental fact is needed, dispatch a background subagent to establish it while you continue with independent questions. Only questions downstream of that unknown fact wait.
+In each round, ask the full frontier—all questions whose prerequisites are settled—with a recommendation for each, then wait. Leave dependent questions for later rounds. Update the tree after each answer.
 
-Use `spawn_agent` with `agent_type: "investigator"` for the blocking factual question. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Continue independent questions while it runs; keep synthesis here and decisions with the user. If the role is unavailable, report it and continue suitable work locally.
-
-
-Own the question order. The next round contains the whole frontier whose prerequisites are already settled. Do not ask a dependent question as though an answer earlier in the same round were known. For each frontier question give a concise recommendation, use the format below, and wait for the user's answers.
+Use this format, separating questions with a horizontal rule:
 
 ```markdown
 ❓ **Q1**. **<question title>**: <question body or choices>
@@ -29,4 +26,8 @@ Own the question order. The next round contains the whole frontier whose prerequ
 ➡️ <recommended answer>
 ```
 
-After each round, apply the answers and recompute the frontier. Continue until every branch has been visited and no decision or material assumption is left implicit. An empty frontier ends the questioning; the user's confirmation of shared understanding is still required before action.
+If an environmental fact blocks a question, send a background subagent to establish it while asking independent questions.
+
+Use `spawn_agent` with `agent_type: "investigator"`. Supply its objective, worktree and revision or source, scope, constraints, acceptance criteria, and evidence. Keep question sequencing and synthesis here. If unavailable, report it and investigate locally.
+
+Finish questioning only when the frontier is empty, every branch is visited and no assumption is silently decided. Ask the user to confirm the shared understanding before acting.

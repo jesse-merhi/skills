@@ -7,7 +7,7 @@ description: 'Check or update PR descriptions and proof.'
 
 ## 1. Check
 
-Read the PR and its diff using the [GitHub](references/github.md) or [Bitbucket](references/bitbucket.md) guide. Compare the description and evidence with what actually changed. Leave accurate material alone; resolve routine choices from the PR and repository context.
+Read the PR and diff using the [GitHub](references/github.md) or [Bitbucket](references/bitbucket.md) guide. Compare its description and proof with the change; leave accurate material alone. Resolve routine choices from PR and repository evidence.
 
 In the target checkout, count the changes against the PR's resolved base and head:
 
@@ -17,15 +17,15 @@ pr-net-diff --base <BASE-SHA> --head <HEAD-SHA> --markdown
 
 ## 2. Capture
 
-Use [Proof selection](references/proof-selection.md) to choose evidence and [Media](references/media.md) for screenshots and recordings. Reuse current UI evidence from the implementation owner; request missing or stale UI coverage from that owner rather than starting another validation pass. Capture other evidence only when current evidence is missing or stale.
+Choose evidence with [Proof selection](references/proof-selection.md) and handle screenshots or recordings with [Media](references/media.md). Reuse current UI proof from the implementation owner; ask that owner for missing or stale UI coverage instead of repeating validation. Capture other proof only if missing or stale.
 
 ## 3. Update
 
 Update using [PR writing](references/pr-writing.md).
 
-Verify that the signed-in account is the user's and that they authored the PR. For the user's own PR, this workflow authorizes updates to the title, description, and proof attachments. Follow an explicit read-only request; ask before changing another author's PR. Keep changes limited to the proof pack, with evidence in the body rather than comments.
+Verify the signed-in account belongs to the user and they authored the PR. This workflow permits updating their title, description and proof attachments, unless the request is read-only. Ask before editing another author's PR. Limit changes to the proof pack; put evidence in the body, not comments.
 
-Immediately before publishing, check whether the PR's base, head, title, or body changed. Reconcile newer edits and refresh affected proof before updating.
+Before publishing, recheck the PR's base, head, title and body. Reconcile newer edits and refresh affected proof.
 
 ## 4. Verify
 

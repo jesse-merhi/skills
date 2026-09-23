@@ -5,7 +5,7 @@ description: 'Create clear system diagrams with readable labels and deliberate l
 
 # Design technical diagrams
 
-Explain one system relationship at the size the reader will actually see. Establish the audience, question, destination width, and facts from the current code or documentation. Keep technical explanation separate from runtime proof.
+Establish the audience, question, destination width, and facts from current code or documentation. Explain one system relationship at that size; do not present explanation as runtime proof.
 
 Prefer a layout engine over hand-positioning boxes and connectors. For Graphviz, write a small DOT graph and use the installed `dot` through:
 
@@ -13,13 +13,13 @@ Prefer a layout engine over hand-positioning boxes and connectors. For Graphviz,
 skill-render-diagram flow.dot --output-dir <new-directory> --width 960
 ```
 
-The helper sizes nodes, routes edges, writes SVG plus an HTML preview and source copy, and rejects labels that would become too small at the requested width. Use `--direction LR` for a left-to-right flow. An existing Mermaid or project-native renderer is also fine.
+The helper sizes and routes the graph, writes SVG, HTML preview, and source, and rejects undersized labels. Use `--direction LR` for left-to-right flow. An existing Mermaid or project-native renderer also works.
 
-Keep labels short and concrete. Group by real ownership or phase, reserve connector space, and use restrained product colours. If a graph is crowded, change direction, shorten labels, or split the explanation by reader question rather than shrinking everything. Ask before expanding the requested scope into multiple diagrams.
+Use short labels, real ownership or phase groups, connector space, and restrained product colours. For crowded graphs, change direction, shorten labels, or split by reader question rather than shrinking everything. Ask before expanding scope to multiple diagrams.
 
-Open the actual export at its destination width. Check label readability, clipping, overlap, arrow direction, route crossings, and whether the main path is obvious. Inspect requested narrow layouts separately; a large desktop export is not mobile proof. Fix the diagram in a loop until there are no issues.
+Inspect the export at destination width for readable labels, clipping, overlap, arrow direction, crossings, and an obvious main path. Check requested narrow layouts separately. Fix and inspect until no issues remain.
 
-Deliver the diagram, editable source, inspected size, and any remaining limitation. A title is fine, but keep surrounding explanation brief; the diagram should explain itself.
+Deliver the diagram, editable source, inspected size, and limitations. Keep surrounding explanation brief.
 
 ## References
 

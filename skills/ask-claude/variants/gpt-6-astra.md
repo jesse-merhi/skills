@@ -9,8 +9,6 @@ Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
 Resolve routine brief details from the request and checkout; keep unresolved scope decisions with the user.
 
-## Send the brief
-
 Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope.
 
 For advice, review, or planning:
@@ -23,8 +21,4 @@ For explicitly authorized implementation:
 ask-claude write "<self-contained prompt>"
 ```
 
-## Return the result
-
-Claude sessions are ephemeral.
-
-Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
+The session is ephemeral. Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report it rather than substituting another agent or your own answer.

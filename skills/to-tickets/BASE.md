@@ -8,13 +8,13 @@ metadata:
 
 # To tickets
 
-Convert the settled plan into thin, end-to-end tickets.
+Write small, end-to-end tickets from the settled plan.
 
 Read the supplied spec or note in full. Use conversation context, relevant code, glossary, ADRs, and existing project decisions.
 
 ## PR delivery groups
 
-Tickets organize implementation; PR groups organize review. Do not assume one ticket equals one PR or that every ticket blocker becomes a PR base.
+Tickets organize implementation; PR groups organize review. A ticket need not map to a PR, nor every ticket blocker to a PR base.
 
 1. Group tickets that form one cohesive, independently verifiable review unit.
 2. Collapse ticket edges inside each group, then derive dependencies between the remaining review groups.
@@ -22,7 +22,7 @@ Tickets organize implementation; PR groups organize review. Do not assume one ti
 4. Use a stack only when two or more review groups form a strict linear dependency path. Put foundations at the bottom and consumers above.
 5. Use standalone PRs or separate stacks for independent or forked paths.
 
-Every review group must name the outcome a reviewer can accept independently. If grouping tickets would make the PR too broad, or a group cannot stay green against its direct base, split or reorder the groups before asking for approval.
+Name an independently acceptable outcome for each review group. Split or reorder groups that are too broad or cannot stay green against their direct base before asking for approval.
 
 Show the tickets and PR groups for approval before writing. Use the installed `gh stack` tool to deliver an approved stack; run `gh stack --help` to discover its commands.
 

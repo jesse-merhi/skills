@@ -11,9 +11,9 @@ metadata:
 
 # Skill cleaner
 
-Produce an evidence-backed inventory and cleanup recommendations for loaded skill roots, duplicates, usage, and prompt-budget pressure. This is suggest-first; edit or remove only when the user requests it.
+Inventory loaded skill roots, duplicates, usage and prompt-budget pressure. Recommend cleanup; edit or remove only when requested.
 
-Use the installed `skill-cleaner` command. Read `--help` for supported options rather than a separate command guide:
+Use the installed command and its help:
 
 ```bash
 skill-cleaner --help
@@ -25,7 +25,7 @@ Resolve routine inventory questions from available configuration and logs withou
 ## Interpret the evidence
 
 - Separate the live model-visible inventory from filesystem fallback. `--no-live` forces fallback; `--root <path> --root-only` limits the scan to supplied roots. For another harness, supply its roots and use its local usage evidence.
-- Read budget pressure alongside roots, enabled state, description candidates, duplicates, and unused candidates. Budget figures estimate Codex's 2% allocation using `ceil(utf8_bytes / 4)`; check the reported model and context source, and use `--context-tokens` for an exact context-size override.
+- Read budget pressure with roots, enabled state, description candidates, duplicates and unused candidates. Estimates use Codex's 2% allocation and `ceil(utf8_bytes / 4)`; check the model and context source, or use `--context-tokens` for an exact override.
 - Duplicate names alone do not justify deletion. Compare bodies and ownership; symlinked roots and file reads are realpath-deduped.
 - Missing recent usage is not proof of disuse. Default logs cover recent Codex history and sessions, not archives unless `--deep-logs` is used. Evidence comes from user messages and tool-call arguments, not developer catalogs.
 

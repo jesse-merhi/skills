@@ -25,6 +25,4 @@ ask-claude write "<self-contained prompt>"
 
 ## 2. Return the result
 
-Claude sessions are ephemeral.
-
-Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
+The session is ephemeral. Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report it rather than substituting another agent or your own answer.

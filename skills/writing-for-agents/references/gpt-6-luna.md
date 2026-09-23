@@ -4,17 +4,10 @@ Official sources: [GPT-6 prompting best practices](https://developers.openai.com
 
 Reviewed: 2026-09-23.
 
-OpenAI describes Luna as an efficient model for focused, high-volume tasks and recommends the family prompting guidance as a starting point. That guide reports observations from Astra; validate adaptations on Luna rather than treating them as established Luna-specific behavior.
+OpenAI positions Luna for focused, high-volume tasks and recommends the family prompting guide. Its observations come from Astra; validate adaptations on Luna before treating them as established Luna behavior.
 
-Adapt the skill's base to make its assignment and evidence easy to follow:
+Keep the objective, inputs, owned scope and completion condition together. Distinguish executing a prepared procedure from designing tests or diagnosing failures; retain the workflow's failure handoff and stopping conditions.
 
-- State the objective, available inputs, owned scope and completion condition together. Resolve routine choices from evidence and existing authorization.
-- Keep ordered commands and required evidence at the relevant step. Distinguish executing an established procedure from designing tests, diagnosing failures or changing implementation when the workflow assigns those to another role.
-- Preserve the workflow's stopping conditions, permission boundaries and decisions reserved for the user. Report the actual failure, missing input or ambiguity with enough evidence for the coordinator to act.
-- Give each rule one owner and resolve conflicting instructions. An explicit user instruction outranks a skill guideline.
-- Use concise, concrete results that retain outcomes, evidence and limits. Do not replace useful proof with a status label.
-- Run checks needed for the assignment and reuse applicable passing evidence. Model guidance alone does not authorize new checks, retries or additional agents.
+Use the shared [writing-for-agents](../SKILL.md) contract. Identical wording is appropriate when it meets the models' needs; do not invent differences or narrow a coordinator's workflow to a worker role.
 
-Keep the full skill, including exact commands, domain contracts and required review passes. A focused worker role does not authorize weakening a skill or preventing a coordinator from completing its assigned workflow. Identical wording across GPT-6 variants is appropriate where the base already meets the shared recommendations.
-
-For this repository's investigation and test execution workers, preserve `max` reasoning effort. The model supports `none`, `low`, `medium`, `high`, `xhigh`, and `max`; runtime configuration selects it. Use the Responses API for reasoning with tools if configuring an API client.
+This repository uses `max` effort for Luna workers. Runtime configuration selects model and effort; editing skill prose changes neither. The model supports `none`, `low`, `medium`, `high`, `xhigh` and `max`. Use the Responses API for reasoning with tools when configuring an API client.

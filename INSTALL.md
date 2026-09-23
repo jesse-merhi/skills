@@ -209,8 +209,9 @@ the repo in step 8.
 ## 7. Materialize and link model-aware skills
 
 Authoring starts from each skill's `BASE.md`, then adapts it into complete
-`variants/<profile>.md` prompts. Installation only selects those existing variants;
-it does not generate them or install the human-reviewable base.
+`variants/<profile>.md` prompts. Identical variants may share a relative symlink;
+installation copies the selected text into a regular `SKILL.md`. It does not
+generate prompts or install the human-reviewable base.
 
 ### Codex and Claude Code
 

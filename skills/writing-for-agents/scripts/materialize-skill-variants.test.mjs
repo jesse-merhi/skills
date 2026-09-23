@@ -166,6 +166,24 @@ test("materializes one contained static variant and links shared resources", (t)
   );
 });
 
+for (const model of ["gpt-6-sol", "gpt-6-luna"]) {
+  test(`materializes a shared prompt as an exact ${model} selection`, (t) => {
+    const current = fixture(t);
+    for (const name of ["alpha", "group/beta"]) {
+      fs.symlinkSync("gpt-6-astra.md", path.join(current.source, name, "variants", `${model}.md`));
+    }
+    const result = materializeSkillVariants({
+      model, outputRoot: current.output, sourceRoot: current.source, requireExact: true,
+    });
+    assert.equal(result.exact, true);
+    assert.equal(result.profile, model);
+    assert.equal(result.notice, undefined);
+    const installed = path.join(current.output, "alpha", "SKILL.md");
+    assert.equal(fs.lstatSync(installed).isFile(), true);
+    assert.equal(fs.readFileSync(installed, "utf8"), fs.readFileSync(path.join(current.source, "alpha/variants/gpt-6-astra.md"), "utf8"));
+  });
+}
+
 test("does not reclaim a live lock based on its age", (t) => {
   const current = fixture(t);
   const lockRoot = current.output + ".lock";

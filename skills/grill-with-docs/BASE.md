@@ -8,18 +8,18 @@ metadata:
 
 # Grill with docs
 
-Use current project evidence to support a `grilling` interview, not to reopen settled decisions.
+Ground a `grilling` interview in current project evidence without reopening settled decisions.
 
 ```sh
 skill-collect-context --repo <checkout> --query "<topic>"
 ```
 
-The read-only helper finds the Git checkout, repository documents, matching code, and notes in the configured Obsidian vault. Use `--vault <path>` for another vault and `--limit` for more matches. It returns paths, not conclusions: read the relevant files and user-supplied notes. If it reports missing vault access, use an available connector or disclose the gap.
+The read-only helper finds the checkout, documents, code, and configured Obsidian notes. Use `--vault <path>` for another vault or `--limit` for more matches. Read relevant files and user-supplied notes; paths are not conclusions. If vault access fails, use an available connector or disclose the gap.
 
-Check claims against actual code. Extract the actors, domain terms, state changes, outcomes, and implied invariants. Flag overloaded names and contradictions before building questions.
+Check claims against code. Identify actors, domain terms, state changes, outcomes, invariants, overloaded names, and contradictions before asking questions.
 
-Load `grilling` for the interview. Use concrete scenarios to pressure-test feasibility, failure cases, surprising dependencies, existing ADRs, vague acceptance criteria, and the first useful piece of delivery.
+Load `grilling`. Use concrete scenarios to test feasibility, failure cases, surprising dependencies, existing ADRs, vague acceptance criteria, and the first useful delivery slice.
 
-For UI plans, establish audience, design direction, important states/viewports, and the rendered proof needed. Divide a plan only when its scope or unresolved decisions make one session impractical.
+For UI plans, establish audience, design direction, important states and viewports, and rendered proof. Divide a plan only when one session is impractical.
 
-Return the tightened plan, remaining gaps, and next questions. Include the relevant inspected paths and the claims or contradictions they support. Stop once the user confirms it is clear enough to execute. Use the [ADR guidance](references/adr-format.md) to decide whether to offer one and to write it after acceptance.
+Return the tightened plan, gaps, and next questions, with inspected paths and supported claims or contradictions. Stop when the user confirms it is ready to execute. Use [ADR guidance](references/adr-format.md) to decide whether to offer an ADR and to write one after acceptance.

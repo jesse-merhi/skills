@@ -5,7 +5,7 @@ description: 'Remove verified, disposable local artifacts from finished or aband
 
 # Cleanup
 
-Identify the task's checkout, branch, processes, services, and generated files. Prove ownership with exact paths, process working directories, service labels, or other native records—not similar names alone.
+Identify the task's checkout, branch, processes, services, and generated files. Prove ownership with exact paths, working directories, labels, or native records—not names alone.
 
 Start with the read-only inventory:
 
@@ -13,17 +13,17 @@ Start with the read-only inventory:
 skill-cleanup-inventory --root <repo> --output <new-file.json>
 ```
 
-Add `--compose-project <name>` for a known Compose project. The inventory collects evidence; it does not decide what is safe to delete.
+Add `--compose-project <name>` for a known Compose project. Inventory collects evidence, not deletion decisions.
 
 Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Ask before removing uncertain data, uncommitted files, unique commits, or stashes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
 
-From a directory you will keep, stop owned processes and services, remove their disposable state, then remove the worktree and local branch. Read needed configuration before deleting it. Delete the current agent worktree last.
+From a directory you will keep, read needed configuration, stop owned processes and services, remove disposable state, then remove the worktree and local branch. Delete the current agent worktree last.
 
 Verify with the same paths and identifiers. Report what was removed, retained, or needs a decision. If the user asks for a dry run, stop after the inventory.
 
 ## Artifact discovery
 
-Inspect only categories the task used. Match exact ownership before removing anything.
+Inspect only categories the task used.
 
 | Area | Useful evidence and commands |
 | --- | --- |
@@ -35,8 +35,8 @@ Inspect only categories the task used. Match exact ownership before removing any
 | Mobile/browser | Bundle/package IDs, device IDs, profile directories, and task-created processes |
 | Other services | Repository pidfiles, manifests, lease records, logs, and native status/stop commands |
 
-Do not treat a matching name as ownership or a stale remote-tracking ref as merge proof. Inspect current authoritative state. Linked worktrees, unique commits, untracked files, and stashes may contain user work.
+Use current authoritative state, not a stale remote-tracking ref, as merge proof. Linked worktrees, unique commits, untracked files, and stashes may contain user work.
 
-Use native scoped teardown, then verify the same paths, PIDs, ports, refs, or IDs are absent. Inspect volume contents/purpose before including `--volumes`. Keep shared devices, caches, databases, profiles, and infrastructure. Avoid machine-wide pruning.
+Use native scoped teardown and verify the same paths, PIDs, ports, refs, or IDs are absent. Inspect volume contents and purpose before `--volumes`. Keep shared devices, caches, databases, profiles, and infrastructure. Avoid machine-wide pruning.
 
 If an artifact returns, find its owner process rather than repeatedly deleting it.

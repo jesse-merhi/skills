@@ -7,8 +7,6 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
-## Send the brief
-
 Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope.
 
 For advice, review, or planning:
@@ -21,8 +19,4 @@ For explicitly authorized implementation:
 ask-claude write "<self-contained prompt>"
 ```
 
-## Return the result
-
-Claude sessions are ephemeral.
-
-Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report that failure rather than substituting another agent or your own answer.
+The session is ephemeral. Check the exit status, report the answer, and validate any edits yourself. If ACP or authentication fails, report it rather than substituting another agent or your own answer.

@@ -14,15 +14,15 @@ metadata:
 
 # Design
 
-Start with what the person is trying to do and the real content they need. Read the existing screens, components, and design tokens. Preserve the product's visual language unless the brief calls for a new direction.
+Start with the user's task and real content. Read existing screens, components, and tokens; preserve their visual language unless the brief asks for a new direction.
 
-Choose a clear hierarchy, typography, spacing, and palette that fit the subject. Put the important content and actions first. Make distinctive choices where the brief allows them, not a new design system for every small change.
+Put important content and actions first. Choose fitting hierarchy, type, spacing, and colour; make distinctive choices without inventing a design system for a small change.
 
-For implementation work, build a working slice with realistic content and the relevant empty, loading, error, and narrow-screen states. Inspect it while working; refine what looks unclear or awkward.
+For implementation, build a working slice with realistic content and relevant empty, loading, error, and narrow-screen states. Inspect and refine it.
 
-A review reports observed problems and suggested changes; it does not authorize implementation. For implementation, use `frontend-ui-validation` or the project's native UI checks. Reuse current evidence from the task rather than launching another identical validation pass.
+A review reports observed problems and suggestions, not edits. For implementation, use `frontend-ui-validation` or project-native UI checks; reuse applicable evidence.
 
-Show the result in the actual interface. Explain consequential choices briefly.
+Show the actual interface and briefly explain consequential choices.
 
 ## References
 

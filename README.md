@@ -139,7 +139,8 @@ A skill's `BASE.md` is its human-owned, model-neutral source of truth. The flow 
 The audited masters are kept here, not only in the local review database.
 `coding-standards` arrived from main outside the audit; its initial base is its existing source prompt.
 
-Complete model prompts live under `variants/`. Root `SKILL.md` still points at
+Complete model prompts live under `variants/`; identical variants share a file through
+relative symlinks. Root `SKILL.md` points at
 the GPT-6 Astra variant for runtime discovery; it is not the base. Installation
 selects an already-authored variant as the harness-visible `SKILL.md`; the
 frontmatter carries a `name` and one-line `description`, and the body contains

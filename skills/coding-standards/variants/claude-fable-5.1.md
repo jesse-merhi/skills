@@ -5,44 +5,41 @@ description: 'Read engineering expectations before implementation or review. App
 
 # Coding standards
 
-Use the owner's engineering standards while implementing and reviewing code. Read expectations by default; applying, syncing, or translating enforcement is a separate, explicitly requested mode.
+Read expectations by default. Apply, sync or translate enforcement only when explicitly requested. The `catalog.json` principles govern; enforcement entries and presets are candidates, not proof of coverage or a mandate to install everything. For non-Node targets, find equivalent checks rather than copying JavaScript syntax or adding language packages to the catalog.
 
 ## Read expectations
 
-Locate `catalog.json` beside the loaded skill entrypoint, or one directory up when reading a prompt under `variants/`. Read every standard's `id`, `title`, `scope`, and `principle`. Use the principles relevant to the changed behavior, including standards without bundled enforcement. Read the target's scoped agent guidance and existing `lint/standards/ADOPTION.md`, if present, and preserve explicit project exceptions. A missing adoption record does not prevent reading or using the standards.
+Find `catalog.json` beside the entrypoint, or one directory up under `variants/`. Read every standard's `id`, `title`, `scope` and `principle`, including unenforced standards. Apply relevant principles and read the target's scoped agent guidance and `lint/standards/ADOPTION.md` if present. Preserve project exceptions; a missing adoption record does not block this mode.
 
-During implementation, use those expectations in the authorized change. During review, including cold review, compare the changed behavior with them and include a concise standards assessment in the report: the relevant standard ids, evidence for the assessment, and any applicable exceptions or verification gaps. Report supported violations through the review workflow's findings criteria; a missing linter or a style preference alone is not a finding. Do not claim compliance for behavior you did not assess.
+Use relevant expectations during implementation. During review, including cold review, assess changed behavior and report relevant ids, evidence, exceptions and verification gaps. Apply the review workflow's findings criteria to supported violations; a missing linter or style preference alone is not a finding. Do not claim unassessed compliance.
 
-This mode reads expectations only. It does not install tools, change configuration, create adoption records, sync files, or authorize unrelated repairs. Return to the calling task after reading and applying the relevant guidance. Load the adoption references below only for an explicitly requested enforcement mode; shared-catalog edits use [catalog-format.md](references/catalog-format.md).
+Read expectations does not install tools, change configuration, create adoption records, sync files or authorize unrelated repairs. Return to the calling task. Load the adoption references only for an explicit enforcement request; shared-catalog edits use [catalog-format.md](references/catalog-format.md).
 
 ## Apply, sync, or translate
 
-Apply the owner's standards to the target repository with working checks and short, repository-specific guidance. Do not turn the task into building a lint framework. Enforce a principle only where a reliable check exists; record the rest as guidance, partial coverage, an uncovered requirement, or an exception. Use the bundled Node rules as examples. For non-Node repositories, find or build equivalent checks in that repository instead of adding another language package to the shared catalog.
+For the `tailwind-v4` preset, read [design-system integration guidance](README.md#tailwind-v4-design-system-checks) before deciding compatibility, component ownership, configuration and verification limits.
 
-When considering the `tailwind-v4` preset, read its [design-system integration guidance](README.md#tailwind-v4-design-system-checks) for compatibility, component ownership, configuration and verification limits.
+Resolve `catalog.json`'s real path to its Git checkout; a materialized `SKILL.md` may be a copy. Record the source remote URL and commit. Disclose a dirty source or a commit with no containing remote-tracking branch.
 
-### Workflow
+Read [adoption.md](references/adoption.md) for enforcement, guidance, partial coverage, gaps and exceptions. Resolve routine choices from the target; ask only about decisions requiring user authority or materially changing the result, and continue independent work meanwhile. Then follow the requested mode:
 
-1. Find `catalog.json` beside the entrypoint, or one directory up if you loaded a prompt under `variants/`. Resolve the catalog file's real path before identifying its Git checkout. A materialized `SKILL.md` may be a copy outside that checkout. Record its remote and commit; disclose a dirty source or a commit with no containing remote-tracking branch.
-2. Read the catalog's principles and [adoption.md](references/adoption.md). Treat the enforcement entries and presets as candidates. They neither require wholesale installation nor prove coverage of the whole principle.
-3. Choose the mode:
-   - **Apply:** read [apply.md](references/apply.md), inspect the target stack, and implement its adoption. If the catalog does not represent part of the stack, follow [translate.md](references/translate.md), then resume apply.
-   - **Sync:** read [sync.md](references/sync.md). Reconcile both vendored files and the active configuration, while preserving local decisions.
-   - **Translate:** read [translate.md](references/translate.md). Map principles to the requested ecosystem's existing tools, not to copies of JavaScript rules. Return the proposed mapping unless application was also requested.
-4. Complete the selected mode and report its observed results. Batch independent inspections, give a brief update before lengthy work, and use literal, concise prose. Verify unfamiliar tooling against installed source or current primary documentation; distinguish quoted wording from your own summary.
+- **Apply:** inspect the stack; leave working checks, local guidance and an adoption record. Read [apply.md](references/apply.md).
+- **Sync:** reconcile the adoption, vendored files, target choices and active configuration. Read [sync.md](references/sync.md).
+- **Translate:** map principles to existing tools in the requested ecosystem. Read [translate.md](references/translate.md). During apply, translate unrepresented stacks then resume. Standalone translation proposes a mapping unless application was also requested.
 
-Done when the requested mode has a result, not merely a list of next steps.
+Load [apply.md](references/apply.md) for apply **and** sync; sync reuses its dependency, wiring and verification contracts. Load [translate.md](references/translate.md) for translation or an unrepresented ecosystem. An explicitly requested catalog contribution also needs [catalog-format.md](references/catalog-format.md).
 
-For apply or sync, load [apply.md](references/apply.md) before executing the mode because sync reuses its dependency, wiring, and verification contracts. Load [translate.md](references/translate.md) when the target includes an unrepresented ecosystem or translation is explicitly requested, before using its workflow. For an explicitly requested shared-catalog contribution, also load [catalog-format.md](references/catalog-format.md). References use these loaded contracts rather than sending the agent through another chain of documents.
+Apply and sync change the target, not the catalog. A reusable catalog contribution requires a separate explicit request.
 
-### Scope and permissions
+## Boundaries
 
-- Apply and sync modify the target only. Write a reusable catalog translation only when explicitly requested; consult [catalog-format.md](references/catalog-format.md) for its existing shape.
-- Use repository-owned or dependency-owned tools first. Ask before any dependency install, replacement, or upgrade. If declined, record the gap and continue the remaining authorized work.
-- Preserve existing checks, source, configuration, and explicit exceptions. Do not silently disable current enforcement to adopt this workflow.
-- During apply, create a small target-owned check for a selected, reliable mechanical requirement only when existing tooling cannot express it. Follow the shared adoption policy. Leave judgment calls as guidance.
-- An existing bundled checker is optional. Use it only after establishing that its actual behavior fits this target and justifies its maintenance cost.
+- Prefer repository- or dependency-owned tools. Ask before installing, replacing or upgrading dependencies; record declined tools as gaps.
+- Preserve existing checks, source code, configuration, and user exceptions. Do not silently weaken enforcement to fit the new adoption model.
+- During apply, create a small target-owned check only for a selected reliable mechanical requirement existing tools cannot express. Follow adoption policy; judgment calls stay guidance.
+- Existing bundled checkers are optional: use one only when its actual behavior fits the target and adds reliable coverage worth maintaining.
 
-### Completion report
+Batch independent inspections and give brief updates for lengthy work. Mark source quotations distinctly from summaries. Verify active checks and wiring per the chosen mode's reference. Ground unfamiliar tooling in installed source or current primary documentation; do not expand into unrelated audits or a lint framework.
 
-State the source commit, checks active in the target and their results, the local guidance future agents will read, and any gaps or exceptions. Account for every relevant principle without inventing an enforcement requirement for each one. Label standalone translation as a proposal, not installed coverage.
+## Done
+
+Report the source commit, active checks and results, local guidance location, and gaps or exceptions. Distinguish active enforcement, partial checks, guidance and uncovered requirements; a green command alone is not full coverage. Record every relevant principle's disposition, not necessarily a linter. Label standalone translation as a proposal, not installed coverage.

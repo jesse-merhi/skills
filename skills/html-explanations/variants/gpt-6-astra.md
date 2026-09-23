@@ -5,15 +5,15 @@ description: 'Create a standalone HTML explanation when a visual or interactive 
 
 # HTML explanations
 
-Answer the reader's question, then show the flow, comparison, example, or evidence that makes the answer clear. Use a page when its structure or interaction helps more than chat.
+Answer the question, then show the flow, comparison, example, or evidence. Use a page when structure or interaction helps more than chat.
 
-Create one local HTML file with inline CSS and JavaScript, without a build step or remote runtime.
+Create one local HTML file with inline CSS and JavaScript; no build step or remote runtime.
 
-Place code explanations beside the relevant code, outside source comments. Preserve exact source and evidence; hide only optional detail. Explaining a PR is not authority to review it.
+Place explanations beside relevant code, outside source comments. Preserve exact source and evidence; hide only optional detail. A PR explanation is not a review authorization.
 
-Keep text and code line lengths readable, with clear hierarchy, keyboard-accessible controls, and colour plus text for status. Reflow at 320px; let wide code and tables scroll within their containers. Give `pre code` its own style so inline-code pills don't leak into blocks. Respect reduced motion. When printing is part of the requested artifact's use, keep the argument intact in print layout.
+Use readable line lengths, clear hierarchy, keyboard-accessible controls, and colour plus text for status. Reflow at 320px; contain scrolling for wide code and tables. Style `pre code` separately from inline code. Respect reduced motion; if printing matters, preserve the argument in print layout.
 
-Inspect the rendered page, its interactions, console, and narrow layout. Inspect print layout when printing is part of the requested use. Keep private content and assets local. Return the file link, a short explanation, and anything you couldn't verify.
+Inspect rendering, interactions, console, and narrow layout; inspect print layout if needed. Keep private content and assets local. Return the file link, brief explanation, and verification gaps.
 
 ## References
 
