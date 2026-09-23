@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: 'Transfer work to a fresh full session with verified context and placement.'
+description: 'Transfer the current work to a fresh full agent session, placing related work beside the current session and unrelated asides separately.'
 metadata:
   sources: |
     - adapted from [skills/productivity/handoff](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/handoff) — recorded upstream review.

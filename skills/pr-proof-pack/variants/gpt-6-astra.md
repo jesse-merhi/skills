@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: 'Check or refresh PR descriptions and practical evidence during authorized publication or merge preparation.'
+description: 'Check or update PR descriptions and proof.'
 ---
 
 # PR proof pack

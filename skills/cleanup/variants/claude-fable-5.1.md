@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: 'Remove local development artifacts from finished or abandoned work; excludes source refactoring and remote deletion.'
+description: 'Remove verified, disposable local artifacts from finished or abandoned development work.'
 ---
 
 # Cleanup
