@@ -48,7 +48,7 @@ For further independent review, follow [the independent-review instructions](ref
 
 Choose necessary validation, reuse applicable passing results and satisfy required checks. Save completed checks with `review-findings record-command --review <review-id>` when the destination has an invocation. For reuse-only runs, use the destination run identity per [recording reviews](references/recording-reviews.md#repairs-and-checks), not an inherited source handle.
 
-After every review—including clean, partial, single-phase, bot-only or blocked—launch [feedback-hardening](../feedback-hardening/SKILL.md) separately with available observations. Its outcome does not gate review or delivery.
+After every review—including clean, partial, single-phase, bot-only or blocked—use [feedback-hardening](../feedback-hardening/SKILL.md) to assess whether reviewer and validation observations warrant a separate task. None automatically requires handoff; a launched task’s status and outcome do not gate review or delivery.
 
 ```sh
 review-findings scope-check --repo <owner/repo> --repo-path <checkout> \

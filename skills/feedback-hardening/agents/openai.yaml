@@ -1,4 +1,4 @@
 interface:
   display_name: "Feedback Hardening"
-  short_description: "Move feedback into a separate task"
-  default_prompt: "Use $feedback-hardening to launch a separate task with this session referenced and solve, then continue the main task independently."
+  short_description: "Assess whether feedback needs a separate task"
+  default_prompt: "Use $feedback-hardening to decide whether the available observations justify a separate task. Hand off a useful objective with this session referenced and solve when warranted, then continue the main task independently."
