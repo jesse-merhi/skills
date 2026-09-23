@@ -24,6 +24,10 @@ Give an outer execution cell the full inner `wait_ms`; a shorter outer default w
 
 Save command-session IDs and run-owned log/result paths before waiting. Outer cells and inner commands have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
 
+When user action is needed, stop work. Tell the user what is wrong and what they must do, then wait.
+
+For commands that may request user input, keep prompts visible while retaining full logs. Commands sharing an interactive sign-in step depend on that step: complete it with one command before batching the others. Reserve file-only output and completion-only notifications for commands known to run unattended.
+
 On timeout, resume the same handle and update from known state. Read logs for a result, failure or concrete stall, not merely because time passed.
 
 ## Commands and agents
