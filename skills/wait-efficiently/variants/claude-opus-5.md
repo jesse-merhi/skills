@@ -24,6 +24,10 @@ When one wait runs inside an outer execution cell, give the outer cell the full 
 
 Retain command-session IDs and run-owned log/result paths before waiting. An outer execution cell and its inner command have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
 
+When progress requires the user to act, tell them promptly what is waiting, what they need to do and where to do it. Use the host's permitted user-input or approval UI when it applies; saved logs and worker reports alone do not notify the user. Surface the request before another blocking wait or the rest of a batch finishes. Keep the existing operation handle, continue independent work and resume dependent work after the required action is confirmed. Notify once per new or changed action, not on every poll.
+
+For commands that may request user input, keep prompts visible while retaining full logs. Commands sharing an interactive sign-in step depend on that step: complete it with one command before batching the others. Reserve file-only output and completion-only notifications for commands known to run unattended.
+
 On timeout, resume the same handle. Send required updates from known state. Read logs to check a result, diagnose failure or investigate a stall, not just because a timer expired.
 
 ## Commands and agents
