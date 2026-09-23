@@ -32,12 +32,12 @@ test("installs selectable model roles and preserves base configuration and globa
     assert.equal(profile.model_reasoning_effort, "xhigh");
     assert.equal(profile.agents.enabled, true);
     assert.equal(profile.agents.max_concurrent_threads_per_session, 4);
-    assert.equal(profile.agents.default_subagent_model, "gpt-5.6-sol");
+    assert.equal(profile.agents.default_subagent_model, "gpt-6-sol");
     assert.equal(profile.agents.default_subagent_reasoning_effort, "high");
     const expected = [
-      ["implementer", "gpt-5.6-sol", "high"],
-      ["investigator", "gpt-5.6-luna", "max"],
-      ["test_executor", "gpt-5.6-luna", "max"],
+      ["implementer", "gpt-6-sol", "high"],
+      ["investigator", "gpt-6-luna", "max"],
+      ["test_executor", "gpt-6-luna", "max"],
       ["findings_reviewer", "gpt-6-astra", "xhigh"],
     ];
     for (const [name, model, effort] of expected) {

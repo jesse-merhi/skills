@@ -23,7 +23,7 @@ proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
 configuration, not from writing style. This repository supports GPT-5.6,
-GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
+GPT-6 Astra, GPT-6 Sol, GPT-6 Luna, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
 Installation stops on an unknown family. `--require-exact` also rejects any
 fallback, including a missing variant in one skill.
@@ -213,6 +213,8 @@ From `REPO`, use the repository's installer after the prerequisites above:
 
 ```sh
 ./install-skills --harness codex --model astra
+./install-skills --harness codex --model sol
+./install-skills --harness codex --model luna
 ./install-skills --harness codex --model gpt-5.6
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus

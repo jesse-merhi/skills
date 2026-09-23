@@ -15,7 +15,7 @@ function fixture(t) {
     const skill = path.join(sourceRoot, name);
     fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
     fs.writeFileSync(path.join(skill, "SKILL.md"), `---\nname: ${path.basename(name)}\ndescription: fixture\n---\n`);
-    for (const model of ["gpt-5.6", "gpt-6-astra", "claude-fable-5.1", "claude-opus-5"]) {
+    for (const model of ["gpt-5.6", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"]) {
       fs.writeFileSync(path.join(skill, "variants", `${model}.md`), `selected:${model}\n`);
     }
   }
@@ -368,9 +368,26 @@ test("keeps different harness roots isolated while switching GPT profiles", (t) 
   const second = path.join(current.temporary, "another-codex");
   installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
   installSkills({ ...current, root: second, harness: "codex", model: "gpt-5.6" });
-  installSkills({ ...current, harness: "codex", model: "astra" });
-  assert.equal(selected(current.root), "selected:gpt-6-astra\n");
+  installSkills({ ...current, harness: "codex", model: "openai/gpt-6-sol-2026-09-23", requireExact: true });
+  assert.equal(selected(current.root), "selected:gpt-6-sol\n");
   assert.equal(selected(second), "selected:gpt-5.6\n");
+  installSkills({ ...current, harness: "codex", model: "luna", requireExact: true });
+  assert.equal(selected(current.root), "selected:gpt-6-luna\n");
+});
+
+test("installer safely falls back for a missing worker variant and can require exact coverage", (t) => {
+  const current = fixture(t);
+  fs.unlinkSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6-luna.md"));
+
+  const installed = installSkills({ ...current, harness: "codex", model: "luna" });
+
+  assert.equal(installed.profile, "gpt-6-luna");
+  assert.equal(installed.exact, false);
+  assert.equal(selected(current.root), "selected:gpt-6-astra\n");
+  assert.equal(fs.readFileSync(path.join(current.root, "skills", "beta", "SKILL.md"), "utf8"), "selected:gpt-6-luna\n");
+  assert.throws(() => installSkills({
+    ...current, harness: "codex", model: "luna", requireExact: true,
+  }), /complete exact skill coverage/);
 });
 
 test("refuses collisions before changing any installed prompt or link", (t) => {

@@ -61,7 +61,24 @@ function writeLock(lockRoot, owner) {
 test("recognizes supported model identifiers and same-family fallbacks", () => {
   assert.equal(resolveProfile("astra").profile.id, "gpt-6-astra");
   assert.equal(resolveProfile("openai/gpt-6-astra").exact, true);
-  assert.equal(resolveProfile("gpt-6.1").profile.id, "gpt-6-astra");
+  for (const [model, profile] of [
+    ["azure-openai/gpt-6-astra-2026-09-23", "gpt-6-astra"],
+    ["sol", "gpt-6-sol"],
+    ["openai/gpt-6-sol", "gpt-6-sol"],
+    ["azure-openai/gpt-6-sol-2026-09-23", "gpt-6-sol"],
+    ["luna", "gpt-6-luna"],
+    ["openai/gpt-6-luna", "gpt-6-luna"],
+    ["atlassian-ai-gateway-openai/gpt-6-luna-2026-09-23", "gpt-6-luna"],
+  ]) {
+    const resolved = resolveProfile(model);
+    assert.equal(resolved.profile.id, profile);
+    assert.equal(resolved.exact, true);
+  }
+  for (const model of ["gpt-6", "gpt-6.1"]) {
+    const resolved = resolveProfile(model);
+    assert.equal(resolved.profile.id, "gpt-6-astra");
+    assert.equal(resolved.exact, false);
+  }
   assert.equal(resolveProfile("opus").profile.id, "claude-opus-5");
   assert.equal(resolveProfile("anthropic/claude-opus-5").exact, true);
   assert.equal(resolveProfile("claude-opus-5.1").profile.id, "claude-opus-5");
@@ -89,6 +106,29 @@ test("required exact coverage rejects missing model prompts without changing the
     model: "astra", outputRoot: current.output, sourceRoot: current.source, requireExact: true,
   }), /complete exact skill coverage/);
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), previous);
+});
+
+test("missing worker variants fall back to Astra unless exact coverage is required", (t) => {
+  const current = fixture(t);
+  for (const name of ["alpha", "group/beta"]) {
+    const variants = path.join(current.source, name, "variants");
+    fs.writeFileSync(path.join(variants, "gpt-6-astra.md"), `selected:${path.basename(name)}:astra\n`);
+    fs.writeFileSync(path.join(variants, "gpt-6-sol.md"), `selected:${path.basename(name)}:sol\n`);
+  }
+  fs.unlinkSync(path.join(current.source, "alpha", "variants", "gpt-6-sol.md"));
+
+  const result = materializeSkillVariants({
+    model: "sol", outputRoot: current.output, sourceRoot: current.source,
+  });
+
+  assert.equal(result.profile, "gpt-6-sol");
+  assert.equal(result.exact, false);
+  assert.match(result.notice, /missing variants: alpha/);
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), "selected:alpha:astra\n");
+  assert.equal(fs.readFileSync(path.join(current.output, "beta", "SKILL.md"), "utf8"), "selected:beta:sol\n");
+  assert.throws(() => materializeSkillVariants({
+    model: "sol", outputRoot: current.output, sourceRoot: current.source, requireExact: true,
+  }), /complete exact skill coverage/);
 });
 
 test("materializes one contained static variant and links shared resources", (t) => {
@@ -352,7 +392,7 @@ test("materializes the repository corpus and keeps installed links stable across
     fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", "gpt-5.6.md"), "utf8"),
   );
 
-  for (const model of ["gpt-6-astra", "claude-fable-5.1", "claude-opus-5"]) {
+  for (const model of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"]) {
     materializeSkillVariants({ model, outputRoot: current.output, sourceRoot: repositorySkills, requireExact: true });
     assert.equal(
       fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),

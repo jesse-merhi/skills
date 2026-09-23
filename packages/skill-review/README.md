@@ -82,7 +82,7 @@ review states and histories are never reseeded. The base is edited through the
 master editor, not a second supporting-file editor.
 
 For this first review, the existing default prompts are already model-neutral in
-their wording. Independent comparison against all four profiles identifies
+their wording. Independent comparison against all supported profiles identifies
 behavioral differences; these appear under **Behavior differs across variants**
 instead of being silently resolved. The master remains readable and each exact
 original variant is available read-only. This is not an automatic text generator.
@@ -160,7 +160,7 @@ bun packages/skill-review/apply.mjs rollback --plan /private/new-plan
 ```
 
 Prepare writes the exact pinned master into `candidate/BASE.md`. Read that file and
-the model guides to author all four complete variants; reconcile supporting-file
+the model guides to author every supported complete variant; reconcile supporting-file
 drift and independently exercise the results. Apply rejects a missing, symlinked or
 changed base and rechecks the live draft revision and source fingerprint. It keeps
 the prior source directory and a transaction record; rollback refuses later source

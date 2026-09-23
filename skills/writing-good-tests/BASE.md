@@ -50,7 +50,7 @@ The coordinator chooses coverage and accepts results. Assign one owner to run sh
 
 Give Luna/max a batch of known tests, lint, typechecks or prepared acceptance flows when delegation saves work. Keep small checks with their current owner. Supply the checkout, revision and dirty changes, ordered commands, expected results, environment, time limits and log location. Assign the batch once, rather than a worker per command.
 
-Use the configured `test_executor` role at GPT-5.6 Luna, max effort. If it is unavailable, use a fresh unnamed worker with explicit model and effort settings and point it to this skill. Check the actual launch settings. If neither route is available, report the limitation and keep suitable execution local; do not change live configuration.
+Use the configured `test_executor` role at GPT-6 Luna, max effort. If it is unavailable, use a fresh unnamed worker with explicit model and effort settings and point it to this skill. Check the actual launch settings. If neither route is available, report the limitation and keep suitable execution local; do not change live configuration.
 
 Check the checkout and inputs before running the batch under repository permissions, including manual E2E/Maestro triggers. Stop on the first failure, timeout, input change or ambiguity. Return the command, exit status, relevant output and checks not run. Do not retry, debug, repair, install dependencies or start external or paid jobs. The coordinator assigns substantive diagnosis, new test design and authorized repairs to Sol/high before arranging further execution.
 

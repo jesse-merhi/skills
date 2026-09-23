@@ -13,7 +13,8 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   const directory = path.join(root, "skills/example");
   fs.mkdirSync(path.join(directory, "variants"), { recursive: true });
   const original = "---\nname: example\ndescription: Fixture\n---\nOriginal\n";
-  for (const profile of ["gpt-5.6", "gpt-6-astra", "claude-fable-5.1", "claude-opus-5"]) fs.writeFileSync(path.join(directory, "variants", profile + ".md"), original);
+  const profiles = ["gpt-5.6", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"];
+  for (const profile of profiles) fs.writeFileSync(path.join(directory, "variants", profile + ".md"), original);
   fs.symlinkSync(path.join(directory, "variants/gpt-5.6.md"), path.join(directory, "SKILL.md"));
   const master = original.replace("Original\n", "Audited café → baseline\r\nKeep trailing spaces.  ");
   const record = { source: captureSkill({ name: "example", directory }, "head"), draft: { revision: 2, content: { status: "ready", decision: "edit", master, notes: "Keep this comment", files: {}, reviewedFiles: [] } } };
@@ -23,7 +24,7 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   const candidateBase = path.join(plan, "candidate/BASE.md");
   assert.equal(fs.lstatSync(candidateBase).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(candidateBase, "utf8"), master);
-  for (const profile of ["gpt-5.6", "gpt-6-astra", "claude-fable-5.1", "claude-opus-5"]) fs.writeFileSync(path.join(plan, "candidate/variants", profile + ".md"), original.replace("Original", "Updated"));
+  for (const profile of profiles) fs.writeFileSync(path.join(plan, "candidate/variants", profile + ".md"), original.replace("Original", "Updated"));
   fs.writeFileSync(candidateBase, "Changed without approval");
   await assert.rejects(applyPlan(plan, readDetail), /exact pinned audit master/);
   fs.unlinkSync(candidateBase);
@@ -34,6 +35,9 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   assert.equal(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"), original);
   fs.unlinkSync(candidateBase);
   fs.writeFileSync(candidateBase, master);
+  fs.unlinkSync(path.join(plan, "candidate/variants/gpt-6-luna.md"));
+  await assert.rejects(applyPlan(plan, readDetail), /complete exact skill coverage/);
+  fs.writeFileSync(path.join(plan, "candidate/variants/gpt-6-luna.md"), original.replace("Original", "Updated"));
   record.draft.revision = 3;
   await assert.rejects(applyPlan(plan, readDetail), /draft changed/);
   assert.equal(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"), original);

@@ -14,7 +14,7 @@ const Plan = Schema.fromJsonString(Schema.Struct({
   name: Schema.String, revision: Schema.Number, draftDigest: Schema.String,
   directory: Schema.String, fingerprint: Schema.String, root: Schema.String
 }));
-const profiles = ["gpt-5.6", "gpt-6-astra", "claude-fable-5.1", "claude-opus-5"];
+const profiles = ["gpt-5.6", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"];
 const detail = async name => {
   const response = await fetch(`http://127.0.0.1:4317/api/skill?name=${encodeURIComponent(name)}`);
   if (!response.ok) throw new Error("Cannot read the live audit; no source changes made");
@@ -48,7 +48,7 @@ export async function prepareApply({ name, revision, directory, root, readDetail
     name, revision, directory: sourceDirectory, root: fs.realpathSync(root),
     fingerprint: source.fingerprint, draftDigest: digest(record.draft.content)
   });
-  return { directory, revision, sourceDrift: source.fingerprint !== record.source.fingerprint, next: "The pinned master is in candidate/BASE.md. Read it and the model guides to produce all four complete variants. Reconcile supporting-file drift and independently exercise the variants, then apply this pinned plan." };
+  return { directory, revision, sourceDrift: source.fingerprint !== record.source.fingerprint, next: "The pinned master is in candidate/BASE.md. Read it and the model guides to produce all six complete variants. Reconcile supporting-file drift and independently exercise the variants, then apply this pinned plan." };
 }
 
 export async function applyPlan(directory, readDetail = detail) {

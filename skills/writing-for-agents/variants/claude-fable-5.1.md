@@ -54,7 +54,7 @@ Finish all authorized variant edits with targeted changes. During long work, rep
 
 Use guidance for the models that will read the result, not the model writing it. For AGENTS.md, CLAUDE.md, or other shared instructions, read only the guides for named target models; otherwise stay model-neutral. Those documents do not require variants.
 
-For skills, `BASE.md` is the human-owned, model-neutral source of truth. Read it and the shared resources first, then the applicable provider guidance: [GPT-5.6](references/gpt-5.6.md), [Astra](references/gpt-6-astra.md), [Fable](references/claude-fable-5.1.md), or [Opus](references/claude-opus-5.md).
+For skills, `BASE.md` is the human-owned, model-neutral source of truth. Read it and the shared resources first, then the applicable provider guidance: [GPT-5.6](references/gpt-5.6.md), [Astra](references/gpt-6-astra.md), [Sol](references/gpt-6-sol.md), [Luna](references/gpt-6-luna.md), [Fable](references/claude-fable-5.1.md), or [Opus](references/claude-opus-5.md).
 
 Morph that base into a complete `variants/<profile>.md` prompt for each supported model. Use existing variants to compare model-specific wording, not to recover or override the base. Change shared behaviour in the base first; adapting a model's wording does not authorize rewriting the user's baseline.
 

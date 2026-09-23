@@ -166,10 +166,10 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use Astra at xhigh for coordination, integration, verification and review. The
+- Use GPT-6 Astra at xhigh for coordination, integration, verification and review. The
   coordinator may complete small local steps when delegation would not help.
-  For meaningful delegated work, use Sol at high for implementation, test design
-  and substantive debugging or repairs; use Luna at max for established test,
+  For meaningful delegated work, use GPT-6 Sol at high for implementation, test design
+  and substantive debugging or repairs; use GPT-6 Luna at max for established test,
   lint, typecheck and prepared acceptance execution, bounded investigation and
   focused research. `writing-good-tests` owns execution batches and receipts.
   Use xhigh for every Astra assignment unless the user explicitly overrides it.

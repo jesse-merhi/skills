@@ -35,6 +35,21 @@ export const profiles = [
     matches: /^(?:gpt-6-astra(?:-\d{4}-\d{2}-\d{2})?|astra)$/i,
   },
   {
+    id: "gpt-6-sol",
+    family: "openai-gpt",
+    version: [6, 0],
+    matches: /^(?:gpt-6-sol(?:-\d{4}-\d{2}-\d{2})?|sol)$/i,
+    // Worker profiles are never fallback targets for generic models or other workers.
+    fallback: false,
+  },
+  {
+    id: "gpt-6-luna",
+    family: "openai-gpt",
+    version: [6, 0],
+    matches: /^(?:gpt-6-luna(?:-\d{4}-\d{2}-\d{2})?|luna)$/i,
+    fallback: false,
+  },
+  {
     id: "claude-fable-5.1",
     family: "anthropic-fable",
     version: [5, 1],
@@ -90,7 +105,8 @@ export function resolveProfile(model) {
   if (exact === undefined && (requestedVersion === undefined || compareVersions(requestedVersion, earliest.version) < 0)) {
     throw new Error(`model ${model} is older than the earliest supported ${family} profile`);
   }
-  const fallback = exact ?? familyProfiles.findLast((profile) => compareVersions(profile.version, requestedVersion) <= 0);
+  const fallback = exact ?? familyProfiles.findLast((profile) => profile.fallback !== false
+    && compareVersions(profile.version, requestedVersion) <= 0);
   if (fallback === undefined) throw new Error(`no compatible skill profile is available for model ${model}`);
   return { exact: exact !== undefined, profile: exact ?? fallback };
 }
@@ -218,7 +234,9 @@ export function selectVariant(skill, requestedProfile) {
   const exact = availableVariant(skill, requestedProfile);
   if (exact !== undefined) return { path: exact, profile: requestedProfile };
   const fallback = profiles
-    .filter((profile) => profile.family === requestedProfile.family && compareVersions(profile.version, requestedProfile.version) <= 0)
+    .filter((profile) => profile.family === requestedProfile.family
+      && profile.fallback !== false
+      && compareVersions(profile.version, requestedProfile.version) <= 0)
     .sort((left, right) => compareVersions(right.version, left.version))
     .find((profile) => availableVariant(skill, profile) !== undefined);
   if (fallback === undefined) {
