@@ -72,8 +72,8 @@ Keep an export on another device or a backed-up drive for that risk.
 ## One repository base, all model variants
 
 Each retained repository skill has a regular `BASE.md`: the human-owned baseline.
-Read that base and the model's writing guide, then morph it into a complete variant.
-The runtime `SKILL.md` remains a link to the GPT-6 Astra variant; the installer selects
+Read that base and the applicable writing guide, then adapt each complete profile.
+Astra, Sol and Luna share `variants/gpt-6.md`. The runtime `SKILL.md` links to it; the installer selects
 variants and excludes the base. Neither the editor nor installer calls a model.
 
 New reviews start from `BASE.md`. Legacy or external sources without one retain

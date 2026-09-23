@@ -22,16 +22,17 @@ If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
-configuration, not from writing style. This repository supports GPT-6 Astra, GPT-6 Sol, GPT-6 Luna, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
+configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-6`
+skill profile; Claude Fable 5.1 and Opus 5 have separate profiles. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
-Installation stops on an unknown family. `--require-exact` also rejects any
-fallback, including a missing variant in one skill.
+Installation stops on an unknown family or a missing profile prompt.
+`--require-exact` also rejects model-version fallback.
 
-GPT-5.6 support is retired, including its Sol, Luna and Terra IDs. Select a supported
-model, then rerun the full installer for that root with `--model astra`, `--model sol`
-or `--model luna`; omit `--skill` when switching profiles. Existing managed links
-stay stable while their installed prompts are replaced. The installer does not
-change the harness's configured model or remove saved review history.
+GPT-5.6 support is retired. To replace an old GPT-5.6 or per-model GPT-6 view,
+run the full installer with `--model gpt-6`, omitting `--skill`. Existing managed
+links stay stable while their copied prompts and profile marker are refreshed.
+The installer preserves model configuration and saved review history. Subsequent
+Astra, Sol and Luna selections use the same profile.
 
 ## 2. Link global instructions
 
@@ -218,15 +219,13 @@ generate prompts or install the human-reviewable base.
 From `REPO`, use the repository's installer after the prerequisites above:
 
 ```sh
-./install-skills --harness codex --model astra
-./install-skills --harness codex --model sol
-./install-skills --harness codex --model luna
+./install-skills --harness codex --model gpt-6
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
 ```
 
-Run the one command matching the requested installation. Full model IDs work
-too. `--dry-run --json` previews coverage and link changes without writing;
+Run the command matching the requested profile. `astra`, `sol`, `luna` and their
+full model IDs also select `gpt-6`. `--dry-run --json` previews coverage and link changes without writing;
 `--require-exact` requires an exact variant for every skill. The command
 materializes the view, installs stable per-skill links, and retires only obsolete
 links owned by that view. It refuses local-file or foreign-link collisions
@@ -294,12 +293,11 @@ another repository clone. If this repository moved, read the view's
 `.skill-variant-view.json`, verify that `sourceRoot` is the previous clone, and
 authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
 
-A static view serves one active model profile. Before starting a session with a
-different supported model, rerun this command with that model's full configured
-ID. Do not run concurrent different-model sessions against the same static
-view; configure separate harness roots and view roots when that is required. A
-static view does not detect later model changes. Rerun the materializer after
-every pull or other update to this repository before starting the next session,
+A static view serves one skill profile. Astra, Sol and Luna share the GPT-6 view
+and can switch models without reinstalling it. Switching to a different profile
+requires rematerialization; concurrent sessions using different profiles need
+separate harness roots and views. A static view does not detect model changes.
+Rerun the materializer after every pull or other repository update before starting the next session,
 even when the selected model is unchanged; copied `SKILL.md` files and linked
 resources must come from the same repository revision.
 

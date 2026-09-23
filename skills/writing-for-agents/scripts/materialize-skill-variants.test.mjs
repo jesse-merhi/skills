@@ -15,7 +15,7 @@ import {
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
-const supportedProfiles = ["gpt-6-astra", "claude-fable-5.1"];
+const supportedProfiles = ["gpt-6", "claude-fable-5.1"];
 
 function writeSkill(root, directory, name, profileNames = supportedProfiles) {
   const skill = path.join(root, directory);
@@ -59,24 +59,20 @@ function writeLock(lockRoot, owner) {
 }
 
 test("recognizes supported model identifiers and same-family fallbacks", () => {
-  assert.equal(resolveProfile("astra").profile.id, "gpt-6-astra");
-  assert.equal(resolveProfile("openai/gpt-6-astra").exact, true);
-  for (const [model, profile] of [
-    ["azure-openai/gpt-6-astra-2026-09-23", "gpt-6-astra"],
-    ["sol", "gpt-6-sol"],
-    ["openai/gpt-6-sol", "gpt-6-sol"],
-    ["azure-openai/gpt-6-sol-2026-09-23", "gpt-6-sol"],
-    ["luna", "gpt-6-luna"],
-    ["openai/gpt-6-luna", "gpt-6-luna"],
-    ["atlassian-ai-gateway-openai/gpt-6-luna-2026-09-23", "gpt-6-luna"],
+  assert.deepEqual(profiles.filter(profile => profile.family === "openai-gpt").map(profile => profile.id), ["gpt-6"]);
+  for (const model of [
+    "gpt-6", "openai/gpt-6", "openai/gpt-6-2026-09-23",
+    "astra", "openai/astra", "openai/gpt-6-astra", "azure-openai/gpt-6-astra-2026-09-23",
+    "sol", "openai/sol", "openai/gpt-6-sol", "azure-openai/gpt-6-sol-2026-09-23",
+    "luna", "openai/luna", "openai/gpt-6-luna", "atlassian-ai-gateway-openai/gpt-6-luna-2026-09-23",
   ]) {
     const resolved = resolveProfile(model);
-    assert.equal(resolved.profile.id, profile);
+    assert.equal(resolved.profile.id, "gpt-6", model);
     assert.equal(resolved.exact, true);
   }
-  for (const model of ["gpt-6", "gpt-6.1"]) {
+  for (const model of ["gpt-6-high", "gpt-6.1"]) {
     const resolved = resolveProfile(model);
-    assert.equal(resolved.profile.id, "gpt-6-astra");
+    assert.equal(resolved.profile.id, "gpt-6");
     assert.equal(resolved.exact, false);
   }
   assert.equal(resolveProfile("opus").profile.id, "claude-opus-5");
@@ -94,41 +90,30 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
   );
   assert.deepEqual(
     [gpt.profile.id, gpt.exact, futureGpt.profile.id, futureGpt.exact],
-    ["gpt-6-astra", true, "gpt-6-astra", false],
+    ["gpt-6", true, "gpt-6", false],
   );
 });
 
-test("required exact coverage rejects missing model prompts without changing the view", (t) => {
+test("required exact coverage rejects a future model without changing the view", (t) => {
   const current = fixture(t);
   materializeSkillVariants({ model: "gpt-6-astra", outputRoot: current.output, sourceRoot: current.source });
   const previous = fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8");
   assert.throws(() => materializeSkillVariants({
-    model: "sol", outputRoot: current.output, sourceRoot: current.source, requireExact: true,
+    model: "gpt-6.1", outputRoot: current.output, sourceRoot: current.source, requireExact: true,
   }), /complete exact skill coverage/);
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), previous);
 });
 
-test("missing worker variants fall back to Astra unless exact coverage is required", (t) => {
+test("missing shared variant cannot fall back to a legacy tier", (t) => {
   const current = fixture(t);
-  for (const name of ["alpha", "group/beta"]) {
-    const variants = path.join(current.source, name, "variants");
-    fs.writeFileSync(path.join(variants, "gpt-6-astra.md"), `selected:${path.basename(name)}:astra\n`);
-    fs.writeFileSync(path.join(variants, "gpt-6-sol.md"), `selected:${path.basename(name)}:sol\n`);
-  }
-  fs.unlinkSync(path.join(current.source, "alpha", "variants", "gpt-6-sol.md"));
-
-  const result = materializeSkillVariants({
-    model: "sol", outputRoot: current.output, sourceRoot: current.source,
-  });
-
-  assert.equal(result.profile, "gpt-6-sol");
-  assert.equal(result.exact, false);
-  assert.match(result.notice, /missing variants: alpha/);
-  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), "selected:alpha:astra\n");
-  assert.equal(fs.readFileSync(path.join(current.output, "beta", "SKILL.md"), "utf8"), "selected:beta:sol\n");
+  materializeSkillVariants({ model: "astra", outputRoot: current.output, sourceRoot: current.source });
+  const previous = fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8");
+  fs.unlinkSync(path.join(current.source, "alpha", "variants", "gpt-6.md"));
+  fs.writeFileSync(path.join(current.source, "alpha", "variants", "gpt-6-sol.md"), "legacy\n");
   assert.throws(() => materializeSkillVariants({
-    model: "sol", outputRoot: current.output, sourceRoot: current.source, requireExact: true,
-  }), /complete exact skill coverage/);
+    model: "sol", outputRoot: current.output, sourceRoot: current.source,
+  }), /alpha has no openai-gpt variant/);
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), previous);
 });
 
 test("materializes one contained static variant and links shared resources", (t) => {
@@ -143,10 +128,10 @@ test("materializes one contained static variant and links shared resources", (t)
     exact: true,
     model: "gpt-6-astra",
     notice: undefined,
-    profile: "gpt-6-astra",
+    profile: "gpt-6",
     skillCount: 2,
   });
-  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("gpt-6-astra\n"), true);
+  assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8").endsWith("gpt-6\n"), true);
   assert.equal(fs.lstatSync(path.join(current.output, "alpha", "SKILL.md")).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(path.join(current.output, "beta", "references", "shared.md"), "utf8"), "shared\n");
   assert.equal(fs.existsSync(path.join(current.output, "alpha", "variants")), false);
@@ -166,21 +151,18 @@ test("materializes one contained static variant and links shared resources", (t)
   );
 });
 
-for (const model of ["gpt-6-sol", "gpt-6-luna"]) {
-  test(`materializes a shared prompt as an exact ${model} selection`, (t) => {
+for (const model of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]) {
+  test(`materializes the one shared prompt as an exact ${model} selection`, (t) => {
     const current = fixture(t);
-    for (const name of ["alpha", "group/beta"]) {
-      fs.symlinkSync("gpt-6-astra.md", path.join(current.source, name, "variants", `${model}.md`));
-    }
     const result = materializeSkillVariants({
       model, outputRoot: current.output, sourceRoot: current.source, requireExact: true,
     });
     assert.equal(result.exact, true);
-    assert.equal(result.profile, model);
+    assert.equal(result.profile, "gpt-6");
     assert.equal(result.notice, undefined);
     const installed = path.join(current.output, "alpha", "SKILL.md");
     assert.equal(fs.lstatSync(installed).isFile(), true);
-    assert.equal(fs.readFileSync(installed, "utf8"), fs.readFileSync(path.join(current.source, "alpha/variants/gpt-6-astra.md"), "utf8"));
+    assert.equal(fs.readFileSync(installed, "utf8"), fs.readFileSync(path.join(current.source, "alpha/variants/gpt-6.md"), "utf8"));
   });
 }
 
@@ -309,7 +291,7 @@ test("prints JSON output and emits one same-family fallback notice per session",
   const first = run();
   assert.equal(first.status, 0, first.stderr);
   const firstResult = JSON.parse(first.stdout);
-  assert.equal(firstResult.profile, "gpt-6-astra");
+  assert.equal(firstResult.profile, "gpt-6");
   assert.equal(firstResult.exact, false);
   assert.match(firstResult.notice, /not been updated for gpt-6\.1/);
 
@@ -345,7 +327,7 @@ test("selects the newest profile not newer than an inexact request", (t) => {
   });
   t.after(() => profiles.pop());
 
-  assert.equal(resolveProfile("gpt-6-high").profile.id, "gpt-6-astra");
+  assert.equal(resolveProfile("gpt-6-high").profile.id, "gpt-6");
   assert.equal(resolveProfile("gpt-6.2-terra").profile.id, "gpt-6.1");
 });
 
@@ -379,7 +361,7 @@ test("requires explicit ownership transfer when the repository moves", (t) => {
   const secondRoot = fs.mkdtempSync(path.join(os.tmpdir(), "skill-variants-source-"));
   t.after(() => fs.rmSync(secondRoot, { recursive: true, force: true }));
   writeSkill(secondRoot, "alpha", "alpha");
-  fs.appendFileSync(path.join(secondRoot, "alpha", "variants", "gpt-6-astra.md"), "second source\n");
+  fs.appendFileSync(path.join(secondRoot, "alpha", "variants", "gpt-6.md"), "second source\n");
 
   assert.throws(
     () => materializeSkillVariants({ model: "gpt-6-astra", outputRoot: first.output, sourceRoot: secondRoot }),
@@ -407,14 +389,15 @@ test("materializes the repository corpus and keeps installed links stable across
   fs.symlinkSync(path.join(current.output, "cleanup"), installedSkill);
   assert.equal(
     fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),
-    fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", "gpt-6-astra.md"), "utf8"),
+    fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", "gpt-6.md"), "utf8"),
   );
 
   for (const model of ["gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5"]) {
     materializeSkillVariants({ model, outputRoot: current.output, sourceRoot: repositorySkills, requireExact: true });
+    const profile = resolveProfile(model).profile.id;
     assert.equal(
       fs.readFileSync(path.join(installedSkill, "SKILL.md"), "utf8"),
-      fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", `${model}.md`), "utf8"),
+      fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", `${profile}.md`), "utf8"),
     );
   }
 });

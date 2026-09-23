@@ -14,9 +14,9 @@ const source: SourceBundle = {
   name: "example", directory: "/source/example", entry: "# Example\n\nOriginal behavior.\n",
   fingerprint: "original-hash", capturedAt: "2026-09-04T00:00:00.000Z", head: "original-head",
   files: [
-    { path: "SKILL.md", content: "variants/gpt-6-astra.md", encoding: "symlink", mode: 41471 },
+    { path: "SKILL.md", content: "variants/gpt-6.md", encoding: "symlink", mode: 41471 },
     { path: "BASE.md", content: "# Example\n\nOriginal behavior.\n", encoding: "utf8", mode: 33188 },
-    { path: "variants/gpt-6-astra.md", content: "# Example\n\nOriginal behavior.\n", encoding: "utf8", mode: 33188 },
+    { path: "variants/gpt-6.md", content: "# Example\n\nOriginal behavior.\n", encoding: "utf8", mode: 33188 },
     { path: "references/rules.md", content: "Original rule", encoding: "utf8", mode: 33188 },
     { path: "assets/image.png", content: "iVBORw0KGgo=", encoding: "base64", mode: 33188 }
   ]
@@ -82,7 +82,7 @@ describe("durable skill review", () => {
     expect((await store.get(source.name)).draft.content.master).toBe("# Revised master")
   })
 
-  it.each(["../../outside.md", "BASE.md", "variants/gpt-6-astra.md", "assets/image.png"])("rejects editing %s without changing any draft", async (filename) => {
+  it.each(["../../outside.md", "BASE.md", "variants/gpt-6.md", "assets/image.png"])("rejects editing %s without changing any draft", async (filename) => {
     const input = await request()
     await expect(store.save({ ...input, content: { ...input.content, files: { [filename]: "Unwanted change" } } })).rejects.toThrow("unknown or read-only file")
     expect((await store.get(source.name)).draft.revision).toBe(0)

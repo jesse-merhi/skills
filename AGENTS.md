@@ -93,7 +93,8 @@ review, including cold review.
 - Before creating or changing agent instructions, use `writing-for-agents`
   to select the applicable authoring guidance. For skill changes, read the
   skill's `BASE.md` first and keep shared behaviour there, then adapt every
-  supported model variant complete; variant files or shared-content links record coverage.
+  supported profile complete; a profile may cover a model family. Variant files
+  or shared-content links record coverage.
 
 ## Dependency-first implementation
 

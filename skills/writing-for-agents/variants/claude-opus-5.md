@@ -47,14 +47,14 @@ Keep edits, saved explanations and validation in scope. Preserve required indepe
 
 For shared instructions such as AGENTS.md or CLAUDE.md, use only the named target models' guides; otherwise stay model-neutral. These files need no variants.
 
-For skills, read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the consuming models' guides: [Astra](references/gpt-6-astra.md), [Sol](references/gpt-6-sol.md), [Luna](references/gpt-6-luna.md), [Fable](references/claude-fable-5.1.md) or [Opus](references/claude-opus-5.md).
+For skills, read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the applicable guide: [GPT-6](references/gpt-6.md), [Fable](references/claude-fable-5.1.md) or [Opus](references/claude-opus-5.md). Astra, Sol and Luna share one GPT-6 profile and complete prompt per skill.
 
-Change shared behaviour in the base first, then adapt every supported `variants/<profile>.md`. Existing variants show model-specific wording; they do not override the base. Preserve behaviour, permissions, exact commands, evidence and completion criteria. Model guidance adds no gates or delegation. Share resources and metadata unless runtime behaviour differs.
+Change shared behaviour in the base first, then adapt every supported `variants/<profile>.md`. Existing variants do not override the base. Preserve behaviour, permissions, exact commands, evidence and completion criteria. Model guidance adds no gates or delegation. Share resources and metadata unless runtime behaviour differs.
 
-Keep a complete prompt at every profile path. Byte-identical variants should use relative symlinks to one regular file in the same `variants/` directory. Before a model-specific edit, replace its link with a copy; review all linked profiles when editing shared text. Keep `BASE.md` separate and root `SKILL.md` linked to `variants/gpt-6-astra.md`.
+Keep a complete prompt at every profile path. Byte-identical variants should use relative symlinks to one regular file in the same `variants/` directory. Before a profile-specific edit, replace its link with a copy; review all consuming models when editing shared text. Keep `BASE.md` separate and root `SKILL.md` linked to `variants/gpt-6.md`.
 
 The applicable `AGENTS.md` assigns execution roles. Keep shared skills available to coordinators, reviewers and workers; variants adapt wording, not ownership or authority.
 
 File presence, including these links, records coverage. The materializer copies the selected authored prompt; it does not generate text or call a model. Validate prompts against the base through independent agent exercises and installation through the materializer test.
 
-For a new model, add its official guide and complete variants, then update matching and same-family rank in `scripts/materialize-skill-variants.mjs`. That script owns fallback and the once-per-session warning until coverage exists. Keep source links and review dates current.
+For a new model, verify its official guidance and update matching in `scripts/materialize-skill-variants.mjs`. Reuse the family profile when its guidance applies; add a guide and complete variants only when a distinct profile is needed. The script owns same-family fallback and the once-per-session warning. Keep source links and review dates current.

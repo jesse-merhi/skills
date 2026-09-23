@@ -1,1 +1,1 @@
-gpt-6-astra.md
+gpt-6.md
