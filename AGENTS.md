@@ -53,11 +53,13 @@ Assign review duties by the task, not by whether an agent is a subagent.
   not ask questions when repository evidence, safe investigation, or a
   reasonable low-risk assumption can resolve the uncertainty.
 - When asking questions, use a synchronous tool that waits for the user's reply. In Codex, use `request_user_input` where available and permitted; do not use `request_user_input_async`. If no suitable synchronous tool is available, ask in the final response and wait for the user's reply. This preference avoids missed async-question notifications; it does not require asking about routine choices.
-- Use `feedback-hardening` before closing a substantive task, after a user
-  correction, and before reporting a blocked workflow. This is required after
-  every code review, even when the code is clean. The coordinator owns the
-  handoff; findings-only reviewers send observations in their existing report.
-  Follow the skill for handoff, repair authority and completion.
+- Before closing a substantive task, after a user correction, and before
+  reporting a blocked workflow, assess whether `feedback-hardening` is useful.
+  Apply this judgment after every code review, including clean reviews; these
+  events do not automatically require a separate task. The coordinator owns
+  the decision and any handoff; findings-only reviewers send observations in
+  their existing report. Follow the skill for the decision, handoff, repair
+  authority and completion.
 
 ## Coding standards
 

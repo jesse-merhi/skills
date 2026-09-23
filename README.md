@@ -253,7 +253,7 @@ Triage and blocked-check handling are now references in `code-review`; the forme
 | [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
-| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Immediately launches a separate feedback task with the original session referenced and an instruction to solve it; the main task continues independently. |
+| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Assesses whether observed workflow problems warrant separate work, then hands off a useful objective while the main task continues independently. |
 
 ### Frontend and design
 

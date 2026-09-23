@@ -1,11 +1,13 @@
 ---
 name: feedback-hardening
-description: 'Immediately move feedback into a separate task that runs independently of the original task.'
+description: 'Decide whether observed workflow problems warrant a separate feedback task, then hand off useful work.'
 ---
 
 # Feedback hardening
 
-Immediately use [handoff](../handoff/SKILL.md) to open a separate full session dedicated to feedback. The original task keeps its own work and delivery; it only supplies context and launches the feedback task.
+Assess the observations already available before creating a task. Hand off when they identify an unresolved workflow problem worth separate investigation or repair, with a concrete objective and expected benefit. A completed review, user correction or failed check does not by itself justify another task. If existing guidance already covers the issue and following it resolves the problem, or the current task already owns the repair, continue without a feedback handoff. A useful investigation need not have a confirmed fix before it starts.
+
+When a handoff is warranted, use [handoff](../handoff/SKILL.md) to open a separate full session dedicated to that objective. The original task keeps its own work and delivery; it supplies the existing evidence and launches the feedback task without doing that investigation first.
 
 Use `detect-handoff-surface --relationship aside` for this separate objective. For repository changes, start from the owning repository's normal PR base in a separate branch and worktree, with a separate PR when publication is authorized. Treat the original checkout, branch and PR as read-only context; keep its unfinished work and delivery plan with the original task. Carry this separation into the brief and launch prompt.
 
