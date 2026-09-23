@@ -82,7 +82,7 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
   const configuredFable = resolveProfile("claude-fable-5[1m]");
   const futureFable = resolveProfile("claude-fable-5.2");
   const gpt = resolveProfile("azure-openai/gpt-6-astra");
-  const futureGpt = resolveProfile("atlassian-ai-gateway-openai/gpt-6.1-terra");
+  const futureGpt = resolveProfile("atlassian-ai-gateway-openai/gpt-6.1-sol");
 
   assert.deepEqual(
     [fable.profile.id, fable.exact, configuredFable.profile.id, configuredFable.exact, futureFable.profile.id, futureFable.exact],
@@ -351,7 +351,7 @@ test("selects the newest profile not newer than an inexact request", (t) => {
   t.after(() => profiles.pop());
 
   assert.equal(resolveProfile("gpt-6-high").profile.id, "gpt-6");
-  assert.equal(resolveProfile("gpt-6.2-terra").profile.id, "gpt-6.1");
+  assert.equal(resolveProfile("gpt-6.2-sol").profile.id, "gpt-6.1");
 });
 
 test("rejects skill names that could escape the generated view", (t) => {

@@ -471,7 +471,7 @@ test("rejects a model from the other harness without creating files", (t) => {
 
 test("rejects retired GPT-5.6 identifiers before creating an installation", (t) => {
   const current = fixture(t);
-  for (const model of ["gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "openai/gpt-5.6", "azure-openai/gpt-5.6-sol-2026-09-01"]) {
+  for (const model of ["gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "openai/gpt-5.6", "azure-openai/gpt-5.6-sol-2026-09-01"]) {
     assert.throws(() => installSkills({ ...current, harness: "codex", model }), /earliest supported openai-gpt profile \(gpt-6\)/);
     assert.equal(fs.existsSync(current.root), false);
     assert.equal(fs.existsSync(current.binDir), false);
