@@ -184,7 +184,7 @@ export function discoverSkills(sourceRoot) {
   const found = [];
   const visit = (directory) => {
     const skillFile = path.join(directory, "SKILL.md");
-    if (fs.existsSync(skillFile)) {
+    if (fs.lstatSync(skillFile, { throwIfNoEntry: false }) !== undefined) {
       found.push({ directory, name: parseSkillName(skillFile) });
       return;
     }

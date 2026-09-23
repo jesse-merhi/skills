@@ -181,6 +181,51 @@ test("full installs retire removed commands but preserve foreign replacements an
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "utf8"), "personal");
 });
 
+test("missing shared prompt preserves installed skills and commands", (context) => {
+  const current = commandFixture(context);
+  for (const name of ["code-review", "wait-efficiently"]) {
+    const directory = path.join(current.sourceRoot, name);
+    const entrypoint = path.join(directory, "SKILL.md");
+    fs.unlinkSync(entrypoint);
+    fs.writeFileSync(path.join(directory, "variants", "gpt-6.md"), `---\nname: ${name}\ndescription: fixture\n---\nselected:gpt-6\n`);
+    fs.symlinkSync("variants/gpt-6.md", entrypoint);
+  }
+  const config = path.join(current.root, "config.toml");
+  fs.mkdirSync(current.root);
+  fs.writeFileSync(config, 'model = "gpt-6-astra"\n');
+  const first = installSkills({ ...current, harness: "codex", model: "astra" });
+  assert.equal(first.commands.length, 4);
+  const prompt = path.join(current.root, "skills", "code-review", "SKILL.md");
+  const promptBefore = fs.readFileSync(prompt, "utf8");
+  const link = path.join(current.root, "skills", "code-review");
+  const linkBefore = fs.readlinkSync(link);
+  const alias = path.join(current.binDir, "codex-review");
+  const aliasBefore = fs.readlinkSync(alias);
+  const launcher = path.join(current.binDir, ".jesse-merhi-skills-commands", "codex-review");
+  const launcherBefore = fs.readFileSync(launcher, "utf8");
+  const manifest = path.join(current.binDir, ".jesse-merhi-skills-commands", "manifest.json");
+  const manifestBefore = fs.readFileSync(manifest, "utf8");
+  const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+  const markerBefore = fs.readFileSync(marker, "utf8");
+
+  fs.writeFileSync(path.join(current.sourceRoot, "wait-efficiently", "variants", "gpt-6.md"), "---\nname: wait-efficiently\ndescription: fixture\n---\nupdated\n");
+  const missing = path.join(current.sourceRoot, "code-review", "variants", "gpt-6.md");
+  fs.unlinkSync(missing);
+  const entrypoint = path.join(current.sourceRoot, "code-review", "SKILL.md");
+  assert.equal(fs.lstatSync(entrypoint).isSymbolicLink(), true);
+  assert.equal(fs.existsSync(entrypoint), false);
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), { code: "ENOENT", path: path.join(fs.realpathSync(path.dirname(entrypoint)), "SKILL.md") });
+
+  assert.equal(fs.readFileSync(prompt, "utf8"), promptBefore);
+  assert.equal(fs.readlinkSync(link), linkBefore);
+  assert.equal(fs.readlinkSync(alias), aliasBefore);
+  assert.equal(fs.readFileSync(launcher, "utf8"), launcherBefore);
+  assert.equal(fs.readFileSync(manifest, "utf8"), manifestBefore);
+  assert.equal(fs.readFileSync(marker, "utf8"), markerBefore);
+  assert.equal(fs.readFileSync(path.join(current.root, "skills", "wait-efficiently", "SKILL.md"), "utf8").endsWith("selected:gpt-6\n"), true);
+  assert.equal(fs.readFileSync(config, "utf8"), 'model = "gpt-6-astra"\n');
+});
+
 test("another clone cannot claim shared commands without explicit full ownership transfer", (context) => {
   const current = commandFixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });

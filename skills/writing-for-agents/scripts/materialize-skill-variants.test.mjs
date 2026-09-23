@@ -116,6 +116,29 @@ test("missing shared variant cannot fall back to a legacy tier", (t) => {
   assert.equal(fs.readFileSync(path.join(current.output, "alpha", "SKILL.md"), "utf8"), previous);
 });
 
+test("dangling skill entrypoint rejects materialization without replacing the view", (t) => {
+  const current = fixture(t);
+  const entrypoint = path.join(current.source, "alpha", "SKILL.md");
+  fs.unlinkSync(entrypoint);
+  fs.symlinkSync("variants/gpt-6.md", entrypoint);
+  materializeSkillVariants({ model: "astra", outputRoot: current.output, sourceRoot: current.source });
+  const prompt = path.join(current.output, "alpha", "SKILL.md");
+  const previousPrompt = fs.readFileSync(prompt, "utf8");
+  const marker = path.join(current.output, ".skill-variant-view.json");
+  const previousMarker = fs.readFileSync(marker, "utf8");
+
+  fs.unlinkSync(path.join(current.source, "alpha", "variants", "gpt-6.md"));
+  assert.equal(fs.lstatSync(entrypoint).isSymbolicLink(), true);
+  assert.equal(fs.existsSync(entrypoint), false);
+  assert.throws(
+    () => materializeSkillVariants({ model: "sol", outputRoot: current.output, sourceRoot: current.source }),
+    { code: "ENOENT", path: path.join(fs.realpathSync(path.dirname(entrypoint)), "SKILL.md") },
+  );
+  assert.equal(fs.readFileSync(prompt, "utf8"), previousPrompt);
+  assert.equal(fs.readFileSync(marker, "utf8"), previousMarker);
+  assert.equal(fs.readFileSync(path.join(current.output, "beta", "SKILL.md"), "utf8").endsWith("gpt-6\n"), true);
+});
+
 test("materializes one contained static variant and links shared resources", (t) => {
   const current = fixture(t);
   const gpt = materializeSkillVariants({
