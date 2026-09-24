@@ -140,7 +140,7 @@ for path in sorted(skill_paths):
         if variant.exists() or variant.is_symlink():
             errors.append(f"retired model variant still exists: {variant}")
 
-    for profile in ("gpt-6", "claude-fable-5.1", "claude-opus-5"):
+    for profile in ("gpt-6", "claude-fable-5.1", "claude-opus-5.5"):
         variant = path.parent / "variants" / f"{profile}.md"
         if not variant.is_file():
             errors.append(f"missing model variant: {variant}")

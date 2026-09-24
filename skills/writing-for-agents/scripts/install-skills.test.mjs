@@ -15,7 +15,7 @@ function fixture(t) {
     const skill = path.join(sourceRoot, name);
     fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
     fs.writeFileSync(path.join(skill, "SKILL.md"), `---\nname: ${path.basename(name)}\ndescription: fixture\n---\n`);
-    for (const model of ["gpt-6", "claude-fable-5.1", "claude-opus-5"]) {
+    for (const model of ["gpt-6", "claude-fable-5.1", "claude-opus-5.5"]) {
       fs.writeFileSync(path.join(skill, "variants", `${model}.md`), `selected:${model}\n`);
     }
   }
@@ -160,7 +160,7 @@ test("Codex and Claude share repo-owned commands without retargeting or deleting
   assert.equal(fs.lstatSync(waitAlias).ino, waitInode);
   assert.equal(result.commandsRetired, 0);
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:gpt-6\n");
-  assert.equal(fs.readFileSync(path.join(claude.root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:claude-opus-5\n");
+  assert.equal(fs.readFileSync(path.join(claude.root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
 });
 
 test("full installs retire removed commands but preserve foreign replacements and third-party skills", (context) => {
@@ -356,7 +356,7 @@ test("concurrent harness installs serialize command publication under one owner"
   for (const run of runs) assert.equal(run.code, 0, run.stderr);
   assert.deepEqual(runs.map(run => JSON.parse(run.stdout).commandsChanged).sort(), [0, 4]);
   assert.equal(fs.readFileSync(path.join(options[0].root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:gpt-6\n");
-  assert.equal(fs.readFileSync(path.join(options[1].root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:claude-opus-5\n");
+  assert.equal(fs.readFileSync(path.join(options[1].root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
   assert.equal(fs.readdirSync(current.binDir).some(name => name.endsWith(".lock") || name.includes(".previous-")), false);
 });
 
@@ -407,7 +407,7 @@ test("switches Fable to Opus through stable links without changing other skills 
   assert.equal(selected(current.root), "selected:claude-fable-5.1\n");
   const before = fs.readlinkSync(path.join(current.root, "skills", "alpha"));
   const result = installSkills({ ...current, harness: "claude", model: "opus", requireExact: true });
-  assert.equal(selected(current.root), "selected:claude-opus-5\n");
+  assert.equal(selected(current.root), "selected:claude-opus-5.5\n");
   assert.equal(fs.readlinkSync(path.join(current.root, "skills", "alpha")), before);
   assert.equal(result.linksChanged, 0);
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "utf8"), "my instructions");
@@ -505,6 +505,47 @@ test("migrates a stored GPT-5.6 view through stable links without changing model
     assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:gpt-6\n");
   }
   assert.equal(JSON.parse(fs.readFileSync(marker, "utf8")).profile, "gpt-6");
+  assert.equal(fs.readFileSync(config, "utf8"), settings);
+});
+
+test("rejects retired Opus identifiers before creating an installation", (t) => {
+  const current = fixture(t);
+  for (const model of ["claude-opus-5", "anthropic/claude-opus-5", "claude-opus-5-20260901", "claude-opus-5.1"]) {
+    assert.throws(() => installSkills({ ...current, harness: "claude", model }), /earliest supported anthropic-opus profile \(claude-opus-5\.5\)/);
+    assert.equal(fs.existsSync(current.root), false);
+    assert.equal(fs.existsSync(current.binDir), false);
+  }
+});
+
+test("upgrades a stored Opus 5 view only through a full install, preserving links and settings", (t) => {
+  const current = fixture(t);
+  const first = installSkills({ ...current, harness: "claude", model: "opus" });
+  const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+  const oldMarker = JSON.stringify({ schemaVersion: 1, sourceRoot: fs.realpathSync(current.sourceRoot), profile: "claude-opus-5" }) + "\n";
+  fs.writeFileSync(marker, oldMarker);
+  for (const name of ["alpha", "beta"]) fs.writeFileSync(path.join(first.viewRoot, name, "SKILL.md"), "selected:claude-opus-5\n");
+  const config = path.join(current.root, "settings.json");
+  const settings = '{"model":"claude-opus-5","effortLevel":"xhigh"}\n';
+  fs.writeFileSync(config, settings);
+  const alpha = path.join(current.root, "skills", "alpha");
+  const originalLink = fs.readlinkSync(alpha);
+
+  assert.throws(() => installSkills({ ...current, harness: "claude", model: "claude-opus-5" }), /earliest supported/);
+  assert.throws(() => installSkills({ ...current, harness: "claude", model: "opus", skillNames: ["alpha"] }), /cannot switch profile or source; use a full installation/);
+  assert.equal(fs.readFileSync(marker, "utf8"), oldMarker);
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:claude-opus-5\n");
+  }
+
+  const migrated = installSkills({ ...current, harness: "claude", model: "claude-opus-5-5", requireExact: true });
+  assert.equal(migrated.exact, true);
+  assert.equal(migrated.profile, "claude-opus-5.5");
+  assert.equal(migrated.linksChanged, 0);
+  assert.equal(fs.readlinkSync(alpha), originalLink);
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
+  }
+  assert.equal(JSON.parse(fs.readFileSync(marker, "utf8")).profile, "claude-opus-5.5");
   assert.equal(fs.readFileSync(config, "utf8"), settings);
 });
 

@@ -23,7 +23,7 @@ proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
 configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-6`
-skill profile; Claude Fable 5.1 and Opus 5 have separate profiles. A newer model in a known family
+skill profile; Claude Fable 5.1 and Opus 5.5 have separate profiles. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
 Installation stops on an unknown family or a missing profile prompt.
 `--require-exact` also rejects model-version fallback.
@@ -33,6 +33,10 @@ run the full installer with `--model gpt-6`, omitting `--skill`. Existing manage
 links stay stable while their copied prompts and profile marker are refreshed.
 The installer preserves model configuration and saved review history. Subsequent
 Astra, Sol and Luna selections use the same profile.
+
+Opus 5 is also retired. To upgrade its managed view, run the full installer with
+`--model claude-opus-5-5`, omitting `--skill`. The `opus` alias selects the same
+Opus 5.5 profile. Managed links stay stable; model settings remain user-owned.
 
 ## 2. Link global instructions
 

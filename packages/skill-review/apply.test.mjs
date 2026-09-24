@@ -13,10 +13,10 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   const directory = path.join(root, "skills/example");
   fs.mkdirSync(path.join(directory, "variants"), { recursive: true });
   const original = "---\nname: example\ndescription: Fixture\n---\nOriginal\n";
-  const profiles = ["gpt-6", "claude-fable-5.1", "claude-opus-5"];
+  const profiles = ["gpt-6", "claude-fable-5.1", "claude-opus-5.5"];
   for (const profile of profiles) {
     const variant = path.join(directory, "variants", profile + ".md");
-    if (profile !== "claude-opus-5") fs.writeFileSync(variant, original);
+    if (profile !== "claude-opus-5.5") fs.writeFileSync(variant, original);
     else fs.symlinkSync("claude-fable-5.1.md", variant);
   }
   fs.symlinkSync(path.join(directory, "variants/gpt-6.md"), path.join(directory, "SKILL.md"));
@@ -28,7 +28,7 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   const candidateBase = path.join(plan, "candidate/BASE.md");
   assert.equal(fs.lstatSync(candidateBase).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(candidateBase, "utf8"), master);
-  assert.equal(fs.readlinkSync(path.join(plan, "candidate/variants/claude-opus-5.md")), "claude-fable-5.1.md");
+  assert.equal(fs.readlinkSync(path.join(plan, "candidate/variants/claude-opus-5.5.md")), "claude-fable-5.1.md");
   for (const profile of profiles) fs.writeFileSync(path.join(plan, "candidate/variants", profile + ".md"), original.replace("Original", "Updated"));
   fs.writeFileSync(candidateBase, "Changed without approval");
   await assert.rejects(applyPlan(plan, readDetail), /exact pinned audit master/);
@@ -40,9 +40,9 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   assert.equal(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"), original);
   fs.unlinkSync(candidateBase);
   fs.writeFileSync(candidateBase, master);
-  fs.unlinkSync(path.join(plan, "candidate/variants/claude-opus-5.md"));
+  fs.unlinkSync(path.join(plan, "candidate/variants/claude-opus-5.5.md"));
   await assert.rejects(applyPlan(plan, readDetail), /example has no anthropic-opus variant/);
-  fs.symlinkSync("claude-fable-5.1.md", path.join(plan, "candidate/variants/claude-opus-5.md"));
+  fs.symlinkSync("claude-fable-5.1.md", path.join(plan, "candidate/variants/claude-opus-5.5.md"));
   record.draft.revision = 3;
   await assert.rejects(applyPlan(plan, readDetail), /draft changed/);
   assert.equal(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"), original);
@@ -54,7 +54,7 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   assert.equal(applied.revision, 2);
   assert.match(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"), /Updated/);
   assert.equal(fs.readFileSync(path.join(directory, "BASE.md"), "utf8"), master);
-  assert.equal(fs.readlinkSync(path.join(directory, "variants/claude-opus-5.md")), "claude-fable-5.1.md");
+  assert.equal(fs.readlinkSync(path.join(directory, "variants/claude-opus-5.5.md")), "claude-fable-5.1.md");
   assert.match(fs.readFileSync(path.join(directory, "variants/gpt-6.md"), "utf8"), /Updated/);
   const captured = captureSkill({ name: "example", directory }, "new-head");
   assert.equal(captured.entry, master);
@@ -64,7 +64,7 @@ test("pins a draft, rejects concurrent changes, applies complete variants and ro
   fs.unlinkSync(path.join(directory, "later.txt"));
   rollbackPlan(plan);
   assert.equal(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"), original);
-  assert.equal(fs.readlinkSync(path.join(directory, "variants/claude-opus-5.md")), "claude-fable-5.1.md");
+  assert.equal(fs.readlinkSync(path.join(directory, "variants/claude-opus-5.5.md")), "claude-fable-5.1.md");
   assert.equal(fs.readFileSync(path.join(directory, "variants/gpt-6.md"), "utf8"), original);
   assert.equal(fs.existsSync(path.join(directory, "BASE.md")), false);
   assert.equal(record.draft.content.notes, "Keep this comment");
