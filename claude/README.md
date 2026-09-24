@@ -35,4 +35,4 @@ The role already supplies the investigation process and report expectations. Del
 
 Start `findings-reviewer` fresh with the target, neutral checklist and requested evidence. Omit implementation rationale and earlier findings; do not resume an implementer as a reviewer. Persistent agent memory is not enabled, but Claude can load project instructions and discover skills. This is not the other harness's skill exclusion or memory isolation mechanism. Disclose prior findings in the review context. Tool restrictions are not a filesystem sandbox: Bash remains available for inspection and verification under read-only duties.
 
-The report does not complete `code-review`: its coordinator still owns the native phase, registry, repairs, reruns and delivery gates. Other harnesses must use their own launcher; OpenClaw's spawn API is not Claude's `Agent` tool.
+Each report supplies one assessment for `code-review`. Its coordinator owns the simplification pass, both independent assessments, confirmed repairs, verification and delivery. Other harnesses must use their own launcher; OpenClaw's spawn API is not Claude's `Agent` tool.

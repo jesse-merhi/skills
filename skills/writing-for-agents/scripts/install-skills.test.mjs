@@ -89,7 +89,7 @@ function commandFixture(context) {
   const current = fixture(context);
   const sourceRoot = path.join(current.temporary, "source with ' quotes");
   fs.renameSync(current.sourceRoot, sourceRoot);
-  for (const [skill, commands] of [["code-review", ["codex-review", "review-findings"]], ["wait-efficiently", ["quiet-wait", "estimate-gh-wait"]]]) {
+  for (const [skill, commands] of [["cleanup", ["inventory.mjs"]], ["wait-efficiently", ["quiet-wait", "estimate-gh-wait"]]]) {
     const directory = path.join(sourceRoot, skill);
     fs.cpSync(path.join(sourceRoot, "alpha"), directory, { recursive: true });
     fs.writeFileSync(path.join(directory, "SKILL.md"), `---\nname: ${skill}\ndescription: fixture\n---\n`);
@@ -102,18 +102,40 @@ function commandFixture(context) {
   return { ...current, sourceRoot };
 }
 
+function launcher(command) {
+  const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
+  return `#!/bin/sh\nexec ${[...command.runtime, command.target].map(quote).join(" ")} "$@"\n`;
+}
+
+function addRetiredReviewCommands(current) {
+  const owner = path.join(current.binDir, ".jesse-merhi-skills-commands");
+  const manifestFile = path.join(owner, "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+  const retired = [
+    { name: "codex-review", skill: "code-review", target: path.join(current.sourceRoot, "code-review", "scripts", "codex-review"), runtime: ["node"] },
+    { name: "review-findings", skill: "code-review", target: path.join(current.sourceRoot, "code-review", "scripts", "review-findings"), runtime: ["node", "--disable-warning=ExperimentalWarning"] },
+  ];
+  manifest.commands.push(...retired);
+  manifest.commands.sort((left, right) => left.name.localeCompare(right.name, "en"));
+  fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+  for (const command of retired) {
+    fs.writeFileSync(path.join(owner, command.name), launcher(command), { mode: 0o755 });
+    fs.symlinkSync(path.join(owner, command.name), path.join(current.binDir, command.name));
+  }
+}
+
 test("publishes explicit commands on PATH with arguments, cwd, environment and exit status intact", (context) => {
   const current = commandFixture(context);
   const result = installSkills({ ...current, harness: "codex", model: "astra" });
-  assert.equal(result.commands.length, 4);
-  assert.deepEqual(fs.readdirSync(current.binDir).filter(name => !name.startsWith(".")), ["codex-review", "estimate-gh-wait", "quiet-wait", "review-findings"]);
-  const execution = spawnSync("codex-review", ["two words", "'quoted'", "$HOME", ""], {
+  assert.equal(result.commands.length, 3);
+  assert.deepEqual(fs.readdirSync(current.binDir).filter(name => !name.startsWith(".")), ["estimate-gh-wait", "quiet-wait", "skill-cleanup-inventory"]);
+  const execution = spawnSync("skill-cleanup-inventory", ["two words", "'quoted'", "$HOME", ""], {
     cwd: current.temporary, encoding: "utf8",
     env: { ...process.env, PATH: `${current.binDir}${path.delimiter}${process.env.PATH}`, INSTALL_TEST_VALUE: "retained" },
   });
   assert.equal(execution.status, 7, execution.stderr);
-  assert.deepEqual(JSON.parse(execution.stdout), { command: "codex-review", args: ["two words", "'quoted'", "$HOME", ""], cwd: fs.realpathSync(current.temporary), value: "retained" });
-  const alias = path.join(current.binDir, "codex-review");
+  assert.deepEqual(JSON.parse(execution.stdout), { command: "inventory.mjs", args: ["two words", "'quoted'", "$HOME", ""], cwd: fs.realpathSync(current.temporary), value: "retained" });
+  const alias = path.join(current.binDir, "skill-cleanup-inventory");
   const before = fs.lstatSync(alias).ino;
   assert.equal(installSkills({ ...current, harness: "codex", model: "astra" }).commandsChanged, 0);
   assert.equal(fs.lstatSync(alias).ino, before);
@@ -122,8 +144,8 @@ test("publishes explicit commands on PATH with arguments, cwd, environment and e
 test("command dry runs list the catalog without creating commands or prompts", (context) => {
   const current = commandFixture(context);
   const result = installSkills({ ...current, harness: "codex", model: "astra", dryRun: true });
-  assert.deepEqual(result.commands.map(command => command.name), ["codex-review", "estimate-gh-wait", "quiet-wait", "review-findings"]);
-  assert.equal(result.commandsChanged, 4);
+  assert.deepEqual(result.commands.map(command => command.name), ["estimate-gh-wait", "quiet-wait", "skill-cleanup-inventory"]);
+  assert.equal(result.commandsChanged, 3);
   assert.equal(fs.existsSync(current.binDir), false);
   assert.equal(fs.existsSync(current.root), false);
 });
@@ -132,14 +154,14 @@ test("preserves unmanaged command files, directories and symlinks before changin
   for (const kind of ["file", "directory", "foreign-link", "dangling-link", "unowned-link"]) {
     const current = commandFixture(context);
     fs.mkdirSync(current.binDir);
-    const destination = path.join(current.binDir, "codex-review");
+    const destination = path.join(current.binDir, "skill-cleanup-inventory");
     if (kind === "file") fs.writeFileSync(destination, "user binary");
     else if (kind === "directory") fs.mkdirSync(destination);
-    else fs.symlinkSync(kind === "foreign-link" ? process.execPath : kind === "dangling-link" ? "/missing-command" : path.join(current.binDir, ".jesse-merhi-skills-commands", "codex-review"), destination);
+    else fs.symlinkSync(kind === "foreign-link" ? process.execPath : kind === "dangling-link" ? "/missing-command" : path.join(current.binDir, ".jesse-merhi-skills-commands", "skill-cleanup-inventory"), destination);
     const original = fs.lstatSync(destination).ino;
     assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /preserving unmanaged command/);
     assert.equal(fs.lstatSync(destination).ino, original);
-    assert.deepEqual(fs.readdirSync(current.binDir), ["codex-review"]);
+    assert.deepEqual(fs.readdirSync(current.binDir), ["skill-cleanup-inventory"]);
     assert.equal(fs.existsSync(current.root), false);
   }
 });
@@ -147,43 +169,43 @@ test("preserves unmanaged command files, directories and symlinks before changin
 test("Codex and Claude share repo-owned commands without retargeting or deleting unselected aliases", (context) => {
   const current = commandFixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });
-  const alias = path.join(current.binDir, "codex-review");
+  const alias = path.join(current.binDir, "skill-cleanup-inventory");
   const original = fs.readlinkSync(alias);
   const claude = { ...current, root: path.join(current.temporary, "claude"), harness: "claude", model: "opus" };
   assert.equal(installSkills(claude).commandsChanged, 0);
   fs.unlinkSync(alias);
   const waitAlias = path.join(current.binDir, "quiet-wait");
   const waitInode = fs.lstatSync(waitAlias).ino;
-  const result = installSkills({ ...claude, skillNames: ["code-review"] });
+  const result = installSkills({ ...claude, skillNames: ["cleanup"] });
   assert.equal(result.commandsChanged, 1);
   assert.equal(fs.readlinkSync(alias), original);
   assert.equal(fs.lstatSync(waitAlias).ino, waitInode);
   assert.equal(result.commandsRetired, 0);
-  assert.equal(fs.readFileSync(path.join(current.root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:gpt-6\n");
-  assert.equal(fs.readFileSync(path.join(claude.root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
+  assert.equal(fs.readFileSync(path.join(current.root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:gpt-6\n");
+  assert.equal(fs.readFileSync(path.join(claude.root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
 });
 
-test("full installs retire removed commands but preserve foreign replacements and third-party skills", (context) => {
+test("full installs retire stale managed aliases but preserve foreign replacements and third-party skills", (context) => {
   const current = commandFixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });
+  addRetiredReviewCommands(current);
   const foreign = path.join(current.binDir, "codex-review");
   fs.unlinkSync(foreign);
   fs.symlinkSync(process.execPath, foreign);
   fs.mkdirSync(path.join(current.root, "skills", "personal"));
   fs.writeFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "personal");
-  fs.rmSync(path.join(current.sourceRoot, "code-review"), { recursive: true });
   const result = installSkills({ ...current, harness: "codex", model: "astra" });
   assert.equal(result.commandsRetired, 1);
-  assert.equal(result.linksRetired, 1);
+  assert.equal(result.linksRetired, 0);
   assert.equal(fs.readlinkSync(foreign), process.execPath);
   assert.equal(fs.lstatSync(path.join(current.binDir, "review-findings"), { throwIfNoEntry: false }), undefined);
-  assert.equal(fs.existsSync(path.join(result.viewRoot, "code-review")), false);
+  assert.deepEqual(result.commands.map(command => command.name), ["estimate-gh-wait", "quiet-wait", "skill-cleanup-inventory"]);
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "utf8"), "personal");
 });
 
 test("missing shared prompt preserves installed skills and commands", (context) => {
   const current = commandFixture(context);
-  for (const name of ["code-review", "wait-efficiently"]) {
+  for (const name of ["cleanup", "wait-efficiently"]) {
     const directory = path.join(current.sourceRoot, name);
     const entrypoint = path.join(directory, "SKILL.md");
     fs.unlinkSync(entrypoint);
@@ -194,14 +216,14 @@ test("missing shared prompt preserves installed skills and commands", (context) 
   fs.mkdirSync(current.root);
   fs.writeFileSync(config, 'model = "gpt-6-astra"\n');
   const first = installSkills({ ...current, harness: "codex", model: "astra" });
-  assert.equal(first.commands.length, 4);
-  const prompt = path.join(current.root, "skills", "code-review", "SKILL.md");
+  assert.equal(first.commands.length, 3);
+  const prompt = path.join(current.root, "skills", "cleanup", "SKILL.md");
   const promptBefore = fs.readFileSync(prompt, "utf8");
-  const link = path.join(current.root, "skills", "code-review");
+  const link = path.join(current.root, "skills", "cleanup");
   const linkBefore = fs.readlinkSync(link);
-  const alias = path.join(current.binDir, "codex-review");
+  const alias = path.join(current.binDir, "skill-cleanup-inventory");
   const aliasBefore = fs.readlinkSync(alias);
-  const launcher = path.join(current.binDir, ".jesse-merhi-skills-commands", "codex-review");
+  const launcher = path.join(current.binDir, ".jesse-merhi-skills-commands", "skill-cleanup-inventory");
   const launcherBefore = fs.readFileSync(launcher, "utf8");
   const manifest = path.join(current.binDir, ".jesse-merhi-skills-commands", "manifest.json");
   const manifestBefore = fs.readFileSync(manifest, "utf8");
@@ -209,9 +231,9 @@ test("missing shared prompt preserves installed skills and commands", (context) 
   const markerBefore = fs.readFileSync(marker, "utf8");
 
   fs.writeFileSync(path.join(current.sourceRoot, "wait-efficiently", "variants", "gpt-6.md"), "---\nname: wait-efficiently\ndescription: fixture\n---\nupdated\n");
-  const missing = path.join(current.sourceRoot, "code-review", "variants", "gpt-6.md");
+  const missing = path.join(current.sourceRoot, "cleanup", "variants", "gpt-6.md");
   fs.unlinkSync(missing);
-  const entrypoint = path.join(current.sourceRoot, "code-review", "SKILL.md");
+  const entrypoint = path.join(current.sourceRoot, "cleanup", "SKILL.md");
   assert.equal(fs.lstatSync(entrypoint).isSymbolicLink(), true);
   assert.equal(fs.existsSync(entrypoint), false);
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), { code: "ENOENT", path: path.join(fs.realpathSync(path.dirname(entrypoint)), "SKILL.md") });
@@ -235,7 +257,7 @@ test("another clone cannot claim shared commands without explicit full ownership
   assert.throws(() => installSkills(second), /commands owned by another source/);
   assert.equal(fs.existsSync(second.root), false);
   const result = installSkills({ ...second, previousSourceRoot: current.sourceRoot });
-  assert.equal(result.commandsChanged, 4);
+  assert.equal(result.commandsChanged, 3);
   assert.ok(result.commands.every(command => command.target.startsWith(fs.realpathSync(sourceRoot) + path.sep)));
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /commands owned by another source/);
   assert.equal(selected(current.root), "selected:gpt-6\n");
@@ -243,7 +265,7 @@ test("another clone cannot claim shared commands without explicit full ownership
 
 test("missing entrypoints fail preflight rather than installing a broken command", (context) => {
   const current = commandFixture(context);
-  fs.unlinkSync(path.join(current.sourceRoot, "code-review", "scripts", "codex-review"));
+  fs.unlinkSync(path.join(current.sourceRoot, "cleanup", "scripts", "inventory.mjs"));
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /missing or external command entrypoint/);
   assert.equal(fs.existsSync(current.binDir), false);
   assert.equal(fs.existsSync(current.root), false);
@@ -255,8 +277,8 @@ test("modified owned launchers and malformed manifests are preserved", (context)
     installSkills({ ...current, harness: "codex", model: "astra" });
     fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
     const owner = path.join(current.binDir, ".jesse-merhi-skills-commands");
-    const file = path.join(owner, kind === "launcher" ? "codex-review" : "manifest.json");
-    const contents = kind === "launcher" ? "user changes\n" : '{"schemaVersion":1,"sourceRoot":"/elsewhere","commands":[{"name":"../escape","skill":"code-review","target":"/bin/sh","runtime":[]}]}';
+    const file = path.join(owner, kind === "launcher" ? "skill-cleanup-inventory" : "manifest.json");
+    const contents = kind === "launcher" ? "user changes\n" : '{"schemaVersion":1,"sourceRoot":"/elsewhere","commands":[{"name":"../escape","skill":"cleanup","target":"/bin/sh","runtime":[]}]}';
     fs.writeFileSync(file, contents);
     assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }));
     assert.equal(fs.readFileSync(file, "utf8"), contents);
@@ -268,7 +290,7 @@ test("command publication failure restores commands and leaves prompts unchanged
   const current = commandFixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });
   fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
-  const alias = path.join(current.binDir, "codex-review");
+  const alias = path.join(current.binDir, "skill-cleanup-inventory");
   fs.unlinkSync(alias);
   const originalRename = fs.renameSync;
   context.mock.method(fs, "renameSync", (source, destination) => {
@@ -278,7 +300,7 @@ test("command publication failure restores commands and leaves prompts unchanged
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), /injected command publication failure/);
   assert.equal(selected(current.root), "selected:gpt-6\n");
   assert.equal(fs.lstatSync(alias, { throwIfNoEntry: false }), undefined);
-  assert.match(fs.readFileSync(path.join(current.binDir, "review-findings"), "utf8"), /review-findings/);
+  assert.match(fs.readFileSync(path.join(current.binDir, "quiet-wait"), "utf8"), /quiet-wait/);
   assert.equal(fs.readdirSync(current.binDir).some(name => name.includes(".previous-") || name.includes(".staging-")), false);
 });
 
@@ -286,7 +308,7 @@ test("view failure rolls back new aliases and restores retired aliases and the c
   const current = commandFixture(context);
   const first = installSkills({ ...current, harness: "codex", model: "astra" });
   fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
-  const alias = path.join(current.binDir, "codex-review");
+  const alias = path.join(current.binDir, "skill-cleanup-inventory");
   fs.unlinkSync(alias);
   const manifest = path.join(current.binDir, ".jesse-merhi-skills-commands", "manifest.json");
   const before = fs.readFileSync(manifest, "utf8");
@@ -306,14 +328,14 @@ test("view failure rolls back new aliases and restores retired aliases and the c
 test("a binary created after preflight is not overwritten and earlier new aliases roll back", (context) => {
   const current = commandFixture(context);
   const originalSymlink = fs.symlinkSync;
-  const collision = path.join(current.binDir, "estimate-gh-wait");
+  const collision = path.join(current.binDir, "quiet-wait");
   context.mock.method(fs, "symlinkSync", (target, destination, ...rest) => {
     if (destination === collision) fs.writeFileSync(destination, "racing user binary", { flag: "wx" });
     return originalSymlink(target, destination, ...rest);
   });
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /EEXIST/);
   assert.equal(fs.readFileSync(collision, "utf8"), "racing user binary");
-  assert.deepEqual(fs.readdirSync(current.binDir), ["estimate-gh-wait"]);
+  assert.deepEqual(fs.readdirSync(current.binDir), ["quiet-wait"]);
   assert.equal(fs.existsSync(path.join(current.root, "skills")), false);
 });
 
@@ -324,7 +346,7 @@ test("concurrent harness installs serialize command publication under one owner"
     { ...current, harness: "codex", model: "astra" },
     { ...current, root: path.join(current.temporary, "claude"), harness: "claude", model: "opus" },
   ];
-  const alias = path.join(current.binDir, "codex-review");
+  const alias = path.join(current.binDir, "estimate-gh-wait");
   const published = path.join(current.temporary, "command-published");
   const waiting = path.join(current.temporary, "command-waiting");
   const release = path.join(current.temporary, "release-command-publication");
@@ -354,9 +376,9 @@ test("concurrent harness installs serialize command publication under one owner"
   const runs = await Promise.all(processes.map(run => run.completed));
   if (barrierError !== undefined) throw barrierError;
   for (const run of runs) assert.equal(run.code, 0, run.stderr);
-  assert.deepEqual(runs.map(run => JSON.parse(run.stdout).commandsChanged).sort(), [0, 4]);
-  assert.equal(fs.readFileSync(path.join(options[0].root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:gpt-6\n");
-  assert.equal(fs.readFileSync(path.join(options[1].root, "skills", "code-review", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
+  assert.deepEqual(runs.map(run => JSON.parse(run.stdout).commandsChanged).sort(), [0, 3]);
+  assert.equal(fs.readFileSync(path.join(options[0].root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:gpt-6\n");
+  assert.equal(fs.readFileSync(path.join(options[1].root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
   assert.equal(fs.readdirSync(current.binDir).some(name => name.endsWith(".lock") || name.includes(".previous-")), false);
 });
 

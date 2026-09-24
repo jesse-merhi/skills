@@ -8,26 +8,17 @@ named harness. Edit instructions here.
 
 Assign review duties by the task, not by whether an agent is a subagent.
 
-- The coordinator owns the review loop, findings registry, approval requests,
-  authorized fixes, validation, commits, publication, handoffs, and user-facing
-  summary. A subagent assigned an until-clean workflow is a coordinator for
-  that workflow; it is not a findings-only reviewer.
-- A findings-only reviewer is assigned to inspect and report, not to run the
-  fix-and-rerun workflow. Use a findings-only reviewer preset when the harness
-  exposes one; never select it for an until-clean coordinator. Give it the
-  target, neutral checklist, and requested evidence without implementation
-  rationale or prior findings. It reports candidates and supporting evidence,
-  consulting relevant domain skills and retaining the mandatory review lenses
-  below. The coordinator uses code-review's findings guide for those candidates;
-  the findings CLI owns severity and disposition.
-- The reviewer returns supported candidates with their rating evidence, unresolved
-  concerns, meaningful verified rejections, verification limits and requested
-  coverage evidence. Omit immediately discarded speculation; no individual
-  record or discarded-thought summary is required. It
-  does not edit code, write the findings registry, manage fixes or reruns,
-  publish, or run writing and handoff workflows for its internal report. The coordinator records the
-  returned evidence, obtains CLI-derived severity and disposition, and handles
-  user-facing presentation and delivery gates.
+- The coordinator owns integration, findings decisions, approval requests,
+  authorized fixes, validation, commits, publication, handoffs and the final
+  report. An agent assigned the whole workflow is a coordinator; a simplifier
+  owns its assigned edits; a findings-only reviewer inspects and reports.
+- Give fresh reviewers the target, requirements, neutral assignment and available
+  proof without implementation rationale or prior findings. Use a configured
+  findings-only role when available and retain the applicable domain lenses below.
+- Reviewers return supported findings, evidence, unresolved concerns and
+  verification limits. They do not edit, manage repairs, publish or run handoff
+  workflows. The coordinator confirms findings under code-review's evidence
+  requirements and resolves their priority and disposition.
 - Reading a skill does not expand the assignment or authorize its workflow.
   Safety, security, permission boundaries, and applicable repository constraints
   remain binding on every agent; role instructions are not a sandbox.
@@ -156,7 +147,7 @@ resource lifecycle, and graceful shutdown.
 ### Evidence before review fixes
 
 - Before repairing a review-discovered bug, apply the evidence checks in
-  code-review's findings guide. A reproduction through the actual application using
+  code-review's Resolve and finish requirements. A reproduction through the actual application using
   realistic local fixtures can qualify; production data is not required.
 - Keep evidence tied to the reviewed revision and label what was actually
   observed. A type-permitted value or invented unreachable state is not proof.

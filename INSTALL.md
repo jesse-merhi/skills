@@ -127,14 +127,6 @@ codex --profile findings-reviewer review --base main
 codex exec --profile findings-reviewer "Inspect this diff and return findings only."
 ```
 
-The `skills/code-review/scripts/codex-review` helper selects this profile for
-native reviews whenever the installed file exists. Its `--dry-run` output shows
-the selection. With or without the file, the launcher pins the native reviewer
-from the [global model policy](AGENTS.md#model-turns);
-an installed but invalid or unsupported profile fails rather than silently
-rerunning without the filter. Authentication probes and session archiving do
-not select the reviewer profile.
-
 The preset also sets `memories.use_memories`, `memories.generate_memories`, and
 `memories.dedicated_tools` to false, and hides `session-recall`. This prevents
 automatic memory injection/generation for these reviewer sessions; it does not
@@ -434,7 +426,6 @@ Public aliases:
 
 | Commands | Owning skill / entrypoint |
 | --- | --- |
-| `codex-review`, `review-findings` | `code-review/scripts/<name>`; `codex-review` dispatches native reviews only |
 | `ask-codex`, `ask-claude` | Respective skill's `scripts/<name>` |
 | `skill-cleaner` | `skill-cleaner/scripts/skill-cleaner` |
 | `skill-audit-layout` | `frontend-ui-validation/scripts/audit-layout.mjs` |
@@ -450,20 +441,14 @@ Public aliases:
 
 ### Verify commands
 
-After an authorized installation, verify the PATH aliases rather than resolving
-a skill directory. `review-findings` uses the repo-owned Effect runtime
-installed in step 5 and reports its SQLite database path:
+After an authorized installation, verify the PATH aliases rather than resolving a skill directory:
 
 ```sh
-command -v codex-review review-findings skill-cleaner
-codex-review --help
-review-findings path
+command -v skill-cleaner quiet-wait
+skill-cleaner --help
 ```
 
-Retire any `AGENT_REVIEW_FINDINGS_BIN` export from harness configuration.
-That override belonged to the removed Rust installation and can silently select
-a CLI that lacks the required scope commands. The installed alias calls the
-current repo-owned launcher.
+`codex-review` and `review-findings` are retired. An authorized reinstall removes only unchanged aliases managed by this installer; preserve foreign or modified commands. Existing SQLite review databases are historical data and need no migration or deletion. Retire an obsolete `AGENT_REVIEW_FINDINGS_BIN` export when updating its owning configuration.
 
 ## 11. Verify
 
@@ -471,7 +456,6 @@ Run:
 
 ```sh
 ./tests/skills-test
-./tests/review-findings-test
 bun run validate:effect
 ```
 

@@ -29,7 +29,7 @@ The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by ac
 
 For established validation, `writing-good-tests` selects `test_executor` and defines the batch, receipt and failure handoff. It also describes the explicit-settings fallback for launchers without the named role.
 
-The existing workflow owners select these roles: `just-do-it` delegates bounded implementation and investigation, `grilling` delegates factual questions, and `code-review` delegates repairs and its independent phase. They keep sequencing, integration, shared verification and delivery with the coordinator.
+The existing workflow owners select these roles: `just-do-it` delegates bounded implementation and investigation, `grilling` delegates factual questions, and `code-review` delegates simplification followed by independent standards and requirements/correctness assessments. They keep sequencing, integration, shared verification and delivery with the coordinator.
 
 On a launcher exposing these roles, set `agent_type="investigator"` or `agent_type="implementer"` on `spawn_agent`. Supply task-specific context, for example:
 
@@ -44,7 +44,7 @@ Evidence: <local reproduction output and relevant source paths>.
 
 The role definition supplies reusable behavior, skill references, boundaries and expected outputs. A task name alone does not select a role. Report missing roles instead of rebuilding their prompts or changing live settings; continue suitable work locally. For a user-selected model exception, use the explicit settings route above rather than pretending a pinned role changed.
 
-Use `findings_reviewer` only for an authorized findings-only review in fresh context, never for a delegated until-clean workflow. Its regular file is `orchestration/findings-reviewer.toml`; the standalone `findings-reviewer.config.toml` profile links to that same definition, including its skill exclusions and memory settings. The named-role loader rejects a file symlink as its final path component, so role paths go through the linked directory. This does not replace the native and independent phases required by `code-review`.
+Use `findings_reviewer` only for an authorized findings-only review in fresh context, never for a delegated until-clean workflow. Its regular file is `orchestration/findings-reviewer.toml`; the standalone `findings-reviewer.config.toml` profile links to that same definition, including its skill exclusions and memory settings. The named-role loader rejects a file symlink as its final path component, so role paths go through the linked directory. Use separate fresh reviewer invocations for the two assessments required by `code-review`; the coordinator owns their integration and repairs.
 
 ## What installation changes
 

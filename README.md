@@ -106,27 +106,9 @@ implementation and tests, Luna for investigation, and Astra for independent
 findings-only review. It does not edit your base configuration or install global
 agents. See [Codex orchestration](codex/README.md) for the role settings and limits.
 
-Codex has an opt-in `findings-reviewer` CLI profile for inspect-and-report
-sessions. After installation, use `codex --profile findings-reviewer review
---base main`, or the normal `skills/code-review/scripts/codex-review` helper,
-which selects the preset automatically when its file is installed in
-`CODEX_HOME` (default `~/.codex`). Without that file the helper keeps native
-review's normal configuration; `--dry-run` shows the selected command. It hides
-a short list of coordination, publication, and handoff
-skills by name, while keeping domain skills discoverable on demand.
-Reviewers return candidates; coordinators apply code-review's triage instructions. Coordinators and delegated until-clean
-workflows keep their normal profile; in-chat spawn tools without profile
-selection are not filtered. This is a relevance filter, not a permission
-boundary, and it does not override the selected model or sandbox.
+Codex has an opt-in `findings-reviewer` profile for inspect-and-report sessions. Use `codex --profile findings-reviewer review --base main` for a specifically requested native review. The profile hides coordination and publication skills while retaining domain guidance. Reviewers report evidence; the coordinator owns decisions, repairs and delivery.
 
-**Honesty about harness coverage:** the installer handles four link-based
-harnesses plus a locally running OpenClaw Gateway. The skills themselves were
-written and exercised almost entirely on Codex and Claude Code, and several
-name those harnesses directly. `code-review` picks between `codex review` and
-Claude Code's built-in review, `session-recall` indexes Codex and Claude session
-logs, and `ask-claude` / `ask-codex` open cross-harness ACP sessions. On opencode, Pi,
-and OpenClaw they will install; whether every one of them *works* is not
-something this repo proves.
+The installers support Codex, Claude Code, opencode, Pi and a local OpenClaw Gateway. The skills have mainly been exercised on Codex and Claude Code; installation alone does not prove another harness's agent dispatch or review behavior.
 
 ## What a skill actually is
 
@@ -161,10 +143,7 @@ Two ways one gets used:
   write durable planning files, or run a long external loop, so Codex waits for
   you to name them.
 
-Triage, blocked checks and pass recording are references inside `code-review`, linked where the workflow uses them. They are not separate skills.
-
-Model-writing guidance and installer scripts live under `writing-for-agents`;
-the diff-rubbish lens lives under `code-review`. Neither is a separate skill.
+`code-review` keeps its normal workflow in one prompt. Model-writing guidance and installer scripts live under `writing-for-agents`.
 
 `coding-standards` brings personal engineering standards to a repository
 without turning every judgment call into a linter. `apply` prefers existing
@@ -190,8 +169,7 @@ produces one update notice during materialization.
 
 The skills are not a menu. They snap into the loop I actually run:
 
-1. **Find the thing.** `session-recall` for context I already had,
-   code-review's flow-map reference for a change I need to understand.
+1. **Find the thing.** `session-recall` for prior context; trace the relevant code and callers for the current change.
 2. **Brief it.** `grill-with-docs` pulls repo docs, code, and Obsidian notes in
    before the agent starts guessing. Use primary sources for questions outside the repo.
 3. **Make it grill me.** `grilling` until the undecided decisions are on the
@@ -203,15 +181,13 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 6. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-7. **Review it like I hate it.** `code-review` runs the native engine until
-   clean, then an independent cold reviewer until clean. the diff-rubbish lens
-   catches what the diff smuggled in.
+7. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs fresh standards and requirements/correctness reviewers in parallel.
 8. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 9. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
-A worked example: `code-review` runs native review until two passes are clean, then an independent review with a fresh reviewer. After each result, check the findings, record them through the CLI, fix worthwhile problems and repeat. The CLI derives ratings and checks saved limits. Finish with the relevant tests, an authorized push, and a summary of findings and code changes. Independent review defaults to one clean pass; the separately requested ClawSweeper path still requires two.
+For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Two fresh reviewers then assess the resulting diff. The coordinator confirms findings, fixes real problems and verifies the result, requesting focused follow-up only where evidence no longer applies. No findings database or native/cold pass sequence is required.
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
@@ -222,19 +198,13 @@ Every skill in the repo, once each.
 
 ### Review and PR delivery
 
-The distinction that matters: **native** reviews run the harness's own review
-engine, **cold** reviews run an independent subagent that was never told why the
-code looks the way it does.
+The simplifier edits within scope. Independent reviewers assess the result without inheriting implementation rationale. The coordinator resolves findings and verifies repairs.
 
 | Skill | What it does |
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
-| [`code-review`](skills/code-review/SKILL.md) | Entry point: runs the native until-clean phase, then the cold until-clean phase, on one frozen target. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changed code, then independently assesses standards and requirements/correctness and verifies confirmed repairs. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge, never on local commits. |
-
-Cold-review dispatch and its neutral checklist live in [code-review's internal brief](skills/code-review/references/cold-review.md); they are not a separate skill.
-
-Triage and blocked-check handling are now references in `code-review`; the former standalone skills are retired.
 
 ### Code quality and correctness
 
@@ -317,21 +287,12 @@ two reinstalls.
 
 ```sh
 ./tests/skills-test
-./tests/review-findings-test
 bun run validate:effect
 ```
 
-These check skill frontmatter, the handoff tmux helper, the `review-findings`
-CLI lifecycle, OpenClaw/ClawHub process behaviour, and the Effect-based
-TypeScript helpers. `bun run validate:effect` is lint, the skill layout lint
-(`bun run lint:skills`), typecheck, Effect diagnostics, and Vitest. CI runs the
-same set.
+These check skill metadata, materialization and command installation, handoff helpers, OpenClaw/ClawHub process behavior, and Effect-based TypeScript helpers. `bun run validate:effect` runs lint, skill layout checks, typechecking, Effect diagnostics and Vitest. Instruction behavior is validated with independent agent exercises.
 
-The repo-owned Effect SQL `review-findings` CLI is worth knowing about:
-[`skills/code-review/scripts/review-findings`](skills/code-review/scripts/review-findings)
-backs the review loops with a local SQLite store of findings, verification
-records, and scope baselines. It runs from that launcher against the repo's own
-Effect runtime. There is no separate global install.
+The former `review-findings` database workflow and `codex-review` wrapper are retired. Existing review databases remain historical data; the new workflow keeps relevant evidence with the task. Use the harness's own command for an explicitly requested native review.
 
 ## Contributing
 
