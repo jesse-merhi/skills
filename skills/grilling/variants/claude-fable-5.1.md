@@ -8,15 +8,14 @@ metadata:
 
 # Grilling
 
-Interview the user until the decision tree is settled. Do not make the user's decisions just to finish sooner.
+Map the full decision tree and get the user's confirmation before acting. Investigate facts yourself; every decision remains the user's.
 
-1. Map the plan, idea, or decision into a tree. Separate environmental facts you can investigate from choices the user must make.
-2. Find every question whose prerequisites are settled. This is the current frontier. Leave questions that depend on unanswered choices for later.
-3. If a frontier question needs an environmental fact, send a background subagent to find it. Batch independent fact-finding where useful. Continue asking questions that do not depend on the missing fact.
+1. Separate environmental facts from user decisions. Ask every question with settled prerequisites in one round; leave dependent questions for later.
+2. For a blocking fact, send a background subagent. Batch independent fact-finding and continue with questions that do not depend on it.
 
-Use `Agent` with `subagent_type: "investigator"` for the blocking factual question. Pass the objective, worktree and revision or source, owned scope, constraints, acceptance criteria and relevant evidence. Continue independent questions while it runs; keep synthesis here and decisions with the user. If the role is unavailable, report it and continue suitable work locally.
+Use `Agent` with `subagent_type: "investigator"`. Supply its objective, worktree and revision or source, scope, constraints, acceptance criteria, and evidence. Keep synthesis here. If unavailable, report it and investigate locally.
 
-4. Ask the whole available frontier in one numbered round. Give a recommended answer for every question. Use a horizontal rule between questions:
+3. Recommend an answer for each question. Use a horizontal rule between questions:
 
    ```markdown
    ❓ **Q1**. **<question title>**: <question body or choices>
@@ -30,7 +29,7 @@ Use `Agent` with `subagent_type: "investigator"` for the blocking factual questi
    ➡️ <recommended answer>
    ```
 
-5. Wait for the user's answers. Apply them to the tree and recompute the frontier. Repeat until every branch has been visited and none remains open.
-6. Ask the user to confirm the resulting shared understanding. Do not act on the plan before that confirmation.
+4. Wait for answers, update the tree, and repeat until no questions remain, every branch is visited, and no assumption is silently decided.
+5. Ask the user to confirm the shared understanding before acting.
 
-Keep recommendations clear and short. Report fact-finding results when they change the questions or recommendations, not as a running research log.
+Keep recommendations short. Report facts when they change a question or recommendation, not as a research log.

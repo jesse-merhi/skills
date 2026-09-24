@@ -72,8 +72,8 @@ Keep an export on another device or a backed-up drive for that risk.
 ## One repository base, all model variants
 
 Each retained repository skill has a regular `BASE.md`: the human-owned baseline.
-Read that base and the model's writing guide, then morph it into a complete variant.
-The runtime `SKILL.md` remains a link to the GPT-5.6 variant; the installer selects
+Read that base and the applicable writing guide, then adapt each complete profile.
+Astra, Sol and Luna share `variants/gpt-6.md`. The runtime `SKILL.md` links to it; the installer selects
 variants and excludes the base. Neither the editor nor installer calls a model.
 
 New reviews start from `BASE.md`. Legacy or external sources without one retain
@@ -82,7 +82,7 @@ review states and histories are never reseeded. The base is edited through the
 master editor, not a second supporting-file editor.
 
 For this first review, the existing default prompts are already model-neutral in
-their wording. Independent comparison against all four profiles identifies
+their wording. Independent comparison against all supported profiles identifies
 behavioral differences; these appear under **Behavior differs across variants**
 instead of being silently resolved. The master remains readable and each exact
 original variant is available read-only. This is not an automatic text generator.
@@ -160,7 +160,7 @@ bun packages/skill-review/apply.mjs rollback --plan /private/new-plan
 ```
 
 Prepare writes the exact pinned master into `candidate/BASE.md`. Read that file and
-the model guides to author all four complete variants; reconcile supporting-file
+the model guides to author every supported complete variant; reconcile supporting-file
 drift and independently exercise the results. Apply rejects a missing, symlinked or
 changed base and rechecks the live draft revision and source fingerprint. It keeps
 the prior source directory and a transaction record; rollback refuses later source

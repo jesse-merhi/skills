@@ -23,16 +23,10 @@ const LockOwnerJson = Schema.fromJsonString(Schema.Struct({
 
 export const profiles = [
   {
-    id: "gpt-5.6",
-    family: "openai-gpt",
-    version: [5, 6],
-    matches: /^(?:openai\/)?gpt-5\.6(?:-(?:sol|terra|luna))?(?:-\d{4}-\d{2}-\d{2})?$/i,
-  },
-  {
-    id: "gpt-6-astra",
+    id: "gpt-6",
     family: "openai-gpt",
     version: [6, 0],
-    matches: /^(?:gpt-6-astra(?:-\d{4}-\d{2}-\d{2})?|astra)$/i,
+    matches: /^(?:gpt-6(?:-(?:astra|sol|luna))?(?:-\d{4}-\d{2}-\d{2})?|astra|sol|luna)$/i,
   },
   {
     id: "claude-fable-5.1",
@@ -41,10 +35,10 @@ export const profiles = [
     matches: /^(?:(?:anthropic\/)?claude-fable-5(?:(?:[.-]1)(?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
   },
   {
-    id: "claude-opus-5",
+    id: "claude-opus-5.5",
     family: "anthropic-opus",
-    version: [5, 0],
-    matches: /^(?:claude-opus-5(?:-\d{8})?|opus)$/i,
+    version: [5, 5],
+    matches: /^(?:claude-opus-5[.-]5(?:-\d{8})?|opus)$/i,
   },
 ];
 
@@ -88,7 +82,7 @@ export function resolveProfile(model) {
   }
   const requestedVersion = modelVersion(model, family);
   if (exact === undefined && (requestedVersion === undefined || compareVersions(requestedVersion, earliest.version) < 0)) {
-    throw new Error(`model ${model} is older than the earliest supported ${family} profile`);
+    throw new Error(`model ${model} is older than the earliest supported ${family} profile (${earliest.id}); choose a supported model before installing skills`);
   }
   const fallback = exact ?? familyProfiles.findLast((profile) => compareVersions(profile.version, requestedVersion) <= 0);
   if (fallback === undefined) throw new Error(`no compatible skill profile is available for model ${model}`);
@@ -190,7 +184,7 @@ export function discoverSkills(sourceRoot) {
   const found = [];
   const visit = (directory) => {
     const skillFile = path.join(directory, "SKILL.md");
-    if (fs.existsSync(skillFile)) {
+    if (fs.lstatSync(skillFile, { throwIfNoEntry: false }) !== undefined) {
       found.push({ directory, name: parseSkillName(skillFile) });
       return;
     }
@@ -217,14 +211,7 @@ function availableVariant(skill, profile) {
 export function selectVariant(skill, requestedProfile) {
   const exact = availableVariant(skill, requestedProfile);
   if (exact !== undefined) return { path: exact, profile: requestedProfile };
-  const fallback = profiles
-    .filter((profile) => profile.family === requestedProfile.family && compareVersions(profile.version, requestedProfile.version) <= 0)
-    .sort((left, right) => compareVersions(right.version, left.version))
-    .find((profile) => availableVariant(skill, profile) !== undefined);
-  if (fallback === undefined) {
-    throw new Error(`${skill.name} has no ${requestedProfile.family} variant`);
-  }
-  return { path: availableVariant(skill, fallback), profile: fallback };
+  throw new Error(`${skill.name} has no ${requestedProfile.family} variant`);
 }
 
 function materializeSharedEntries(skill, outputDirectory) {
@@ -295,11 +282,10 @@ export function planSkillVariants({ sourceRoot, model, requireExact = false, ski
   }
   const skills = discovered.filter((skill) => skillNames === undefined || skillNames.includes(skill.name))
     .map((skill) => ({ ...skill, selection: selectVariant(skill, profile) }));
-  const fallbackSkills = skills.filter((skill) => skill.selection.profile.id !== profile.id).map((skill) => skill.name);
-  if (requireExact && (!exact || fallbackSkills.length > 0)) {
+  if (requireExact && !exact) {
     throw new Error(`complete exact skill coverage is required for ${model}`);
   }
-  return { exact, profile, skills, fallbackSkills, sourceRoot: resolvedSource };
+  return { exact, profile, skills, sourceRoot: resolvedSource };
 }
 
 export function assertTargetedView(outputRoot, sourceRoot, profile, skillNames) {
@@ -307,12 +293,12 @@ export function assertTargetedView(outputRoot, sourceRoot, profile, skillNames) 
   if (!fs.existsSync(path.join(outputRoot, MARKER))) throw new Error("targeted installation requires an existing managed view");
   const marker = Schema.decodeUnknownSync(MarkerJson)(fs.readFileSync(path.join(outputRoot, MARKER), "utf8"));
   if (marker.sourceRoot !== sourceRoot || marker.profile !== profile) {
-    throw new Error("targeted installation cannot switch model or source; use a full installation");
+    throw new Error("targeted installation cannot switch profile or source; use a full installation");
   }
 }
 
 export function materializeSkillVariants({ sourceRoot, outputRoot, model, previousSourceRoot, sessionId, requireExact = false, skillNames }) {
-  const { exact, profile, skills, fallbackSkills, sourceRoot: resolvedSource } = planSkillVariants({ sourceRoot, model, requireExact, skillNames });
+  const { exact, profile, skills, sourceRoot: resolvedSource } = planSkillVariants({ sourceRoot, model, requireExact, skillNames });
   const resolvedOutput = path.resolve(outputRoot);
   withOutputLock(resolvedOutput, () => {
     assertManagedOutput(resolvedOutput, resolvedSource, previousSourceRoot);
@@ -340,13 +326,11 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
     }
   });
 
-  const stale = !exact || fallbackSkills.length > 0;
-  const detail = fallbackSkills.length > 0 ? `; missing variants: ${fallbackSkills.join(", ")}` : "";
-  const notice = stale
-    ? `Skill variants have not been updated for ${model}; using ${profile.id}${detail}. Tell the user once in this session, then continue.`
+  const notice = !exact
+    ? `Skill variants have not been updated for ${model}; using ${profile.id}. Tell the user once in this session, then continue.`
     : undefined;
   return {
-    exact: !stale,
+    exact,
     model,
     notice: noticeOnce({ notice, outputRoot: resolvedOutput, sessionId }),
     profile: profile.id,

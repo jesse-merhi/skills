@@ -132,10 +132,15 @@ for path in sorted(skill_paths):
 
     if not path.is_symlink():
         errors.append(f"root SKILL.md must select the default variant by symlink: {path}")
-    elif os.readlink(path) != "variants/gpt-5.6.md":
+    elif os.readlink(path) != "variants/gpt-6.md":
         errors.append(f"unexpected default variant link: {path}: {os.readlink(path)!r}")
 
-    for profile in ("gpt-5.6", "gpt-6-astra", "claude-fable-5.1", "claude-opus-5"):
+    for retired in ("gpt-6-astra", "gpt-6-sol", "gpt-6-luna"):
+        variant = path.parent / "variants" / f"{retired}.md"
+        if variant.exists() or variant.is_symlink():
+            errors.append(f"retired model variant still exists: {variant}")
+
+    for profile in ("gpt-6", "claude-fable-5.1", "claude-opus-5.5"):
         variant = path.parent / "variants" / f"{profile}.md"
         if not variant.is_file():
             errors.append(f"missing model variant: {variant}")
@@ -328,14 +333,14 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
       "$helper" \
         --file "$handoff" \
         --focus $'one\ntwo' \
-        --model gpt-5.6 \
+        --model gpt-6-astra \
         --reasoning-effort high \
         --cd "$ROOT_DIR" \
         --relationship aside \
         --dry-run
   )"
   assert_output_contains "$output" $'one\ntwo'
-  assert_output_contains "$output" "--model gpt-5.6 --reasoning-effort high"
+  assert_output_contains "$output" "--model gpt-6-astra --reasoning-effort high"
 
   output="$(
     TMUX=/tmp/fake \
@@ -506,10 +511,10 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "Read the handoff document before acting"
   assert_codex_invocation 1 new "" medium
 
-  output="$(PATH="$tmp/fake-bin:$PATH" "$helper" --run-codex --file "$handoff" --cd "$ROOT_DIR" --mode fork-last --model gpt-5.6)"
+  output="$(PATH="$tmp/fake-bin:$PATH" "$helper" --run-codex --file "$handoff" --cd "$ROOT_DIR" --mode fork-last --model gpt-6-astra)"
   assert_output_contains "$output" "fake-codex: fork --last --cd $ROOT_DIR"
-  assert_output_contains "$output" '--model gpt-5.6 -c model_reasoning_effort="medium"'
-  assert_codex_invocation 2 fork-last gpt-5.6 medium
+  assert_output_contains "$output" '--model gpt-6-astra -c model_reasoning_effort="medium"'
+  assert_codex_invocation 2 fork-last gpt-6-astra medium
 
   output="$(PATH="$tmp/fake-bin:$PATH" "$helper" --run-codex --file "$handoff" --cd "$ROOT_DIR" --reasoning-effort high)"
   assert_output_not_contains "$output" "--model"
@@ -524,9 +529,9 @@ test_handoff_tmux_helper_builds_tmux_window_command() {
   assert_output_contains "$output" "Opened tmux window handoff"
   assert_codex_invocation 5 fork-last "" medium
 
-  output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --mode fork-last --model gpt-5.6)"
+  output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --mode fork-last --model gpt-6-astra)"
   assert_output_contains "$output" "Opened tmux window handoff"
-  assert_codex_invocation 6 fork-last gpt-5.6 medium
+  assert_codex_invocation 6 fork-last gpt-6-astra medium
 
   output="$(TMUX=/tmp/fake PATH="$tmp/fake-bin:$PATH" "$helper" --file "$handoff" --cd "$ROOT_DIR" --relationship aside --reasoning-effort high)"
   assert_output_contains "$output" "Opened tmux window handoff"

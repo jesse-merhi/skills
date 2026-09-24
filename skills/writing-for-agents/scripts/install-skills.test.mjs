@@ -15,7 +15,7 @@ function fixture(t) {
     const skill = path.join(sourceRoot, name);
     fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
     fs.writeFileSync(path.join(skill, "SKILL.md"), `---\nname: ${path.basename(name)}\ndescription: fixture\n---\n`);
-    for (const model of ["gpt-5.6", "gpt-6-astra", "claude-fable-5.1", "claude-opus-5"]) {
+    for (const model of ["gpt-6", "claude-fable-5.1", "claude-opus-5.5"]) {
       fs.writeFileSync(path.join(skill, "variants", `${model}.md`), `selected:${model}\n`);
     }
   }
@@ -181,8 +181,8 @@ test("Codex and Claude share repo-owned commands without retargeting or deleting
   assert.equal(fs.readlinkSync(alias), original);
   assert.equal(fs.lstatSync(waitAlias).ino, waitInode);
   assert.equal(result.commandsRetired, 0);
-  assert.equal(fs.readFileSync(path.join(current.root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:gpt-6-astra\n");
-  assert.equal(fs.readFileSync(path.join(claude.root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:claude-opus-5\n");
+  assert.equal(fs.readFileSync(path.join(current.root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:gpt-6\n");
+  assert.equal(fs.readFileSync(path.join(claude.root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
 });
 
 test("full installs retire stale managed aliases but preserve foreign replacements and third-party skills", (context) => {
@@ -203,6 +203,51 @@ test("full installs retire stale managed aliases but preserve foreign replacemen
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "utf8"), "personal");
 });
 
+test("missing shared prompt preserves installed skills and commands", (context) => {
+  const current = commandFixture(context);
+  for (const name of ["cleanup", "wait-efficiently"]) {
+    const directory = path.join(current.sourceRoot, name);
+    const entrypoint = path.join(directory, "SKILL.md");
+    fs.unlinkSync(entrypoint);
+    fs.writeFileSync(path.join(directory, "variants", "gpt-6.md"), `---\nname: ${name}\ndescription: fixture\n---\nselected:gpt-6\n`);
+    fs.symlinkSync("variants/gpt-6.md", entrypoint);
+  }
+  const config = path.join(current.root, "config.toml");
+  fs.mkdirSync(current.root);
+  fs.writeFileSync(config, 'model = "gpt-6-astra"\n');
+  const first = installSkills({ ...current, harness: "codex", model: "astra" });
+  assert.equal(first.commands.length, 3);
+  const prompt = path.join(current.root, "skills", "cleanup", "SKILL.md");
+  const promptBefore = fs.readFileSync(prompt, "utf8");
+  const link = path.join(current.root, "skills", "cleanup");
+  const linkBefore = fs.readlinkSync(link);
+  const alias = path.join(current.binDir, "skill-cleanup-inventory");
+  const aliasBefore = fs.readlinkSync(alias);
+  const launcher = path.join(current.binDir, ".jesse-merhi-skills-commands", "skill-cleanup-inventory");
+  const launcherBefore = fs.readFileSync(launcher, "utf8");
+  const manifest = path.join(current.binDir, ".jesse-merhi-skills-commands", "manifest.json");
+  const manifestBefore = fs.readFileSync(manifest, "utf8");
+  const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+  const markerBefore = fs.readFileSync(marker, "utf8");
+
+  fs.writeFileSync(path.join(current.sourceRoot, "wait-efficiently", "variants", "gpt-6.md"), "---\nname: wait-efficiently\ndescription: fixture\n---\nupdated\n");
+  const missing = path.join(current.sourceRoot, "cleanup", "variants", "gpt-6.md");
+  fs.unlinkSync(missing);
+  const entrypoint = path.join(current.sourceRoot, "cleanup", "SKILL.md");
+  assert.equal(fs.lstatSync(entrypoint).isSymbolicLink(), true);
+  assert.equal(fs.existsSync(entrypoint), false);
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), { code: "ENOENT", path: path.join(fs.realpathSync(path.dirname(entrypoint)), "SKILL.md") });
+
+  assert.equal(fs.readFileSync(prompt, "utf8"), promptBefore);
+  assert.equal(fs.readlinkSync(link), linkBefore);
+  assert.equal(fs.readlinkSync(alias), aliasBefore);
+  assert.equal(fs.readFileSync(launcher, "utf8"), launcherBefore);
+  assert.equal(fs.readFileSync(manifest, "utf8"), manifestBefore);
+  assert.equal(fs.readFileSync(marker, "utf8"), markerBefore);
+  assert.equal(fs.readFileSync(path.join(current.root, "skills", "wait-efficiently", "SKILL.md"), "utf8").endsWith("selected:gpt-6\n"), true);
+  assert.equal(fs.readFileSync(config, "utf8"), 'model = "gpt-6-astra"\n');
+});
+
 test("another clone cannot claim shared commands without explicit full ownership transfer", (context) => {
   const current = commandFixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });
@@ -215,7 +260,7 @@ test("another clone cannot claim shared commands without explicit full ownership
   assert.equal(result.commandsChanged, 3);
   assert.ok(result.commands.every(command => command.target.startsWith(fs.realpathSync(sourceRoot) + path.sep)));
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /commands owned by another source/);
-  assert.equal(selected(current.root), "selected:gpt-6-astra\n");
+  assert.equal(selected(current.root), "selected:gpt-6\n");
 });
 
 test("missing entrypoints fail preflight rather than installing a broken command", (context) => {
@@ -230,19 +275,21 @@ test("modified owned launchers and malformed manifests are preserved", (context)
   for (const kind of ["launcher", "manifest"]) {
     const current = commandFixture(context);
     installSkills({ ...current, harness: "codex", model: "astra" });
+    fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
     const owner = path.join(current.binDir, ".jesse-merhi-skills-commands");
     const file = path.join(owner, kind === "launcher" ? "skill-cleanup-inventory" : "manifest.json");
     const contents = kind === "launcher" ? "user changes\n" : '{"schemaVersion":1,"sourceRoot":"/elsewhere","commands":[{"name":"../escape","skill":"cleanup","target":"/bin/sh","runtime":[]}]}';
     fs.writeFileSync(file, contents);
-    assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6" }));
+    assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }));
     assert.equal(fs.readFileSync(file, "utf8"), contents);
-    assert.equal(selected(current.root), "selected:gpt-6-astra\n");
+    assert.equal(selected(current.root), "selected:gpt-6\n");
   }
 });
 
 test("command publication failure restores commands and leaves prompts unchanged", (context) => {
   const current = commandFixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });
+  fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
   const alias = path.join(current.binDir, "skill-cleanup-inventory");
   fs.unlinkSync(alias);
   const originalRename = fs.renameSync;
@@ -250,8 +297,8 @@ test("command publication failure restores commands and leaves prompts unchanged
     if (source.includes(".jesse-merhi-skills-commands.staging-")) throw new Error("injected command publication failure");
     return originalRename(source, destination);
   });
-  assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6" }), /injected command publication failure/);
-  assert.equal(selected(current.root), "selected:gpt-6-astra\n");
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), /injected command publication failure/);
+  assert.equal(selected(current.root), "selected:gpt-6\n");
   assert.equal(fs.lstatSync(alias, { throwIfNoEntry: false }), undefined);
   assert.match(fs.readFileSync(path.join(current.binDir, "quiet-wait"), "utf8"), /quiet-wait/);
   assert.equal(fs.readdirSync(current.binDir).some(name => name.includes(".previous-") || name.includes(".staging-")), false);
@@ -260,6 +307,7 @@ test("command publication failure restores commands and leaves prompts unchanged
 test("view failure rolls back new aliases and restores retired aliases and the command catalog", (context) => {
   const current = commandFixture(context);
   const first = installSkills({ ...current, harness: "codex", model: "astra" });
+  fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
   const alias = path.join(current.binDir, "skill-cleanup-inventory");
   fs.unlinkSync(alias);
   const manifest = path.join(current.binDir, ".jesse-merhi-skills-commands", "manifest.json");
@@ -270,8 +318,8 @@ test("view failure rolls back new aliases and restores retired aliases and the c
     if (source.startsWith(first.viewRoot + ".staging-") && destination === first.viewRoot) throw new Error("injected view failure");
     return originalRename(source, destination);
   });
-  assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6" }), /injected view failure/);
-  assert.equal(selected(current.root), "selected:gpt-6-astra\n");
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol" }), /injected view failure/);
+  assert.equal(selected(current.root), "selected:gpt-6\n");
   assert.equal(fs.lstatSync(alias, { throwIfNoEntry: false }), undefined);
   assert.equal(fs.readFileSync(manifest, "utf8"), before);
   assert.equal(fs.readlinkSync(path.join(current.binDir, "quiet-wait")), path.join(current.binDir, ".jesse-merhi-skills-commands", "quiet-wait"));
@@ -329,8 +377,8 @@ test("concurrent harness installs serialize command publication under one owner"
   if (barrierError !== undefined) throw barrierError;
   for (const run of runs) assert.equal(run.code, 0, run.stderr);
   assert.deepEqual(runs.map(run => JSON.parse(run.stdout).commandsChanged).sort(), [0, 3]);
-  assert.equal(fs.readFileSync(path.join(options[0].root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:gpt-6-astra\n");
-  assert.equal(fs.readFileSync(path.join(options[1].root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:claude-opus-5\n");
+  assert.equal(fs.readFileSync(path.join(options[0].root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:gpt-6\n");
+  assert.equal(fs.readFileSync(path.join(options[1].root, "skills", "cleanup", "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
   assert.equal(fs.readdirSync(current.binDir).some(name => name.endsWith(".lock") || name.includes(".previous-")), false);
 });
 
@@ -348,13 +396,13 @@ test("a failed first view publication removes the new command owner and aliases"
   assert.equal(fs.existsSync(view), false);
 });
 
-test("targeted installation preserves other prompts and rejects partial model switches", (context) => {
+test("targeted installation preserves other prompts across actual GPT-6 tier switches", (context) => {
   const current = fixture(context);
   installSkills({ ...current, harness: "codex", model: "astra" });
   const beta = path.join(current.root, "skills", "beta", "SKILL.md");
   const originalBeta = fs.readFileSync(beta, "utf8");
   for (const name of ["alpha", "group/beta"]) {
-    fs.writeFileSync(path.join(current.sourceRoot, name, "variants/gpt-6-astra.md"), "updated\n");
+    fs.writeFileSync(path.join(current.sourceRoot, name, "variants/gpt-6.md"), "updated\n");
   }
   const options = { ...current, harness: "codex", model: "astra", skillNames: ["alpha"] };
   const result = installSkills(options);
@@ -362,7 +410,10 @@ test("targeted installation preserves other prompts and rejects partial model sw
   assert.equal(result.linksRetired, 0);
   assert.equal(selected(current.root), "updated\n");
   assert.equal(fs.readFileSync(beta, "utf8"), originalBeta);
-  assert.throws(() => installSkills({ ...options, model: "gpt-5.6" }), /cannot switch model or source/);
+  const switched = installSkills({ ...options, model: "sol", requireExact: true });
+  assert.equal(switched.profile, "gpt-6");
+  assert.equal(switched.exact, true);
+  assert.equal(selected(current.root), "updated\n");
   assert.throws(() => installSkills({ ...options, skillNames: ["missing"] }), /known skill names/);
   assert.throws(() => installSkills({ ...options, skillNames: [] }), /known skill names/);
   assert.equal(fs.readFileSync(beta, "utf8"), originalBeta);
@@ -378,42 +429,59 @@ test("switches Fable to Opus through stable links without changing other skills 
   assert.equal(selected(current.root), "selected:claude-fable-5.1\n");
   const before = fs.readlinkSync(path.join(current.root, "skills", "alpha"));
   const result = installSkills({ ...current, harness: "claude", model: "opus", requireExact: true });
-  assert.equal(selected(current.root), "selected:claude-opus-5\n");
+  assert.equal(selected(current.root), "selected:claude-opus-5.5\n");
   assert.equal(fs.readlinkSync(path.join(current.root, "skills", "alpha")), before);
   assert.equal(result.linksChanged, 0);
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "utf8"), "my instructions");
   assert.equal(fs.readFileSync(path.join(current.root, "settings.json"), "utf8"), '{"model":"claude-fable-5[1m]"}\n');
 });
 
-test("keeps different harness roots isolated while switching GPT profiles", (t) => {
+test("keeps different harness roots isolated while switching actual GPT-6 tiers", (t) => {
   const current = fixture(t);
   const second = path.join(current.temporary, "another-codex");
-  installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
-  installSkills({ ...current, root: second, harness: "codex", model: "gpt-5.6" });
+  installSkills({ ...current, harness: "codex", model: "gpt-6-astra" });
+  installSkills({ ...current, root: second, harness: "codex", model: "gpt-6-astra" });
+  fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
+  installSkills({ ...current, harness: "codex", model: "openai/gpt-6-sol-2026-09-23", requireExact: true });
+  assert.equal(selected(current.root), "updated\n");
+  assert.equal(selected(second), "selected:gpt-6\n");
+  installSkills({ ...current, harness: "codex", model: "luna", requireExact: true });
+  assert.equal(selected(current.root), "updated\n");
+  assert.equal(selected(second), "selected:gpt-6\n");
+});
+
+test("installer rejects a missing shared variant without changing an existing view", (t) => {
+  const current = fixture(t);
   installSkills({ ...current, harness: "codex", model: "astra" });
-  assert.equal(selected(current.root), "selected:gpt-6-astra\n");
-  assert.equal(selected(second), "selected:gpt-5.6\n");
+  fs.unlinkSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6.md"));
+  fs.writeFileSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6-luna.md"), "legacy\n");
+  assert.throws(() => installSkills({
+    ...current, harness: "codex", model: "luna",
+  }), /alpha has no openai-gpt variant/);
+  assert.equal(selected(current.root), "selected:gpt-6\n");
+  assert.equal(fs.readFileSync(path.join(current.root, "skills", "beta", "SKILL.md"), "utf8"), "selected:gpt-6\n");
 });
 
 test("refuses collisions before changing any installed prompt or link", (t) => {
   const current = fixture(t);
-  installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  installSkills({ ...current, harness: "codex", model: "sol" });
+  fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
   fs.unlinkSync(path.join(current.root, "skills", "beta"));
   fs.mkdirSync(path.join(current.root, "skills", "beta"));
   fs.writeFileSync(path.join(current.root, "skills", "beta", "SKILL.md"), "user copy");
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /preserving existing local skill/);
-  assert.equal(selected(current.root), "selected:gpt-5.6\n");
+  assert.equal(selected(current.root), "selected:gpt-6\n");
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "beta", "SKILL.md"), "utf8"), "user copy");
 });
 
 test("dry run validates coverage and collisions without creating an installation", (t) => {
   const current = fixture(t);
   const result = installSkills({ ...current, harness: "codex", model: "astra", dryRun: true, requireExact: true });
-  assert.equal(result.profile, "gpt-6-astra");
+  assert.equal(result.profile, "gpt-6");
   assert.equal(result.linksToChange, 2);
   assert.equal(fs.existsSync(current.root), false);
-  fs.unlinkSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6-astra.md"));
-  assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra", dryRun: true, requireExact: true }), /complete exact skill coverage/);
+  fs.unlinkSync(path.join(current.sourceRoot, "alpha", "variants", "gpt-6.md"));
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol", dryRun: true, requireExact: true }), /alpha has no openai-gpt variant/);
   assert.equal(fs.existsSync(current.root), false);
 });
 
@@ -422,6 +490,118 @@ test("rejects a model from the other harness without creating files", (t) => {
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "opus" }), /not a supported codex model/);
   assert.equal(fs.existsSync(current.root), false);
 });
+
+test("rejects retired GPT-5.6 identifiers before creating an installation", (t) => {
+  const current = fixture(t);
+  for (const model of ["gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "openai/gpt-5.6", "azure-openai/gpt-5.6-sol-2026-09-01"]) {
+    assert.throws(() => installSkills({ ...current, harness: "codex", model }), /earliest supported openai-gpt profile \(gpt-6\)/);
+    assert.equal(fs.existsSync(current.root), false);
+    assert.equal(fs.existsSync(current.binDir), false);
+  }
+});
+
+test("migrates a stored GPT-5.6 view through stable links without changing model settings", (t) => {
+  const current = fixture(t);
+  const first = installSkills({ ...current, harness: "codex", model: "astra" });
+  const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+  const legacyMarker = JSON.stringify({ schemaVersion: 1, sourceRoot: fs.realpathSync(current.sourceRoot), profile: "gpt-5.6" }) + "\n";
+  fs.writeFileSync(marker, legacyMarker);
+  for (const name of ["alpha", "beta"]) fs.writeFileSync(path.join(first.viewRoot, name, "SKILL.md"), "selected:gpt-5.6\n");
+  const config = path.join(current.root, "config.toml");
+  const settings = 'model = "gpt-5.6-sol"\n';
+  fs.writeFileSync(config, settings);
+  const alpha = path.join(current.root, "skills", "alpha");
+  const originalLink = fs.readlinkSync(alpha);
+
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "gpt-5.6-sol" }), /earliest supported/);
+  assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol", skillNames: ["alpha"] }), /cannot switch profile or source/);
+  assert.equal(selected(current.root), "selected:gpt-5.6\n");
+  assert.equal(fs.readFileSync(marker, "utf8"), legacyMarker);
+
+  const migrated = installSkills({ ...current, harness: "codex", model: "sol", requireExact: true });
+  assert.equal(migrated.exact, true);
+  assert.equal(migrated.profile, "gpt-6");
+  assert.equal(migrated.linksChanged, 0);
+  assert.equal(fs.readlinkSync(alpha), originalLink);
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:gpt-6\n");
+  }
+  assert.equal(JSON.parse(fs.readFileSync(marker, "utf8")).profile, "gpt-6");
+  assert.equal(fs.readFileSync(config, "utf8"), settings);
+});
+
+test("rejects retired Opus identifiers before creating an installation", (t) => {
+  const current = fixture(t);
+  for (const model of ["claude-opus-5", "anthropic/claude-opus-5", "claude-opus-5-20260901", "claude-opus-5.1"]) {
+    assert.throws(() => installSkills({ ...current, harness: "claude", model }), /earliest supported anthropic-opus profile \(claude-opus-5\.5\)/);
+    assert.equal(fs.existsSync(current.root), false);
+    assert.equal(fs.existsSync(current.binDir), false);
+  }
+});
+
+test("upgrades a stored Opus 5 view only through a full install, preserving links and settings", (t) => {
+  const current = fixture(t);
+  const first = installSkills({ ...current, harness: "claude", model: "opus" });
+  const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+  const oldMarker = JSON.stringify({ schemaVersion: 1, sourceRoot: fs.realpathSync(current.sourceRoot), profile: "claude-opus-5" }) + "\n";
+  fs.writeFileSync(marker, oldMarker);
+  for (const name of ["alpha", "beta"]) fs.writeFileSync(path.join(first.viewRoot, name, "SKILL.md"), "selected:claude-opus-5\n");
+  const config = path.join(current.root, "settings.json");
+  const settings = '{"model":"claude-opus-5","effortLevel":"xhigh"}\n';
+  fs.writeFileSync(config, settings);
+  const alpha = path.join(current.root, "skills", "alpha");
+  const originalLink = fs.readlinkSync(alpha);
+
+  assert.throws(() => installSkills({ ...current, harness: "claude", model: "claude-opus-5" }), /earliest supported/);
+  assert.throws(() => installSkills({ ...current, harness: "claude", model: "opus", skillNames: ["alpha"] }), /cannot switch profile or source; use a full installation/);
+  assert.equal(fs.readFileSync(marker, "utf8"), oldMarker);
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:claude-opus-5\n");
+  }
+
+  const migrated = installSkills({ ...current, harness: "claude", model: "claude-opus-5-5", requireExact: true });
+  assert.equal(migrated.exact, true);
+  assert.equal(migrated.profile, "claude-opus-5.5");
+  assert.equal(migrated.linksChanged, 0);
+  assert.equal(fs.readlinkSync(alpha), originalLink);
+  for (const name of ["alpha", "beta"]) {
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:claude-opus-5.5\n");
+  }
+  assert.equal(JSON.parse(fs.readFileSync(marker, "utf8")).profile, "claude-opus-5.5");
+  assert.equal(fs.readFileSync(config, "utf8"), settings);
+});
+
+for (const oldProfile of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]) {
+  test(`migrates the managed ${oldProfile} view only through a full install`, (t) => {
+    const current = fixture(t);
+    const first = installSkills({ ...current, harness: "codex", model: oldProfile });
+    const marker = path.join(first.viewRoot, ".skill-variant-view.json");
+    const oldMarker = JSON.stringify({ schemaVersion: 1, sourceRoot: fs.realpathSync(current.sourceRoot), profile: oldProfile }) + "\n";
+    fs.writeFileSync(marker, oldMarker);
+    for (const name of ["alpha", "beta"]) fs.writeFileSync(path.join(first.viewRoot, name, "SKILL.md"), `selected:${oldProfile}\n`);
+    const settings = `model = "${oldProfile}"\nmodel_reasoning_effort = "high"\n`;
+    const config = path.join(current.root, "config.toml");
+    fs.writeFileSync(config, settings);
+    const alpha = path.join(current.root, "skills", "alpha");
+    const originalLink = fs.readlinkSync(alpha);
+
+    assert.throws(() => installSkills({ ...current, harness: "codex", model: "sol", skillNames: ["alpha"] }), /cannot switch profile or source; use a full installation/);
+    assert.equal(fs.readFileSync(marker, "utf8"), oldMarker);
+    assert.equal(selected(current.root), `selected:${oldProfile}\n`);
+
+    const migrated = installSkills({ ...current, harness: "codex", model: "sol", requireExact: true });
+    assert.equal(migrated.profile, "gpt-6");
+    assert.equal(migrated.linksChanged, 0);
+    assert.equal(fs.readlinkSync(alpha), originalLink);
+    assert.equal(selected(current.root), "selected:gpt-6\n");
+    assert.equal(JSON.parse(fs.readFileSync(marker, "utf8")).profile, "gpt-6");
+    assert.equal(fs.readFileSync(config, "utf8"), settings);
+
+    const switched = installSkills({ ...current, harness: "codex", model: "luna", skillNames: ["alpha"], requireExact: true });
+    assert.equal(switched.profile, "gpt-6");
+    assert.equal(selected(current.root), "selected:gpt-6\n");
+  });
+}
 
 test("retires only links owned by this installation", (t) => {
   const current = fixture(t);
@@ -436,7 +616,8 @@ test("retires only links owned by this installation", (t) => {
 
 test("restores migrated and retired links when view publication fails", (t) => {
   const current = fixture(t);
-  const first = installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  const first = installSkills({ ...current, harness: "codex", model: "sol" });
+  fs.writeFileSync(path.join(current.sourceRoot, "alpha/variants/gpt-6.md"), "updated\n");
   const alpha = path.join(current.root, "skills", "alpha");
   const legacy = path.join(current.sourceRoot, "alpha");
   fs.unlinkSync(alpha);
@@ -452,12 +633,15 @@ test("restores migrated and retired links when view publication fails", (t) => {
   assert.throws(() => installSkills({ ...current, harness: "codex", model: "astra" }), /injected publication failure/);
   assert.equal(fs.readlinkSync(alpha), legacy);
   assert.equal(fs.readlinkSync(retired), path.join(first.viewRoot, "retired"));
-  assert.equal(fs.readFileSync(path.join(first.viewRoot, "alpha", "SKILL.md"), "utf8"), "selected:gpt-5.6\n");
+  assert.equal(fs.readFileSync(path.join(first.viewRoot, "alpha", "SKILL.md"), "utf8"), "selected:gpt-6\n");
 });
 
 test("keeps published prompts and links when the fallback notice cannot be saved", (t) => {
   const current = fixture(t);
-  const first = installSkills({ ...current, harness: "codex", model: "gpt-5.6" });
+  const first = installSkills({ ...current, harness: "codex", model: "sol" });
+  for (const name of ["alpha", "group/beta"]) {
+    fs.writeFileSync(path.join(current.sourceRoot, name, "variants/gpt-6.md"), "updated\n");
+  }
   const alpha = path.join(current.root, "skills", "alpha");
   fs.unlinkSync(alpha);
   fs.symlinkSync(path.join(current.sourceRoot, "alpha"), alpha);
@@ -469,11 +653,11 @@ test("keeps published prompts and links when the fallback notice cannot be saved
     return originalWrite(file, ...args);
   });
   const result = installSkills({ ...current, harness: "codex", model: "gpt-6.1", sessionId: "notice-failure" });
-  assert.equal(result.profile, "gpt-6-astra");
+  assert.equal(result.profile, "gpt-6");
   assert.match(result.notice, /gpt-6.1/);
   assert.equal(fs.readlinkSync(alpha), path.join(first.viewRoot, "alpha"));
   for (const name of ["alpha", "beta"]) {
-    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "selected:gpt-6-astra\n");
+    assert.equal(fs.readFileSync(path.join(current.root, "skills", name, "SKILL.md"), "utf8"), "updated\n");
   }
   assert.equal(fs.lstatSync(retired, { throwIfNoEntry: false }), undefined);
 });

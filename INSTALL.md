@@ -22,11 +22,21 @@ If you cannot determine the harness with confidence, ask the user before
 proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
-configuration, not from writing style. This repository supports GPT-5.6,
-GPT-6 Astra, Claude Fable 5.1, and Claude Opus 5. A newer model in a known family
+configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-6`
+skill profile; Claude Fable 5.1 and Opus 5.5 have separate profiles. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
-Installation stops on an unknown family. `--require-exact` also rejects any
-fallback, including a missing variant in one skill.
+Installation stops on an unknown family or a missing profile prompt.
+`--require-exact` also rejects model-version fallback.
+
+GPT-5.6 support is retired. To replace an old GPT-5.6 or per-model GPT-6 view,
+run the full installer with `--model gpt-6`, omitting `--skill`. Existing managed
+links stay stable while their copied prompts and profile marker are refreshed.
+The installer preserves model configuration and saved review history. Subsequent
+Astra, Sol and Luna selections use the same profile.
+
+Opus 5 is also retired. To upgrade its managed view, run the full installer with
+`--model claude-opus-5-5`, omitting `--skill`. The `opus` alias selects the same
+Opus 5.5 profile. Managed links stay stable; model settings remain user-owned.
 
 ## 2. Link global instructions
 
@@ -196,22 +206,22 @@ the repo in step 8.
 ## 7. Materialize and link model-aware skills
 
 Authoring starts from each skill's `BASE.md`, then adapts it into complete
-`variants/<profile>.md` prompts. Installation only selects those existing variants;
-it does not generate them or install the human-reviewable base.
+`variants/<profile>.md` prompts. Identical variants may share a relative symlink;
+installation copies the selected text into a regular `SKILL.md`. It does not
+generate prompts or install the human-reviewable base.
 
 ### Codex and Claude Code
 
 From `REPO`, use the repository's installer after the prerequisites above:
 
 ```sh
-./install-skills --harness codex --model astra
-./install-skills --harness codex --model gpt-5.6
+./install-skills --harness codex --model gpt-6
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
 ```
 
-Run the one command matching the requested installation. Full model IDs work
-too. `--dry-run --json` previews coverage and link changes without writing;
+Run the command matching the requested profile. `astra`, `sol`, `luna` and their
+full model IDs also select `gpt-6`. `--dry-run --json` previews coverage and link changes without writing;
 `--require-exact` requires an exact variant for every skill. The command
 materializes the view, installs stable per-skill links, and retires only obsolete
 links owned by that view. It refuses local-file or foreign-link collisions
@@ -279,12 +289,11 @@ another repository clone. If this repository moved, read the view's
 `.skill-variant-view.json`, verify that `sourceRoot` is the previous clone, and
 authorize that exact ownership transfer with `--previous-source OLD_REPO/skills`.
 
-A static view serves one active model profile. Before starting a session with a
-different supported model, rerun this command with that model's full configured
-ID. Do not run concurrent different-model sessions against the same static
-view; configure separate harness roots and view roots when that is required. A
-static view does not detect later model changes. Rerun the materializer after
-every pull or other update to this repository before starting the next session,
+A static view serves one skill profile. Astra, Sol and Luna share the GPT-6 view
+and can switch models without reinstalling it. Switching to a different profile
+requires rematerialization; concurrent sessions using different profiles need
+separate harness roots and views. A static view does not detect model changes.
+Rerun the materializer after every pull or other repository update before starting the next session,
 even when the selected model is unchanged; copied `SKILL.md` files and linked
 resources must come from the same repository revision.
 

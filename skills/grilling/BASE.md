@@ -8,9 +8,9 @@ metadata:
 
 # Grilling
 
-Reach a user-confirmed shared understanding by visiting every branch of the plan's decision tree. Establish facts yourself; the user makes every decision, even when you have a confident recommendation.
+Map the full decision tree and get the user's confirmation before acting. Investigate facts yourself; every decision remains the user's.
 
-In each round, identify the full frontier: decisions whose prerequisites are already settled. Ask all of those questions together, recommend an answer for each, then wait. A question depending on another unanswered question belongs in a later round. Recompute the tree and frontier after every answer.
+In each round, ask the full frontier—all questions whose prerequisites are settled—with a recommendation for each, then wait. Leave dependent questions for later rounds. Update the tree after each answer.
 
 Use this format, separating questions with a horizontal rule:
 
@@ -26,8 +26,8 @@ Use this format, separating questions with a horizontal rule:
 ➡️ <recommended answer>
 ```
 
-When an environmental fact blocks a frontier question, dispatch a background subagent to establish it. Continue with independent frontier questions while that work runs; only dependent questions wait.
+If an environmental fact blocks a question, send a background subagent to establish it while asking independent questions.
 
-Use the configured investigator for that bounded factual question. Supply the objective, worktree and revision or source, scope, constraints, acceptance criteria and relevant evidence. Keep reusable guidance in the role definition, question sequencing and synthesis with the coordinator, and decisions with the user. If the role is unavailable, report it and establish the fact locally.
+Use the configured investigator. Supply its objective, worktree and revision or source, scope, constraints, acceptance criteria, and evidence. Keep question sequencing and synthesis here; the user owns decisions. If unavailable, report it and investigate locally.
 
-Finish when the frontier is empty, every branch has been visited, and no assumption remains silently decided. Obtain the user's confirmation of shared understanding before acting on the result.
+Finish questioning only when the frontier is empty, every branch is visited, and no assumption is silently decided. Ask the user to confirm the shared understanding before acting.
