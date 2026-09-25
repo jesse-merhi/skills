@@ -12,7 +12,7 @@ metadata:
 
 Read the changed contract and nearby tests, fixtures, routes and helpers, including staged, unstaged, untracked and deleted work. Before writing a test, including rejection tests, trace input to the tested code and establish that the situation can occur; an invented fixture is not proof.
 
-Identify the caller-visible failure, required result, nearest overlapping test, and why that existing coverage misses this failure. Derive expectations independently from the implementation, using specifications or worked examples when available; never assert a value the subject itself produced. Prefer a contract you can prove through existing interfaces over adding a production seam that exists only for the test. Rejecting an invented schema input adds no useful coverage.
+Identify the caller-visible failure, required result, nearest overlapping test, and why that existing coverage misses this failure. Derive expectations independently from the implementation, using specifications or worked examples when available. Prefer a contract you can prove through existing interfaces over adding a production seam that exists only for the test. Rejecting an invented schema input adds no useful coverage.
 
 Use application data definitions for successful fakes and fixtures. Do not redefine data or change application behavior to fit a fixture.
 
@@ -40,7 +40,7 @@ Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests wh
 
 Implement and check the authorized behavior, then add a test only where a distinct, credible failure or regression is not already proven. A change does not by itself require a new test; reuse existing proof, including for covered refactors.
 
-A regression test must fail against the unfixed code for the intended reason and pass after the fix. Passing tests and coverage numbers do not prove a test detects the fault; when that is in doubt, reintroduce the known bug or mutate the covered line and confirm the test fails, without adding new tooling.
+A regression test must fail against the unfixed code for the intended reason and pass after the fix. Passing tests and coverage numbers do not prove a test detects the fault; when that is in doubt, temporarily reintroduce the known bug or mutate the covered line locally to confirm the test fails, then restore the code before final validation or commit, without adding new tooling.
 
 Use the [global test policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#test-and-review-design) to select checks and decide when results need refreshing. Before fixing a review finding, confirm the bug can happen and the repair is authorized.
 
