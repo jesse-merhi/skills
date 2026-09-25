@@ -29,6 +29,8 @@ Keep separate denial, forbidden-effect, privacy, accessibility, safety, expiry, 
 
 Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests when their coverage matters; reorganize only if a file obscures affected scenarios. Remove useless in-scope tests without losing required coverage.
 
+When an existing test fails, preserve its expected result unless the authorized behavior changed or evidence shows the expectation was wrong. Record the reason for changing a promised result in the existing task or PR explanation; do not weaken an assertion merely to match the current implementation.
+
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
@@ -37,9 +39,9 @@ Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests wh
 - Remove tests that cannot fail for the intended reason: tautologies, assertions whose expected value the subject itself produced, source-structure or grep checks without an independent contract, mocks that supply the behavior being asserted, and negative controls that would pass for the wrong reason. Remove incidental mock-call/order assertions, unreachable states, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only for a real product, accessibility, safety or protocol contract.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 
-## Implement, then prove the behavior
+## Implement and prove the behavior
 
-Implement and check the authorized behavior, then add a test only where a distinct, credible failure or regression is not already proven. A change does not by itself require a new test; reuse existing proof, including for covered refactors.
+Write tests before or after implementation as useful. Add a test only where a distinct, credible failure or regression is not already proven. A change does not by itself require a new test; reuse existing proof, including for covered refactors.
 
 A regression test must fail against the unfixed code for the intended reason and pass after the fix. Passing tests and coverage numbers do not prove a test detects the fault; when that is in doubt, temporarily reintroduce the known bug or mutate the covered line locally to confirm the test fails, then restore the code before final validation or commit, without adding new tooling.
 
