@@ -70,7 +70,8 @@ review, including cold review.
   crosses ownership, lifecycle, security or data boundaries; a local text edit
   does not require the same investigation.
 - Before implementing changed behavior, the execution owner records a brief
-  proof sketch in existing task notes: the intended caller-visible result,
+  proof sketch in the current task context, using existing notes when available:
+  the intended caller-visible result,
   reachable failures tied to the changed contract, nearest existing coverage,
   and what remains unproven. This adds no separate document or approval gate.
   Tests may precede or follow implementation; use `writing-good-tests` to
