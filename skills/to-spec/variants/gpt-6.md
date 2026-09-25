@@ -8,7 +8,7 @@ metadata:
 
 # To spec
 
-Read the parts of the repository, glossary, ADRs, and Obsidian notes that govern the affected contract before writing the spec. Name the existing functions, service methods, or routes that tests should call. Prefer the highest stable interface that proves the behavior, using as few test entry points as practical. For example, test order creation through the existing service method rather than testing each helper separately.
+Read the parts of the repository, glossary, ADRs, and Obsidian notes that govern the affected contract before writing the spec. Name the existing functions, service methods, or routes that tests should call. Choose a stable caller-facing interface at the lowest level that proves the behavior, following [writing-good-tests](../writing-good-tests/SKILL.md); use as few test entry points as practical. For example, test order creation through the existing service method rather than its private helpers when the service method proves the stored result.
 
 Resolve routine implementation details from that evidence. Record consequential unsettled decisions as open questions rather than guessing them.
 

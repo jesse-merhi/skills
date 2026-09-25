@@ -69,6 +69,13 @@ review, including cold review.
   affected contract and resolve uncertainty. Trace complete flows when a change
   crosses ownership, lifecycle, security or data boundaries; a local text edit
   does not require the same investigation.
+- Before implementing changed behavior, the execution owner records a brief
+  proof sketch in the current task context, using existing notes when available:
+  the intended caller-visible result,
+  reachable failures tied to the changed contract, nearest existing coverage,
+  and what remains unproven. This adds no separate document or approval gate.
+  Tests may precede or follow implementation; use `writing-good-tests` to
+  choose and preserve coverage.
 - Treat backward compatibility as the user's decision. If the preferred design
   requires breaking changes, explain why, what will break, and the migration
   path, then ask before proceeding. Do not add compatibility layers by default.
