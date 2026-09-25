@@ -1,6 +1,6 @@
 ---
 name: writing-good-tests
-description: 'Write useful tests for valid inputs and failure cases, improve affected coverage, and verify behavior before pushing.'
+description: 'Write tests that catch distinct, credible failures in changed behavior and regressions, keep the coverage each one protects, and verify behavior before pushing.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
@@ -13,7 +13,7 @@ metadata:
 
 Read the changed contract and nearby tests, fixtures, routes and helpers, including staged, unstaged, untracked and deleted work. Before writing a test, including rejection tests, trace input to the tested code and establish that the situation can occur; an invented fixture is not proof.
 
-Identify the caller-visible failure, required result and nearest overlapping test. Derive expectations independently from the implementation, using specifications or worked examples when available. Rejecting an invented schema input adds no useful coverage.
+Identify the caller-visible failure, required result, nearest overlapping test, and why that existing coverage misses this failure. Derive expectations independently from the implementation, using specifications or worked examples when available; never assert a value the subject itself produced. Prefer a contract you can prove through existing interfaces over adding a production seam that exists only for the test. Rejecting an invented schema input adds no useful coverage.
 
 Use application data definitions for successful fakes and fixtures. Do not redefine data or change application behavior to fit a fixture.
 
@@ -34,12 +34,14 @@ Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests wh
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
 - Use real internal collaborators. Substitute external APIs, clocks, filesystems or databases only when unreliable or disproportionately expensive, through existing interfaces with realistic results.
 - Use named, parameterized cases when they make related behaviors easier to read and extend. Give each case a clear purpose and keep scenarios separate when their setup or assertions differ.
-- Remove tautologies, incidental mock-call/order assertions, unreachable states, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only for a real product, accessibility, safety or protocol contract.
+- Remove tests that cannot fail for the intended reason: tautologies, assertions whose expected value the subject itself produced, source-structure or grep checks without an independent contract, mocks that supply the behavior being asserted, and negative controls that would pass for the wrong reason. Remove incidental mock-call/order assertions, unreachable states, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only for a real product, accessibility, safety or protocol contract.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 
 ## Implement, then prove the behavior
 
-Implement and check the authorized behavior, then test valid inputs and relevant failures. Reuse existing proof, including for covered refactors.
+Implement and check the authorized behavior, then add a test only where a distinct, credible failure or regression is not already proven. A change does not by itself require a new test; reuse existing proof, including for covered refactors.
+
+A regression test must fail against the unfixed code for the intended reason and pass after the fix. Passing tests and coverage numbers do not prove a test detects the fault; when that is in doubt, reintroduce the known bug or mutate the covered line and confirm the test fails, without adding new tooling.
 
 Use the [global test policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#test-and-review-design) to select checks and decide when results need refreshing. Before fixing a review finding, confirm the bug can happen and the repair is authorized.
 
