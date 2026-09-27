@@ -7,8 +7,6 @@ description: 'Ask Codex from a non-Codex harness through a full ACP session for 
 
 Run only when the user explicitly asks to ask Codex or invokes `$ask-codex`.
 
-Keep this to one requested session; do not add an optional review team.
-
 Give Codex the objective, checkout, relevant files, constraints, expected output, and permitted write scope. Tell it to archive its temporary task with `set_thread_archived` before finishing.
 
 For advice, review, or planning:

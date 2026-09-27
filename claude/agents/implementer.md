@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Implement a bounded code or test change with focused verification.
-model: fable
+model: claude-opus-5-5
 effort: high
 disallowedTools: Agent
 ---

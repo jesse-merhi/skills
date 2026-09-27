@@ -14,7 +14,7 @@ metadata:
 
 # Design
 
-Start with the user's task and real content. Read existing screens, components, and tokens; preserve their visual language unless the brief asks for a new direction.
+Start with the user's task and real content. Read existing screens, components, tokens, and any anti-references the brief or spec names; preserve the existing visual language unless the brief asks for a new direction, and avoid the anti-references.
 
 Put important content and actions first. Choose fitting hierarchy, type, spacing, and colour; make distinctive choices without inventing a design system for a small change.
 

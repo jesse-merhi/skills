@@ -138,7 +138,7 @@ resource lifecycle, and graceful shutdown.
   prove it. Touching a test file does not by itself require reorganizing the
   file or repairing unrelated tests. Preserve required coverage and checks.
 - Before creating, changing, or removing tests or test infrastructure, load
-  `writing-good-tests` in test-planning/portfolio mode. During code review, load it for
+  `writing-good-tests`. During code review, load it for
   every production behavior change and whenever the diff creates, changes, or
   removes tests or test infrastructure.
 - Validate skill instructions through independent agent exercises and review.
@@ -223,7 +223,13 @@ itself model generation.
   implementation, integration, and verification needed to deliver that outcome
   within the existing permission, publication, and destructive-action
   boundaries. Do not stop at a plan, diagnosis, or partial patch while obvious
-  authorized work remains.
+  authorized work remains. While it remains, do not end a turn with a summary
+  that names the next step without taking it, an offer to continue, or choices
+  that do not block the rest of the work; put status notes and recommendations
+  beside the next action. Stop to ask only when work cannot continue without
+  the user or before an action these instructions reserve for them. When the
+  user asks a question or describes a problem rather than requesting a change,
+  the assessment is the deliverable.
 - Before stopping, apply the [communication proof requirements](#communication),
   reconcile the result against the original request and every accepted
   correction, then finish any obvious missing in-scope step that needs no new
@@ -238,6 +244,12 @@ itself model generation.
   skills, load the smallest set that serves the task; read supporting references
   when their branch is needed. For example, an iOS bug without a Figma artifact
   does not need a Figma translation workflow.
+- The user's explicit instructions take precedence over a skill's guidelines
+  when they conflict; permission, safety, publication and destructive-action
+  boundaries still apply. When a skill makes you ask, pause, leave requested
+  work unfinished or depart from the request, name the skill file, quote the
+  instruction and say whether it is an explicit requirement or your reading of
+  a guideline.
 - Work on a branch in a dedicated git worktree. Never push agent-authored
   feature or fix commits directly to the default branch. When publication is
   authorized, push the work to its feature branch and deliver it through a PR.
@@ -329,6 +341,6 @@ browser sessions.
 
 ### Named workers
 
-Keep the normal main session as coordinator and preserve the user's selected model. When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for a useful bounded assignment. Their native definitions select Fable at high for implementation, Fable at medium for investigation, and Opus 5.5 at xhigh for independent review; these Claude worker settings replace the shared GPT worker mapping in this harness. Honor explicit user overrides through the launcher and report unavailable settings instead of silently substituting.
+Keep the normal main session as coordinator and preserve the user's selected model. When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for a useful bounded assignment. Their native definitions select Opus 5.5 at high for implementation, medium for investigation and xhigh for independent review; these Claude worker settings replace the shared GPT worker mapping in this harness. Honor explicit user overrides through the launcher and report unavailable settings instead of silently substituting.
 
 The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings; never use it as an until-clean coordinator or a replacement for the required native review phase.

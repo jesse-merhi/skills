@@ -5,7 +5,7 @@ description: Find prior local Codex or Claude sessions.
 
 # Session recall
 
-Find the prior session with `agent-session-find` first. Stop when the evidence answers the question; do not expand into an archive audit.
+Find the prior session with `agent-session-find` first. Stop when the evidence answers the question.
 
 Prefer the installed command; use `./agent-session-find` in its source checkout if unavailable. Use `--help` for options, or another harness's local recall tool when appropriate.
 

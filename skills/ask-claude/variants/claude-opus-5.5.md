@@ -7,8 +7,6 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
-Keep this to one requested session; do not add an optional review team.
-
 Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope.
 
 For advice, review, or planning:

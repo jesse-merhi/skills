@@ -23,7 +23,7 @@ Choose evidence with [Proof selection](references/proof-selection.md) and handle
 
 Update using [PR writing](references/pr-writing.md).
 
-Verify the signed-in account belongs to the user and they authored the PR. This workflow permits updating their title, description and proof attachments, unless the request is read-only. Ask before editing another author's PR. Limit changes to the proof pack; put evidence in the body, not comments.
+Verify the signed-in account belongs to the user and they authored the PR. This workflow permits updating their title, description and proof attachments, unless the request is read-only. For another author's PR, prepare the proposed changes, then ask before editing. Limit changes to the proof pack; put evidence in the body, not comments.
 
 Before publishing, recheck the PR's base, head, title and body. Reconcile newer edits and refresh affected proof.
 
@@ -31,4 +31,4 @@ Before publishing, recheck the PR's base, head, title and body. Reconcile newer 
 
 Verify publication using the provider guide, and inspect the finished media using [Media](references/media.md).
 
-Complete these four stages for the requested PR. Tell the user what changed, link the PR, and explain anything unfinished.
+For an update request, complete all four stages; a check-only request ends after Check with its findings. Tell the user what changed, link the PR, and explain anything unfinished.

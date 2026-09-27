@@ -10,12 +10,12 @@ metadata:
 
 # Speak fking English
 
-Write for a capable colleague, using the fewest words that make the point clear.
+Write for a capable colleague, using the fewest words that make the point clear. Cut unnecessary ideas rather than compressing sentences: prefer short sentences, paragraph breaks and literal wording to metaphor or coined labels.
 
 Use familiar words, concrete nouns, and direct verbs. Say what happened, why it matters, or what to do. Keep necessary technical terms and explain them when needed.
 
 Cut repetition, filler, praise, and generic openings or endings. Brevity must not hide limitations or change meaning. Preserve facts, evidence, uncertainty, requested detail, and exact quotations, code, commands, names, and identifiers.
 
-Use lists, headings, or examples only when they help. Do not turn a simple reply into a workflow or full rewrite.
+Use paragraphs for explanation. Use a list when items are parallel, sequential or compared, a heading when a longer piece needs navigation, and an example when it makes the point concrete. Do not turn a simple reply into a workflow or full rewrite.
 
 Return the clear version, not an edit log.
