@@ -15,6 +15,8 @@ In the target checkout, count the changes against the PR's resolved base and hea
 pr-net-diff --base <BASE-SHA> --head <HEAD-SHA> --markdown
 ```
 
+A check-only request ends here with its findings.
+
 ## 2. Capture
 
 Choose evidence with [Proof selection](references/proof-selection.md) and handle screenshots or recordings with [Media](references/media.md). Reuse current UI proof from the implementation owner; ask that owner for missing or stale UI coverage instead of repeating validation. Capture other proof only if missing or stale.
@@ -31,4 +33,4 @@ Before publishing, recheck the PR's base, head, title and body. Reconcile newer 
 
 Verify publication using the provider guide, and inspect the finished media using [Media](references/media.md).
 
-For an update request, complete all four stages; a check-only request ends after Check with its findings. Tell the user what changed, link the PR, and explain anything unfinished.
+For an update request, complete all four stages. Tell the user what changed, link the PR, and explain anything unfinished.

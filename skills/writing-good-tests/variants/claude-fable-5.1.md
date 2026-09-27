@@ -55,7 +55,7 @@ Batch established tests, lint, typechecks or prepared acceptance flows for Luna/
 
 Claude's `Agent` tool cannot select GPT models, and this harness has no `test_executor` role. If an already-authorized launcher supports GPT-6 Luna at max effort, use it, point the worker to this skill and check the actual launch settings. Otherwise report the limitation and run suitable checks locally; do not change live configuration.
 
-Check checkout and inputs before execution under repository permissions, including manual E2E/Maestro triggers. Stop at the first failure, timeout, input change or ambiguity. Return command, status, relevant output and checks not run. Do not retry, debug, repair, install or start external/paid jobs. The coordinator assigns substantive diagnosis, new test design and authorized repair to the `implementer` role before further execution.
+Check checkout and inputs before execution under repository permissions, including manual E2E/Maestro triggers. Stop at the first failure, timeout, input change or ambiguity. Return command, status, relevant output and checks not run. Do not retry, debug, repair, install or start external/paid jobs. The coordinator handles substantive diagnosis, new test design and authorized repair before further execution, using the `implementer` role when it is available and useful.
 
 Use `wait-efficiently` for prolonged runs. Return completion, failure or a decision needed, with useful progress updates.
 

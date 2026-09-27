@@ -18,7 +18,7 @@ Start with the user's task and real content. Read existing screens, components, 
 
 Put important content and actions first. Choose fitting hierarchy, type, spacing, and colour; make distinctive choices without inventing a design system for a small change.
 
-When neither the product nor the brief sets a visual direction, avoid these stock defaults: a cream or off-white background, italic accent words in headlines, numbered "01/02/03" section labels, monospace labels, and pill-shaped buttons. After the first render, list your other style choices and where each came from, and replace any that are stock rather than drawn from the product or its subject.
+When neither the product nor the brief sets a visual direction, avoid these stock defaults: a cream or off-white background, italic accent words in headlines, numbered "01/02/03" section labels, monospace labels, and pill-shaped buttons. When implementing, check the first render: list your other style choices and where each came from, and replace any that are stock rather than drawn from the product or its subject.
 
 For implementation, build a working slice with realistic content and relevant empty, loading, error, and narrow-screen states. Inspect and refine it.
 

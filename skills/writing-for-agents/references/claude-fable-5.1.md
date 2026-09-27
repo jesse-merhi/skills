@@ -6,9 +6,9 @@ Reviewed: 2026-09-27.
 
 Apply these deltas when writing or maintaining an agent instruction:
 
-- Ask for brief progress updates when a long tool run would otherwise go silent, and a closing recap that stands on its own. Remove lines that hold all findings for the final response before adding more. If updates still look missing, check that the harness displays them.
+- Ask for brief progress updates when a long tool run would otherwise go silent, and a closing recap that stands on its own. Before asking for updates, remove instructions such as "hold all findings for the final response". If updates still look missing, check that the harness displays them.
 - Ask for independent tool calls to be batched when the harness pays per turn.
-- Tell the model to finish the whole authorized task when it tends to describe the next step or ask again for permission already granted. When the user describes a problem or asks a question, the assessment is the deliverable; do not turn that exception into a fix.
+- Tell the model to finish the whole authorized task when it tends to describe the next step or ask again for permission already granted. When the user describes a problem or asks a question, the assessment is the deliverable: report findings and stop. `AGENTS.md` owns both general rules.
 - Remove instructions to think carefully, step by step, harder or less; thinking is always on and effort sets its depth. Request decisions and explanations, never a transcript of private reasoning.
 - Counter dense or mannered prose directly. Prefer literal wording, shorter sentences, and paragraph breaks over metaphor or flourish.
 - Do not carry forward blanket anti-formatting rules. Ask for structure when it helps a multifaceted answer and plain prose when it does not.
