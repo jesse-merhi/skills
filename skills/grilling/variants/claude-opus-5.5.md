@@ -24,7 +24,7 @@ Ask every question with settled prerequisites in one round, with a short recomme
 ➡️ <recommended answer>
 ```
 
-Wait for answers, update the tree, and repeat. For blocking environmental facts, send a bounded background subagent and continue with independent questions. Do not add verifier workers or silently decide a branch.
+Wait for answers, update the tree, and repeat. For blocking environmental facts, send a bounded background subagent and continue with independent questions. Do not silently decide a branch.
 
 Use `Agent` with `subagent_type: "investigator"`. Supply its objective, worktree and revision or source, scope, constraints, acceptance criteria, and evidence. Keep synthesis here. If unavailable, report it and investigate locally.
 

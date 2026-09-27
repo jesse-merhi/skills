@@ -15,6 +15,8 @@ In the target checkout, count the changes against the PR's resolved base and hea
 pr-net-diff --base <BASE-SHA> --head <HEAD-SHA> --markdown
 ```
 
+A check-only request ends here with its findings.
+
 ## 2. Capture
 
 Choose evidence with [Proof selection](references/proof-selection.md) and handle screenshots or recordings with [Media](references/media.md). Reuse current UI proof from the implementation owner; ask that owner for missing or stale UI coverage instead of repeating validation. Capture other proof only if missing or stale.
@@ -23,7 +25,7 @@ Choose evidence with [Proof selection](references/proof-selection.md) and handle
 
 Update using [PR writing](references/pr-writing.md).
 
-Verify the signed-in account belongs to the user and they authored the PR. This workflow permits updating their title, description and proof attachments, unless the request is read-only. Ask before editing another author's PR. Limit changes to the proof pack; put evidence in the body, not comments.
+Verify the signed-in account belongs to the user and they authored the PR. This workflow permits updating their title, description and proof attachments, unless the request is read-only. For another author's PR, prepare the proposed changes, then ask before editing. Limit changes to the proof pack; put evidence in the body, not comments.
 
 Before publishing, recheck the PR's base, head, title and body. Reconcile newer edits and refresh affected proof.
 

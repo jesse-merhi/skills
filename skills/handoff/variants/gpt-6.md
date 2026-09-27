@@ -13,11 +13,12 @@ metadata:
 Save a self-contained brief in the OS temporary directory with:
 - Objective, user-visible result, current state, and design decisions.
 - Evidence, verification, blockers, PR/proof links, and relevant Obsidian links.
+- What was tried or ruled out and why, and problems hit with their resolutions.
 - Remaining work, what the user should inspect, and next actions.
 
 For a pending decision, explain the observed problem, consequences, alternatives, and recommended path; counts and hashes alone are not enough.
 
-Include paths, unfinished changes, decisions, and user instructions authorizing remaining work, including later corrections that supersede unanswered questions. Do not ask the user to reapprove authorized work. Link artifacts, omit secrets, and carry the PR or review plan without copying its workflow.
+Include paths, unfinished changes, decisions, and the user's instructions, constraints and preferences in close to their own words, including authorization for remaining work and later corrections that supersede unanswered questions. Keep names, numbers, commands and error text exact; condense your own reasoning to its conclusions. Do not ask the user to reapprove authorized work. Link artifacts, omit secrets, and carry the PR or review plan without copying its workflow.
 
 State in the brief and launch prompt: after launch, parent and child do not communicate unless the user explicitly requests it, and only within that request's scope; both report to the user.
 

@@ -33,4 +33,4 @@ Verify the kept duplicate exists and is loaded. Prefer the harness-provided copy
 
 Preserve description trigger nouns—product, tool, action, object—and exclusions. Generated shorter descriptions remain manual rewrite candidates until behavioral tests establish equivalent triggering. Group authorized changes by descriptions, deletions, or configuration; commit only when separately authorized.
 
-Keep chat and saved reports focused on the useful inventory, supporting evidence, limits, and proposed decisions. Do not add optional worker rounds, installation changes, or unrelated prompt-writing work.
+Report the useful inventory, supporting evidence, limits, and proposed decisions.

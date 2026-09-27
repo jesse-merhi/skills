@@ -4,11 +4,11 @@ The normal Claude Code session coordinates the work. These optional native subag
 
 | Name | Model | Effort | Assignment |
 | --- | --- | --- | --- |
-| `implementer` | `fable` | `high` | An owned code or test change with focused verification |
-| `investigator` | `fable` | `medium` | A bounded question answered with current evidence |
+| `implementer` | `claude-opus-5-5` | `high` | An owned code or test change with focused verification |
+| `investigator` | `claude-opus-5-5` | `medium` | A bounded question answered with current evidence |
 | `findings-reviewer` | `claude-opus-5-5` | `xhigh` | Independent inspection and findings only |
 
-The Fable alias selects the runtime's corresponding model. The reviewer pins Opus 5.5 explicitly, so a parent using an older Opus cannot pass that version through the `opus` alias. Neither setting changes the coordinator's selected model. Report unsupported models or effort instead of silently substituting.
+Every role pins Opus 5.5 explicitly, so a parent using an older Opus cannot pass that version through the `opus` alias. These settings do not change the coordinator's selected model. Report unsupported models or effort instead of silently substituting.
 
 ## Installation
 

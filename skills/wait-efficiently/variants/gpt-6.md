@@ -94,7 +94,7 @@ Required instruction documents must still be read in full. Split them into outpu
 
 ## Required agent results
 
-Give workers bounded assignments. Return one result with outcome, revision/build, evidence, findings, verification, unresolved decisions and missing evidence. Interim messages should change someone's next action.
+Give workers bounded assignments. Return one result with outcome, revision/build, evidence, findings, verification, unresolved decisions and missing evidence. Interim messages should change someone's next action. A person may read messages between agents, so write them legibly, with normal spacing between words and numbers.
 
 Finish independent work before waiting on saved worker handles. Act on completion, failure, decisions or user input. After routine messages or quiet timeouts, resume the same wait without check-ins. Snapshot immediately only for status requests or concrete stalls; elapsed time alone is not a stall.
 

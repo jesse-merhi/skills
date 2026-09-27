@@ -41,7 +41,7 @@ Preserve invocation policy unless the user requests a change. Keep descriptions 
 
 Keep every-turn skills in one file and `SKILL.md` within 500 lines. References may link only to their own `SKILL.md` among files under `skills/`, never to other references.
 
-Keep edits, saved explanations and validation in scope. Preserve required independent exercises without adding optional worker rounds. Installation and model switching follow repository `INSTALL.md` and README; prompt edits authorize neither.
+Keep edits in scope. Installation and model switching follow repository `INSTALL.md` and README; prompt edits authorize neither.
 
 ## Write for the consuming models
 

@@ -12,10 +12,10 @@ metadata:
 
 Match the reader and voice. Rewrite the supplied prose, not identifiers, APIs, or unrelated code.
 
-- Replace grand claims and vague metaphors with the specific event, mechanism, or consequence; remove unsupported claims rather than inventing facts.
+- Replace grand claims, vague metaphors and decorative flourish with the specific event, mechanism, or consequence; remove unsupported claims rather than inventing facts.
 - Cut promotional adjectives, empty importance claims, generic conclusions, greetings, and praise.
-- Remove repeated ideas, synonym cycling, and forced patterns such as needless three-part lists or “not just X, but Y.”
-- Name the actor and action. Split tangled sentences without imposing a uniform rhythm.
+- Remove repeated ideas, synonym cycling, and forced patterns such as needless three-part lists, “not just X, but Y,” or “X, not Y” against an alternative nobody raised. Replace invented compound labels with plain words, and drop statements of what will not change unless the reader needs them.
+- Name the actor and action. Split tangled sentences and dense paragraphs without imposing a uniform rhythm.
 - Name the source and what it supports, rather than saying “experts say.” Keep real uncertainty without stacked hedges.
 - Keep useful formatting, personality, and opinions. Remove decorative emphasis, not punctuation on principle; avoid bland boilerplate.
 
