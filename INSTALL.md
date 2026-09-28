@@ -23,8 +23,8 @@ proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
 configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-6`
-skill profile; Claude Fable 5.1, Opus 5.5, and Sonnet 5.5 have separate profiles.
-A newer model in a known family uses its nearest preceding variant and produces an informational update notice.
+skill profile; Claude Fable 5.1 and Opus 5.5 have separate profiles. A newer model in a known family
+uses its nearest preceding variant and produces an informational update notice.
 Installation stops on an unknown family or a missing profile prompt.
 `--require-exact` also rejects model-version fallback.
 
@@ -36,8 +36,7 @@ Astra, Sol and Luna selections use the same profile.
 
 Opus 5 is also retired. To upgrade its managed view, run the full installer with
 `--model claude-opus-5-5`, omitting `--skill`. The `opus` alias selects the same
-Opus 5.5 profile. The `sonnet` alias selects Sonnet 5.5. Managed links stay
-stable; model settings remain user-owned.
+Opus 5.5 profile. Managed links stay stable; model settings remain user-owned.
 
 ## 2. Link global instructions
 
@@ -219,7 +218,6 @@ From `REPO`, use the repository's installer after the prerequisites above:
 ./install-skills --harness codex --model gpt-6
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
-./install-skills --harness claude --model sonnet
 ```
 
 Run the command matching the requested profile. `astra`, `sol`, `luna` and their
@@ -237,10 +235,8 @@ roots concurrently, configure and launch each harness with its matching
 `CODEX_HOME` or `CLAUDE_CONFIG_DIR`. The installer does not copy credentials or
 create an authenticated harness configuration.
 
-Re-run with another model to switch that installation. Sessions and named
-workers using one root share its single installed profile view; a worker's
-model setting does not switch its skills. Prompts already loaded remain in
-conversation history.
+Re-run with another model to switch that installation. Sessions using one root
+share its files, and prompts already loaded remain in conversation history.
 Start a fresh session for a clean switch. There is no automatic model-switch
 hook. Re-run after every repository update, even if the model is unchanged.
 

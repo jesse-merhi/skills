@@ -1,7 +1,7 @@
 ---
 name: investigator
 description: Investigate a bounded question and return current evidence without editing.
-model: claude-sonnet-5-5
+model: claude-opus-5-5
 effort: medium
 tools: Read, Glob, Grep, Bash, Skill, WebFetch, WebSearch
 ---

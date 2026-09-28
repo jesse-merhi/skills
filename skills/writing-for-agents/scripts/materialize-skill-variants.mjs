@@ -40,19 +40,12 @@ export const profiles = [
     version: [5, 5],
     matches: /^(?:claude-opus-5[.-]5(?:-\d{8})?|opus)$/i,
   },
-  {
-    id: "claude-sonnet-5.5",
-    family: "anthropic-sonnet",
-    version: [5, 5],
-    matches: /^(?:claude-sonnet-5[.-]5(?:-\d{8})?|sonnet)$/i,
-  },
 ];
 
 function modelFamily(model) {
   const normalized = model.slice(model.lastIndexOf("/") + 1).toLowerCase();
   if (/^(?:(?:anthropic\/)?claude-)?fable(?:[-.]\d|\[)/.test(normalized)) return "anthropic-fable";
   if (/^(?:claude-)?opus[-.]\d/.test(normalized)) return "anthropic-opus";
-  if (/^(?:claude-)?sonnet[-.]\d/.test(normalized)) return "anthropic-sonnet";
   if (/^(?:openai\/)?gpt-\d/.test(normalized)) return "openai-gpt";
   return undefined;
 }
@@ -65,7 +58,7 @@ function modelVersion(model, family) {
     return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
   }
   if (normalized === "fable[1m]" || normalized === "claude-fable-5[1m]") return [5, 1];
-  const match = normalized.match(/^(?:claude-)?(?:fable|opus|sonnet)-(\d+)(?:[.-](\d+))?/);
+  const match = normalized.match(/^(?:claude-)?(?:fable|opus)-(\d+)(?:[.-](\d+))?/);
   return match === null ? undefined : [Number(match[1]), Number(match[2] ?? 0)];
 }
 

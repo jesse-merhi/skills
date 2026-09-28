@@ -15,7 +15,7 @@ import {
 } from "./materialize-skill-variants.mjs";
 
 const materializer = fileURLToPath(new URL("./materialize-skill-variants.mjs", import.meta.url));
-const supportedProfiles = ["gpt-6", "claude-fable-5.1", "claude-sonnet-5.5"];
+const supportedProfiles = ["gpt-6", "claude-fable-5.1"];
 
 function writeSkill(root, directory, name, profileNames = supportedProfiles) {
   const skill = path.join(root, directory);
@@ -83,14 +83,6 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
   const futureOpus = resolveProfile("claude-opus-5-6");
   assert.equal(futureOpus.profile.id, "claude-opus-5.5");
   assert.equal(futureOpus.exact, false);
-  for (const model of ["sonnet", "claude-sonnet-5-5", "claude-sonnet-5.5", "anthropic/claude-sonnet-5-5", "anthropic/claude-sonnet-5-5-20260928"]) {
-    const resolved = resolveProfile(model);
-    assert.equal(resolved.profile.id, "claude-sonnet-5.5", model);
-    assert.equal(resolved.exact, true);
-  }
-  const futureSonnet = resolveProfile("anthropic/claude-sonnet-5-6");
-  assert.equal(futureSonnet.profile.id, "claude-sonnet-5.5");
-  assert.equal(futureSonnet.exact, false);
   const fable = resolveProfile("anthropic/claude-fable-5-1[1m]");
   const configuredFable = resolveProfile("claude-fable-5[1m]");
   const futureFable = resolveProfile("claude-fable-5.2");
@@ -352,8 +344,6 @@ test("rejects unsupported families and older same-family models", () => {
   assert.throws(() => resolveProfile("gpt-5-2025-08-07"), /older than the earliest supported/);
   assert.throws(() => resolveProfile("claude-fable-5.0"), /older than the earliest supported/);
   assert.throws(() => resolveProfile("claude-fable-5-20260801"), /older than the earliest supported/);
-  assert.throws(() => resolveProfile("claude-sonnet-5"), /older than the earliest supported anthropic-sonnet profile/);
-  assert.throws(() => resolveProfile("anthropic/claude-sonnet-5-4"), /older than the earliest supported anthropic-sonnet profile/);
 });
 
 test("selects the newest profile not newer than an inexact request", (t) => {
@@ -430,7 +420,7 @@ test("materializes the repository corpus and keeps installed links stable across
     fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", "gpt-6.md"), "utf8"),
   );
 
-  for (const model of ["gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5-5", "claude-sonnet-5-5"]) {
+  for (const model of ["gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5-5"]) {
     materializeSkillVariants({ model, outputRoot: current.output, sourceRoot: repositorySkills, requireExact: true });
     const profile = resolveProfile(model).profile.id;
     assert.equal(

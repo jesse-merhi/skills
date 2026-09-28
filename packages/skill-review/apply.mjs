@@ -47,7 +47,7 @@ export async function prepareApply({ name, revision, directory, root, readDetail
     name, revision, directory: sourceDirectory, root: fs.realpathSync(root),
     fingerprint: source.fingerprint, draftDigest: digest(record.draft.content)
   });
-  return { directory, revision, sourceDrift: source.fingerprint !== record.source.fingerprint, next: "The pinned master is in candidate/BASE.md. Read it and the model guides to produce all supported complete variants. Reconcile supporting-file drift and independently exercise the variants, then apply this pinned plan." };
+  return { directory, revision, sourceDrift: source.fingerprint !== record.source.fingerprint, next: "The pinned master is in candidate/BASE.md. Read it and the model guides to produce all three complete variants. Reconcile supporting-file drift and independently exercise the variants, then apply this pinned plan." };
 }
 
 export async function applyPlan(directory, readDetail = detail) {

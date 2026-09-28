@@ -47,7 +47,7 @@ Finish authorized edits with targeted changes and report meaningful progress dur
 
 For shared instructions such as AGENTS.md or CLAUDE.md, use only the named target models' guides; otherwise stay model-neutral. These files need no variants.
 
-For skills, read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the applicable guide: [GPT-6](references/gpt-6.md), [Fable](references/claude-fable-5.1.md), [Opus](references/claude-opus-5.5.md), or [Sonnet](references/claude-sonnet-5.5.md). Astra, Sol and Luna share one GPT-6 profile and complete prompt per skill.
+For skills, read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the applicable guide: [GPT-6](references/gpt-6.md), [Fable](references/claude-fable-5.1.md) or [Opus](references/claude-opus-5.5.md). Astra, Sol and Luna share one GPT-6 profile and complete prompt per skill.
 
 Change shared behaviour in the base first, then adapt every supported `variants/<profile>.md`. Existing variants do not override the base. Preserve behaviour, permissions, exact commands, evidence and completion criteria. Model guidance adds no gates or delegation. Share resources and metadata unless runtime behaviour differs.
 
@@ -55,6 +55,6 @@ Keep a complete prompt at every profile path. Byte-identical variants should use
 
 The applicable `AGENTS.md` assigns execution roles. Keep shared skills available to coordinators, reviewers and workers; variants adapt wording, not ownership or authority.
 
-File presence, including these links, records coverage. The materializer copies one selected authored prompt for a harness root; it does not generate text, call a model, or switch profiles when a worker uses another model. Validate prompts against the base through independent agent exercises and installation through the materializer test.
+File presence, including these links, records coverage. The materializer copies the selected authored prompt; it does not generate text or call a model. Validate prompts against the base through independent agent exercises and installation through the materializer test.
 
 For a new model, verify its official guidance and update matching in `scripts/materialize-skill-variants.mjs`. Reuse the family profile when its guidance applies; add a guide and complete variants only when a distinct profile is needed. The script owns same-family fallback and the once-per-session warning. Keep source links and review dates current.

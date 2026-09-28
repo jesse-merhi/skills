@@ -15,7 +15,7 @@ function fixture(t) {
     const skill = path.join(sourceRoot, name);
     fs.mkdirSync(path.join(skill, "variants"), { recursive: true });
     fs.writeFileSync(path.join(skill, "SKILL.md"), `---\nname: ${path.basename(name)}\ndescription: fixture\n---\n`);
-    for (const model of ["gpt-6", "claude-fable-5.1", "claude-opus-5.5", "claude-sonnet-5.5"]) {
+    for (const model of ["gpt-6", "claude-fable-5.1", "claude-opus-5.5"]) {
       fs.writeFileSync(path.join(skill, "variants", `${model}.md`), `selected:${model}\n`);
     }
   }
@@ -420,7 +420,7 @@ test("targeted installation preserves other prompts across actual GPT-6 tier swi
   assert.equal(selected(current.root), "updated\n");
 });
 
-test("switches Claude profiles through stable links without changing other skills or settings", (t) => {
+test("switches Fable to Opus through stable links without changing other skills or settings", (t) => {
   const current = fixture(t);
   fs.mkdirSync(path.join(current.root, "skills", "personal"), { recursive: true });
   fs.writeFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "my instructions");
@@ -432,18 +432,6 @@ test("switches Claude profiles through stable links without changing other skill
   assert.equal(selected(current.root), "selected:claude-opus-5.5\n");
   assert.equal(fs.readlinkSync(path.join(current.root, "skills", "alpha")), before);
   assert.equal(result.linksChanged, 0);
-  const sonnet = installSkills({ ...current, harness: "claude", model: "anthropic/claude-sonnet-5-5", requireExact: true });
-  assert.equal(sonnet.profile, "claude-sonnet-5.5");
-  assert.equal(selected(current.root), "selected:claude-sonnet-5.5\n");
-  assert.equal(fs.readlinkSync(path.join(current.root, "skills", "alpha")), before);
-  assert.equal(sonnet.linksChanged, 0);
-  const future = installSkills({ ...current, harness: "claude", model: "claude-sonnet-5-6", sessionId: "sonnet-switch" });
-  assert.equal(future.profile, "claude-sonnet-5.5");
-  assert.equal(future.exact, false);
-  assert.match(future.notice, /not been updated for claude-sonnet-5-6/);
-  assert.throws(() => installSkills({ ...current, harness: "claude", model: "claude-sonnet-5-4" }), /earliest supported anthropic-sonnet profile/);
-  assert.equal(selected(current.root), "selected:claude-sonnet-5.5\n");
-  assert.equal(fs.readlinkSync(path.join(current.root, "skills", "alpha")), before);
   assert.equal(fs.readFileSync(path.join(current.root, "skills", "personal", "SKILL.md"), "utf8"), "my instructions");
   assert.equal(fs.readFileSync(path.join(current.root, "settings.json"), "utf8"), '{"model":"claude-fable-5[1m]"}\n');
 });
@@ -546,15 +534,6 @@ test("rejects retired Opus identifiers before creating an installation", (t) => 
   const current = fixture(t);
   for (const model of ["claude-opus-5", "anthropic/claude-opus-5", "claude-opus-5-20260901", "claude-opus-5.1"]) {
     assert.throws(() => installSkills({ ...current, harness: "claude", model }), /earliest supported anthropic-opus profile \(claude-opus-5\.5\)/);
-    assert.equal(fs.existsSync(current.root), false);
-    assert.equal(fs.existsSync(current.binDir), false);
-  }
-});
-
-test("rejects older Sonnet identifiers before creating an installation", (t) => {
-  const current = fixture(t);
-  for (const model of ["claude-sonnet-5", "anthropic/claude-sonnet-5", "claude-sonnet-5-4"]) {
-    assert.throws(() => installSkills({ ...current, harness: "claude", model }), /earliest supported anthropic-sonnet profile \(claude-sonnet-5\.5\)/);
     assert.equal(fs.existsSync(current.root), false);
     assert.equal(fs.existsSync(current.binDir), false);
   }
