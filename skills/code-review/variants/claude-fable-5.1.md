@@ -21,7 +21,7 @@ Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode.
 
 ## 2. Simplify in one thorough pass
 
-Give one implementation agent the target, requirements, owned files, repair authority and checks. Require it to apply coding-standards, [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) for names and flow, and [writing-good-tests](../writing-good-tests/SKILL.md) for test value, coverage and verification, with this goal:
+Run this pass even when an agent just implemented the change; if it cannot run, say why in the summary. Give one implementation agent the target, requirements, owned files, repair authority and checks. Require it to apply coding-standards, [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) for names and flow, and [writing-good-tests](../writing-good-tests/SKILL.md) for test value, coverage and verification, with this goal:
 
 > This is your one shot to get the scoped code into a good state. Take the time needed to inspect the whole change, relevant callers and affected tests. Simplify changed and directly affected code while preserving required behavior. Remove unnecessary abstractions, indirection, duplication and speculative flexibility. Prefer existing repository or dependency capabilities. Complete justified edits and meaningful verification before returning; leave useful complexity alone. Do not save work for a later sweep or pad runtime.
 
@@ -31,7 +31,7 @@ Include affected tests and fixtures in the simplification. Use writing-good-test
 
 Inspect callers before deleting guards, cleanup, error handling, public contracts or tests. Preserve required safety and failure behavior. Fewer lines alone is not success, and unfamiliar code is not proof of unnecessary complexity. Stop for actual authority gaps such as breaking changes, dependencies or unrelated scope.
 
-Run this pass even when an agent just implemented the change; if it cannot run, say why in the summary. Integrate the patch and resolve verification failures before independent review. If no independent implementation agent is available, report it and simplify locally; the later reviews must still be independent.
+Integrate the patch and resolve verification failures before independent review. If no independent implementation agent is available, report it and simplify locally; the later reviews must still be independent.
 
 ## 3. Review once, in parallel
 
