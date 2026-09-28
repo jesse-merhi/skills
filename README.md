@@ -61,6 +61,7 @@ To install or switch just this repo's skills, run one command from the clone:
 ./install-skills --harness codex --model luna
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
+./install-skills --harness claude --model sonnet
 ```
 
 Each command installs this repo's available skills for that model. Add `--require-exact` to
@@ -95,10 +96,13 @@ contained static copy of the selected prompt, as does Claude. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
-Claude Code uses its normal main session and your selected model, without
-custom main or reviewer agents. Shared owner and worker policy lives in
-`AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
-`handoff` transfers work to a fresh full session.
+Claude Code uses its normal main session for coordination. [Optional named
+workers](claude/README.md) use Opus 5.5 by default for substantive implementation
+and independent review; Sonnet 5.5 handles clearly bounded implementation and
+investigation. Select Opus 5.5 at xhigh for coordination unless the user chooses
+otherwise. Shared owner and worker policy lives in `AGENTS.md`.
+`wait-efficiently` handles waiting for commands, CI, and agents; `handoff`
+transfers work to a fresh full session.
 
 For opt-in Codex orchestration, run `./install-codex-profiles`, then
 `codex --profile orchestration`. This pins Astra for coordination, Sol for
@@ -158,10 +162,9 @@ in the target repository, asking before installing dependencies. This catalog
 does not need a bundled linter for every language. Standalone `translate`
 proposes a mapping; shared-catalog changes require a separate explicit request.
 
-Every skill has three complete profiles: GPT-6 (shared by Astra, Sol and Luna),
-Claude Fable 5.1, and Claude Opus 5.5. Selection
-happens locally before the model sees the workflow, so there is no router turn
-or unused prompt in context. Harness views expose the selected prompt directly.
+Every skill has four complete profiles: GPT-6 (shared by Astra, Sol and Luna),
+Claude Fable 5.1, Claude Opus 5.5, and Claude Sonnet 5.5. Selection
+happens locally at installation, so there is no router turn or unused prompt in context. Each harness root has one installed profile view; launching a worker with another model does not switch its skills. Harness views expose the selected prompt directly.
 A newer model in a supported family falls back to the newest family variant and
 produces one update notice during materialization.
 
@@ -303,8 +306,9 @@ PRs are welcome.
   descriptions are trigger conditions; if yours reads like a summary, the agent
   will not load it at the right moment.
 - Give every skill a complete prompt in `variants/gpt-6.md`,
-  `variants/claude-fable-5.1.md`, and
-  `variants/claude-opus-5.5.md`. Preserve one
+  `variants/claude-fable-5.1.md`,
+  `variants/claude-opus-5.5.md`, and
+  `variants/claude-sonnet-5.5.md`. Preserve one
   behavior contract while following the applicable official prompting guide. The
   [`writing-for-agents`](skills/writing-for-agents/SKILL.md) skill owns the
   guide links, selector, fallback order, and new-model workflow.

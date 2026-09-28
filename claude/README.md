@@ -4,19 +4,23 @@ The normal Claude Code session coordinates the work. These optional native subag
 
 | Name | Model | Effort | Assignment |
 | --- | --- | --- | --- |
-| `implementer` | `claude-opus-5-5` | `high` | An owned code or test change with focused verification |
-| `investigator` | `claude-opus-5-5` | `medium` | A bounded question answered with current evidence |
+| `implementer` | `claude-opus-5-5` | `high` | Substantive implementation, design choices or difficult debugging |
+| `bounded-implementer` | `claude-sonnet-5-5` | `high` | A small change with a clear contract and existing validation |
+| `investigator` | `claude-sonnet-5-5` | `medium` | A bounded question answered with current evidence |
 | `findings-reviewer` | `claude-opus-5-5` | `xhigh` | Independent inspection and findings only |
 
-Every role pins Opus 5.5 explicitly, so a parent using an older Opus cannot pass that version through the `opus` alias. These settings do not change the coordinator's selected model. Report unsupported models or effort instead of silently substituting.
+Use Opus 5.5 at xhigh for the normal coordinating session when selecting its model and effort. `implementer` owns substantive changes, including ambiguous requirements, design choices, difficult debugging and work across permission, concurrency, lifecycle or component boundaries. Choose `bounded-implementer` only for a clear, small assignment with existing validation. If its scope grows, return the evidence for Opus reassignment. Preserve explicit user model or effort choices; report unsupported settings instead of silently substituting. Worker definitions do not change the coordinator's selected model.
+
+Installed skills are one profile view selected for the harness root at installation. Launching a worker with another model does not switch that view. Keep shared prompts usable by both Opus and Sonnet; use separate configuration roots if concurrent sessions need distinct installed profiles.
 
 ## Installation
 
-Install matching domain skills through [INSTALL.md](../INSTALL.md). For availability across projects, link the three files from `claude/agents/` into `~/.claude/agents/`. For one project, use its `.claude/agents/`. Survey all destinations first: preserve real files and foreign links, asking before replacing them. Replace only links verified as belonging to this repository or a verified previous clone. Create absent destinations using ordinary `ln -s` without force so concurrent files are preserved. For absent destinations:
+Install matching domain skills through [INSTALL.md](../INSTALL.md). For availability across projects, link the four files from `claude/agents/` into `~/.claude/agents/`. For one project, use its `.claude/agents/`. Survey all destinations first: preserve real files and foreign links, asking before replacing them. Replace only links verified as belonging to this repository or a verified previous clone. Create absent destinations using ordinary `ln -s` without force so concurrent files are preserved. For absent destinations:
 
 ```sh
 mkdir -p ~/.claude/agents
 ln -s /absolute/path/to/skills/claude/agents/implementer.md ~/.claude/agents/implementer.md
+ln -s /absolute/path/to/skills/claude/agents/bounded-implementer.md ~/.claude/agents/bounded-implementer.md
 ln -s /absolute/path/to/skills/claude/agents/investigator.md ~/.claude/agents/investigator.md
 ln -s /absolute/path/to/skills/claude/agents/findings-reviewer.md ~/.claude/agents/findings-reviewer.md
 ```
