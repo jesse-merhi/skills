@@ -13,7 +13,7 @@ metadata:
 
 Read the changed contract and nearby tests, fixtures, routes and helpers, including staged, unstaged, untracked and deleted work. Before writing a test, including rejection tests, trace input to the tested code and establish that the situation can occur; an invented fixture is not proof.
 
-Identify the caller-visible failure, required result, nearest overlapping test, and why that existing coverage misses this failure. Derive expectations independently from the implementation, using specifications or worked examples when available. Prefer a contract you can prove through existing interfaces over adding a production seam that exists only for the test. Rejecting an invented schema input adds no useful coverage.
+Identify the caller-visible failure, required result, nearest overlapping test, and why that existing coverage misses this failure. Derive expectations independently of the implementation, using specifications or worked examples when available. Prefer a contract you can prove through existing interfaces over adding a production seam that exists only for the test. Rejecting an invented schema input adds no useful coverage.
 
 Use application data definitions for successful fakes and fixtures. Do not redefine data or change application behavior to fit a fixture.
 
@@ -61,9 +61,7 @@ Use `wait-efficiently` for prolonged runs. Return completion, failure or a decis
 
 ## Record the results
 
-Save each check's command, selection and coverage, checkout, revision and dirty-content identity, relevant source/callers, tests/fixtures, dependencies, configuration, runtime/environment, outcome, exit status and log path. Compare input identity before and after; changed inputs invalidate proof for the final checkout. Use existing check-result storage or task evidence directory. Review coverage is not test evidence.
-
-For reuse on a later revision, retain the original receipt and input-flow evidence. A filename alone does not prove independence; never call old execution fresh.
+Record each check's command, revision including uncommitted changes, runtime environment, outcome and log path with the task. When reusing a result on a later revision, keep the original record and never call old execution fresh. Review coverage is not test evidence.
 
 Before pushing, verify required behavior and satisfy applicable checks under the global test policy.
 
