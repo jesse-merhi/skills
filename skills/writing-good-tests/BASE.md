@@ -60,7 +60,7 @@ Use `wait-efficiently` for prolonged runs. Return completion, failure or a decis
 
 ## Record the results
 
-Record each check's command, revision including uncommitted changes, runtime, outcome and log path with the task. When reusing a result on a later revision, keep the original record and never call old execution fresh. Review coverage is not test evidence.
+Record each check's command, revision including uncommitted changes, runtime environment, outcome and log path with the task. When reusing a result on a later revision, keep the original record and never call old execution fresh. Review coverage is not test evidence.
 
 Before pushing, verify required behavior and satisfy applicable checks under the global test policy.
 
