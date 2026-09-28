@@ -95,10 +95,12 @@ contained static copy of the selected prompt, as does Claude. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
-Claude Code uses its normal main session and your selected model, without
-custom main or reviewer agents. Shared owner and worker policy lives in
-`AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
-`handoff` transfers work to a fresh full session.
+Claude Code uses its normal main session for coordination. Select Opus 5.5 at
+xhigh by default for that session, while preserving the user's explicit model
+and effort choices. [Optional named workers](claude/README.md) use Opus 5.5.
+Shared owner and worker policy lives in `AGENTS.md`.
+`wait-efficiently` handles waiting for commands, CI, and agents; `handoff`
+transfers work to a fresh full session.
 
 For opt-in Codex orchestration, run `./install-codex-profiles`, then
 `codex --profile orchestration`. This pins Astra for coordination, Sol for
