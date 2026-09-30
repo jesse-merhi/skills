@@ -6,17 +6,23 @@ if [[ "${1:-}" == "--help" ]]; then
 Usage: bash scripts/cloud/setup.sh
 
 Prepare a cloud VM with Node 24, the Bun version from package.json, and
-dependencies from bun.lock. Missing or mismatched tools are installed globally
-through npm; installation failures stop setup.
+dependencies from bun.lock. Missing or mismatched tools are installed through npm
+in .codex/tools, with npm and Bun caches there. Explicit npm_config_prefix,
+npm_config_cache, and BUN_INSTALL_CACHE_DIR overrides are respected.
+Installation failures stop setup.
 
-Claude: the repository's SessionStart hook runs this only in cloud sessions.
-Codex: use "bash scripts/cloud/setup.sh" for installation and dependency refresh.
-After setup, use the repository's normal Bun commands for checks and development.
+Claude: the SessionStart hook runs this only in cloud sessions. Successful setup
+adds activation to CLAUDE_ENV_FILE when available for subsequent Bash commands.
+Other cloud shells: run setup, then source scripts/cloud/env.sh in each shell
+before using the repository's normal Bun commands for checks and development.
 HELP
   exit 0
 fi
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+# shellcheck source=scripts/cloud/env.sh
+source scripts/cloud/env.sh
+mkdir -p "$npm_config_prefix" "$npm_config_cache" "$BUN_INSTALL_CACHE_DIR"
 
 package_manager="$(node -p 'require("./package.json").packageManager')"
 case "$package_manager" in
@@ -37,7 +43,7 @@ else
   tools+=("$package_manager")
 fi
 if [[ "${#tools[@]}" -gt 0 ]]; then
-  # Claude's base image already has Node symlinks; npm must replace them.
+  # An explicitly supplied prefix may already contain runtime symlinks.
   npm install --global --force --no-audit --no-fund "${tools[@]}"
   hash -r
 fi
@@ -45,3 +51,7 @@ fi
 node --version
 bun --version
 bun install --frozen-lockfile
+
+if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
+  printf 'source %q\n' "$PWD/scripts/cloud/env.sh" >> "$CLAUDE_ENV_FILE"
+fi
