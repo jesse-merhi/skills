@@ -1,10 +1,10 @@
-model = "gpt-6-astra"
-model_reasoning_effort = "xhigh"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
 
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 4
-default_subagent_model = "gpt-6-sol"
+default_subagent_model = "gpt-6.1-sol"
 default_subagent_reasoning_effort = "high"
 
 [agents.implementer]
@@ -20,5 +20,9 @@ description = "Investigate a bounded code or documentation question with Luna; r
 config_file = "orchestration/investigator.toml"
 
 [agents.findings_reviewer]
-description = "Independent findings-only Astra reviewer. Not a coordinator or an until-clean workflow."
+description = "Independent findings-only Sol reviewer. Not a coordinator or an until-clean workflow."
 config_file = "orchestration/findings-reviewer.toml"
+
+[agents.oracle]
+description = "Optional read-only Astra consultation on a bounded unresolved decision; return evidence and advice to the coordinator."
+config_file = "orchestration/oracle.toml"

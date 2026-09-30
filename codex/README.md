@@ -12,20 +12,21 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 
 | Role | Model | Reasoning |
 | --- | --- | --- |
-| Coordinator | GPT-6 Astra | xhigh |
-| `implementer` — implementation, test design and repairs | GPT-6 Sol | high |
+| Coordinator | GPT-6.1 Sol | high |
+| `implementer` — implementation, test design and repairs | GPT-6.1 Sol | high |
 | `test_executor` — established validation execution | GPT-6 Luna | max |
 | `investigator` — bounded investigation and research | GPT-6 Luna | max |
-| `findings_reviewer` — independent findings only | GPT-6 Astra | xhigh |
-| Unnamed child | GPT-6 Sol | high |
+| `findings_reviewer` — independent findings only | GPT-6.1 Sol | high |
+| `oracle` — optional read-only decision advice | GPT-6 Astra | high |
+| Unnamed child | GPT-6.1 Sol | high |
 
 At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit spawn arguments override unnamed-child defaults, but named roles retain their pinned model and effort. For an approved exception, use an unnamed child with explicit settings or a separately configured role.
 
-GPT-6 Sol and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting another model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
+GPT-6.1 Sol, Astra and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting another model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
 
 Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./install-skills --harness codex --model gpt-6`; switching among those models needs no separate skill view. Changing model settings does not refresh copied skills after repository updates. See [INSTALL.md](../INSTALL.md#codex-and-claude-code) for refresh and root ownership.
 
-The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. Skill availability does not select an execution role or expand its permissions.
+The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. Ordinary review uses Sol. Skill availability does not select an execution role or expand its permissions.
 
 For established validation, `writing-good-tests` selects `test_executor` and defines the batch, receipt and failure handoff. It also describes the explicit-settings fallback for launchers without the named role.
 
@@ -45,6 +46,10 @@ Evidence: <local reproduction output and relevant source paths>.
 The role definition supplies reusable behavior, skill references, boundaries and expected outputs. A task name alone does not select a role. Report missing roles instead of rebuilding their prompts or changing live settings; continue suitable work locally. For a user-selected model exception, use the explicit settings route above rather than pretending a pinned role changed.
 
 Use `findings_reviewer` only for an authorized findings-only review in fresh context, never for a delegated until-clean workflow. Its regular file is `orchestration/findings-reviewer.toml`; the standalone `findings-reviewer.config.toml` profile links to that same definition, including its skill exclusions and memory settings. The named-role loader rejects a file symlink as its final path component, so role paths go through the linked directory. Use separate fresh reviewer invocations for the two assessments required by `code-review`; the coordinator owns their integration and repairs.
+
+Use `oracle` when an unresolved decision merits optional Astra advice. Supply one bounded question, the revision, relevant evidence, constraints and the decision the coordinator needs to make. For example: “Does the proposed cache invalidation preserve the caller contract? Compare the supplied alternatives and identify evidence that could change the recommendation.” The oracle reads evidence and returns advice, trade-offs and uncertainty. It cannot edit, run mutating checks, manage repairs, spawn workers, approve or deliver the change. The coordinator evaluates the advice and retains ownership. Consultation adds no mandatory gate and does not replace either ordinary review assessment.
+
+`orchestration/oracle.toml` disables memory injection and generation and hides coordination and delivery skills. Its read-only duties also cover shell and external tools; the role inherits session permissions rather than providing a filesystem sandbox.
 
 ## What installation changes
 

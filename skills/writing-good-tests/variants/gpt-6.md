@@ -55,7 +55,7 @@ Batch established tests, lint, typechecks or prepared acceptance flows for Luna/
 
 Use `spawn_agent` with `agent_type: "test_executor"`. If unavailable, launch a fresh `default` agent with `model: "gpt-6-luna"`, `reasoning_effort: "max"`, and `fork_turns: "none"`, pointing it to this skill. Check the actual launch settings. If explicit settings are also unavailable, report the limitation and keep suitable execution local; do not change live configuration.
 
-Check checkout and inputs before execution under repository permissions, including manual E2E/Maestro triggers. Stop at the first failure, timeout, input change or ambiguity. Return command, status, relevant output and checks not run. Do not retry, debug, repair, install or start external/paid jobs. The coordinator assigns substantive diagnosis, new test design and authorized repair to Sol/high before further execution.
+Check checkout and inputs before execution under repository permissions, including manual E2E/Maestro triggers. Stop at the first failure, timeout, input change or ambiguity. Return command, status, relevant output and checks not run. Do not retry, debug, repair, install or start external/paid jobs. The coordinator handles substantive diagnosis, new test design and authorized repair before further execution, using the `implementer` role when it is available and useful.
 
 Use `wait-efficiently` for prolonged runs. Return completion, failure or a decision needed, with useful progress updates.
 

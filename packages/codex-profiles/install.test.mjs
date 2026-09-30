@@ -28,17 +28,18 @@ test("installs selectable model roles and preserves base configuration and globa
     import path from "node:path";
     const root = process.argv[1];
     const { default: profile } = await import(path.join(root, "orchestration.config.toml"));
-    assert.equal(profile.model, "gpt-6-astra");
-    assert.equal(profile.model_reasoning_effort, "xhigh");
+    assert.equal(profile.model, "gpt-6.1-sol");
+    assert.equal(profile.model_reasoning_effort, "high");
     assert.equal(profile.agents.enabled, true);
     assert.equal(profile.agents.max_concurrent_threads_per_session, 4);
-    assert.equal(profile.agents.default_subagent_model, "gpt-6-sol");
+    assert.equal(profile.agents.default_subagent_model, "gpt-6.1-sol");
     assert.equal(profile.agents.default_subagent_reasoning_effort, "high");
     const expected = [
-      ["implementer", "gpt-6-sol", "high"],
+      ["implementer", "gpt-6.1-sol", "high"],
       ["investigator", "gpt-6-luna", "max"],
       ["test_executor", "gpt-6-luna", "max"],
-      ["findings_reviewer", "gpt-6-astra", "xhigh"],
+      ["findings_reviewer", "gpt-6.1-sol", "high"],
+      ["oracle", "gpt-6-astra", "high"],
     ];
     for (const [name, model, effort] of expected) {
       const rolePath = path.join(root, profile.agents[name].config_file);

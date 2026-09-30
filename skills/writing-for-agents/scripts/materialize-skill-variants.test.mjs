@@ -64,6 +64,7 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
     "gpt-6", "openai/gpt-6", "openai/gpt-6-2026-09-23",
     "astra", "openai/astra", "openai/gpt-6-astra", "azure-openai/gpt-6-astra-2026-09-23",
     "sol", "openai/sol", "openai/gpt-6-sol", "azure-openai/gpt-6-sol-2026-09-23",
+    "gpt-6.1-sol", "openai/gpt-6.1-sol", "azure-openai/gpt-6.1-sol-2026-09-29",
     "luna", "openai/luna", "openai/gpt-6-luna", "atlassian-ai-gateway-openai/gpt-6-luna-2026-09-23",
   ]) {
     const resolved = resolveProfile(model);
@@ -87,7 +88,7 @@ test("recognizes supported model identifiers and same-family fallbacks", () => {
   const configuredFable = resolveProfile("claude-fable-5[1m]");
   const futureFable = resolveProfile("claude-fable-5.2");
   const gpt = resolveProfile("azure-openai/gpt-6-astra");
-  const futureGpt = resolveProfile("atlassian-ai-gateway-openai/gpt-6.1-sol");
+  const futureGpt = resolveProfile("atlassian-ai-gateway-openai/gpt-6.2-sol");
 
   assert.deepEqual(
     [fable.profile.id, fable.exact, configuredFable.profile.id, configuredFable.exact, futureFable.profile.id, futureFable.exact],
@@ -179,7 +180,7 @@ test("materializes one contained static variant and links shared resources", (t)
   );
 });
 
-for (const model of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]) {
+for (const model of ["gpt-6-astra", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna"]) {
   test(`materializes the one shared prompt as an exact ${model} selection`, (t) => {
     const current = fixture(t);
     const result = materializeSkillVariants({
@@ -420,7 +421,7 @@ test("materializes the repository corpus and keeps installed links stable across
     fs.readFileSync(path.join(repositorySkills, "cleanup", "variants", "gpt-6.md"), "utf8"),
   );
 
-  for (const model of ["gpt-6-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5-5"]) {
+  for (const model of ["gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna", "claude-fable-5.1", "claude-opus-5-5"]) {
     materializeSkillVariants({ model, outputRoot: current.output, sourceRoot: repositorySkills, requireExact: true });
     const profile = resolveProfile(model).profile.id;
     assert.equal(

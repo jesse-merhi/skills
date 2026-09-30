@@ -86,7 +86,17 @@ step when installing only into OpenClaw.
 ## 3. Preserve Claude's normal session
 
 Claude Code uses its normal main session and project instructions described
-above. Install the matching skills without changing unrelated Claude settings or the selected model. When the user requests named workers, follow [Claude named workers](claude/README.md) to install the optional native subagent definitions. Do not set a custom main agent.
+above. Fable 5.1 at high is the default for coordination, ordinary work and review;
+Opus 5.5 at high is reserved for optional read-only oracle consultation. Preserve
+explicit user model and effort choices. Select Fable through normal Claude settings
+or `claude --model claude-fable-5-1 --effort high` only when model selection is
+authorized; skill installation preserves the currently selected model.
+
+Install the matching skills without changing unrelated Claude settings or the
+selected model. When the user requests named workers, follow [Claude named
+workers](claude/README.md) to install the optional native subagent definitions.
+These definitions pin their model and effort; a prompt cannot override them.
+Do not set a custom main agent.
 
 For upgrades, remove `agent` from `~/.claude/settings.json` only when its value
 is exactly `fable-orchestrator`. Within `~/.claude/agents/`, remove
@@ -116,6 +126,8 @@ Link `REPO/codex/findings-reviewer.config.toml` to
 destination first: replace only a matching repo-owned or dead symlink, ask
 before replacing a real file or another owner's link, and preserve unrelated
 profiles. Do not change the default profile or the user's `config.toml`.
+
+The findings-only preset uses GPT-6.1 Sol at high, matching ordinary review in the [Codex orchestration policy](codex/README.md). The orchestration profile’s optional Astra/high oracle remains advisory and read-only; consultation is not an installation, review or completion gate. Installing profiles does not select the active model or change live configuration.
 
 The preset uses native profile files and name-based `skills.config` exclusions,
 verified with Codex 0.153.1. If the installed build lacks either capability,

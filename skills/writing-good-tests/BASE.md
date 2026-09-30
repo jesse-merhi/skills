@@ -54,7 +54,7 @@ Batch established tests, lint, typechecks or prepared acceptance flows for Luna/
 
 Use the configured `test_executor` role at GPT-6 Luna, max effort. If it is unavailable, use a fresh unnamed worker with explicit model and effort settings and point it to this skill. Check the actual launch settings. If neither route is available, report the limitation and keep suitable execution local; do not change live configuration.
 
-Check checkout and inputs before execution under repository permissions, including manual E2E/Maestro triggers. Stop at the first failure, timeout, input change or ambiguity. Return command, status, relevant output and checks not run. Do not retry, debug, repair, install or start external/paid jobs. The coordinator assigns substantive diagnosis, new test design and authorized repair to Sol/high before further execution.
+Check checkout and inputs before execution under repository permissions, including manual E2E/Maestro triggers. Stop at the first failure, timeout, input change or ambiguity. Return command, status, relevant output and checks not run. Do not retry, debug, repair, install or start external/paid jobs. The coordinator handles substantive diagnosis, new test design and authorized repair before further execution, using the `implementer` role when it is available and useful.
 
 Use `wait-efficiently` for prolonged runs. Return completion, failure or a decision needed, with useful progress updates.
 
