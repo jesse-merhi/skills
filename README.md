@@ -56,8 +56,8 @@ anything it did not put there.
 To install or switch just this repo's skills, run one command from the clone:
 
 ```sh
+./install-skills --harness codex --model gpt-6.1-sol
 ./install-skills --harness codex --model astra
-./install-skills --harness codex --model sol
 ./install-skills --harness codex --model luna
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
@@ -95,18 +95,21 @@ contained static copy of the selected prompt, as does Claude. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
-Claude Code uses its normal main session for coordination. Select Opus 5.5 at
-xhigh by default for that session, while preserving the user's explicit model
-and effort choices. [Optional named workers](claude/README.md) use Opus 5.5.
-Shared owner and worker policy lives in `AGENTS.md`.
-`wait-efficiently` handles waiting for commands, CI, and agents; `handoff`
-transfers work to a fresh full session.
+Claude Code uses its normal main session, with Fable 5.1 at high as the repository
+default. Select it with `claude --model claude-fable-5-1 --effort high`, preserving
+explicit user choices. Optional [named workers](claude/README.md) use
+Fable 5.1 at high for ordinary work and findings-only review, with Opus 5.5 at
+high reserved for read-only oracle advice. Shared owner and worker policy lives
+in `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
+`handoff` transfers work to a fresh full session.
 
 For opt-in Codex orchestration, run `./install-codex-profiles`, then
-`codex --profile orchestration`. This pins Astra for coordination, Sol for
-implementation and tests, Luna for investigation, and Astra for independent
-findings-only review. It does not edit your base configuration or install global
-agents. See [Codex orchestration](codex/README.md) for the role settings and limits.
+`codex --profile orchestration`. This pins GPT-6.1 Sol at high for coordination,
+implementation and findings-only review, Luna at max for bounded investigation
+and prepared validation, and Astra at high for optional read-only oracle advice.
+The coordinator retains decisions and delivery; consultation adds no mandatory
+gate. The profile does not edit your base configuration or install global agents.
+See [Codex orchestration](codex/README.md) for the role settings and limits.
 
 Codex has an opt-in `findings-reviewer` profile for inspect-and-report sessions. Use `codex --profile findings-reviewer review --base main` for a specifically requested native review. The profile hides coordination and publication skills while retaining domain guidance. Reviewers report evidence; the coordinator owns decisions, repairs and delivery.
 
