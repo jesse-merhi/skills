@@ -363,4 +363,4 @@ See [`SECURITY.md`](SECURITY.md).
 
 ## Local PR turn queue
 
-Authorized PR merges use the external `repo-queue` skill to wait their turn before final validation and merge. [Pinned installation and supported agent surfaces](external.md#local-pr-turns) live in the external ownership table; the queue code and skill stay in their own repository.
+Authorized PR merges use the external `repo-queue` skill: a PR enters a GitHub native merge queue after its review, proof and CI gates pass; otherwise it waits for a local repository turn before final validation and merge. [Pinned installation and supported agent surfaces](external.md#local-pr-turns) live in the external ownership table; the queue code and skill stay in their own repository.
