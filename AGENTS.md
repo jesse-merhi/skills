@@ -36,9 +36,11 @@ Assign review duties by the task, not by whether an agent is a subagent.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
 - Keep replies concise, concrete, and free of repetition while preserving
-  necessary evidence and qualifications. Use `speak-fking-english` for
-  substantial writing, requested rewrites, unclear explanations, or when a
-  delivery workflow requires it; routine short replies need no extra skill read.
+  necessary evidence and qualifications. Leave hashes, receipt paths and
+  internal identifiers out of replies unless the reader needs them to act.
+  Use `speak-fking-english` for substantial writing, requested rewrites,
+  unclear explanations, or when a delivery workflow requires it; routine short
+  replies need no extra skill read.
 - When user input is genuinely required, use the harness's native structured
   question UI when it is available, including outside planning-only modes. Do
   not ask questions when repository evidence, safe investigation, or a
@@ -60,7 +62,7 @@ otherwise, when working in this skills repository, use its local
 `skills/coding-standards/SKILL.md`, and use the installed skill in other
 projects. Follow its applicable principles and the project's recorded
 exceptions. That skill owns the standards and the assessment required in
-review, including cold review.
+review.
 
 ## Implementation design
 
@@ -81,6 +83,9 @@ review, including cold review.
   path, then ask before proceeding. Do not add compatibility layers by default.
 - Choose the simplest implementation that fully meets the current requirements.
   Avoid speculative abstractions, configuration, and indirection.
+- Keep the diff as small as the requirement allows. Before review, remove code,
+  tests and documentation the requirement does not need, and report the net
+  lines added and removed with the result.
 - Grow the system in layers. Start from the smallest version that works end to
   end, and add each new capability on top of a product that already works.
   Never trade a working product for unfinished complexity.
@@ -172,7 +177,7 @@ itself model generation.
   The coordinator may complete small local steps when delegation would not help.
   Use GPT-6 Luna at max for established test, lint, typecheck and prepared acceptance
   execution, bounded investigation and focused research. `writing-good-tests` owns
-  execution batches and receipts. The Claude Code mapping below replaces these
+  execution batches and result records. The Claude Code mapping below replaces these
   defaults in that harness.
 - Reserve GPT-6 Astra at high for optional read-only oracle consultation when an
   unresolved decision merits another assessment. Give the oracle a bounded question,
@@ -232,6 +237,9 @@ itself model generation.
   within the existing permission, publication, and destructive-action
   boundaries. When the user only asks a question or describes a problem
   without asking for a change or fix, the assessment is the deliverable.
+- Turn an open-ended goal, such as making a PR perfect, into a concrete done
+  condition before starting: the result, checks and review that finish it.
+  Stop when it is met and report further polish as optional follow-ups.
 - While obvious authorized work remains, do not stop at a plan, diagnosis, or
   partial patch, or end a turn with a summary that names the next step without
   taking it, an offer to continue, or choices that do not block the rest of the
@@ -276,12 +284,13 @@ itself model generation.
   are maintained separately. If it is unavailable, report the setup blocker
   instead of silently bypassing the queue. Implementation and review alone do
   not require a turn.
-- Choose the PR delivery shape before implementation. Keep one cohesive change
-  in one PR. When one story contains two or more dependent review units, plan a
-  bottom-to-top stack before editing. Use the installed `gh stack` tool
+- Choose the PR delivery shape before implementation. Default to one PR per
+  story and add follow-up work for that story to its open PR. When the work has
+  two or more dependent review units, propose a bottom-to-top stack and ask
+  before creating it. For an approved stack, use the installed `gh stack` tool
   and discover commands through `gh stack --help`. Keep independent or
-  unrelated work in separate PRs or stacks; never invent a dependency merely
-  to group changes.
+  unrelated work in separate PRs; never invent a dependency merely to group
+  changes.
 - Review gate: before marking ready, requesting sign-off or merging, ensure
   `code-review` covers the current changes unless the user explicitly waives it.
   The agent decides whether more review or tests are needed, favors reuse, and
@@ -356,4 +365,4 @@ Keep the normal main session as coordinator, using Claude Fable 5.1 at high by d
 
 When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for useful bounded work. All three select Fable 5.1 at high, replacing the shared GPT worker mapping in this harness. Reserve Opus 5.5 at high for `subagent_type: "oracle"` under the read-only consultation boundaries above. Named definitions pin their settings; apply the shared [launcher and override rules](#model-turns).
 
-The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings; never use it as an until-clean coordinator or a replacement for the required native review phase.
+The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings.

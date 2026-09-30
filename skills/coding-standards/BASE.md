@@ -11,7 +11,7 @@ Read expectations by default. Apply, sync or translate enforcement only when exp
 
 Find `catalog.json` beside the entrypoint, or one directory up under `variants/`. Read every standard's `id`, `title`, `scope` and `principle`, including unenforced standards. Apply relevant principles and read the target's scoped agent guidance and `lint/standards/ADOPTION.md` if present. Preserve project exceptions; a missing adoption record does not block this mode.
 
-Use relevant expectations during implementation. During review, including cold review, assess changed behavior and report relevant ids, evidence, exceptions and verification gaps. Apply the review workflow's findings criteria to supported violations; a missing linter or style preference alone is not a finding. Do not claim unassessed compliance.
+Use relevant expectations during implementation. During review, assess changed behavior and report relevant ids, evidence, exceptions and verification gaps. Apply the review workflow's findings criteria to supported violations; a missing linter or style preference alone is not a finding. Do not claim unassessed compliance.
 
 Read expectations does not install tools, change configuration, create adoption records, sync files or authorize unrelated repairs. Return to the calling task. Load the adoption references only for an explicit enforcement request; shared-catalog edits use [catalog-format.md](references/catalog-format.md).
 
