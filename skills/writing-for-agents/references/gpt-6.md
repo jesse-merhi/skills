@@ -1,8 +1,8 @@
 # GPT-6 writing guidance
 
-Use one shared prompt for Astra, Sol and Luna. OpenAI provides [family-wide prompting guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices) based on Astra observations and no separate Sol or Luna guide; validate it on the consuming models and workload.
+Use one shared prompt for Astra, Sol (including [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)) and Luna. OpenAI provides [family-wide prompting guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices) based on Astra observations and no separate Sol or Luna guide; validate it on the consuming models and workload.
 
-Reviewed: 2026-09-27.
+Reviewed: 2026-09-29.
 
 - Define the authorized outcome, required evidence and completion conditions. Let the agent resolve routine decisions from context; preserve decisions and permissions that need the user. Astra asks clarifying and non-blocking questions more readily than earlier models, so say which stops the workflow wants and treat implied requests as requests to act.
 - Before asking for approval, have the agent finish the authorized work that makes the action concrete, so approval is the last step. Do not add warnings, approval flows or checklists for hypothetical risk.

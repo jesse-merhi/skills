@@ -26,7 +26,7 @@ export const profiles = [
     id: "gpt-6",
     family: "openai-gpt",
     version: [6, 0],
-    matches: /^(?:gpt-6(?:-(?:astra|sol|luna))?(?:-\d{4}-\d{2}-\d{2})?|astra|sol|luna)$/i,
+    matches: /^(?:(?:gpt-6(?:-(?:astra|sol|luna))?|gpt-6\.1-sol)(?:-\d{4}-\d{2}-\d{2})?|astra|sol|luna)$/i,
   },
   {
     id: "claude-fable-5.1",

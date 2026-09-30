@@ -172,15 +172,23 @@ Model cost depends on the model, generated tokens, and input/cache usage.
 Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
-- Use GPT-6 Astra at xhigh for coordination, integration, verification and review. The
-  coordinator may complete small local steps when delegation would not help.
-  For meaningful delegated work, use GPT-6 Sol at high for implementation, test design
-  and substantive debugging or repairs; use GPT-6 Luna at max for established test,
-  lint, typecheck and prepared acceptance execution, bounded investigation and
-  focused research. `writing-good-tests` owns execution batches and result records.
-  Use xhigh for every Astra assignment unless the user explicitly overrides it.
+- Use GPT-6.1 Sol at high by default for coordination, integration, verification,
+  ordinary review, implementation, test design and substantive debugging or repairs.
+  The coordinator may complete small local steps when delegation would not help.
+  Use GPT-6 Luna at max for established test, lint, typecheck and prepared acceptance
+  execution, bounded investigation and focused research. `writing-good-tests` owns
+  execution batches and result records. The Claude Code mapping below replaces these
+  defaults in that harness.
+- Reserve GPT-6 Astra at high for optional read-only oracle consultation when an
+  unresolved decision merits another assessment. Give the oracle a bounded question,
+  the relevant revision, evidence and constraints. It returns advice, supporting
+  evidence, trade-offs and uncertainty; it does not edit, manage repairs, spawn
+  workers, approve, publish or take ownership of the workflow. The coordinator
+  evaluates the advice and retains all decisions and delivery. Consultation adds
+  no mandatory review or completion gate; ordinary review stays on the default
+  model family.
 - Assign skill execution by the work, not by which model variants are installed.
-  Use Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
+  Use GPT-6.1 Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
   Use Luna/max for bounded retrieval and inventory work, such as `session-recall`
   searches and `skill-cleaner` inventories, and for prepared validation batches,
   including UI and local-preview checks when the worker has the required tools.
@@ -355,6 +363,8 @@ browser sessions.
 
 ### Named workers
 
-Keep the normal main session as coordinator. Select Opus 5.5 at xhigh for it by default, while preserving the user's explicit model and effort selections. When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for a useful bounded assignment. Their native definitions select Opus 5.5 at high for implementation, medium for investigation and xhigh for independent review; these Claude worker settings replace the shared GPT worker mapping in this harness. Honor explicit user overrides through the launcher and report unavailable settings instead of silently substituting.
+Keep the normal main session as coordinator, using Claude Fable 5.1 at high by default, and preserve explicit user model and effort overrides.
+
+When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for useful bounded work. All three select Fable 5.1 at high, replacing the shared GPT worker mapping in this harness. Reserve Opus 5.5 at high for `subagent_type: "oracle"` under the read-only consultation boundaries above. Named definitions pin their settings; apply the shared [launcher and override rules](#model-turns).
 
 The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings.
