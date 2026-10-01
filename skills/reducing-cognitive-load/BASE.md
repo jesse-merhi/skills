@@ -19,4 +19,6 @@ Update internal definitions and usages together. Preserve public contracts unles
 
 Keep related work together and make branches readable. Extract a function when its name makes a useful step clearer; keep it inline when another jump would make the reader work harder.
 
+For React prop contracts, use [typescript-discipline](../typescript-discipline/SKILL.md#react-prop-contracts) to establish supported caller states before removing optionality or fallbacks.
+
 In review, show the confusing flow or name and a simpler alternative. Preserve behavior and use existing refactor checks; avoid helpers or changes based only on taste.

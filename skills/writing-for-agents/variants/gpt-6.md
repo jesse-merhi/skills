@@ -5,6 +5,8 @@ metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/productivity/writing-for-agents
   source-revision: 6654f6b60cd9d5be8b54c6fafe44346dabeb3b76
+  sources: |
+    - Informed by [pstack evaluation guidance](https://github.com/cursor/plugins/blob/2eb7ed4613cfc8f098dfe464a23680ea44d84c5e/pstack/skills/poteto-mode/playbooks/eval.md) — independent tasks, withheld criteria and artifact-based assessment.
 ---
 
 # Writing for agents
@@ -58,3 +60,13 @@ The applicable `AGENTS.md` assigns execution roles. Keep shared skills available
 File presence, including these links, records coverage. The materializer copies the selected authored prompt; it does not generate text or call a model. Validate prompts against the base through independent agent exercises and installation through the materializer test.
 
 For a new model, verify its official guidance and update matching in `scripts/materialize-skill-variants.mjs`. Reuse the family profile when its guidance applies; add a guide and complete variants only when a distinct profile is needed. The script owns same-family fallback and the once-per-session warning. Keep source links and review dates current.
+
+## Exercise changed instructions
+
+Before an exercise, record realistic task inputs, the intended result, success criteria and failure checks. Keep the criteria fixed while judging; record later corrections separately. Give an ordinary task request without revealing the measured behavior or grading criteria.
+
+Use a fresh agent in an isolated workspace with normal task context, tools and the authored skill. Existing model and permission policy still applies.
+
+Judge the resulting files, interface or command output. Verify self-reports against evidence. When available, inspect only the exercise's own tool record to check which instructions and references it read. Record missing tools, transcripts and model coverage as limits.
+
+For comparisons, keep inputs, model settings and tools equivalent. Give an independent reviewer the criteria and outputs without author, model or revision labels; retain their mapping separately. Inspect the outputs yourself and resolve disagreements from evidence. One run can expose a failure or demonstrate the requested result. Claims of general improvement need repeated matched trials.
