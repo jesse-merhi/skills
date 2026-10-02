@@ -18,8 +18,14 @@ if [[ "$mode" == "write" ]]; then
   permissions=(--approve-all)
 fi
 
-exec npx --yes acpx@0.13.1 \
+# Resolve the latest acpx and Codex adapter on every run, so new Codex models work without a pin bump.
+# acpx's built-in codex agent pins an older adapter whose bundled Codex CLI rejects current models.
+codex_adapter="npx -y @agentclientprotocol/codex-acp@latest"
+# Replace the actual ACP process so cancellation does not stop at an npx parent.
+acpx_executable="$(npx --yes --package=acpx@latest --call 'command -v acpx')"
+exec "$acpx_executable" \
   --cwd "$PWD" \
   "${permissions[@]}" \
   --timeout "$timeout_seconds" \
-  codex exec "$@"
+  --agent "$codex_adapter" \
+  exec "$@"

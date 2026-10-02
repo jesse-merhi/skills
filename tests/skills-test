@@ -294,8 +294,9 @@ test_installation_metadata_and_runtime() {
   assert_contains "$ROOT_DIR/skills/ask-claude/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$ROOT_DIR/skills/ask-codex/agents/openai.yaml" "allow_implicit_invocation: false"
   assert_contains "$ROOT_DIR/skills/just-do-it/agents/openai.yaml" "allow_implicit_invocation: false"
-  assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@0.13.1"
-  assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@0.13.1"
+  assert_contains "$ROOT_DIR/skills/ask-claude/scripts/ask-claude" "acpx@latest"
+  assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "acpx@latest"
+  assert_contains "$ROOT_DIR/skills/ask-codex/scripts/ask-codex" "@agentclientprotocol/codex-acp@latest"
 }
 
 test_handoff_tmux_helper_builds_tmux_window_command() {
