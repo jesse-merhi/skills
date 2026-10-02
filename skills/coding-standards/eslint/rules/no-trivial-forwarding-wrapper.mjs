@@ -53,7 +53,7 @@ export default {
 		schema: [{ type: "object", properties: { ignoreExported: { type: "boolean" } }, additionalProperties: false }],
 		messages: {
 			forwarding:
-				"Avoid trivial forwarding wrapper `{{name}}`. Inline it, or keep a helper only when it captures a concept, invariant, boundary, or test seam.",
+				"Avoid trivial forwarding wrapper `{{name}}`. Inline it, or keep a helper only when it captures a concept, enforces an invariant, or marks a real boundary. Test convenience alone does not justify a wrapper.",
 		},
 	},
 	create(context) {

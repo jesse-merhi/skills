@@ -76,8 +76,8 @@ review.
   the intended caller-visible result,
   reachable failures tied to the changed contract, nearest existing coverage,
   and what remains unproven. This adds no separate document or approval gate.
-  Tests may precede or follow implementation; use `writing-good-tests` to
-  choose and preserve coverage.
+  Use `writing-good-tests` to choose proof, including when no new permanent
+  test is needed.
 - Treat backward compatibility as the user's decision. If the preferred design
   requires breaking changes, explain why, what will break, and the migration
   path, then ask before proceeding. Do not add compatibility layers by default.
@@ -124,7 +124,7 @@ Before implementing common behavior:
      or PR.
 5. Implement custom logic only when the repository and suitable dependencies do
    not meet the requirement. State why the existing options were unsuitable and
-   test the important edge cases.
+   verify the behavior under `writing-good-tests`.
 
 Apply this especially to routing, parsing, validation, serialization, retries,
 queues, caching, middleware, request context, telemetry, date and time handling,
@@ -142,10 +142,11 @@ resource lifecycle, and graceful shutdown.
 - Keep test cleanup tied to the changed behavior and the coverage needed to
   prove it. Touching a test file does not by itself require reorganizing the
   file or repairing unrelated tests. Preserve required coverage and checks.
-- Before creating, changing, or removing tests or test infrastructure, load
-  `writing-good-tests`. During code review, load it for
-  every production behavior change and whenever the diff creates, changes, or
-  removes tests or test infrastructure.
+- Before implementing code, load `writing-good-tests`, even when no test changes
+  are planned. Apply its integration-first policy and separate temporary
+  verification from permanent coverage. Also load
+  it before changing tests or test infrastructure and during review of production
+  behavior or test changes. A coding task does not automatically require new tests.
 - Validate skill instructions through independent agent exercises and review.
   Do not add deterministic tests of skill prose, headings, links, or routing
   wording. Keep deterministic tests for executable scripts and machine-readable

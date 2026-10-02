@@ -19,9 +19,9 @@ The longest shard is not automatically the workflow's total time. Counts and del
 
 ## Reduce duplicated work
 
-Apply the ownership policy in [Writing Good Tests](../SKILL.md). Also remove unused selectors and duration entries.
+Apply the retention, integration-first and coverage ownership policy in [Writing Good Tests](../SKILL.md). Also remove unused selectors and duration entries.
 
-Recheck high-risk branches and the useful complete journey after each cohesive batch. Faster tests do not justify losing the last owner of a promised failure.
+Recheck affected high-risk branches and the useful complete journey when changed inputs invalidate their evidence or an unresolved coverage question requires it. Preserve required checks. Faster tests do not justify losing the last owner of a promised failure.
 
 ## Balance only when scheduling is in scope
 
@@ -37,7 +37,7 @@ Audit-only work inspects existing evidence and proportionate safe diagnostics; i
 
 After authorized edits, validate discovery/configuration, changed selectors and helpers, and every affected shard or an equivalent full-suite gate. Run typecheck and lint for changed shared contracts or infrastructure. Remeasure with the baseline method where practical.
 
-For portfolio reduction, stop when a fresh ownership pass finds no equivalent duplicate, ownerless infrastructure, or cheaper proving boundary that can be removed or moved without losing promised coverage. Every retained risk still needs an owner and passing validation.
+For portfolio reduction, stop when the scoped coverage assessment finds no further justified consolidation or removal under that policy. Every required outcome still needs an owner and passing validation.
 
 For scheduling changes, require complete assignment, passing planner/configuration checks, and a comparable distribution measurement. Apply both completion checks when both levers changed. Do not invent a percentage target; remaining runtime alone is not evidence of waste.
 

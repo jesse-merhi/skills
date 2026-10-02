@@ -19,6 +19,8 @@ Find requirements in the task, issue, spec, documentation and callers. Resolve o
 
 Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode. Identify relevant existing checks and reusable evidence. Honor narrower requests: findings-only means no edits; a requested single reviewer or native-only pass runs only that review and reports its coverage limits. For a specifically requested native review, use the harness's native command directly. Separately requested bot review uses [ClawSweeper](references/clawsweeper.md).
 
+For code or test changes, the coordinator, simplifier and reviewers load [writing-good-tests](../writing-good-tests/SKILL.md) before choosing verification or recommending coverage, even when the diff contains no tests. Apply its integration-first policy and permanent-test retention rules throughout review and confirmed repairs.
+
 ## 2. Simplify in one thorough pass
 
 Run this pass even when an agent just implemented the change; if it cannot run, say why in the summary. Give one implementation agent the target, requirements, owned files, repair authority and checks. Require it to apply coding-standards, [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) for names and flow, and [writing-good-tests](../writing-good-tests/SKILL.md) for test value, coverage and verification, with this goal:

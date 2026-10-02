@@ -35,11 +35,11 @@ Excluded:
 - <avoid brittle file-path lists unless a path is necessary for execution>
 
 ## Testing Decisions
-- <behavior or reachable failure to prove, nearest existing coverage, and any gap>
-- <agreed caller-facing seam or seams at the lowest level that proves the behavior>
-- <test level or prior-art test path when known; include a real cross-boundary journey when needed>
+- <behavior or reachable failure to prove, nearest existing integration coverage, and any gap>
+- <additional verification, if needed, through existing caller-facing interfaces>
+- <temporary development checks and any justified permanent coverage under writing-good-tests>
 - <for frontend UI work: required mobile/desktop screenshots, interactions, layout checks, or traces>
-- <what does not need dedicated coverage>
+- <what existing proof covers and what needs no new permanent test>
 
 ## PR Delivery
 - Shape: Single PR | Stack | Separate PRs/stacks | Open question

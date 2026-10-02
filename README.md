@@ -215,7 +215,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 
 | Skill | What it does |
 | --- | --- |
-| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Implements behavior, tests valid inputs and failure cases, and improves affected coverage. |
+| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, temporary checks for investigation, and permanent unit tests only by exception. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
@@ -226,7 +226,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`grilling`](skills/grilling/SKILL.md) | Interviews you as a design tree, one full round of questions at a time, each with a recommended answer. |
 | [`grill-with-docs`](skills/grill-with-docs/SKILL.md) | Same, but grounded first in repo docs, code, ADRs, specs, and tickets. |
-| [`to-spec`](skills/to-spec/SKILL.md) | Turns a settled conversation into an Obsidian spec including testing seams and the intended PR delivery shape. |
+| [`to-spec`](skills/to-spec/SKILL.md) | Turns a settled conversation into an Obsidian spec including proof decisions and the intended PR delivery shape. |
 | [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
