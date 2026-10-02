@@ -1,6 +1,6 @@
 ---
 name: to-spec
-description: 'Turn a resolved conversation into an Obsidian spec with testing seams and PR delivery shape.'
+description: 'Turn a resolved conversation into an Obsidian spec with proof decisions and PR delivery shape.'
 metadata:
   sources: |
     - adapted from [skills/engineering/to-spec](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/to-spec) — recorded upstream review.
@@ -8,7 +8,9 @@ metadata:
 
 # To spec
 
-Read the parts of the repository, glossary, ADRs, and Obsidian notes that govern the affected contract before writing the spec. Name the existing functions, service methods, or routes that tests should call. Choose a stable caller-facing interface at the lowest level that proves the behavior, following [writing-good-tests](../writing-good-tests/SKILL.md); use as few test entry points as practical. For example, test order creation through the existing service method rather than its private helpers when the service method proves the stored result.
+Read the parts of the repository, glossary, ADRs, and Obsidian notes that govern the affected contract before writing the spec.
+
+Record the behavior to prove, nearest existing integration coverage and remaining gaps. Use [writing-good-tests](../writing-good-tests/SKILL.md) to choose proof and decide whether new permanent coverage is warranted. Name existing caller-facing interfaces when additional verification needs them. For example, verify order creation through the existing service method and real data store when they prove the stored result.
 
 Resolve routine implementation details from that evidence. Record consequential unsettled decisions as open questions rather than guessing them.
 

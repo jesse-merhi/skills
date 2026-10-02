@@ -33,6 +33,6 @@ Batch independent configuration and usage checks. Verify unfamiliar harness beha
 
 Verify the kept duplicate exists and is loaded. Prefer the harness-provided copy when it covers the same behavior, but retain repository skills that encode project policy or live operations. Do not delete ignored or untracked directories without naming the destination or confirming they are disposable.
 
-Preserve description trigger nouns—product, tool, action, object—and exclusions. Generated shorter descriptions remain manual rewrite candidates until behavioral tests establish equivalent triggering. Group authorized changes by descriptions, deletions, or configuration; commit only when separately authorized.
+Preserve description trigger nouns—product, tool, action, object—and exclusions. Generated shorter descriptions remain manual rewrite candidates until independent agent exercises establish equivalent triggering. Group authorized changes by descriptions, deletions, or configuration; commit only when separately authorized.
 
 Report the useful inventory, supporting evidence, limits, and proposed decisions.

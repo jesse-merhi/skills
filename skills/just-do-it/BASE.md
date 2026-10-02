@@ -9,7 +9,7 @@ When explicitly invoked, finish the change and deliver one PR ready for Jesse.
 
 Check code, PR and review/test evidence. Start at the first unfinished or invalidated step; reuse still-applicable results.
 
-Delegate useful independent questions to the investigator and bounded changes with focused tests to the implementer. Supply objective, worktree and revision, scope, constraints, acceptance criteria and evidence. Keep reusable settings in role definitions; the coordinator owns sequencing, integration, shared verification and delivery. Do not launch a fixed tree. Use `code-review` for independent review.
+Delegate useful independent questions to the investigator and bounded changes with focused verification to the implementer. Supply objective, worktree and revision, scope, constraints, acceptance criteria and evidence. Keep reusable settings in role definitions; the coordinator owns sequencing, integration, shared verification and delivery. Do not launch a fixed tree. Use `code-review` for independent review.
 
 If a role is unavailable, report the limitation and continue suitable work locally without reconstructing its prompt or changing live configuration.
 

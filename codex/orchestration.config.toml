@@ -8,7 +8,7 @@ default_subagent_model = "gpt-6.1-sol"
 default_subagent_reasoning_effort = "high"
 
 [agents.implementer]
-description = "Implement a bounded change and its tests with Sol."
+description = "Implement and verify a bounded change with Sol."
 config_file = "orchestration/implementer.toml"
 
 [agents.test_executor]

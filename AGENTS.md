@@ -143,8 +143,8 @@ resource lifecycle, and graceful shutdown.
   prove it. Touching a test file does not by itself require reorganizing the
   file or repairing unrelated tests. Preserve required coverage and checks.
 - Before implementing code, load `writing-good-tests`, even when no test changes
-  are planned. All implementation agents and workers apply its integration-first
-  policy and separate temporary verification from permanent coverage. Also load
+  are planned. Apply its integration-first policy and separate temporary
+  verification from permanent coverage. Also load
   it before changing tests or test infrastructure and during review of production
   behavior or test changes. A coding task does not automatically require new tests.
 - Validate skill instructions through independent agent exercises and review.

@@ -218,7 +218,7 @@
 		{
 			"id": "no-trivial-forwarding-wrapper",
 			"title": "No pass-through wrappers",
-			"principle": "A helper whose whole body is `return other(sameArgs)` adds a name and a hop without adding meaning. Call the underlying function directly. Keep a wrapper only when it captures a concept, enforces an invariant, marks a boundary, or exists as a test seam.",
+			"principle": "A helper whose whole body is `return other(sameArgs)` adds a name and a hop without adding meaning. Call the underlying function directly. Keep a wrapper only when it captures a concept, enforces an invariant, or marks a real boundary. Do not add a wrapper solely for test convenience.",
 			"scope": "any",
 			"origin": "uplinked eslint-rules/no-trivial-forwarding-wrapper.cjs",
 			"enforcement": {
