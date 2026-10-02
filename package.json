@@ -7,6 +7,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "cloud:setup": "bash scripts/cloud/setup.sh",
     "review:skills": "bun packages/skill-review/server.mjs",
     "check": "tsc --noEmit -p tsconfig.json",
     "diagnostics": "effect-language-service diagnostics --project tsconfig.json --strict",

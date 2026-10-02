@@ -1,0 +1,15 @@
+version = 1
+name = "Skills"
+
+[setup]
+script = "set -euo pipefail\nexport npm_config_prefix=\"$PWD/.codex/tools\"\nexport PATH=\"$npm_config_prefix/bin:$PATH\"\nbash scripts/cloud/setup.sh"
+
+[[actions]]
+name = "Setup"
+icon = "tool"
+command = "set -euo pipefail\nexport npm_config_prefix=\"$PWD/.codex/tools\"\nexport PATH=\"$npm_config_prefix/bin:$PATH\"\nbash scripts/cloud/setup.sh"
+
+[[actions]]
+name = "Check"
+icon = "test"
+command = "export PATH=\"$PWD/.codex/tools/bin:$PATH\"\nbun run validate:effect"
