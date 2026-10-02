@@ -2,13 +2,17 @@
 name: design
 description: 'Design or refine interfaces around the product, its users, and a clear visual direction.'
 metadata:
+  license: Preserve the upstream notice in [LICENSE](LICENSE) when redistributing adapted material.
   sources: |
-    - adapted from [skills/emil-design-eng](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/emil-design-eng) — recorded upstream review.
+    - adapted from [skills/emil-design-eng](https://github.com/emilkowalski/skills/tree/d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128/skills/emil-design-eng) — recorded upstream review.
     - adapted from [skills/find-animation-opportunities](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/find-animation-opportunities) — recorded upstream review.
-    - adapted from [skills/apple-design](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/apple-design) — recorded upstream review.
+    - adapted from [skills/apple-design](https://github.com/emilkowalski/skills/tree/d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128/skills/apple-design) — recorded upstream review.
     - adapted from [skills/animation-vocabulary](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/animation-vocabulary) — recorded upstream review.
     - adapted from [skills/prototype](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/prototype) — recorded upstream review.
     - adapted from [skills/review-animations](https://github.com/emilkowalski/skills/tree/d23d7f88a2e21c9e4b1418c7abe420f5c1052ba7/skills/review-animations) — recorded upstream review.
+    - adapted from [skills/animate](https://github.com/emilkowalski/skills/tree/d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128/skills/animate) — practical motion recipes.
+    - adapted from [skills/mobile-native](https://github.com/emilkowalski/skills/tree/d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128/skills/mobile-native) — mobile web guidance.
+    - adapted from [skills/animate-expo](https://github.com/emilkowalski/skills/tree/d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128/skills/animate-expo) — native motion guidance.
     - Informed by [Anthropic frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md), researched 2026-09-05; not an installed dependency.
 ---
 
@@ -27,5 +31,7 @@ Show the actual interface and briefly explain consequential choices.
 ## References
 
 - For layout and visual decisions, use [interface design](references/frontend.md).
-- For animation and gestures, use [motion](references/motion.md).
+- For web animation and gestures, use [motion](references/motion.md).
+- For mobile websites, PWAs, viewport, keyboard, or touch problems, use [mobile web](references/mobile-web.md).
+- For React Native or Expo animation and gestures, use [native motion](references/native-motion.md).
 - For requested alternatives, use [prototypes](references/prototype.md) and the optional [picker](references/prototype-picker.md).
