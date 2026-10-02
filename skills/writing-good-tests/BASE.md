@@ -1,12 +1,22 @@
 ---
 name: writing-good-tests
-description: 'Write tests that catch distinct, credible failures in changed behavior and regressions, keep the coverage each one protects, and verify behavior before pushing.'
+description: 'Use during coding and review to choose fewer useful tests: integration first, temporary checks for investigation, and permanent unit tests only by exception.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
 ---
 
 # Writing Good Tests
+
+Prefer fewer tests through real integration boundaries. Verify the requested behavior without treating every code change, function or edge case as a reason to add permanent coverage. Reuse or extend existing tests before creating another. Test counts and coverage percentages are not goals.
+
+## Separate investigation from regression coverage
+
+Use temporary scripts, assertions, scratch tests and manual checks to answer development questions. A check that helped build the change does not automatically belong in the committed suite. Keep useful results with the task or PR and remove temporary checks and their test-only scaffolding before delivery.
+
+For each proposed permanent test, name the ongoing caller-visible contract, a credible accidental regression, the existing coverage that misses it, and why repeated execution is worth maintaining. Otherwise use temporary verification or existing proof. A deliberate requirement change that also changes the test is not evidence of its regression value.
+
+For stable, isolated infrastructure setup, prefer parser/linter validation and a setup smoke check. Do not retain tests that repeat chosen flags, URLs, constants, configuration or file structure. Retain focused coverage only for a concrete ongoing interaction or failure, such as selecting the wrong resource during recovery; importance alone does not justify a test for every safeguard.
 
 ## Choose the proof
 
@@ -18,11 +28,13 @@ Use application data definitions for successful fakes and fixtures. Do not redef
 
 **Example:** Test retries for HTTP `429` only if that response can reach the retry handler and should trigger a retry. If the client handles it internally, injecting it into the handler invents an unreachable scenario.
 
-Choose the lowest boundary that proves the failure: unit tests for policy or parsing; integration for real bindings, persistence or isolation; end-to-end journeys for visible cross-boundary behavior. Use parser/linter plus execution for declarative configuration. Follow repository instruction-exercise and linter validation policy, not deterministic tests of skill prose or linter implementation.
+Default to integration tests that run production collaborators together through an existing interface and assert returned values, persisted state, permissions or failure outcomes. Keep first-party logic and the relevant data store real. Use end-to-end tests for complete user journeys and UI or native binding; do not repeat their examples in isolated tests without a distinct uncovered failure. Follow repository instruction-exercise and linter validation policy, not deterministic tests of skill prose or linter implementation.
+
+Permanent unit tests are an exception. Before adding one, establish all three: an independently specified expected result; a concrete worthwhile regression existing coverage misses; and why integration cannot reasonably exercise the necessary cases. Dense calculation or state-machine boundaries can qualify when real integration setup makes those cases impractical. Being pure, having branches, being easy to test or adding a dependency does not by itself qualify. Keep the justification brief in the task or PR; no new registry, approval or test quota.
 
 Keep required behavior covered. Before deleting a smaller test, inspect the broader replacement: it must exercise the same branch with equivalent input and outcome at the required cadence. Code paths, manual checks, planned tests and types are not replacements.
 
-Keep separate denial, forbidden-effect, privacy, accessibility, safety, expiry, concurrency, offline, migration and external-failure checks when the journey does not prove them. Test absence of retired behavior only when it protects promised compatibility, security or migration.
+Preserve distinct required denial, forbidden-effect, privacy, accessibility, safety, expiry, concurrency, offline, migration and external-failure outcomes the journey does not prove, preferably through integration. These categories do not automatically require separate files or unit tests. Test absence of retired behavior only when it protects promised compatibility, security or migration.
 
 ## Write tests worth keeping
 
@@ -33,14 +45,14 @@ When an existing test fails, preserve its expected result unless the authorized 
 - Assert the result a caller observes: values, stored state, permissions, navigation or a stable accessibility contract. A status code or successful render alone may not prove the behavior.
 - For denied actions, assert both rejection and absence of forbidden effects.
 - Keep fixtures small and expectations independent. Several assertions may prove one behavior.
-- Use real internal collaborators. Substitute external APIs, clocks, filesystems or databases only when unreliable or disproportionately expensive, through existing interfaces with realistic results.
+- Substitute external APIs, native modules and environment boundaries through existing interfaces with realistic results. A mocked database or first-party service does not prove persistence or integration with that collaborator; label the limit and do not use such mocks to supply the result being asserted.
 - Use named, parameterized cases when they make related behaviors easier to read and extend. Give each case a clear purpose and keep scenarios separate when their setup or assertions differ.
 - Remove tests that cannot fail for the intended reason: tautologies, assertions whose expected value the subject itself produced, source-structure or grep checks without an independent contract, mocks that supply the behavior being asserted, and negative controls that would pass for the wrong reason. Remove incidental mock-call/order assertions, unreachable states, broad snapshots and branch-history assertions. Keep exact text, timing or geometry only for a real product, accessibility, safety or protocol contract.
 - Remove unused test routes, fixtures and helpers with their retired tests. Old age, past success or having once caught a bug does not establish current value.
 
 ## Implement and prove the behavior
 
-Write tests before or after implementation as useful. Add a test only where a distinct, credible failure or regression is not already proven. A change does not by itself require a new test; reuse existing proof, including for covered refactors.
+Write checks before or after implementation as useful. Separately decide which deserve permanent coverage under the retention and integration-first rules above. A change does not by itself require a new test; reuse existing proof, including for covered refactors. Prefer extending an existing integration scenario over adding helper tests or a second journey for the same outcome.
 
 A regression test must fail against the unfixed code for the intended reason and pass after the fix. Passing tests and coverage numbers do not prove a test detects the fault; when that is in doubt, temporarily reintroduce the known bug or mutate the covered line locally to confirm the test fails, then restore the code before final validation or commit, without adding new tooling.
 
