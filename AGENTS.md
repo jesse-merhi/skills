@@ -141,7 +141,8 @@ resource lifecycle, and graceful shutdown.
   checks explicitly required on the final revision.
 - Keep test cleanup tied to the changed behavior and the coverage needed to
   prove it. Touching a test file does not by itself require reorganizing the
-  file or repairing unrelated tests. Preserve required coverage and checks.
+  file or repairing unrelated tests. Apply `writing-good-tests` to retention;
+  preserve explicitly required checks and justified consequential proof.
 - Before implementing code, load `writing-good-tests`, even when no test changes
   are planned. Apply its integration-first policy and separate temporary
   verification from permanent coverage. Also load

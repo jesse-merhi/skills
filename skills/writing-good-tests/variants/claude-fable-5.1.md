@@ -1,6 +1,6 @@
 ---
 name: writing-good-tests
-description: 'Use during coding and review to choose fewer useful tests: integration first, temporary checks for investigation, and permanent unit tests only by exception.'
+description: 'Use during coding and review to delete low-value tests, keep useful real journeys, and justify every permanent keeper.'
 metadata:
   sources: |
     - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
@@ -8,13 +8,25 @@ metadata:
 
 # Writing Good Tests
 
-Prefer fewer tests through real integration boundaries. Verify the requested behavior without treating every code change, function or edge case as a reason to add permanent coverage. Reuse or extend existing tests before creating another. Test counts and coverage percentages are not goals.
+Start audits from deletion: every permanent test must earn its place. Clear production code and complete E2E journeys through real collaborators can make most unit and infrastructure tests redundant. Verify the requested behavior without treating every function, branch or edge case as a reason for permanent coverage. Test counts, coverage percentages and deletion quotas are not goals.
+
+## Decide what deserves permanent proof
+
+For every proposed or existing keeper, identify a credible, consequential, non-obvious accidental regression, why effective existing proof misses it, and why repeated detection is worth the ongoing maintenance. If that case is absent, delete the test or record no-test-needed. Uniqueness, a prior bug, a sensitive category, ease of testing and a coverage decrease do not independently justify retention.
+
+Apply this value gate to every layer, including E2E. Keep useful complete golden journeys that prove what a person can accomplish and the lasting result. Delete repeated permutations, incidental UI assertions, source or constant mirrors, and isolated tests that add no worthwhile protection beyond those journeys. A browser visit or successful render alone is not complete proof.
+
+An audit may retire a whole unit or infrastructure layer, including its last coverage of low-value behavior. State honestly what is no longer permanently tested and why; do not manufacture replacement tests to preserve coverage. Distinguish that decision from consolidation: when claiming another test preserves coverage, inspect it for equivalent reachable input, the relevant branch, asserted outcome and required execution cadence. Planned tests, types and manual checks are not permanent replacements.
+
+Preserve explicitly required tests and checks. A credible consequential failure still needs effective proof; types or an assertion that the code is good do not excuse a missing required check or an uncovered regression that passes this gate. Sensitive categories prompt investigation of real consequences, not blanket retention.
+
+For example, delete URL/flag mirrors after parser validation and a setup smoke check; delete helper permutations already proved by a real save-and-reload journey. A unique placeholder-copy branch can retire with no replacement when its ongoing detection is not worth maintaining. Keep an integration test for a reachable cross-tenant write that the normal journey cannot expose, asserting both rejection and absence of the write.
 
 ## Separate investigation from regression coverage
 
 Use temporary scripts, assertions, scratch tests and manual checks to answer development questions. A check that helped build the change does not automatically belong in the committed suite. Keep useful results with the task or PR and remove temporary checks and their test-only scaffolding before delivery.
 
-For each proposed permanent test, name the ongoing caller-visible contract, a credible accidental regression, the existing coverage that misses it, and why repeated execution is worth maintaining. Otherwise use temporary verification or existing proof. A deliberate requirement change that also changes the test is not evidence of its regression value.
+Temporary verification can establish behavior without adding a permanent test. Retain a check only if it passes the value gate above. A deliberate requirement change that also changes the test is not evidence of its regression value.
 
 For stable, isolated infrastructure setup, prefer parser/linter validation and a setup smoke check. Do not retain tests that repeat chosen flags, URLs, constants, configuration or file structure. Retain focused coverage only for a concrete ongoing interaction or failure, such as selecting the wrong resource during recovery; importance alone does not justify a test for every safeguard.
 
@@ -28,17 +40,15 @@ Use application data definitions for successful fakes and fixtures. Do not redef
 
 **Example:** Test retries for HTTP `429` only if that response can reach the retry handler and should trigger a retry. If the client handles it internally, injecting it into the handler invents an unreachable scenario.
 
-Default to integration tests that run production collaborators together through an existing interface and assert returned values, persisted state, permissions or failure outcomes. Keep first-party logic and the relevant data store real. Use end-to-end tests for complete user journeys and UI or native binding; do not repeat their examples in isolated tests without a distinct uncovered failure. Follow repository instruction-exercise and linter validation policy, not deterministic tests of skill prose or linter implementation.
+When dedicated permanent proof is justified, prefer integration tests that run production collaborators together through an existing interface and assert returned values, persisted state, permissions or failure outcomes. Keep first-party logic and the relevant data store real. Use E2E for complete user journeys and UI or native binding; do not repeat their examples in isolated tests without an uncovered regression that passes the value gate. Follow repository instruction-exercise and linter validation policy, not deterministic tests of skill prose or linter implementation.
 
-Permanent unit tests are an exception. Before adding one, establish all three: an independently specified expected result; a concrete worthwhile regression existing coverage misses; and why integration cannot reasonably exercise the necessary cases. Dense calculation or state-machine boundaries can qualify when real integration setup makes those cases impractical. Being pure, having branches, being easy to test or adding a dependency does not by itself qualify. Keep the justification brief in the task or PR; no new registry, approval or test quota.
+Permanent unit tests are an exception. Before adding one, establish all three: an independently specified expected result; a credible consequential non-obvious accidental regression existing coverage misses; and why integration cannot reasonably exercise the necessary cases. Dense calculation or state-machine boundaries can qualify when real integration setup makes those cases impractical. Being pure, having branches, being easy to test or adding a dependency does not by itself qualify. Keep the justification brief in the task or PR; no new registry, approval or test quota.
 
-Keep required behavior covered. Before deleting a smaller test, inspect the broader replacement: it must exercise the same branch with equivalent input and outcome at the required cadence. Code paths, manual checks, planned tests and types are not replacements.
-
-Preserve distinct required denial, forbidden-effect, privacy, accessibility, safety, expiry, concurrency, offline, migration and external-failure outcomes the journey does not prove, preferably through integration. These categories do not automatically require separate files or unit tests. Test absence of retired behavior only when it protects promised compatibility, security or migration.
+Inspect denial, forbidden-effect, privacy, accessibility, safety, expiry, concurrency, offline, migration and external-failure outcomes for credible consequential gaps the journey does not prove. Keep dedicated proof only when the gap passes the value gate, preferably through integration. Test absence of retired behavior only when a promised compatibility, security or migration outcome justifies ongoing protection.
 
 ## Write tests worth keeping
 
-Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests when their coverage matters; reorganize only if a file obscures affected scenarios. Remove useless in-scope tests without losing required coverage.
+Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests when their coverage matters; reorganize only if a file obscures affected scenarios. Delete low-value in-scope tests under the value gate; preserve justified proof and explicit required checks.
 
 When an existing test fails, preserve its expected result unless the authorized behavior changed or evidence shows the expectation was wrong. Record the reason for changing a promised result in the existing task or PR explanation; do not weaken an assertion merely to match the current implementation.
 
@@ -78,9 +88,9 @@ Before pushing, verify required behavior and satisfy applicable checks under the
 
 ## Check cost and finish
 
-Consider selection, cases, setup, retries, fixtures, caching, sharding, capacity and scheduling. For material cost change or explicit optimization, establish a comparable baseline before editing; otherwise state no material execution-cost impact. Never trade unique coverage for speed or deletion targets.
+Consider selection, cases, setup, retries, fixtures, caching, sharding, capacity and scheduling. For material cost change or explicit optimization, establish a comparable baseline before editing; otherwise state no material execution-cost impact. Speed alone does not justify losing valuable proof; unique coverage alone does not justify keeping a test.
 
-Report only useful decisions: keep, consolidate, move, rewrite, delete, missing, no-test-needed or dangerous-removal. Identify last-owner removals, the inspected replacement and why adjacent coverage is insufficient. Give validation results and honest measurement limits, not a quota of added tests.
+Report useful decisions: keep, consolidate, move, rewrite, delete, missing, no-test-needed or dangerous-removal. Justify keepers and identify last-owner removals. For consolidation or required consequential coverage, name the inspected replacement and its limits. For deliberate low-value retirement, explain why no permanent test is needed without claiming a replacement. Give validation results and honest measurement limits, not a test quota.
 
 ## References
 
