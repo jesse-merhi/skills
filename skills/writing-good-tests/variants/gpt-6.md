@@ -10,9 +10,9 @@ metadata:
 
 Delete first. Every permanent keeper, including E2E, must catch a credible, consequential, non-obvious accidental regression that effective existing proof misses and is worth maintaining. Otherwise delete it or record no-test-needed. Unique branches, prior bugs, sensitive categories and coverage percentages do not earn retention. No test or deletion quota.
 
-Clear code and real complete golden journeys can make most unit and infrastructure tests redundant. Keep journeys that prove a useful action and its lasting result. Delete repeated permutations, incidental UI assertions, source/constant mirrors and test-only scaffolding. Whole layers and low-value last owners may retire without replacements; state what loses permanent coverage and why.
+Default to no dedicated tests for configuration, plumbing, routine helpers and obvious guards. Prefer clear code and useful executable workflows over testing each internal function. “A developer could break this line” or a failing mutant proves detection, not maintenance value. Keep complete golden journeys that prove useful actions and lasting results. Delete repeated permutations, incidental assertions, source/constant mirrors and test-only scaffolding. Low-value layers and last owners may retire without replacements; state what loses permanent coverage and why.
 
-Consolidation is different: inspect the claimed replacement for equivalent reachable input, relevant branch, asserted outcome and execution cadence. Types, manual checks and planned tests are not permanent replacements. Preserve explicitly required tests/checks and justified consequential proof; “good code” is no waiver.
+Retirement does not invite new tests for the same guards at another level. When claiming consolidation, inspect equivalent reachable input, relevant branch, asserted outcome and execution cadence. Types, manual checks and planned tests are not permanent replacements. Preserve explicitly required tests/checks and justified consequential proof; runner registration alone does not make a test required.
 
 ## Choose proof
 
