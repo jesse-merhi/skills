@@ -13,11 +13,8 @@ import unittest
 SCRIPT = Path(__file__).with_name("openclaw-stg-test")
 @contextmanager
 def preview_origin():
-    requests = []
-
     class Preview(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            requests.append(self.path)
             if self.path != "/":
                 self.send_error(404)
                 return
@@ -35,7 +32,7 @@ def preview_origin():
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     try:
-        yield f"http://127.0.0.1:{server.server_port}", requests
+        yield f"http://127.0.0.1:{server.server_port}"
     finally:
         server.shutdown()
         server.server_close()
@@ -44,7 +41,7 @@ def preview_origin():
 
 class OpenClawStagingTest(unittest.TestCase):
     def test_interrupted_startup_stops_the_tunnel_process(self):
-        with tempfile.TemporaryDirectory() as temporary, preview_origin() as (origin, _requests):
+        with tempfile.TemporaryDirectory() as temporary, preview_origin() as origin:
             root = Path(temporary)
             fake_bin = root / "bin"
             fake_bin.mkdir()
