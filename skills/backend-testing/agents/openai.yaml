@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backend Testing"
+  short_description: "Prove backend behavior through real collaborators"
+  default_prompt: "Use $backend-testing after the permanent-test value decision to verify backend behavior through real production callers and data stores, using this project's existing harness."

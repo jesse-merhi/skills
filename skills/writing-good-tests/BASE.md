@@ -46,6 +46,8 @@ Permanent unit tests are an exception. Before adding one, establish all three: a
 
 Inspect denial, forbidden-effect, privacy, accessibility, safety, expiry, concurrency, offline, migration and external-failure outcomes for credible consequential gaps the journey does not prove. Keep dedicated proof only when the gap passes the value gate, preferably through integration. Test absence of retired behavior only when a promised compatibility, security or migration outcome justifies ongoing protection.
 
+For backend proof after this value decision, use [backend-testing](../backend-testing/SKILL.md) for real production callers, data stores, external boundaries and migration state.
+
 ## Write tests worth keeping
 
 Limit cleanup to affected behavior and necessary coverage. Rewrite weak tests when their coverage matters; reorganize only if a file obscures affected scenarios. Delete low-value in-scope tests under the value gate; preserve justified proof and explicit required checks.
