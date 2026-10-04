@@ -60,7 +60,7 @@ describe("PR net diff", () => {
           })
         }),
         head: Schema.String
-      }))(JSON.parse(output) as unknown)
+      }))(JSON.parse(output))
 
       assert.strictEqual(report.base.ref, "main")
       assert.strictEqual(report.base.sha, destination)
