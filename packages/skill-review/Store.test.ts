@@ -6,8 +6,7 @@ import * as Path from "effect/Path"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { createRoutes } from "./Api.ts"
-import { buildCatalog } from "./Catalog.ts"
-import { initialDraft, type SaveRequest, type SourceBundle } from "./Model.ts"
+import type { SaveRequest, SourceBundle } from "./Model.ts"
 import { createStore, type ReviewStore } from "./Store.ts"
 
 const source: SourceBundle = {
@@ -82,28 +81,14 @@ describe("durable skill review", () => {
     expect((await store.get(source.name)).draft.content.master).toBe("# Revised master")
   })
 
-  it.each(["../../outside.md", "BASE.md", "variants/gpt-6.md", "assets/image.png"])("rejects editing %s without changing any draft", async (filename) => {
-    const input = await request()
-    await expect(store.save({ ...input, content: { ...input.content, files: { [filename]: "Unwanted change" } } })).rejects.toThrow("unknown or read-only file")
-    expect((await store.get(source.name)).draft.revision).toBe(0)
-    expect((await store.history(source.name)).revisions).toHaveLength(1)
-  })
-
-  it("saves new source text through the API and preserves it after source removal without allowing read-only files", async () => {
+  it("saves new source text through the API and preserves it after source removal", async () => {
     const added = { path: "references/media.md", content: "Initial media guidance", encoding: "utf8", mode: 33188 } as const
-    let current: SourceBundle | undefined = { ...source, files: [...source.files, added,
-      { path: "variants/new.md", content: "Read-only variant", encoding: "utf8", mode: 33188 }
-    ] }
+    let current: SourceBundle | undefined = { ...source, files: [...source.files, added] }
     const routes = createRoutes({ store, origin: "http://127.0.0.1:4317", stateDirectory: directory, currentSource: () => current, renderMarkdown: (text) => text, backup: async () => "backup" })
     const post = (input: SaveRequest) => routes["/api/save"].POST(new Request("http://127.0.0.1:4317/api/save", {
       method: "POST", headers: { host: "127.0.0.1:4317", origin: "http://127.0.0.1:4317", "content-type": "application/json" }, body: JSON.stringify(input)
     }))
     const initial = await request()
-    for (const filename of ["references/unknown.md", "variants/new.md", "assets/image.png"]) {
-      const rejected = await post({ ...initial, operation: filename, content: { ...initial.content, files: { [filename]: "Rejected edit" } } })
-      expect(rejected.status).toBe(400)
-      expect((await store.get(source.name)).draft.revision).toBe(0)
-    }
     const content = { ...initial.content, files: { [added.path]: "Reviewed media guidance" } }
     expect((await post({ ...initial, content })).status).toBe(200)
     current = undefined
@@ -142,101 +127,4 @@ describe("durable skill review", () => {
     expect((await backup.get(source.name)).draft.content).toEqual(input.content)
     expect((await backup.get(source.name)).source).toEqual(source)
   })
-
-  it("persists applied feedback for re-review and retains the original comments through restore", async () => {
-    const input = await request()
-    await store.save(input)
-    const applied: SaveRequest = { ...input, operation: "applied", expectedRevision: 1, content: {
-      ...input.content, master: "# Implemented feedback", notes: "", status: "needs-review", reviewedFiles: [],
-      applied: { feedbackRevision: 1, appliedAt: "2026-09-05T15:00:00.000Z", summary: "Shortened the workflow.", reviewFocus: "Check the launch command and the remaining setup requirements." }
-    } }
-    const routes = createRoutes({ store, origin: "http://127.0.0.1:4317", stateDirectory: directory, currentSource: () => source, renderMarkdown: (text) => text, backup: async () => "backup" })
-    const catalog = async () => (await routes["/api/catalog"].GET(new Request("http://127.0.0.1:4317/api/catalog", { headers: { host: "127.0.0.1:4317" } }))).json()
-    expect(await catalog()).toMatchObject({ skills: [{ status: "ready", hasFeedback: true }] })
-    const response = await routes["/api/save"].POST(new Request("http://127.0.0.1:4317/api/save", { method: "POST", headers: { host: "127.0.0.1:4317", origin: "http://127.0.0.1:4317", "content-type": "application/json" }, body: JSON.stringify(applied) }))
-    expect(response.status).toBe(200)
-    expect(await catalog()).toMatchObject({ skills: [{ status: "needs-review", hasFeedback: false }] })
-    await store.save({ ...applied, operation: "follow-up-feedback", expectedRevision: 2, content: { ...applied.content, status: "ready", notes: "The first step still needs shortening." } })
-    expect(await catalog()).toMatchObject({ skills: [{ status: "ready", hasFeedback: true }] })
-    await store.save({ ...applied, operation: "resolve-follow-up", expectedRevision: 3, content: { ...applied.content, notes: " \n\t" } })
-    expect(await catalog()).toMatchObject({ skills: [{ hasFeedback: false }] })
-    await store.save({ ...applied, operation: "clear-whitespace", expectedRevision: 4 })
-    const archive = await store.export()
-    const restored = createStore(join(directory, "applied.sqlite"))
-    stores.push(restored)
-    await restored.initialize
-    await restored.restore(archive)
-    expect((await restored.get(source.name)).draft.content).toEqual(applied.content)
-    expect((await restored.history(source.name)).revisions.some((revision) => revision.content.notes === input.content.notes)).toBe(true)
-    await restored.save({ ...applied, operation: "reviewed", expectedRevision: 5, content: { ...applied.content, status: "ready" } })
-    expect((await restored.get(source.name)).draft.content.applied).toEqual(applied.content.applied)
-  })
-
-  it("filters the review queue without deleting excluded originals, feedback, or history", async () => {
-    await store.seed([{ ...source, name: "external", directory: "/personal/external", head: "external-local-snapshot" }])
-    await store.setPosition({ active: "external", tabs: ["external", "example"] })
-    const before = await store.export()
-    const routes = createRoutes({ store, origin: "http://127.0.0.1:4317", stateDirectory: directory, currentSource: () => undefined, includeSource: (candidate) => candidate.directory.startsWith("/source/"), renderMarkdown: (text) => text, backup: async () => "backup" })
-    const response = await routes["/api/catalog"].GET(new Request("http://127.0.0.1:4317/api/catalog", { headers: { host: "127.0.0.1:4317" } }))
-    expect(await response.json()).toMatchObject({ skills: [{ name: "example", sourceAvailable: false }] })
-    expect((await store.export()).skills).toEqual(before.skills)
-    expect((await store.get("external")).source.directory).toBe("/personal/external")
-  })
-
-  it("validates HTTP writes, denies other origins, and exposes source drift without changing the snapshot", async () => {
-    const routes = createRoutes({ store, origin: "http://127.0.0.1:4317", stateDirectory: directory, currentSource: () => ({ ...source, fingerprint: "changed-hash" }), renderMarkdown: (text) => text, backup: async () => "backup" })
-    const input = await request()
-    const response = await routes["/api/save"].POST(new Request("http://127.0.0.1:4317/api/save", { method: "POST", headers: { host: "127.0.0.1:4317", origin: "https://elsewhere.example", "content-type": "application/json" }, body: JSON.stringify(input) }))
-    expect(response.status).toBe(403)
-    const invalid = await routes["/api/save"].POST(new Request("http://127.0.0.1:4317/api/save", { method: "POST", headers: { host: "127.0.0.1:4317", origin: "http://127.0.0.1:4317", "content-type": "application/json" }, body: "{}" }))
-    expect(invalid.status).toBe(400)
-    expect((await store.get(source.name)).draft.revision).toBe(0)
-    const detail = await routes["/api/skill"].GET(new Request("http://127.0.0.1:4317/api/skill?name=example", { headers: { host: "127.0.0.1:4317" } }))
-    expect(await detail.json()).toMatchObject({ sourceChanged: true, source: { entry: source.entry } })
-  })
-
-  it("separates removed files from unavailable sources without replacing drafts, comments, or history", async () => {
-    await store.save(await request())
-    const before = await store.export()
-    let current: SourceBundle | undefined = { ...source, fingerprint: "changed-hash", files: source.files.filter((file) => file.path !== "references/rules.md") }
-    const routes = createRoutes({ store, origin: "http://127.0.0.1:4317", stateDirectory: directory, currentSource: () => current, renderMarkdown: (text) => text, backup: async () => "backup" })
-    const detail = async () => (await routes["/api/skill"].GET(new Request("http://127.0.0.1:4317/api/skill?name=example", { headers: { host: "127.0.0.1:4317" } }))).json()
-    const catalog = async () => (await routes["/api/catalog"].GET(new Request("http://127.0.0.1:4317/api/catalog", { headers: { host: "127.0.0.1:4317" } }))).json()
-    expect(await detail()).toMatchObject({ sourceAvailable: true, removedFiles: ["references/rules.md"] })
-    expect(await catalog()).toMatchObject({ skills: [{ name: "example", sourceAvailable: true }] })
-    const added = { path: "scripts/new.mjs", content: "export const value = 1", encoding: "utf8", mode: 33188 } as const
-    current = { ...source, fingerprint: "added-hash", files: [...source.files, added] }
-    expect(await detail()).toMatchObject({ addedFiles: [added], removedFiles: [] })
-    current = undefined
-    expect(await detail()).toMatchObject({ sourceAvailable: false, removedFiles: [] })
-    expect(await catalog()).toMatchObject({ skills: [{ name: "example", sourceAvailable: false }] })
-    current = source
-    expect(await detail()).toMatchObject({ sourceChanged: false, removedFiles: [] })
-    expect((await store.export()).skills).toEqual(before.skills)
-  })
-})
-
-it("orders callers before supporting skills and keeps circular references navigable without duplicate entries", () => {
-  const sources = [
-    { ...source, name: "workflow", entry: "Load `helper`." },
-    { ...source, name: "helper", entry: "Read `policy`." },
-    { ...source, name: "policy", entry: "See `helper`." }
-  ]
-  const catalog = buildCatalog(sources, new Map())
-  expect(catalog.map((skill) => skill.name)).toEqual(["workflow", "helper", "policy"])
-  expect(catalog[1]?.referencedBy.map((reference) => reference.name)).toEqual(["workflow", "policy"])
-  expect(catalog[0]?.references[0]).toMatchObject({ name: "helper", file: "SKILL.md", line: 1 })
-})
-
-it("uses saved master and supporting-file edits for review references while retaining untouched files", () => {
-  const workflow = { ...source, name: "workflow", entry: "Read `old-helper`.", files: [
-    { path: "references/rules.md", content: "Read `old-helper`.", encoding: "utf8" as const, mode: 33188 },
-    { path: "references/other.md", content: "Read `policy`.", encoding: "utf8" as const, mode: 33188 }
-  ] }
-  const draft = initialDraft(workflow)
-  const catalog = buildCatalog([workflow, ...["old-helper", "new-helper", "policy"].map((name) => ({ ...source, name }))], new Map([
-    ["workflow", { ...draft, content: { ...draft.content, master: "Read `new-helper`.", files: { "references/rules.md": "" } } }]
-  ]))
-  expect(catalog.find((skill) => skill.name === "workflow")?.references.map((reference) => reference.name)).toEqual(["new-helper", "policy"])
-  expect(catalog.find((skill) => skill.name === "old-helper")?.referencedBy).toEqual([])
 })

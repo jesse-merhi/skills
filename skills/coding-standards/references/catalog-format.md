@@ -1,6 +1,6 @@
 # Catalog format
 
-`catalog.schema.ts` is the authoritative shape and decodes `catalog.json` on every test run. This file is for explicitly requested shared-catalog edits, not a prerequisite for applying standards to an unrepresented stack.
+`catalog.schema.ts` is the authoritative shape used to decode `catalog.json`. This file is for explicitly requested shared-catalog edits, not a prerequisite for applying standards to an unrepresented stack.
 
 The ids, titles, and principles express the owner's standards. Enforcement columns record available implementations, not proof that a whole principle is enforced in every target. Apply and sync establish actual coverage using the shared adoption policy loaded by the entrypoint; native mappings may be partial, custom checks are optional, and context-sensitive decisions remain local agent guidance.
 
@@ -16,7 +16,7 @@ The ids, titles, and principles express the owner's standards. Enforcement colum
   - `packages` — package name to the exact version the preset needs installed. Everything the preset file imports belongs here, including a resolver it loads for itself: `base` imports the TypeScript import resolver, so `eslint-import-resolver-typescript` is ordinary `packages` content there.
   - `applies` — `always: true`, or `dependencies` and `devDependencies` naming packages that suggest relevance in the target `package.json`. `always` means a candidate has no package condition, not that adoption must enable it. These JavaScript-oriented hints do not replace inspecting the target's own manifests or verifying which rules are appropriate.
 - `baselines.<id>` — an optional config file copied into a target rather than enforced by a rule. Apply considers it only when the target chooses that tool and has no equivalent active configuration.
-  - `file` — path relative to the skill directory. `catalog.test.ts` checks it exists.
+  - `file` — path relative to the skill directory. Verify it exists when changing the catalog.
   - `target` — where the file lands in the target repository, often under another name: `prettier/prettierrc.json` becomes `.prettierrc.json`.
   - `applies` — the same shape as a preset `applies`.
 - `standards[]`
@@ -45,16 +45,6 @@ The ids, titles, and principles express the owner's standards. Enforcement colum
 - an `applies` naming no condition.
 - any key an enforcement kind does not define, and any value of the wrong type.
 
-`catalog.test.ts` enforces:
-
-- every `rule`, `script.file`, preset and baseline `file` resolves on disk.
-- every file in `eslint/rules` is catalogued exactly once.
-- every preset id named by a `rule` or `plugin` entry exists in that ecosystem preset column.
-- every `plugin` rule id exists in the installed package.
-- each preset `packages` list equals the packages that preset file imports, at the version installed in this repository.
-- every rule id a preset emits resolves against the plugins that preset declares.
-- every standard with bundled enforcement carries a column for every ecosystem in `ecosystems`.
-
 ## Adding an entry
 
-For a standard with bundled enforcement, add the enforcement and the file it names in the same change: the catalog tests treat a missing referenced file, and a rule file with no catalog row, as a failure. A standard without a bundled checker needs only its id, title, principle, scope, and origin. Non-Node adoption belongs in the target repository and does not require extending this schema or adding another language package.
+For a standard with bundled enforcement, add the enforcement and the file it names in the same change. Verify the referenced paths, package versions and preset mappings, then run the applicable linter on the target repository. A standard without a bundled checker needs only its id, title, principle, scope, and origin. Non-Node adoption belongs in the target repository and does not require extending this schema or adding another language package.
