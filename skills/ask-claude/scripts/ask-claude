@@ -22,8 +22,10 @@ fi
 # Replace the actual ACP process so cancellation does not stop at an npx parent.
 acpx_executable="$(npx --yes --package=acpx@latest --call 'command -v acpx')"
 export CLAUDE_CODE_SKIP_PROMPT_HISTORY=1
+export CLAUDE_CODE_EFFORT_LEVEL=medium
 exec "$acpx_executable" \
   --cwd "$PWD" \
+  --model claude-opus-5-5 \
   "${permissions[@]}" \
   --timeout "$timeout_seconds" \
   claude exec "$@"

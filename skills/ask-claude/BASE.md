@@ -7,6 +7,8 @@ description: 'Ask Claude from a non-Claude harness through a full ACP session fo
 
 Run only when the user explicitly asks to ask Claude or invokes `$ask-claude`.
 
+The launcher selects Opus 5.5 with medium effort for each new session, independently of the global Claude defaults.
+
 Give Claude the objective, checkout, relevant files, constraints, expected output, and permitted write scope.
 
 For advice, review, or planning:
