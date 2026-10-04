@@ -38,10 +38,9 @@ jobs:
       - name: Install Node dependencies
         run: bun ci
 
-      - name: Validate skill metadata and helper behavior
+      - name: Validate executable helpers and repository
         run: |
           ./tests/skills-test
-          python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py'
           bun run validate:effect
 
       - name: Check remaining shell and JavaScript syntax

@@ -1,6 +1,6 @@
 # Expensive suites
 
-Use this when test changes could materially affect execution cost or total workflow time (makespan), or when runtime optimization is requested. Preserve tests for every required behavior before optimizing how they run.
+Use this when test changes could materially affect execution cost or total workflow time (makespan), or when runtime optimization is requested. First apply the permanent-test value gate in [Writing Good Tests](../SKILL.md). Retire low-value proof before optimizing the remaining tests; preserve justified proof and explicitly required checks.
 
 ## Compare like with like
 
@@ -21,7 +21,7 @@ The longest shard is not automatically the workflow's total time. Counts and del
 
 Apply the retention, integration-first and coverage ownership policy in [Writing Good Tests](../SKILL.md). Also remove unused selectors and duration entries.
 
-Recheck affected high-risk branches and the useful complete journey when changed inputs invalidate their evidence or an unresolved coverage question requires it. Preserve required checks. Faster tests do not justify losing the last owner of a promised failure.
+Recheck affected consequential failures and useful complete journeys when changed inputs invalidate their evidence or an unresolved proof question requires it. Preserve explicitly required checks. Speed alone does not justify removing valuable proof; deliberate retirement of low-value last coverage needs an honest no-test-needed decision, not an invented replacement.
 
 ## Balance only when scheduling is in scope
 
@@ -37,7 +37,7 @@ Audit-only work inspects existing evidence and proportionate safe diagnostics; i
 
 After authorized edits, validate discovery/configuration, changed selectors and helpers, and every affected shard or an equivalent full-suite gate. Run typecheck and lint for changed shared contracts or infrastructure. Remeasure with the baseline method where practical.
 
-For portfolio reduction, stop when the scoped coverage assessment finds no further justified consolidation or removal under that policy. Every required outcome still needs an owner and passing validation.
+For portfolio reduction, stop when every remaining scoped test has a justified value decision and no further deletion or consolidation is warranted. Outcomes that need permanent protection must retain effective passing proof; record deliberate low-value retirement as no-test-needed, even for the last owner. Complete explicitly required checks.
 
 For scheduling changes, require complete assignment, passing planner/configuration checks, and a comparable distribution measurement. Apply both completion checks when both levers changed. Do not invent a percentage target; remaining runtime alone is not evidence of waste.
 

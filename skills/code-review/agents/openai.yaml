@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
-  short_description: "Simplify code, review independently, and verify fixes."
-  default_prompt: "Use $code-review to simplify this change, independently assess standards and correctness, fix confirmed problems, and verify the result."
+  short_description: "Simplify code; review correctness and test value."
+  default_prompt: "Use $code-review to simplify this change, independently assess standards, correctness and test value, fix confirmed problems, and verify the result."
 
 policy:
   allow_implicit_invocation: false

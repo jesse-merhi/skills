@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: 'Simplify changed code, then independently review standards and requirements/correctness.'
+description: 'Simplify changed code, then independently review standards, correctness and test value.'
 metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/engineering/code-review
@@ -19,7 +19,7 @@ Find requirements in the task, issue, spec, documentation and callers. Resolve o
 
 Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode. Identify relevant existing checks and reusable evidence. Honor narrower requests: findings-only means no edits; a requested single reviewer or native-only pass runs only that review and reports its coverage limits. For a specifically requested native review, use the harness's native command directly. Separately requested bot review uses [ClawSweeper](references/clawsweeper.md).
 
-For code or test changes, the coordinator, simplifier and reviewers load [writing-good-tests](../writing-good-tests/SKILL.md) before choosing verification or recommending coverage, even when the diff contains no tests. Apply its integration-first policy and permanent-test retention rules throughout review and confirmed repairs.
+For code or test changes, the coordinator, simplifier and reviewers load [writing-good-tests](../writing-good-tests/SKILL.md) before choosing verification or recommending coverage, even when the diff contains no tests. Apply its permanent-test value gate throughout simplification, both findings assessments and confirmed repairs.
 
 ## 2. Simplify in one thorough pass
 
@@ -29,7 +29,7 @@ Run this pass even when an agent just implemented the change; if it cannot run, 
 
 Use the configured implementer when available. The agent edits code and returns the patch, a concrete before/after explanation, checks and unresolved concerns. For findings-only work, it reports proposed simplifications instead. Keep other writers off its files until integration.
 
-Include affected tests and fixtures in the simplification. Use writing-good-tests to decide what to keep, consolidate, rewrite or remove, with the behavior and coverage evidence behind those decisions. Audit the diff for unused helpers, duplicate explanations, unnecessary generic APIs, unrelated additions and generated/schema/lockfile drift. Preserve unrelated user work.
+Include affected tests and fixtures. Apply writing-good-tests to every added or retained test, including E2E. Justify keepers; distinguish inspected consolidation from deliberate low-value retirement without replacements. Audit the diff for unused helpers, duplicate explanations, unnecessary generic APIs, unrelated additions and generated/schema/lockfile drift. Preserve unrelated user work.
 
 Inspect callers before deleting guards, cleanup, error handling, public contracts or tests. Preserve required safety and failure behavior. Fewer lines alone is not success, and unfamiliar code is not proof of unnecessary complexity. Stop for actual authority gaps such as breaking changes, dependencies or unrelated scope.
 
@@ -40,6 +40,8 @@ Integrate the patch and resolve verification failures before independent review.
 Dispatch two fresh findings-only reviewers against the same stable result. Prefer the configured reviewer role. Supply the target, base, diff, requirements, standards, relevant validation evidence and each assignment below. Exclude implementation rationale, simplifier conclusions and prior findings. Reviewers can inspect callers and dependencies to establish behavior; they do not edit or manage the workflow. Record the commit or patch each reviewer receives and check it again on return. If it changed, keep the report tied to the version reviewed and reassess the affected conclusions before completion. If independent dispatch is unavailable, disclose the missing review instead of counting self-review as independent.
 
 Each reviewer gets one thorough opportunity to assess its full assignment. Trace relevant behavior, inspect counterevidence and collect all supported findings before returning. Do not stop at the first finding or leave discovery for another round.
+
+Both reviewers apply writing-good-tests' value gate to test additions, keepers and deletions. Request missing permanent proof or oppose retirement only for an unmet explicit requirement or a credible consequential reachable gap worth maintaining under that policy. An uncovered branch, sensitive category, prior bug or coverage drop alone is insufficient. Preserve required checks and justified consequential proof.
 
 - **Standards:** assess the repository's actual standards, readability, diff waste and remaining unnecessary complexity. Use reducing-cognitive-load and report the required standards assessment, including relevant standard IDs and exceptions. Show the confusing code and a simpler alternative for a maintenance finding; skip preferences and checks already settled by tooling.
 - **Requirements and correctness:** start from the requested behavior and a real entry point, then trace the affected flow. Ask which plausible broken outcome could leave the current tests green and what runtime or persisted-state evidence would expose it. When the change alters the form of data other code reads, such as file types, schemas or saved records, list every reader, including tools and UIs, and exercise each with state created before the change. Reuse supplied results instead of repeating suites, but run targeted probes and fault checks yourself in scratch copies. Check missing, partial, incorrect or unrequested behavior, including regressions, failure and recovery through actual callers. Run this review even without a spec. Use writing-good-tests for changed behavior or test infrastructure, typescript-discipline for TypeScript, and reuse frontend-ui-validation evidence for UI changes; other domain lenses follow the affected contract.

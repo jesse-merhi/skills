@@ -295,7 +295,7 @@ two reinstalls.
 bun run validate:effect
 ```
 
-These check skill metadata, materialization and command installation, handoff helpers, OpenClaw/ClawHub process behavior, and Effect-based TypeScript helpers. `bun run validate:effect` runs lint, skill layout checks, typechecking, Effect diagnostics and Vitest. Instruction behavior is validated with independent agent exercises.
+`./tests/skills-test` runs the maintained Node and Python executable suites. `bun run validate:effect` runs lint, skill layout checks, typechecking, Effect diagnostics and Vitest. Instruction behavior is validated with independent agent exercises.
 
 The former `review-findings` database workflow and `codex-review` wrapper are retired. Existing review databases remain historical data; the new workflow keeps relevant evidence with the task. Use the harness's own command for an explicitly requested native review.
 

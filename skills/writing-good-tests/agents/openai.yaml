@@ -1,4 +1,4 @@
 interface:
   display_name: "Writing Good Tests"
-  short_description: "Prefer fewer tests through real integration"
-  default_prompt: "Use $writing-good-tests during coding or review: reuse integration coverage, separate temporary verification from permanent tests, justify unit-test exceptions, and complete required checks."
+  short_description: "Delete low-value tests; justify every keeper"
+  default_prompt: "Use $writing-good-tests during coding or review: delete low-value tests, justify every keeper, keep useful complete journeys, separate temporary verification from permanent coverage, and complete required checks."
