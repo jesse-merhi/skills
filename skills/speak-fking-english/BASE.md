@@ -10,22 +10,26 @@ metadata:
 
 # Speak fking English
 
-Write for a capable colleague, using the fewest words that make the point clear. Cut unnecessary ideas rather than compressing sentences: prefer short sentences, paragraph breaks and literal wording to metaphor or coined labels.
+Write so the reader understands the point on the first read. Choose the information they need before polishing the words. A short reply full of technical labels still makes them do the explaining.
 
-Make the main point clear immediately. For a fix, explain what was going wrong and what changes for the person using it before describing the machinery. For completed work, lead with the result. Use short Problem/Fix paragraphs when they help scanning; a routine answer may need only one sentence.
+Lead with the direct answer or result. For a fix, name what was going wrong and what happens now. For unfinished work, say what remains and what prevents it. Add the reader's next action only when one is needed.
 
-Use familiar words, concrete nouns, and direct verbs. Say what happened, why it matters, or what to do. Keep necessary technical terms and explain them when needed.
+Describe what people can do, see or experience. Explain the consequence before naming the mechanism. Keep a technical term when it helps this reader understand or act, and explain an unfamiliar one in ordinary words. Use exact commands, identifiers and quotations when needed; never alter their contents.
 
-Describe familiar actions rather than translating an implementation checklist. Prefer “Old links now open the details page” to “Legacy entry points redirect to the read-only route.” Move internal names into supporting detail unless the reader needs them to understand the change or act.
+For example:
 
-Cut repetition, filler, praise, and generic openings or endings. Brevity must not hide limitations or change meaning. Preserve facts, evidence, uncertainty, requested detail, and exact quotations, code, commands, names, and identifiers.
+> **Stop offering edits that are not allowed**
+>
+> **Problem:** People can open editing screens for parts of a site that have already been turned off. The app also shows buttons for changes it won’t allow.
+>
+> **Fix:** Hide the unusable buttons. Old links now open the details page instead of an editing screen.
 
-When reporting changed behavior, show proof the reader can inspect beside the claim: an actual screenshot, video, representative output or focused before/after source with plain annotations. Choose the form that makes the change clear. Mark omitted code and distinguish annotations from source. A diagram or code excerpt explains the mechanism; it does not establish observed runtime behavior. Do not fabricate a screen or result when proof is unavailable.
+Use that level of explanation for final responses too. Select useful facts from the work instead of translating each implementation bullet. Leave out internal task names, hashes, receipt paths and workflow bookkeeping unless the reader needs them. Cut repetition, filler, generic openings, invented labels and offers to continue work already requested.
 
-Say when evidence comes from an earlier run or the source PR. Keep meaningful limitations and necessary rollout actions visible. Required proof capture, testing, review and publication still belong to their existing workflows.
+Show useful proof beside a claim about changed behavior: an actual capture, representative output, or focused actual source with plain annotations and marked omissions. Link longer evidence when useful. Attribute reused evidence; source and diagrams explain a mechanism without proving it ran. Keep required capture, checks, review and publication with their existing workflows.
 
-In the main explanation, group routine passing checks into one short sentence. Do not add a generic verification checklist to every response. Include an exact command or reproduction step when the reader needs it to act; put long check records in optional detail when the destination supports it. Keep failures, incomplete checks and consequential risks clear.
+Give routine passing checks at most one short sentence in the main reply, unless more detail is requested or required by the delivery workflow. Keep failures, missing proof, uncertainty, consequential risks and necessary rollout actions visible. Brevity must not make unfinished work sound complete or change meaning.
 
-Use paragraphs for explanation. Use a list when items are parallel, sequential or compared, a heading when a longer piece needs navigation, and an example when it makes the point concrete. Do not turn a simple reply into a workflow or full rewrite.
+Use short connected paragraphs by default. Use lists for items that are easier to compare or follow in order. Problem/Fix labels and headings are optional; a simple answer may need one sentence. Preserve requested depth when the task needs it.
 
-Return the clear version, not an edit log.
+Read the opening on its own: can the reader tell what happened without knowing the code? Replace words they would have to decode, then remove sentences that add no useful information. Return the finished writing, not an edit log.
