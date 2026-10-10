@@ -9,8 +9,8 @@ After a successful check, update the item's date and status here. Tell the user 
 ## Async question notifications
 
 - Issue: [openai/codex#42433 — New inline questions don’t trigger pet or desktop notifications](https://github.com/openai/codex/issues/42433).
-- Last checked: 2026-09-27.
-- Status: Open, one user comment (2026-09-15) adding that Codex Micro is affected and asking to keep non-blocking questions; no maintainer response or linked fix shown.
+- Last checked: 2026-10-10.
+- Status: Open, two user comments. The latest (2026-09-30) reports the same missing pending-input indication on Codex Keyboard. No maintainer response or linked fix shown.
 - Context: Non-blocking questions reportedly fail to trigger desktop notifications even with question notifications enabled. The report also describes missing pet indicators and unanswered questions disappearing when work finishes.
 - Current user preference: The synchronous-question rule lives in `AGENTS.md` under Communication. Installation continues to use that shared instruction file; this maintenance check applies only to source-repository work.
 
