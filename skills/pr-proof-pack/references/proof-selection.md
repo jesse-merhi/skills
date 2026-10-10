@@ -18,6 +18,8 @@ If the evidence is text based e.g.
 
 Use a fenced block, a short request/response example, or a small Markdown table.
 
+Focused before/after source can explain a code change. Use actual source, mark omissions and add plain captions explaining the important lines. Keep it separate from observed runtime evidence; unavailable media or execution remains a stated gap, not proof supplied by the excerpt.
+
 However if the text based content has important visual traits then consider visual evidence. e.g.
 - appearance, spacing, hierarchy, responsive layout, or rendered output;
 - motion, timing, gesture, transition, or interaction feel;
