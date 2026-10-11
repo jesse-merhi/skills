@@ -37,9 +37,9 @@ A regression test must fail against unfixed code for the intended reason and pas
 
 The [global policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#test-and-review-design) owns roles, authority and evidence reuse. The coordinator chooses proof, accepts results and diagnoses failures; workers return focused evidence. Verify required behavior before pushing. Reuse valid results; broaden checks only for an unresolved question, invalidated evidence or an explicit requirement.
 
-When delegation helps, batch established checks or prepared acceptance flows for Luna/max. Supply checkout/revision/dirty changes, ordered commands, expected results, environment, time limits and logs. Keep small checks local.
+When delegation helps, batch established checks or prepared acceptance flows for a fast executor model: Luna/high, or Haiku 5.5/high in Claude Code. Supply checkout/revision/dirty changes, ordered commands, expected results, environment, time limits and logs. Keep small checks local.
 
-Use `spawn_agent` with `agent_type: "test_executor"`. If unavailable, use a fresh `default` agent with `model: "gpt-6-luna"`, `reasoning_effort: "max"`, `fork_turns: "none"` and this skill. Verify launch settings; if unavailable, report the limit and run suitable checks locally. Do not change live configuration.
+Use `spawn_agent` with `agent_type: "test_executor"`. If unavailable, use a fresh `default` agent with `model: "gpt-6-luna"`, `reasoning_effort: "high"`, `fork_turns: "none"` and this skill. Verify launch settings; if unavailable, report the limit and run suitable checks locally. Do not change live configuration.
 
 Check inputs before execution. E2E/Maestro remain manually triggered; external/paid jobs need existing authority. An executor stops at the first failure, timeout, changed input or ambiguity and returns command, status, relevant output and unrun checks. It does not retry, diagnose, repair, install or launch external/paid jobs. The coordinator handles diagnosis and authorized repair before more execution. Use `wait-efficiently` for prolonged runs and useful progress updates.
 

@@ -177,7 +177,7 @@ itself model generation.
 - Use GPT-6.1 Sol at high by default for coordination, integration, verification,
   ordinary review, implementation, test design and substantive debugging or repairs.
   The coordinator may complete small local steps when delegation would not help.
-  Use GPT-6 Luna at max for established test, lint, typecheck and prepared acceptance
+  Use GPT-6 Luna at high for established test, lint, typecheck and prepared acceptance
   execution, bounded investigation and focused research. `writing-good-tests` owns
   execution batches and result records. The Claude Code mapping below replaces these
   defaults in that harness.
@@ -191,7 +191,7 @@ itself model generation.
   model family.
 - Assign skill execution by the work, not by which model variants are installed.
   Use GPT-6.1 Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
-  Use Luna/max for bounded retrieval and inventory work, such as `session-recall`
+  Use Luna/high for bounded retrieval and inventory work, such as `session-recall`
   searches and `skill-cleaner` inventories, and for prepared validation batches,
   including UI and local-preview checks when the worker has the required tools.
   Keep test design and failure diagnosis with Sol; `writing-good-tests` owns the
@@ -365,8 +365,10 @@ browser sessions.
 
 ### Named workers
 
-Keep the normal main session as coordinator, using Claude Fable 5.1 at high by default, and preserve explicit user model and effort overrides.
+Keep the normal main session as coordinator, using Claude Opus 5.5 at high by default with Fable 5.1 as its advisor when available. Use Opus 5.5 as the default subagent model and preserve explicit user model and effort overrides. Installing instructions does not change live model or advisor settings.
 
-When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type: "implementer"`, `"investigator"`, or `"findings-reviewer"` for useful bounded work. All three select Fable 5.1 at high, replacing the shared GPT worker mapping in this harness. Reserve Opus 5.5 at high for `subagent_type: "oracle"` under the read-only consultation boundaries above. Named definitions pin their settings; apply the shared [launcher and override rules](#model-turns).
+When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type` set to the role. They replace the shared GPT mapping in this harness: `"implementer"`, `"investigator"` and `"findings-reviewer"` default to Opus 5.5 at high; `"test-executor"` uses Haiku 5.5 at high for prepared validation only; `"oracle"` uses Fable 5.1 at high under the read-only consultation boundaries above. Apply the shared [launcher and override rules](#model-turns).
+
+Use Haiku 5.5/high for straightforward tasks with a clear procedure and checkable result, such as locating a named definition, running prepared checks or making a small mechanical edit. Select it through a supported per-invocation `model` and `effort` override on the appropriate role; retain that role's scope and permissions. Use Opus for work requiring design decisions, substantive implementation, failure diagnosis or review, and when the task's difficulty is uncertain. A bounded assignment alone does not make it a Haiku task. If a Haiku assignment turns out to require such judgment, have it return evidence and let the coordinator reassign it to Opus. Give each worker the original task file or quote the relevant requirements exactly, and review against those original requirements.
 
 The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings.

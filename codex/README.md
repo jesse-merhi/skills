@@ -14,8 +14,8 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 | --- | --- | --- |
 | Coordinator | GPT-6.1 Sol | high |
 | `implementer` — implementation, test design and repairs | GPT-6.1 Sol | high |
-| `test_executor` — established validation execution | GPT-6 Luna | max |
-| `investigator` — bounded investigation and research | GPT-6 Luna | max |
+| `test_executor` — established validation execution | GPT-6 Luna | high |
+| `investigator` — bounded investigation and research | GPT-6 Luna | high |
 | `findings_reviewer` — independent findings only | GPT-6.1 Sol | high |
 | `oracle` — optional read-only decision advice | GPT-6 Astra | high |
 | Unnamed child | GPT-6.1 Sol | high |

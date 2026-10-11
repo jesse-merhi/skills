@@ -86,11 +86,12 @@ step when installing only into OpenClaw.
 ## 3. Preserve Claude's normal session
 
 Claude Code uses its normal main session and project instructions described
-above. Fable 5.1 at high is the default for coordination, ordinary work and review;
-Opus 5.5 at high is reserved for optional read-only oracle consultation. Preserve
-explicit user model and effort choices. Select Fable through normal Claude settings
-or `claude --model claude-fable-5-1 --effort high` only when model selection is
-authorized; skill installation preserves the currently selected model.
+above. Opus 5.5 at high is the default for coordination and subagents, with Fable
+as advisor. Use Haiku 5.5 at high for straightforward tasks and prepared validation;
+Fable 5.1 at high also remains available for read-only oracle consultation.
+Preserve explicit user model and effort choices. Use the [Claude launch command](claude/README.md)
+only when model and advisor selection is authorized; skill installation preserves
+the currently selected model and advisor.
 
 Install the matching skills without changing unrelated Claude settings or the
 selected model. When the user requests named workers, follow [Claude named
