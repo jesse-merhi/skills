@@ -24,6 +24,14 @@ Continue authorized local work through administrative checkpoints and diagnostic
 
 Explain decisions plainly without routine citations to internal instructions; preserve required safety/approval disclosures.
 
+## Release local proof environments
+
+Record the simulators, emulators, dev servers, bundlers and Compose stacks this task starts and their stop commands. Once proof is saved and they are no longer needed, release them before handing back or a long CI, review or external wait. Repeat after later repairs and proof captures.
+
+For runtime release, follow [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules. Use the repository's stop command or the exact resource's native stop command. Preserve worktrees, branches, files, volumes and reusable data. Never stop another session's resources.
+
+Keep resources needed for ongoing work or the user's manual testing. Report stopped resources, stop failures and anything retained with its reason; carry retained identifiers and stop instructions into any handoff.
+
 ## Permissions
 
 Before GitHub writes, verify account `jesse-merhi` and Jesse's authorship of an existing PR.

@@ -31,6 +31,14 @@ Record build or revision, local changes, environment, viewport or device, intera
 
 Reuse those evidence paths and coverage notes in downstream tickets, reviews, and proof-pack work.
 
+## Release proof environments
+
+Record the simulators, emulators, dev servers, bundlers and Compose stacks this task starts and their stop commands. After saving proof, release them as soon as ongoing work no longer needs them, before handing back or a long CI, review or external wait. Repeat after later proof captures.
+
+For runtime release, follow [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules. Use the repository's stop command or the exact resource's native stop command. Preserve worktrees, branches, files, volumes and reusable data. Never stop another session's resources.
+
+Keep resources needed for the user's manual testing or ongoing work. Include stopped resources, stop failures and anything retained with its reason, identifiers and stop instructions in the evidence notes.
+
 ## References
 
 - [Layout evidence](references/browser-layout-audit.md): Use for the capture helper's output and limitations.
