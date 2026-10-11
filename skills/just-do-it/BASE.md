@@ -18,11 +18,19 @@ If a role is unavailable, report the limitation and continue suitable work local
 3. Prepare `pr-proof-pack` for the final diff. Once local validation and review pass, push the reviewed branch, create or update Jesse's draft PR and publish the proof pack. Explicit invocation authorizes the repository's configured automatic PR CI and review jobs on draft, synchronize and readiness events, including paid Blacksmith runners; do not ask again because those jobs cost money or their billing is unclear. Ask before new paid services or extra manually triggered campaigns and runs not already authorized. For an approved dependent chain, discover `gh stack` commands and preserve each PR's gates.
 4. Give Jesse an inspection checkpoint in the step 6 report, or when a concrete blocker needs his decision: any PR link, user-visible result, observed problem, key design decisions, local commands and results, platform gaps, review focus and final CI. Report provider- and platform-only checks as remaining CI evidence, with the available local coverage; do not claim they passed locally. If a required locally reproducible check is blocked, resolve its prerequisite or obtain Jesse's approval for that specific validation gap before the event that starts CI. Do not stop solely because a draft has not started CI. Resolve feedback and recheck affected evidence/review before the next publication event.
 5. Complete required checks. If readiness triggers CI, mark ready only after the local validation, review, proof and conflict checks, and report CI pending until verified. Diagnose CI failures, repair confirmed defects and pass the affected local checks before publishing a fix. Do not dispatch, rerun, re-push or change readiness merely to obtain green results on unchanged code. Ask before an extra manual run not already authorized, explaining why it is needed. Preserve provider-only limits and spending restrictions. For PRs targeting `openclaw/*`, follow `code-review`'s explicit ClawSweeper workflow before final CI where possible; disclose ordering conflicts in the inspection checkpoint.
-6. When checks pass and no conflicts remain, mark ready if draft and report the result to Jesse. Do not merge.
+6. When checks pass and no conflicts remain, mark ready if draft. Complete [runtime release](#release-runtimes-at-task-completion) before the final report to Jesse. Do not merge.
 
 Continue authorized local work through administrative checkpoints and diagnostic warnings. Leave a blocked PR draft and explain the problem, consequence, remaining work and alternative—not just counts or hashes.
 
 Explain decisions plainly without routine citations to internal instructions; preserve required safety/approval disclosures.
+
+## Release runtimes at task completion
+
+Record the simulators, emulators, dev servers, bundlers and Compose stacks this task starts and their stop commands. Release them only when the whole task is done: implementation, review, required checks and proof are complete. Capturing proof, waiting on CI or review, and handing off unfinished work are not completion points.
+
+For runtime release, follow [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules. Use the repository's stop command or the exact resource's native stop command. Preserve worktrees, branches, files, volumes and reusable data. Never stop another session's resources.
+
+Keep resources the user still needs for manual testing. Report stopped resources, stop failures and anything retained with its reason. Carry resource ownership, identifiers and stop instructions into any continuation handoff.
 
 ## Permissions
 

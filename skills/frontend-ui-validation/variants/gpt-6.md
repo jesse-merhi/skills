@@ -31,6 +31,12 @@ Record build or revision, local changes, environment, viewport or device, intera
 
 Reuse those evidence paths and coverage notes in downstream tickets, reviews, and proof-pack work.
 
+## Record proof environments
+
+Record the simulators, emulators, dev servers, bundlers and Compose stacks this task starts, their ownership evidence, identifiers and stop commands in the evidence notes. Saving proof or finishing a validation step does not complete a larger task; keep its environments running and pass this record to whoever completes the task.
+
+For a standalone validation request, release runtimes this task started only after validation is complete and proof is saved. Follow [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules using the repository's stop command or the exact resource's native stop command. Preserve worktrees, branches, files, volumes, reusable data, other sessions' resources and environments the user still needs for manual testing. Report stopped resources, stop failures and anything retained with its reason.
+
 ## References
 
 - [Layout evidence](references/browser-layout-audit.md): Use for the capture helper's output and limitations.

@@ -8,6 +8,12 @@ metadata:
 
 # Handoff
 
+## Carry runtime ownership
+
+A handoff continues unfinished work; keep its environments running. An unrelated aside also leaves the original task's environments running.
+
+Record simulators, emulators, dev servers, bundlers and Compose stacks this task started in the brief, with ownership evidence, identifiers, current state and stop instructions. Carry any prior stop failures and the user's manual-testing needs. When the whole task is done, its owner follows [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules for runtime release; never stop another session's resources.
+
 ## Write the brief
 
 Save a self-contained brief in the OS temporary directory with:
