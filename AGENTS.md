@@ -279,15 +279,8 @@ itself model generation.
   the user explicitly asks to push after the fix, publish, ship, or update the PR,
   or when a named workflow explicitly grants final-push authority. Otherwise,
   stop at a local checkpoint and show the result.
-- Always use the installed `repo-queue` skill for authorized GitHub or Bitbucket
-  Cloud PR merges on this machine, even when the user does not mention the queue.
-  For a GitHub native merge queue, finish the review gate, proof, and required
-  CI and security checks, then submit; otherwise acquire the repository turn
-  before the final update from the target branch, merge-validation run, and
-  merge. Its [installation and supported surfaces](external.md#local-pr-turns)
-  are maintained separately. If it is unavailable, report the setup blocker
-  instead of silently bypassing the queue. Implementation and review alone do
-  not require a turn.
+- Use the provider's protected merge workflow for authorized merges. For a GitHub target that requires a queue, finish the repository's review, proof, security and admission gates, record the reviewed head and explicit queue authority, then submit with `gh pr merge <pr-url> --match-head-commit <reviewed-head>`. GitHub owns ordering, combined validation and merge. Verify queue membership separately from command acceptance and confirm merge through GitHub. Preserve required checks and repository-specific CI policy; never bypass protections. Targets without a GitHub queue retain their normal protected merge flow.
+- RepoQ is retired; do not load, install, start or wait for it, or acquire local queue reservations. Ignore obsolete RepoQ routing in older checkouts while retaining their technical and permission gates. Keep repairs in the original task with its proof and authority. Reconcile uncertain requests before resubmitting. Use available host notifications and disclose missing queue-event coverage; do not claim monitoring the host cannot provide.
 - Choose the PR delivery shape before implementation. Default to one PR per
   story and add follow-up work for that story to its open PR. When the work has
   two or more dependent review units, propose a bottom-to-top stack and ask
