@@ -62,48 +62,29 @@ install if it moved.
 The installer owns the external skill files. Do not symlink `teach` from this
 repo.
 
-## Local PR turns
-
-- **Source:** [jesse-merhi/repo-queue](https://github.com/jesse-merhi/repo-queue), the upstream RepoQ project.
-- **Pinned revision:** `7dfb864614ef810b82fad5bf2286baf03de382ae`, the `main` merge of [PR #8](https://github.com/jesse-merhi/repo-queue/pull/8). This pins the TypeScript package and complete skill variants. Update it deliberately after validation; do not track a moving branch.
-- **Ownership:** repo-queue owns the CLI and complete skill variants. This repository owns the default merge-routing rule in `AGENTS.md`. Do not copy the workflow into a repo-owned skill or change dotfiles to install it.
-- **Verified scope:** At `d5406759` (PR #2), Codex desktop and live Claude Code each passed registration → original-session wake → claim → done in isolated synthetic queues. At `7dfb864`, upstream validation passed and a live Claude Code local turn completed wake → claim → done after an in-place upgrade that preserved every queue entry; GitHub native-queue submission has not been exercised on this machine. Live Claude stays open; a restricted native sender uses its normal configured permission mode and consumes an extra sender model turn. Native acceptance can still be held or refused by Claude; only a successful claim proves owner action. Exited Claude sessions retain resume support. Desktop Code is eligible when it exposes a compatible local inbox; general Chat/Cowork and cloud sessions are separate surfaces. Follow upstream recovery guidance instead of forcing delivery.
-
-### Install the pinned CLI and skill
-
-This entry is for Codex and Claude Code only. Run installation when the user requests queue setup or installation of this skills repository; a merge request alone does not authorize installing missing dependencies. Preserve unrelated skills and settings. Start by checking `command -v repo-queue`, `~/.local/bin/repo-queue`, and the harness's `skills/repo-queue`. If any existing destination has another owner or local edits, stop before replacing it. Treat a foreign executable as an unavailable queue, not as the trusted transport. An unchanged installation at this pin needs no reinstall. If an earlier RepoQ TypeScript pin is installed (its `repo-queue --help` lists no `submit` command), follow "Upgrade for native queues and re-entry" in upstream `docs/installation.md` instead of running the commands below directly. This pin's CLI migrates state to schema 5, which earlier CLIs cannot open, so never reinstall an earlier pin over upgraded state.
-
-Obtain the exact revision, build its package, and install the compiled command in a stable prefix. Node 24.13+ and npm are prerequisites; install missing prerequisites only with the user's authority. Do not run the background service from a temporary development worktree:
-
-```sh
-queue_revision=7dfb864614ef810b82fad5bf2286baf03de382ae
-queue_checkout="$HOME/.local/share/repo-queue/$queue_revision"
-mkdir -p "$HOME/.local/share/repo-queue" "$HOME/.local/bin"
-gh repo clone jesse-merhi/repo-queue "$queue_checkout" -- --no-checkout
-git -C "$queue_checkout" checkout --detach "$queue_revision"
-test "$(git -C "$queue_checkout" rev-parse HEAD)" = "$queue_revision"
-(cd "$queue_checkout" && npm ci --ignore-scripts && npm run validate && npm pack)
-npm install --global --prefix "$HOME/.local" --ignore-scripts "$queue_checkout/repoq-0.1.0.tgz"
-```
-
-These commands assume the checked destinations are absent. On reinstall, inspect and reuse a clean matching checkout and package installation; never overwrite an unrelated path. For an existing Python preview, follow the ordered upgrade and outstanding-wake reconciliation in upstream `docs/installation.md`. Move only the verified owned Python bin symlink to an unused backup name before npm installation, retaining its resolved target. Preserve reservations and the old executable for outstanding wake commands. The TypeScript CLI supports macOS and Linux, uses built-in SQLite, and has no third-party runtime dependencies. The relevant agent CLI must be authenticated. If `~/.local/bin` is absent from PATH, use its absolute executable path and report that fact rather than editing shell configuration implicitly.
-
-Install the **whole** `skills/repo-queue` directory from that revision into the harness's skill directory. Use the available Skill Installer helper with the repository, revision and path above. Pass `--dest "${CODEX_HOME:-$HOME/.codex}/skills"` for Codex or `--dest "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"` for Claude. If this installation selected an explicit `--root`, pass that root's `skills` subdirectory instead; keep the destination quoted. The helper's authenticated archive-download mode supports exact revisions. Select the complete `variants/gpt-6-astra.md`, `variants/claude-fable-5.1.md`, or `variants/claude-opus-5.md` as the installed `SKILL.md` according to the harness's current model; preserve the source `BASE.md` and other variants. Do not change the model. Other installers may copy the directory from the verified checkout and select the same variant.
-
-Materialize the selected variant by copying it to the installed `SKILL.md`; unlink a verified RepoQ `SKILL.md` symlink first so its target is preserved. The npm tarball includes the variants but omits that source symlink. Verify `repo-queue --help`, the installed skill and selected variant, then run:
-
-```sh
-repo-queue start
-repo-queue status
-```
-
-A fresh session discovers the skill. Already-running tasks need to load it explicitly; installation does not send them messages or make them stop ongoing work. The dispatcher survives ended turns, but must be started again after reboot. The skill starts it idempotently before registration. Installing this entry grants no merge, publication, paid-CI or approval authority.
-
 ## Retired third-party skills
 
-Retired entries remain here as cleanup tombstones. Run the removal command for
-the current harness on every reinstall, even when the skill is already
-absent. Do not reinstall a retired skill unless the user explicitly asks for it.
+Check these cleanup tombstones on every reinstall and follow the current harness's procedure. Do not reinstall a retired skill unless the user explicitly asks for it.
+
+### repo-queue
+
+RepoQ is retired. Follow [global merge policy](AGENTS.md#working-rules) instead. Do not reinstall its CLI or skill, or introduce another local reservation service.
+
+During an authorized retirement, preserve the original tasks, checkpoints and GitHub queue entries. Save local state privately and stop the verified RepoQ dispatcher with its supported stop command. Move only verified installer-owned skill paths out of discovery; do not alter foreign or edited installations without resolving ownership. Repair authority and proof remain with the original task; RepoQ records and wake tokens no longer gate it.
+
+On a Codex or Claude Code reinstall, inspect the current harness's path below and verify it matches the installed RepoQ package before archiving it. If absent, skip the move. Otherwise create a private, unique backup outside skill discovery:
+
+```sh
+mkdir -p "$HOME/.local/state"
+repoq_backup="$(mktemp -d "$HOME/.local/state/repoq-skills.XXXXXX")"
+```
+
+| Harness | Archive command after ownership verification |
+| --- | --- |
+| Codex | `mv "${CODEX_HOME:-$HOME/.codex}/skills/repo-queue" "$repoq_backup/codex"` |
+| Claude Code | `mv "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/repo-queue" "$repoq_backup/claude"` |
+
+For an explicit installation root, archive that root's `skills/repo-queue` path instead. Other harnesses have no verified RepoQ installation here; report the skip. Preserve the archive, package, state and checkpoints; skill cleanup must not cancel GitHub jobs or remove unrelated files.
 
 ### impeccable
 

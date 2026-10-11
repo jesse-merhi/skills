@@ -284,10 +284,7 @@ runs external install commands; this repo never copies or symlinks those files.
 | --- | --- | --- |
 | `teach` | Matt Pocock | Codex |
 
-`external.md` also keeps tombstones for retired third-party skills, with removal
-commands that run on every reinstall. `impeccable` is there now. Removing its
-directory was never enough, since its hook wrote state outside it that survived
-two reinstalls.
+`external.md` keeps cleanup procedures for retired third-party skills. Check them on every reinstall: [RepoQ](external.md#repo-queue) archives verified skill files while preserving its package and state; `impeccable` also requires removing hook state outside its skill directory.
 
 ## Verify
 
@@ -365,6 +362,6 @@ be public, or a helper script that can mutate a machine without clear consent,
 please use GitHub private vulnerability reporting rather than a public issue.
 See [`SECURITY.md`](SECURITY.md).
 
-## Local PR turn queue
+## PR merge queues
 
-Authorized PR merges use the external `repo-queue` skill: a PR enters a GitHub native merge queue after its review, proof and CI gates pass; otherwise it waits for a local repository turn before final validation and merge. [Pinned installation and supported agent surfaces](external.md#local-pr-turns) live in the external ownership table; the queue code and skill stay in their own repository.
+Authorized merges follow [global merge policy](AGENTS.md#working-rules): submit the reviewed head to GitHub's required queue after admission gates pass, or use the target's normal protected merge flow. RepoQ is [retired](external.md#repo-queue).
