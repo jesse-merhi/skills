@@ -1,7 +1,7 @@
 ---
 name: oracle
 description: Advise on a bounded unresolved decision using read-only evidence.
-model: claude-opus-5-5
+model: claude-fable-5-1
 effort: high
 tools: Read, Glob, Grep, Bash, Skill, WebFetch, WebSearch
 ---

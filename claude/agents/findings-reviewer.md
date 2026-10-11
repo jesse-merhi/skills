@@ -1,7 +1,7 @@
 ---
 name: findings-reviewer
 description: Independently inspect a specified revision and return findings only.
-model: claude-fable-5-1
+model: claude-opus-5-5
 effort: high
 tools: Read, Glob, Grep, Bash, Skill, WebFetch, WebSearch
 ---

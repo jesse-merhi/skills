@@ -1,5 +1,5 @@
 model = "gpt-6-luna"
-model_reasoning_effort = "max"
+model_reasoning_effort = "high"
 
 developer_instructions = """
 Run the assigned validation batch using writing-good-tests. Use the supplied checkout, revision, commands, expected results and evidence location. Follow that skill’s execution limits and result record requirements.

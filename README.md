@@ -95,17 +95,18 @@ contained static copy of the selected prompt, as does Claude. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
-Claude Code uses its normal main session, with Fable 5.1 at high as the repository
-default. Select it with `claude --model claude-fable-5-1 --effort high`, preserving
-explicit user choices. Optional [named workers](claude/README.md) use
-Fable 5.1 at high for ordinary work and findings-only review, with Opus 5.5 at
-high reserved for read-only oracle advice. Shared owner and worker policy lives
+Claude Code uses its normal main session, with Opus 5.5 at high as the repository
+default, Fable as advisor and Opus as the default subagent model. The launch command
+and optional [named workers](claude/README.md) preserve explicit user choices.
+Opus handles implementation, investigation and findings-only review; Haiku 5.5 at
+high handles straightforward tasks and prepared validation. Fable 5.1 at high is
+also available for read-only oracle advice. Shared owner and worker policy lives
 in `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
 `handoff` transfers work to a fresh full session.
 
 For opt-in Codex orchestration, run `./install-codex-profiles`, then
 `codex --profile orchestration`. This pins GPT-6.1 Sol at high for coordination,
-implementation and findings-only review, Luna at max for bounded investigation
+implementation and findings-only review, Luna at high for bounded investigation
 and prepared validation, and Astra at high for optional read-only oracle advice.
 The coordinator retains decisions and delivery; consultation adds no mandatory
 gate. The profile does not edit your base configuration or install global agents.
