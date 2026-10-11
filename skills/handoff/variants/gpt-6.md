@@ -8,13 +8,11 @@ metadata:
 
 # Handoff
 
-## Release unneeded runtimes
+## Carry runtime ownership
 
-After saving needed proof and before handing off, release simulators, emulators, dev servers, bundlers and Compose stacks this task started and no longer needs.
+A handoff continues unfinished work; keep its environments running. An unrelated aside also leaves the original task's environments running.
 
-For runtime release, follow [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules. Use the repository's stop command or the exact resource's native stop command. Preserve worktrees, branches, files, volumes and reusable data. Never stop another session's resources.
-
-Keep resources needed for continuing work or the user's manual testing; an unrelated aside does not end the original task's use of its environment. Record stopped resources, stop failures and anything retained with ownership evidence, identifiers, reasons and stop instructions in the brief.
+Record simulators, emulators, dev servers, bundlers and Compose stacks this task started in the brief, with ownership evidence, identifiers, current state and stop instructions. Carry any prior stop failures and the user's manual-testing needs. When the whole task is done, its owner follows [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules for runtime release; never stop another session's resources.
 
 ## Write the brief
 
