@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Reversibly archive a stopped Claude CLI session, or queue it until exit."""
+"""Reversibly archive Claude CLI files after exit, with optional graceful closeout."""
 
 import argparse
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import time
@@ -48,6 +49,25 @@ def session_pids(config, session_id):
             if running(pid):
                 pids.add(pid)
     return pids
+
+
+def cli_parent(config, session_id):
+    """Match a native CLI session record to this command's real ancestry."""
+    matches = []
+    pid = os.getppid()
+    seen = set()
+    while pid > 1 and pid not in seen:
+        seen.add(pid)
+        record = read_session_record(config / "sessions" / f"{pid}.json")
+        if record and record.get("pid") == pid and record.get("sessionId") == session_id and record.get("entrypoint") == "cli":
+            matches.append(pid)
+        parent = subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True, check=False)
+        if parent.returncode or not parent.stdout.strip():
+            break
+        pid = int(parent.stdout.strip())
+    if len(matches) != 1:
+        raise ValueError("Cannot identify exactly one current Claude CLI ancestor; session left open")
+    return matches[0]
 
 
 def save_manifest(bundle, data):
@@ -98,7 +118,7 @@ def move_all(pairs):
 
 def archive(config, bundle, data):
     if session_pids(config, data["session_id"]):
-        raise ValueError("Session is running; use archive --defer and then /exit")
+        raise ValueError("Session is running; use archive --defer")
     # Final tools may create the adjacent directory after archiving was queued.
     data["companion"] = (config / "projects" / data["project"] / data["session_id"]).exists()
     data["status"] = "archiving"
@@ -111,6 +131,39 @@ def archive(config, bundle, data):
         raise
     data["status"] = "archived"
     save_manifest(bundle, data)
+
+
+def finish(config, bundle, data):
+    """A skill Stop hook may request one graceful shutdown of its own CLI."""
+    if data["status"] != "queued" or not data.get("auto_exit") or data.get("exit_requested"):
+        return
+    try:
+        event = json.load(sys.stdin)
+        transcript = config / "projects" / data["project"] / f'{data["session_id"]}.jsonl'
+        if (not isinstance(event, dict) or event.get("hook_event_name") != "Stop"
+                or event.get("session_id") != data["session_id"] or "agent_id" in event
+                or event.get("stop_hook_active") is not False):
+            raise ValueError("Expected the armed main session's final Stop event; session left open")
+        if event.get("background_tasks") != [] or event.get("session_crons") != []:
+            raise ValueError("Stop does not confirm empty background tasks and session crons; session left open")
+        message, transcript_path = event.get("last_assistant_message"), event.get("transcript_path")
+        if (not isinstance(message, str) or not message.strip() or not isinstance(transcript_path, str)
+                or Path(transcript_path).resolve() != transcript.resolve()):
+            raise ValueError("Stop does not confirm this transcript's final response; session left open")
+        if not running(data["worker_pid"]):
+            raise ValueError("Archive worker is not running; session left open")
+        pid = cli_parent(config, data["session_id"])
+        if pid != data["exit_pid"]:
+            raise ValueError("Current CLI differs from the armed process; session left open")
+        # Persist first: repeated Stop hooks must never send a second signal.
+        data["exit_requested"] = True
+        data.pop("auto_exit_error", None)
+        save_manifest(bundle, data)
+        os.kill(pid, signal.SIGTERM)
+    except (OSError, ValueError) as error:
+        data["auto_exit_error"] = str(error)
+        save_manifest(bundle, data)
+        raise
 
 
 def wait_for_exit(config, bundle, session_id, lock):
@@ -153,18 +206,23 @@ def wait_for_exit(config, bundle, session_id, lock):
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
-        epilog="Current session: archive SESSION_ID --defer, then /exit. "
+        epilog="Current session after cleanup: archive SESSION_ID --defer --auto-exit. "
+        "The skill's Stop hook calls finish after the final response; it requests SIGTERM once, never force-kills. "
+        "Without --auto-exit, --defer only waits for an independent exit. "
         "Use status to confirm, cancel to revoke a queued archive, "
         "or restore before claude --resume SESSION_ID. "
         "Archives only the transcript and its adjacent session directory. "
         "Other Claude state and Git worktrees stay in place. macOS/Linux only.",
     )
-    parser.add_argument("command", choices=["archive", "restore", "status", "cancel"])
+    parser.add_argument("command", choices=["archive", "restore", "status", "cancel", "finish"])
     parser.add_argument("session_id", help="Full Claude CLI transcript UUID")
     parser.add_argument("--config-dir", type=Path, default=Path(os.environ.get("CLAUDE_CONFIG_DIR", "~/.claude")).expanduser())
     parser.add_argument("--defer", action="store_true", help="Wait in a detached process for this session to exit (up to 24 hours)")
+    parser.add_argument("--auto-exit", action="store_true", help="With archive --defer, arm the skill's one-shot Stop hook to close its current CLI gracefully")
     parser.add_argument("--wait", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.auto_exit and (args.command != "archive" or not args.defer):
+        parser.error("--auto-exit requires archive --defer")
     if os.name != "posix":
         parser.error("This helper supports macOS/Linux; use native Desktop archiving here")
     import fcntl
@@ -187,6 +245,9 @@ def main():
             print(json.dumps(wait_for_exit(config, bundle, session_id, lock)))
             return
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if args.command == "finish":
+            finish(config, bundle, read_manifest(bundle, session_id))
+            return
         if args.command == "cancel":
             data = read_manifest(bundle, session_id)
             if data["status"] != "queued":
@@ -216,20 +277,29 @@ def main():
                 raise ValueError("Refusing a symlinked transcript or project directory")
             pids = session_pids(config, session_id)
             if pids and not args.defer:
-                raise ValueError("Session is running; use archive --defer and then /exit")
+                raise ValueError("Session is running; use archive --defer")
+            exit_pid = cli_parent(config, session_id) if args.auto_exit else None
+            if exit_pid is not None:
+                pids.add(exit_pid)
             bundle.mkdir(mode=0o700, exist_ok=True)
             data = {"session_id": session_id, "project": transcript.parent.name,
                     "companion": transcript.with_suffix("").exists(), "status": "queued"}
             save_manifest(bundle, data)
             if pids:
+                # Cleanup may remove the installed skill or checkout before Stop.
+                helper = bundle / "finish.py"
+                helper.write_bytes(Path(__file__).read_bytes())
+                helper.chmod(0o700)
                 with (bundle / "worker.log").open("a") as log:
                     worker = subprocess.Popen(
-                        [sys.executable, str(Path(__file__).resolve()), "archive", session_id,
+                        [sys.executable, str(helper), "archive", session_id,
                          "--config-dir", str(config), "--wait"],
                         stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                         cwd=root, start_new_session=True,
                     )
                 data.update(worker_pid=worker.pid, waiting_for_pids=sorted(pids))
+                if exit_pid is not None:
+                    data.update(auto_exit=True, exit_pid=exit_pid)
                 save_manifest(bundle, data)
             else:
                 archive(config, bundle, data)

@@ -104,6 +104,60 @@ sys.stdin.read()
         self.run_command("restore")
         self.assertEqual(self.snapshot(), before)
 
+    def test_stop_closes_its_cli_and_archives_shutdown_writes_after_skill_removal(self):
+        # Substitute the native CLI boundary; use the real queue, hook helper,
+        # registry, OS ancestry, SIGTERM and filesystem relocation.
+        launcher = self.config / "installed-helper.py"
+        launcher.write_bytes(SCRIPT.read_bytes())
+        cli_code = """
+import json, os, pathlib, signal, subprocess, sys, time
+config, session, launcher = pathlib.Path(sys.argv[1]), sys.argv[2], pathlib.Path(sys.argv[3])
+project = config / 'projects' / '-archive-fixture'
+transcript = project / f'{session}.jsonl'
+records = config / 'sessions'
+records.mkdir()
+record = records / f'{os.getpid()}.json'
+record.write_text(json.dumps({'pid': os.getpid(), 'sessionId': session, 'entrypoint': 'cli'}))
+def shutdown(signum, frame):
+    record.unlink()
+    time.sleep(0.2)
+    with transcript.open('ab') as output:
+        output.write(b'{"type":"assistant","message":{"role":"assistant","content":"final closeout"}}\\n')
+    (project / session / 'shutdown.txt').write_text('final shutdown asset')
+    sys.exit(0)
+signal.signal(signal.SIGTERM, shutdown)
+subprocess.run([sys.executable, str(launcher), 'archive', session, '--config-dir', str(config), '--defer', '--auto-exit'], check=True, stdout=subprocess.DEVNULL)
+launcher.unlink()
+print('final closeout', flush=True)
+event = {'hook_event_name': 'Stop', 'session_id': session, 'transcript_path': str(transcript),
+         'stop_hook_active': False, 'last_assistant_message': 'final closeout',
+         'background_tasks': [], 'session_crons': []}
+helper = config / 'session-archive' / session / 'finish.py'
+subprocess.run([sys.executable, str(helper), 'finish', session, '--config-dir', str(config)], input=json.dumps(event), text=True, check=True)
+sys.exit('Stop did not close the CLI')
+"""
+        cli = subprocess.Popen(
+            [sys.executable, "-c", cli_code, str(self.config), self.session_id, str(launcher)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        output, error = cli.communicate(timeout=10)
+        self.assertEqual(cli.returncode, 0, error.decode())
+        self.assertEqual(output, b"final closeout\n")
+        deadline = time.monotonic() + 10
+        while self.run_command("status")["status"] == "queued":
+            self.assertLess(time.monotonic(), deadline, "Archive worker did not finish after graceful exit")
+            time.sleep(0.1)
+        state = self.run_command("status")
+        self.assertEqual(state["status"], "archived")
+        self.assertTrue(state["exit_requested"])
+        self.assertFalse(self.transcript.exists())
+        self.assertFalse(self.companion.exists())
+        self.assertEqual(self.other.read_bytes(), b"unrelated session")
+        self.run_command("restore")
+        self.assertIn(b'"content":"final closeout"', self.transcript.read_bytes())
+        self.assertEqual((self.companion / "shutdown.txt").read_text(), "final shutdown asset")
+        self.assertEqual((self.companion / "tool-results" / "output.txt").read_bytes(), b"tool result\x00\xff")
+
 
 if __name__ == "__main__":
     unittest.main(failfast=True)
