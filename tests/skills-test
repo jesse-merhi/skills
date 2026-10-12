@@ -12,3 +12,4 @@ while IFS= read -r suite; do
 done < <(LC_ALL=C sort <<< "$suites")
 
 python3 -m unittest discover -s skills/openclaw/openclaw-stg-test/scripts -p 'test_*.py' --failfast
+python3 -m unittest discover -s skills/cleanup-and-archive/scripts -p 'test_*.py' --failfast
