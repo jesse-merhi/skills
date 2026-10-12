@@ -5,74 +5,54 @@ description: Get a batch of open PRs merged in parallel, one owner thread per PR
 
 # PR burndown
 
-Use this when asked to get a batch of open PRs merged. One coordinator thread runs the burndown and one owner thread works each PR. Both roles read the shared sections, then the section for their role. This workflow needs T3 Code's thread and scheduling tools, because owners must persist between turns; if they are unavailable, say so and stop.
+A coordinator thread runs the burndown; one owner thread carries each PR to merged, including its queue submission after Jesse's 👍. Owners never wait for the coordinator's permission. The coordinator wakes owners when a blocker clears, shares host capacity and asks Jesse for decisions; it does not re-check owners' work. This needs T3 Code's thread and scheduling tools; if they are missing, say so and stop.
 
-Owners never wait for the coordinator's permission. Each owner carries its PR from its current state to merged, including the queue submission after Jesse's 👍. The coordinator wakes owners when a blocker clears, shares the host's capacity and asks Jesse for decisions. It does not approve or re-check owners' work.
+The repository's `AGENTS.md` decides which environments agents may change without asking, the queue procedure, what queue CI proves, required local proof, device tooling and budgets, and the ledger location. Where it is silent about an environment, ask Jesse first.
 
-## Repository rules
+## Shared rules
 
-Read the repository's `AGENTS.md` before starting. It decides which environments agents may change without asking, how a PR enters the merge queue and recovers from ejection, what the queue's CI proves, what local proof a change needs, the device tooling and budgets, and where the ledger lives. Where it says nothing about an environment, ask Jesse before changing it.
+### Jesse's 👍
 
-## Approval to merge
+When Jesse's 👍 satisfies the `AGENTS.md` sign-off gate, it is also his request to queue that PR, including the repairs and re-entry the queue rules allow. It survives later commits unless the change grows materially in scope.
 
-When Jesse's 👍 satisfies the sign-off gate in `AGENTS.md`, it also counts as his request to submit that PR to the merge queue, with the repairs, required checks and re-entry the repository's queue rules allow. The 👍 stays valid after later commits unless the change has grown materially in scope; then ask again. Paid CI runs outside the queue still follow the repository's approval rules.
+### Questions
 
-## Questions for Jesse
+Only the coordinator asks Jesse. An owner writes its decision in `question`, sets `waiting_on: jesse`, notifies the coordinator and continues unblocked work.
 
-Only the coordinator asks Jesse. An owner that needs a decision writes it in its row's `question`, sets `waiting_on: jesse`, notifies the coordinator and keeps doing any work the question does not block.
+### Ledger
 
-## Ledger
+In the repository's location, else `~/.local/state/pr-burndown/<run-id>/`. The coordinator writes `run.json`: its thread ID, the cap, device budgets, holds, questions and answers. Each owner writes only `prs/<number>.json` with `owner` (thread ID, worktree), `head` (reviewed SHA), `evidence` (path to its review and proof record), `state` (`working`, `awaiting-thumbs-up`, `queued`, `merged`, `closed`), `waiting_on` (`none`, `job`, `capacity`, `device`, `jesse`, `ci`, `pr:<number>`, `hold:<id>`), `since`, `next_action` and `question`. Use `job` while your own long command runs. Message the coordinator with a pointer to your row, not a report.
 
-Each run keeps its state outside the checkout, in the location the repository names or otherwise `~/.local/state/pr-burndown/<run-id>/`. The coordinator writes `run.json`, which holds its own thread ID, the capacity cap, device budgets, holds, Jesse's questions and his answers. Each owner writes only its own row, `prs/<number>.json`. Read the ledger instead of asking another thread for status. A message to the coordinator is a one-line pointer to the row, not a report.
+### Holds
 
-A row records:
+The coordinator records each hold's scope, reason, who placed it and an `expires_at` at most two hours out, then tells affected owners, who set `waiting_on: hold:<id>`. Expired holds lapse. Never hold every PR for one problem.
 
-- `owner`: the owner's thread ID and worktree path
-- `head`: the reviewed head SHA, or null before review
-- `evidence`: the path to the owner's review and proof record for that head
-- `state`: `working`, `awaiting-thumbs-up`, `queued`, `merged` or `closed`
-- `waiting_on`: `none`, `job`, `capacity`, `device`, `jesse`, `ci`, `pr:<number>` or `hold:<id>`
-- `since`: when `waiting_on` last changed, as a UTC timestamp
-- `next_action`: one plain sentence, naming the platform when waiting on a device
-- `question`: the decision needed from Jesse, when `waiting_on` is `jesse`
+### Capacity
 
-Use `job` while your own long-running command is in progress, so the coordinator doesn't resume you on top of it. Update the row whenever one of these changes.
-
-## Holds
-
-A hold stops specific work for a specific reason. The coordinator records each hold in `run.json` with an ID, the affected PRs or resource, the reason, who placed it and an `expires_at` no more than two hours out, then tells the affected owners, who set `waiting_on: hold:<id>`. An expired hold no longer applies; renew it only with a current reason. Never hold every PR to deal with one problem.
-
-## Capacity
-
-Local proof shares one machine. Heavy work means running a local stack, devices, end-to-end tests or a full test suite. An owner may do heavy work only while it holds a slot: a directory `slots/<n>` in the ledger, where `n` runs from 1 to the cap in `run.json`. Claim a slot with `mkdir`, which fails when the slot is taken, and write your PR number into `slots/<n>/pr`. Remove the slot when the heavy work ends. Waiting for a device is not heavy work, so give up your slot while you wait.
-
-The coordinator sets the cap from host readings, between 1 and 6. Every 10 minutes it reads the CPU count, the 5-minute load average and the free memory percentage (on macOS, `memory_pressure` with no arguments; its options allocate memory). When load is under twice the CPU count and more than 30% of memory is free, it raises the cap by one. When load is over four times the CPU count or less than 15% of memory is free, it sets the cap to the number of slots in use, at least 1, so no new heavy work starts until the host recovers. Running work is never stopped to make room. It takes the first reading before setting the starting cap of 3.
+Heavy work (a local stack, devices, end-to-end tests, a full suite) needs a slot: `mkdir slots/<n>` in the ledger for `n` up to the cap, with your PR number in `slots/<n>/pr`. Remove it when done, and while waiting for a device. Every 10 minutes the coordinator reads CPU count, 5-minute load and free memory (`memory_pressure` with no arguments on macOS). Load under 2× CPUs with over 30% free memory raises the cap by one, to at most 6. Load over 4× CPUs or under 15% free sets the cap to the slots in use, at least 1. Running work is never stopped. The first reading comes before the starting cap of 3.
 
 ## Coordinator
 
-1. Set up. Take the PRs Jesse named, or list open PRs with `gh pr list` and ask Jesse which are in scope. Create each PR's row and write `run.json`. Reuse the PR's existing owner thread if there is one. Otherwise start one with `t3_thread_launch`: in the worktree that already has the PR branch checked out (`git worktree list`), or else in a new worktree, telling it to run `gh pr checkout <number>` first. Name this skill, the ledger path and your thread ID in its message. Schedule a 10-minute check with `schedule_task`, bound to this thread.
-2. On every check, read the ledger, each owner's thread status, the host load and the merge queue, then resume each owner whose blocker has cleared, giving it the concrete next step:
-   - `none`: its thread has no active turn and its state is not `merged` or `closed`.
-   - `job`: its thread has no active turn and `since` is more than an hour old, so the owner can check on its run or clean up.
-   - `capacity`: a slot is free. Resume only as many owners as there are free slots, oldest `since` first.
-   - `device`: the next check; let the device tooling decide whether a device is free. If the owner has waited more than an hour because other sessions' devices fill the budget, ask Jesse whether to free them.
-   - `jesse`: Jesse answered, or his 👍 appeared on an `awaiting-thumbs-up` PR.
-   - `ci`: its PR merged or left the queue unmerged. Check queued PRs yourself, because PR watchers can miss queue ejections and failed combined checks.
-   - `pr:<number>`: that PR merged or closed.
-   - `hold:<id>`: the hold expired or was released.
+1. Set up. Use the PRs Jesse named, or ask him which open PRs are in scope. Write the rows and `run.json`. Reuse each PR's owner thread, or start one with `t3_thread_launch` in the worktree that has its branch (`git worktree list`), else a new worktree that runs `gh pr checkout <number>` first. Give it this skill, the ledger path and your thread ID. Schedule a 10-minute check with `schedule_task` bound to this thread.
+2. On each check, read the ledger, thread statuses, host load and merge queue, and resume owners whose blocker cleared:
+   - `none`: no active turn, and not `merged` or `closed`.
+   - `job`: no active turn and `since` over an hour old.
+   - `capacity`: as many as there are free slots, oldest first.
+   - `device`: every check. After an hour blocked by other sessions' devices, ask Jesse whether to free them.
+   - `jesse`: he answered, or his 👍 appeared.
+   - `ci`: the PR merged or left the queue. Check the queue yourself; PR watchers miss ejections.
+   - `pr:<number>`: that PR merged or closed. `hold:<id>`: it lapsed or was released.
 
-   Also check each slot. If its owner's thread has no active turn, resume the owner to finish or release its heavy work. If the owner's turn has been active for more than two hours, ask it for status, and tell Jesse at the next check if nothing changed.
-3. Ask Jesse for decisions. Use the harness's structured question tool, one decision per question and one question at a time, in plain English, with your recommendation first when you have one. Do not let a question hold your turn open, because a blocked turn stops every scheduled check: if the question tool waits for his answer, ask in your message instead and end the turn. This overrides the general preference for synchronous questions in `AGENTS.md`. Record each answer in `run.json`, send it to the affected owners, and never ask it again. Questions that the repository's rules already answer are not questions.
-4. Present the 👍 list. When PRs reach `awaiting-thumbs-up`, send Jesse one short list of links. For each PR, say what it changes, what review found and fixed, how it was proved, and the state of its PR checks, plus anything the repository says a merge triggers. Repeat the list only when it changes; when every remaining PR waits only on Jesse, this list is the summary.
-5. Wait. End the turn while owners work. Rely on notifications and the scheduled check instead of polling.
+   Resume a slot holder with no active turn. If its turn has run over two hours, ask for status, then tell Jesse if nothing changes.
+3. Ask Jesse one plain question at a time with the structured question tool, recommendation first. A question must not hold your turn open, because that stops the checks; if the tool blocks, ask in your message and end the turn, overriding the `AGENTS.md` preference for synchronous questions. Record answers in `run.json`, pass them on, and never re-ask. Don't ask what the repository's rules already answer.
+4. When PRs reach `awaiting-thumbs-up`, send Jesse one list of links: what each changes, what review fixed, how it was proved, its PR check state and anything a merge triggers. Resend only when it changes.
+5. End the turn while owners work.
 
-The coordinator does not re-review owners' work, accept evidence on their behalf, hand out devices by message, or track work that is not getting a PR merged. Point other workstreams at Jesse or their own thread. When every in-scope PR is `merged` or `closed`, delete the scheduled check and give Jesse a final summary.
+Don't track non-merge work; point it at Jesse. When every PR is `merged` or `closed`, delete the scheduled check and summarize.
 
 ## Owner
 
-1. Bring the PR current. Resolve conflicts with the base branch when GitHub reports the PR as conflicting; otherwise keep the current head, because the queue tests the combined revision. Set `waiting_on: pr:<number>` only when a hard dependency must merge first.
-2. Review and prove it. Run `code-review` on the current head, then complete the local proof the repository requires for the changed scope, and record both in `evidence`. If the repository lets a highly confident owner leave some runs to the queue's CI, follow its limits and say why in the PR. Follow Jesse's answers in `run.json`. Run the tests directly; compare caches, fingerprints or provenance only when a run cannot start without that check.
-
-   Claim a slot before heavy work. If every slot is taken, set `waiting_on: capacity` and end the turn. Pass the `run.json` device budgets to the repository's device tooling. When no device is free, release your slot and set `waiting_on: device`. When the heavy work ends, stop your own stack and devices and remove your slot.
-3. Ask for 👍. Push the reviewed head, update the description and proof with `pr-proof-pack`, and wait for the PR's automatic checks to pass. Then mark the PR ready, set `state: awaiting-thumbs-up` and `waiting_on: jesse`, and send the coordinator a pointer. If Jesse's 👍 is already present, go straight to submission.
-4. Submit and see it through. Re-read the PR head. If it differs from the reviewed head, review and prove the new head first. If the change has grown materially in scope since Jesse's 👍, ask through `question` before submitting. Submit the PR and recover from failed admission or ejection as the repository's queue rules describe, setting `state: queued` and `waiting_on: ci`. When GitHub confirms the merge, set `state: merged` and notify the coordinator.
+1. Resolve conflicts with the base when GitHub reports them; otherwise keep the head, since the queue tests the combined revision. Set `waiting_on: pr:<number>` only for a hard dependency.
+2. Run `code-review` on the head, complete the local proof the repository requires and record both in `evidence`. Where the repository lets a highly confident owner leave runs to queue CI, follow its limits and say why in the PR. Run tests directly; compare caches or provenance only when a run can't start without it. Take a slot before heavy work, or set `waiting_on: capacity` and end the turn. Pass the `run.json` budgets to the device tooling; if no device is free, release your slot and set `waiting_on: device`. Afterwards stop your own stack and devices and remove your slot.
+3. Push the reviewed head, update the PR with `pr-proof-pack`, and once its automatic checks pass mark it ready, set `awaiting-thumbs-up` and `waiting_on: jesse`, and point the coordinator at your row. If the 👍 is already there, continue.
+4. Re-read the head; review and prove any new head first, and ask through `question` if the scope grew materially. Queue and recover from ejection per the repository's rules, with `queued` and `waiting_on: ci`. On a confirmed merge, set `merged` and notify the coordinator.
