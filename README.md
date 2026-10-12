@@ -209,6 +209,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | Skill | What it does |
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
+| [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and Jesse's 👍 before each queue submission. |
 | [`code-review`](skills/code-review/SKILL.md) | Simplifies changed code, then independently assesses standards and requirements/correctness and verifies confirmed repairs. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge, never on local commits. |
 
