@@ -2,7 +2,7 @@
 
 Use this path for a local Claude terminal session without native Desktop archive tools. On macOS/Linux, the bundled Python helper moves the selected transcript and its adjacent session directory into a private `session-archive/<UUID>/` directory under `CLAUDE_CONFIG_DIR` (default `~/.claude`). It preserves their bytes, including subagent logs and saved tool output. Restore puts them back before resuming. This is local file archiving; it does not change Desktop's archive state. Other Claude state and Git worktrees stay in place.
 
-Resolve this skill's directory from the loaded `SKILL.md`. Read the helper's `--help`. Get the current CLI UUID from Bash's `CLAUDE_CODE_SESSION_ID`; for another session, verify its full transcript UUID and project. Honor `CLAUDE_CONFIG_DIR`. Do not substitute a Desktop `local_…` ID or infer a CLI UUID from a shortened background-agent ID. The Claude profiles register a one-shot [Stop hook](https://code.claude.com/docs/en/hooks#stop-input) when invoked; verify hooks are available before cleanup. This does not change settings files.
+Resolve this skill's directory from the loaded `SKILL.md`. Read the helper's `--help`. Get the current CLI UUID from Bash's `CLAUDE_CODE_SESSION_ID`; for another session, verify its full transcript UUID and project. Honor `CLAUDE_CONFIG_DIR`. Do not substitute a Desktop `local_…` ID or infer a CLI UUID from a shortened background-agent ID. The Claude profiles register a session-scoped [Stop hook](https://code.claude.com/docs/en/hooks#stop-input) when invoked; verify hooks are available before cleanup. It stays registered across dry runs, clarifications and retries, and requests exit only for an armed queue. This does not change settings files.
 
 After cleanup succeeds, run:
 
