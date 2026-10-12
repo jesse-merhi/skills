@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Burndown"
+  short_description: "Coordinate a batch of open PRs to merge"
+  default_prompt: "Use $pr-burndown to get these open PRs merged."
