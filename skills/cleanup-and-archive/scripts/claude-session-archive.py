@@ -21,10 +21,26 @@ def running(pid):
         return True
 
 
+def read_session_record(record):
+    # Claude rewrites these records in place and removes them during exit.
+    deadline = time.monotonic() + 1
+    while True:
+        try:
+            return json.loads(record.read_text())
+        except FileNotFoundError:
+            return None
+        except json.JSONDecodeError:
+            if time.monotonic() >= deadline:
+                raise ValueError(f"Unreadable live-session record: {record}")
+            time.sleep(0.05)
+
+
 def session_pids(config, session_id):
     pids = set()
     for record in (config / "sessions").glob("*.json"):
-        data = json.loads(record.read_text())
+        data = read_session_record(record)
+        if data is None:
+            continue
         if data.get("sessionId") == session_id:
             pid = data.get("pid")
             if not isinstance(pid, int) or pid <= 0 or record.stem != str(pid):

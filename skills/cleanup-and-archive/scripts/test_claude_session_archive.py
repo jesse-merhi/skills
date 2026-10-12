@@ -56,19 +56,35 @@ class SessionArchiveTests(unittest.TestCase):
         self.assertEqual(self.run_command("archive")["status"], "archived")
 
     def test_deferred_archive_waits_for_writer_and_keeps_final_session_files(self):
-        writer = subprocess.Popen([sys.executable, "-c", "import sys; sys.stdin.read()"], stdin=subprocess.PIPE)
+        records = self.config / "sessions"
+        records.mkdir()
+        writer_code = """
+import json, os, pathlib, sys, time
+record = pathlib.Path(sys.argv[1]) / f'{os.getpid()}.json'
+sys.stdin.readline()
+with record.open('w') as current:
+    print('rewriting', flush=True)
+    time.sleep(0.2)
+    json.dump({'pid': os.getpid(), 'sessionId': sys.argv[2]}, current)
+sys.stdin.read()
+"""
+        writer = subprocess.Popen(
+            [sys.executable, "-c", writer_code, str(records), self.session_id],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        )
         def stop_writer():
             if writer.poll() is None:
                 writer.communicate(timeout=5)
         self.addCleanup(stop_writer)
-        records = self.config / "sessions"
-        records.mkdir()
         record = records / f"{writer.pid}.json"
         record.write_text(json.dumps({"pid": writer.pid, "sessionId": self.session_id, "entrypoint": "cli"}))
         pending_files = self.config / "pending-files"
         self.companion.rename(pending_files)
         self.run_command("archive", success=False)
         self.assertFalse((self.config / "session-archive" / self.session_id).exists())
+        writer.stdin.write(b"rewrite\n")
+        writer.stdin.flush()
+        self.assertEqual(writer.stdout.readline(), b"rewriting\n")
         self.assertEqual(self.run_command("archive", "--defer")["status"], "queued")
         self.assertTrue(self.transcript.exists())
         self.assertFalse(self.companion.exists())
