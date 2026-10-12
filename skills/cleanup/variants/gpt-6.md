@@ -17,7 +17,7 @@ Add `--compose-project <name>` for a known Compose project. Inventory collects e
 
 Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Ask before removing uncertain data, uncommitted files, unique commits, or stashes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
 
-From a directory you will keep, read needed configuration, stop owned processes and services, remove disposable state, then remove the worktree and local branch. Delete the current agent worktree last.
+From a directory you will keep, read needed configuration, stop owned processes and services, remove disposable state, then remove the worktree and local branch. For a live session's worktree, first release the runtime's working directory through native session/worktree teardown; a shell `cd` does not move the session. If native teardown is unavailable, retain that worktree until the session exits. Retain its checked-out branch while the worktree remains and report pending removals.
 
 Verify with the same paths and identifiers. Report what was removed, retained, or needs a decision. If the user asks for a dry run, stop after the inventory.
 
