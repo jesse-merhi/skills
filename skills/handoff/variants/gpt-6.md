@@ -25,12 +25,12 @@ State in brief and launch prompt: parent and new session communicate only when e
 
 ## Launch and confirm
 
-Launch a full interactive session, not a subagent, ACPX or background agent. Preserve required dirty changes and base revision in the checkout or linked patch. Ask only if destination cannot be resolved.
+Launch a full interactive session, not a subagent, ACPX or background agent. Preserve the intended checkout, dirty changes, base revision and requested settings; stop parent implementation before sharing its checkout. Verify an uncertain launch before retrying. Choose the launcher by destination app, not model provider.
 
-**T3:** use `t3_thread_launch` with explicit `workspaceStrategy`: `existing_worktree` for the continuation's verified dirty checkout, or `worktree` with the intended `baseRef` for new work. Stop parent implementation before sharing its checkout. Inherit project/model/modes unless directed otherwise; pass the brief path and objective in `message`. After a lost response, verify existing launch candidates before retrying. Follow preparation with [wait-efficiently](../wait-efficiently/SKILL.md) and link `[title](t3-thread://v1/<threadId>)`.
+**T3:** `t3_thread_launch` binds `workspaceStrategy` at launch: `existing_worktree` for a continuation or `worktree` with the intended `baseRef` for new work. Inherit unspecified project/model/modes and pass brief/objective in `message`. Link `[title](t3-thread://v1/<threadId>)`.
 
 Watches and schedules don't move automatically: transfer owned monitoring once the destination owns the work, preserve stopped schedules and remove the old watch. Authorized archival follows [cleanup-and-archive](../cleanup-and-archive/SKILL.md), retaining the continuation's runtimes.
 
-**Other hosts:** run `detect-handoff-surface`; use `--destination codex-app|claude-app|codex-cli|claude-cli` for an explicit destination. Default to `continuation`; use `--relationship aside` for unrelated work. Let the detector choose placement. For Codex, read [launch settings](references/codex-settings.md). Run the selected command/native tool; fork only for needed raw history.
+**Codex/Claude app or CLI:** run `detect-handoff-surface`; use `--destination codex-app|claude-app|codex-cli|claude-cli` for an explicit destination. Default to `continuation`; use `--relationship aside` for unrelated work. Let the detector choose placement. For Codex, read [launch settings](references/codex-settings.md). Run the selected command/native tool; fork only for needed raw history.
 
-Confirm one session started through launch output or read-only status. Report brief path, session/worktree and observed status.
+Follow preparation with [wait-efficiently](../wait-efficiently/SKILL.md) and confirm one session started. If the destination lacks a supported launcher, retain the brief and report the gap. Report brief path, session/worktree and observed status.

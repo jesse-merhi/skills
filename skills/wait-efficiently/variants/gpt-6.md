@@ -7,13 +7,18 @@ description: 'Manage CI monitoring, prolonged commands, timed delays, and pendin
 
 Start once and retain the completion handle. Never create a helper or thread solely to monitor.
 
-## T3
+## PRs and CI
 
-Use these routes for T3-owned work; native command/agent handles remain with their launcher.
+Use one supported monitor. Handle existing reviews/comments first and reconcile notifications against the current head and checks. Disclose uncovered queue, combined-check or reaction events; an authorized workflow may reconcile them.
 
-- **PRs:** handle existing reviews/comments, call `watch_pull_request`, confirm `watching: true`, then end the turn. Reconcile wakes against the current head and checks. No duplicate CLI watcher or poller. Disclose uncovered queue, combined-check and reaction events; only an authorized workflow such as pr-burndown adds reconciliation. Before returning work to the user, `unwatch_pull_request` and verify `watching: false`.
-- **Delegated tasks:** retain `taskId` and end the turn for its completion notification. Use `task_status` when the result is needed mid-turn or to reconcile a notification.
-- **Threads:** pin `runId` in `t3_thread_wait`; omission selects the latest run. On timeout, resume that run. Read actual results with `t3_thread_read`; use `nextPosition` as `afterPosition` for incremental history.
+- **T3 PR watch:** call `watch_pull_request`, verify `watching: true`, then end the turn. Before returning work to the user, `unwatch_pull_request` and verify false. Do not add a CLI watcher beside it.
+- **Specific CI run or no native PR monitor:** use one [GitHub watch command](references/github-actions.md).
+
+## Tasks and sessions
+
+Keep the launcher’s completion handle; task, session and command IDs are not interchangeable. On timeout, resume the same operation and read its actual result before declaring completion.
+
+For T3 delegated tasks, keep `taskId`; completion wakes the parent, while `task_status` retrieves a result mid-turn. For ordinary T3 threads, pin `runId` in `t3_thread_wait`, then read results with `t3_thread_read`; use `nextPosition` as `afterPosition` for incremental history.
 
 ## Completion waits
 
@@ -27,7 +32,6 @@ wait_ms = no update deadline
 
 Use tool schemas and actual host limits; defaults aren't caps. Runtime estimates don't shorten early-return waits. A 60-second update deadline permits about 55 seconds; update first if the budget falls below the tool minimum. Adjust rejected/clamped waits on the same handle. Give outer execution cells the full inner wait budget.
 
-- CI outside T3: one [GitHub watch command](references/github-actions.md).
 - Requested delays: the host's `sleep` or `quiet-wait 5m`.
 
 Save command IDs and run-owned log/result paths before waiting. Outer cells and inner commands have distinct handles. After a lost handle, recover the operation or saved result before relaunching; timeout isn't completion. Inspect logs for results, failures or concrete stalls, not elapsed time alone.
@@ -47,7 +51,7 @@ Keep interactive prompts visible. Use proper shell quoting for varying paths/com
 
 Batch independent unattended reads with `Promise.allSettled`, retaining every full result and inspecting each error. Use `yield_control` for required user action before awaiting remaining reads. Emit only relevant status/evidence and recovery handles within the combined output budget. Read required instruction documents fully in bounded ranges; recover clipped text instead of substituting summaries.
 
-Use direct calls for agent controls excluded from code mode. Resume `wait_agent` after routine mailbox messages. Outside T3, wait on saved Desktop task IDs/cursors with `wait_threads`; reserve zero-time snapshots for status requests or diagnosis. Don't create a task merely to wait.
+Use direct calls for agent controls excluded from code mode. Resume `wait_agent` after routine mailbox messages. For Codex app tasks, wait on saved IDs/cursors with `wait_threads`; reserve zero-time snapshots for status requests or diagnosis. Don't create a task merely to wait.
 
 ## Workers
 

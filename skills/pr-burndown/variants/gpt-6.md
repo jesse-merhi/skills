@@ -5,7 +5,7 @@ description: Get a batch of open PRs merged in parallel, one owner thread per PR
 
 # PR burndown
 
-Requires T3 thread and scheduling tools. Each owner carries one PR through merge, including queue submission after Jesse's 👍. The coordinator wakes blocked owners, shares capacity and asks Jesse for decisions; it does not approve or re-check owners' work.
+Each owner carries one PR through merge, including queue submission after Jesse's 👍. The coordinator wakes blocked owners, shares capacity and asks Jesse for decisions; it does not approve or re-check owners' work.
 
 Read repository `AGENTS.md` for environment permissions, queue rules, local proof, device budgets and ledger location. Ask before changing an environment it doesn't cover. Jesse's 👍 under its sign-off gate authorizes submission, permitted repairs and re-entry; it survives later commits unless scope grows materially. Paid CI outside the queue follows repository approval rules.
 
@@ -13,16 +13,18 @@ Resolve routine choices from the ledger and repository rules.
 
 ## Ledger and ownership
 
-Use the repository's ledger location, else `~/.local/state/pr-burndown/<run-id>/`. The coordinator owns `run.json`: thread ID, cap, device budgets, holds, decisions, schedule ID and last event delivered per owner. Each owner keeps `prs/<number>.json` current:
+Use the repository's ledger location, else `~/.local/state/pr-burndown/<run-id>/`. The coordinator owns `run.json`: session identity, cap, device budgets, holds, decisions, schedule identity and last event delivered per owner. Each owner keeps `prs/<number>.json` current:
 
-- `owner`: thread ID and worktree; `head`: reviewed SHA, or null; `evidence`: review/proof path for that head.
+- `owner`: session identity and worktree; `head`: reviewed SHA, or null; `evidence`: review/proof path for that head.
 - `state`: `working`, `awaiting-thumbs-up`, `queued`, `merged` or `closed`.
 - `waiting_on`: `none`, `job` (own running command), `capacity`, `device`, `jesse`, `ci`, `pr:<number>` or `hold:<id>`; `since`: UTC time it changed.
 - `next_action`: one sentence, including the platform for device waits; `question`: Jesse's decision needed; `closeout`: cleanup/archive still owed, else null.
 
 Read the ledger instead of asking for status. Link logs and proof; messages name the changed state and point to the row. Owners route decisions through `question` and `waiting_on: jesse`, continuing independent work; only the coordinator asks Jesse.
 
-Reuse owners found through `t3_thread_list` and PR links. Owners are top-level threads, not delegated tasks. For a missing owner, use `t3_thread_launch` with an explicit `workspaceStrategy`: its existing branch worktree, else a new worktree that checks out the PR. After a lost response, verify whether launch created a thread before retrying. Check active runs, saved jobs and queued messages before sending one concrete action with an event-stable `clientRequestId`; retain delivery IDs.
+Use the host’s full-session tools to find, launch and resume owners in their PR worktrees. Reuse existing owners; after a lost launch response, reconcile before retrying. Check active work and queued messages before sending one concrete action per event; use retry keys where supported. Report missing capabilities without claiming unattended progress.
+
+In T3, owners are top-level threads: use `t3_thread_list`, `t3_thread_launch` with explicit `workspaceStrategy`, and `t3_thread_send` with an event-stable `clientRequestId`. Retain returned identities; bounded delegated tasks have a separate lifecycle.
 
 ## Holds and capacity
 
@@ -34,7 +36,7 @@ Before work and on each check, read CPU count, five-minute load and free memory 
 
 ## Coordinator
 
-1. Resolve PR scope, initialize the ledger and give owners this skill, row path and coordinator ID. List schedules; reuse the owned ten-minute check or create it with `schedule_task`, bound here, using a stable `clientRequestId`. Its prompt needs only this skill, ledger path and check objective. Preserve Jesse's stops.
+1. Resolve PR scope, initialize the ledger and give owners this skill, row path and coordinator ID. Use the host scheduler for one owned ten-minute check bound to the coordinator, reusing its identity and preserving Jesse’s stops. Its prompt needs only this skill, ledger path and check objective. Without persistent scheduling, report uncovered events and retain pending work in the ledger. In T3, use `schedule_task` with a stable `clientRequestId`.
 2. Reconcile ledger, threads, host load and GitHub. Wake owners when their blocker clears:
    - `none`: idle and neither merged nor closed; `job`: idle and `since` over an hour old.
    - `capacity`: free slots, oldest first; `device`: let device tooling retry each check. After an hour blocked by other sessions' devices, ask Jesse before freeing them.
@@ -42,9 +44,9 @@ Before work and on each check, read CPU count, five-minute load and free memory 
    - `ci`: current combined run failed, queue membership changed, or merge confirmed. Verify head, queue and combined run: an old green notification proves none of these, and departure can mean ejection or merge.
    Reconcile an idle slot holder's saved job before waking it. For a two-hour active turn, request status once; escalate unchanged state at the next check.
 3. Ask one decision at a time under Jesse's question-tool preference, with a recommendation. Record and distribute answers; don't re-ask settled or repository-defined decisions.
-4. Group PRs awaiting 👍 into one list: links, changes, review fixes, proof, check state and merge effects. Resend only on change. End the turn while owners work.
+4. Group PRs awaiting 👍 into one list: links, changes, review fixes, proof, check state and merge effects. Resend only on change. Follow [wait-efficiently](../wait-efficiently/SKILL.md) while owners work.
 
-Keep the check active while awaiting GitHub 👍, which PR watchers don't report. Disable it and verify when all PRs are merged/closed and closeout is complete, or Jesse stops it; a queued tick must preserve the stop. Report open PRs and unfinished closeout separately. Don't allocate devices by message or track unrelated work. A requested [handoff](../handoff/SKILL.md) carries the ledger and schedule identity.
+Keep reconciliation active for needed events the host does not deliver, including sign-off reactions. Disable the owned schedule and verify when all PRs are merged/closed and closeout is complete, or Jesse stops it; a queued tick must preserve the stop. Report open PRs and unfinished closeout separately. Don't allocate devices by message or track unrelated work. A requested [handoff](../handoff/SKILL.md) carries the ledger and schedule identity.
 
 ## Owner
 
