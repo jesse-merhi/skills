@@ -5,7 +5,19 @@ description: 'Manage CI monitoring, prolonged commands, timed delays, and pendin
 
 # Wait efficiently
 
-Start the operation once. For an early-return completion wait, choose:
+Start once and retain the completion handle. Never create a helper or thread solely to monitor.
+
+## T3
+
+Use these routes for T3-owned work; native command/agent handles remain with their launcher.
+
+- **PRs:** handle existing reviews/comments, call `watch_pull_request`, confirm `watching: true`, then end the turn. Reconcile wakes against the current head and checks. No duplicate CLI watcher or poller. Disclose uncovered queue, combined-check and reaction events; only an authorized workflow such as pr-burndown adds reconciliation. Before returning work to the user, `unwatch_pull_request` and verify `watching: false`.
+- **Delegated tasks:** retain `taskId` and end the turn for its completion notification. Use `task_status` when the result is needed mid-turn or to reconcile a notification.
+- **Threads:** pin `runId` in `t3_thread_wait`; omission selects the latest run. On timeout, resume that run. Read actual results with `t3_thread_read`; use `nextPosition` as `afterPosition` for incremental history.
+
+## Completion waits
+
+Choose the longest supported early-return hold within the host's update deadline:
 
 ```text
 wait_ms = no update deadline
@@ -13,28 +25,18 @@ wait_ms = no update deadline
   : min(supported_hold_ms, update_due_in_ms - safety_margin_ms)
 ```
 
-Derive `supported_hold_ms` from the tool schema and actual host limits. Use the exposed maximum when allowed. Without one, choose a meaningful long hold within known blocking limits; defaults are not caps. If rejected or clamped, adjust the next wait on the same handle and state unknown behavior.
+Use tool schemas and actual host limits; defaults aren't caps. Runtime estimates don't shorten early-return waits. A 60-second update deadline permits about 55 seconds; update first if the budget falls below the tool minimum. Adjust rejected/clamped waits on the same handle. Give outer execution cells the full inner wait budget.
 
-Do not shorten an early-return wait to a runtime estimate. Use estimates only to choose among supported long holds or size a poll-only check. A one-hour maximum with no update deadline means one hour, even for a five-minute operation. If the host requires updates within 60 seconds and forbids longer blocks, use about 55 seconds; that constraint is host-specific. If the calculation falls below the tool minimum, update first.
+- Commands and agents: use their existing completion handles.
+- CI outside T3: one [GitHub watch command](references/github-actions.md).
+- Requested delays: the host's `sleep` or `quiet-wait 5m`.
 
-Give an outer execution cell the full inner `wait_ms`; a shorter outer default wakes the model without advancing the operation.
+Save command IDs and run-owned log/result paths before waiting. Outer cells and inner commands have distinct handles. After a lost handle, recover the operation or saved result before relaunching; timeout isn't completion. Inspect logs for results, failures or concrete stalls, not elapsed time alone.
 
-- Commands and agents: wait on their existing completion handles.
-- CI: use one [GitHub watch command](references/github-actions.md).
-- Requested delays: use the host's `sleep` tool or `quiet-wait 5m` for the requested duration.
+Keep interactive prompts visible alongside saved logs; complete shared sign-in before batching dependent commands. File-only output suits unattended commands. When user action is required, explain it and wait.
 
-Save command-session IDs and run-owned log/result paths before waiting. Outer cells and inner commands have different handles. If the outer handle disappears, recover the existing command or saved result before considering a relaunch.
+## Workers
 
-When user action is needed, stop work. Tell the user what is wrong and what they must do, then wait.
+Give bounded assignments requiring outcome, revision/build, evidence, findings, verification and unresolved decisions. Interim messages should change the next action.
 
-For commands that may request user input, keep prompts visible while retaining full logs. Commands sharing an interactive sign-in step depend on that step: complete it with one command before batching the others. Reserve file-only output and completion-only notifications for commands known to run unattended.
-
-On timeout, resume the same handle and update from known state. Read logs for a result, failure or concrete stall, not merely because time passed.
-
-## Required agent results
-
-Give workers bounded assignments. Return one result with outcome, revision/build, evidence, findings, verification, unresolved decisions and missing evidence. Interim messages should change someone's next action.
-
-Finish independent work before waiting on saved worker handles. Act on completion, failure, decisions or user input. After routine messages or quiet timeouts, resume the same wait without check-ins. Snapshot immediately only for status requests or concrete stalls; elapsed time alone is not a stall.
-
-Honor host wait limits and required updates. Keep the parent active unless the host guarantees completion will wake an ended turn. Do not build a polling workaround for missing suspension support.
+Finish independent work, then wait on saved handles. Resume after routine messages or quiet timeouts; inspect early for status requests or concrete stalls. Keep the parent active unless completion is guaranteed to wake an ended turn. Don't build a polling workaround.
