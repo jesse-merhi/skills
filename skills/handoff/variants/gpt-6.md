@@ -8,38 +8,29 @@ metadata:
 
 # Handoff
 
-## Carry runtime ownership
+## Brief
 
-A handoff continues unfinished work; keep its environments running. An unrelated aside also leaves the original task's environments running.
+Save a self-contained brief in the OS temporary directory covering:
 
-Record simulators, emulators, dev servers, bundlers and Compose stacks this task started in the brief, with ownership evidence, identifiers, current state and stop instructions. Carry any prior stop failures and the user's manual-testing needs. When the whole task is done, its owner follows [cleanup](../cleanup/SKILL.md)'s ownership, scoped stopping and verification rules for runtime release; never stop another session's resources.
+- Objective, current state, paths, unfinished changes and next actions.
+- Decisions, attempted approaches, failures/resolutions, proof and relevant PR/Obsidian links.
+- User instructions, constraints, preferences and remaining authority, preserving later corrections and exact names, commands and errors.
+- Pending decisions: observed problem, consequences, alternatives and recommendation.
+- Owned runtimes (devices, servers, bundlers, stacks), identifiers, ownership evidence, state, stop instructions/failures and manual-testing needs.
+- Owned PR watches and schedules, including their identities.
 
-## Write the brief
+Link artifacts, omit secrets and condense reasoning to conclusions. Carry the PR/review plan without copying its workflow or asking for settled approval. Keep runtimes running for continuations and unrelated asides; the final task owner releases them through [cleanup](../cleanup/SKILL.md).
 
-Save a self-contained brief in the OS temporary directory with:
-- Objective, user-visible result, current state, and design decisions.
-- Evidence, verification, blockers, PR/proof links, and relevant Obsidian links.
-- What was tried or ruled out and why, and problems hit with their resolutions.
-- Remaining work, what the user should inspect, and next actions.
-
-For a pending decision, explain the observed problem, consequences, alternatives, and recommended path; counts and hashes alone are not enough.
-
-Include paths, unfinished changes, decisions, and the user's instructions, constraints and preferences in close to their own words, including authorization for remaining work and later corrections that supersede unanswered questions. Keep names, numbers, commands and error text exact; condense your own reasoning to its conclusions. Do not ask the user to reapprove authorized work. Link artifacts, omit secrets, and carry the PR or review plan without copying its workflow.
-
-State in the brief and launch prompt: after launch, parent and child do not communicate unless the user explicitly requests it, and only within that request's scope; both report to the user.
-
-## Get the launch command
-
-Run `detect-handoff-surface` for the recommended command or native app tool. For a user-specified destination, pass `--destination codex-app|claude-app|codex-cli|claude-cli`.
-
-Use `continuation` by default and `--relationship aside` only for a substantially unrelated objective. Let the script choose pane/window placement.
+State in brief and launch prompt: parent and new session communicate only when explicitly requested, within that scope; both report to the user.
 
 ## Launch and confirm
 
-For a Codex destination, read [Codex launch settings](references/codex-settings.md) before launch.
+Launch a full interactive session, not a subagent, ACPX or background agent. Preserve the intended checkout, dirty changes, base revision and requested settings; stop parent implementation before sharing its checkout. Verify an uncertain launch before retrying. Choose the launcher by destination app, not model provider.
 
-Run the recommended command or native tool. Use a new worktree only when required; preserve needed uncommitted changes and base revision in the brief or linked patch.
+**T3:** `t3_thread_launch` binds `workspaceStrategy` at launch: `existing_worktree` for a continuation or `worktree` with the intended `baseRef` for new work. Inherit unspecified project/model/modes and pass brief/objective in `message`. Link `[title](t3-thread://v1/<threadId>)`.
 
-Launch a full interactive session, not ACPX, a subagent, or a background agent. Fork only for needed raw history. Ask if the destination is unclear or unavailable.
+Watches and schedules don't move automatically: transfer owned monitoring once the destination owns the work, preserve stopped schedules and remove the old watch. Authorized archival follows [cleanup-and-archive](../cleanup-and-archive/SKILL.md), retaining the continuation's runtimes.
 
-Confirm from launch result or read-only status that one new session started. Report brief path, session/worktree location, and observed status.
+**Codex/Claude app or CLI:** run `detect-handoff-surface`; use `--destination codex-app|claude-app|codex-cli|claude-cli` for an explicit destination. Default to `continuation`; use `--relationship aside` for unrelated work. Let the detector choose placement. For Codex, read [launch settings](references/codex-settings.md). Run the selected command/native tool; fork only for needed raw history.
+
+Follow preparation with [wait-efficiently](../wait-efficiently/SKILL.md) and confirm one session started. If the destination lacks a supported launcher, retain the brief and report the gap. Report brief path, session/worktree and observed status.

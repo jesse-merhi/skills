@@ -40,6 +40,10 @@ name = "just-do-it"
 enabled = false
 
 [[skills.config]]
+name = "pr-burndown"
+enabled = false
+
+[[skills.config]]
 name = "pr-review-checkout"
 enabled = false
 
