@@ -9,51 +9,51 @@ metadata:
 
 # Code review
 
-Make the change easier to understand, establish whether it works, and finish the authorized repairs. The coordinator owns integration, findings decisions, validation and delivery. Use the model policy in `AGENTS.md`.
+Simplify the change, review it independently, and finish authorized repairs. The coordinator owns integration, findings decisions, validation and delivery. Follow the model policy in `AGENTS.md`.
 
 ## 1. Establish the change
 
-Use the requested PR, branch, commit or working changes. Resolve the PR's actual or planned base; use a commit's parent only for a single-commit review. Include the whole intended change and preserve unrelated work. Record the base and reviewed commit or patch with the results.
+Identify the target and its actual or planned PR base. Use a commit's parent only for a single-commit review. Include the whole intended change, preserve unrelated work, and record the base and reviewed commit or patch.
 
-Find requirements in the task, issue, spec, documentation and callers. Resolve ordinary questions from repository evidence; ask only when an intended behavior or authority needs the user. Without a formal spec, state the inferred contract and still review correctness.
+Establish requirements from the task, docs and callers. Without a spec, state the inferred contract and still review correctness. Resolve routine questions from evidence; ask about unclear intended behavior or authority.
 
-Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode. Identify relevant existing checks and reusable evidence. Honor narrower requests: findings-only means no edits; a requested single reviewer or native-only pass runs only that review and reports its coverage limits. For a specifically requested native review, use the harness's native command directly. Separately requested bot review uses [ClawSweeper](references/clawsweeper.md).
+Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode and identify reusable checks. For code or test changes, the coordinator, simplifier and reviewers also load [writing-good-tests](../writing-good-tests/SKILL.md) before choosing proof or recommending coverage.
 
-For code or test changes, the coordinator, simplifier and reviewers load [writing-good-tests](../writing-good-tests/SKILL.md) before choosing verification or recommending coverage, even when the diff contains no tests. Apply its permanent-test value gate throughout simplification, both findings assessments and confirmed repairs.
+Honor narrower requests. Findings-only means no edits; a single-review request runs only that assessment. For native review, use the harness's native command directly. Run [ClawSweeper](references/clawsweeper.md) only when separately requested. Report coverage limits.
 
-## 2. Simplify in one thorough pass
+## 2. Simplify
 
-Run this pass even when an agent just implemented the change; if it cannot run, say why in the summary. Give one implementation agent the target, requirements, owned files, repair authority and checks. Require it to apply coding-standards, [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) for names and flow, and [writing-good-tests](../writing-good-tests/SKILL.md) for test value, coverage and verification, with this goal:
+Give one implementation agent the target, requirements, owned files, repair authority and checks. Use the configured implementer when available. Run this pass even after implementation; if independent dispatch is unavailable, simplify locally and disclose it. Keep other writers off its files until integration.
 
-> This is your one shot to get the scoped code into a good state. Take the time needed to inspect the whole change, relevant callers and affected tests. Simplify changed and directly affected code while preserving required behavior. Remove unnecessary abstractions, indirection, duplication and speculative flexibility. Prefer existing repository or dependency capabilities. Complete justified edits and meaningful verification before returning; leave useful complexity alone. Do not save work for a later sweep or pad runtime.
+Inspect changed and directly affected code, callers, tests and fixtures. Remove unnecessary abstractions, duplication, speculative flexibility, unrelated additions and accidental generated-file changes. Prefer existing repository or dependency capabilities. Preserve required behavior; inspect callers before deleting guards, cleanup, error handling, public contracts or tests.
 
-Use the configured implementer when available. The agent edits code and returns the patch, a concrete before/after explanation, checks and unresolved concerns. For findings-only work, it reports proposed simplifications instead. Keep other writers off its files until integration.
+Apply [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) to names, boundaries, statements and expressions. Trace each branch's result, including fields added, moved or omitted. Consider named steps or explicit return fields to clarify dense expressions. The simplifier and standards reviewer must support a clean readability conclusion with a nontrivial changed block and explain why its steps and result are clear. Report unassessed code.
 
-Include affected tests and fixtures. Apply writing-good-tests to every added or retained test, including E2E. Justify keepers; distinguish inspected consolidation from deliberate low-value retirement without replacements. Audit the diff for unused helpers, duplicate explanations, unnecessary generic APIs, unrelated additions and generated/schema/lockfile drift. Preserve unrelated user work.
+Use writing-good-tests to decide which tests to keep, change, add or remove. Justify keepers and distinguish consolidation from retirement without replacement. Stop for breaking changes, new dependencies or unrelated scope that need user authority.
 
-Inspect callers before deleting guards, cleanup, error handling, public contracts or tests. Preserve required safety and failure behavior. Fewer lines alone is not success, and unfamiliar code is not proof of unnecessary complexity. Stop for actual authority gaps such as breaking changes, dependencies or unrelated scope.
+The simplifier returns its patch, a concrete before/after explanation, checks and unresolved concerns. For findings-only work, it proposes changes instead. Integrate and resolve verification failures before review.
 
-Integrate the patch and resolve verification failures before independent review. If no independent implementation agent is available, report it and simplify locally; the later reviews must still be independent.
+## 3. Review independently
 
-## 3. Review once, in parallel
+Dispatch two fresh findings-only reviewers against the same stable result. Prefer the configured reviewer role. Give them the target, base, diff, requirements, standards, reusable proof and their assignment below. Exclude implementation rationale, simplifier conclusions and prior findings. Reviewers may inspect callers and dependencies; they do not edit or manage repairs.
 
-Dispatch two fresh findings-only reviewers against the same stable result. Prefer the configured reviewer role. Supply the target, base, diff, requirements, standards, relevant validation evidence and each assignment below. Exclude implementation rationale, simplifier conclusions and prior findings. Reviewers can inspect callers and dependencies to establish behavior; they do not edit or manage the workflow. Record the commit or patch each reviewer receives and check it again on return. If it changed, keep the report tied to the version reviewed and reassess the affected conclusions before completion. If independent dispatch is unavailable, disclose the missing review instead of counting self-review as independent.
+Record each reviewer's revision and check it again on return. If it changed, reassess the affected conclusions. If independent dispatch is unavailable, disclose the missing review. Each reviewer completes its assignment in one pass and returns all supported findings.
 
-Each reviewer gets one thorough opportunity to assess its full assignment. Trace relevant behavior, inspect counterevidence and collect all supported findings before returning. Do not stop at the first finding or leave discovery for another round.
+- **Standards:** assess standards, readability, diff waste and unnecessary complexity. Apply the readability check in step 2. Report relevant standard IDs and exceptions. For a maintenance finding, show confusing code and a simpler alternative. Skip preferences and checks settled by tooling.
+- **Requirements and correctness:** trace the affected flow from a real entry point. Look for missing, incorrect or unrequested behavior, including failure and recovery. Ask what consequential defect could leave existing tests green and what runtime or persisted-state evidence would expose it. When data formats change, identify every reader, including tools and UIs, and exercise each with pre-change state. Reuse supplied results; run targeted probes and fault checks in scratch copies. Apply typescript-discipline for TypeScript, reuse frontend-ui-validation proof for UI changes, and use other domain lenses as needed.
 
-Both reviewers apply writing-good-tests' value gate to test additions, keepers and deletions. Request missing permanent proof or oppose retirement only for an unmet explicit requirement or a credible consequential reachable gap worth maintaining under that policy. An uncovered branch, sensitive category, prior bug or coverage drop alone is insufficient. Preserve required checks and justified consequential proof.
-
-- **Standards:** assess the repository's actual standards, readability, diff waste and remaining unnecessary complexity. Use reducing-cognitive-load and report the required standards assessment, including relevant standard IDs and exceptions. Show the confusing code and a simpler alternative for a maintenance finding; skip preferences and checks already settled by tooling.
-- **Requirements and correctness:** start from the requested behavior and a real entry point, then trace the affected flow. Ask which plausible broken outcome could leave the current tests green and what runtime or persisted-state evidence would expose it. When the change alters the form of data other code reads, such as file types, schemas or saved records, list every reader, including tools and UIs, and exercise each with state created before the change. Reuse supplied results instead of repeating suites, but run targeted probes and fault checks yourself in scratch copies. Check missing, partial, incorrect or unrequested behavior, including regressions, failure and recovery through actual callers. Run this review even without a spec. Use writing-good-tests for changed behavior or test infrastructure, typescript-discipline for TypeScript, and reuse frontend-ui-validation evidence for UI changes; other domain lenses follow the affected contract.
-
-Each returns supported findings with location, expected behavior, reachable trigger, consequence and evidence, plus unresolved concerns and verification limits. Distinguish source inspection from executed proof. An empty findings report is valid. Neither a clean report nor a finding count proves coverage.
+Both reviewers apply writing-good-tests to test additions, keepers and deletions. Findings include location, expected behavior, reachable trigger, consequence and evidence. Report unresolved concerns and verification limits; distinguish source inspection from executed proof. An empty findings list is valid and does not prove coverage.
 
 ## 4. Resolve and finish
 
-Keep the two assessments visible and confirm their findings before editing. Reproduce bugs or establish the failure through real callers and supported inputs; type-permitted or invented states are insufficient. Check counterevidence. For complexity findings, establish a present reading or change cost and a simpler behavior-preserving alternative.
+Keep both assessments visible. Check the concrete readability evidence before accepting a clean conclusion. Confirm bug findings through real callers and supported inputs, checking counterevidence; type-permitted or invented states are insufficient. Complexity findings need a present reading or change cost and a simpler behavior-preserving alternative.
 
-Fix confirmed in-scope problems, grouping shared causes. Preserve user-owned decisions about scope, contracts, dependencies and publication. Verify repaired and preserved behavior using relevant checks; stop at the first failure and diagnose. Reuse applicable passing results. The coordinator finishes repairs and targeted verification without restarting the simplifier or broad review. If a concrete question still requires independent judgment, explain it and request only that focused check. Do not use automatic rerun loops, clean-pass quotas or searches for new objections after the required evidence is established.
+Fix confirmed in-scope problems, grouping shared causes. Preserve user decisions about scope, contracts, dependencies and publication. Verify repaired and preserved behavior with relevant checks, reusing applicable passing results. Stop at the first failure and diagnose.
 
-Keep findings, decisions and check evidence with the task so interrupted work can resume. Findings-only work ends with its report; a single-review request needs only its requested assessment. For the full workflow, finish when scoped simplification is complete, both assessments apply to the resulting code, confirmed in-scope problems are resolved, and required checks pass. Otherwise report exactly what remains and why. Summarize the useful simplifications and their net line change, each review's findings and fixes, proof, final target and remaining limits. Publication follows existing user or calling-workflow authority; this skill grants no automatic push.
+The coordinator finishes repairs without restarting the simplifier or broad review. Request a focused independent check only for a concrete unresolved question. Do not add automatic review loops or clean-pass quotas.
 
-Use [feedback-hardening](../feedback-hardening/SKILL.md) to decide whether observed workflow problems warrant separate work; that work does not gate delivery.
+Keep findings, decisions and proof with the task. Finish when simplification is complete, both reviews cover the result, confirmed in-scope problems are resolved, and required checks pass. Narrower requests end with their requested assessment. Otherwise say what remains and why.
+
+Report useful simplifications and net line change, review findings and fixes, proof, final target and remaining limits. Publication needs existing user or calling-workflow authority; this skill grants no automatic push.
+
+Use [feedback-hardening](../feedback-hardening/SKILL.md) to decide whether observed workflow problems warrant separate work; it does not gate delivery.
