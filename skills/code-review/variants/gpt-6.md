@@ -27,7 +27,7 @@ Give one implementation agent the target, requirements, owned files, repair auth
 
 Inspect changed and directly affected code, callers, tests and fixtures. Remove unnecessary abstractions, duplication, speculative flexibility, unrelated additions and accidental generated-file changes. Prefer existing repository or dependency capabilities. Preserve required behavior; inspect callers before deleting guards, cleanup, error handling, public contracts or tests.
 
-Apply [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) to names, boundaries and statements. Trace each branch's result, including fields it adds, moves or omits. Check whether named steps or explicit return fields make changed expressions easier to follow. A clean readability report from the simplifier or standards reviewer must show a nontrivial changed block and explain why its steps and result are clear, or state what remains unassessed.
+Apply [reducing-cognitive-load](../reducing-cognitive-load/SKILL.md) to names, boundaries, statements and expressions. Trace each branch's result, including fields added, moved or omitted. Consider named steps or explicit return fields to clarify dense expressions. The simplifier and standards reviewer must support a clean readability conclusion with a nontrivial changed block and explain why its steps and result are clear. Report unassessed code.
 
 Use writing-good-tests to decide which tests to keep, change, add or remove. Justify keepers and distinguish consolidation from retirement without replacement. Stop for breaking changes, new dependencies or unrelated scope that need user authority.
 
