@@ -10,7 +10,7 @@ Use its author and source/destination commits for ownership and diff checks.
 
 ## Upload
 
-Write the description to a Markdown file. Place `{{image}}`, `{{image:2}}`, and so on where each image belongs, then pass images in that order:
+Write the description to a Markdown file. Bitbucket shows `<details>` and `<summary>` as literal text. Place `{{image}}`, `{{image:2}}`, and so on where each image belongs, then pass images in that order:
 
 ```sh
 twg bb pull-requests update --pull-request <PR-ID> \
