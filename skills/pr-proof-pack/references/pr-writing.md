@@ -35,6 +35,6 @@ Use this template as a starting point. Adapt the headings and detail to the chan
 
 Include the category breakdown for every PR. Use the helper's totals directly; if you refine its categories, account for each path once and keep the totals consistent. Binary files contribute to file counts, not textual line counts.
 
-Do not add a generic verification checklist just to fill the template. The presentation does not reduce required checks or proof. If the provider cannot render optional details, use a short supporting section after the proof.
+Do not add a generic verification checklist just to fill the template. The presentation does not reduce required checks or proof. If the provider guide says `<details>` shows as literal text, use a plain `## Supporting checks and change details` heading instead.
 
 For a new capability without a meaningful before state, explain that briefly and show what it enables. Keep the description focused on what helps someone review the change.
