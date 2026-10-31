@@ -29,6 +29,8 @@ Follow [Native checks](references/native-expo.md) for the changed native flow.
 
 Record build or revision, local changes, environment, viewport or device, interaction, expected and observed results, and capture paths. Include failures and unavailable checks. Screenshots show appearance; recordings help show motion and interaction. Layout warnings and tests do not prove visual quality.
 
+Before handing off recordings, use [pr-proof-pack’s recording preparation](../pr-proof-pack/SKILL.md#prepare-recordings). Include the edited clip paths and captions in the evidence.
+
 Reuse those evidence paths and coverage notes in downstream tickets, reviews, and proof-pack work.
 
 ## Record proof environments
