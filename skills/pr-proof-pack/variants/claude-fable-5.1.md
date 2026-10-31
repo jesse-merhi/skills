@@ -5,6 +5,10 @@ description: 'Check or update PR descriptions and proof.'
 
 # PR proof pack
 
+## Prepare recordings
+
+For recording preparation alone, follow [Media](references/media.md) and return the edited local clips with brief captions. This entry point does not run the PR workflow or authorize uploading or publishing. Use it before sharing a recording in chat, a handoff, or a PR.
+
 ## 1. Check
 
 Read the PR and diff using the [GitHub](references/github.md) or [Bitbucket](references/bitbucket.md) guide. Compare its description and proof with the change; leave accurate material alone.

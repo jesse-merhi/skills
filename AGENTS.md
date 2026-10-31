@@ -33,6 +33,12 @@ Assign review duties by the task, not by whether an agent is a subagent.
   - Terminal: the command, output, and user flow.
   - Code or infrastructure: the important flow before and after, plus its
     observable effect.
+- Before sharing a browser, device or terminal recording, cut setup and dead
+  time and split distinct flows into focused, named clips. Preserve the starting
+  state, action, outcome and any timing or failures relevant to the claim.
+  Export and inspect the edited files using
+  [pr-proof-pack](skills/pr-proof-pack/SKILL.md#prepare-recordings), including
+  for chat and local handoffs outside PRs.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
 - Keep replies concise, concrete, and free of repetition while preserving
