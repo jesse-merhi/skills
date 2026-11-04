@@ -157,8 +157,9 @@ Keep coordinators and delegated until-clean workflows on their normal profile.
 In-chat spawn tools without a profile-selection parameter retain their normal
 skill catalog; do not claim this preset filters those children. The preset
 hides named orchestration and delivery skills, while other domain skills
-remain discoverable. It matches the global independent-review model and effort;
-does not change tools, approvals, or sandbox permissions, and is not a security boundary.
+remain discoverable. It matches the Sol council member and the default for reviews
+outside code-review. It does not change tools, approvals, or sandbox permissions,
+and is not a security boundary.
 
 Skip this step for other harnesses.
 
