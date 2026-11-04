@@ -189,6 +189,11 @@ itself model generation.
   evaluates the advice and retains all decisions and delivery. Consultation adds
   no mandatory review or completion gate; ordinary review stays on the default
   model family.
+  Exception: the user-selected `code-review` council uses GPT-6 Astra, Claude
+  Opus 5.5 and GPT-6.1 Sol, all at high, as three independent findings-only
+  reviewers. This exception changes neither coordinator ownership nor repair,
+  publication or approval authority; it does not make Astra an ordinary worker.
+  The council membership takes precedence over harness default reviewer models.
 - Assign skill execution by the work, not by which model variants are installed.
   Use GPT-6.1 Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
   Use Luna/high for bounded retrieval and inventory work, such as `session-recall`

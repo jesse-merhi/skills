@@ -143,13 +143,13 @@ Two ways one gets used:
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks five skills as
-  explicit-only: `code-review`, `html-explanations`,
+  "use `grilling` on this" in either harness. Codex marks six skills as
+  explicit-only: `code-review`, `council`, `html-explanations`,
   `just-do-it`, `to-spec`, and `to-tickets`. They can review and fix code, operate desktop UI,
   write durable planning files, or run a long external loop, so Codex waits for
   you to name them.
 
-`code-review` keeps its normal workflow in one prompt. Model-writing guidance and installer scripts live under `writing-for-agents`.
+`code-review` owns the council workflow in one prompt; `council` is its discoverable entry point for code review and UI hill climbing. Model-writing guidance and installer scripts live under `writing-for-agents`.
 
 `coding-standards` brings personal engineering standards to a repository
 without turning every judgment call into a linter. `apply` prefers existing
@@ -187,13 +187,13 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 6. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-7. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs fresh standards and requirements/correctness reviewers in parallel.
+7. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Opus 5.5 and GPT-6.1 Sol reviewers at high. Code and UI share a maximum of three rounds, with the third reserved for final assessment.
 8. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 9. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
-For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Two fresh reviewers then assess the resulting diff. The coordinator confirms findings, fixes real problems and verifies the result, requesting focused follow-up only where evidence no longer applies. No findings database or native/cold pass sequence is required.
+For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Three fresh council members each assess standards and correctness in the resulting diff. The coordinator confirms findings and verifies scoped repairs after rounds one and two. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. The council stops early on agreement or no actionable progress; round three reports remaining concerns without another repair pass. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
@@ -210,7 +210,8 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
 | [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and Jesse's 👍 before each queue submission. |
-| [`code-review`](skills/code-review/SKILL.md) | Simplifies changed code, then independently assesses standards and requirements/correctness and verifies confirmed repairs. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then runs the three-model council for code and affected UI within three total rounds, reporting fixes, evidence and reviewer confidence. |
+| [`council`](skills/council/SKILL.md) | Explicit entry point to code-review’s council and UI hill climbing; shares its workflow and round budget. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | Checks and refreshes reviewer-visible proof when a PR is being published or prepared for merge, never on local commits. |
 
 ### Code quality and correctness
