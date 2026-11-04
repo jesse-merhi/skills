@@ -32,6 +32,10 @@ name = "code-review"
 enabled = false
 
 [[skills.config]]
+name = "council"
+enabled = false
+
+[[skills.config]]
 name = "parallel-slice-orchestration"
 enabled = false
 

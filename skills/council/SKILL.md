@@ -1,0 +1,1 @@
+variants/gpt-6.md
