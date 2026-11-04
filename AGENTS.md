@@ -161,7 +161,7 @@ resource lifecycle, and graceful shutdown.
 ### Evidence before review fixes
 
 - Before repairing a review-discovered bug, apply the evidence checks in
-  code-review's Resolve and finish requirements. A reproduction through the actual application using
+  code-review's Resolve within three total rounds requirements. A reproduction through the actual application using
   realistic local fixtures can qualify; production data is not required.
 - Keep evidence tied to the reviewed revision and label what was actually
   observed. A type-permitted value or invented unreachable state is not proof.
@@ -175,7 +175,7 @@ Repeated model turns can add cost; elapsed time in a held tool call is not
 itself model generation.
 
 - Use GPT-6.1 Sol at high by default for coordination, integration, verification,
-  ordinary review, implementation, test design and substantive debugging or repairs.
+  reviews outside `code-review`, implementation, test design and substantive debugging or repairs.
   The coordinator may complete small local steps when delegation would not help.
   Use GPT-6 Luna at high for established test, lint, typecheck and prepared acceptance
   execution, bounded investigation and focused research. `writing-good-tests` owns
@@ -187,9 +187,8 @@ itself model generation.
   evidence, trade-offs and uncertainty; it does not edit, manage repairs, spawn
   workers, approve, publish or take ownership of the workflow. The coordinator
   evaluates the advice and retains all decisions and delivery. Consultation adds
-  no mandatory review or completion gate; ordinary review stays on the default
-  model family.
-  Exception: the user-selected `code-review` council uses GPT-6 Astra, Claude
+  no mandatory review or completion gate.
+  By default, `code-review` uses a council of GPT-6 Astra, Claude
   Opus 5.5 and GPT-6.1 Sol, all at high, as three independent findings-only
   reviewers. This exception changes neither coordinator ownership nor repair,
   publication or approval authority; it does not make Astra an ordinary worker.
