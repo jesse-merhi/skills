@@ -143,9 +143,9 @@ Two ways one gets used:
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks six skills as
-  explicit-only: `code-review`, `council`, `html-explanations`,
-  `just-do-it`, `to-spec`, and `to-tickets`. They can review and fix code, operate desktop UI,
+  "use `grilling` on this" in either harness. Codex marks nine skills as
+  explicit-only: `ask-claude`, `ask-codex`, `code-review`, `council`,
+  `html-explanations`, `just-do-it`, `pr-burndown`, `to-spec`, and `to-tickets`. They can review and fix code, operate desktop UI,
   write durable planning files, or run a long external loop, so Codex waits for
   you to name them.
 

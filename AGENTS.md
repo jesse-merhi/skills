@@ -160,8 +160,8 @@ resource lifecycle, and graceful shutdown.
 
 ### Evidence before review fixes
 
-- Before repairing a review-discovered bug, apply the evidence checks in
-  code-review's Resolve within three total rounds requirements. A reproduction through the actual application using
+- Before repairing a review-discovered bug, apply code-review's evidence
+  requirements for findings. A reproduction through the actual application using
   realistic local fixtures can qualify; production data is not required.
 - Keep evidence tied to the reviewed revision and label what was actually
   observed. A type-permitted value or invented unreachable state is not proof.

@@ -44,14 +44,14 @@ Before work and on each check, read CPU count, five-minute load and free memory 
    - `ci`: current combined run failed, queue membership changed, or merge confirmed. Verify head, queue and combined run: an old green notification proves none of these, and departure can mean ejection or merge.
    Reconcile an idle slot holder's saved job before waking it. For a two-hour active turn, request status once; escalate unchanged state at the next check.
 3. Ask one decision at a time under Jesse's question-tool preference, with a recommendation. Record and distribute answers; don't re-ask settled or repository-defined decisions.
-4. Group PRs awaiting 👍 into one list: links, changes, review fixes, proof, check state and merge effects. Resend only on change. Follow [wait-efficiently](../wait-efficiently/SKILL.md) while owners work.
+4. Group PRs awaiting 👍 into one list: links, changes, review fixes and unresolved concerns, proof, check state and merge effects. Resend only on change. Follow [wait-efficiently](../wait-efficiently/SKILL.md) while owners work.
 
 Keep reconciliation active for needed events the host does not deliver, including sign-off reactions. Disable the owned schedule and verify when all PRs are merged/closed and closeout is complete, or Jesse stops it; a queued tick must preserve the stop. Report open PRs and unfinished closeout separately. Don't allocate devices by message or track unrelated work. A requested [handoff](../handoff/SKILL.md) carries the ledger and schedule identity.
 
 ## Owner
 
 1. Fix base conflicts reported by GitHub; otherwise keep the head for combined queue validation. Use `pr:<number>` only for hard dependencies.
-2. Run `code-review` and required local proof, recording both in `evidence`. Use repository exceptions for queue-only CI within their limits and explain why in the PR. Run tests directly; investigate caches/provenance only if needed to start.
+2. Run `code-review` and required local proof, recording both in `evidence`. Keep code-review’s round record for later rechecks. Unresolved review issues or needed review after budget exhaustion block readiness and queue submission; set `waiting_on: jesse` with the required decision. A clean third-round assessment of the unchanged current revision satisfies review. Use repository exceptions for queue-only CI within their limits and explain why in the PR. Run tests directly; investigate caches/provenance only if needed to start.
    Claim a slot before heavy work; if unavailable, set `waiting_on: capacity` and end the turn. Pass ledger budgets to device tooling. If no device is free, release the slot and wait on `device`. When work ends, stop owned stacks/devices and release the slot.
 3. Push the reviewed head, update `pr-proof-pack`, and follow [wait-efficiently](../wait-efficiently/SKILL.md). After checks pass, mark ready, set `awaiting-thumbs-up`/`jesse`, and notify the coordinator. An existing 👍 proceeds directly.
 4. Re-read the head; review/prove changes and ask through `question` if scope grew materially. Submit and recover under repository queue rules, recording `queued`/`ci`. On confirmed merge, record `merged`, notify the coordinator and complete authorized [cleanup-and-archive](../cleanup-and-archive/SKILL.md) closeout before clearing it.

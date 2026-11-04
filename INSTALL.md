@@ -128,7 +128,7 @@ destination first: replace only a matching repo-owned or dead symlink, ask
 before replacing a real file or another owner's link, and preserve unrelated
 profiles. Do not change the default profile or the user's `config.toml`.
 
-The findings-only preset uses GPT-6.1 Sol at high, matching ordinary review in the [Codex orchestration policy](codex/README.md). The orchestration profile’s optional Astra/high oracle remains advisory and read-only; consultation is not an installation, review or completion gate. Installing profiles does not select the active model or change live configuration.
+The findings-only preset uses GPT-6.1 Sol at high, matching the Sol council member in the [Codex orchestration policy](codex/README.md). The orchestration profile’s optional Astra/high oracle remains advisory and read-only; consultation is not an installation, review or completion gate. Installing profiles does not select the active model or change live configuration.
 
 The preset uses native profile files and name-based `skills.config` exclusions,
 verified with Codex 0.153.1. If the installed build lacks either capability,
