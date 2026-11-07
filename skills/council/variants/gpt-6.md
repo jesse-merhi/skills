@@ -9,6 +9,6 @@ metadata:
 
 # Council
 
-Use [code-review](../code-review/SKILL.md) for the requested code review or UI hill climbing. It owns simplification, user-selected reviewers, the shared round budget, evidence, repairs and final report. Load it with the original task and any existing round record. If already active, continue its current round; Council starts no separate workflow or counter.
+Use [code-review](../code-review/SKILL.md) for the requested code review or UI hill climbing. It owns simplification, user-selected reviewers, the shared round record and stop decision, evidence, repairs and final report. Load it with the original task and any existing round record. If already active, continue its current round; Council starts no separate workflow or counter.
 
 Findings-only members return their assigned assessment without dispatching a council. Preserve narrower requests and existing authority; invoking Council grants no publication permission. For requests outside code review or affected UI, clarify the intended assessment rather than expanding into a different workflow.
