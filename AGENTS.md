@@ -343,6 +343,16 @@ Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
 completely. Resolve API questions against the exact installed package source;
 the v4 APIs used here include prerelease `effect/unstable/*` modules.
 
+## Browser work in T3 Code
+
+Apply this section when T3 Code's `preview_*` browser tools are present. The user has asked for browser work that needs them to happen in their Dia browser rather than T3's preview browser; treat this as their standing request to switch browsers for that work.
+
+- Use Dia when the task needs the user: signing in, passkeys or two-factor codes, their logged-in accounts, a CAPTCHA, or a flow they want to watch or take over.
+- In Dia, use the harness's own browser integration when it can reach Dia; otherwise use the `dia` MCP tools, which attach to the running Dia. If the integration fails, such as Codex's `browser access host is unavailable` under T3, switch to `dia` without retrying.
+- Keep `preview_*` for work that does not need the user, such as checking a local dev server or a public page.
+- Work in a new Dia tab and leave the user's other tabs alone. Leave passwords, passkeys, two-factor codes and payment confirmation to the user: stop at that step, say what to do in Dia, and continue after they confirm.
+- If `dia` cannot connect, ask the user to open Dia and approve its debugging prompt. Do not move the task to another browser or profile.
+
 ## Claude Code
 
 Apply this section only when running in Claude Code. Other harnesses use the
@@ -350,7 +360,7 @@ shared rules above and their own available tools.
 
 ### Browser work
 
-Use the available Claude Chrome integration for website interaction,
+In T3 Code, follow [Browser work in T3 Code](#browser-work-in-t3-code). Elsewhere, use the available Claude Chrome integration for website interaction,
 authenticated browser state, screenshots, and browser-driven validation.
 Select the intended tab from the integration's current state. If it is
 unavailable, report the missing capability; do not install another browser
