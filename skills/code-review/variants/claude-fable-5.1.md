@@ -6,7 +6,7 @@ metadata:
   source-path: skills/engineering/code-review
   source-revision: c55ee46073ed923f86ce59a5eb3b6d895095d1b7
   sources: |
-    - Council approach inspired by Theo’s [tstack council](https://github.com/t3dotgg/tstack/blob/1085050f3baed1ac724caa4a8166145fb2ac88af/skills/council/SKILL.md). This adaptation uses the user-selected reviewers and bounded rounds, evidence and authority rules below.
+    - Council approach inspired by Theo’s [tstack council](https://github.com/t3dotgg/tstack/blob/1085050f3baed1ac724caa4a8166145fb2ac88af/skills/council/SKILL.md). This adaptation uses the user-selected reviewers and the round, evidence and authority rules below.
 ---
 
 # Code review
@@ -76,16 +76,17 @@ The coordinator assigns each confirmed finding a severity, including findings it
 
 Weigh how likely the trigger is in supported use against how severe and recoverable the consequence is. For race, timing and ordering findings, identify which actors actually run concurrently in supported deployments, the interleaving, and what breaks; without a real concurrent actor, the finding is not actionable. A rare trigger remains blocking when its consequence is severe and hard to recover from, such as corrupted persisted data, a security breach or lost user work. Settle an unclear trigger from callers, deployment and targeted probes rather than assuming the worst case.
 
-After each round, fix blocking issues, small minor issues and selected UI improvements when authorized. Preserve user decisions about scope, contracts, dependencies and publication. Verify repaired and preserved behavior with relevant checks, reusing applicable passing results. Stop at the first failure and diagnose before rerunning. Capture fresh UI evidence where behavior or appearance changed. Then decide what follows:
+After each round, fix blocking issues, minor issues with small fixes and selected UI improvements when authorized. Preserve user decisions about scope, contracts, dependencies and publication. Verify repaired and preserved behavior with relevant checks, reusing applicable passing results. Stop at the first failure and diagnose before rerunning. Capture fresh UI evidence where behavior or appearance changed. A fix is contained when it stays within its finding, leaves other behavior, contracts, persisted data, security and permissions unchanged, and passes relevant checks. Then decide what follows:
 
-- **Run another round** when the round fixed a blocking issue or any fix exceeds the minor-fix limit below. The next round assesses the full resulting change under the same criteria; reviewers remain fresh and independent of prior reports.
-- **Finish** when the reviewed revision has no blocking findings. Minor fixes made after that round need no further council review when each stays within its finding, leaves other behavior, contracts, persisted data, security and permissions unchanged, and passes relevant checks. Report them as coordinator fixes verified by checks. Any larger fix needs another round.
-- **Stop and ask the user** when rounds stop converging: fixes keep producing new blocking findings in the code they touched, the same blocking issue survives repeated repairs, or the coordinator cannot settle whether a finding is blocking from available evidence. A reviewer repeating a rejected finding without new evidence does not reopen it; record the disagreement in the report. Also stop when evidence, tools or authority are unavailable. Report the pattern, its evidence and the decision needed rather than running another round.
+- **Run another round** when the round fixed a blocking issue or made a fix that is not contained. The next round assesses the full resulting change under the same criteria; reviewers remain fresh and independent of prior reports.
+- **Finish** when the reviewed revision has no blocking findings and every later fix is contained. Report those fixes as coordinator fixes verified by checks; they need no further council review.
+- **Stop and ask the user** when rounds stop converging: fixes keep producing new blocking findings in the code they touched, the same blocking issue survives repeated repairs, or the coordinator cannot settle whether a finding is blocking from available evidence. Also stop when evidence, tools or authority are unavailable. Report the pattern, its evidence and the decision needed rather than running another round.
 
-A missing member or failed assessment cannot count as a clean result. Never carry approval or confidence from an earlier revision onto later edits.
+A reviewer repeating a rejected finding without new evidence does not reopen it; record the disagreement in the report. A missing member or failed assessment cannot count as a clean result. Never carry approval or confidence from an earlier revision onto later edits.
+
 ## 5. Report and finish
 
-Keep findings, decisions and proof with the task. A complete code-review has simplification done, all three assessments of the final council-reviewed revision, no blocking issues on it, later fixes within the minor-fix limit, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial assessment, residual issues or blocked repairs plainly. A stop for non-convergence or missing evidence is not approval. Narrower requests end with their requested assessment.
+Keep findings, decisions and proof with the task. A complete code-review has simplification done, all three assessments of the final council-reviewed revision, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial assessment, residual issues or blocked repairs plainly. A stop for non-convergence or missing evidence is not approval. Narrower requests end with their requested assessment.
 
 Give brief progress updates during long work. Report useful simplifications and net lines added/removed, then give a concise round-by-round account of what was reviewed, fixed and verified, including each finding’s severity, rounds with no fixes and why another round was or was not run. Show each reviewer’s stated confidence for each reviewed revision, its evidence basis and verification limits. Identify which fixes received subsequent review, the final target, unresolved disagreements and residual concerns. Never transfer an earlier confidence statement to later edits or describe unreviewed repairs as approved.
 
