@@ -252,6 +252,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Makes replies concise and easy to understand. |
 | [`de-slop`](skills/de-slop/SKILL.md) | Rewrites prose to remove AI-like padding while preserving its meaning and voice. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
+| [`show-video`](skills/show-video/SKILL.md) | Records and edits software demonstrations with aligned A/B comparisons, captions and a playable MP4. |
 
 ### Meta and operations
 
