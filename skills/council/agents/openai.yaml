@@ -1,6 +1,6 @@
 interface:
   display_name: "Council"
-  short_description: "Three-model code review and UI refinement."
+  short_description: "Four-model code review and UI refinement."
   default_prompt: "Use $council for this change through code-review, retaining its shared round record, stop decision and evidence rules."
 
 policy:
