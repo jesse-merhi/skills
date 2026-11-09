@@ -190,8 +190,9 @@ itself model generation.
   no mandatory review or completion gate.
   By default, `code-review` uses a council of GPT-6 Astra, Claude Fable 5.2,
   Claude Opus 5.5 and GPT-6.1 Sol, all at high, as four independent
-  findings-only reviewers. This exception changes neither coordinator ownership nor repair,
-  publication or approval authority; it does not make Astra an ordinary worker.
+  findings-only reviewers. This exception changes neither coordinator
+  ownership nor repair, publication or approval authority; it does not make
+  Astra an ordinary worker.
   The council membership takes precedence over harness default reviewer models.
 - Assign skill execution by the work, not by which model variants are installed.
   Use GPT-6.1 Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
