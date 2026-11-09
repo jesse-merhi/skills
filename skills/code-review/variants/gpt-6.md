@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: 'Simplify changes, then run a three-model council for code review and UI refinement until only minor findings remain.'
+description: 'Simplify changes, then run a four-model council for code review and UI refinement until only minor findings remain.'
 metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/engineering/code-review
@@ -37,15 +37,15 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
 
 ## 3. Review with the council
 
-Use three fresh findings-only reviewers: **GPT-6 Astra, Claude Opus 5.5, and GPT-6.1 Sol**, each at **high** reasoning effort. This council uses the `AGENTS.md` exception to Astra’s oracle-only assignment; all members remain findings-only.
+Use four fresh findings-only reviewers: **GPT-6 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol**, each at **high** reasoning effort. This council uses the `AGENTS.md` exception to Astra’s oracle-only assignment; all members remain findings-only.
 
 Resolve actual model and effort settings through the available launcher. In T3 Code, use `orchestrator_capabilities`, then `delegate_task` for the selected members with settings in `target.options`. Elsewhere, use `spawn_agent` with `fork_turns="none"` only for models and settings it supports. Prefer a configured findings-only role when its pinned model and effort match; a prompt cannot override a role’s settings. If a member or setting is unavailable, report which one and the resulting coverage gap. Do not silently substitute, count the coordinator as a member, or claim a complete council. Continue useful authorized work with available coverage; any change to membership needs the user’s decision.
 
-Dispatch the three assessments in parallel when supported, against the same stable commit or recorded patch. Give each reviewer the target, base, full diff, requirements, standards, reusable proof and both lenses below. Exclude implementation rationale, simplifier conclusions and prior findings; do not resume an implementer or previous reviewer. Reviewers may inspect callers and dependencies and run permitted read-only probes; they do not edit, spawn reviewers or manage repairs. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results.
+Dispatch the four assessments in parallel when supported, against the same stable commit or recorded patch. Give each reviewer the target, base, full diff, requirements, standards, reusable proof and both lenses below. Exclude implementation rationale, simplifier conclusions and prior findings; do not resume an implementer or previous reviewer. Reviewers may inspect callers and dependencies and run permitted read-only probes; they do not edit, spawn reviewers or manage repairs. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results.
 
 Record each reviewer’s actual model, effort, revision and evidence. Check the revision on return; changed code invalidates affected conclusions. A stale assessment cannot establish agreement on the current result. Disclose context contamination or unavailable independent dispatch.
 
-Each reviewer collects all supported candidates, then assesses actionability under both lenses:
+Each reviewer aims to report every supported finding in one pass, including minor ones, instead of stopping after the first few: a finding missed now costs another full council round. Breadth does not relax the evidence requirements below. Assess each candidate under both lenses:
 
 - **Standards:** assess standards, readability, diff waste and unnecessary complexity. Apply the readability check in step 2 and reducing-cognitive-load to proposed fixes. Report relevant standard IDs and exceptions. For a maintenance finding, show confusing code, its present reading or change cost, and a simpler behavior-preserving alternative. Skip preferences and checks settled by tooling.
 - **Requirements and correctness:** trace the affected flow from a real entry point through the consumer-visible result, including failure and recovery. Look for missing, incorrect or unrequested behavior. Ask what consequential defect could leave existing tests green and what runtime or persisted-state evidence would expose it. When data formats change, identify every reader, including tools and UIs, and exercise each with pre-change state. Reuse supplied results; run targeted probes and fault checks in scratch copies. Apply typescript-discipline for TypeScript, frontend-ui-validation evidence for UI, and other domain lenses as needed.
@@ -66,7 +66,7 @@ Ask for concrete feedback tied to a screenshot region or observed interaction, t
 
 Keep one round record with the task: round number, reviewed revision, evidence, each reviewer’s findings and confidence, coordinator decisions and severities, fixes, checks and resulting revision. Each round assesses one stable revision of code and UI. Filling a missing member’s assessment on the same revision stays in that round; repeated dispatch failures remain a reported gap, not an automatic retry loop. Reuse the record across resumes, retries, code/UI work and Council entry points. Do not restart simplification between rounds.
 
-Keep all three assessments visible. Check concrete readability evidence before accepting a clean conclusion. Confirm bug findings through real callers and supported inputs, checking counterevidence; type-permitted or invented states are insufficient. Complexity findings need a present reading or change cost and a simpler behavior-preserving alternative. Resolve duplicate causes and disagreements from evidence; a supported minority finding still needs a disposition. Record accepted, rejected, deferred and unresolved items with reasons.
+Keep all four assessments visible. Check concrete readability evidence before accepting a clean conclusion. Confirm bug findings through real callers and supported inputs, checking counterevidence; type-permitted or invented states are insufficient. Complexity findings need a present reading or change cost and a simpler behavior-preserving alternative. Resolve duplicate causes and disagreements from evidence; a supported minority finding still needs a disposition. Record accepted, rejected, deferred and unresolved items with reasons.
 
 The coordinator assigns each confirmed finding a severity, including findings it discovers itself, and treats a reviewer’s proposed severity as evidence:
 
@@ -86,7 +86,7 @@ A reviewer repeating a rejected finding without new evidence does not reopen it;
 
 ## 5. Report and finish
 
-Keep findings, decisions and proof with the task. A complete code-review has simplification done, all three assessments of the final council-reviewed revision, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial assessment, residual issues or blocked repairs plainly. A stop for non-convergence or missing evidence is not approval. Narrower requests end with their requested assessment.
+Keep findings, decisions and proof with the task. A complete code-review has simplification done, all four assessments of the final council-reviewed revision, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial assessment, residual issues or blocked repairs plainly. A stop for non-convergence or missing evidence is not approval. Narrower requests end with their requested assessment.
 
 Report useful simplifications and net lines added/removed, then give a concise round-by-round account of what was reviewed, fixed and verified, including each finding’s severity, rounds with no fixes and why another round was or was not run. Show each reviewer’s stated confidence for each reviewed revision, its evidence basis and verification limits. Identify which fixes received subsequent review, the final target, unresolved disagreements and residual concerns. Never transfer an earlier confidence statement to later edits or describe unreviewed repairs as approved.
 
