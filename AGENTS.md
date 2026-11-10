@@ -35,6 +35,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
     observable effect.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
+- Use [show-video](skills/show-video/SKILL.md) proactively when a short recording
+  would make an implemented UI, API or CLI behavior change easier to understand,
+  including review fixes. The coordinator or implementation owner captures it;
+  findings-only reviewers reuse supplied proof. Honor text-only requests.
 - Keep replies concise, concrete, and free of repetition while preserving
   necessary evidence and qualifications. Leave hashes, receipt paths and
   internal identifiers out of replies unless the reader needs them to act.

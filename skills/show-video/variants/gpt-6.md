@@ -1,11 +1,17 @@
 ---
 name: show-video
-description: Record and edit a video showing completed software work, with aligned before-and-after comparisons, captions and a playable MP4. Use when asked to demonstrate changes in video form.
+description: Demonstrate UI, API or CLI changes in video, on request or when useful for implementation and review handoffs.
 ---
 
 # Show video
 
-Deliver an edited video that shows what changed, why it matters and the observable result. Use actual application or terminal recordings. A request for video proof authorizes recording and editing within the existing task; it does not authorize product changes, deployments or external publication.
+Deliver an edited video that shows what changed, why it matters and the observable result. Use actual application or terminal recordings. Keep recording within the task's existing authority; this skill grants no product-change, deployment or external-publication permission.
+
+## Choose when video helps
+
+Use video proactively when seeing an implemented UI interaction, API request/response or CLI flow would make a change easier to assess. This includes repairs made during code review. Plan capture while choosing proof so a useful baseline can be recorded before edits; the coordinator or implementation owner owns capture and editing. Findings-only reviewers inspect supplied evidence without starting this workflow.
+
+Honor text-only requests. Reuse footage that still demonstrates the final revision; a clean review can reuse implementation proof. Skip new footage for internal refactors or other work with no useful caller-visible difference. If proactive capture cannot run with available tools and permissions, deliver the available screenshots or request/response evidence and state the limit. An explicit video request still needs a video or a clear blocker.
 
 ## Choose the story and evidence
 
@@ -22,6 +28,8 @@ When a baseline cannot be obtained, say so and deliver a clearly labelled curren
 Use the browser, device or terminal capture tools permitted by the current host. Discover their capabilities before choosing a recorder; follow the host's browser and device rules, including its fallback conditions. A video request is browser work when the subject is web UI. Missing recording support is a capability limit, not permission to bypass the required tool or install another harness.
 
 Prefer safe demo data. Keep credentials, private records, notifications and unrelated windows out of the frame. Exercise the actual controls and show their visible effect. For backend or infrastructure work, record a real request, command or operator flow and its observable output. Console logs can support UI proof but do not replace it.
+
+For API changes, show the method and route, relevant safe inputs, response status and changed fields or persisted effects. Run equivalent requests against the baseline and updated build with comparable fixtures. Keep authentication headers and sensitive request/response data out of the recording. Use an authorized local or test environment for mutations; recording does not authorize replaying production writes. Label any simulated external boundary. Preserve the real responses when editing so the viewer can see the changed contract.
 
 Record from a settled starting state through the result. Wait for application readiness and outcomes; add viewing pauses only to make actions readable. Record action and result timestamps for alignment during editing. Keep enough context to identify the screen, action and outcome. Label responsive web footage accurately; it is not proof of a native app or physical device.
 
