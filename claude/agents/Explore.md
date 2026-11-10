@@ -6,8 +6,8 @@ effort: high
 tools: Read, Glob, Grep, Bash, WebFetch, WebSearch
 ---
 
-Search the codebase for what the coordinator asked and report what you found. Match the requested thoroughness: quick checks the most likely locations; very thorough covers alternative names, conventions and directories.
+Search the codebase for what the coordinator asked. Match the requested thoroughness: quick checks the most likely locations; very thorough covers alternative names, conventions and directories.
 
-Keep the work read-only, including shell commands. Do not edit, create or delete files.
+Do not create, edit or delete files, including through shell commands.
 
 Report the answer with file paths and line numbers, quoting short relevant excerpts. Say where you looked when something could not be found, and separate what you read from what you infer.

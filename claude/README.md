@@ -8,7 +8,7 @@ Select the default in Claude's normal settings or launch a normal main session e
 CLAUDE_CODE_SUBAGENT_MODEL=claude-opus-5-5 claude --model claude-opus-5-5 --effort high
 ```
 
-Installing skills or these role definitions does not change live model or advisor settings. Leave `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset so explicit Haiku assignments and the Fable oracle retain their models.
+Installing skills or these role definitions does not change live model or advisor settings. Leave `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset so per-invocation Haiku and Sonnet assignments and the pinned `Explore` and `oracle` roles retain their models.
 
 | Name | Model | Effort | Assignment |
 | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ Installing skills or these role definitions does not change live model or adviso
 | `Explore` | `claude-haiku-5-5` | `high` | Read-only codebase search, replacing Claude Code's built-in `Explore` |
 | `oracle` | `claude-fable-5-2` | `high` | Optional read-only advice on a bounded unresolved decision |
 
-The [Claude policy](../AGENTS.md#named-workers) assigns straightforward tasks to Haiku, well-specified implementation to Sonnet and other work to Opus. Claude Code's [model order](https://code.claude.com/docs/en/sub-agents#choose-a-model) lets a per-invocation `model` override the role and environment defaults. For a named-definition lookup, invoke `investigator` with `model: "haiku"` and `effort: "high"`; its read-only scope still applies. Use its Opus default for a causal investigation. For a ticket with clear acceptance criteria and no open design decisions, invoke `implementer` with `model: "sonnet"`. The per-invocation `model` accepts only aliases.
+The [Claude policy](../AGENTS.md#named-workers) assigns straightforward tasks to Haiku, well-specified implementation to Sonnet and other work to Opus. Claude Code's [model order](https://code.claude.com/docs/en/sub-agents#choose-a-model) lets a per-invocation `model` override the role and environment defaults. For a named-definition lookup, invoke `investigator` with `model: "haiku"` and `effort: "high"`; its read-only scope still applies. Use its Opus default for a causal investigation. For well-specified implementation, invoke `implementer` with `model: "sonnet"`. The per-invocation `model` accepts only aliases.
 
 Haiku 5.5 requires Claude Code 2.1.293 or later. Check the version and actual launch model and effort. Report unsupported settings instead of silently substituting; a prose request cannot select launch settings.
 
@@ -53,7 +53,7 @@ Start `findings-reviewer` fresh with the target, neutral checklist and requested
 
 This role can supply the Opus 5.5 member of `code-review`’s council at high. The complete council also needs Fable 5.2, Astra and GPT-6.1 Sol at high through a launcher supporting those models; native Claude agents alone do not meet that selection. Each member covers both standards and correctness. The coordinator owns simplification, the shared code/UI round record and stop decision, confirmed repairs, verification and delivery. Other harnesses must use their own launcher; OpenClaw's spawn API is not Claude's `Agent` tool.
 
-`Explore` takes the place of Claude Code's built-in agent of that name, which runs on Opus with a Claude subscription. Every call to `Explore`, including Claude's own choice of it for searches, uses this definition. It is read-only and starts with project instructions, unlike the built-in. Remove the link to restore the built-in agent.
+Every call to `Explore`, including Claude's own choice of it for searches, uses this definition. Unlike the built-in, it loads project instructions. Remove the link to restore the built-in agent.
 
 Use `oracle` when an unresolved decision merits optional Fable advice. Supply one bounded question, the revision, relevant evidence, constraints and the decision the coordinator needs to make. The oracle reads evidence and returns advice, trade-offs and uncertainty. It cannot edit, run mutating checks, manage repairs, spawn workers, approve or deliver the change. The coordinator evaluates the advice and retains ownership. Consultation adds no mandatory gate and does not replace a required council assessment. Its tool list permits inspection; read-only duties also cover Bash and external tools.
 
