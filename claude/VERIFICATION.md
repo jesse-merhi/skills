@@ -31,3 +31,9 @@ All 32 variants across the five delegation workflows plus frontend-ui-validation
 ## Opus 5.5 workers
 
 On 2026-09-27, `implementer` and `investigator` moved from Fable 5.1 to `claude-opus-5-5`, keeping their effort settings. Claude Code 2.1.281 ran each role definition from a temporary project with the coordinator on a different model, `--setting-sources project --model claude-fable-5-1 --effort medium`, so a child on Opus 5.5 shows the pin rather than an inherited parent model. Streamed JSON showed parent `claude-fable-5-1`, one `Agent` call with the configured `subagent_type`, and child `claude-opus-5-5` for all three roles, including `findings-reviewer`, whose pin had not previously run under a different parent. The investigator returned `427` with file evidence and no edits. The implementer changed `message.txt` from `Hello, worl!` to the exact bytes `Hello, world!\n`; the coordinator did not edit. The reviewer reported the subtraction at `add.js:3` and left the fixture unchanged. These runs prove model selection and simple delegation only, as above.
+
+## Haiku Explore and Fable 5.2 oracle
+
+On 2026-11-10, Claude Code 2.1.319 ran copies of `Explore.md` and `oracle.md` from a temporary project with `--setting-sources project --model claude-opus-5-5 --effort medium`. Streamed JSON showed one `Agent` call each for `Explore` and `oracle`; model usage listed parent `claude-opus-5-5`, `claude-haiku-5-5` for `Explore` and `claude-fable-5-2` for `oracle`. `Explore` located `computeTotal` at `src/math.js:1` and its caller. Claude Code printed `unrecognized_model` for `claude-fable-5-2` but the API served it. These runs prove model selection and simple delegation only.
+
+In the same project, the parent called `implementer` with the per-invocation `model: "sonnet"`. Model usage listed `claude-sonnet-5-5` for the child, which made the assigned `TypeError` change to `src/math.js` while the parent did not edit.
