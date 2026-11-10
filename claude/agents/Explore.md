@@ -3,6 +3,7 @@ name: Explore
 description: Fast read-only agent for searching and analyzing codebases. Use it to find files by pattern, search code for keywords or answer questions about how the codebase works. State the thoroughness wanted - quick, medium or very thorough.
 model: claude-haiku-5-5
 effort: high
+omitClaudeMd: true
 tools: Read, Glob, Grep, Bash, WebFetch, WebSearch
 ---
 

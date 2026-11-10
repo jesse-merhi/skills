@@ -98,7 +98,7 @@ refuses to replace hand-written local skills or links owned elsewhere.
 Claude Code uses its normal main session, with Opus 5.5 at high as the repository
 default, no advisor and Opus as the default subagent model. The launch command
 and optional [named workers](claude/README.md) preserve explicit user choices.
-Opus handles design-heavy implementation, investigation and findings-only review;
+Opus handles implementation without a complete spec, investigation and findings-only review;
 Sonnet 5.5 at high handles well-specified implementation; Haiku 5.5 at high handles
 straightforward tasks, codebase search and prepared validation. Fable 5.2 at high
 is also available for read-only oracle advice. Shared owner and worker policy lives

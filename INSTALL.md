@@ -87,8 +87,9 @@ step when installing only into OpenClaw.
 
 Claude Code uses its normal main session and project instructions described
 above. Opus 5.5 at high is the default for coordination and subagents, without an
-advisor. Use Haiku 5.5 at high for straightforward tasks, codebase search and prepared
-validation; Fable 5.2 at high remains available for read-only oracle consultation.
+advisor. Use Sonnet 5.5 at high for well-specified implementation and Haiku 5.5 at
+high for straightforward tasks, codebase search and prepared validation; Fable 5.2
+at high remains available for read-only oracle consultation.
 Preserve explicit user model and effort choices. Use the [Claude launch command](claude/README.md)
 only when model selection is authorized; skill installation preserves
 the currently selected model and advisor.

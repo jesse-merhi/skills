@@ -37,3 +37,5 @@ On 2026-09-27, `implementer` and `investigator` moved from Fable 5.1 to `claude-
 On 2026-11-10, Claude Code 2.1.319 ran copies of `Explore.md` and `oracle.md` from a temporary project with `--setting-sources project --model claude-opus-5-5 --effort medium`. Streamed JSON showed one `Agent` call each for `Explore` and `oracle`; model usage listed parent `claude-opus-5-5`, `claude-haiku-5-5` for `Explore` and `claude-fable-5-2` for `oracle`. `Explore` located `computeTotal` at `src/math.js:1` and its caller. Claude Code printed `unrecognized_model` for `claude-fable-5-2` but the API served it. These runs prove model selection and simple delegation only.
 
 In the same project, the parent called `implementer` with the per-invocation `model: "sonnet"`. Model usage listed `claude-sonnet-5-5` for the child, which made the assigned `TypeError` change to `src/math.js` while the parent did not edit.
+
+With `omitClaudeMd: true`, a temporary project's `CLAUDE.md` held a codeword. Asked without tools whether its context mentioned one, `Explore` on `claude-haiku-5-5` answered `NONE`; the same run without the setting quoted the codeword from `CLAUDE.md`.
