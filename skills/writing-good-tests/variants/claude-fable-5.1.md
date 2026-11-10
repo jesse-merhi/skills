@@ -39,7 +39,7 @@ The [global policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#te
 
 When delegation helps, batch established checks or prepared acceptance flows for a fast executor model: Luna/high, or Haiku 5.5/high in Claude Code. Supply checkout/revision/dirty changes, ordered commands, expected results, environment, time limits and logs. Keep small checks local.
 
-Use `Agent` with `subagent_type: "test-executor"`, which selects Haiku 5.5/high and requires this skill. If unavailable, use a fresh `Agent` with `subagent_type: "general-purpose"`, `model: "claude-haiku-5-5"`, `effort: "high"` and this skill. Verify the actual model and effort; if unsupported, report the limit and run suitable checks locally. Do not change live configuration.
+Use `Agent` with `subagent_type: "test-executor"`, which selects Haiku 5.5/high and requires this skill. If unavailable, use a fresh `Agent` with `subagent_type: "general-purpose"`, `model: "haiku"`, `effort: "high"` and this skill. Verify the actual model and effort; if unsupported, report the limit and run suitable checks locally. Do not change live configuration.
 
 Check inputs before execution. E2E/Maestro remain manually triggered; external/paid jobs need existing authority. An executor stops at the first failure, timeout, changed input or ambiguity and returns command, status, relevant output and unrun checks. It does not retry, diagnose, repair, install or launch external/paid jobs. The coordinator handles diagnosis and authorized repair before more execution. Use `wait-efficiently` for prolonged runs and useful progress updates.
 

@@ -188,10 +188,11 @@ itself model generation.
   workers, approve, publish or take ownership of the workflow. The coordinator
   evaluates the advice and retains all decisions and delivery. Consultation adds
   no mandatory review or completion gate.
-  By default, `code-review` uses a council of GPT-6 Astra, Claude
-  Opus 5.5 and GPT-6.1 Sol, all at high, as three independent findings-only
-  reviewers. This exception changes neither coordinator ownership nor repair,
-  publication or approval authority; it does not make Astra an ordinary worker.
+  By default, `code-review` uses a council of GPT-6 Astra, Claude Fable 5.2,
+  Claude Opus 5.5 and GPT-6.1 Sol, all at high, as four independent
+  findings-only reviewers. This exception changes neither coordinator
+  ownership nor repair, publication or approval authority; it does not make
+  Astra an ordinary worker.
   The council membership takes precedence over harness default reviewer models.
 - Assign skill execution by the work, not by which model variants are installed.
   Use GPT-6.1 Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
@@ -343,6 +344,16 @@ Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
 completely. Resolve API questions against the exact installed package source;
 the v4 APIs used here include prerelease `effect/unstable/*` modules.
 
+## Browser work in T3 Code
+
+Apply this section when T3 Code's `preview_*` browser tools are present. The user has asked for browser work that needs them to happen in their Dia browser rather than T3's preview browser; treat this as their standing request to switch browsers for that work.
+
+- Use Dia when the task needs the user: signing in, passkeys or two-factor codes, their logged-in accounts, a CAPTCHA, or a flow they want to watch or take over.
+- In Dia, use the harness's own browser integration when it can reach Dia; otherwise use the `dia` MCP tools, which attach to the running Dia. If the integration fails, such as Codex's `browser access host is unavailable` under T3, switch to `dia` without retrying.
+- Keep `preview_*` for work that does not need the user, such as checking a local dev server or a public page.
+- Work in a new Dia tab and leave the user's other tabs alone. Leave passwords, passkeys, two-factor codes and payment confirmation to the user: stop at that step, say what to do in Dia, and continue after they confirm.
+- If `dia` cannot connect, ask the user to open Dia and approve its debugging prompt. Do not move the task to another browser or profile.
+
 ## Claude Code
 
 Apply this section only when running in Claude Code. Other harnesses use the
@@ -350,7 +361,7 @@ shared rules above and their own available tools.
 
 ### Browser work
 
-Use the available Claude Chrome integration for website interaction,
+In T3 Code, follow [Browser work in T3 Code](#browser-work-in-t3-code). Elsewhere, use the available Claude Chrome integration for website interaction,
 authenticated browser state, screenshots, and browser-driven validation.
 Select the intended tab from the integration's current state. If it is
 unavailable, report the missing capability; do not install another browser
@@ -362,10 +373,20 @@ browser sessions.
 
 ### Named workers
 
-Keep the normal main session as coordinator, using Claude Opus 5.5 at high by default with Fable 5.1 as its advisor when available. Use Opus 5.5 as the default subagent model and preserve explicit user model and effort overrides. Installing instructions does not change live model or advisor settings.
+Keep the normal main session as coordinator, using Claude Opus 5.5 at high by default without an advisor. Use the `oracle` role for a deliberate Fable opinion. Use Opus 5.5 as the default subagent model and preserve explicit user model and effort overrides. Installing instructions does not change live model or advisor settings.
 
-When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type` set to the role. They replace the shared GPT mapping in this harness: `"implementer"`, `"investigator"` and `"findings-reviewer"` default to Opus 5.5 at high; `"test-executor"` uses Haiku 5.5 at high for prepared validation only; `"oracle"` uses Fable 5.1 at high under the read-only consultation boundaries above. Apply the shared [launcher and override rules](#model-turns).
+When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type` set to the role. They replace the shared GPT mapping in this harness: `"implementer"`, `"investigator"` and `"findings-reviewer"` default to Opus 5.5 at high; `"test-executor"` uses Haiku 5.5 at high for prepared validation only; `"oracle"` uses Fable 5.2 at high under the read-only consultation boundaries above. `Explore` replaces Claude Code's built-in search agent and runs on Haiku 5.5 at high. Apply the shared [launcher and override rules](#model-turns).
 
-Use Haiku 5.5/high for straightforward tasks with a clear procedure and checkable result, such as locating a named definition, running prepared checks or making a small mechanical edit. Select it through a supported per-invocation `model` and `effort` override on the appropriate role; retain that role's scope and permissions. Use Opus for work requiring design decisions, substantive implementation, failure diagnosis or review, and when the task's difficulty is uncertain. A bounded assignment alone does not make it a Haiku task. If a Haiku assignment turns out to require such judgment, have it return evidence and let the coordinator reassign it to Opus. Give each worker the original task file or quote the relevant requirements exactly, and review against those original requirements.
+Use Haiku 5.5/high for straightforward tasks with a clear procedure and checkable result, such as running prepared checks or making a small mechanical edit; send codebase searches, including named-definition lookups, to `Explore`. Select it through a supported per-invocation `model` and `effort` override on the appropriate role; retain that role's scope and permissions. Use Sonnet 5.5/high for a well-specified implementation: a ticket or spec with clear acceptance criteria and no open design decisions, unless the work is hard despite its spec, such as a migration or performance work. Select it through a per-invocation `model` override on `implementer`, which keeps the role's effort. Use Opus for work requiring design decisions, implementation without a complete spec, failure diagnosis or review, and when the task's difficulty is uncertain. A bounded assignment alone does not make it a Haiku task. If a Haiku assignment turns out to require such judgment, have it return evidence and let the coordinator reassign it to Opus.
+
+When a worker falls short on work suited to its model, escalate in this order:
+
+1. Give it a check the work must pass, such as a test, build or script.
+2. Raise its effort one level.
+3. Move to the next larger model at an effort level below the one the smaller model last used.
+
+An Opus worker that still falls short returns its evidence to the coordinator, which may consult `oracle`.
+
+Give each worker the original task file or quote the relevant requirements exactly, and review against those original requirements.
 
 The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings.
