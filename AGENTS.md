@@ -81,7 +81,8 @@ review.
   reachable failures tied to the changed contract, nearest existing coverage,
   and what remains unproven. This adds no separate document or approval gate.
   Use `writing-good-tests` to choose proof, including when no new permanent
-  test is needed.
+  test is needed. When video would clarify the change, plan `show-video` here
+  and preserve useful baseline footage before editing.
 - Treat backward compatibility as the user's decision. If the preferred design
   requires breaking changes, explain why, what will break, and the migration
   path, then ask before proceeding. Do not add compatibility layers by default.

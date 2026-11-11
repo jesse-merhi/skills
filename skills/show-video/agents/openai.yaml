@@ -1,4 +1,4 @@
 interface:
   display_name: "Show video"
-  short_description: "Show UI, API and review fixes in video"
+  short_description: "Show UI, API and CLI changes in video"
   default_prompt: "Use $show-video to show what you changed in a short video, with an aligned A/B comparison where applicable."
