@@ -35,6 +35,10 @@ Assign review duties by the task, not by whether an agent is a subagent.
     observable effect.
 - Treat logs and test results as supporting evidence. Use the changed behavior
   itself as the primary proof.
+- Use [show-video](skills/show-video/SKILL.md) proactively when a short recording
+  would make an implemented UI, API or CLI behavior change easier to understand,
+  including review fixes. The coordinator or implementation owner captures it;
+  findings-only reviewers reuse supplied proof. Honor text-only requests.
 - Keep replies concise, concrete, and free of repetition while preserving
   necessary evidence and qualifications. Leave hashes, receipt paths and
   internal identifiers out of replies unless the reader needs them to act.
@@ -77,7 +81,8 @@ review.
   reachable failures tied to the changed contract, nearest existing coverage,
   and what remains unproven. This adds no separate document or approval gate.
   Use `writing-good-tests` to choose proof, including when no new permanent
-  test is needed.
+  test is needed. When video would clarify the change, plan `show-video` here
+  and preserve useful baseline footage before editing.
 - Treat backward compatibility as the user's decision. If the preferred design
   requires breaking changes, explain why, what will break, and the migration
   path, then ask before proceeding. Do not add compatibility layers by default.

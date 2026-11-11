@@ -23,6 +23,8 @@ Read [coding-standards](../coding-standards/SKILL.md) in Read expectations mode 
 
 Honor narrower requests. Findings-only means no edits; a single-review request runs only that assessment. For native review, use the harness's native command directly. Run [ClawSweeper](references/clawsweeper.md) only when separately requested. Report coverage limits. Findings-only reviewers perform their assigned assessment and return; they do not orchestrate this workflow.
 
+For demonstrable UI, API or CLI changes, plan [show-video](../show-video/SKILL.md) alongside the existing proof when a short recording would clarify the behavior. The coordinator or implementation owner preserves useful baseline footage before repairs and records the final result during validation. Reviewers reuse supplied evidence; they do not start capture or editing.
+
 ## 2. Simplify
 
 Give one implementation agent the target, requirements, owned files, repair authority and checks. Use the configured implementer when available. Run this pass even after implementation; if independent dispatch is unavailable, simplify locally and disclose it. Keep other writers off its files until integration.
@@ -91,5 +93,7 @@ Keep findings, decisions and proof with the task. A complete code-review has sim
 Report useful simplifications and net lines added/removed, then give a concise round-by-round account of what was reviewed, fixed and verified, including each finding’s severity, rounds with no fixes and why another round was or was not run. Show each reviewer’s stated confidence for each reviewed revision, its evidence basis and verification limits. Identify which fixes received subsequent review, the final target, unresolved disagreements and residual concerns. Never transfer an earlier confidence statement to later edits or describe unreviewed repairs as approved.
 
 Publication needs existing user or calling-workflow authority; this skill grants no automatic push, PR update or merge. Put the report in chat; include it in an existing PR description only when updating that PR is authorized. Do not post a prose PR comment. Preserve the caller’s readiness and sign-off gates.
+
+Include the resulting video in the delivery when it helps show implemented behavior or review fixes. Use show-video's baseline, editing and fallback guidance; reuse existing footage that still covers the final revision. A clean review or findings-only report does not by itself require a new recording. Video supports the review report and required tests; it does not replace them.
 
 Use [feedback-hardening](../feedback-hardening/SKILL.md) to decide whether observed workflow problems warrant separate work; it does not gate delivery.
