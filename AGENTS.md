@@ -356,7 +356,7 @@ Apply this section when T3 Code's `preview_*` browser tools are present. The use
 - Use Dia when the task needs the user: signing in, passkeys or two-factor codes, their logged-in accounts, a CAPTCHA, or a flow they want to watch or take over.
 - In Dia, use the harness's browser extension, which needs no per-connection approval:
   - Codex: its own browser integration.
-  - Claude Code: the Claude extension's tools. Under T3 they are `mcp__chrome__*`, because T3 starts Claude without `--chrome`; elsewhere they are `mcp__claude-in-chrome__*`. Read `anthropic-skills:chrome-browser` before the first call. The first visit to a site opens the extension's permission prompt in Dia; ask the user to click Allow, then retry.
+  - Claude Code: the Claude extension's tools. Under T3 they are `mcp__chrome__*`, because T3 starts Claude without `--chrome`; elsewhere they are `mcp__claude-in-chrome__*`. Read `anthropic-skills:chrome-browser` before the first call. If a site permission prompt appears in Dia, ask the user to click Allow, then retry; with the setup below it shouldn't appear.
 - Use the `dia` MCP tools only when the extension is unavailable. They attach to Dia's debugging port, and Dia asks the user to approve every new debugging connection. Keep one `dia` server for the whole session: never restart it, run a second copy, or reconnect it per task, because each new connection is another prompt.
 - Keep `preview_*` for work that does not need the user, such as checking a local dev server or a public page.
 - Work in a new Dia tab and leave the user's other tabs alone. Leave passwords, passkeys, two-factor codes and payment confirmation to the user: stop at that step, say what to do in Dia, and continue after they confirm.
@@ -367,10 +367,14 @@ Apply this section when T3 Code's `preview_*` browser tools are present. The use
 T3 starts Claude Code through the Agent SDK without `--chrome`, so a T3 session gets no extension tools even when `/chrome` is enabled. Register the extension's server for the Claude profile T3 uses. The name `claude-in-chrome` is reserved, so use `chrome`:
 
 ```sh
-CLAUDE_CONFIG_DIR=~/.claude_personal claude mcp add -s user chrome -- /opt/homebrew/bin/claude --claude-in-chrome-mcp
+CLAUDE_CONFIG_DIR=~/.claude_personal claude mcp add -s user chrome \
+  -e CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks \
+  -- /opt/homebrew/bin/claude --claude-in-chrome-mcp
 ```
 
 `--claude-in-chrome-mcp` is the internal flag that `--chrome` uses, so a Claude Code update may change it. Check with `claude mcp list` that `chrome` shows Connected.
+
+`CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks` is the extension's "Skip all approvals" mode, chosen by the user on 2026-11-13 so the extension stops asking before each new site. Without it (the default is `ask`), the first visit to each site waits for the user to click Allow in Dia. Even with it, the hard stops above still apply: passwords, passkeys, two-factor codes and payment stay with the user.
 
 The extension reaches Claude Code through `~/.claude/chrome/chrome-native-host`. Claude Code writes Homebrew's versioned path into it, such as `.../Caskroom/claude-code@latest/2.1.316/claude`. That path disappears on the next upgrade. Point the wrapper at `/opt/homebrew/bin/claude` instead, and recheck it after `/chrome` rewrites it.
 
