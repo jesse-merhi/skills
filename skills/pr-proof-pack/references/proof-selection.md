@@ -4,9 +4,9 @@ Start from the PR's main claim and select one or more pieces of evidence that le
 
 ## Comparisons
 
-Place the two outcomes next to each other and label them `Before <description of what happened before>` and `After <what happens now>`. Highlight the changed values or visible behavior.
+Show UI screenshots and short values side by side in a Markdown table with the headers `Before: <what happened before>` and `After: <what happens now>`. Give each compared state its own row, adding a first column that names the state when there are several. Highlight the changed values or visible behavior.
 
-Use text for a textual comparison and matched media for a visual comparison.
+Use text for a textual comparison and matched media for a visual comparison. Table cells cannot hold fenced blocks or rendered videos, so show multi-line output and recordings as separate blocks, each labeled with what it shows, such as `Before: <what happened before>`.
 
 ## Textual Evidence
 

@@ -12,6 +12,6 @@ proof-media cut raw.mov --keep 1-5.8 --keep 14.2-20 --output proof.mp4
 proof-media compare before.png after.png --output comparison.png
 ```
 
-Inspection provides metadata and timestamped frames to help choose cuts. Cuts preserve speed and audio unless `--drop-audio` is explicit. Comparisons require matching image dimensions; existing outputs are preserved.
+Inspection provides metadata and timestamped frames to help choose cuts. Cuts preserve speed and audio unless `--drop-audio` is explicit. Use `compare` only where a table cannot render, such as outside a PR body. Comparisons require matching image dimensions; existing outputs are preserved.
 
-Inspect the finished images and play the edited recording at normal speed. Choose side-by-side media or separate labeled captures according to which makes the differences easiest to see. Put them in the PR body with enough nearby context to understand and reproduce the result.
+Inspect the finished images and play the edited recording at normal speed. Put them in the PR body with enough nearby context to understand and reproduce the result.
