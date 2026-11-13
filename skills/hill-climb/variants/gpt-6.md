@@ -14,17 +14,17 @@ For model-judged UI design quality, use [code-review](../code-review/SKILL.md)'s
 
 Use the user's metric, target and budget, or state the ones you infer. Prefer a runnable check: a test suite, benchmark, size or token count, or an eval of recorded cases. Build cases from real failures where they exist, such as logs, bug reports or past agent sessions found with [session-recall](../session-recall/SKILL.md). Hold back some cases to catch overfitting. Record the command, inputs, environment and a baseline score with its revision.
 
-For a model-judged eval, run each case enough times to see its spread and judge by agreement across runs, not a single result.
+For an eval whose result varies between runs, run each case enough times to see its spread and judge by agreement across runs, not a single result.
 
 ## 2. Climb
 
-Make one coherent change at a time, rerun the eval and record the revision and score. Keep a change only when the score improves. Commit locally each time a target is met so a working checkpoint survives later attempts.
+Make one coherent change at a time, rerun the eval and record the revision and score. Keep a change only when the score improves, and commit each kept change locally so the last good state stays recoverable; when workers cannot commit, the coordinator does. Mark the commit that first meets the target as the checkpoint.
 
-Do not edit the eval, its cases, fixtures or thresholds during the climb without the user's agreement. Inspect each gain for special-casing of eval inputs and confirm it on the held-back cases.
+Do not edit the eval, its cases, fixtures or thresholds during the climb without the user's agreement. Inspect each gain for special-casing of eval inputs. Run the held-back cases only at the checkpoint and at the end, so they stay out of the selection signal.
 
 ## 3. Cut cost under the score
 
-When the user wants a cheaper result, such as shorter prompts or tool descriptions, fewer tokens, less data sent or faster runs, start from the committed checkpoint and cut while every run still meets the target.
+When the user wants a cheaper result, such as shorter prompts or tool descriptions, fewer tokens, less data sent or faster runs, start from the checkpoint and cut while the score still meets the target.
 
 ## 4. Stop and report
 

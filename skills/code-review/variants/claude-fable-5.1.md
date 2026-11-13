@@ -57,7 +57,7 @@ Every reviewer applies writing-good-tests to test additions, keepers and deletio
 
 Ask each reviewer to state its confidence in the reviewed result and fixes visible in that revision, with reasons tied to the evidence it inspected and what remains unverified. Preserve its wording and any supplied scale; if absent, report “not supplied.” Report confidence as the reviewer’s judgment. Do not treat it as proof, let it override supported findings, or invent or average scores.
 
-### UI hill climbing
+### Affected UI
 
 For affected UI, include visual and interaction assessment in these same council rounds. Before round one, establish product criteria from the user’s goal, affected journey and existing design system: task clarity, hierarchy, spacing, typography, accessibility, responsive behavior and relevant loading, empty and error states. Record which apply, the baseline screenshots and any available reference screenshots, with their provenance. If no reference exists, say so and use the product criteria; do not invent a reference or require a redesign.
 
@@ -67,17 +67,17 @@ Ask for concrete feedback tied to a screenshot region or observed interaction, t
 
 #### UI polish
 
-Use this mode when the user asks to polish the UI or names a design score to reach. It lifts the limit on taste-level refinement above; the round record, evidence and severity rules still apply.
+Use this mode when the user asks to polish the UI or names a score to reach. It lifts the limit on taste-level refinement above; the round record, evidence and severity rules still apply. Polish may restyle the affected or user-named screens but keeps their content. Without a pending change, round one scores the baseline, and the simplify pass covers the polish edits once they exist.
 
-Before round one, turn the applicable criteria into scoring categories, such as hierarchy, typography, spacing, colour and contrast, iconography and consistency. Use the user’s target and round limit; otherwise state that you are using the defaults of 9 out of 10 in every category and five rounds. Polish may restyle affected screens but keeps their content.
+Before round one, turn the applicable criteria into scoring categories, such as hierarchy, typography, spacing, colour and contrast, iconography and consistency. Use the user’s score target and round limit; otherwise the coordinator states that it is using the defaults of 9 out of 10 in every category and five rounds. Gating rounds count toward the limit.
 
-Useful references, when they exist, are the product’s strongest existing screen, design-system examples of the components in use, or public apps with the same layout pattern. Many products, internal tools especially, have no competitor; a climb against the baseline alone is valid.
+Useful references, when they exist, are the product’s strongest existing screen, design-system examples of the components in use, or public apps with the same layout pattern. Many products, internal tools especially, have no competitor; a climb against the baseline alone is valid, and the unchanged baseline then serves as the reference.
 
-Give reviewers the categories, a 1–10 scale and the captures, including references. Do not reveal the target or earlier scores. Each reviewer scores every category for the current revision and each reference, and ties every score below 10 to a screenshot region and a proposed change. References stay unchanged, so they expose scorer drift: when a reference’s score moves by more than half a point between rounds, judge progress by the gap between the current revision and the references rather than raw scores. Record scores as supplied; never average, round or invent them.
+Give reviewers the categories, a 1–10 scale and captures of the current revision and the references, including the baseline. Keep the score target and earlier scores out of everything reviewers receive, including the requirements. Each reviewer scores every category for each capture and ties every current-revision score below 10 to a screenshot region and a proposed change. References stay unchanged, so they expose scorer drift: when a member scores any reference category a point or more away from that member’s previous score, its raw scores that round cannot meet the target, and the coordinator judges its progress by the gap between the current revision and the references. Record scores as supplied; never average, round or invent them.
 
-Each round, select the supported proposals for the lowest-scoring categories. Watch for regressions that scores can miss, such as colour drained to greys, flattened contrast or lost product character, and record them as findings.
+Each round, select the supported proposals for the lowest-scoring categories. Watch for regressions that scores can miss, such as colour drained to greys, flattened contrast or lost product character. A confirmed regression against the baseline blocks finishing until it is fixed.
 
-To save cost, one gating member, usually the strictest scorer, may score each revision until it reaches the target; the full council then scores that same revision. Polish finishes when every member scores every category at or above the target on the same revision and step 4 finds no blocking issue. When the round limit comes first, stop and report the scores reached. When the user raises a met target, keep the met revision mergeable and propose stacking further polish under the `AGENTS.md` PR delivery rules. Report each member’s scores per category and round, references included, in one table.
+To save cost, one gating member, the lowest scorer in the latest full-council round when there is one, may score each revision and apply both review lenses to it until it reaches the target. The full council then scores that same revision; if any member falls short, gating resumes. The last round within the limit always goes to the full council. Polish finishes when every member scores every category at or above the score target on the same revision, no confirmed regression remains and step 4 finds no blocking issue. When the round limit comes first, report the scores reached as a partial result. When the user raises a met target, keep the met revision mergeable and propose stacking further polish under the `AGENTS.md` PR delivery rules. Report each member’s scores per category and round, references included, in one table.
 
 ## 4. Repeat rounds until only minor findings remain
 
@@ -97,7 +97,7 @@ After each round, fix blocking issues, minor issues with small fixes and selecte
 
 - **Run another round** when the round fixed a blocking issue, applied a selected UI improvement or made a fix that is not contained. The next round assesses the full resulting change under the same criteria; reviewers remain fresh and independent of prior reports.
 - **Finish** when the reviewed revision has no blocking findings and no trigger for another round applies. Report those fixes as coordinator fixes verified by checks; they need no further council review.
-- **Stop and ask the user** when rounds stop converging: fixes keep producing new blocking findings in the code they touched, the same blocking issue survives repeated repairs, or the coordinator cannot settle whether a finding is blocking from available evidence. Also stop when evidence, tools or authority are unavailable. Report the pattern, its evidence and the decision needed rather than running another round. Before stopping, you may consult the `oracle` role on whether the remaining findings block merging.
+- **Stop and ask the user** when rounds stop converging: fixes keep producing new blocking findings in the code they touched, the same blocking issue survives repeated repairs, or the coordinator cannot settle whether a finding is blocking from available evidence. Also stop when evidence, tools or authority are unavailable. Report the pattern, its evidence and the decision needed rather than running another round. Before stopping, the coordinator may consult the `oracle` role on whether the remaining findings block merging.
 
 A reviewer repeating a rejected finding without new evidence does not reopen it; record the disagreement in the report. A missing member or failed assessment cannot count as a clean result. Never carry approval or confidence from an earlier revision onto later edits.
 
