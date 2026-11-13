@@ -1,12 +1,13 @@
 ---
 name: code-review
-description: 'Simplify changes, then run a four-model council for code review and UI refinement until only minor findings remain.'
+description: 'Run the four-model council: simplify changes and review code and affected UI until only minor findings remain, or polish UI to a target score.'
 metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/engineering/code-review
   source-revision: c55ee46073ed923f86ce59a5eb3b6d895095d1b7
   sources: |
     - Council approach inspired by Theo’s [tstack council](https://github.com/t3dotgg/tstack/blob/1085050f3baed1ac724caa4a8166145fb2ac88af/skills/council/SKILL.md). This adaptation uses the user-selected reviewers and the round, evidence and authority rules below.
+    - UI polish mode informed by Theo’s [Agents Sucked At UI (Until Today)](https://www.youtube.com/watch?v=xq0eB8vxeqk), reviewed 2026-11-13.
 ---
 
 # Code review
@@ -43,7 +44,7 @@ Use four fresh findings-only reviewers: **GPT-6 Astra, Claude Fable 5.2, Claude 
 
 Resolve actual model and effort settings through the available launcher. In T3 Code, use `orchestrator_capabilities`, then `delegate_task` for the selected members with settings in `target.options`. Elsewhere, use native subagent tools only for models and settings they support. Prefer a configured findings-only role when its pinned model and effort match; a prompt cannot override a role’s settings. If a member or setting is unavailable, report which one and the resulting coverage gap. Do not silently substitute, count the coordinator as a member, or claim a complete council. Continue useful authorized work with available coverage; any change to membership needs the user’s decision.
 
-Dispatch every member’s assessment in parallel when supported, against the same stable commit or recorded patch. Give each reviewer the target, base, full diff, requirements, standards, reusable proof and both lenses below. Exclude implementation rationale, simplifier conclusions and prior findings; do not resume an implementer or previous reviewer. Reviewers may inspect callers and dependencies and run permitted read-only probes; they do not edit, spawn reviewers or manage repairs. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results.
+Dispatch every member’s assessment in parallel when supported, against the same stable commit or recorded patch. Give each reviewer the target, base, full diff, requirements, standards, reusable proof and both lenses below. Exclude implementation rationale, simplifier conclusions and prior findings; do not resume an implementer or previous reviewer. Reviewers may inspect callers and dependencies and run permitted read-only probes; they do not edit, spawn reviewers or manage repairs. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results. As each result arrives, check its findings against the reviewed revision while other members finish; keep that checkout unchanged until the round’s assessments are in.
 
 Record each reviewer’s actual model, effort, revision and evidence. Check the revision on return; changed code invalidates affected conclusions. A stale assessment cannot establish agreement on the current result. Disclose context contamination or unavailable independent dispatch.
 
@@ -54,7 +55,7 @@ Each reviewer assesses the change under both lenses and reports every supported 
 
 Every reviewer applies writing-good-tests to test additions, keepers and deletions. Findings include location, expected behavior, reachable trigger, consequence, evidence and a proposed severity under step 4, stating how likely the trigger is in supported use. Return unresolved concerns and verification limits, distinguishing source inspection from executed proof. An empty findings list is valid and does not prove coverage.
 
-Ask each reviewer to state its confidence in the reviewed result and fixes visible in that revision, with reasons tied to the evidence it inspected and what remains unverified. Preserve its wording and any supplied scale; if absent, report “not supplied.” Report confidence as the reviewer’s judgment. Do not treat it as proof, let it override supported findings, or invent or average scores.
+Ask each reviewer to state its confidence in the reviewed result and fixes visible in that revision, with reasons tied to the evidence it inspected and what remains unverified. Preserve its wording and any supplied scale; if absent, report “not supplied.” Report confidence as the reviewer’s judgment. Do not treat it as proof, let it override supported findings, or invent or average scores. UI polish supplies its own fixed scale.
 
 ### UI hill climbing
 
@@ -62,13 +63,25 @@ For affected UI, include visual and interaction assessment in these same council
 
 Keep criteria, comparison states and viewports fixed across rounds. Record any later user change explicitly. Have the implementation owner use [frontend-ui-validation](../frontend-ui-validation/SKILL.md) to capture the actual UI and exercise relevant interactions; reuse its revision, environment, capture paths and coverage notes. Give all reviewers that evidence. Missing browser access, captures or interaction proof is a visible limit; source inspection alone cannot establish visual improvement.
 
-Ask for concrete feedback tied to a screenshot region or observed interaction, the unmet criterion, its user impact, and a small proposed improvement. Separate observed defects from design judgment. Each applied improvement needs another council round, so the coordinator selects supported, in-scope improvements only when an unmet criterion has clear user impact and leaves taste-level refinements as minor. It preserves the product direction and functionality and captures comparable evidence after changes. Compare before and after against the same criteria, including regressions. No whole-product redesign, extra feature work or separate visual-review loop follows from this branch.
+Ask for concrete feedback tied to a screenshot region or observed interaction, the unmet criterion, its user impact, and a small proposed improvement. Separate observed defects from design judgment. Each applied improvement needs another council round, so the coordinator selects supported, in-scope improvements only when an unmet criterion has clear user impact and leaves taste-level refinements as minor. It preserves the product direction and functionality and captures comparable evidence after changes. Compare before and after against the same criteria, including regressions. Outside UI polish, no whole-product redesign, extra feature work or separate visual-review loop follows from this branch.
+
+#### UI polish
+
+Use this mode when the user asks to polish the UI or names a design score to reach. It lifts the limit on taste-level refinement above; the round record, evidence and severity rules still apply.
+
+Before round one, turn the applicable criteria into scoring categories, such as hierarchy, typography, spacing, colour and contrast, iconography and consistency. Use the user’s target and round limit; without them, aim for 9 out of 10 in every category, stop after five rounds and say so. Polish may restyle affected screens but keeps functionality, content and product direction, and adds no features.
+
+Capture the baseline and the current revision in the same states and viewports every round. Add reference screens when they exist: the product’s strongest existing screen, design-system examples of the components in use, or public apps with the same layout pattern. Many products, internal tools especially, have no competitor; a climb against the baseline alone is valid. Record each reference’s provenance.
+
+Give reviewers the categories, a 1–10 scale and the captures, including references. Do not reveal the target or earlier scores. Each reviewer scores every category for the current revision and each reference, and ties every score below 10 to a screenshot region and a proposed change. References stay unchanged, so they expose scorer drift: when a reference’s score moves by more than half a point between rounds, judge progress by the gap between the current revision and the references rather than raw scores. Record scores as supplied; never average, round or invent them.
+
+Each round, apply the supported proposals for the lowest-scoring categories, capture fresh evidence and start a new round. Watch for regressions that scores can miss, such as colour drained to greys, flattened contrast or lost product character, and record them as findings. To save cost, one gating member, usually the strictest scorer, may score each revision until it reaches the target; the full council then scores that same revision. Polish finishes when every member scores every category at or above the target on the same revision and step 4 finds no blocking issue. When the round limit comes first, stop and report the scores reached. When the user raises a met target, keep the met revision mergeable and propose stacking further polish under the `AGENTS.md` PR delivery rules. Report each member’s scores per category and round, references included, in one table.
 
 ## 4. Repeat rounds until only minor findings remain
 
 Keep one round record with the task: round number, reviewed revision, evidence, each reviewer’s findings and confidence, coordinator decisions and severities, fixes, checks and resulting revision. Each round assesses one stable revision of code and UI. Filling a missing member’s assessment on the same revision stays in that round; repeated dispatch failures remain a reported gap, not an automatic retry loop. Reuse the record across resumes, retries, code/UI work and Council entry points. Do not restart simplification between rounds.
 
-Keep every member’s assessment visible. Check concrete readability evidence before accepting a clean conclusion. Confirm bug findings through real callers and supported inputs, checking counterevidence; type-permitted or invented states are insufficient. Complexity findings need a present reading or change cost and a simpler behavior-preserving alternative. Resolve duplicate causes and disagreements from evidence; a supported minority finding still needs a disposition. Record accepted, rejected, deferred and unresolved items with reasons.
+Keep every member’s assessment visible. Check concrete readability evidence before accepting a clean conclusion. Confirm bug findings through real callers and supported inputs, checking counterevidence; type-permitted or invented states are insufficient. Complexity findings need a present reading or change cost and a simpler behavior-preserving alternative. Resolve duplicate causes and disagreements from evidence; a supported minority finding still needs a disposition. Record accepted, rejected, deferred and unresolved items with reasons. Keep the change to its requested scope: a finding whose fix adds unrequested behavior or options is not actionable unless it closes a blocking gap.
 
 The coordinator assigns each confirmed finding a severity, including findings it discovers itself, and treats a reviewer’s proposed severity as evidence:
 
@@ -82,7 +95,7 @@ After each round, fix blocking issues, minor issues with small fixes and selecte
 
 - **Run another round** when the round fixed a blocking issue, applied a selected UI improvement or made a fix that is not contained. The next round assesses the full resulting change under the same criteria; reviewers remain fresh and independent of prior reports.
 - **Finish** when the reviewed revision has no blocking findings and no trigger for another round applies. Report those fixes as coordinator fixes verified by checks; they need no further council review.
-- **Stop and ask the user** when rounds stop converging: fixes keep producing new blocking findings in the code they touched, the same blocking issue survives repeated repairs, or the coordinator cannot settle whether a finding is blocking from available evidence. Also stop when evidence, tools or authority are unavailable. Report the pattern, its evidence and the decision needed rather than running another round.
+- **Stop and ask the user** when rounds stop converging: fixes keep producing new blocking findings in the code they touched, the same blocking issue survives repeated repairs, or the coordinator cannot settle whether a finding is blocking from available evidence. Also stop when evidence, tools or authority are unavailable. Report the pattern, its evidence and the decision needed rather than running another round. Before stopping, you may ask the `oracle` role whether the remaining findings actually block merging; weigh its advice as evidence, not approval.
 
 A reviewer repeating a rejected finding without new evidence does not reopen it; record the disagreement in the report. A missing member or failed assessment cannot count as a clean result. Never carry approval or confidence from an earlier revision onto later edits.
 

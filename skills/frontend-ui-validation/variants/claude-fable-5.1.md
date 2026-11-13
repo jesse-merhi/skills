@@ -27,7 +27,7 @@ Follow [Native checks](references/native-expo.md) for the changed native flow.
 
 ## Keep evidence useful
 
-Record build or revision, local changes, environment, viewport or device, interaction, expected and observed results, and capture paths. Include failures and unavailable checks. Screenshots show appearance; recordings help show motion and interaction. Layout warnings and tests do not prove visual quality.
+Record build or revision, local changes, environment, viewport or device, interaction, expected and observed results, and capture paths. Include failures and unavailable checks. Screenshots show appearance; recordings help show motion and interaction. When a visual change is subtle, add an annotated before/after image that marks each changed region with a short label. Layout warnings and tests do not prove visual quality.
 
 Reuse those evidence paths and coverage notes in downstream tickets, reviews, and proof-pack work.
 
