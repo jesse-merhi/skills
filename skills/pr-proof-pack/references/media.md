@@ -14,4 +14,4 @@ proof-media compare before.png after.png --output comparison.png
 
 Inspection provides metadata and timestamped frames to help choose cuts. Cuts preserve speed and audio unless `--drop-audio` is explicit. Comparisons require matching image dimensions; existing outputs are preserved.
 
-Inspect the finished images and play the edited recording at normal speed. Choose side-by-side media or separate labeled captures according to which makes the differences easiest to see. Put them in the PR body with enough nearby context to understand and reproduce the result.
+Inspect the finished images and play the edited recording at normal speed. Place before and after screenshots side by side in the PR's comparison table, and each recording below it with its own label. Put them in the PR body with enough nearby context to understand and reproduce the result.

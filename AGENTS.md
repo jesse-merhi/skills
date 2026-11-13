@@ -284,6 +284,8 @@ itself model generation.
 - Work on a branch in a dedicated git worktree. Never push agent-authored
   feature or fix commits directly to the default branch. When publication is
   authorized, push the work to its feature branch and deliver it through a PR.
+  After pushing finished work to a PR, use `pr-proof-pack` to bring its
+  description and proof up to date.
 - Treat publication as a separate authority from local implementation. A
   request to fix or review authorizes local edits and validation. Push when
   the user explicitly asks to push after the fix, publish, ship, or update the PR,

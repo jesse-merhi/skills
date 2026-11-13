@@ -1,6 +1,6 @@
 ---
 name: pr-proof-pack
-description: 'Check or update PR descriptions and proof.'
+description: 'Check or update PR descriptions and proof; use after pushing finished work to a PR.'
 ---
 
 # PR proof pack

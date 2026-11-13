@@ -13,11 +13,11 @@ Use this template as a starting point. Adapt the headings and detail to the chan
 
 <Place any useful explanation diagram before the practical evidence.>
 
-**Before <what happened before>**
-<Evidence showing the previous behavior.>
+| Before: <what happened before> | After: <what happens now> |
+| --- | --- |
+| ![Before: <state>](./before.png) | ![After: <state>](./after.png) |
 
-**After <what happens now>**
-<Comparable evidence making the change obvious.>
+<Multi-line output or recordings that cannot sit in a table cell, each labeled Before or After.>
 
 <Keep consequential limitations and necessary rollout actions visible here.>
 

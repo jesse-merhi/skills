@@ -9,10 +9,12 @@ gh pr view <PR-URL> --json url,title,body,author,baseRefOid,headRefOid
 
 ## Upload
 
-Write the intended description to a local Markdown file. Reference images where they belong; put each video alone in its paragraph:
+Write the intended description to a local Markdown file. Reference images where they belong, including inside comparison table cells; put each video alone in its paragraph:
 
 ```md
-![Before: filters reset](./before.png)
+| Before: filters reset | After: filters persist |
+| --- | --- |
+| ![Before: filters reset](./before.png) | ![After: filters persist](./after.png) |
 
 ![](./after.mp4)
 ```
@@ -20,9 +22,9 @@ Write the intended description to a local Markdown file. Reference images where 
 Run from the directory containing those relative paths. For uploads, preserve a checkpoint using the exact asset paths written in the draft:
 
 ```sh
-proof-publication prepare --pr <PR-URL> --body draft.md --asset ./before.png --asset ./after.mp4 --state <NEW-DIRECTORY>
+proof-publication prepare --pr <PR-URL> --body draft.md --asset ./before.png --asset ./after.png --asset ./after.mp4 --state <NEW-DIRECTORY>
 proof-publication check --state <DIRECTORY>
-gh pr edit <PR-URL> --body-file draft.md --attach ./before.png --attach ./after.mp4
+gh pr edit <PR-URL> --body-file draft.md --attach ./before.png --attach ./after.png --attach ./after.mp4
 ```
 
 Run `check` immediately before the edit; reconcile any drift first. The checkpoint does not track the base commit, so include that in the PR metadata recheck. Add `--title` when the title needs changing. For text-only updates, use `gh pr edit --body-file` without attachment flags.
