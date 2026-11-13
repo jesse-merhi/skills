@@ -8,7 +8,7 @@ metadata:
 
 # Hill climb
 
-Improve a result against a fixed measure. For model-judged UI design quality, use [code-review](../code-review/SKILL.md)'s UI polish mode instead.
+For model-judged UI design quality, use [code-review](../code-review/SKILL.md)'s UI polish mode instead.
 
 ## 1. Fix the eval
 
@@ -18,7 +18,7 @@ For a model-judged eval, run each case enough times to see its spread and judge 
 
 ## 2. Climb
 
-Make one coherent change at a time, rerun the eval and record the revision and score. Keep a change only when the score improves, or holds while the metric being cut improves; revert regressions. Commit locally each time a target is met so a working checkpoint survives later attempts.
+Make one coherent change at a time, rerun the eval and record the revision and score. Keep a change only when the score improves. Commit locally each time a target is met so a working checkpoint survives later attempts.
 
 Do not edit the eval, its cases, fixtures or thresholds during the climb without the user's agreement. Inspect each gain for special-casing of eval inputs and confirm it on the held-back cases.
 
@@ -28,4 +28,4 @@ When the user wants a cheaper result, such as shorter prompts or tool descriptio
 
 ## 4. Stop and report
 
-Stop when the target is met, the budget or iteration limit is reached, or several consecutive changes fail to improve the score. Report baseline, checkpoint and final scores in a table, what changed, the held-back result and where the eval lives. Use [writing-good-tests](../writing-good-tests/SKILL.md) to decide whether the eval becomes permanent coverage.
+Stop when the target is met and any requested cost cutting is done, the budget or iteration limit is reached, or several consecutive changes fail to improve the score. Report baseline, checkpoint and final scores in a table, what changed, the held-back result and where the eval lives. Use [writing-good-tests](../writing-good-tests/SKILL.md) to decide whether the eval becomes permanent coverage.
