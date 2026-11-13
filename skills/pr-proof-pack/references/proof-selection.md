@@ -6,7 +6,7 @@ Start from the PR's main claim and select one or more pieces of evidence that le
 
 Put the two outcomes side by side in a Markdown table with the headers `Before: <what happened before>` and `After: <what happens now>`. Give each compared state its own row, adding a first column that names the state when there are several. Highlight the changed values or visible behavior.
 
-Use text for a textual comparison and matched media for a visual comparison. For UI, put matched before and after screenshots in the cells. Table cells cannot hold fenced blocks or rendered videos, so place multi-line output and recordings directly under the table with their own Before and After labels.
+Use text for a textual comparison and matched media for a visual comparison. For UI, put matched before and after screenshots in the cells. Table cells cannot hold fenced blocks or rendered videos, so place multi-line output and recordings directly under the table, each labeled Before or After.
 
 ## Textual Evidence
 

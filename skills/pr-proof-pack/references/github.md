@@ -16,6 +16,8 @@ Write the intended description to a local Markdown file. Reference images where 
 | --- | --- |
 | ![Before: filters reset](./before.png) | ![After: filters persist](./after.png) |
 
+**After: filters persist after reload**
+
 ![](./after.mp4)
 ```
 
