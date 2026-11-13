@@ -145,12 +145,12 @@ Two ways one gets used:
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
   "use `grilling` on this" in either harness. Codex marks nine skills as
-  explicit-only: `ask-claude`, `ask-codex`, `code-review`, `council`,
+  explicit-only: `ask-claude`, `ask-codex`, `code-review`, `hill-climb`,
   `html-explanations`, `just-do-it`, `pr-burndown`, `to-spec`, and `to-tickets`. They can review and fix code, operate desktop UI,
   write durable planning files, or run a long external loop, so Codex waits for
   you to name them.
 
-`code-review` owns the council workflow in one prompt; `council` is its discoverable entry point for code review and UI hill climbing. Model-writing guidance and installer scripts live under `writing-for-agents`.
+`code-review` owns the council workflow, including UI polish, in one prompt. Model-writing guidance and installer scripts live under `writing-for-agents`.
 
 `coding-standards` brings personal engineering standards to a repository
 without turning every judgment call into a linter. `apply` prefers existing
@@ -211,8 +211,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
 | [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and Jesse's 👍 before each queue submission. |
-| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then runs the four-model council for code and affected UI until only minor findings remain, reporting fixes, evidence and reviewer confidence. |
-| [`council`](skills/council/SKILL.md) | Explicit entry point to code-review’s council and UI hill climbing; shares its workflow and round record. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then runs the four-model council for code and affected UI until only minor findings remain, or polishes UI until every reviewer scores it at a target, reporting fixes, evidence and reviewer confidence. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | After finished work is pushed to a PR, checks and refreshes reviewer-visible proof, with before/after tables for UI; never on local commits. |
 
 ### Code quality and correctness
@@ -223,6 +222,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
+| [`hill-climb`](skills/hill-climb/SKILL.md) | Iterates against a fixed eval to a target score, keeping checkpoints, then optionally cuts cost while holding the score. |
 
 ### Planning, context, and handoff
 

@@ -25,7 +25,7 @@ name = "code-review"
 enabled = false
 
 [[skills.config]]
-name = "council"
+name = "hill-climb"
 enabled = false
 
 [[skills.config]]

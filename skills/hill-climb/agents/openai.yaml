@@ -1,0 +1,7 @@
+interface:
+  display_name: "Hill Climb"
+  short_description: "Iterate against a fixed eval to a target score."
+  default_prompt: "Use $hill-climb to improve this against a fixed eval until it reaches the target score, then report the score history."
+
+policy:
+  allow_implicit_invocation: false

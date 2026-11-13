@@ -1,6 +1,6 @@
 ---
 name: oracle
-description: Advise on a bounded unresolved decision using read-only evidence.
+description: Advise on a bounded unresolved decision using read-only evidence, such as whether stalled work is already good enough to merge, a fresh audit of another agent's diagnosis, or distinct options when proposals look alike.
 model: claude-fable-5-2
 effort: high
 tools: Read, Glob, Grep, Bash, Skill, WebFetch, WebSearch

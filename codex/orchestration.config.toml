@@ -24,5 +24,5 @@ description = "Independent findings-only Sol reviewer. Not a coordinator or an u
 config_file = "orchestration/findings-reviewer.toml"
 
 [agents.oracle]
-description = "Optional read-only Astra consultation on a bounded unresolved decision; return evidence and advice to the coordinator."
+description = "Optional read-only Astra consultation on a bounded unresolved decision, such as whether stalled work is already good enough to merge, a fresh audit of another agent's diagnosis, or distinct options when proposals look alike; return evidence and advice to the coordinator."
 config_file = "orchestration/oracle.toml"

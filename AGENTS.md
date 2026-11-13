@@ -369,7 +369,7 @@ Apply this section when T3 Code's `preview_*` browser tools are present. The use
 T3 starts Claude Code through the Agent SDK without `--chrome`, so a T3 session gets no extension tools even when `/chrome` is enabled. Register the extension's server for the Claude profile T3 uses. The name `claude-in-chrome` is reserved, so use `chrome`:
 
 ```sh
-CLAUDE_CONFIG_DIR=~/.claude_personal claude mcp add -s user chrome \
+CLAUDE_CONFIG_DIR=~/.claude-second claude mcp add -s user chrome \
   -e CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks \
   -- /opt/homebrew/bin/claude --claude-in-chrome-mcp
 ```
