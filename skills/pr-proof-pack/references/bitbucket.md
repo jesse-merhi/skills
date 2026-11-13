@@ -19,7 +19,7 @@ twg bb pull-requests update --pull-request <PR-ID> \
   --workspace <WORKSPACE> --repo <REPO> -o json
 ```
 
-Repeat each image/name pair for more images; add `--title` if needed. A placeholder is replaced only when it is alone on its line, so for a comparison table, upload with each placeholder on its own line under the table, then move the returned hosted image references into the cells with a text-only update. Use unique names: Bitbucket Downloads replaces an existing artifact with the same name. For text-only changes, omit the images and placeholders.
+Repeat each image/name pair for more images; add `--title` if needed. A placeholder is replaced only when it is alone on its line, so for a comparison table, upload with each placeholder on its own line under the table, then read the PR again, move its hosted image references into the cells with a text-only update, and verify that final description. Use unique names: Bitbucket Downloads replaces an existing artifact with the same name. For text-only changes, omit the images and placeholders.
 
 This upload path supports PNG, JPEG, GIF, and WebP, not video. If motion is essential, explain the unsupported format rather than treating stills as equivalent proof. If a command fails, inspect its error and current `--help` before retrying.
 

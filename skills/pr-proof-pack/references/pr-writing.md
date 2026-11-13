@@ -13,6 +13,8 @@ Use this template as a starting point. Adapt the headings and detail to the chan
 
 <Place any useful explanation diagram before the practical evidence.>
 
+<For UI screenshots or short values:>
+
 | Before: <what happened before> | After: <what happens now> |
 | --- | --- |
 | <Screenshot or short value showing the previous behavior.> | <Comparable evidence making the change obvious.> |
