@@ -15,9 +15,9 @@ Use this template as a starting point. Adapt the headings and detail to the chan
 
 | Before: <what happened before> | After: <what happens now> |
 | --- | --- |
-| ![Before: <state>](./before.png) | ![After: <state>](./after.png) |
+| <Screenshot or short value showing the previous behavior.> | <Comparable evidence making the change obvious.> |
 
-<Multi-line output or recordings that cannot sit in a table cell, each labeled Before or After.>
+<Multi-line output or recordings that cannot sit in a table cell, each labeled with what it shows.>
 
 <Keep consequential limitations and necessary rollout actions visible here.>
 
