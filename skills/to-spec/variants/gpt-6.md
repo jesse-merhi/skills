@@ -14,7 +14,7 @@ Record the behavior to prove, nearest existing integration coverage and remainin
 
 Resolve routine implementation details from that evidence. Record consequential unsettled decisions as open questions rather than guessing them.
 
-Use one PR for a cohesive change. Prefer a stack for dependent parts and separate PRs for independent work. Confirm a proposed stack with the user before publishing. Use the installed `gh stack` tool to deliver it; run `gh stack --help` to discover its commands.
+Use one PR for a cohesive change, a stack for dependent parts and separate PRs for independent work, and record the choice in the spec. Deliver a stack with the installed `gh stack` tool; run `gh stack --help` to discover its commands.
 
 Write and name the Obsidian spec. If the vault, path or write access is unavailable, stop and tell the user.
 

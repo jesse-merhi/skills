@@ -22,11 +22,11 @@ Tickets organize implementation; PR groups organize review. A ticket need not ma
 4. Use a stack only when two or more review groups form a strict linear dependency path. Put foundations at the bottom and consumers above.
 5. Use standalone PRs or separate stacks for independent or forked paths.
 
-Name an independently acceptable outcome for each review group. Split or reorder groups that are too broad or cannot stay green against their direct base before asking for approval.
+Name an independently acceptable outcome for each review group. Split or reorder groups that are too broad or cannot stay green against their direct base.
 
-Show the tickets and PR groups for approval before writing. Use the installed `gh stack` tool to deliver an approved stack; run `gh stack --help` to discover its commands.
+Deliver a stack with the installed `gh stack` tool; run `gh stack --help` to discover its commands.
 
-Write approved notes under `Issues/YYYY-MM-DD-short-outcome.md`, or the vault's existing spec-specific folder. Each ticket should explain its scope, prerequisites, needed work, and how to verify the outcome.
+Write the notes under `Issues/YYYY-MM-DD-short-outcome.md`, or the vault's existing spec-specific folder. Each ticket should explain its scope, prerequisites, needed work, and how to verify the outcome. Then show Jesse the tickets and PR groups so he can look them over.
 
 Without write access, return the Markdown bodies and proposed paths. Do not alter or close the parent spec unless asked.
 
@@ -35,4 +35,4 @@ For UI tickets, apply [Ticket design](references/ticket-design.md). Reuse existi
 ## References
 
 - [Ticket design](references/ticket-design.md): Read to understand how to make the tickets.
-- [Note template](references/note-template.md): Use when writing approved notes.
+- [Note template](references/note-template.md): Use when writing the notes.

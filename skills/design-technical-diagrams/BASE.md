@@ -15,7 +15,7 @@ skill-render-diagram flow.dot --output-dir <new-directory> --width 960
 
 The helper sizes and routes the graph, writes SVG, HTML preview, and source, and rejects undersized labels. Use `--direction LR` for left-to-right flow. An existing Mermaid or project-native renderer also works.
 
-Use short labels, real ownership or phase groups, connector space, and restrained product colours. For crowded graphs, change direction, shorten labels, or split by reader question rather than shrinking everything. Ask before expanding scope to multiple diagrams.
+Use short labels, real ownership or phase groups, connector space, and restrained product colours. For crowded graphs, change direction, shorten labels, or split by reader question rather than shrinking everything; say so when you deliver more than one diagram.
 
 Inspect the export at destination width for readable labels, clipping, overlap, arrow direction, crossings, and an obvious main path. Check requested narrow layouts separately. Fix and inspect until no issues remain.
 
