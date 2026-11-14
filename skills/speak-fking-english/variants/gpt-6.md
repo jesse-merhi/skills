@@ -1,6 +1,6 @@
 ---
 name: speak-fking-english
-description: 'Improve substantial writing, requested rewrites, or unclear explanations with concise, concrete language.'
+description: 'Improve substantial writing, requested rewrites, unclear explanations, or AI-sounding prose with concise, concrete language.'
 metadata:
   sources: |
     - adapted from [skills/productivity/wait-what](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/wait-what) — recorded upstream review.
@@ -31,5 +31,17 @@ Show useful proof beside a claim about changed behavior: an actual capture, repr
 Give routine passing checks at most one short sentence in the main reply, unless more detail is requested or required by the delivery workflow. Keep failures, missing proof, uncertainty, consequential risks and necessary rollout actions visible. Brevity must not make unfinished work sound complete or change meaning.
 
 Use short connected paragraphs by default. Use lists for items that are easier to compare or follow in order. Problem/Fix labels and headings are optional; a simple answer may need one sentence. Preserve requested depth when the task needs it.
+
+## Cut AI padding
+
+When rewriting prose, change the supplied text, not identifiers, APIs or unrelated code, and match the reader and voice.
+
+- Replace grand claims, vague metaphors and decorative flourish with the specific event, mechanism or consequence; remove unsupported claims rather than inventing facts.
+- Cut promotional adjectives, empty importance claims, generic conclusions, greetings and praise.
+- Remove repeated ideas, synonym cycling and forced patterns such as needless three-part lists, “not just X, but Y,” or “X, not Y” against an alternative nobody raised. Replace invented compound labels with plain words.
+- Name the actor and action. Name the source and what it supports rather than saying “experts say.” Keep real uncertainty without stacked hedges.
+- Keep useful formatting, personality and opinions; remove decorative emphasis, not punctuation on principle.
+
+Preserve facts, scope, qualifications, evidence and next actions. Keep quotations, code, logs, commands, proper names and bug-significant characters exact. Invent no measurements, sources or experience.
 
 Read the opening on its own: can the reader tell what happened without knowing the code? Replace words they would have to decode, then remove sentences that add no useful information. Return the finished writing, not an edit log.

@@ -8,14 +8,9 @@
       "reviewedCommit": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "mappings": [
         {
-          "localSkill": "grill-with-docs",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/engineering/grill-with-docs"]
-        },
-        {
           "localSkill": "grilling",
           "relationship": "adapted",
-          "upstreamPaths": ["skills/productivity/grilling"]
+          "upstreamPaths": ["skills/productivity/grilling", "skills/engineering/grill-with-docs"]
         },
         {
           "localSkill": "handoff",
@@ -31,16 +26,6 @@
           "localSkill": "writing-good-tests",
           "relationship": "adapted",
           "upstreamPaths": ["skills/engineering/tdd"]
-        },
-        {
-          "localSkill": "to-spec",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/engineering/to-spec"]
-        },
-        {
-          "localSkill": "to-tickets",
-          "relationship": "adapted",
-          "upstreamPaths": ["skills/engineering/to-tickets"]
         },
         {
           "localSkill": "writing-for-agents",
@@ -103,11 +88,6 @@
       "mappings": [
         {
           "localSkill": "speak-fking-english",
-          "relationship": "adapted",
-          "upstreamPaths": ["pstack/skills/unslop"]
-        },
-        {
-          "localSkill": "de-slop",
           "relationship": "adapted",
           "upstreamPaths": ["pstack/skills/unslop"]
         },

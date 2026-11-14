@@ -58,7 +58,7 @@ Prefer repository-owned or dependency-owned solutions over custom infrastructure
 - Stop on the first test error. Diagnose before rerunning; never rerun to see whether it passes the second time.
 - Keep test cleanup tied to the changed behavior. Touching a test file doesn't require reorganizing it.
 - Validate skill instructions through independent agent exercises and review, not deterministic tests of prose, headings, links or wording. Keep deterministic tests for executable scripts and machine-readable contracts. Don't write tests for linters; `validate:effect` runs them on the repository.
-- During code review, apply `reducing-cognitive-load` to the diff and to every proposed fix, and compare new custom infrastructure with existing repository, runtime and dependency features.
+- During code review, apply code-review's readability rules to the diff and to every proposed fix, and compare new custom infrastructure with existing repository, runtime and dependency features.
 - Before repairing a review finding, meet code-review's evidence requirements. A reproduction through the real application with realistic local fixtures qualifies; a type-permitted or invented unreachable state doesn't. Gathering evidence never justifies production access or causing an incident.
 
 ## Model turns

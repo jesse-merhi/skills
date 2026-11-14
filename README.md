@@ -220,7 +220,6 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, temporary checks for investigation, and permanent unit tests only by exception. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
-| [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
 | [`hill-climb`](skills/hill-climb/SKILL.md) | Iterates against a fixed eval to a target score, keeping checkpoints, then optionally cuts cost while holding the score. |
 
@@ -251,7 +250,6 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | Skill | What it does |
 | --- | --- |
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Makes replies concise and easy to understand. |
-| [`de-slop`](skills/de-slop/SKILL.md) | Rewrites prose to remove AI-like padding while preserving its meaning and voice. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 | [`show-video`](skills/show-video/SKILL.md) | Shows UI, API and CLI changes in video, including review fixes, with aligned A/B comparisons when useful. |
 
@@ -261,8 +259,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`writing-for-agents`](skills/writing-for-agents/SKILL.md) | How to write skills, `AGENTS.md`, and `CLAUDE.md` so the instruction actually changes behaviour. Read this before adding a skill. |
 | [`skill-cleaner`](skills/skill-cleaner/SKILL.md) | Audits installed skill roots for duplicates, unused skills, and prompt-budget pressure, with safety checks before deleting. |
-| [`cleanup`](skills/cleanup/SKILL.md) | Discovers and removes the complete local footprint of finished or abandoned work while preserving saved work and shared infrastructure. |
-| [`cleanup-and-archive`](skills/cleanup-and-archive/SKILL.md) | Runs cleanup, verifies the result, then archives the session through its host. |
+| [`cleanup`](skills/cleanup/SKILL.md) | Discovers and removes the complete local footprint of finished or abandoned work while preserving saved work and shared infrastructure, then archives the session when asked. |
 | [`wait-efficiently`](skills/wait-efficiently/SKILL.md) | Waits on commands, CI, and subagents through native event-driven mechanisms instead of burning tokens on heartbeats. |
 
 ### OpenClaw and ClawHub
