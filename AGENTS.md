@@ -1,418 +1,129 @@
 # Global agent instructions
 
-This file owns the instructions for every coding harness (Claude Code, Codex,
-opencode, Pi). Keep shared rules here and scope harness-specific rules to their
-named harness. Edit instructions here.
-
-## Review responsibilities
-
-Assign review duties by the task, not by whether an agent is a subagent.
-
-- The coordinator owns integration, findings decisions, approval requests,
-  authorized fixes, validation, commits, publication, handoffs and the final
-  report. An agent assigned the whole workflow is a coordinator; a simplifier
-  owns its assigned edits; a findings-only reviewer inspects and reports.
-- Give fresh reviewers the target, requirements, neutral assignment and available
-  proof without implementation rationale or prior findings. Use a configured
-  findings-only role when available and retain the applicable domain lenses below.
-- Reviewers return supported findings, evidence, unresolved concerns and
-  verification limits. They do not edit, manage repairs, publish or run handoff
-  workflows. The coordinator confirms findings under code-review's evidence
-  requirements and resolves their priority and disposition.
-- Reading a skill does not expand the assignment or authorize its workflow.
-  Safety, security, permission boundaries, and applicable repository constraints
-  remain binding on every agent; role instructions are not a sandbox.
+These instructions apply to every coding harness (Claude Code, Codex, opencode, Pi). Harness-specific rules sit under their harness's heading. Edit instructions here.
 
 ## Communication
 
-- Lead with the outcome, then explain what changed and why.
-- When explaining code, show a focused example and the output or behavior it
-  produces.
-- For completed work, show proof where a person experiences the change:
-  - UI: the rendered interface and relevant interaction.
-  - Terminal: the command, output, and user flow.
-  - Code or infrastructure: the important flow before and after, plus its
-    observable effect.
-- Treat logs and test results as supporting evidence. Use the changed behavior
-  itself as the primary proof.
-- Use [show-video](skills/show-video/SKILL.md) proactively when a short recording
-  would make an implemented UI, API or CLI behavior change easier to understand,
-  including review fixes. The coordinator or implementation owner captures it;
-  findings-only reviewers reuse supplied proof. Honor text-only requests.
-- Keep replies concise, concrete, and free of repetition while preserving
-  necessary evidence and qualifications. Leave hashes, receipt paths and
-  internal identifiers out of replies unless the reader needs them to act.
-  Use `speak-fking-english` for substantial writing, requested rewrites,
-  unclear explanations, or when a delivery workflow requires it; routine short
-  replies need no extra skill read.
-- When user input is genuinely required, use the harness's native structured
-  question UI when it is available, including outside planning-only modes. Do
-  not ask questions when repository evidence, safe investigation, or a
-  reasonable low-risk assumption can resolve the uncertainty.
-- When asking questions, use a synchronous tool that waits for the user's reply. In Codex, use `request_user_input` where available and permitted; do not use `request_user_input_async`. If no suitable synchronous tool is available, ask in the final response and wait for the user's reply. This preference avoids missed async-question notifications; it does not require asking about routine choices.
-- Before closing a substantive task, after a user correction, and before
-  reporting a blocked workflow, assess whether `feedback-hardening` is useful.
-  Apply this judgment after every code review, including clean reviews; these
-  events do not automatically require a separate task. The coordinator owns
-  the decision and any handoff; findings-only reviewers send observations in
-  their existing report. Follow the skill for the decision, handoff, repair
-  authority and completion.
+- Lead with the outcome, then explain what changed and why. When explaining code, show a focused example and what it does.
+- Show proof where a person experiences the change: the rendered UI and interaction, the terminal command and output, or the important flow before and after. Logs and test results support that proof; they don't replace it.
+- Use [show-video](skills/show-video/SKILL.md) when a short recording would make a UI, API or CLI change easier to judge, including review fixes. Honor text-only requests.
+- Keep replies concise and concrete. Leave out hashes, receipt paths and internal identifiers unless the reader needs them. Use `speak-fking-english` for substantial writing, requested rewrites or unclear explanations.
+- Ask only when evidence, safe investigation or a reasonable low-risk assumption can't settle the question. Use the harness's synchronous question tool when it has one. In Codex, that is `request_user_input`, not `request_user_input_async`. Otherwise, ask in the final response.
+- After a user correction or a blocked workflow, consider whether `feedback-hardening` would help.
+
+## Check-ins
+
+Jesse reviews work by looking at it, not by clicking gates. When something below needs his decision, check in: say what to look at (PR or file link, what changed, the proof, open concerns) and what you plan to do next, with your recommendation. Keep going with work that doesn't depend on the answer. Proceed when he says yes in chat. A 👍 on the PR also counts, but don't poll for one or ask him to add it.
+
+Check in before:
+
+- merging or submitting to a merge queue;
+- adding, replacing or upgrading a dependency (explain the package, why it's needed and its maintenance, security, licensing, runtime and bundle-size trade-offs);
+- a breaking change (explain what breaks and the migration path) or a stopgap meant to be replaced later (explain the durable alternative);
+- anything destructive or hard to undo: deleting data, unique commits or stashes, force-pushing, or changing files outside the task's repository;
+- publishing work the task didn't ask to publish (see Working rules);
+- paid services, or manually triggered CI runs the task didn't already authorize;
+- posting anything on GitHub or elsewhere in Jesse's name.
+
+Everything else, such as PR shape, stack layout, ticket breakdowns and routine design choices, is yours: state the choice in your update and proceed. Passwords, passkeys, two-factor codes and payment confirmation always stay with Jesse.
 
 ## Coding standards
 
-Before implementing or reviewing code, read `coding-standards` in its
-**Read expectations** mode. Use the standards source supplied in the task;
-otherwise, when working in this skills repository, use its local
-`skills/coding-standards/SKILL.md`, and use the installed skill in other
-projects. Follow its applicable principles and the project's recorded
-exceptions. That skill owns the standards and the assessment required in
-review.
+Before implementing or reviewing code, read `coding-standards` in its **Read expectations** mode: the source supplied in the task, else this repository's `skills/coding-standards/SKILL.md` when working here, else the installed skill. Follow its principles and the project's recorded exceptions.
 
 ## Implementation design
 
-- Start with the requested outcome, the changed behavior and its owner. Read
-  callers, dependencies, tests, docs and history as needed to establish the
-  affected contract and resolve uncertainty. Trace complete flows when a change
-  crosses ownership, lifecycle, security or data boundaries; a local text edit
-  does not require the same investigation.
-- Before implementing changed behavior, the execution owner records a brief
-  proof sketch in the current task context, using existing notes when available:
-  the intended caller-visible result,
-  reachable failures tied to the changed contract, nearest existing coverage,
-  and what remains unproven. This adds no separate document or approval gate.
-  Use `writing-good-tests` to choose proof, including when no new permanent
-  test is needed. When video would clarify the change, plan `show-video` here
-  and preserve useful baseline footage before editing.
-- Treat backward compatibility as the user's decision. If the preferred design
-  requires breaking changes, explain why, what will break, and the migration
-  path, then ask before proceeding. Do not add compatibility layers by default.
-- Choose the simplest implementation that fully meets the current requirements.
-  Avoid speculative abstractions, configuration, and indirection.
-- Keep the diff as small as the requirement allows. Before review, remove code,
-  tests and documentation the requirement does not need, and report the net
-  lines added and removed with the result.
-- Grow the system in layers. Start from the smallest version that works end to
-  end, and add each new capability on top of a product that already works.
-  Never trade a working product for unfinished complexity.
-- Keep components modular and concerns clearly separated.
-- Make architectural decisions for the long term. Do not implement a stopgap
-  intended to be replaced later without the user's explicit approval. Explain
-  the durable alternative and why the stopgap is necessary.
-- Before creating or changing agent instructions, use `writing-for-agents`
-  to select the applicable authoring guidance. For skill changes, read the
-  skill's `BASE.md` first and keep shared behaviour there, then adapt every
-  supported profile complete; a profile may cover a model family. Variant files
-  or shared-content links record coverage.
+- Start from the requested outcome, the changed behavior and its owner. Read callers, tests, docs and history as needed to establish the contract. Trace complete flows when a change crosses ownership, lifecycle, security or data boundaries.
+- Before implementing changed behavior, jot a brief proof sketch in the task context: the caller-visible result, reachable failures, nearest existing coverage and what remains unproven. Use `writing-good-tests` to choose the proof. When video would help, capture a baseline before editing.
+- Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration and indirection. Don't add compatibility layers by default.
+- Keep the diff as small as the requirement allows. Before review, remove code, tests and docs the requirement doesn't need, and report net lines added and removed.
+- Grow the system in layers: start from the smallest version that works end to end and add capabilities on top of a working product.
+- Keep components modular and concerns separated. Make architectural decisions for the long term.
+- Before creating or changing agent instructions, use `writing-for-agents`. For skill changes, edit the skill's `BASE.md` first, then every supported profile under `variants/`.
 
 ## Dependency-first implementation
 
-Prefer repository-owned or dependency-owned solutions over custom
-infrastructure logic.
+Prefer repository-owned or dependency-owned solutions over custom infrastructure, especially for routing, parsing, validation, serialization, retries, queues, caching, middleware, request context, telemetry, dates and times, resource lifecycle and graceful shutdown.
 
-Before implementing common behavior:
-
-1. Search the repository for an existing utility, module, or established
-   pattern.
-2. Inspect already-installed dependencies for a native solution. Check the
-   installed version and read its current documentation or source.
-3. If no installed solution is suitable, assess whether a well-maintained
-   external dependency would be safer and simpler than custom code. Do not
-   install, replace, or upgrade a dependency without the user's explicit
-   permission. Explain the proposed package, why it is needed, and its important
-   maintenance, security, licensing, runtime, and bundle-size trade-offs.
-4. When selecting an existing or new dependency, search the codebase for other
-   custom implementations of the same behavior.
-   - Replace them in the current change only when they solve the same problem,
-     the replacement is small and low-risk, and relevant tests can prove
-     behavior was preserved.
-   - Otherwise, report the cleanup candidates and ask before expanding the task
-     or PR.
-5. Implement custom logic only when the repository and suitable dependencies do
-   not meet the requirement. State why the existing options were unsuitable and
-   verify the behavior under `writing-good-tests`.
-
-Apply this especially to routing, parsing, validation, serialization, retries,
-queues, caching, middleware, request context, telemetry, date and time handling,
-resource lifecycle, and graceful shutdown.
+1. Search the repository for an existing utility or pattern.
+2. Check installed dependencies, at their installed version, for a native solution.
+3. If neither fits, consider whether a well-maintained new dependency is safer than custom code; adding one needs a check-in.
+4. When adopting a solution, look for other custom implementations of the same behavior. Replace them now only when the replacement is small, low-risk and provable by tests; otherwise list them as follow-ups.
+5. Write custom logic only when the options above don't fit, and say why.
 
 ## Test and review design
 
-- Run tests to verify changed behavior, investigate a concrete failure or
-  uncertainty, or satisfy an applicable required check. Reuse passing results
-  while the code, dependencies, configuration and environment they cover remain
-  applicable. Before repeating or broadening a run, identify what invalidated
-  that evidence or what question remains unanswered. A new commit, rebase or
-  metadata-only edit alone does not justify rerunning unrelated suites. Preserve
-  checks explicitly required on the final revision.
-- Keep test cleanup tied to the changed behavior and the coverage needed to
-  prove it. Touching a test file does not by itself require reorganizing the
-  file or repairing unrelated tests. Apply `writing-good-tests` to retention;
-  preserve explicitly required checks and justified consequential proof.
-- Before implementing code, load `writing-good-tests`, even when no test changes
-  are planned. Apply its integration-first policy and separate temporary
-  verification from permanent coverage. Also load
-  it before changing tests or test infrastructure and during review of production
-  behavior or test changes. A coding task does not automatically require new tests.
-- Validate skill instructions through independent agent exercises and review.
-  Do not add deterministic tests of skill prose, headings, links, or routing
-  wording. Keep deterministic tests for executable scripts and machine-readable
-  contracts such as schemas and metadata.
-- Do not write tests for linters. A linter is proved by running it on the
-  repository inside `validate:effect`; the tree is its fixture, and a rule that
-  misfires shows up there.
-- During code review, load `reducing-cognitive-load` while assessing the initial
-  diff and every proposed fix so reduction happens inside the review loop.
-
-### Evidence before review fixes
-
-- Before repairing a review-discovered bug, apply code-review's evidence
-  requirements for findings. A reproduction through the actual application using
-  realistic local fixtures can qualify; production data is not required.
-- Keep evidence tied to the reviewed revision and label what was actually
-  observed. A type-permitted value or invented unreachable state is not proof.
-- Preserve privacy, access and repair-authority boundaries. This grants no
-  production access and never authorizes causing an incident to obtain evidence.
+- Load `writing-good-tests` before implementing code (even with no planned test changes), before changing tests or test infrastructure, and when reviewing behavior or test changes. A coding task doesn't automatically need new tests.
+- Run tests to verify changed behavior, investigate a concrete failure or satisfy a required check. Reuse passing results while their inputs still apply; a new commit, rebase or metadata-only edit alone doesn't justify rerunning unrelated suites.
+- Stop on the first test error. Diagnose before rerunning; never rerun to see whether it passes the second time.
+- Keep test cleanup tied to the changed behavior. Touching a test file doesn't require reorganizing it.
+- Validate skill instructions through independent agent exercises and review, not deterministic tests of prose, headings, links or wording. Keep deterministic tests for executable scripts and machine-readable contracts. Don't write tests for linters; `validate:effect` runs them on the repository.
+- During code review, apply `reducing-cognitive-load` to the diff and to every proposed fix, and compare new custom infrastructure with existing repository, runtime and dependency features.
+- Before repairing a review finding, meet code-review's evidence requirements. A reproduction through the real application with realistic local fixtures qualifies; a type-permitted or invented unreachable state doesn't. Gathering evidence never justifies production access or causing an incident.
 
 ## Model turns
 
-Model cost depends on the model, generated tokens, and input/cache usage.
-Repeated model turns can add cost; elapsed time in a held tool call is not
-itself model generation.
-
-- Use GPT-6.1 Sol at high by default for coordination, integration, verification,
-  reviews outside `code-review`, implementation, test design and substantive debugging or repairs.
-  The coordinator may complete small local steps when delegation would not help.
-  Use GPT-6 Luna at high for established test, lint, typecheck and prepared acceptance
-  execution, bounded investigation and focused research. `writing-good-tests` owns
-  execution batches and result records. The Claude Code mapping below replaces these
-  defaults in that harness.
-- Reserve GPT-6 Astra at high for optional read-only oracle consultation when an
-  unresolved decision merits another assessment. Give the oracle a bounded question,
-  the relevant revision, evidence and constraints. It returns advice, supporting
-  evidence, trade-offs and uncertainty; it does not edit, manage repairs, spawn
-  workers, approve, publish or take ownership of the workflow. The coordinator
-  evaluates the advice and retains all decisions and delivery. Consultation adds
-  no mandatory review or completion gate.
-  By default, `code-review` uses a council of GPT-6 Astra, Claude Fable 5.2,
-  Claude Opus 5.5 and GPT-6.1 Sol, all at high, as four independent
-  findings-only reviewers. This exception changes neither coordinator
-  ownership nor repair, publication or approval authority; it does not make
-  Astra an ordinary worker.
-  The council membership takes precedence over harness default reviewer models.
-- Assign skill execution by the work, not by which model variants are installed.
-  Use GPT-6.1 Sol/high for substantive code, test, skill-prompt, UI and artifact changes.
-  Use Luna/high for bounded retrieval and inventory work, such as `session-recall`
-  searches and `skill-cleaner` inventories, and for prepared validation batches,
-  including UI and local-preview checks when the worker has the required tools.
-  Keep test design and failure diagnosis with Sol; `writing-good-tests` owns the
-  executor's batch and failure boundaries. Apply the harness-specific worker
-  mapping below where it replaces the shared model choices.
-- Keep coordination, review decisions, integration, final verification,
-  permission decisions and delivery with the coordinator. Complete `handoff`,
-  `ask-codex` and cleanup workflows retain their existing owners and authority;
-  only suitable bounded steps may be delegated when their contracts allow it.
-  Shared standards and domain skills remain available to every consuming model:
-  reading one does not make that model the execution owner. Keep existing
-  findings-only reviewer exclusions. Small local steps and unavailable worker
-  capabilities follow the delegation and launcher rules here; do not spawn a
-  worker solely to load a skill or wait.
-- Apply an explicit user model or effort override only to its named task. Set
-  model and effort through the launcher; a prompt cannot override a launcher's
-  fixed settings. If the selected configuration is unavailable, report that
-  limitation instead of silently substituting another model or effort.
-- Delegate useful independent work on demand. Do not create the full model tree
-  automatically. Delegate only when briefing the worker and checking its output
-  costs less than doing the work directly. Give each worker a bounded task and
-  completion condition, keep dependent work sequential, and leave integration
-  with the coordinator. A worker stops and returns evidence on failure or
-  ambiguity.
-
-- Batch independent calls while bounding their combined output. Retain full
-  structured results in session storage or run-owned files, inspect every result,
-  and emit the fields needed for the next decision. Size the combined response
-  against the outer tool's output allowance, not only each inner call's limit.
-  Split required document text into batches that fit and read every required
-  part; truncation is not a completed read. In Codex, use `Promise.allSettled`
-  inside code mode for independent reads. Keep dependent calls, writes and
-  approval-sensitive actions serial.
-- Use `wait-efficiently` for worker assignments and results, pending agents, CI
-  monitoring, long-running commands and timed delays. Quick command batches
-  need no extra skill read.
+- Default models: GPT-6.1 Sol at high for coordination, implementation, test design, debugging and reviews outside `code-review`; GPT-6 Luna at high for running established tests, lint, typecheck and prepared validation, and for bounded retrieval such as `session-recall` and `skill-cleaner` inventories. The [Claude Code mapping](#named-workers) replaces these in that harness.
+- GPT-6 Astra at high is an optional read-only oracle for an unresolved decision: give it a bounded question, revision, evidence and constraints; it returns advice and never edits, approves or takes over. The exception: `code-review` uses a council of GPT-6 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol, all at high, as four findings-only reviewers. Council membership takes precedence over harness reviewer defaults.
+- Delegate independent work only when briefing the worker and checking its output costs less than doing it yourself. Give each worker a bounded task and completion condition; it stops and returns evidence on failure or ambiguity. The coordinator keeps sequencing, review decisions, integration, final verification and delivery. Don't spawn a worker only to load a skill or wait.
+- Findings-only reviewers inspect and report supported findings, evidence, unresolved concerns and verification limits. They don't edit, manage repairs, capture new proof, publish or run handoffs; the coordinator confirms findings and decides their priority. Give fresh reviewers the target, requirements and available proof without implementation rationale or prior findings. Reading a skill doesn't expand an agent's assignment.
+- Apply an explicit user model or effort override only to its named task, set through the launcher. If that configuration is unavailable, say so rather than substituting.
+- Batch independent calls but bound their combined output. Read every part of required documents; truncation is not a completed read. In Codex, use `Promise.allSettled` in code mode for independent reads. Keep dependent calls and writes serial.
+- Use `wait-efficiently` for pending agents, CI, long-running commands and timed delays.
 
 ## Outcome and completion
 
-- Infer the intended outcome from the original request and the user's later
-  corrections. Treat a correction as part of the current outcome unless the
-  user replaces the task.
-- A request to change, build, or fix authorizes the ordinary local
-  implementation, integration, and verification needed to deliver that outcome
-  within the existing permission, publication, and destructive-action
-  boundaries. When the user only asks a question or describes a problem
-  without asking for a change or fix, the assessment is the deliverable.
-- Turn an open-ended goal, such as making a PR perfect, into a concrete done
-  condition before starting: the result, checks and review that finish it.
-  Stop when it is met and report further polish as optional follow-ups.
-- While obvious authorized work remains, do not stop at a plan, diagnosis, or
-  partial patch, or end a turn with a summary that names the next step without
-  taking it, an offer to continue, or choices that do not block the rest of the
-  work; put status notes and recommendations in the same message as the next
-  action. Stop to ask only when work cannot continue without the user, before
-  a destructive or hard-to-undo action such as deleting data, force-pushing or
-  changing files outside the task's repository, or before another action these
-  instructions reserve for them.
-- Before stopping, apply the [communication proof requirements](#communication),
-  reconcile the result against the original request and every accepted
-  correction, then finish any obvious missing in-scope step that needs no new
-  authority or user decision.
-- If the outcome remains incomplete, state exactly what remains, what evidence
-  was established, and which blocker prevents completion.
+- Infer the outcome from the original request plus later corrections. A request to change, build or fix authorizes the local implementation and verification needed to deliver it. A question or problem description without a request to change it makes the assessment the deliverable.
+- Turn an open-ended goal into a concrete done condition before starting, stop when it's met, and list further polish as optional follow-ups.
+- While obvious authorized work remains, keep going: don't stop at a plan, diagnosis or partial patch, or end with an offer to continue. Stop only when work can't continue without Jesse or a check-in is due.
+- Before stopping, reconcile the result against the request and every correction, and show the proof. If something remains, say what, what evidence exists and what blocks it.
 
 ## Working rules
 
-- Select skills by the requested action and artifact, not an incidental keyword.
-  Use explicitly requested skills and required workflow lenses. For optional
-  skills, load the smallest set that serves the task; read supporting references
-  when their branch is needed. For example, an iOS bug without a Figma artifact
-  does not need a Figma translation workflow.
-- The user's explicit instructions take precedence over a skill's guidelines
-  when they conflict; permission, safety, publication and destructive-action
-  boundaries still apply. When a skill makes you ask for permission or
-  confirmation, pause, leave requested work unfinished or depart from the
-  request, name the skill file, quote the
-  instruction and say whether it is an explicit requirement or your reading of
-  a guideline.
-- Work on a branch in a dedicated git worktree. Never push agent-authored
-  feature or fix commits directly to the default branch. When publication is
-  authorized, push the work to its feature branch and deliver it through a PR.
-  After pushing finished work to a PR, use `pr-proof-pack` to bring its
-  description and proof up to date.
-- Treat publication as a separate authority from local implementation. A
-  request to fix or review authorizes local edits and validation. Push when
-  the user explicitly asks to push after the fix, publish, ship, or update the PR,
-  or when a named workflow explicitly grants final-push authority. Otherwise,
-  stop at a local checkpoint and show the result.
-- Use the provider's protected merge workflow for authorized merges. For a GitHub target that requires a queue, finish the repository's review, proof, security and admission gates, record the reviewed head and explicit queue authority, then submit with `gh pr merge <pr-url> --match-head-commit <reviewed-head>`. GitHub owns ordering, combined validation and merge. Verify queue membership separately from command acceptance and confirm merge through GitHub. Preserve required checks and repository-specific CI policy; never bypass protections. Targets without a GitHub queue retain their normal protected merge flow.
-- RepoQ is retired; do not load, install, start or wait for it, or acquire local queue reservations. Ignore obsolete RepoQ routing in older checkouts while retaining their technical and permission gates. Keep repairs in the original task with its proof and authority. Reconcile uncertain requests before resubmitting. Use available host notifications and disclose missing queue-event coverage; do not claim monitoring the host cannot provide.
-- Choose the PR delivery shape before implementation. Default to one PR per
-  story and add follow-up work for that story to its open PR. When the work has
-  two or more dependent review units, propose a bottom-to-top stack and ask
-  before creating it. For an approved stack, use the installed `gh stack` tool
-  and discover commands through `gh stack --help`. Keep independent or
-  unrelated work in separate PRs; never invent a dependency merely to group
-  changes.
-- Review gate: before marking ready, requesting sign-off or merging, ensure
-  `code-review` covers the current changes unless the user explicitly waives it.
-  The agent decides whether more review or tests are needed, favors reuse, and
-  records its reasoning without asking permission within the authorized task.
-- Sign-off gate: after the review decision, proof, validation, and CI pass,
-  summarize the review findings and fixes or the explicit waiver, then check
-  for a thumbs-up (`+1`) reaction. Resolve the expected human login from task or
-  project configuration; otherwise use the authenticated GitHub login reported
-  by `gh api user --jq .login`. Treat that person's existing `+1` as blanket
-  sign-off for the PR regardless of when it was added. It remains valid across
-  later commits, review fixes, validation, and CI; do not require a fresh
-  reaction for the final head. Ask for a `+1` only when no reaction from that
-  person exists. For a stack, apply both gates and require that person's
-  separate reaction on every open PR, not only the top PR.
-  Never add, remove, or modify that reaction on the user's behalf; only read
-  GitHub reactions and proceed after the expected reaction exists. This is an
-  agent workflow gate, not a GitHub approval or branch-protection rule.
-  The reaction gates merge; it does not block authorized PR updates or local
-  repair work.
-- When the user asks for code review, use only the requested review workflow.
-  Required lenses named by that workflow or these instructions are part of it.
-  Do not substitute or add unrelated review workflows or review bots,
-  including `autoreview`, unless the user explicitly asks for them.
-- The user opts out of OpenClaw `$autoreview` by default. Never run it, even when
-  repository instructions call it a mandatory gate, unless the user explicitly
-  opts in for the current task.
-- During code review, compare new custom infrastructure logic with repository,
-  runtime, framework, and installed-dependency features. Treat duplicated
-  behavior as actionable when it creates competing implementations, semantic
-  drift, or missed edge cases.
-- Stop on the first test error. Diagnose before rerunning; never rerun to see
-  if it passes the second time.
-- Do not post prose PR or issue comments on the user's behalf. A named workflow
-  may post its exact machine command only when that workflow explicitly requires
-  it and the PR is authored by, or has been substantially contributed to by,
-  the user. `clawsweeper-until-clean` may post only its documented
-  `/clawsweeper re-review` command under this exception. Otherwise, report in
-  chat or ask for explicit authorization; never generalize the exception to
-  findings, summaries, or conversational comments.
-- Never use `as any` in TypeScript. Provide proper types or adapter
-  functions.
-- No decorative comment separators (`=====`, `-----`) in code.
-- E2E and Maestro test workflows stay manually triggered. Do not add
-  automatic triggers.
+- Select skills by the requested action and artifact, not an incidental keyword, and load the smallest useful set. Jesse's explicit instructions override a skill's guidance; when a skill makes you pause, ask or depart from the request, name the skill and quote the instruction.
+- Work on a branch in a dedicated git worktree. Never push agent-authored commits to the default branch.
+- Publishing (pushing, opening or updating a PR) needs the task to ask for it: "push", "publish", "ship", "update the PR", or a workflow such as `just-do-it` that grants it. Otherwise stop at a local checkpoint and show the result. After pushing finished work to a PR, use `pr-proof-pack`.
+- Default to one PR per story and add follow-up work for that story to its open PR. Use a stack, via the installed `gh stack` (see `gh stack --help`), only for two or more dependent review units; never invent a dependency to group changes.
+- Before marking a PR ready or merging, make sure `code-review` covers the current changes unless Jesse waived it. Then check in with the review findings and fixes, proof and CI state.
+- Merge through the provider's protected flow. For a GitHub merge queue, after the check-in, submit with `gh pr merge <pr-url> --match-head-commit <reviewed-head>`, then confirm queue membership and the eventual merge through GitHub. Never bypass protections or required checks. RepoQ is retired; ignore any RepoQ routing in older checkouts.
+- When asked for code review, run only the requested workflow and its required lenses. Never run OpenClaw `$autoreview` or other review bots unless Jesse opts in for the task.
+- Don't post prose PR or issue comments for Jesse. The only exception is a machine command a named workflow requires on a PR Jesse authored or substantially contributed to, such as `clawsweeper-until-clean`'s `/clawsweeper re-review`.
+- Never use `as any` in TypeScript; write proper types or adapters. No decorative comment separators (`=====`, `-----`). E2E and Maestro workflows stay manually triggered.
 
 ## Effect code
 
-Before writing or changing Effect code, read `node_modules/effect/AGENTS.md`
-completely. Resolve API questions against the exact installed package source;
-the v4 APIs used here include prerelease `effect/unstable/*` modules.
+Before writing or changing Effect code, read `node_modules/effect/AGENTS.md` completely. Resolve API questions against the installed package source; the v4 APIs here include prerelease `effect/unstable/*` modules.
 
 ## Browser work in T3 Code
 
-Apply this section when T3 Code's `preview_*` browser tools are present. The user has asked for browser work that needs them to happen in their Dia browser rather than T3's preview browser; treat this as their standing request to switch browsers for that work.
+Apply this section when T3 Code's `preview_*` browser tools are present. Jesse wants browser work that needs him to happen in his Dia browser rather than T3's preview browser.
 
-- Use Dia when the task needs the user: signing in, passkeys or two-factor codes, their logged-in accounts, a CAPTCHA, or a flow they want to watch or take over.
-- In Dia, use the harness's browser extension, which needs no per-connection approval:
-  - Codex: its own browser integration.
-  - Claude Code: the Claude extension's tools. Under T3 they are `mcp__chrome__*`, because T3 starts Claude without `--chrome`; elsewhere they are `mcp__claude-in-chrome__*`. Read `anthropic-skills:chrome-browser` before the first call. If a site permission prompt appears in Dia, ask the user to click Allow, then retry; with the setup below it shouldn't appear.
-- Use the `dia` MCP tools only when the extension is unavailable. They attach to Dia's debugging port, and Dia asks the user to approve every new debugging connection. Keep one `dia` server for the whole session: never restart it, run a second copy, or reconnect it per task, because each new connection is another prompt.
-- Keep `preview_*` for work that does not need the user, such as checking a local dev server or a public page.
-- Work in a new Dia tab and leave the user's other tabs alone. Leave passwords, passkeys, two-factor codes and payment confirmation to the user: stop at that step, say what to do in Dia, and continue after they confirm.
-- If neither the extension nor `dia` can connect, tell the user which one failed and why. Do not move the task to another browser or profile.
-
-### Claude extension setup under T3
-
-T3 starts Claude Code through the Agent SDK without `--chrome`, so a T3 session gets no extension tools even when `/chrome` is enabled. Register the extension's server for the Claude profile T3 uses. The name `claude-in-chrome` is reserved, so use `chrome`:
-
-```sh
-CLAUDE_CONFIG_DIR=~/.claude-second claude mcp add -s user chrome \
-  -e CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks \
-  -- /opt/homebrew/bin/claude --claude-in-chrome-mcp
-```
-
-`--claude-in-chrome-mcp` is the internal flag that `--chrome` uses, so a Claude Code update may change it. Check with `claude mcp list` that `chrome` shows Connected.
-
-`CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks` is the extension's "Skip all approvals" mode, chosen by the user on 2026-11-13 so the extension stops asking before each new site. Without it (the default is `ask`), the first visit to each site waits for the user to click Allow in Dia. Even with it, the hard stops above still apply: passwords, passkeys, two-factor codes and payment stay with the user.
-
-The extension reaches Claude Code through `~/.claude/chrome/chrome-native-host`. Claude Code writes Homebrew's versioned path into it, such as `.../Caskroom/claude-code@latest/2.1.316/claude`. That path disappears on the next upgrade. Point the wrapper at `/opt/homebrew/bin/claude` instead, and recheck it after `/chrome` rewrites it.
+- Use Dia when the task needs Jesse: sign-in, passkeys or two-factor codes, his logged-in accounts, a CAPTCHA, or a flow he wants to watch or take over. Keep `preview_*` for work that doesn't, such as a local dev server or a public page.
+- In Dia, use the harness's browser extension. Codex uses its own browser integration. Claude Code uses the Claude extension's tools: `mcp__chrome__*` under T3, `mcp__claude-in-chrome__*` elsewhere; read `anthropic-skills:chrome-browser` before the first call. If a site permission prompt appears, ask Jesse to click Allow and retry. [Setup](claude/README.md#claude-extension-under-t3) explains how T3 gets these tools.
+- Use the `dia` MCP tools only when the extension is unavailable. Dia asks Jesse to approve every new debugging connection, so keep one `dia` server for the whole session: never restart it, run a second copy or reconnect per task.
+- Work in a new Dia tab and leave his other tabs alone. At a password, passkey, two-factor or payment step, stop, say what to do in Dia and continue after he confirms.
+- If neither the extension nor `dia` connects, say which failed and why. Don't move the task to another browser or profile.
 
 ## Claude Code
 
-Apply this section only when running in Claude Code. Other harnesses use the
-shared rules above and their own available tools.
+Apply this section only in Claude Code.
 
 ### Browser work
 
-In T3 Code, follow [Browser work in T3 Code](#browser-work-in-t3-code). Elsewhere, use the available Claude Chrome integration for website interaction,
-authenticated browser state, screenshots, and browser-driven validation.
-Select the intended tab from the integration's current state. If it is
-unavailable, report the missing capability; do not install another browser
-harness, change authentication, or bypass connection consent.
-
-For UI changes, the implementation owner follows `frontend-ui-validation`.
-Review and proof-pack work reuse that evidence rather than starting duplicate
-browser sessions.
+In T3 Code, follow [Browser work in T3 Code](#browser-work-in-t3-code). Elsewhere, use the Claude Chrome integration for websites, authenticated state, screenshots and browser validation. If it's unavailable, report that; don't install another browser harness, change authentication or bypass connection consent. For UI changes, the implementation owner follows `frontend-ui-validation`; review and proof-pack work reuse that evidence.
 
 ### Named workers
 
-Keep the normal main session as coordinator, using Claude Opus 5.5 at high by default without an advisor. Use the `oracle` role for a deliberate Fable opinion. Use Opus 5.5 as the default subagent model and preserve explicit user model and effort overrides. Installing instructions does not change live model or advisor settings.
+The main session coordinates on Claude Opus 5.5 at high, without an advisor; Opus 5.5 is the default subagent model. Installing instructions doesn't change live model settings.
 
-When the optional [named workers](claude/README.md) are available, use Claude Code's `Agent` tool with `subagent_type` set to the role. They replace the shared GPT mapping in this harness: `"implementer"`, `"investigator"` and `"findings-reviewer"` default to Opus 5.5 at high; `"test-executor"` uses Haiku 5.5 at high for prepared validation only; `"oracle"` uses Fable 5.2 at high under the read-only consultation boundaries above. `Explore` replaces Claude Code's built-in search agent and runs on Haiku 5.5 at high. Apply the shared [launcher and override rules](#model-turns).
+When the [named workers](claude/README.md) are installed, use the `Agent` tool with `subagent_type` set to the role. `implementer`, `investigator` and `findings-reviewer` default to Opus 5.5 at high; `test-executor` runs prepared validation on Haiku 5.5 at high; `oracle` gives read-only Fable 5.2 advice under the oracle rules above; `Explore` handles codebase searches, including named-definition lookups, on Haiku 5.5 at high.
 
-Use Haiku 5.5/high for straightforward tasks with a clear procedure and checkable result, such as running prepared checks or making a small mechanical edit; send codebase searches, including named-definition lookups, to `Explore`. Select it through a supported per-invocation `model` and `effort` override on the appropriate role; retain that role's scope and permissions. Use Sonnet 5.5/high for a well-specified implementation: a ticket or spec with clear acceptance criteria and no open design decisions, unless the work is hard despite its spec, such as a migration or performance work. Select it through a per-invocation `model` override on `implementer`, which keeps the role's effort. Use Opus for work requiring design decisions, implementation without a complete spec, failure diagnosis or review, and when the task's difficulty is uncertain. A bounded assignment alone does not make it a Haiku task. If a Haiku assignment turns out to require such judgment, have it return evidence and let the coordinator reassign it to Opus.
+Pick the model by the work:
 
-When a worker falls short on work suited to its model, escalate in this order:
+- **Haiku 5.5/high** (per-invocation `model` and `effort` override on the right role): a clear procedure with a checkable result, such as running prepared checks or a small mechanical edit.
+- **Sonnet 5.5/high** (`model` override on `implementer`): a well-specified implementation with clear acceptance criteria and no open design decisions, unless it's hard despite the spec, such as a migration or performance work.
+- **Opus**: design decisions, implementation without a complete spec, failure diagnosis, review, or uncertain difficulty. If a Haiku task turns out to need judgment, it returns evidence and the coordinator reassigns it.
 
-1. Give it a check the work must pass, such as a test, build or script.
-2. Raise its effort one level.
-3. Move to the next larger model at an effort level below the one the smaller model last used.
+When a worker falls short, first give it a check the work must pass, then raise its effort one level, then move to the next larger model at one effort level lower. An Opus worker that still falls short returns its evidence; the coordinator may consult `oracle`.
 
-An Opus worker that still falls short returns its evidence to the coordinator, which may consult `oracle`.
-
-Give each worker the original task file or quote the relevant requirements exactly, and review against those original requirements.
-
-The coordinator retains sequencing, integration, validation and delivery. Give each worker the task objective, revision and worktree, owned scope, constraints, acceptance criteria and relevant evidence. Start an independent reviewer fresh, without implementation rationale or prior findings.
+Give each worker the original task text or exact quoted requirements, the revision and worktree, owned scope, constraints, acceptance criteria and evidence, and review against the original requirements. Start independent reviewers fresh, without implementation rationale or prior findings.

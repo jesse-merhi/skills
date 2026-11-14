@@ -107,7 +107,7 @@ Keep findings, decisions and proof with the task. A complete code-review has sim
 
 Report useful simplifications and net lines added/removed, then give a concise round-by-round account of what was reviewed, fixed and verified, including each finding’s severity, rounds with no fixes and why another round was or was not run. Show each reviewer’s stated confidence for each reviewed revision, its evidence basis and verification limits. Identify which fixes received subsequent review, the final target, unresolved disagreements and residual concerns. Never transfer an earlier confidence statement to later edits or describe unreviewed repairs as approved.
 
-Publication needs existing user or calling-workflow authority; this skill grants no automatic push, PR update or merge. Put the report in chat; include it in an existing PR description only when updating that PR is authorized. Do not post a prose PR comment. Preserve the caller’s readiness and sign-off gates.
+Publication needs existing user or calling-workflow authority; this skill grants no automatic push, PR update or merge. Put the report in chat; include it in an existing PR description only when updating that PR is authorized. Do not post a prose PR comment. Leave readiness and the check-in to the caller.
 
 Include the resulting video in the delivery when it helps show implemented behavior or review fixes. Use show-video's baseline, editing and fallback guidance; reuse existing footage that still covers the final revision. A clean review or findings-only report does not by itself require a new recording. Video supports the review report and required tests; it does not replace them.
 
