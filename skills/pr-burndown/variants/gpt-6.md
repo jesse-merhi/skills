@@ -7,7 +7,7 @@ description: Get a batch of open PRs merged in parallel, one owner thread per PR
 
 Each owner carries one PR through merge, including queue submission after Jesse's go-ahead. The coordinator wakes blocked owners, shares capacity and asks Jesse for decisions; it does not approve or re-check owners' work.
 
-Read repository `AGENTS.md` for environment permissions, queue rules, local proof, device budgets and ledger location. Ask before changing an environment it doesn't cover. Jesse's go-ahead (a yes in chat, or a 👍 on the PR) authorizes submission, permitted repairs and re-entry; it survives later commits unless scope grows materially. Paid CI outside the queue follows repository approval rules.
+Read repository `AGENTS.md` for environment permissions, queue rules, local proof, device budgets and ledger location. Ask before changing an environment it doesn't cover. Jesse's go-ahead in chat authorizes submission, permitted repairs and re-entry; it survives later commits unless scope grows materially. Paid CI outside the queue follows repository approval rules.
 
 Resolve routine choices from the ledger and repository rules.
 
@@ -17,7 +17,7 @@ Use the repository's ledger location, else `~/.local/state/pr-burndown/<run-id>/
 
 - `owner`: session identity and worktree; `head`: reviewed SHA, or null; `evidence`: review/proof path for that head.
 - `state`: `working`, `awaiting-go-ahead`, `queued`, `merged` or `closed`.
-- `waiting_on`: `none`, `job` (own running command), `capacity`, `device`, `jesse`, `ci`, `pr:<number>` or `hold:<id>`; `since`: UTC time it changed.
+- `waiting_on`: `none`, `job`, `capacity`, `device`, `jesse`, `ci`, `pr:<number>` or `hold:<id>`; `since`: UTC time it changed.
 - `next_action`: one sentence, including the platform for device waits; `question`: Jesse's decision needed; `closeout`: cleanup/archive still owed, else null.
 
 Read the ledger instead of asking for status. Link logs and proof; messages name the changed state and point to the row. Owners route decisions through `question` and `waiting_on: jesse`, continuing independent work; only the coordinator asks Jesse.
@@ -32,13 +32,13 @@ A hold names specific work, reason, creator and an `expires_at` at most two hour
 
 Heavy work (local stacks, devices, E2E or full suites) requires a slot. Claim one with `mkdir slots/<n>` in the ledger, trying 1 through the cap; a failed `mkdir` means taken. Write the PR number to `slots/<n>/pr`.
 
-Before work and on each check, read CPU count, five-minute load and free memory (`memory_pressure` without arguments on macOS; options allocate memory). Start the cap at 3, within 1–6. Load below twice CPU count and over 30% free memory raises it by one; load above four times CPU count or under 15% free memory lowers it to occupied slots, minimum 1. Don't stop running work.
+Before work and on each check, read load and free memory (`memory_pressure` without arguments on macOS; options allocate memory). Start the cap at 3, within 1–6. Raise it when the machine is idle; lower it under high load or low memory. Don't stop running work.
 
 ## Coordinator
 
 1. Resolve PR scope, initialize the ledger and give owners this skill, row path and coordinator ID. Use the host scheduler for one owned ten-minute check bound to the coordinator, reusing its identity and preserving Jesse’s stops. Its prompt needs only this skill, ledger path and check objective. Without persistent scheduling, report uncovered events and retain pending work in the ledger. In T3, use `schedule_task` with a stable `clientRequestId`.
 2. Reconcile ledger, threads, host load and GitHub. Wake owners when their blocker clears:
-   - `none`: idle and neither merged nor closed; `job`: idle and `since` over an hour old.
+   - `none`: idle and neither merged nor closed; `job` (own running command): idle and `since` over an hour old.
    - `capacity`: free slots, oldest first; `device`: let device tooling retry each check. After an hour blocked by other sessions' devices, ask Jesse before freeing them.
    - `jesse`: answer or go-ahead received; `pr:<number>`: merged/closed; `hold:<id>`: released/expired.
    - `ci`: current combined run failed, queue membership changed, or merge confirmed. Verify head, queue and combined run: an old green notification proves none of these, and departure can mean ejection or merge.
@@ -46,7 +46,7 @@ Before work and on each check, read CPU count, five-minute load and free memory 
 3. Ask one decision at a time under Jesse's question-tool preference, with a recommendation. Record and distribute answers; don't re-ask settled or repository-defined decisions.
 4. Check in once for all PRs awaiting a go-ahead: links, changes, review fixes and unresolved concerns, proof, check state and merge effects. Resend only on change. Follow [wait-efficiently](../wait-efficiently/SKILL.md) while owners work.
 
-Keep reconciliation active for needed events the host does not deliver, such as a 👍 Jesse adds instead of replying. Disable the owned schedule and verify when all PRs are merged/closed and closeout is complete, or Jesse stops it; a queued tick must preserve the stop. Report open PRs and unfinished closeout separately. Don't allocate devices by message or track unrelated work. A requested [handoff](../handoff/SKILL.md) carries the ledger and schedule identity.
+Disable the owned schedule and verify when all PRs are merged/closed and closeout is complete, or Jesse stops it; a queued tick must preserve the stop. Report open PRs and unfinished closeout separately. Don't allocate devices by message or track unrelated work. A requested [handoff](../handoff/SKILL.md) carries the ledger and schedule identity.
 
 ## Owner
 

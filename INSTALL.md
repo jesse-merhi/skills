@@ -441,7 +441,6 @@ Public aliases:
 
 | Commands | Owning skill / entrypoint |
 | --- | --- |
-| `ask-codex`, `ask-claude` | Respective skill's `scripts/<name>` |
 | `skill-cleaner` | `skill-cleaner/scripts/skill-cleaner` |
 | `skill-audit-layout` | `frontend-ui-validation/scripts/audit-layout.mjs` |
 | `skill-cleanup-inventory` | `cleanup/scripts/inventory.mjs` |

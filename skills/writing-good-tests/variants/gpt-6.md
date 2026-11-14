@@ -18,7 +18,7 @@ Retirement does not invite new tests for the same guards at another level. When 
 
 Trace real callers and supported inputs through the changed contract. Inspect nearby tests and all working changes, including deletions. Name the failure, independent expected result and gap in existing proof. Invented rejection inputs prove nothing. Build small fixtures from application definitions; do not alter production behavior to fit them or add test-only seams.
 
-Prefer integration through existing interfaces with real first-party collaborators and relevant stores. Use E2E for complete journeys and UI/native binding. For backend decisions, use [backend-testing](../backend-testing/SKILL.md). Unit tests are exceptional: require the value case, an independently specified result and cases integration cannot reasonably exercise. Purity or a dense matrix alone is insufficient.
+Prefer integration through existing interfaces with real first-party collaborators and relevant stores. Use E2E for complete journeys and UI/native binding. For backend boundaries, apply [Backend](#backend). Unit tests are exceptional: require the value case, an independently specified result and cases integration cannot reasonably exercise. Purity or a dense matrix alone is insufficient.
 
 Use temporary scripts, scratch tests and manual checks for investigation. Keep results with the task; remove temporary checks before delivery. Useful development proof need not become a permanent test. Validate stable setup with its parser/linter and a smoke check. Follow repository policy for instruction exercises and linter validation; do not test skill prose or linter internals.
 
@@ -33,16 +33,20 @@ Limit cleanup to affected behavior. Rewrite weak tests only where protection mat
 
 A regression test must fail against unfixed code for the intended reason and pass after the fix. If detection is uncertain, temporarily restore the bug or mutate the line, confirm failure, then restore code before final validation. Add no tooling for this.
 
+## Backend
+
+Exercise the entry point the claim needs: a service test cannot prove route authentication, serialization or middleware. Reuse the project's integration harness.
+
+- **Stores:** use isolated, disposable stores that match the production engine; an in-memory substitute cannot prove constraints or transactions. Use Testcontainers where the repository already does. Keep Redis or a broker real when its atomicity, persistence or delivery is the contract. Never use customer or production data. Assert stored state with an independent read after the action, not emitted SQL.
+- **Isolation:** use real identities and scoped records through production authorization; response filtering does not prove row or tenant isolation.
+- **Transactions:** induce a supported failure at the real boundary and inspect what committed or rolled back; test-setup rollback is not application rollback.
+- **Concurrency and retries:** drive real overlapping callers and assert the final state, uniqueness or idempotency, not call counts or sleeps. Do not inject a failure the client absorbs before application code sees it.
+- **Time:** find which process owns the clock, use its controllable clock, set timezones explicitly and separate calendar dates from instants. Never assume a date stays in the future.
+- **Migrations:** carry representative prior data through the affected production path and check old and new readers and writers; an empty-database migration or schema snapshot cannot prove compatibility.
+- **Providers:** a mock proves application handling, not the provider; use an authorized smoke check or report the gap.
+
 ## Execute and finish
 
-The [global policy](https://github.com/jesse-merhi/skills/blob/main/AGENTS.md#test-and-review-design) owns roles, authority and evidence reuse. The coordinator chooses proof, accepts results and diagnoses failures; workers return focused evidence. Verify required behavior before pushing. Reuse valid results; broaden checks only for an unresolved question, invalidated evidence or an explicit requirement.
+Run prepared check batches through `spawn_agent` with `agent_type: "test_executor"`; keep small checks local. If it is unavailable, run suitable checks locally and report the limit. The executor checks its inputs, stops at the first failure, timeout, changed input or ambiguity, and returns the command, status, relevant output and unrun checks. It does not retry, diagnose, repair, install or start external or paid jobs; the coordinator diagnoses. Record the command, revision including dirty changes, environment, outcome and log path; reused evidence keeps its original record.
 
-When delegation helps, batch established checks or prepared acceptance flows for a fast executor model: Luna/high, or Haiku 5.5/high in Claude Code. Supply checkout/revision/dirty changes, ordered commands, expected results, environment, time limits and logs. Keep small checks local.
-
-Use `spawn_agent` with `agent_type: "test_executor"`. If unavailable, use a fresh `default` agent with `model: "gpt-6-luna"`, `reasoning_effort: "high"`, `fork_turns: "none"` and this skill. Verify launch settings; if unavailable, report the limit and run suitable checks locally. Do not change live configuration.
-
-Check inputs before execution. E2E/Maestro remain manually triggered; external/paid jobs need existing authority. An executor stops at the first failure, timeout, changed input or ambiguity and returns command, status, relevant output and unrun checks. It does not retry, diagnose, repair, install or launch external/paid jobs. The coordinator handles diagnosis and authorized repair before more execution. Use `wait-efficiently` for prolonged runs and useful progress updates.
-
-Record command, revision including dirty changes, environment, outcome and log path. Reused evidence keeps its original record; never call it fresh. Review is not test execution.
-
-Report keep/consolidate/move/rewrite/delete/missing/no-test-needed/dangerous-removal decisions, keeper value, last-owner retirement versus inspected replacement, checks and limits. For material cost work, read [Expensive suites](references/expensive-suites.md) before editing and establish a comparable baseline; otherwise state no material execution-cost impact. Speed alone does not justify losing valuable proof.
+Report keeper value, last-owner retirement versus inspected replacement, checks and limits. For material cost work, read [Expensive suites](references/expensive-suites.md) before editing and establish a comparable baseline; otherwise state no material execution-cost impact. Speed alone does not justify losing valuable proof.

@@ -28,7 +28,7 @@ Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./insta
 
 The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. The `code-review` council uses the explicit Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol exception at high. A multi-provider launcher is needed for the complete council; native Codex roles alone cannot supply Claude. Skill availability does not select an execution role or expand its permissions.
 
-For established validation, `writing-good-tests` selects `test_executor` and defines the batch, result record and failure handoff. It also describes the explicit-settings fallback for launchers without the named role.
+For established validation, `writing-good-tests` selects `test_executor` and defines the batch, result record and failure handoff.
 
 The existing workflow owners select these roles: `just-do-it` delegates bounded implementation and investigation, `grilling` delegates factual questions, and `code-review` delegates simplification followed by council assessments covering both standards and requirements/correctness. They keep sequencing, integration, shared verification and delivery with the coordinator.
 

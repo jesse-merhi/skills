@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: 'Simplify changes, then run a four-model council for code review and UI refinement until only minor findings remain, or polish UI to a target score.'
+description: 'Use when asked to review code or a PR, before marking a PR ready, or to polish UI to a target score.'
 metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/engineering/code-review
@@ -28,13 +28,11 @@ Remove what the requirement does not need from changed and directly affected cod
 
 Apply [writing-good-tests](../writing-good-tests/SKILL.md), distinguishing test consolidation from retirement without replacement.
 
-The simplifier and every council reviewer back a clean readability conclusion by citing a nontrivial changed block and explaining why its steps and result are clear, and report code they did not assess.
-
 The simplifier returns its patch, a concrete before/after explanation, checks and unresolved concerns, or proposals for findings-only work. Integrate and resolve verification failures before review.
 
 ## 3. Review with the council
 
-Use four fresh findings-only reviewers: **GPT-6 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol**, each at **high** reasoning effort.
+Use four fresh findings-only reviewers: **GPT-6 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
 
 In T3 Code, use `orchestrator_capabilities`, then `delegate_task` for the selected members with settings in `target.options`. Elsewhere, use `spawn_agent` with `fork_turns="none"` only for models and settings it supports. Prefer a findings-only role whose pinned model and effort match; a prompt cannot override them. Report any unavailable member or setting and the coverage gap; never silently substitute, count the coordinator as a member or claim a complete council. Changing membership is the user’s decision.
 
@@ -55,23 +53,11 @@ The implementation owner captures the UI and exercises interactions with [fronte
 
 UI feedback ties a screenshot region or interaction to an unmet criterion, its user impact and a small proposed fix, separating observed defects from design judgment. Each applied improvement costs a round, so apply only supported, in-scope improvements with clear user impact; taste-level refinements stay minor. Preserve product direction and functionality, with no redesign, feature work or separate visual-review loop, and compare before and after captures against the same criteria, including regressions.
 
-#### UI polish
-
-Use this mode when the user asks to polish the UI or names a score. It lifts the taste-level limit and may restyle the affected or user-named screens without changing their content; the other rules still apply. Without a pending change, round one scores the baseline and the simplify pass covers polish edits once they exist.
-
-Before round one, turn the criteria into scoring categories such as hierarchy, typography, spacing, colour and contrast, iconography and consistency. Use the user’s score target and round limit, or state that you are using the defaults of 9 out of 10 in every category and five rounds. Gating rounds count toward the limit.
-
-References are the product’s strongest screen, design-system examples of the components in use or public apps with the same layout pattern; without any, the unchanged baseline is the reference.
-
-Give reviewers the categories, a 1–10 scale and captures of the current revision and references, including the baseline, but never the score target or earlier scores, even inside the requirements. Each reviewer scores every category per capture, tying each current-revision score below 10 to a screenshot region and a proposed change. Unchanged references expose drift: when a member scores any reference category a point or more from its own previous score, its raw scores that round cannot meet the target, and the coordinator judges its progress by the gap between the current revision and the references.
-
-Each round, apply the supported proposals for the lowest-scoring categories. Watch for regressions scores miss, such as colour drained to greys, flattened contrast or lost product character; a confirmed regression against the baseline blocks finishing.
-
-A gating member, the latest full-council round’s lowest scorer if any, may score and review each revision until it reaches the target; the full council then scores that revision, and gating resumes if any member falls short. The final round within the limit always uses the full council. Polish finishes when every member scores every category at or above the target on one revision with no confirmed regression or step 4 blocking issue. If the round limit comes first, report the scores reached as partial; if the user raises a met target, keep the met revision mergeable and propose stacking further polish. Report every member’s scores per category and round, references included, in one table.
+When the user asks to polish the UI or names a score, read [ui-polish.md](references/ui-polish.md).
 
 ## 4. Repeat rounds until only minor findings remain
 
-Keep one round record with the task across resumes, retries and code/UI work: each round’s revision, evidence, reviewers’ actual models and efforts, findings, scores, confidence, decisions and severities with reasons, fixes, checks and resulting revision. Record scores and confidence as supplied (“not supplied” when absent), never invented, averaged or rounded. Filling a missing member’s assessment on the same revision stays in that round, and repeated dispatch failures are a reported gap, not a retry loop. Do not restart simplification between rounds.
+Keep one round record with the task across resumes: each round’s revision, reviewers’ actual models and efforts, findings, confidence, decisions and severities with reasons, fixes and resulting revision. Repeated dispatch failures are a reported gap, not a retry loop. Do not restart simplification between rounds.
 
 Confirm bug findings through real callers and supported inputs, checking counterevidence; type-permitted or invented states are insufficient. Resolve duplicates and disagreements from evidence; a supported minority finding still needs a disposition. A rejected finding repeated without new evidence stays rejected and is reported as a disagreement.
 
@@ -97,4 +83,3 @@ Report useful simplifications and a concise account of each round from the round
 
 Put the report in chat, or in an existing PR description when updating that PR is authorized, and leave readiness and the check-in to the caller. Include any [show-video](../show-video/SKILL.md) recording; a clean or findings-only review needs no new one by itself.
 
-Consider [feedback-hardening](../feedback-hardening/SKILL.md) for observed workflow problems; it does not gate delivery.

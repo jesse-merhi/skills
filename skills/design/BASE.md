@@ -1,6 +1,6 @@
 ---
 name: design
-description: 'Design or refine interfaces around the product, its users, and a clear visual direction.'
+description: 'Use when building or restyling screens or components, prototyping design alternatives, or reviewing visual design, motion or mobile-web behaviour.'
 metadata:
   license: Preserve the upstream notice in [LICENSE](LICENSE) when redistributing adapted material.
   sources: |

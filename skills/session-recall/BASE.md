@@ -1,21 +1,19 @@
 ---
 name: session-recall
-description: Find prior local Codex or Claude sessions.
+description: Use when the user refers to earlier work, or when a decision from a past Codex or Claude session is needed.
 ---
 
 # Session recall
 
 Find the relevant prior session with `agent-session-find` first.
 
-Prefer the installed command; use `./agent-session-find` in its source checkout if unavailable. Use `--help` for options, or another harness's local recall tool when appropriate.
+Prefer the installed command; use `./agent-session-find` in its source checkout if unavailable, or another harness's local recall tool when appropriate. See `--help` for filters and index options.
 
 ```sh
 agent-session-find --index-since 14d --max-sources 80 --limit 5 "<query>"
 ```
 
-Search likely terms: repo names, errors, filenames or feature words. Filter by `--cwd` or `--source` when known; widen terms and date/source limits as needed. Include `--workers` for handoffs or delegated work.
-
-The command maintains a local SQLite index. Reuse it with `--no-refresh` for follow-up queries; refresh when expanding indexed coverage. Never refresh the same database concurrently. Use `--db <writable-local-path>` if needed.
+Search likely terms: repo names, errors, filenames or feature words, and widen terms and date limits as needed. Include worker transcripts for handoffs or delegated work. Skip the index refresh on follow-up queries, and never refresh the same database concurrently.
 
 Check result cards for topic, repository, date and matching text, then read relevant log excerpts. Prefer full sessions unless seeking worker output. Worker transcripts may not reopen as sidebar tasks: `src` locates the log and `parent` the coordinator.
 

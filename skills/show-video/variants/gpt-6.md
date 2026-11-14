@@ -19,7 +19,7 @@ If no baseline is available, or a proactive demo would need substantial setup to
 
 ## Record
 
-Use safe demo data and keep credentials, private records, auth headers and unrelated windows out of frame. Exercise the real controls and show their effect. For backend or CLI work, record a real request, command or operator flow and its output; logs support UI proof but don't replace it. For API changes, show the method, route, safe inputs, status and changed fields, and include sanitized request/response text alongside the video. Run mutations only in a local or test environment, never as production writes. Label responsive web footage as such; it isn't native or device proof. Note action and result timestamps for alignment.
+Exercise the real controls and show their effect. For backend or CLI work, record a real request, command or operator flow and its output; logs support UI proof but don't replace it. For API changes, show the method, route, safe inputs, status and changed fields, and include sanitized request/response text alongside the video. Run mutations only in a local or test environment, never as production writes. Note action and result timestamps for alignment.
 
 ## Edit
 
@@ -33,6 +33,6 @@ Use the media guidance and `proof-media inspect` and `proof-media cut` commands 
 
 ## Verify and deliver
 
-Inspect the final export, not just its sources: check every comparison beat at viewing size for readability, clipping, matched states and correct labels. Watch playback where possible; otherwise inspect frames at key timestamps and report that playback wasn't checked. Decode the whole file to catch broken frames or truncation, and check duration, dimensions and codec.
+Inspect the final export, not just its sources: check every comparison beat at viewing size for readability, clipping, matched states and correct labels. Watch playback where possible; otherwise inspect frames at key timestamps and report that playback wasn't checked. Decode the whole file to catch broken frames or truncation; `proof-media inspect` reports duration, dimensions and codec but only samples frames.
 
 Show the video in the host's viewer with a direct file link. Where the host supports Markdown video embeds, also embed the absolute MP4 path using image syntax. For a PR, upload the media through [pr-proof-pack](../pr-proof-pack/SKILL.md); local paths only work in the host viewer. State what the clip shows and any material limit, without claiming playback, device coverage, speedups or uploads you didn't verify.

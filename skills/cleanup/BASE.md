@@ -15,7 +15,7 @@ skill-cleanup-inventory --root <repo> --output <new-file.json>
 
 Add `--compose-project <name>` for a known Compose project. Inventory collects evidence, not deletion decisions.
 
-Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Ask before removing uncertain data, uncommitted files, unique commits, or stashes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
+Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Before removing uncertain data, uncommitted files, unique commits or stashes, check in (AGENTS.md Check-ins) and keep them until the user says yes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
 
 From a directory you will keep, read needed configuration, stop owned processes and services, remove disposable state, then remove the worktree and local branch. Delete the current agent worktree last.
 

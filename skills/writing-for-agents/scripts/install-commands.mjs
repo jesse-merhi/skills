@@ -6,8 +6,6 @@ import path from "node:path";
 import { withOutputLock } from "./materialize-skill-variants.mjs";
 
 export const commandCatalog = [
-  ["ask-claude", "ask-claude", "ask-claude", ["bash"]],
-  ["ask-codex", "ask-codex", "ask-codex", ["bash"]],
   ["skill-cleanup-inventory", "cleanup", "inventory.mjs"],
   ["skill-render-diagram", "design-technical-diagrams", "render-diagram.mjs"],
   ["skill-check-rendered-diagram", "design-technical-diagrams", "check-rendered-diagram.mjs"],

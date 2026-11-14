@@ -26,10 +26,6 @@ For example:
 
 Use that level of explanation for final responses too. Select useful facts from the work instead of translating each implementation bullet. Leave out internal task names, hashes, receipt paths and workflow bookkeeping unless the reader needs them. Cut repetition, filler, generic openings, invented labels and offers to continue work already requested.
 
-Show useful proof beside a claim about changed behavior: an actual capture, representative output, or focused actual source with plain annotations and marked omissions. Link longer evidence when useful. Attribute reused evidence; source and diagrams explain a mechanism without proving it ran. Keep required capture, checks, review and publication with their existing workflows.
-
-Give routine passing checks at most one short sentence in the main reply, unless more detail is requested or required by the delivery workflow. Keep failures, missing proof, uncertainty, consequential risks and necessary rollout actions visible. Brevity must not make unfinished work sound complete or change meaning.
-
 Use short connected paragraphs by default. Use lists for items that are easier to compare or follow in order. Problem/Fix labels and headings are optional; a simple answer may need one sentence. Preserve requested depth when the task needs it.
 
 ## Cut AI padding

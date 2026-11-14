@@ -11,7 +11,7 @@ repos/
       0001-slug.md
 ```
 
-If write access or the target path is unclear, stop and tell the user.
+If write access or the target path is unclear, state the path you intend to use and proceed, or skip writing the ADR and say so.
 
 ## Template
 

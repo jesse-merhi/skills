@@ -1,6 +1,6 @@
 ---
 name: design-technical-diagrams
-description: 'Create clear system diagrams with readable labels and deliberate layout.'
+description: 'Use when asked for an architecture, flow or sequence diagram, or when a change introduces a system worth diagramming.'
 ---
 
 # Design technical diagrams

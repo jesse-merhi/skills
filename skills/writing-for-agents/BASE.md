@@ -1,6 +1,6 @@
 ---
 name: writing-for-agents
-description: 'Write agent instructions using shared rules and guidance for the models that will read them.'
+description: 'Use before creating or editing AGENTS.md, CLAUDE.md or any skill.'
 metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/productivity/writing-for-agents
@@ -49,24 +49,10 @@ Keep edits in scope. Installation and model switching follow repository `INSTALL
 
 For shared instructions such as AGENTS.md or CLAUDE.md, use only the named target models' guides; otherwise stay model-neutral. These files need no variants.
 
-For skills, read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the applicable guide: [GPT-6](references/gpt-6.md), [Fable](references/claude-fable-5.1.md) or [Opus](references/claude-opus-5.5.md). Astra, Sol (including GPT-6.1 Sol) and Luna share one GPT-6 profile and complete prompt per skill.
-
-Change shared behaviour in the base first, then adapt every supported `variants/<profile>.md`. Existing variants do not override the base. Preserve behaviour, permissions, exact commands, evidence and completion criteria. Model guidance adds no gates or delegation. Share resources and metadata unless runtime behaviour differs.
-
-Keep a complete prompt at every profile path. Byte-identical variants should use relative symlinks to one regular file in the same `variants/` directory. Before a profile-specific edit, replace its link with a copy; review all consuming models when editing shared text. Keep `BASE.md` separate and root `SKILL.md` linked to `variants/gpt-6.md`.
-
-The applicable `AGENTS.md` assigns execution roles. Keep shared skills available to coordinators, reviewers and workers; variants adapt wording, not ownership or authority.
-
-File presence, including these links, records coverage. The materializer copies the selected authored prompt; it does not generate text or call a model. Validate prompts against the base through independent agent exercises and installation through the materializer test.
-
-For a new model, verify its official guidance and update matching in `scripts/materialize-skill-variants.mjs`. Reuse the family profile when its guidance applies; add a guide and complete variants only when a distinct profile is needed. The script owns same-family fallback and the once-per-session warning. Keep source links and review dates current.
+For skill changes, edit `BASE.md` first, then make the same change in every variant under `variants/`, adapting it with each model's guide: [GPT-6](references/gpt-6.md), [Fable](references/claude-fable-5.1.md) or [Opus](references/claude-opus-5.5.md). Read [variants.md](references/variants.md) before changing variants or adding a model.
 
 ## Exercise changed instructions
 
-Before an exercise, record realistic task inputs, the intended result, success criteria and failure checks. Keep the criteria fixed while judging; record later corrections separately. Give an ordinary task request without revealing the measured behavior or grading criteria.
+Validate skill instructions through independent agent exercises and review, not deterministic tests of prose, headings, links or wording. Keep deterministic tests for executable scripts and machine-readable contracts. Don't write tests for linters; `validate:effect` runs them on this repository.
 
-Use a fresh agent in an isolated workspace with normal task context, tools and the authored skill. Existing model and permission policy still applies.
-
-Judge the resulting files, interface or command output. Verify self-reports against evidence. When available, inspect only the exercise's own tool record to check which instructions and references it read. Record missing tools, transcripts and model coverage as limits.
-
-For comparisons, keep inputs, model settings and tools equivalent. Give an independent reviewer the criteria and outputs without author, model or revision labels; retain their mapping separately. Inspect the outputs yourself and resolve disagreements from evidence. One run can expose a failure or demonstrate the requested result. Claims of general improvement need repeated matched trials.
+Give a fresh agent an ordinary task request without revealing the measured behavior, then judge its files or output against criteria recorded beforehand. Read [exercises.md](references/exercises.md) before running or comparing exercises.

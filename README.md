@@ -140,13 +140,13 @@ Two ways one gets used:
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks seven skills as
-  explicit-only: `ask-claude`, `ask-codex`, `code-review`, `hill-climb`,
+  "use `grilling` on this" in either harness. Codex marks five skills as
+  explicit-only: `code-review`, `hill-climb`,
   `html-explanations`, `just-do-it` and `pr-burndown`. They can review and fix code, operate desktop UI
   or run a long external loop, so Codex waits for
   you to name them.
 
-`code-review` owns the council workflow, including UI polish, in one prompt. Model-writing guidance and installer scripts live under `writing-for-agents`.
+`code-review` owns the council workflow; UI polish scoring lives in its `references/ui-polish.md`. Model-writing guidance and installer scripts live under `writing-for-agents`.
 
 `coding-standards` brings personal engineering standards to a repository
 without turning every judgment call into a linter. `apply` prefers existing
@@ -210,7 +210,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 
 | Skill | What it does |
 | --- | --- |
-| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, temporary checks for investigation, and permanent unit tests only by exception. |
+| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, real stores for backend proof, temporary checks for investigation, and permanent unit tests only by exception. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
 | [`hill-climb`](skills/hill-climb/SKILL.md) | Iterates against a fixed eval to a target score, keeping checkpoints, then optionally cuts cost while holding the score. |
@@ -222,7 +222,6 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | [`grilling`](skills/grilling/SKILL.md) | Interviews you as a design tree, one full round of questions at a time, each with a recommended answer, grounded in repo docs, code and Obsidian notes when the plan touches them. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
-| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Assesses whether feedback warrants separate work, then hands off a useful objective with a clear title and scope while the main task continues independently. |
 
 ### Frontend and design
 
@@ -231,8 +230,6 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | [`design`](skills/design/SKILL.md) | The single visible design router; it loads internal production-UI, interaction, motion-review, or explicit-prototype guidance as needed. |
 | [`design-technical-diagrams`](skills/design-technical-diagrams/SKILL.md) | Builds and visually validates architecture, lifecycle, sequence, trust-boundary, and decision diagrams. |
 | [`frontend-ui-validation`](skills/frontend-ui-validation/SKILL.md) | The visual gate: Playwright screenshots, overflow and clipping checks, responsive states, console errors. |
-| [`ask-claude`](skills/ask-claude/SKILL.md) | Opens a fresh full Claude session through ACP for independent advice or scoped implementation. |
-| [`ask-codex`](skills/ask-codex/SKILL.md) | Opens a fresh full Codex session through ACP from another harness. |
 
 ### Communication
 
