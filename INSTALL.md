@@ -441,18 +441,16 @@ Public aliases:
 
 | Commands | Owning skill / entrypoint |
 | --- | --- |
-| `ask-codex`, `ask-claude` | Respective skill's `scripts/<name>` |
 | `skill-cleaner` | `skill-cleaner/scripts/skill-cleaner` |
 | `skill-audit-layout` | `frontend-ui-validation/scripts/audit-layout.mjs` |
 | `skill-cleanup-inventory` | `cleanup/scripts/inventory.mjs` |
-| `skill-collect-context` | `grill-with-docs/scripts/collect-context.mjs` |
+| `skill-collect-context` | `grilling/scripts/collect-context.mjs` |
 | `skill-diff-page` | `html-explanations/scripts/diff-page.mjs` |
 | `skill-render-diagram`, `skill-check-rendered-diagram` | `design-technical-diagrams/scripts/render-diagram.mjs`, `check-rendered-diagram.mjs` |
 | `codex-handoff-tmux`, `detect-handoff-surface` | `handoff/scripts/<name>` |
 | `quiet-wait`, `estimate-gh-wait` | `wait-efficiently/scripts/<name>` |
 | `pr-net-diff`, `github-verify-rendered-proof`, `proof-media` | `pr-proof-pack/scripts/<name>` |
 | `proof-publication` | `pr-proof-pack/scripts/proof-publication.mjs` |
-| `clawhub-local-test`, `openclaw-stg-test` | `openclaw/<name>/scripts/<name>` |
 
 ### Verify commands
 

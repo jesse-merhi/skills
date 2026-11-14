@@ -1,4 +1,0 @@
-interface:
-  display_name: "Reduce Cognitive Load"
-  short_description: "Make code easy for a human to read and follow."
-  default_prompt: "Use $reducing-cognitive-load to check names and make this code easier to follow."

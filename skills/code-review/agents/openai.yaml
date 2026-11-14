@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
   short_description: "Simplify; council-review code and affected UI."
-  default_prompt: "Use $code-review to simplify this change and run the Astra, Fable 5.2, Opus 5.5 and Sol council until only minor findings remain, reporting fixes, evidence and each reviewer’s confidence."
+  default_prompt: "Use $code-review to simplify this change and run its council review until only minor findings remain, reporting fixes, evidence and each reviewer’s confidence."
 
 policy:
   allow_implicit_invocation: false

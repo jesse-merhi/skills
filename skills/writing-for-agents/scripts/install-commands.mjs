@@ -6,18 +6,14 @@ import path from "node:path";
 import { withOutputLock } from "./materialize-skill-variants.mjs";
 
 export const commandCatalog = [
-  ["ask-claude", "ask-claude", "ask-claude", ["bash"]],
-  ["ask-codex", "ask-codex", "ask-codex", ["bash"]],
   ["skill-cleanup-inventory", "cleanup", "inventory.mjs"],
   ["skill-render-diagram", "design-technical-diagrams", "render-diagram.mjs"],
   ["skill-check-rendered-diagram", "design-technical-diagrams", "check-rendered-diagram.mjs"],
   ["skill-audit-layout", "frontend-ui-validation", "audit-layout.mjs"],
-  ["skill-collect-context", "grill-with-docs", "collect-context.mjs"],
+  ["skill-collect-context", "grilling", "collect-context.mjs"],
   ["codex-handoff-tmux", "handoff", "codex-handoff-tmux"],
   ["detect-handoff-surface", "handoff", "detect-handoff-surface", ["bash"]],
   ["skill-diff-page", "html-explanations", "diff-page.mjs"],
-  ["clawhub-local-test", "clawhub-local-test", "clawhub-local-test", ["node", "--disable-warning=ExperimentalWarning"]],
-  ["openclaw-stg-test", "openclaw-stg-test", "openclaw-stg-test", ["python3"]],
   ["github-verify-rendered-proof", "pr-proof-pack", "github-verify-rendered-proof", ["sh"]],
   ["pr-net-diff", "pr-proof-pack", "pr-net-diff"],
   ["proof-media", "pr-proof-pack", "proof-media"],

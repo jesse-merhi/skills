@@ -119,10 +119,6 @@ The installers support Codex, Claude Code, opencode, Pi and a local OpenClaw Gat
 
 ## What a skill actually is
 
-The [original skill prompts](originals/README.md) are kept verbatim in `originals/`
-with their source commits. They are reference copies, separate from the maintained
-model variants, and are never included in model-specific installations.
-
 A skill's `BASE.md` is its human-owned, model-neutral source of truth. The flow is
 **read the base → adapt it for each profile → install the selected variant**.
 The audited masters are kept here, not only in the local review database.
@@ -144,13 +140,13 @@ Two ways one gets used:
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
 - **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks nine skills as
-  explicit-only: `ask-claude`, `ask-codex`, `code-review`, `hill-climb`,
-  `html-explanations`, `just-do-it`, `pr-burndown`, `to-spec`, and `to-tickets`. They can review and fix code, operate desktop UI,
-  write durable planning files, or run a long external loop, so Codex waits for
+  "use `grilling` on this" in either harness. Codex marks five skills as
+  explicit-only: `code-review`, `hill-climb`,
+  `html-explanations`, `just-do-it` and `pr-burndown`. They can review and fix code, operate desktop UI
+  or run a long external loop, so Codex waits for
   you to name them.
 
-`code-review` owns the council workflow, including UI polish, in one prompt. Model-writing guidance and installer scripts live under `writing-for-agents`.
+`code-review` owns the council workflow; UI polish scoring lives in its `references/ui-polish.md`. Model-writing guidance and installer scripts live under `writing-for-agents`.
 
 `coding-standards` brings personal engineering standards to a repository
 without turning every judgment call into a linter. `apply` prefers existing
@@ -177,21 +173,17 @@ produces one update notice during materialization.
 The skills are not a menu. They snap into the loop I actually run:
 
 1. **Find the thing.** `session-recall` for prior context; trace the relevant code and callers for the current change.
-2. **Brief it.** `grill-with-docs` pulls repo docs, code, and Obsidian notes in
-   before the agent starts guessing. Use primary sources for questions outside the repo.
-3. **Make it grill me.** `grilling` until the undecided decisions are on the
-   table with recommendations attached.
-4. **Freeze the plan.** `to-spec` writes the spec and the intended PR shape.
-   `to-tickets` when it needs to become blocker-aware slices.
-5. **Hand off and let it run.** `handoff` for a clean fresh thread,
+2. **Make it grill me.** `grilling` pulls in repo docs, code and Obsidian notes, then asks until the undecided decisions are on the
+   table with recommendations attached. Use primary sources for questions outside the repo.
+3. **Hand off and let it run.** `handoff` for a clean fresh thread,
    `just-do-it` to finish a proposed change, the installed `gh stack` tool when one story needs a dependency-ordered
    stack; discover commands through `gh stack --help`.
-6. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
+4. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-7. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
-8. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
+5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
+6. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
-9. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
+7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
 For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Four fresh council members each assess standards and correctness in the resulting diff. The coordinator confirms findings, rates each as blocking, minor or not actionable, and verifies scoped repairs after each round. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs only after a blocking fix, an applied UI improvement or a fix that reaches beyond its finding; the coordinator asks the user when fixes stop converging. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
@@ -210,7 +202,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | Skill | What it does |
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
-| [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and Jesse's 👍 before each queue submission. |
+| [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and a check-in with Jesse before each queue submission. |
 | [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then runs the four-model council for code and affected UI until only minor findings remain, or polishes UI until every reviewer scores it at a target, reporting fixes, evidence and reviewer confidence. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | After finished work is pushed to a PR, checks and refreshes reviewer-visible proof, with before/after tables for UI; never on local commits. |
 
@@ -218,9 +210,8 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 
 | Skill | What it does |
 | --- | --- |
-| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, temporary checks for investigation, and permanent unit tests only by exception. |
+| [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, real stores for backend proof, temporary checks for investigation, and permanent unit tests only by exception. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
-| [`reducing-cognitive-load`](skills/reducing-cognitive-load/SKILL.md) | Reviews code that is clever, stringly typed, or over-abstracted and makes it readable. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
 | [`hill-climb`](skills/hill-climb/SKILL.md) | Iterates against a fixed eval to a target score, keeping checkpoints, then optionally cuts cost while holding the score. |
 
@@ -228,13 +219,9 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 
 | Skill | What it does |
 | --- | --- |
-| [`grilling`](skills/grilling/SKILL.md) | Interviews you as a design tree, one full round of questions at a time, each with a recommended answer. |
-| [`grill-with-docs`](skills/grill-with-docs/SKILL.md) | Same, but grounded first in repo docs, code, ADRs, specs, and tickets. |
-| [`to-spec`](skills/to-spec/SKILL.md) | Turns a settled conversation into an Obsidian spec including proof decisions and the intended PR delivery shape. |
-| [`to-tickets`](skills/to-tickets/SKILL.md) | Splits a plan into tracer-bullet Obsidian tickets with explicit blocking edges and logical PR groups. |
+| [`grilling`](skills/grilling/SKILL.md) | Interviews you as a design tree, one full round of questions at a time, each with a recommended answer, grounded in repo docs, code and Obsidian notes when the plan touches them. |
 | [`session-recall`](skills/session-recall/SKILL.md) | Finds the earlier local Codex or Claude session that already answered this, without dumping transcripts into context. |
 | [`handoff`](skills/handoff/SKILL.md) | Compacts the current conversation into a handoff document a fresh agent can start from. |
-| [`feedback-hardening`](skills/feedback-hardening/SKILL.md) | Assesses whether feedback warrants separate work, then hands off a useful objective with a clear title and scope while the main task continues independently. |
 
 ### Frontend and design
 
@@ -243,15 +230,12 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | [`design`](skills/design/SKILL.md) | The single visible design router; it loads internal production-UI, interaction, motion-review, or explicit-prototype guidance as needed. |
 | [`design-technical-diagrams`](skills/design-technical-diagrams/SKILL.md) | Builds and visually validates architecture, lifecycle, sequence, trust-boundary, and decision diagrams. |
 | [`frontend-ui-validation`](skills/frontend-ui-validation/SKILL.md) | The visual gate: Playwright screenshots, overflow and clipping checks, responsive states, console errors. |
-| [`ask-claude`](skills/ask-claude/SKILL.md) | Opens a fresh full Claude session through ACP for independent advice or scoped implementation. |
-| [`ask-codex`](skills/ask-codex/SKILL.md) | Opens a fresh full Codex session through ACP from another harness. |
 
 ### Communication
 
 | Skill | What it does |
 | --- | --- |
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Makes replies concise and easy to understand. |
-| [`de-slop`](skills/de-slop/SKILL.md) | Rewrites prose to remove AI-like padding while preserving its meaning and voice. |
 | [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 | [`show-video`](skills/show-video/SKILL.md) | Shows UI, API and CLI changes in video, including review fixes, with aligned A/B comparisons when useful. |
 
@@ -261,20 +245,8 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`writing-for-agents`](skills/writing-for-agents/SKILL.md) | How to write skills, `AGENTS.md`, and `CLAUDE.md` so the instruction actually changes behaviour. Read this before adding a skill. |
 | [`skill-cleaner`](skills/skill-cleaner/SKILL.md) | Audits installed skill roots for duplicates, unused skills, and prompt-budget pressure, with safety checks before deleting. |
-| [`cleanup`](skills/cleanup/SKILL.md) | Discovers and removes the complete local footprint of finished or abandoned work while preserving saved work and shared infrastructure. |
-| [`cleanup-and-archive`](skills/cleanup-and-archive/SKILL.md) | Runs cleanup, verifies the result, then archives the session through its host. |
+| [`cleanup`](skills/cleanup/SKILL.md) | Discovers and removes the complete local footprint of finished or abandoned work while preserving saved work and shared infrastructure, then archives the session when asked. |
 | [`wait-efficiently`](skills/wait-efficiently/SKILL.md) | Waits on commands, CI, and subagents through native event-driven mechanisms instead of burning tokens on heartbeats. |
-
-### OpenClaw and ClawHub
-
-Project-specific skills, grouped under [`skills/openclaw/`](skills/openclaw) so
-the rest of the repo stays legible. They still install by name like everything
-else. They will only be useful to you if you work on those projects.
-
-| Skill | What it does |
-| --- | --- |
-| [`openclaw-stg-test`](skills/openclaw/openclaw-stg-test/SKILL.md) | Publishes a temporary Control UI preview through a guarded Cloudflare Quick Tunnel without exposing an authenticated Gateway. |
-| [`clawhub-local-test`](skills/openclaw/clawhub-local-test/SKILL.md) | Runs a local ClawHub instance against a development Convex deployment seeded from a production snapshot, never production itself. |
 
 ## External skills
 

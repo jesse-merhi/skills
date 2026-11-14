@@ -22,11 +22,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.x"
-
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
@@ -47,7 +42,4 @@ jobs:
         run: |
           bash -n \
             tests/skills-test
-          python3 -m py_compile \
-            skills/openclaw/openclaw-stg-test/scripts/openclaw-stg-test \
-            skills/openclaw/openclaw-stg-test/scripts/test_openclaw_stg_test.py
           node --check skills/frontend-ui-validation/scripts/audit-layout.mjs

@@ -62,3 +62,19 @@ Use `oracle` when an unresolved decision merits optional Fable advice. Supply on
 Leave Claude Code's [advisor tool](https://code.claude.com/docs/en/advisor) off by default. In Anthropic's [model guide](https://claude.dev/blog/which-claude-model-should-you-build-with/), no tested advisor pairing clearly beat its executor alone; Opus 5.5 with a Fable 5.1 advisor gained 1.7 points for about 2.1 times the cost. Each advisor call also reads the full conversation uncached at the advisor's rates. For a deliberate Fable opinion on one decision, use the read-only `oracle` role.
 
 [Verification](VERIFICATION.md) records role exercises, including live model selection for the current `Explore`, `oracle` and Sonnet `implementer` override. It does not establish effort settings or complex delegation.
+
+## Claude extension under T3
+
+T3 starts Claude Code through the Agent SDK without `--chrome`, so a T3 session gets no extension tools even when `/chrome` is enabled. Register the extension's server for the Claude profile T3 uses. The name `claude-in-chrome` is reserved, so use `chrome`:
+
+```sh
+CLAUDE_CONFIG_DIR=~/.claude-second claude mcp add -s user chrome \
+  -e CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks \
+  -- /opt/homebrew/bin/claude --claude-in-chrome-mcp
+```
+
+`--claude-in-chrome-mcp` is the internal flag that `--chrome` uses, so a Claude Code update may change it. Check with `claude mcp list` that `chrome` shows Connected.
+
+`CLAUDE_CHROME_PERMISSION_MODE=skip_all_permission_checks` is the extension's "Skip all approvals" mode, chosen by Jesse on 2026-11-13 so the extension stops asking before each new site. Without it (the default is `ask`), the first visit to each site waits for Jesse to click Allow in Dia. Passwords, passkeys, two-factor codes and payment still stay with Jesse.
+
+The extension reaches Claude Code through `~/.claude/chrome/chrome-native-host`. Claude Code writes Homebrew's versioned path into it, such as `.../Caskroom/claude-code@latest/2.1.316/claude`, which disappears on the next upgrade. Point the wrapper at `/opt/homebrew/bin/claude` instead, and recheck it after `/chrome` rewrites it.

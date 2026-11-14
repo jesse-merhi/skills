@@ -1,1 +1,1 @@
-claude-fable-5.1.md
+gpt-6.md

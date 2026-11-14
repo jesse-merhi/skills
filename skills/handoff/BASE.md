@@ -29,7 +29,7 @@ Launch a full interactive session, not a subagent, ACPX or background agent. Pre
 
 **T3:** `t3_thread_launch` binds `workspaceStrategy` at launch: `existing_worktree` for a continuation or `worktree` with the intended `baseRef` for new work. Inherit unspecified project/model/modes and pass brief/objective in `message`. Link `[title](t3-thread://v1/<threadId>)`.
 
-Watches and schedules don't move automatically: transfer owned monitoring once the destination owns the work, preserve stopped schedules and remove the old watch. Authorized archival follows [cleanup-and-archive](../cleanup-and-archive/SKILL.md), retaining the continuation's runtimes.
+Watches and schedules don't move automatically: transfer owned monitoring once the destination owns the work, preserve stopped schedules and remove the old watch. Authorized archival follows [cleanup](../cleanup/SKILL.md#archive-the-session), retaining the continuation's runtimes.
 
 **Codex/Claude app or CLI:** run `detect-handoff-surface`; use `--destination codex-app|claude-app|codex-cli|claude-cli` for an explicit destination. Default to `continuation`; use `--relationship aside` for unrelated work. Let the detector choose placement. For Codex, read [launch settings](references/codex-settings.md). Run the selected command/native tool; fork only for needed raw history.
 

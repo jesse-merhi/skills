@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: 'Remove verified, disposable local artifacts from finished or abandoned development work.'
+description: 'Remove verified, disposable local artifacts from finished or abandoned development work, and archive the session when asked.'
 ---
 
 # Cleanup
@@ -15,7 +15,7 @@ skill-cleanup-inventory --root <repo> --output <new-file.json>
 
 Add `--compose-project <name>` for a known Compose project. Inventory collects evidence, not deletion decisions.
 
-Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Ask before removing uncertain data, uncommitted files, unique commits, or stashes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
+Keep user work, shared services, credentials, reusable databases/caches, and remote resources. Before removing uncertain data, uncommitted files, unique commits or stashes, check in (AGENTS.md Check-ins) and keep them until the user says yes. For squash/rebase merges, verify the actual merge before forcing local branch deletion.
 
 From a directory you will keep, read needed configuration, stop owned processes and services, remove disposable state, then remove the worktree and local branch. Delete the current agent worktree last.
 
@@ -40,3 +40,13 @@ Use current authoritative state, not a stale remote-tracking ref, as merge proof
 Use native scoped teardown and verify the same paths, PIDs, ports, refs, or IDs are absent. Inspect volume contents and purpose before `--volumes`. Keep shared devices, caches, databases, profiles, and infrastructure. Avoid machine-wide pruning.
 
 If an artifact returns, find its owner process rather than repeatedly deleting it.
+
+## Archive the session
+
+When asked to clean up and archive the current session, or a named one, finish cleanup and then archive without asking again; ask only for decisions cleanup reserves for the user. For a dry run, stop after the inventory.
+
+1. Verify the session, workspace and archive capability from the host's native context. In T3, use `t3_thread_list` and `t3_thread_read`.
+2. Leave other active work, unanswered questions and queued messages for their owner; T3 shows them as `pendingRequestCount` and through `t3_queue_list`. Stop only monitoring and schedules this session owns, since a session binding alone doesn't prove ownership. Transfer authorized continuing work.
+3. If cleanup fails, report the blocker and leave the session open. Permitted retained artifacts don't block archival; keep evidence outside removed paths.
+4. Recheck pending work, then archive with the native tool. In the Codex app, use `mcp__codex_app__set_thread_archived` with `archived: true`, omitting `threadId` for the current task or passing a verified other task's `threadId` and `hostId`. In T3, call `t3_thread_organize` and verify `thread.archived: true` with `t3_thread_read`. If app and provider have separate sessions, verify and report each. Never simulate archival by deleting transcripts or editing internal databases.
+5. Report removed and retained artifacts and the confirmed archive. If archiving ends the turn, give cleanup's result first.

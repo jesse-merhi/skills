@@ -14,6 +14,6 @@ Check the actual interaction, keyboard, scrolling, long content, and relevant fa
 
 Keep Maestro/E2E runs manually triggered. Adding tooling or remote builds, uploads, and cloud tests needs separate authorization. An existing native test workflow should be reused, not replaced just to follow this skill.
 
-If Maestro or the required device is unavailable, stop and ask the user for help. A permitted manual interaction can provide partial evidence but does not count as a Maestro run. Do not install tools or alter authentication to make the check appear complete.
+If Maestro or the required device is unavailable, report the gap, deliver the evidence you have and continue with other work. A permitted manual interaction can provide partial evidence but does not count as a Maestro run. Do not install tools or alter authentication to make the check appear complete.
 
 Record evidence using [Keep evidence useful](../SKILL.md#keep-evidence-useful).

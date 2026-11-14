@@ -1,6 +1,6 @@
 ---
 name: skill-cleaner
-description: "Audit agent skills: loaded roots, duplicate skills, unused skills, prompt-budget costs, compact descriptions."
+description: 'Use when asked to audit, prune or budget installed agent skills.'
 metadata:
   source: https://github.com/steipete/agent-scripts
   source-path: skills/skill-cleaner
