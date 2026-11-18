@@ -12,21 +12,21 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 
 | Role | Model | Reasoning |
 | --- | --- | --- |
-| Coordinator | GPT-6.1 Sol | high |
-| `implementer` — implementation, test design and repairs | GPT-6.1 Sol | high |
+| Coordinator | GPT-6.2 Sol | high |
+| `implementer` — implementation, test design and repairs | GPT-6.2 Sol | high |
 | `test_executor` — established validation execution | GPT-6 Luna | high |
 | `investigator` — bounded investigation and research | GPT-6 Luna | high |
-| `findings_reviewer` — independent findings only | GPT-6.1 Sol | high |
-| `oracle` — optional read-only decision advice | GPT-6 Astra | high |
-| Unnamed child | GPT-6.1 Sol | high |
+| `findings_reviewer` — independent findings only | GPT-6.2 Sol | high |
+| `oracle` — optional read-only decision advice | GPT-6.2 Astra | high |
+| Unnamed child | GPT-6.2 Sol | high |
 
 At most four child threads run concurrently. Delegate only useful independent work; the profile does not launch a fixed agent tree. The coordinator owns integration and verification under `AGENTS.md`. Explicit spawn arguments override unnamed-child defaults, but named roles retain their pinned model and effort. For an approved exception, use an unnamed child with explicit settings or a separately configured role.
 
-GPT-6.1 Sol, Astra and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting another model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
+GPT-6.2 Sol, Astra and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting another model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
 
 Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./install-skills --harness codex --model gpt-6`; switching among those models needs no separate skill view. Changing model settings does not refresh copied skills after repository updates. See [INSTALL.md](../INSTALL.md#codex-and-claude-code) for refresh and root ownership.
 
-The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. The `code-review` council uses the explicit Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol exception at high. A multi-provider launcher is needed for the complete council; native Codex roles alone cannot supply Claude. Skill availability does not select an execution role or expand its permissions.
+The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. The `code-review` council uses the explicit Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol exception at high. A multi-provider launcher is needed for the complete council; native Codex roles alone cannot supply Claude. Skill availability does not select an execution role or expand its permissions.
 
 For established validation, `writing-good-tests` selects `test_executor` and defines the batch, result record and failure handoff.
 
