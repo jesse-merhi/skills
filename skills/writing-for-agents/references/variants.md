@@ -2,7 +2,7 @@
 
 Use this when changing a skill's variants or adding a model. [writing-for-agents](../SKILL.md) links each model's guide.
 
-Read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the applicable model guide. Astra, Sol (including GPT-6.1 Sol) and Luna share one GPT-6 profile and complete prompt per skill.
+Read the human-owned, model-neutral `BASE.md` and relevant shared resources first, then the applicable model guide. GPT-6.2 Astra, GPT-6.2 Sol and Luna share one GPT-6 profile and complete prompt per skill.
 
 Change shared behaviour in the base first, then adapt every supported `variants/<profile>.md`. Existing variants do not override the base. Preserve behaviour, permissions, exact commands, evidence and completion criteria. Model guidance adds no gates or delegation. Share resources and metadata unless runtime behaviour differs.
 

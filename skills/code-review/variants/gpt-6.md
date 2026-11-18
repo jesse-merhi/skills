@@ -32,7 +32,7 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
 
 ## 3. Review with the council
 
-Use four fresh findings-only reviewers: **GPT-6 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
+Use four fresh findings-only reviewers: **GPT-6.2 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
 
 In T3 Code, use `orchestrator_capabilities`, then `delegate_task` for the selected members with settings in `target.options`. Elsewhere, use `spawn_agent` with `fork_turns="none"` only for models and settings it supports. Prefer a findings-only role whose pinned model and effort match; a prompt cannot override them. Report any unavailable member or setting and the coverage gap; never silently substitute, count the coordinator as a member or claim a complete council. Changing membership is the user’s decision.
 

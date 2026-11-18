@@ -56,7 +56,7 @@ anything it did not put there.
 To install or switch just this repo's skills, run one command from the clone:
 
 ```sh
-./install-skills --harness codex --model gpt-6.1-sol
+./install-skills --harness codex --model gpt-6.2-sol
 ./install-skills --harness codex --model astra
 ./install-skills --harness codex --model luna
 ./install-skills --harness claude --model fable
@@ -106,7 +106,7 @@ in `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
 `handoff` transfers work to a fresh full session.
 
 For opt-in Codex orchestration, run `./install-codex-profiles`, then
-`codex --profile orchestration`. This pins GPT-6.1 Sol at high for coordination,
+`codex --profile orchestration`. This pins GPT-6.2 Sol at high for coordination,
 implementation and findings-only review, Luna at high for bounded investigation
 and prepared validation, and Astra at high for optional read-only oracle advice.
 The coordinator retains decisions and delivery; consultation adds no mandatory
@@ -180,7 +180,7 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 4. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.1 Sol reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
+5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
 6. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more

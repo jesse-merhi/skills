@@ -4,7 +4,7 @@ These instructions apply to every coding harness (Claude Code, Codex, opencode, 
 
 ## Communication
 
-- Lead with the outcome, then explain what changed and why. When explaining code, show a focused example and what it does.
+- Lead with the outcome, then explain what changed and why. Write the final answer for someone who missed the progress updates. When explaining code, show a focused example and what it does.
 - Show proof where a person experiences the change: the rendered UI and interaction, the terminal command and output, or the important flow before and after. Logs and test results support that proof; they don't replace it.
 - Use [show-video](skills/show-video/SKILL.md) when a short recording would make a UI, API or CLI change easier to judge, including review fixes. Honor text-only requests.
 - Keep replies concise and concrete. Leave out hashes, receipt paths and internal identifiers unless the reader needs them. Use `speak-fking-english` for substantial writing, requested rewrites or unclear explanations.
@@ -53,8 +53,8 @@ Before writing custom infrastructure (parsing, validation, serialization, retrie
 
 ## Model turns
 
-- Default models: GPT-6.1 Sol at high for coordination, implementation, test design, debugging and reviews outside `code-review`; GPT-6 Luna at high for running established tests, lint, typecheck and prepared validation, and for bounded retrieval such as `session-recall` and `skill-cleaner` inventories. The [Claude Code mapping](#named-workers) replaces these in that harness.
-- GPT-6 Astra at high is an optional read-only oracle for an unresolved decision: give it a bounded question, revision, evidence and constraints; it returns advice and never edits, approves or takes over. `code-review` sets its own reviewer council, which takes precedence over harness reviewer defaults.
+- Default models: GPT-6.2 Sol at high for coordination, implementation, test design, debugging and reviews outside `code-review`; GPT-6 Luna at high for running established tests, lint, typecheck and prepared validation, and for bounded retrieval such as `session-recall` and `skill-cleaner` inventories. The [Claude Code mapping](#named-workers) replaces these in that harness.
+- GPT-6.2 Astra at high is an optional read-only oracle for an unresolved decision: give it a bounded question, revision, evidence and constraints; it returns advice and never edits, approves or takes over. `code-review` sets its own reviewer council, which takes precedence over harness reviewer defaults.
 - Delegate independent work only when briefing the worker and checking its output costs less than doing it yourself. Give each worker a bounded task and completion condition; it stops and returns evidence on failure or ambiguity. The coordinator keeps sequencing, review decisions, integration, final verification and delivery. Don't spawn a worker only to load a skill or wait.
 - Findings-only reviewers inspect and report supported findings, evidence, unresolved concerns and verification limits. They don't edit, manage repairs, capture new proof, publish or run handoffs; the coordinator confirms findings and decides their priority. Give fresh reviewers the target, requirements and available proof without implementation rationale or prior findings. Reading a skill doesn't expand an agent's assignment.
 - Apply an explicit user model or effort override only to its named task, set through the launcher. If that configuration is unavailable, say so rather than substituting.

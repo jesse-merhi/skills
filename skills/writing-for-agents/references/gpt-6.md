@@ -1,14 +1,15 @@
 # GPT-6 writing guidance
 
-Use one shared prompt for Astra, Sol (including [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)) and Luna. OpenAI provides [family-wide prompting guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices) based on Astra observations and no separate Sol or Luna guide; validate it on the consuming models and workload.
+GPT-6.2 Astra and Sol share this repository’s GPT-6 prompt with Luna. OpenAI’s 6.2 examples draw on Astra and Sol. Try a prompt change on the model and task where the behavior matters. [OpenAI’s GPT-6.2 prompting guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6.2-astra#gpt-6.2-astra-prompting-best-practices) (reviewed 2026-11-18).
 
-Reviewed: 2026-09-29.
+## Writing for the reader
 
-- Define the authorized outcome, required evidence and completion conditions. Let the agent resolve routine decisions from context; preserve decisions and permissions that need the user. Astra asks clarifying and non-blocking questions more readily than earlier models, so say which stops the workflow wants and treat implied requests as requests to act.
-- Before asking for approval, have the agent finish the authorized work that makes the action concrete, so approval is the last step. Do not add warnings, approval flows or checklists for hypothetical risk.
-- Give each rule one owner and resolve conflicting instructions. `AGENTS.md` makes the user's instructions take precedence over skill guidelines and requires quoting the skill instruction behind a pause; do not repeat either rule in skills.
-- Ask for concise, concrete language in conversation and saved artifacts. Astra defaults to lists, tables and Markdown; say when paragraphs fit. Remove stock phrases, concluding summary lines such as "In short:", "X, not Y" framing against an alternative nobody raised, and invented compound labels, including in the prompt's own wording and report vocabulary.
-- Specify when delegation helps and the worker's boundaries; Astra may delegate less than a workflow wants. Messages between agents may be read by a person, so ask for legible prose. Model guidance grants no authority for extra agents; the applicable AGENTS.md owns roles and effort.
-- Run tests suited to the change and complete required checks. Broaden or repeat them only when new changes, failures or unresolved concerns justify it; otherwise continue. Do not add tests for reversible, low-impact changes that mirror the implementation.
+Astra already writes briefly and directly. Revisit repeated requests to “be concise” when they cause the model to omit context. Name the reader, what they need to know or do, and any terminology worth preserving. If users can see messages between agents, write briefs and progress updates in terms they can follow.
 
-Apply the shared [writing-for-agents](../SKILL.md) contract. Keep domain behavior, exact commands, required review and permission boundaries intact. Skill profiles select prompts; launcher configuration selects the model and effort.
+For a final answer, assume the reader missed the progress updates. Give the outcome and enough evidence to understand it on its own. Translate shorthand from tools and other agents into the user’s terms. In an external draft, supply background the recipient lacks. When editing someone’s text, preserve their wording outside the requested change.
+
+## Completing the work
+
+State the outcome, how to verify it, and which decisions belong to the user. Astra can propose a next step and wait when a detail is unclear. For a routine, reversible choice, let it state its assumption and finish the authorized work. When approval is required, finish the authorized preparation first so the user can decide from the evidence. Keep check-ins and delegation policy in the applicable `AGENTS.md` and avoid adding approval steps for hypothetical risks.
+
+For coding tasks, point to the conventions and caller behavior that matter. Name a regression the existing checks could miss when asking for a new test. For a visual brief, specify the reference, imagery and typography that define the intended look, then judge the rendered result. Keep interface text that helps someone understand the screen or take an action.
