@@ -12,6 +12,6 @@ Each round, apply the supported proposals for the lowest-scoring categories. Wat
 
 A council round invites every available member. The lowest scorer from the latest council round may review revisions alone until it meets the target or becomes unavailable. Run a council round then and for the final allowed round. Resume gating if any scorer falls short.
 
-Polish finishes when at least one eligible council reviewer scores every category in a council round, every complete scorecard meets the target on that revision, and there is no confirmed regression or step 4 blocking issue. If the round limit comes first, report the scores reached as partial; if the user raises a met target, keep the met revision mergeable and propose stacking further polish.
+Polish finishes when at least one eligible reviewer scores every category in a council round, every score returned for that revision meets the target, and there is no confirmed regression or step 4 blocking issue. If the round limit comes first, report the scores reached as partial; if the user raises a met target, keep the met revision mergeable and propose stacking further polish.
 
 Report the polish result with the number of complete scorecards out of four on the final revision. Name every reviewer whose scorecard is missing or incomplete and give the reason, even if the reviewer assessed the code. Record scores as supplied, never invented, averaged or rounded, and report every member’s scores per category and round, references included, in one table.
