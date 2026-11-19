@@ -186,7 +186,7 @@ The skills are not a menu. They snap into the loop I actually run:
 7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
-For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Four fresh council members each assess standards and correctness in the resulting diff. The coordinator confirms findings, rates each as blocking, minor or not actionable, and verifies scoped repairs after each round. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs only after a blocking fix, an applied UI improvement or a fix that reaches beyond its finding; the coordinator asks the user when fixes stop converging. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
+For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Every available member of the four-model council assesses standards and correctness in the resulting diff. If only one to three reviewers finish, the report names the missing models and their reasons. If none finish, the review is incomplete. The coordinator confirms findings, rates each as blocking, minor or not actionable, and verifies scoped repairs after each round. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs only after a blocking fix, an applied UI improvement or a fix that reaches beyond its finding; the coordinator asks the user when fixes stop converging. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
@@ -203,7 +203,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
 | [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and a check-in with Jesse before each queue submission. |
-| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then runs the four-model council for code and affected UI until only minor findings remain, or polishes UI until every reviewer scores it at a target, reporting fixes, evidence and reviewer confidence. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then reviews code and affected UI with the available members of the four-model council. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | After finished work is pushed to a PR, checks and refreshes reviewer-visible proof, with before/after tables for UI; never on local commits. |
 
 ### Code quality and correctness

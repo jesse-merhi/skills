@@ -32,11 +32,13 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
 
 ## 3. Review with the council
 
-Use four fresh findings-only reviewers: **GPT-6.2 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
+The full council has four fresh findings-only reviewers: **GPT-6.2 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
 
-In T3 Code, use `orchestrator_capabilities`, then `delegate_task` for the selected members with settings in `target.options`. Elsewhere, use native subagent tools only for models and settings they support. Prefer a findings-only role whose pinned model and effort match; a prompt cannot override them. Report any unavailable member or setting and the coverage gap; never silently substitute, count the coordinator as a member or claim a complete council. Changing membership is the user’s decision.
+In T3 Code, use `orchestrator_capabilities`, then `delegate_task` with settings in `target.options`. Elsewhere, use native subagent tools only for models and settings they support. Prefer a findings-only role with the matching model and effort. Skip any member you cannot launch at high effort with its named model.
 
-Dispatch all members in parallel when supported, on the same stable commit or recorded patch. Give each the target, base, full diff, requirements, standards, reusable proof and both lenses below, without implementation rationale, simplifier conclusions or prior findings; never resume an implementer or previous reviewer. Reviewers may run permitted read-only probes and fault checks in scratch copies but do not spawn reviewers. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results, checking each as it arrives, and leave the reviewed revision unedited until the round is complete. Check each result’s revision; disclose context contamination.
+Dispatch every available member in parallel when supported, on the same stable commit or recorded patch. Give each the target, base, full diff, requirements, standards, reusable proof and both lenses below, without implementation rationale, simplifier conclusions or prior findings; never resume an implementer or previous reviewer. Reviewers may run permitted read-only probes and fault checks in scratch copies but do not spawn reviewers. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results, checking each as it arrives, and leave the reviewed revision unedited until the round is complete. Disclose context contamination.
+
+Count only assessments from the named reviewers at high effort on the round’s revision. Record each missing model and why it is missing. Continue automatically with any qualifying assessments, even one. If none qualify, report the review incomplete and stop.
 
 Each reviewer applies both lenses and reports every supported finding, minor ones included:
 
@@ -73,13 +75,13 @@ After each round, fix blocking issues, small minor ones and selected UI improvem
 
 - **Run another round** when the round fixed a blocking issue, applied a selected UI improvement or made an uncontained fix; fresh reviewers assess the full resulting change under the same criteria.
 - **Finish** when the reviewed revision has no blocking findings and no other round trigger applies; its fixes are reported as coordinator fixes verified by checks and need no further council review.
-- **Stop and ask the user** when rounds stop converging (fixes keep producing new blocking findings in touched code, a blocking issue survives repeated repairs, or evidence cannot settle whether a finding blocks) or evidence, tools or authority are unavailable. Report the pattern, evidence and decision needed instead of another round; you may first consult the `oracle` role on whether the remaining findings block merging.
+- **Stop and ask the user** when rounds stop converging (fixes keep producing new blocking findings in touched code, a blocking issue survives repeated repairs, or evidence cannot settle whether a finding blocks) or a lack of evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed instead of another round; you may first consult the `oracle` role on whether the remaining findings block merging.
 
 ## 5. Report and finish
 
-A complete code-review has simplification done, every member’s assessment of the final council-reviewed revision, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial result plainly; a stop for non-convergence or missing evidence is not approval.
+Report the final round as a full council if all four assessed that revision, or a restricted council if one to three did. Either review can finish with simplification done, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial result plainly; a stop for non-convergence or missing evidence is not approval.
 
-Report useful simplifications and a concise account of each round from the round record: why another round did or did not run, each reviewer’s confidence with its evidence basis and limits, which fixes received later review, the final target, unresolved disagreements and residual concerns. Never carry confidence onto later edits or call unreviewed repairs approved.
+Report useful simplifications and a concise account of each round from the round record: why another round did or did not run, each reviewer’s confidence with its evidence basis and limits, missing models and reasons, which fixes received later review, the final target, unresolved disagreements and residual concerns. Never carry confidence onto later edits or call unreviewed repairs approved.
 
 Put the report in chat, or in an existing PR description when updating that PR is authorized, and leave readiness and the check-in to the caller. Include any [show-video](../show-video/SKILL.md) recording; a clean or findings-only review needs no new one by itself.
 
