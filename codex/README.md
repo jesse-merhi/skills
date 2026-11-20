@@ -13,7 +13,7 @@ The profile implements the [shared model policy](../AGENTS.md#model-turns):
 | Role | Model | Reasoning |
 | --- | --- | --- |
 | Coordinator | GPT-6.2 Sol | high |
-| `implementer` — implementation, test design and repairs | GPT-6.2 Sol | high |
+| `implementer` — implementation, test design and repairs | GPT-6.2 Sol | `xhigh` |
 | `test_executor` — established validation execution | GPT-6 Luna | high |
 | `investigator` — bounded investigation and research | GPT-6 Luna | high |
 | `findings_reviewer` — independent findings only | GPT-6.2 Sol | high |
@@ -26,11 +26,11 @@ GPT-6.2 Sol, Astra and Luna availability depends on the account and client rollo
 
 Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./install-skills --harness codex --model gpt-6`; switching among those models needs no separate skill view. Changing model settings does not refresh copied skills after repository updates. See [INSTALL.md](../INSTALL.md#codex-and-claude-code) for refresh and root ownership.
 
-The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. See the [code-review council](../skills/code-review/BASE.md#3-review-with-the-council) for its model and effort requirements. The full council needs a launcher with access to Codex, Claude and Antigravity. Skill availability does not select an execution role or expand its permissions.
+See the [shared execution policy](../AGENTS.md#model-turns) for when to delegate and the [code-review council](../skills/code-review/BASE.md#3-review-with-the-council) for its model and effort requirements. The full council needs a launcher with access to Codex, Claude and Antigravity. Skill availability does not select an execution role or expand its permissions.
 
 For established validation, `writing-good-tests` selects `test_executor` and defines the batch, result record and failure handoff.
 
-The existing workflow owners select these roles: `just-do-it` delegates bounded implementation and investigation, `grilling` delegates factual questions, and `code-review` delegates simplification followed by council assessments covering both standards and requirements/correctness. They keep sequencing, integration, shared verification and delivery with the coordinator.
+`grilling` delegates factual questions. `code-review` delegates simplification followed by council assessments covering standards and correctness. The coordinator keeps sequencing, integration, shared verification and delivery.
 
 On a launcher exposing these roles, set `agent_type="investigator"` or `agent_type="implementer"` on `spawn_agent`. Supply task-specific context, for example:
 

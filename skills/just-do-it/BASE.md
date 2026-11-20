@@ -9,7 +9,7 @@ When explicitly invoked, finish the change and deliver one PR ready for Jesse.
 
 Check code, PR and review/test evidence. Start at the first unfinished or invalidated step; reuse still-applicable results.
 
-Delegate per AGENTS.md; use `code-review` for review.
+Claude and Gemini coordinators follow the handoff instructions in [code-review's implementation step](../code-review/SKILL.md#2-simplify) for every edit. Check the implementer's result before delivery and use `code-review` for review.
 
 1. Before publication, map the CI and automatic review jobs that draft, synchronize and readiness events start to their local commands, runtime versions, flags and scope selectors. Note which checks only the provider or platform can run. Do not suppress checks.
 2. Finish implementation and confirmed repairs, commit locally and resolve the PR base. Use `code-review` to simplify the full PR change, then run its council on the resulting code, including all branch commits. Preserve applicable review evidence and route affected rechecks through code-review’s existing round record. If code-review stops for a user decision, report it and keep the PR draft. A complete code-review of the current revision satisfies review; proceed when proof and checks also pass. Before every push or event that starts CI, pass the locally reproducible checks mapped in step 1 on the code being published. Use the same commands and relevant configuration as CI; a narrower test selection does not prove a broader CI job. Reuse still-applicable results and rerun checks whose inputs changed. Stop on a local failure and diagnose it before publication. Use `frontend-ui-validation` for web/native UI and keep its proof.

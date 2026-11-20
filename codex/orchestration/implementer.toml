@@ -1,5 +1,5 @@
 model = "gpt-6.2-sol"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 
 developer_instructions = """
 Use wait-efficiently for progress messages and the assignment's final result.
