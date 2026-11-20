@@ -180,13 +180,13 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 4. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
+5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5, GPT-6.2 Sol and Gemini 4 Neon reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
 6. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
-For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Every available member of the four-model council assesses standards and correctness in the resulting diff. If only one to three reviewers finish, the report names the missing models and their reasons. If none finish, the review is incomplete. The coordinator confirms findings, rates each as blocking, minor or not actionable, and verifies scoped repairs after each round. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs only after a blocking fix, an applied UI improvement or a fix that reaches beyond its finding; the coordinator asks the user when fixes stop converging. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
+For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Every available council member assesses standards and correctness in the resulting diff. The report names any missing models and explains why each is missing. If none finish, the review is incomplete. The coordinator confirms findings, rates each as blocking, minor or not actionable, and verifies scoped repairs after each round. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs only after a blocking fix, an applied UI improvement or a fix that reaches beyond its finding; the coordinator asks the user when fixes stop converging. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
@@ -203,7 +203,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
 | [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and a check-in with Jesse before each queue submission. |
-| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then reviews code and affected UI with the available members of the four-model council. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then reviews code and affected UI with the available council members. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | After finished work is pushed to a PR, checks and refreshes reviewer-visible proof, with before/after tables for UI; never on local commits. |
 
 ### Code quality and correctness

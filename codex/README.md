@@ -26,7 +26,7 @@ GPT-6.2 Sol, Astra and Luna availability depends on the account and client rollo
 
 Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./install-skills --harness codex --model gpt-6`; switching among those models needs no separate skill view. Changing model settings does not refresh copied skills after repository updates. See [INSTALL.md](../INSTALL.md#codex-and-claude-code) for refresh and root ownership.
 
-The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. The `code-review` council uses the explicit Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol exception at high. A multi-provider launcher is needed for the complete council; native Codex roles alone cannot supply Claude. Skill availability does not select an execution role or expand its permissions.
+The shared [execution policy](../AGENTS.md#model-turns) assigns skill work by action: substantive edits to `implementer`, bounded retrieval and inventories to `investigator`, and prepared validation to `test_executor`. The coordinator keeps workflow decisions and delivery. See the [code-review council](../skills/code-review/BASE.md#3-review-with-the-council) for its model and effort requirements. The full council needs a launcher with access to Codex, Claude and Antigravity. Skill availability does not select an execution role or expand its permissions.
 
 For established validation, `writing-good-tests` selects `test_executor` and defines the batch, result record and failure handoff.
 
