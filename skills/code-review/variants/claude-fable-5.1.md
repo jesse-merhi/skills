@@ -32,9 +32,9 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
 
 ## 3. Review with the council
 
-The full council has four fresh findings-only reviewers: **GPT-6.2 Astra, Claude Fable 5.2, Claude Opus 5.5 and GPT-6.2 Sol**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
+The full council has five fresh findings-only reviewers: **GPT-6.2 Astra, Claude Fable 5.2, Claude Opus 5.5, GPT-6.2 Sol and Gemini 4 Neon**, each at **high** reasoning effort. This membership takes precedence over harness reviewer defaults.
 
-In T3 Code, use `orchestrator_capabilities`, then `delegate_task` with settings in `target.options`. Elsewhere, use fresh native `Agent` invocations only for models and settings they support. Prefer a findings-only role with the matching model and effort. Skip any member you cannot launch at high effort with its named model.
+In T3 Code, get provider and model IDs and supported options from `orchestrator_capabilities`, then launch with `delegate_task` and pass the effort in `target.options`. For Gemini 4 Neon, use an authenticated Antigravity provider and select its High thinking setting. Elsewhere, use fresh native `Agent` invocations only for models and settings they support. Prefer a findings-only role with the matching model and effort. Skip any member you cannot launch at high effort with its named model.
 
 Dispatch every available member in parallel when supported, on the same stable commit or recorded patch. Give each the target, base, full diff, requirements, standards, reusable proof and both lenses below, without implementation rationale, simplifier conclusions or prior findings; never resume an implementer or previous reviewer. Reviewers may run permitted read-only probes and fault checks in scratch copies but do not spawn reviewers. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results, checking each as it arrives, and leave the reviewed revision unedited until the round is complete. Disclose context contamination.
 
@@ -79,7 +79,7 @@ After each round, fix blocking issues, small minor ones and selected UI improvem
 
 ## 5. Report and finish
 
-Report the final round as a full council if all four assessed that revision, or a restricted council if one to three did. Either review can finish with simplification done, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial result plainly; a stop for non-convergence or missing evidence is not approval.
+Report the final round as a full council if all members assessed that revision, or a restricted council if only some did. Either review can finish with simplification done, no blocking issues on it, only contained fixes after it, applicable UI criteria supported by captures and interaction evidence, and required checks passing. Otherwise report a partial result plainly; a stop for non-convergence or missing evidence is not approval.
 
 Give brief progress updates during long work. Report useful simplifications and a concise account of each round from the round record: why another round did or did not run, each reviewer’s confidence with its evidence basis and limits, missing models and reasons, which fixes received later review, the final target, unresolved disagreements and residual concerns. Never carry confidence onto later edits or call unreviewed repairs approved.
 
