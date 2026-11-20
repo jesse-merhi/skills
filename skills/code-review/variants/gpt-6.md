@@ -22,7 +22,7 @@ Honor narrower requests and report their coverage limits: findings-only means no
 
 ## 2. Simplify
 
-Give one implementation agent the target, requirements, owned files, repair authority and checks. Use `spawn_agent`, selecting the configured `implementer` role when supported. Run this pass even after implementation; without independent dispatch, simplify locally and disclose it.
+Give one implementation agent the target, requirements, owned files, repair authority and checks. Follow the model policy in `AGENTS.md` for simplification and every later repair. In native Codex, select the configured `implementer` role with `spawn_agent` when available. Run this pass even after implementation. If dispatch is unavailable, a Codex coordinator may simplify directly and disclose that. A Claude or Gemini coordinator reports the blocked edit.
 
 Remove what the requirement does not need from changed and directly affected code, tests and fixtures, including accidental generated-file changes, but check callers before deleting guards, cleanup, error handling, public contracts or tests. Make the code understandable on the first read, even when the implementation is sophisticated. Read definitions with their usages and choose the simplest accurate name in ordinary words: `executeNotificationDispatch` can be `sendNotification`, while `expiresAtMs` keeps its unit and a domain term may beat a generic one. Update definitions and usages together; change public contracts only when authorized. Keep related work together and branches readable, tracing each branch's result including fields added, moved or omitted. Extract a function when its name makes a step clearer; keep it inline when another jump would cost the reader more. For React prop contracts, use [typescript-discipline](../typescript-discipline/SKILL.md#react-prop-contracts) to establish supported caller states before removing optionality or fallbacks. Avoid changes based only on taste.
 
@@ -71,11 +71,11 @@ The coordinator assigns each confirmed finding a severity, including findings it
 
 Settle unclear triggers from callers, deployment and targeted probes, not the worst case. A race, timing or ordering finding needs actors that actually run concurrently in supported deployments, the interleaving and what breaks, or it is not actionable. A rare trigger stays blocking when its consequence is severe and hard to recover from, such as corrupted persisted data, a security breach or lost user work. Report other serious defects in affected behavior as non-blocking residual concerns with evidence.
 
-After each round, fix blocking issues, small minor ones and selected UI improvements when authorized, verify repaired and preserved behavior, and recapture changed UI. A fix is contained when it stays within its finding, leaves other behavior, contracts, persisted data, security and permissions unchanged, and passes relevant checks. Then decide:
+After each round, route authorized fixes and selected UI improvements through the implementation policy above. Verify repaired and preserved behavior and recapture changed UI. A fix is contained when it stays within its finding, leaves other behavior, contracts, persisted data, security and permissions unchanged, and passes relevant checks. Then decide:
 
 - **Run another round** when the round fixed a blocking issue, applied a selected UI improvement or made an uncontained fix; fresh reviewers assess the full resulting change under the same criteria.
-- **Finish** when the reviewed revision has no blocking findings and no other round trigger applies; its fixes are reported as coordinator fixes verified by checks and need no further council review.
-- **Stop and ask the user** when rounds stop converging (fixes keep producing new blocking findings in touched code, a blocking issue survives repeated repairs, or evidence cannot settle whether a finding blocks) or a lack of evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed instead of another round; you may first consult the `oracle` role on whether the remaining findings block merging.
+- **Finish** when the reviewed revision has no blocking findings and no other round trigger applies. Report any contained fixes the coordinator verified by checks after the round.
+- **Stop and ask the user** when rounds stop converging (fixes keep producing new blocking findings in touched code, a blocking issue survives repeated repairs, or evidence cannot settle whether a finding blocks) or a lack of evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed instead of another round. The oracle guidance in `AGENTS.md` applies if a decision merits a second opinion.
 
 ## 5. Report and finish
 

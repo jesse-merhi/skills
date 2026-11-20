@@ -77,6 +77,10 @@ fallback. Projects with only shared instructions can use `AGENTS.md` alone.
 Browser and worker rules live in the Claude Code section of `AGENTS.md`.
 These instructions apply when Claude discovers this file in the project tree;
 installing skills does not make them global instructions for unrelated projects.
+For an explicitly requested global implementation policy, add a pointer in
+`~/.claude/CLAUDE.md` to the `Model turns` section of `REPO/AGENTS.md`. Preserve
+existing instructions. For Antigravity, link `~/.gemini/AGENTS.md` to
+`REPO/AGENTS.md` if the destination is absent or already points to this repo.
 See Anthropic's [instruction-loading modes and limitations](https://github.com/anthropics/claude-code/tree/main/mods/agents-md).
 Do not change the user's existing mode as part of a skills installation.
 
@@ -86,10 +90,10 @@ step when installing only into OpenClaw.
 ## 3. Preserve Claude's normal session
 
 Claude Code uses its normal main session and project instructions described
-above. Opus 5.5 at high is the default for coordination and subagents, without an
-advisor. Use Sonnet 5.5 at high for well-specified implementation and Haiku 5.5 at
-high for straightforward tasks, codebase search and prepared validation; Fable 5.2
-at high remains available for read-only oracle consultation.
+above. Opus 5.5 at high is the default coordinator, with no advisor. Route every
+implementation edit through [GPT-6.2 Sol at `xhigh`](claude/README.md#implementation-through-codex).
+Haiku 5.5 at high handles codebase search and prepared validation. Fable 5.2 at
+high remains available as a read-only oracle.
 Preserve explicit user model and effort choices. Use the [Claude launch command](claude/README.md)
 only when model selection is authorized; skill installation preserves
 the currently selected model and advisor.
@@ -102,9 +106,9 @@ Do not set a custom main agent.
 
 For upgrades, remove `agent` from `~/.claude/settings.json` only when its value
 is exactly `fable-orchestrator`. Within `~/.claude/agents/`, remove
-`fable-orchestrator.md`, `codex-reviewer.md`, and `opus-worker.md` only when each
-is a symlink whose stored target is in this repo's `claude/agents/` or a verified
-earlier clone of this repo. Check stored targets even when links are broken.
+`fable-orchestrator.md`, `codex-reviewer.md`, `opus-worker.md`, and the retired
+`implementer.md` only when the stored symlink target is in this repo's
+`claude/agents/` or a verified earlier clone. Check targets even when links are broken.
 Preserve real files, foreign links, other agent selections, and every other
 setting. Skip this step for other harnesses.
 

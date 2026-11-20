@@ -98,17 +98,17 @@ refuses to replace hand-written local skills or links owned elsewhere.
 Claude Code uses its normal main session, with Opus 5.5 at high as the repository
 default, no advisor and Opus as the default subagent model. The launch command
 and optional [named workers](claude/README.md) preserve explicit user choices.
-Opus handles implementation without a complete spec, investigation and findings-only review;
-Sonnet 5.5 at high handles well-specified implementation; Haiku 5.5 at high handles
-straightforward tasks, codebase search and prepared validation. Fable 5.2 at high
-is also available for read-only oracle advice. Shared owner and worker policy lives
-in `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
+Claude and Gemini plan and check the work. They assign every implementation edit
+to GPT-6.2 Sol at `xhigh` through a Codex worker signed in with ChatGPT. Codex coordinators
+can implement directly or delegate. For optional read-only advice, start with
+Astra and use Fable for harder calls that warrant it. Shared policy lives in
+`AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
 `handoff` transfers work to a fresh full session.
 
 For opt-in Codex orchestration, run `./install-codex-profiles`, then
-`codex --profile orchestration`. This pins GPT-6.2 Sol at high for coordination,
-implementation and findings-only review, Luna at high for bounded investigation
-and prepared validation, and Astra at high for optional read-only oracle advice.
+`codex --profile orchestration`. This pins GPT-6.2 Sol at `xhigh` for implementation
+and at high for coordination and findings-only review, Luna at high for bounded
+investigation and prepared validation, and Astra at high for read-only oracle advice.
 The coordinator retains decisions and delivery; consultation adds no mandatory
 gate. The profile does not edit your base configuration or install global agents.
 See [Codex orchestration](codex/README.md) for the role settings and limits.

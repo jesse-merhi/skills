@@ -60,9 +60,12 @@ Before writing custom infrastructure (parsing, validation, serialization, retrie
 
 ## Model turns
 
-- Default models: GPT-6.2 Sol at high for coordination, implementation, test design, debugging and reviews outside `code-review`; GPT-6 Luna at high for running established tests, lint, typecheck and prepared validation, and for bounded retrieval such as `session-recall` and `skill-cleaner` inventories. The [Claude Code mapping](#named-workers) replaces these in that harness.
-- GPT-6.2 Astra at high is an optional read-only oracle for an unresolved decision: give it a bounded question, revision, evidence and constraints; it returns advice and never edits, approves or takes over. `code-review` sets its own reviewer council, which takes precedence over harness reviewer defaults.
-- Delegate independent work only when briefing the worker and checking its output costs less than doing it yourself. Give each worker a bounded task and completion condition; it stops and returns evidence on failure or ambiguity. The coordinator keeps sequencing, review decisions, integration, final verification and delivery. Don't spawn a worker only to load a skill or wait.
+- Default models: GPT-6.2 Sol at high for coordination, test design, debugging and reviews outside `code-review`; GPT-6 Luna at high for running established tests, lint, typecheck and prepared validation, and for bounded retrieval such as `session-recall` and `skill-cleaner` inventories. The [Claude Code mapping](#named-workers) sets native Claude Code defaults.
+- Claude and Gemini coordinators assign every implementation edit to GPT-6.2 Sol at `xhigh`, including small changes, tests, documentation, simplification and review fixes. They plan, investigate, sequence work, review results, run checks and deliver. If Sol cannot run, leave implementation blocked and report why.
+- In T3 Code, launch Sol workers through a Codex provider signed in with ChatGPT. For cross-provider work, find the provider with `orchestrator_capabilities` and pass its ID as `target.providerInstanceId` to `delegate_task` with `role: "implementation"`, `target.model: "gpt-6.2-sol"` and `target.options: [{id: "reasoningEffort", value: "xhigh"}]`. Outside T3, use the [Codex CLI with ChatGPT sign-in](claude/README.md#implementation-through-codex). Ask Jesse before using an API-key connection.
+- Give Sol the goal, owned files, constraints and acceptance checks. Let it choose how to implement the change. Inspect the returned diff against the request and independently verify the result before signing off. Send any further edits back to Sol.
+- Codex coordinators can implement directly or use subagents at their discretion, following the task and applicable skills. Use GPT-6.2 Sol at `xhigh` for the named implementer role. Give each worker a bounded task and completion condition, and keep sequencing, integration and delivery with the coordinator.
+- For an unresolved decision that merits a second opinion, prefer GPT-6.2 Astra at high as the lower-cost read-only oracle. Use Claude Fable 5.2 at high for a harder decision that warrants its cost or when using the native Claude `oracle` role. Give one question, the revision, evidence and constraints. The oracle advises and the coordinator decides. `code-review` owns its reviewer council.
 - Findings-only reviewers inspect and report supported findings, evidence, unresolved concerns and verification limits. They don't edit, manage repairs, capture new proof, publish or run handoffs; the coordinator confirms findings and decides their priority. Give fresh reviewers the target, requirements and available proof without implementation rationale or prior findings. Reading a skill doesn't expand an agent's assignment.
 - Apply an explicit user model or effort override only to its named task, set through the launcher. If that configuration is unavailable, say so rather than substituting.
 - Batch independent calls but bound their combined output. Read every part of required documents; truncation is not a completed read. In Codex, use `Promise.allSettled` in code mode for independent reads. Keep dependent calls and writes serial.
@@ -113,14 +116,13 @@ In T3 Code, follow [Browser work in T3 Code](#browser-work-in-t3-code). Elsewher
 
 The main session coordinates on Claude Opus 5.5 at high, without an advisor; Opus 5.5 is the default subagent model. Installing instructions doesn't change live model settings.
 
-When the [named workers](claude/README.md) are installed, use the `Agent` tool with `subagent_type` set to the role. `implementer`, `investigator` and `findings-reviewer` default to Opus 5.5 at high; `test-executor` runs prepared validation on Haiku 5.5 at high; `oracle` gives read-only Fable 5.2 advice under the oracle rules above; `Explore` handles codebase searches, including named-definition lookups, on Haiku 5.5 at high.
+When the [named workers](claude/README.md) are installed, use the `Agent` tool with `subagent_type` set to the role. `investigator` and `findings-reviewer` use Opus 5.5 at high for read-only work. `test-executor` runs prepared validation on Haiku 5.5 at high. `Explore` handles codebase searches on Haiku 5.5 at high. `oracle` gives read-only Fable 5.2 advice under the shared model rules.
 
 Pick the model by the work:
 
-- **Haiku 5.5/high** (per-invocation `model` and `effort` override on the right role): a clear procedure with a checkable result, such as running prepared checks or a small mechanical edit.
-- **Sonnet 5.5/high** (`model` override on `implementer`): a well-specified implementation with clear acceptance criteria and no open design decisions, unless it's hard despite the spec, such as a migration or performance work.
-- **Opus**: design decisions, implementation without a complete spec, failure diagnosis, review, or uncertain difficulty. If a Haiku task turns out to need judgment, it returns evidence and the coordinator reassigns it.
+- **Haiku 5.5/high** (per-invocation `model` and `effort` override on the right role): prepared checks, codebase search and bounded questions with a checkable answer.
+- **Opus**: design decisions, failure diagnosis, review or read-only work that needs judgment. Route changes to files through Sol as above.
 
-When a worker falls short, first give it a check the work must pass, then raise its effort one level, then move to the next larger model at one effort level lower. An Opus worker that still falls short returns its evidence; the coordinator may consult `oracle`.
+When a read-only worker falls short, give it a check the result must pass. If a decision still needs judgment, use the oracle guidance above.
 
 Give each worker the original task text or exact quoted requirements, and review its output against them.
