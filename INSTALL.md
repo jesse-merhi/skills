@@ -88,11 +88,11 @@ Do not change the user's existing mode as part of a skills installation.
 For Antigravity, link `~/.gemini/AGENTS.md` to `REPO/AGENTS.md` if the destination
 is absent or already points to this repo.
 
-For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `~/.gemini/GEMINI.md`. Preserve existing context and any custom filename. Replace `REPO` with the absolute skills checkout path.
+For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `~/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
 
-> Delegate every implementation edit to GPT-6.2 Sol at `xhigh` through Codex signed in with ChatGPT. Follow the Model turns section of `REPO/AGENTS.md` for launch and review. Inspect the diff and verify the result yourself. If handoff is blocked, leave the edit pending and report why.
+> Delegate every implementation edit to GPT-6.2 Sol at `xhigh` through Codex signed in with ChatGPT. Inspect the diff and verify the result yourself. If handoff is blocked, leave the edit pending and report why.
 
-From an unrelated project, run `/memory show` in Gemini CLI to confirm the rule is loaded.
+Copy the standalone CLI instructions from the [Codex handoff guide](skills/code-review/references/codex-implementation.md) into the same context file so Gemini can launch without reading outside its workspace. From an unrelated project, run `/memory show` to confirm the rule and CLI command are loaded.
 
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.

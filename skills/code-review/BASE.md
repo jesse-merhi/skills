@@ -75,7 +75,7 @@ After each round, route authorized fixes and selected UI improvements through th
 
 - **Run another round** when the round fixed a blocking issue, applied a selected UI improvement or made an uncontained fix; fresh reviewers assess the full resulting change under the same criteria.
 - **Finish** when the reviewed revision has no blocking findings and no other round trigger applies. Report any contained fixes the coordinator verified by checks after the round.
-- **Stop and ask the user** when rounds stop converging (fixes keep producing new blocking findings in touched code, a blocking issue survives repeated repairs, or evidence cannot settle whether a finding blocks) or a lack of evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed instead of another round. The oracle guidance in `AGENTS.md` applies if a decision merits a second opinion.
+- **Stop and ask the user** when rounds stop converging (fixes keep producing new blocking findings in touched code, a blocking issue survives repeated repairs, or evidence cannot settle whether a finding blocks) or a lack of evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed instead of another round. If a decision merits read-only advice, prefer GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for a harder decision that warrants it or through the native Claude `oracle` role.
 
 ## 5. Report and finish
 
