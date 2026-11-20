@@ -4,7 +4,7 @@ Use this only for an explicit request to apply, sync or translate enforcement; [
 
 ## Apply, sync, or translate
 
-Resolve `catalog.json`'s real path to its Git checkout; a materialized `SKILL.md` may be a copy. Record the source remote URL and commit. Disclose a dirty source or a commit with no containing remote-tracking branch.
+Resolve `catalog.json`'s real path to its Git checkout. If the catalog is a copy, resolve the installed skill directory and read its parent directory's `.skill-variant-view.json` with the shell. Its `sourceRoot` points to the checkout's `skills/` directory. Record the source remote URL and commit. Disclose a dirty source or a commit with no containing remote-tracking branch.
 
 Use the adoption reference for enforcement, guidance, partial coverage, gaps and exceptions. Resolve routine choices from the target; ask only about decisions requiring user authority or materially changing the result, and continue independent work meanwhile. Then follow the requested mode:
 

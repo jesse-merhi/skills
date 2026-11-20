@@ -13,6 +13,8 @@ Figure out which harness you're running in:
 - **Claude Code**: `~/.claude/`, a `skills/` directory,
   `plugins/`
 - **Codex CLI**: `~/.codex/`, `config.toml`, a `skills/` directory
+- **Antigravity**: the `agy` CLI, Antigravity app, or T3 Code's Antigravity provider
+- **Gemini CLI**: the separate `gemini` command and its `~/.gemini/GEMINI.md`
 - **opencode**: `~/.config/opencode/`, `AGENTS.md`, a `skills/` directory
 - **Pi**: `~/.pi/agent/`, a `skills/` directory, `settings.json`
 - **OpenClaw**: a running Gateway, the matching `openclaw` CLI, and
@@ -25,6 +27,7 @@ Resolve the intended model from the user's request or the harness's actual
 configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-6`
 skill profile; Claude Fable 5.1 and Opus 5.5 have separate profiles. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
+Antigravity and Gemini CLI use the shared `gemini` profile, which installs the model-neutral prompts from `BASE.md`.
 Installation stops on an unknown family or a missing profile prompt.
 `--require-exact` also rejects model-version fallback.
 
@@ -88,7 +91,7 @@ Do not change the user's existing mode as part of a skills installation.
 For Antigravity, link `~/.gemini/AGENTS.md` to `REPO/AGENTS.md` if the destination
 is absent or already points to this repo.
 
-For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `~/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
+For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `${GEMINI_CLI_HOME:-$HOME}/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
 
 > Delegate every implementation edit to GPT-6.2 Sol at `xhigh` through Codex signed in with ChatGPT. Inspect the diff and verify the result yourself. If handoff is blocked, leave the edit pending and report why.
 
@@ -209,13 +212,14 @@ fails. Do not substitute a global TypeScript, Effect, or package installation.
 
 ## 6. Survey existing skills
 
-For Claude Code, Codex, opencode, or Pi, inventory the target skills directory
-before touching anything:
+Inventory the target skills directory before touching anything:
 
 | Harness | Skills target |
 | --- | --- |
 | Claude Code | `~/.claude/skills` |
 | Codex | `~/.codex/skills` |
+| Antigravity, including T3 Code | `~/.gemini/config/skills` |
+| Gemini CLI | `${GEMINI_CLI_HOME:-$HOME}/.gemini/skills` |
 | opencode | `~/.config/opencode/skills` |
 | Pi | `~/.pi/agent/skills` |
 
@@ -236,10 +240,10 @@ the repo in step 8.
 
 Authoring starts from each skill's `BASE.md`, then adapts it into complete
 `variants/<profile>.md` prompts. Identical variants may share a relative symlink;
-installation copies the selected text into a regular `SKILL.md`. It does not
-generate prompts or install the human-reviewable base.
+installation copies the selected text into a regular `SKILL.md`. The Gemini
+profile copies `BASE.md` directly.
 
-### Codex and Claude Code
+### Codex, Claude Code, Antigravity and Gemini CLI
 
 From `REPO`, use the repository's installer after the prerequisites above:
 
@@ -247,20 +251,34 @@ From `REPO`, use the repository's installer after the prerequisites above:
 ./install-skills --harness codex --model gpt-6
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
+./install-skills --harness antigravity --model gemini
+./install-skills --harness gemini --model gemini
 ```
 
+For Gemini in T3 Code, use the Antigravity command and start a fresh Antigravity
+thread after installation. The standalone Gemini CLI uses the Gemini command.
+Check skills in the harness's skills list or slash menu.
+When using both installs, refresh both from the same checkout. The standalone
+Antigravity CLI prioritizes `~/.gemini/antigravity-cli/skills` and
+`~/.gemini/skills` over `~/.gemini/config/skills`. Gemini CLI prioritizes
+`${GEMINI_CLI_HOME:-$HOME}/.agents/skills` over user skills in `.gemini/skills`.
+Use `/skills` in `agy` or `gemini skills list` to check the loaded path.
+
 Run the command matching the requested profile. `astra`, `sol`, `luna` and their
-full model IDs also select `gpt-6`. `--dry-run --json` previews coverage and link changes without writing;
+full model IDs also select `gpt-6`. For Gemini CLI, `auto`, `pro`, `flash`, and
+`flash-lite` also select the shared `gemini` profile.
+`--dry-run --json` previews coverage and link changes without writing;
 `--require-exact` requires an exact variant for every skill. The command
 materializes the view, installs stable per-skill links, and retires only obsolete
 links owned by that view. It refuses local-file or foreign-link collisions
 before changing installed prompts. It does not edit model settings, global
 instructions, personal agents, authentication, or third-party skills.
 
-Defaults are `CODEX_HOME` or `~/.codex` for Codex, and `CLAUDE_CONFIG_DIR` or
-`~/.claude` for Claude. Override with `--root ABSOLUTE_CONFIG_DIRECTORY`; this is
-the harness configuration root, not its `skills/` subdirectory. To use separate
-roots concurrently, configure and launch each harness with its matching
+Defaults are `CODEX_HOME` or `~/.codex` for Codex, `CLAUDE_CONFIG_DIR` or
+`~/.claude` for Claude, `~/.gemini/config` for Antigravity, and `~/.gemini` for
+Gemini CLI. If `GEMINI_CLI_HOME` is set, Gemini CLI uses the `.gemini` directory
+inside it. Use `--root ABSOLUTE_CONFIG_DIRECTORY` to override the install root
+that contains `skills/`. For separate Codex or Claude sessions, launch each with its matching
 `CODEX_HOME` or `CLAUDE_CONFIG_DIR`. The installer does not copy credentials or
 create an authenticated harness configuration.
 
@@ -411,7 +429,7 @@ those files.
 
 ### Command installation
 
-The Codex/Claude installer in step 7 also publishes the explicit public-command
+The installer in step 7 also publishes the explicit public-command
 catalog from `skills/writing-for-agents/scripts/install-commands.mjs` to
 `~/.local/bin`. It does not scan executable files or publish tests and internal
 libraries. No shell configuration is changed. If that directory is not on
@@ -434,7 +452,7 @@ installed, not a disposable worktree: launchers execute that clone's absolute
 entrypoints, preserving arguments, working directory, environment and exit
 status. They do not run from a generated model view.
 
-Both harnesses share one owner at
+All four harness choices share one owner at
 `BIN_DIR/.jesse-merhi-skills-commands/manifest.json`. Matching installs are
 idempotent and use a shared publication lock. A different clone cannot take
 ownership unless a full install explicitly supplies the verified

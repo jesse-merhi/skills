@@ -27,6 +27,46 @@ function selected(root) {
   return fs.readFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "utf8");
 }
 
+test("installs Gemini prompts and readable resources in the default and configured directories", (context) => {
+  const { sourceRoot, binDir, temporary } = fixture(context);
+  context.mock.method(os, "homedir", () => temporary);
+  const previousGeminiHome = process.env.GEMINI_CLI_HOME;
+  context.after(() => {
+    if (previousGeminiHome === undefined) delete process.env.GEMINI_CLI_HOME;
+    else process.env.GEMINI_CLI_HOME = previousGeminiHome;
+  });
+  process.env.GEMINI_CLI_HOME = "";
+  for (const skill of ["alpha", "group/beta"]) {
+    fs.writeFileSync(path.join(sourceRoot, skill, "BASE.md"), "Shared instructions\n");
+  }
+  const resources = [["catalog.json", "{}\n"], ["assets/template.txt", "Template\n"]];
+  fs.mkdirSync(path.join(sourceRoot, "alpha", "assets"));
+  for (const [file, contents] of resources) {
+    fs.writeFileSync(path.join(sourceRoot, "alpha", file), contents);
+  }
+  const geminiRoot = path.join(temporary, ".gemini");
+  const antigravityRoot = path.join(geminiRoot, "config");
+
+  const gemini = installSkills({ sourceRoot, binDir, harness: "gemini", model: "auto" });
+  installSkills({ sourceRoot, binDir, harness: "antigravity", model: "gemini-4-neon" });
+
+  assert.equal(gemini.model, "auto");
+  assert.equal(selected(geminiRoot), "Shared instructions\n");
+  assert.equal(selected(antigravityRoot), "Shared instructions\n");
+  for (const root of [geminiRoot, antigravityRoot]) {
+    const skill = path.join(root, "skills", "alpha");
+    for (const [file, contents] of resources) {
+      const installed = path.join(skill, file);
+      assert.equal(fs.readFileSync(installed, "utf8"), contents);
+      assert.equal(fs.realpathSync(installed), path.join(fs.realpathSync(skill), file));
+    }
+  }
+  const customHome = path.join(temporary, "custom-profile");
+  process.env.GEMINI_CLI_HOME = customHome;
+  installSkills({ sourceRoot, binDir, harness: "gemini", model: "gemini-flash-latest" });
+  assert.equal(selected(path.join(customHome, ".gemini")), "Shared instructions\n");
+});
+
 function spawnInstaller(installer, installation, barrier, environment) {
   const script = `
     import fs from "node:fs";

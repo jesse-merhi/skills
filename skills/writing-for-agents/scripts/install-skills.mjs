@@ -18,6 +18,8 @@ function harnessDirectory(harness) {
   switch (harness) {
     case "codex": return process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
     case "claude": return process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), ".claude");
+    case "gemini": return path.join(process.env.GEMINI_CLI_HOME || os.homedir(), ".gemini");
+    case "antigravity": return path.join(os.homedir(), ".gemini", "config");
     default: throw new Error(`unsupported harness: ${harness}`);
   }
 }
@@ -77,9 +79,17 @@ function inspectLinks(skillsDirectory, viewRoot, skills, sourceRoot, previousSou
 export function installSkills({ harness, model, root, sourceRoot = sourceDefault, previousSourceRoot, requireExact = false, sessionId, dryRun = false, skillNames, binDir = path.join(os.homedir(), ".local", "bin") }) {
   const defaultRoot = harnessDirectory(harness);
   const harnessRoot = path.resolve(root ?? defaultRoot);
-  const plan = planSkillVariants({ sourceRoot, model, requireExact, skillNames });
-  const compatible = harness === "codex" ? plan.profile.family === "openai-gpt" : plan.profile.family.startsWith("anthropic-");
-  if (!compatible) throw new Error(`${model} is not a supported ${harness} model`);
+  const profileModel = harness === "gemini" && ["auto", "pro", "flash", "flash-lite"].includes(model.toLowerCase())
+    ? "gemini" : model;
+  const plan = planSkillVariants({ sourceRoot, model: profileModel, requireExact, skillNames });
+  const family = plan.profile.family;
+  const compatible = {
+    codex: family === "openai-gpt",
+    claude: family.startsWith("anthropic-"),
+    gemini: family === "google-gemini",
+    antigravity: family === "google-gemini",
+  };
+  if (!compatible[harness]) throw new Error(`${model} is not a supported ${harness} model`);
   const skillsDirectory = path.join(harnessRoot, "skills");
   const viewRoot = path.join(harnessRoot, ".skill-variants", "jesse-merhi-skills");
   const preflight = () => {
@@ -120,10 +130,10 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
         changed.push({ destination, original, removed: true });
       }
       const result = materializeSkillVariants({
-        sourceRoot: plan.sourceRoot, outputRoot: viewRoot, model, previousSourceRoot, requireExact, skillNames,
+        sourceRoot: plan.sourceRoot, outputRoot: viewRoot, model: profileModel, previousSourceRoot, requireExact, skillNames,
         sessionId: sessionId ?? process.env.CODEX_THREAD_ID ?? process.env.CLAUDE_SESSION_ID,
       });
-      return { ...result, harness, root: harnessRoot, viewRoot, linksChanged: links.length, linksRetired: retired.length };
+      return { ...result, model, harness, root: harnessRoot, viewRoot, linksChanged: links.length, linksRetired: retired.length };
     } catch (error) {
       for (const link of changed.reverse()) {
         if (!link.removed) fs.unlinkSync(link.destination);
@@ -136,9 +146,9 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
 
 export function runInstaller() {
   const command = Command.make("install-skills", {
-    harness: Flag.choice("harness", ["codex", "claude"]),
-    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, or a full model ID")),
-    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Harness configuration root; defaults to CODEX_HOME or CLAUDE_CONFIG_DIR")),
+    harness: Flag.choice("harness", ["codex", "claude", "gemini", "antigravity"]),
+    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, gemini, or a full model ID")),
+    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/. Defaults: CODEX_HOME or ~/.codex, CLAUDE_CONFIG_DIR or ~/.claude, GEMINI_CLI_HOME/.gemini or ~/.gemini for Gemini CLI, and ~/.gemini/config for Antigravity.")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),
     session: Flag.string("session").pipe(Flag.optional),
@@ -161,6 +171,6 @@ export function runInstaller() {
     if (result.commandCleanupWarning !== undefined) yield* Console.log(result.commandCleanupWarning);
     if (result.notice !== undefined) yield* Console.log(result.notice);
     if (!options.dryRun) yield* Console.log("This changes skills for sessions using this root, not the harness model. Already-loaded prompts remain in conversation history; start a fresh session for a clean switch.");
-  })).pipe(Command.withDescription("Install or switch this repository's complete model-specific skills. Other skills and harness settings are preserved."));
+  })).pipe(Command.withDescription("Install this repository's skills for the selected harness and model. Gemini uses shared prompts."));
   command.pipe(Command.run({ version: "1.0.0" }), Effect.provide(NodeServices.layer), NodeRuntime.runMain);
 }
