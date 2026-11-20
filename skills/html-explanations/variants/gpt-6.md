@@ -13,7 +13,7 @@ Place explanations beside relevant code, outside source comments. Preserve exact
 
 Use readable line lengths, clear hierarchy, keyboard-accessible controls, and colour plus text for status. Reflow at 320px; contain scrolling for wide code and tables. Style `pre code` separately from inline code. Respect reduced motion; if printing matters, preserve the argument in print layout.
 
-Inspect rendering, interactions, console, and narrow layout; inspect print layout if needed. Keep private content and assets local. Return the file link, brief explanation, and verification gaps.
+Inspect rendering, interactions, console, and narrow layout; inspect print layout if needed. Keep private content and assets local. Show the page in the host's chat viewer when it has one, and return the file link, brief explanation, and verification gaps.
 
 ## References
 

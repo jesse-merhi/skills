@@ -1,11 +1,11 @@
 ---
 name: design-technical-diagrams
-description: 'Use when asked for an architecture, flow or sequence diagram, or when a change introduces a system worth diagramming.'
+description: 'Use when asked for an architecture, flow or sequence diagram, or when a change introduces or reshapes a system worth diagramming.'
 ---
 
 # Design technical diagrams
 
-Establish the audience, question, destination width, and facts from current code or documentation. Explain one system relationship at that size; do not present explanation as runtime proof.
+Establish the audience, question, destination width, and facts from current code or documentation. Explain one system relationship at that size; do not present explanation as runtime proof. For a change to an existing system, draw **A · Before** and **B · After** side by side at the same scale and layout, taking the before from the base revision.
 
 Prefer a layout engine over hand-positioning boxes and connectors. For Graphviz, write a small DOT graph and use the installed `dot` through:
 
@@ -19,7 +19,7 @@ Use short labels, real ownership or phase groups, connector space, and restraine
 
 Inspect the export at destination width for readable labels, clipping, overlap, arrow direction, crossings, and an obvious main path. Check requested narrow layouts separately. Fix and inspect until no issues remain.
 
-Deliver the diagram, editable source, inspected size, and limitations. Keep surrounding explanation brief.
+Show the diagram in the reply: render its HTML preview in the host's chat viewer when it has one, otherwise embed the SVG with an absolute path. Don't substitute ASCII art or a hosted link. Include the editable source, inspected size, and limitations. Keep surrounding explanation brief.
 
 ## References
 

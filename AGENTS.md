@@ -4,10 +4,17 @@ These instructions apply to every coding harness (Claude Code, Codex, opencode, 
 
 ## Communication
 
-- Lead with the outcome, then explain what changed and why. Write the final answer for someone who missed the progress updates. When explaining code, show a focused example and what it does.
-- Show proof where a person experiences the change: the rendered UI and interaction, the terminal command and output, or the important flow before and after. Logs and test results support that proof; they don't replace it.
-- Use [show-video](skills/show-video/SKILL.md) when a short recording would make a UI, API or CLI change easier to judge, including review fixes. Honor text-only requests.
-- Keep replies concise and concrete. Leave out hashes, receipt paths and internal identifiers unless the reader needs them. Use `speak-fking-english` for substantial writing, requested rewrites or unclear explanations.
+Jesse reads your final reply without having seen your progress updates, tool calls or files, and he judges work by looking at it.
+
+- Open with what happened in a sentence or two. Use plain words throughout, explain any technical term you can't avoid, and call things you named during the work by what they are. Follow `speak-fking-english` for longer writing.
+- When you changed something he can see or run, show it in the chat after that opening instead of describing it. Show each change as **A · Before** beside **B · After** (or A above B in plain text); only a brand-new screen or file stands alone.
+  - Screens: screenshots of the same view, captioned with what to look for. Add a [show-video](skills/show-video/SKILL.md) recording when the change is a flow or motion.
+  - Structure, meaning a component, cache, queue or service added, removed or moved: a rendered A/B diagram from `design-technical-diagrams`, not ASCII art.
+  - Code: the real changed lines, A/B, not a diff or a description.
+  - Commands and APIs: the real command or request and its output, as text.
+- Render visuals in the chat, not as a hosted link or upload: an HTML page when the host supports one, otherwise an embedded image with an absolute path. In T3 Code the page appears above the final reply, so send the opening with `send_to_user`, check the page with `html_preview`, then call `html_render`. Look at every capture and the finished page before you include them. If you can't show something, say so and link the local file.
+- Answers, assessments and text-only requests get text. Workers return their evidence to the coordinator, who shows it to Jesse.
+- Keep proven results apart from untested ones. Leave out hashes, receipt paths and internal identifiers unless he needs them.
 - Ask only when evidence, safe investigation or a reasonable low-risk assumption can't settle the question. Use the harness's synchronous question tool when it has one. In Codex, that is `request_user_input`, not `request_user_input_async`. Otherwise, ask in the final response.
 
 ## Check-ins
@@ -33,7 +40,7 @@ Before implementing or reviewing code, read `coding-standards` in its **Read exp
 ## Implementation design
 
 - Start from the requested outcome, the changed behavior and its owner. Read callers, tests, docs and history as needed to establish the contract. Trace complete flows when a change crosses ownership, lifecycle, security or data boundaries.
-- Before implementing changed behavior, use `writing-good-tests` to choose the proof of the caller-visible result and its reachable failures. When video would help, capture a baseline before editing.
+- Before implementing changed behavior, use `writing-good-tests` to choose the proof of the caller-visible result and its reachable failures. When before-and-after screenshots or video would help, capture the baseline before editing.
 - Choose the simplest implementation that fully meets the current requirements, without speculative abstractions, configuration or compatibility layers.
 - Keep the diff as small as the requirement allows. Before review, remove code, tests and docs the requirement doesn't need, and report net lines added and removed.
 - Before creating or changing agent instructions, use `writing-for-agents`.
