@@ -39,20 +39,27 @@ test("installs Gemini prompts and readable resources in the default and configur
   for (const skill of ["alpha", "group/beta"]) {
     fs.writeFileSync(path.join(sourceRoot, skill, "BASE.md"), "Shared instructions\n");
   }
-  fs.writeFileSync(path.join(sourceRoot, "alpha", "catalog.json"), "{}\n");
+  const resources = [["catalog.json", "{}\n"], ["assets/template.txt", "Template\n"]];
+  fs.mkdirSync(path.join(sourceRoot, "alpha", "assets"));
+  for (const [file, contents] of resources) {
+    fs.writeFileSync(path.join(sourceRoot, "alpha", file), contents);
+  }
   const geminiRoot = path.join(temporary, ".gemini");
   const antigravityRoot = path.join(geminiRoot, "config");
 
-  installSkills({ sourceRoot, binDir, harness: "gemini", model: "gemini" });
+  const gemini = installSkills({ sourceRoot, binDir, harness: "gemini", model: "auto" });
   installSkills({ sourceRoot, binDir, harness: "antigravity", model: "gemini-4-neon" });
 
+  assert.equal(gemini.model, "auto");
   assert.equal(selected(geminiRoot), "Shared instructions\n");
   assert.equal(selected(antigravityRoot), "Shared instructions\n");
   for (const root of [geminiRoot, antigravityRoot]) {
     const skill = path.join(root, "skills", "alpha");
-    const catalog = path.join(skill, "catalog.json");
-    assert.equal(fs.readFileSync(catalog, "utf8"), "{}\n");
-    assert.equal(path.dirname(fs.realpathSync(catalog)), fs.realpathSync(skill));
+    for (const [file, contents] of resources) {
+      const installed = path.join(skill, file);
+      assert.equal(fs.readFileSync(installed, "utf8"), contents);
+      assert.equal(fs.realpathSync(installed), path.join(fs.realpathSync(skill), file));
+    }
   }
   const customHome = path.join(temporary, "custom-profile");
   process.env.GEMINI_CLI_HOME = customHome;

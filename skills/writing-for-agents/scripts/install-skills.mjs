@@ -79,7 +79,9 @@ function inspectLinks(skillsDirectory, viewRoot, skills, sourceRoot, previousSou
 export function installSkills({ harness, model, root, sourceRoot = sourceDefault, previousSourceRoot, requireExact = false, sessionId, dryRun = false, skillNames, binDir = path.join(os.homedir(), ".local", "bin") }) {
   const defaultRoot = harnessDirectory(harness);
   const harnessRoot = path.resolve(root ?? defaultRoot);
-  const plan = planSkillVariants({ sourceRoot, model, requireExact, skillNames });
+  const profileModel = harness === "gemini" && ["auto", "pro", "flash", "flash-lite"].includes(model.toLowerCase())
+    ? "gemini" : model;
+  const plan = planSkillVariants({ sourceRoot, model: profileModel, requireExact, skillNames });
   const family = plan.profile.family;
   const compatible = {
     codex: family === "openai-gpt",
@@ -128,10 +130,10 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
         changed.push({ destination, original, removed: true });
       }
       const result = materializeSkillVariants({
-        sourceRoot: plan.sourceRoot, outputRoot: viewRoot, model, previousSourceRoot, requireExact, skillNames,
+        sourceRoot: plan.sourceRoot, outputRoot: viewRoot, model: profileModel, previousSourceRoot, requireExact, skillNames,
         sessionId: sessionId ?? process.env.CODEX_THREAD_ID ?? process.env.CLAUDE_SESSION_ID,
       });
-      return { ...result, harness, root: harnessRoot, viewRoot, linksChanged: links.length, linksRetired: retired.length };
+      return { ...result, model, harness, root: harnessRoot, viewRoot, linksChanged: links.length, linksRetired: retired.length };
     } catch (error) {
       for (const link of changed.reverse()) {
         if (!link.removed) fs.unlinkSync(link.destination);
@@ -146,7 +148,7 @@ export function runInstaller() {
   const command = Command.make("install-skills", {
     harness: Flag.choice("harness", ["codex", "claude", "gemini", "antigravity"]),
     model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, gemini, or a full model ID")),
-    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/. Defaults follow the harness's user configuration directory.")),
+    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/. Defaults: CODEX_HOME or ~/.codex, CLAUDE_CONFIG_DIR or ~/.claude, GEMINI_CLI_HOME/.gemini or ~/.gemini for Gemini CLI, and ~/.gemini/config for Antigravity.")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),
     session: Flag.string("session").pipe(Flag.optional),

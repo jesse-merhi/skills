@@ -91,7 +91,7 @@ Do not change the user's existing mode as part of a skills installation.
 For Antigravity, link `~/.gemini/AGENTS.md` to `REPO/AGENTS.md` if the destination
 is absent or already points to this repo.
 
-For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `~/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
+For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `${GEMINI_CLI_HOME:-$HOME}/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
 
 > Delegate every implementation edit to GPT-6.2 Sol at `xhigh` through Codex signed in with ChatGPT. Inspect the diff and verify the result yourself. If handoff is blocked, leave the edit pending and report why.
 
@@ -219,7 +219,7 @@ Inventory the target skills directory before touching anything:
 | Claude Code | `~/.claude/skills` |
 | Codex | `~/.codex/skills` |
 | Antigravity, including T3 Code | `~/.gemini/config/skills` |
-| Gemini CLI | `~/.gemini/skills` |
+| Gemini CLI | `${GEMINI_CLI_HOME:-$HOME}/.gemini/skills` |
 | opencode | `~/.config/opencode/skills` |
 | Pi | `~/.pi/agent/skills` |
 
@@ -259,11 +259,15 @@ For Gemini in T3 Code, use the Antigravity command and start a fresh Antigravity
 thread after installation. The standalone Gemini CLI uses the Gemini command.
 Check skills in the harness's skills list or slash menu.
 When using both installs, refresh both from the same checkout. The standalone
-Antigravity CLI gives `~/.gemini/skills` priority over `~/.gemini/config/skills`.
-Use `/skills` in `agy` to check the loaded path.
+Antigravity CLI prioritizes `~/.gemini/antigravity-cli/skills` and
+`~/.gemini/skills` over `~/.gemini/config/skills`. Gemini CLI prioritizes
+`${GEMINI_CLI_HOME:-$HOME}/.agents/skills` over user skills in `.gemini/skills`.
+Use `/skills` in `agy` or `gemini skills list` to check the loaded path.
 
 Run the command matching the requested profile. `astra`, `sol`, `luna` and their
-full model IDs also select `gpt-6`. `--dry-run --json` previews coverage and link changes without writing;
+full model IDs also select `gpt-6`. For Gemini CLI, `auto`, `pro`, `flash`, and
+`flash-lite` also select the shared `gemini` profile.
+`--dry-run --json` previews coverage and link changes without writing;
 `--require-exact` requires an exact variant for every skill. The command
 materializes the view, installs stable per-skill links, and retires only obsolete
 links owned by that view. It refuses local-file or foreign-link collisions
