@@ -133,10 +133,10 @@ The audited masters are kept here, not only in the local review database.
 Complete model prompts live under `variants/`; identical variants share a file through
 relative symlinks. Root `SKILL.md` points at
 the shared GPT-6 variant for runtime discovery; it is not the base. Installation
-selects an already-authored variant as the harness-visible `SKILL.md`; the
+copies an authored variant or Gemini's shared base as the harness-visible `SKILL.md`. The
 frontmatter carries a `name` and one-line `description`, and the body contains
 the workflow, constraints, stop conditions, and reference pointers. The installer
-does not call a model or expose `BASE.md` in installed views. Edit shared behaviour
+does not call a model. Edit shared behaviour
 in the base first, then adapt all variants using `writing-for-agents`.
 
 Two ways one gets used:

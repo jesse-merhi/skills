@@ -241,6 +241,11 @@ export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(functi
         Effect.map(fileSystem.readFileString(variantPath), (variantContent) => ({ content: variantContent, path: variantPath })))
       for (const variant of variants) findings.push(...promptFindings(path, skill, variant.path, variant.content))
     }
+    const basePath = path.join(directory, "BASE.md")
+    if (files.includes(basePath)) {
+      const baseContent = yield* fileSystem.readFileString(basePath)
+      findings.push(...promptFindings(path, skill, basePath, baseContent))
+    }
   }
   const report: LintReport = { findings, referenceCount, skillCount: skillPaths.length }
   return report

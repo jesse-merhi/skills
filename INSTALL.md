@@ -258,6 +258,9 @@ From `REPO`, use the repository's installer after the prerequisites above:
 For Gemini in T3 Code, use the Antigravity command and start a fresh Antigravity
 thread after installation. The standalone Gemini CLI uses the Gemini command.
 Check skills in the harness's skills list or slash menu.
+When using both installs, refresh both from the same checkout. The standalone
+Antigravity CLI gives `~/.gemini/skills` priority over `~/.gemini/config/skills`.
+Use `/skills` in `agy` to check the loaded path.
 
 Run the command matching the requested profile. `astra`, `sol`, `luna` and their
 full model IDs also select `gpt-6`. `--dry-run --json` previews coverage and link changes without writing;
@@ -269,7 +272,8 @@ instructions, personal agents, authentication, or third-party skills.
 
 Defaults are `CODEX_HOME` or `~/.codex` for Codex, `CLAUDE_CONFIG_DIR` or
 `~/.claude` for Claude, `~/.gemini/config` for Antigravity, and `~/.gemini` for
-Gemini CLI. Use `--root ABSOLUTE_CONFIG_DIRECTORY` to override the install root
+Gemini CLI. If `GEMINI_CLI_HOME` is set, Gemini CLI uses the `.gemini` directory
+inside it. Use `--root ABSOLUTE_CONFIG_DIRECTORY` to override the install root
 that contains `skills/`. For separate Codex or Claude sessions, launch each with its matching
 `CODEX_HOME` or `CLAUDE_CONFIG_DIR`. The installer does not copy credentials or
 create an authenticated harness configuration.
@@ -444,7 +448,7 @@ installed, not a disposable worktree: launchers execute that clone's absolute
 entrypoints, preserving arguments, working directory, environment and exit
 status. They do not run from a generated model view.
 
-Both harnesses share one owner at
+All four harness choices share one owner at
 `BIN_DIR/.jesse-merhi-skills-commands/manifest.json`. Matching installs are
 idempotent and use a shared publication lock. A different clone cannot take
 ownership unless a full install explicitly supplies the verified

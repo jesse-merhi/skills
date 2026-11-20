@@ -44,7 +44,7 @@ export const profiles = [
     id: "gemini",
     family: "google-gemini",
     version: [0, 0],
-    matches: /^gemini(?:-\d+(?:\.\d+)?(?:-[a-z0-9]+)*)?$/i,
+    matches: /^(?:auto-)?gemini(?:-[a-z0-9]+(?:[.-][a-z0-9]+)*)?$/i,
   },
 ];
 
@@ -222,12 +222,14 @@ export function selectVariant(skill, requestedProfile) {
   throw new Error(`${skill.name} has no ${requestedProfile.family} variant`);
 }
 
-function materializeSharedEntries(skill, outputDirectory) {
+function materializeSharedEntries(skill, outputDirectory, profile) {
   for (const entry of fs.readdirSync(skill.directory, { withFileTypes: true })) {
     if (["SKILL.md", "BASE.md", "variants"].includes(entry.name)) continue;
     const source = path.join(skill.directory, entry.name);
     const destination = path.join(outputDirectory, entry.name);
-    if (entry.name === "references") {
+    // Gemini's file tool checks the resolved path against the activated skill directory.
+    const geminiResource = profile.id === "gemini" && (entry.isFile() || entry.name === "assets");
+    if (entry.name === "references" || geminiResource) {
       fs.cpSync(source, destination, { recursive: true, dereference: true });
     } else {
       fs.symlinkSync(source, destination);
@@ -321,7 +323,7 @@ export function materializeSkillVariants({ sourceRoot, outputRoot, model, previo
         if (skillNames !== undefined) fs.rmSync(skillOutput, { recursive: true, force: true });
         fs.mkdirSync(skillOutput);
         fs.copyFileSync(skill.selection.path, path.join(skillOutput, "SKILL.md"));
-        materializeSharedEntries(skill, skillOutput);
+        materializeSharedEntries(skill, skillOutput, profile);
       }
       fs.writeFileSync(
         path.join(stagingRoot, MARKER),

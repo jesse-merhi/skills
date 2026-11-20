@@ -18,7 +18,7 @@ function harnessDirectory(harness) {
   switch (harness) {
     case "codex": return process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
     case "claude": return process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), ".claude");
-    case "gemini": return path.join(os.homedir(), ".gemini");
+    case "gemini": return path.join(process.env.GEMINI_CLI_HOME || os.homedir(), ".gemini");
     case "antigravity": return path.join(os.homedir(), ".gemini", "config");
     default: throw new Error(`unsupported harness: ${harness}`);
   }
@@ -146,7 +146,7 @@ export function runInstaller() {
   const command = Command.make("install-skills", {
     harness: Flag.choice("harness", ["codex", "claude", "gemini", "antigravity"]),
     model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, gemini, or a full model ID")),
-    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/: CODEX_HOME, CLAUDE_CONFIG_DIR, ~/.gemini, or ~/.gemini/config by default")),
+    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/. Defaults follow the harness's user configuration directory.")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),
     session: Flag.string("session").pipe(Flag.optional),
@@ -169,6 +169,6 @@ export function runInstaller() {
     if (result.commandCleanupWarning !== undefined) yield* Console.log(result.commandCleanupWarning);
     if (result.notice !== undefined) yield* Console.log(result.notice);
     if (!options.dryRun) yield* Console.log("This changes skills for sessions using this root, not the harness model. Already-loaded prompts remain in conversation history; start a fresh session for a clean switch.");
-  })).pipe(Command.withDescription("Install or switch this repository's complete model-specific skills. Other skills and harness settings are preserved."));
+  })).pipe(Command.withDescription("Install this repository's skills for the selected harness and model. Gemini uses shared prompts."));
   command.pipe(Command.run({ version: "1.0.0" }), Effect.provide(NodeServices.layer), NodeRuntime.runMain);
 }

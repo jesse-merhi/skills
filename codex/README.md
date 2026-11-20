@@ -24,7 +24,7 @@ At most four child threads run concurrently. Delegate only useful independent wo
 
 GPT-6.2 Sol, Astra and Luna availability depends on the account and client rollout. These settings select the requested models; they do not grant access. If the launcher cannot use one, report that limitation without silently substituting another model. See the official [Codex model guidance](https://learn.chatgpt.com/docs/models).
 
-Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./install-skills --harness codex --model gpt-6`; switching among those models needs no separate skill view. Changing model settings does not refresh copied skills after repository updates. See [INSTALL.md](../INSTALL.md#codex-and-claude-code) for refresh and root ownership.
+Astra, Sol and Luna share one GPT-6 skill profile. Install it once with `./install-skills --harness codex --model gpt-6`; switching among those models needs no separate skill view. Changing model settings does not refresh copied skills after repository updates. See [INSTALL.md](../INSTALL.md#codex-claude-code-antigravity-and-gemini-cli) for refresh and root ownership.
 
 See the [shared execution policy](../AGENTS.md#model-turns) for when to delegate and the [code-review council](../skills/code-review/BASE.md#3-review-with-the-council) for its model and effort requirements. The full council needs a launcher with access to Codex, Claude and Antigravity. Skill availability does not select an execution role or expand its permissions.
 

@@ -27,12 +27,19 @@ function selected(root) {
   return fs.readFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "utf8");
 }
 
-test("installs neutral prompts in separate Gemini and Antigravity default directories", (context) => {
+test("installs Gemini prompts and readable resources in the default and configured directories", (context) => {
   const { sourceRoot, binDir, temporary } = fixture(context);
   context.mock.method(os, "homedir", () => temporary);
+  const previousGeminiHome = process.env.GEMINI_CLI_HOME;
+  context.after(() => {
+    if (previousGeminiHome === undefined) delete process.env.GEMINI_CLI_HOME;
+    else process.env.GEMINI_CLI_HOME = previousGeminiHome;
+  });
+  process.env.GEMINI_CLI_HOME = "";
   for (const skill of ["alpha", "group/beta"]) {
     fs.writeFileSync(path.join(sourceRoot, skill, "BASE.md"), "Shared instructions\n");
   }
+  fs.writeFileSync(path.join(sourceRoot, "alpha", "catalog.json"), "{}\n");
   const geminiRoot = path.join(temporary, ".gemini");
   const antigravityRoot = path.join(geminiRoot, "config");
 
@@ -41,6 +48,16 @@ test("installs neutral prompts in separate Gemini and Antigravity default direct
 
   assert.equal(selected(geminiRoot), "Shared instructions\n");
   assert.equal(selected(antigravityRoot), "Shared instructions\n");
+  for (const root of [geminiRoot, antigravityRoot]) {
+    const skill = path.join(root, "skills", "alpha");
+    const catalog = path.join(skill, "catalog.json");
+    assert.equal(fs.readFileSync(catalog, "utf8"), "{}\n");
+    assert.equal(path.dirname(fs.realpathSync(catalog)), fs.realpathSync(skill));
+  }
+  const customHome = path.join(temporary, "custom-profile");
+  process.env.GEMINI_CLI_HOME = customHome;
+  installSkills({ sourceRoot, binDir, harness: "gemini", model: "gemini-flash-latest" });
+  assert.equal(selected(path.join(customHome, ".gemini")), "Shared instructions\n");
 });
 
 function spawnInstaller(installer, installation, barrier, environment) {
