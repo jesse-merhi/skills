@@ -269,9 +269,8 @@ instructions, personal agents, authentication, or third-party skills.
 
 Defaults are `CODEX_HOME` or `~/.codex` for Codex, `CLAUDE_CONFIG_DIR` or
 `~/.claude` for Claude, `~/.gemini/config` for Antigravity, and `~/.gemini` for
-Gemini CLI. Override with `--root ABSOLUTE_CONFIG_DIRECTORY`; this is
-the harness configuration root, not its `skills/` subdirectory. To use separate
-roots concurrently, configure and launch each harness with its matching
+Gemini CLI. Use `--root ABSOLUTE_CONFIG_DIRECTORY` to override the install root
+that contains `skills/`. For separate Codex or Claude sessions, launch each with its matching
 `CODEX_HOME` or `CLAUDE_CONFIG_DIR`. The installer does not copy credentials or
 create an authenticated harness configuration.
 

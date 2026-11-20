@@ -27,16 +27,17 @@ function selected(root) {
   return fs.readFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "utf8");
 }
 
-test("installs a shared prompt for Gemini applications", (context) => {
-  const current = fixture(context);
+test("installs neutral prompts in separate Gemini and Antigravity default directories", (context) => {
+  const { sourceRoot, binDir, temporary } = fixture(context);
+  context.mock.method(os, "homedir", () => temporary);
   for (const skill of ["alpha", "group/beta"]) {
-    fs.writeFileSync(path.join(current.sourceRoot, skill, "BASE.md"), "Shared instructions\n");
+    fs.writeFileSync(path.join(sourceRoot, skill, "BASE.md"), "Shared instructions\n");
   }
-  const geminiRoot = path.join(current.temporary, ".gemini");
+  const geminiRoot = path.join(temporary, ".gemini");
   const antigravityRoot = path.join(geminiRoot, "config");
 
-  installSkills({ ...current, harness: "gemini", model: "gemini", root: geminiRoot });
-  installSkills({ ...current, harness: "antigravity", model: "gemini-4-neon", root: antigravityRoot });
+  installSkills({ sourceRoot, binDir, harness: "gemini", model: "gemini" });
+  installSkills({ sourceRoot, binDir, harness: "antigravity", model: "gemini-4-neon" });
 
   assert.equal(selected(geminiRoot), "Shared instructions\n");
   assert.equal(selected(antigravityRoot), "Shared instructions\n");

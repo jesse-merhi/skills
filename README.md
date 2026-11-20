@@ -167,7 +167,7 @@ in the target repository, asking before installing dependencies. This catalog
 does not need a bundled linter for every language. Standalone `translate`
 proposes a mapping; shared-catalog changes require a separate explicit request.
 
-Every skill has three complete profiles: GPT-6 (shared by Astra, Sol and Luna),
+Every skill has three model-specific variants: GPT-6 (shared by Astra, Sol and Luna),
 Claude Fable 5.1, and Claude Opus 5.5. Selection
 happens locally before the model sees the workflow, so there is no router turn
 or unused prompt in context. Harness views expose the selected prompt directly.
