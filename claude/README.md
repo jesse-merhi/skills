@@ -41,10 +41,11 @@ Claude supports native Markdown definitions and session-only `--agents` JSON. Se
 
 ## Implementation through Codex
 
-In T3 Code, use the cross-provider launcher described in [AGENTS.md](../AGENTS.md#model-turns). Outside T3 Code, use the installed Codex CLI from the assigned worktree. Confirm `codex login status` reports ChatGPT sign-in before launching. Supply a brief with the owned files, requirements and acceptance checks on standard input.
+In T3 Code, use the cross-provider launcher described in [AGENTS.md](../AGENTS.md#model-turns). Outside T3 Code, use the installed Codex CLI from the assigned worktree. Confirm `env -u CODEX_API_KEY -u OPENAI_API_KEY codex login status` reports ChatGPT sign-in before launching. Clear those variables for the launch so an inherited API key cannot override the saved login. Supply the owned files, requirements and acceptance checks on standard input.
 
 ```sh
-codex exec -m gpt-6.2-sol -c 'model_reasoning_effort="xhigh"' \
+env -u CODEX_API_KEY -u OPENAI_API_KEY codex exec \
+  -m gpt-6.2-sol -c 'model_reasoning_effort="xhigh"' \
   -c 'model_provider="openai"' -c 'forced_login_method="chatgpt"' \
   -s workspace-write - < task-brief.md
 ```

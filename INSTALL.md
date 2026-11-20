@@ -81,6 +81,9 @@ For an explicitly requested global implementation policy, add a pointer in
 `~/.claude/CLAUDE.md` to the `Model turns` section of `REPO/AGENTS.md`. Preserve
 existing instructions. For Antigravity, link `~/.gemini/AGENTS.md` to
 `REPO/AGENTS.md` if the destination is absent or already points to this repo.
+For the separate Gemini CLI, add `@REPO/AGENTS.md` using the absolute path to
+its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally
+`~/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
 See Anthropic's [instruction-loading modes and limitations](https://github.com/anthropics/claude-code/tree/main/mods/agents-md).
 Do not change the user's existing mode as part of a skills installation.
 
