@@ -79,13 +79,20 @@ These instructions apply when Claude discovers this file in the project tree;
 installing skills does not make them global instructions for unrelated projects.
 For an explicitly requested global implementation policy, add a pointer in
 `~/.claude/CLAUDE.md` to the `Model turns` section of `REPO/AGENTS.md`. Preserve
-existing instructions. For Antigravity, link `~/.gemini/AGENTS.md` to
-`REPO/AGENTS.md` if the destination is absent or already points to this repo.
-For the separate Gemini CLI, add `@REPO/AGENTS.md` using the absolute path to
-its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally
-`~/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
+existing instructions.
 See Anthropic's [instruction-loading modes and limitations](https://github.com/anthropics/claude-code/tree/main/mods/agents-md).
 Do not change the user's existing mode as part of a skills installation.
+
+### Antigravity and Gemini CLI instructions
+
+For Antigravity, link `~/.gemini/AGENTS.md` to `REPO/AGENTS.md` if the destination
+is absent or already points to this repo.
+
+For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `~/.gemini/GEMINI.md`. Preserve existing context and any custom filename. Replace `REPO` with the absolute skills checkout path.
+
+> Delegate every implementation edit to GPT-6.2 Sol at `xhigh` through Codex signed in with ChatGPT. Follow the Model turns section of `REPO/AGENTS.md` for launch and review. Inspect the diff and verify the result yourself. If handoff is blocked, leave the edit pending and report why.
+
+From an unrelated project, run `/memory show` in Gemini CLI to confirm the rule is loaded.
 
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
