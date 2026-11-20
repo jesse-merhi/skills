@@ -61,7 +61,12 @@ To install or switch just this repo's skills, run one command from the clone:
 ./install-skills --harness codex --model luna
 ./install-skills --harness claude --model fable
 ./install-skills --harness claude --model opus
+./install-skills --harness antigravity --model gemini
+./install-skills --harness gemini --model gemini
 ```
+
+Antigravity, including Antigravity in T3 Code, and Gemini CLI use this repo's
+model-neutral prompts. Run the command for the app you use.
 
 Each command installs this repo's available skills for that model. Add `--require-exact` to
 reject missing model coverage, or `--dry-run` to inspect without writing.
@@ -80,6 +85,8 @@ Where the skills land, per harness:
 | --- | --- | --- | --- |
 | Claude Code | `~/.claude/skills` | not linked; project `AGENTS.md` | not linked |
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
+| Antigravity | `~/.gemini/config/skills` | `~/.gemini/AGENTS.md` | not linked |
+| Gemini CLI | `~/.gemini/skills` | `~/.gemini/GEMINI.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
 | OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
@@ -88,10 +95,9 @@ Claude Code 2.1.277+ can discover project `AGENTS.md` files. All rules live in
 `AGENTS.md`; Claude no longer receives global instruction links from this repo. See
 [project instruction loading](INSTALL.md#claude-code-project-instructions).
 
-The install model is deliberately boring. In the four link-based harnesses,
-your skills directory stays a real directory and every repo skill is one
-symlink into a generated view. Codex, opencode, Pi, and OpenClaw receive a
-contained static copy of the selected prompt, as does Claude. Shared executable
+For link-based installs, your skills directory stays a real directory and every
+repo skill is one symlink into a generated view. Each harness receives a static
+copy of the selected prompt. Shared executable
 resources stay linked to this repo so their dependencies resolve. The command
 refuses to replace hand-written local skills or links owned elsewhere.
 
@@ -115,7 +121,7 @@ See [Codex orchestration](codex/README.md) for the role settings and limits.
 
 Codex has an opt-in `findings-reviewer` profile for inspect-and-report sessions. Use `codex --profile findings-reviewer review --base main` for a specifically requested native review. The profile hides coordination and publication skills while retaining domain guidance. Reviewers report evidence; the coordinator owns decisions, repairs and delivery.
 
-The installers support Codex, Claude Code, opencode, Pi and a local OpenClaw Gateway. The skills have mainly been exercised on Codex and Claude Code; installation alone does not prove another harness's agent dispatch or review behavior.
+The installers support Codex, Claude Code, Antigravity, Gemini CLI, opencode, Pi and a local OpenClaw Gateway. The skills have mainly been exercised on Codex and Claude Code; installation alone does not prove another harness's agent dispatch or review behavior.
 
 ## What a skill actually is
 

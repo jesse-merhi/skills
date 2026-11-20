@@ -27,6 +27,21 @@ function selected(root) {
   return fs.readFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "utf8");
 }
 
+test("installs a shared prompt for Gemini applications", (context) => {
+  const current = fixture(context);
+  for (const skill of ["alpha", "group/beta"]) {
+    fs.writeFileSync(path.join(current.sourceRoot, skill, "BASE.md"), "Shared instructions\n");
+  }
+  const geminiRoot = path.join(current.temporary, ".gemini");
+  const antigravityRoot = path.join(geminiRoot, "config");
+
+  installSkills({ ...current, harness: "gemini", model: "gemini", root: geminiRoot });
+  installSkills({ ...current, harness: "antigravity", model: "gemini-4-neon", root: antigravityRoot });
+
+  assert.equal(selected(geminiRoot), "Shared instructions\n");
+  assert.equal(selected(antigravityRoot), "Shared instructions\n");
+});
+
 function spawnInstaller(installer, installation, barrier, environment) {
   const script = `
     import fs from "node:fs";

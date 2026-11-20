@@ -40,6 +40,12 @@ export const profiles = [
     version: [5, 5],
     matches: /^(?:claude-opus-5[.-]5(?:-\d{8})?|opus)$/i,
   },
+  {
+    id: "gemini",
+    family: "google-gemini",
+    version: [0, 0],
+    matches: /^gemini(?:-\d+(?:\.\d+)?(?:-[a-z0-9]+)*)?$/i,
+  },
 ];
 
 function modelFamily(model) {
@@ -204,7 +210,9 @@ export function discoverSkills(sourceRoot) {
 }
 
 function availableVariant(skill, profile) {
-  const candidate = path.join(skill.directory, "variants", `${profile.id}.md`);
+  const candidate = profile.id === "gemini"
+    ? path.join(skill.directory, "BASE.md")
+    : path.join(skill.directory, "variants", `${profile.id}.md`);
   return fs.existsSync(candidate) ? candidate : undefined;
 }
 

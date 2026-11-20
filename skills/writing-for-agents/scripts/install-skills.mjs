@@ -18,6 +18,8 @@ function harnessDirectory(harness) {
   switch (harness) {
     case "codex": return process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
     case "claude": return process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), ".claude");
+    case "gemini": return path.join(os.homedir(), ".gemini");
+    case "antigravity": return path.join(os.homedir(), ".gemini", "config");
     default: throw new Error(`unsupported harness: ${harness}`);
   }
 }
@@ -78,8 +80,14 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
   const defaultRoot = harnessDirectory(harness);
   const harnessRoot = path.resolve(root ?? defaultRoot);
   const plan = planSkillVariants({ sourceRoot, model, requireExact, skillNames });
-  const compatible = harness === "codex" ? plan.profile.family === "openai-gpt" : plan.profile.family.startsWith("anthropic-");
-  if (!compatible) throw new Error(`${model} is not a supported ${harness} model`);
+  const family = plan.profile.family;
+  const compatible = {
+    codex: family === "openai-gpt",
+    claude: family.startsWith("anthropic-"),
+    gemini: family === "google-gemini",
+    antigravity: family === "google-gemini",
+  };
+  if (!compatible[harness]) throw new Error(`${model} is not a supported ${harness} model`);
   const skillsDirectory = path.join(harnessRoot, "skills");
   const viewRoot = path.join(harnessRoot, ".skill-variants", "jesse-merhi-skills");
   const preflight = () => {
@@ -136,9 +144,9 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
 
 export function runInstaller() {
   const command = Command.make("install-skills", {
-    harness: Flag.choice("harness", ["codex", "claude"]),
-    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, or a full model ID")),
-    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Harness configuration root; defaults to CODEX_HOME or CLAUDE_CONFIG_DIR")),
+    harness: Flag.choice("harness", ["codex", "claude", "gemini", "antigravity"]),
+    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, gemini, or a full model ID")),
+    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/: CODEX_HOME, CLAUDE_CONFIG_DIR, ~/.gemini, or ~/.gemini/config by default")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),
     session: Flag.string("session").pipe(Flag.optional),
