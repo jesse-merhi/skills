@@ -88,27 +88,25 @@ For an explicit installation root, archive that root's `skills/repo-queue` path 
 
 ### impeccable
 
-Impeccable was replaced by the repo-owned frontend design skills. Remove all
-installer-owned copies so agent skill discovery cannot load the retired skill.
+Impeccable was replaced by the repo-owned frontend design skills. Check each
+path for the current harness and skip missing entries. For a verified
+installer-owned copy, use plain `rm` on a file or symlink and `rm -r` on an
+inspected directory. Leave edited or unrecognized entries for the user.
 
-| Harness | Removal command |
+| Harness | Paths to check |
 | --- | --- |
-| Claude Code | `rm -rf ~/.claude/skills/impeccable` |
-| Codex | `rm -f ~/.codex/skills/impeccable && rm -rf ~/.agents/skills/impeccable` |
-| opencode | `rm -rf ~/.config/opencode/skills/impeccable ~/.config/opencode/.opencode/skills/impeccable` |
-| Pi | `rm -rf ~/.pi/agent/skills/impeccable ~/.pi/skills/impeccable` |
+| Claude Code | `~/.claude/skills/impeccable` |
+| Codex | `~/.codex/skills/impeccable` (file or symlink only), `~/.agents/skills/impeccable` |
+| opencode | `~/.config/opencode/skills/impeccable`, `~/.config/opencode/.opencode/skills/impeccable` |
+| Pi | `~/.pi/agent/skills/impeccable`, `~/.pi/skills/impeccable` |
 
 For Claude Code, also remove hook entries whose command targets
 `skills/impeccable/scripts/hook.mjs` from `~/.claude/settings.local.json`.
 Preserve unrelated settings and delete the file only when nothing remains.
 
-Removing the skill directories is not enough. Impeccable's hook writes state
-outside them, and that state survived two reinstalls because the commands above
-never named it. Remove it on every reinstall, on every harness:
-
-```sh
-rm -rf ~/.impeccable ~/.codex/.impeccable
-```
+Impeccable's hook also writes state to `~/.impeccable` and
+`~/.codex/.impeccable`. Check both paths on every harness and remove verified
+hook state using the same procedure.
 
 Every repository Impeccable ran in also holds its own `.impeccable/` hook cache.
 List them, then remove the ones git does not track:
