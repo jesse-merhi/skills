@@ -80,6 +80,7 @@ Before writing custom infrastructure (parsing, validation, serialization, retrie
 
 ## Working rules
 
+- Avoid forced deletion (`rm -f`, `rm -rf`, or `--force`) during routine cleanup. Use plain `rm` for verified disposable files and `rmdir` for empty directories. If removal is blocked, inspect the target and the error before proceeding.
 - Select skills by the requested action and artifact, not an incidental keyword, and load the smallest useful set. Jesse's explicit instructions override a skill's guidance; when a skill makes you pause, ask or depart from the request, name the skill and quote the instruction.
 - Work on a branch in a dedicated git worktree. Never push agent-authored commits to the default branch.
 - Publishing (pushing, opening or updating a PR) needs the task to ask for it: "push", "publish", "ship", "update the PR", or a workflow such as `just-do-it` that grants it. Otherwise stop at a local checkpoint and show the result. After pushing finished work to a PR, use `pr-proof-pack`.
