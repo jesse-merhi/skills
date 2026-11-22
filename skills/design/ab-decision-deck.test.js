@@ -8,6 +8,14 @@ const items = [
   { id: "2.1", label: "Move status to the order header" },
 ];
 
+function memoryStorage() {
+  const values = new Map();
+  return {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+}
+
 test("exports one decision per item and keeps a note when its vote is cleared", () => {
   const store = createDecisionStore({ deckId: "orders", getStorage: () => undefined });
   const repeatedItems = [...items, items[0]];
@@ -33,11 +41,8 @@ test("exports one decision per item and keeps a note when its vote is cleared", 
 });
 
 test("restores bulk approvals and unmarked notes for the same batch", () => {
-  const values = new Map();
-  const getStorage = () => ({
-    getItem: key => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value),
-  });
+  const storage = memoryStorage();
+  const getStorage = () => storage;
   const store = createDecisionStore({ deckId: "orders", getStorage });
   store.toggleVote("1.1", "deny");
   store.setNote("1.1", "Keep the order number visible.");
@@ -53,6 +58,24 @@ test("restores bulk approvals and unmarked notes for the same batch", () => {
     "NOTES (unmarked):\n2.1 Move status to the order header — Check the narrow layout.",
   );
   expect(formatDecisions(items, otherBatch.get)).toBe("");
+});
+
+test("keeps votes and notes from both open decks when their edits are interleaved", () => {
+  const storage = memoryStorage();
+  const batch = { deckId: "orders", getStorage: () => storage };
+  const first = createDecisionStore(batch);
+  const second = createDecisionStore(batch);
+
+  first.toggleVote("1.1", "approve");
+  first.setNote("1.1", "Keep the order number visible.");
+  second.toggleVote("2.1", "deny");
+  second.setNote("2.1", "Check the narrow layout.");
+  first.setNote("1.2", "Match the heading.");
+
+  const reopened = createDecisionStore(batch);
+  expect(reopened.get("1.1")).toEqual({ vote: "approve", note: "Keep the order number visible." });
+  expect(reopened.get("2.1")).toEqual({ vote: "deny", note: "Check the narrow layout." });
+  expect(reopened.get("1.2")).toEqual({ vote: null, note: "Match the heading." });
 });
 
 test.each([

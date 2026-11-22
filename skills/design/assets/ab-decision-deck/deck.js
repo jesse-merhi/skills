@@ -6,7 +6,29 @@ export function createDecisionStore({ deckId, getStorage = () => globalThis.loca
   let storage;
   try {
     storage = getStorage();
-    const saved = JSON.parse(storage?.getItem(key) ?? "{}");
+  } catch {
+    // Sandboxed frames can block access to the storage object itself.
+  }
+  mergeSaved();
+
+  function mergeSaved() {
+    let draft;
+    try {
+      draft = storage?.getItem(key);
+    } catch {
+      // Avoid writing over a shared draft we could not read.
+      storage = undefined;
+      return;
+    }
+    if (!draft) return;
+
+    let saved;
+    try {
+      saved = JSON.parse(draft);
+    } catch {
+      // An unreadable draft can be replaced by the next edit.
+      return;
+    }
     for (const [id, decision] of Object.entries(saved ?? {})) {
       const vote = decision?.vote;
       decisions.set(id, {
@@ -14,33 +36,36 @@ export function createDecisionStore({ deckId, getStorage = () => globalThis.loca
         note: typeof decision?.note === "string" ? decision.note : "",
       });
     }
-  } catch {
-    // Storage may be blocked by the frame or contain an unreadable draft.
   }
 
   function get(id) {
     return { vote: null, note: "", ...decisions.get(id) };
   }
 
-  function update(ids, change) {
-    for (const id of ids) decisions.set(id, { ...get(id), ...change });
+  function update(ids, getChange) {
+    mergeSaved();
+    for (const id of ids) {
+      const previous = get(id);
+      decisions.set(id, { ...previous, ...getChange(previous) });
+    }
     try {
       storage?.setItem(key, JSON.stringify(Object.fromEntries(decisions)));
     } catch {
-      // Keep the current draft available to copy even when storage is blocked.
+      // Keep the in-memory edits if the next read would replace them with older data.
+      storage = undefined;
     }
   }
 
   return {
     get,
     toggleVote(id, vote) {
-      update([id], { vote: get(id).vote === vote ? null : vote });
+      update([id], previous => ({ vote: previous.vote === vote ? null : vote }));
     },
     approveScreen(ids) {
-      update(ids, { vote: "approve" });
+      update(ids, () => ({ vote: "approve" }));
     },
     setNote(id, note) {
-      update([id], { note });
+      update([id], () => ({ note }));
     },
   };
 }
@@ -176,7 +201,9 @@ export function mountAbDecisionDeck(root, { deckId }) {
     const index = current + (event.key === "ArrowLeft" ? -1 : 1);
     event.preventDefault();
     if (index >= 0 && index < screens.length) {
-      select(index, tabs.contains(event.target) || panels[current].contains(event.target));
+      const disablesFocusedButton = (event.target === prev && index === 0)
+        || (event.target === next && index === screens.length - 1);
+      select(index, disablesFocusedButton || tabs.contains(event.target) || panels[current].contains(event.target));
     }
   });
 

@@ -13,7 +13,7 @@ Use one supported monitor. Handle existing reviews/comments first and reconcile 
 
 - **T3 PR watch:** call `watch_pull_request` and verify `watching: true`. Before returning work to the user, `unwatch_pull_request` and verify false. Do not add a CLI watcher beside it.
   - Immediately recheck PR readiness after registering the watch. Take the authorized next step if ready, otherwise end the turn.
-  - On merge queue entry, check the actual queue entry and combined run in GitHub. The watch does not wake on combined-check failures or queue ejections.
+  - On merge queue entry, check the actual queue entry and combined run in GitHub. Tell the user the watch does not wake on combined-check failures or queue ejections.
 - **Specific CI run or no native PR monitor:** use one [GitHub watch command](references/github-actions.md).
 
 ## Tasks and sessions
