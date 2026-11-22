@@ -30,6 +30,9 @@ export interface LintReport {
 }
 
 const maximumBodyLines = 500
+const agentsLineBudget = 140
+const agentsByteBudget = 14_000
+const agentsLineCeiling = 200
 
 const skillFileName = "SKILL.md"
 const referencesDirectoryName = "references"
@@ -94,6 +97,28 @@ const bodyFindings = (skillPath: string, content: string): Array<Finding> => {
     path: skillPath,
     severity: "error"
   }]
+}
+
+const agentsSizeFindings = (agentsPath: string, content: string): Array<Finding> => {
+  const lines = splitLines(content).length
+  const bytes = Buffer.byteLength(content, "utf8")
+  if (lines > agentsLineCeiling) {
+    return [{
+      line: undefined,
+      message: `has ${lines} lines. Keep AGENTS.md at ${agentsLineCeiling} lines or fewer`,
+      path: agentsPath,
+      severity: "error"
+    }]
+  }
+  if (lines > agentsLineBudget || bytes > agentsByteBudget) {
+    return [{
+      line: undefined,
+      message: `has ${lines} lines and ${bytes} bytes. Aim for at most ${agentsLineBudget} lines and ${agentsByteBudget} bytes`,
+      path: agentsPath,
+      severity: "warning"
+    }]
+  }
+  return []
 }
 
 const chainFindings = (path: Path.Path, skill: SkillSource, skillPath: string, reference: ReferenceSource): Array<Finding> => {
@@ -221,6 +246,12 @@ export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(functi
     .toSorted()
   const skillPaths = files.filter((file) => path.basename(file) === skillFileName)
   const findings: Array<Finding> = []
+  if (path.basename(root) === "skills") {
+    const agentsPath = path.join(path.dirname(root), "AGENTS.md")
+    if (yield* fileSystem.exists(agentsPath)) {
+      findings.push(...agentsSizeFindings(agentsPath, yield* fileSystem.readFileString(agentsPath)))
+    }
+  }
   let referenceCount = 0
   for (const skillPath of skillPaths) {
     const directory = path.dirname(skillPath)

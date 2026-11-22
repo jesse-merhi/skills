@@ -39,7 +39,7 @@ test("installs Gemini prompts and readable resources in the default and configur
   for (const skill of ["alpha", "group/beta"]) {
     fs.writeFileSync(path.join(sourceRoot, skill, "BASE.md"), "Shared instructions\n");
   }
-  const resources = [["catalog.json", "{}\n"], ["assets/template.txt", "Template\n"]];
+  const resources = [["catalog.json", "{}\n"], ["principles.md", "# Principles\n"], ["assets/template.txt", "Template\n"]];
   fs.mkdirSync(path.join(sourceRoot, "alpha", "assets"));
   for (const [file, contents] of resources) {
     fs.writeFileSync(path.join(sourceRoot, "alpha", file), contents);

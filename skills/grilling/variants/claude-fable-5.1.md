@@ -3,7 +3,7 @@ name: grilling
 description: 'Stress-test a plan, decision, or idea through relentless questions, optionally grounded in code, docs and Obsidian notes.'
 metadata:
   sources: |
-    - adapted from [skills/productivity/grilling](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/grilling) — recorded upstream review.
+    - adapted from [skills/productivity/grilling](https://github.com/mattpocock/skills/tree/abeeaf95660ba9e8b7c753eb38f441ca707a8823/skills/productivity/grilling) — recorded upstream review.
 ---
 
 # Grilling
@@ -15,16 +15,16 @@ Map the full decision tree and get the user's confirmation before acting. Invest
 
 Use `Agent` with `subagent_type: "investigator"`. Supply its objective, worktree and revision or source, scope, constraints, acceptance criteria, and evidence. Keep synthesis here. If unavailable, report it and investigate locally.
 
-3. Recommend an answer for each question. Use a horizontal rule between questions:
+3. Recommend an answer for each question and phrase it so “yes” accepts your recommendation. Use a horizontal rule between questions:
 
    ```markdown
-   ❓ **Q1**. **<question title>**: <question body or choices>
+   ❓ **Q1**. **<question title>**: <yes/no question about the recommended option>
 
    ➡️ <recommended answer>
 
    ---
 
-   ❓ **Q2**. **<question title>**: <question body or choices>
+   ❓ **Q2**. **<question title>**: <yes/no question about the recommended option>
 
    ➡️ <recommended answer>
    ```

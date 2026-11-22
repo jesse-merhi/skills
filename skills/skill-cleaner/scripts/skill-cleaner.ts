@@ -80,6 +80,7 @@ type LivePrompt = {
 
 const home = os.homedir();
 const args = new Set(process.argv.slice(2));
+const codexSystemSkills = "/.codex/skills/.system/";
 
 function argValue(name: string, fallback: string): string {
   const raw = process.argv.slice(2);
@@ -468,7 +469,7 @@ function skillRootScope(root: string): string {
 }
 
 function deletePriority(skill: Skill): number {
-  if (skill.path.includes("/.codex/skills/.system/")) return 0;
+  if (skill.path.includes(codexSystemSkills)) return 0;
   if (skill.path.includes("/.codex/skills/")) return 1;
   if (skill.path.includes("/.codex/plugins/cache/") && !skill.path.includes("/plugin-install-")) return 2;
   if (skill.path.includes("/.codex/plugins/cache/")) return 3;
@@ -823,7 +824,11 @@ function scanUsage(skills: Skill[], logFiles: string[]): Map<string, Usage> {
         }
         continue;
       }
-      if (evidence.userText !== undefined) applyUserMentions(evidence.userText, aliases, usage);
+      if (evidence.userText !== undefined) {
+        // Codex records injected AGENTS.md instructions as user messages.
+        const requestText = evidence.userText.replaceAll(/<INSTRUCTIONS>[\s\S]*?<\/INSTRUCTIONS>/g, " ");
+        applyUserMentions(requestText, aliases, usage);
+      }
     }
     if (plainLines.length > 0) {
       const plainText = plainLines.join("\n");
@@ -1155,7 +1160,7 @@ function render(
       const item = usageForSkill(usage, skill);
       return item.dollar + item.fileRead + item.text === 0;
     })
-    .filter((skill) => !["codex", "codex-plugin"].includes(skill.scope))
+    .filter((skill) => skill.scope !== "codex-plugin" && !skill.path.includes(codexSystemSkills))
     .sort((a, b) => a.scope.localeCompare(b.scope) || a.name.localeCompare(b.name))
     .slice(0, 80);
   const totalLineChars = considered.reduce((sum, skill) => sum + skill.lineChars, 0);

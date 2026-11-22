@@ -4,8 +4,8 @@ description: 'Use when asked to audit, prune or budget installed agent skills.'
 metadata:
   source: https://github.com/steipete/agent-scripts
   source-path: skills/skill-cleaner
-  upstream-review-revision: 0e8ca002fc1dd76ae84c71f8d24dfd1ac7096ff5
-  upstream-review-date: "2026-09-06"
+  upstream-review-revision: 168f22313cecc5c173421d1b3a8c1911812c0d2a
+  upstream-review-date: "2026-11-22"
   license: MIT
 ---
 

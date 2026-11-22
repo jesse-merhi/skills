@@ -14,13 +14,20 @@ When Reanimated and a compatible gesture library are installed, keep continuous 
 
 Keep the element under the finger during a drag. On grab, cancel its settling animation and retain its current position as the offset. On release, choose a target from direction, distance, and velocity, then continue from the current value. If a second grab interrupts settling, start there rather than resetting to the old snap point.
 
-This Reanimated 4 fragment goes inside the component. Connect `settle` to the existing gesture's release handler, using velocity in the same coordinate units per second as `offset`. Use the product's tested spring values; the values below illustrate a non-bouncy settle. Do not combine the stiffness/damping configuration with duration/dampingRatio configuration.
+This Reanimated 4 fragment goes inside the component. Call `grab` when the drag takes ownership and add drag translation to the captured `grabOffset`. Connect `settle` to the release handler, using velocity in the same coordinate units per second as `offset`. Use the product's tested spring values. The values below illustrate a non-bouncy settle. Choose either stiffness/damping or duration/dampingRatio.
 
 ```tsx
 const offset = useSharedValue(0);
+const grabOffset = useSharedValue(0);
 const animatedStyle = useAnimatedStyle(() => ({
   transform: [{ translateY: offset.value }],
 }));
+
+function grab() {
+  'worklet';
+  cancelAnimation(offset);
+  grabOffset.value = offset.value;
+}
 
 function settle(target: number, releaseVelocity: number) {
   'worklet';
@@ -34,11 +41,13 @@ function settle(target: number, releaseVelocity: number) {
 }
 ```
 
-Import these APIs from the installed `react-native-reanimated`; attach `animatedStyle` to its `Animated.View`. This is the settling part, not a complete sheet: the existing gesture owner still handles cancellation, multi-touch, bounds, and nested scrolling. Confirm retargeting and velocity continuity on the installed runtime.
+Import these APIs from the installed `react-native-reanimated` and attach `animatedStyle` to its `Animated.View`. The existing gesture owner handles cancellation, multi-touch, bounds, and nested scrolling. Confirm retargeting and velocity continuity on the installed runtime.
 
 ## Layout, access, and feedback
 
 Respect system reduced motion for both programmatic and entering/exiting animations. Use immediate or restrained alternatives while keeping state changes clear. Keep focus, accessibility labels/state, and a button alternative to drag-only actions. Decorative movement should not delay access to content.
+
+For custom native stack transitions, use a reduced-motion fallback such as `animation: "fade"` in place of a slide. With `import * as Haptics from "expo-haptics"`, use `Haptics.ImpactFeedbackStyle.*` and `Haptics.NotificationFeedbackType.*` with the corresponding feedback calls. See [native stack options](https://reactnavigation.org/docs/native-stack-navigator/) and [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/).
 
 Use the existing safe-area provider and consume an inset once at the edge that needs it. For a floating action, a typical offset is the product's bottom spacing plus `useSafeAreaInsets().bottom`; a bar already padded by its parent needs no second inset. Insets do not account for the keyboard.
 

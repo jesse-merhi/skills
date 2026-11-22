@@ -3,25 +3,25 @@ name: grilling
 description: 'Stress-test a plan, decision, or idea through relentless questions, optionally grounded in code, docs and Obsidian notes.'
 metadata:
   sources: |
-    - adapted from [skills/productivity/grilling](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/grilling) — recorded upstream review.
+    - adapted from [skills/productivity/grilling](https://github.com/mattpocock/skills/tree/abeeaf95660ba9e8b7c753eb38f441ca707a8823/skills/productivity/grilling) — recorded upstream review.
 ---
 
 # Grilling
 
 Map the full decision tree and get the user's confirmation before acting. Investigate facts yourself; every decision remains the user's, even with a confident recommendation.
 
-In each round, ask the full frontier—all questions whose prerequisites are settled—with a recommendation for each, then wait. Leave dependent questions for later rounds. Update the tree after each answer.
+In each round, ask the full frontier—all questions whose prerequisites are settled—with a recommendation for each, then wait. Phrase each question so “yes” accepts your recommendation. Leave dependent questions for later rounds. Update the tree after each answer.
 
 Use this format, separating questions with a horizontal rule:
 
 ```markdown
-❓ **Q1**. **<question title>**: <question body or choices>
+❓ **Q1**. **<question title>**: <yes/no question about the recommended option>
 
 ➡️ <recommended answer>
 
 ---
 
-❓ **Q2**. **<question title>**: <question body or choices>
+❓ **Q2**. **<question title>**: <yes/no question about the recommended option>
 
 ➡️ <recommended answer>
 ```

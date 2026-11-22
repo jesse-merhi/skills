@@ -145,14 +145,11 @@ Two ways one gets used:
   `description` in context and load the body when the description matches the
   task. That is why the descriptions in this repo are written as trigger
   conditions rather than summaries.
-- **You name it.** `$skill-name` in Codex, `/skill-name` in Claude Code, or just
-  "use `grilling` on this" in either harness. Codex marks five skills as
-  explicit-only: `code-review`, `hill-climb`,
-  `html-explanations`, `just-do-it` and `pr-burndown`. They can review and fix code, operate desktop UI
-  or run a long external loop, so Codex waits for
-  you to name them.
+- **You name it.** Use `$skill-name` in Codex, `/skill-name` in Claude Code, or
+  say "use `grilling` on this" in either harness. Codex waits for you to name
+  `code-review` or `just-do-it` before invoking them.
 
-`code-review` owns the council workflow; UI polish scoring lives in its `references/ui-polish.md`. Model-writing guidance and installer scripts live under `writing-for-agents`.
+`code-review` owns single-reviewer and council reviews. UI polish scoring lives in its `references/ui-polish.md`. Model-writing guidance and installer scripts live under `writing-for-agents`.
 
 `coding-standards` brings personal engineering standards to a repository
 without turning every judgment call into a linter. `apply` prefers existing
@@ -186,13 +183,15 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 4. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity, then runs independent Astra, Claude Fable 5.2, Claude Opus 5.5, GPT-6.2 Sol and Gemini 4 Neon reviewers at high. Code and UI share rounds that continue while a round fixes a blocking issue; the coordinator stops once only minor or far-fetched findings remain.
+5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity. The coordinator honors any review mode the user specified. Otherwise, it uses the [review-mode rules](skills/code-review/BASE.md#3-choose-a-review-mode) to choose one reviewer or the five-model council and runs the review without asking.
 6. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
-For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Every available council member assesses standards and correctness in the resulting diff. The report names any missing models and explains why each is missing. If none finish, the review is incomplete. The coordinator confirms findings, rates each as blocking, minor or not actionable, and verifies scoped repairs after each round. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs only after a blocking fix, an applied UI improvement or a fix that reaches beyond its finding; the coordinator asks the user when fixes stop converging. The final report lists fixes by round and each member’s stated confidence tied to the revision and evidence it reviewed. No findings database or native/cold pass sequence is required.
+For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Each reviewer assesses standards and correctness in the resulting diff. The coordinator confirms findings, rates them as blocking, minor or not actionable, and verifies scoped repairs. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs after a blocking fix, an applied UI improvement or an uncontained fix. The coordinator asks the user when fixes stop converging.
+
+The final report labels the result as a single-reviewer review, full council or restricted council. It names the actual sole reviewer and effort or explains which council members are missing and why. If no reviewer qualifies, the review is incomplete. Report fixes by round and tie confidence to the revision and evidence each reviewer assessed. No findings database or native/cold pass sequence is required.
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
@@ -208,8 +207,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | Skill | What it does |
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
-| [`pr-burndown`](skills/pr-burndown/SKILL.md) | Coordinates a batch of open PRs to merge: one owner thread per PR, a shared ledger, a load-aware cap on heavy local work, and a check-in with Jesse before each queue submission. |
-| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then reviews code and affected UI with the available council members. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then uses a single reviewer or a five-model council to assess code and affected UI. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | After finished work is pushed to a PR, checks and refreshes reviewer-visible proof, with before/after tables for UI; never on local commits. |
 
 ### Code quality and correctness
@@ -219,7 +217,6 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | [`writing-good-tests`](skills/writing-good-tests/SKILL.md) | Applies during coding and review: integration first, real stores for backend proof, temporary checks for investigation, and permanent unit tests only by exception. |
 | [`typescript-discipline`](skills/typescript-discipline/SKILL.md) | Shared types, validation at boundaries, safe narrowing, no `as any`. |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Applies standards using native checks and local guidance, records honest coverage, and translates unfamiliar stacks on demand. |
-| [`hill-climb`](skills/hill-climb/SKILL.md) | Iterates against a fixed eval to a target score, keeping checkpoints, then optionally cuts cost while holding the score. |
 
 ### Planning, context, and handoff
 
@@ -242,7 +239,6 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | Skill | What it does |
 | --- | --- |
 | [`speak-fking-english`](skills/speak-fking-english/SKILL.md) | Makes replies concise and easy to understand. |
-| [`html-explanations`](skills/html-explanations/SKILL.md) | Builds a standalone HTML page when prose would be a wall of text: code flow, tradeoffs, diagrams, small interactive demos. Opt-in only. |
 | [`show-video`](skills/show-video/SKILL.md) | Shows UI, API and CLI changes in video, including review fixes, with aligned A/B comparisons when useful. |
 
 ### Meta and operations
@@ -302,7 +298,8 @@ PRs are welcome.
 - `bun run lint:skills` enforces the hop and length rules, requires every
   reference to be linked from `SKILL.md`, and warns when one reference is
   linked from both a workflow step and a `Context pointers` section, so you
-  can decide whether to inline it.
+  can decide whether to inline it. It also warns when root `AGENTS.md` exceeds
+  140 lines or 14,000 bytes and fails above 200 lines.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

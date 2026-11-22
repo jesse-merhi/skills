@@ -20,6 +20,8 @@ Give immediate press feedback; commit the action through the control's normal ac
 
 Prefer transform and opacity for frequent motion. CSS and WAAPI do not guarantee compositing; browser, property, and effect determine the work. Measure layout, filters, clipping, and JavaScript-driven effects on representative devices when needed. Do not install a library for a fade or change an installed library's API from memory.
 
+On HTML elements, `motion` 14.2+ combines `x`, `y`, `scale`, and `rotate` into a hardware-accelerated transform when the browser supports it. On older versions or with `framer-motion`, animate a full `transform` string when compositor animation matters. Layout animation (`layout` or `layoutId`), `onUpdate`, `transformTemplate`, inertia, and motion values updated per frame (drag or `useTransform`) still run on the main thread. See the [Motion performance guide](https://motion.dev/docs/performance).
+
 ## Entry without a mount effect
 
 This example starts a newly rendered notification slightly below its final position. Replace the illustrative duration, easing, and distance with the product's tokens. The visible state is the default, so unsupported browsers show the content immediately.

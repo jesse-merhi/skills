@@ -3,7 +3,7 @@ name: writing-good-tests
 description: 'Use during coding and review to delete low-value tests, keep useful real journeys, and justify every permanent keeper.'
 metadata:
   sources: |
-    - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/tdd) — recorded upstream review.
+    - adapted from [skills/engineering/tdd](https://github.com/mattpocock/skills/tree/abeeaf95660ba9e8b7c753eb38f441ca707a8823/skills/engineering/tdd) — recorded upstream review.
 ---
 
 # Writing Good Tests
@@ -15,6 +15,8 @@ Default to no dedicated tests for configuration, plumbing, routine helpers and o
 Retirement does not invite new tests for the same guards at another level. When claiming consolidation, inspect equivalent reachable input, relevant branch, asserted outcome and execution cadence. Types, manual checks and planned tests are not permanent replacements. Preserve explicitly required tests/checks and justified consequential proof; runner registration alone does not make a test required.
 
 ## Choose proof
+
+When choosing or proposing a test boundary, include one line on what it catches and what it misses.
 
 Trace real callers and supported inputs through the changed contract. Inspect nearby tests and all working changes, including deletions. Name the failure, independent expected result and gap in existing proof. Invented rejection inputs prove nothing. Build small fixtures from application definitions; do not alter production behavior to fit them or add test-only seams.
 

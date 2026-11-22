@@ -477,7 +477,6 @@ Public aliases:
 | `skill-audit-layout` | `frontend-ui-validation/scripts/audit-layout.mjs` |
 | `skill-cleanup-inventory` | `cleanup/scripts/inventory.mjs` |
 | `skill-collect-context` | `grilling/scripts/collect-context.mjs` |
-| `skill-diff-page` | `html-explanations/scripts/diff-page.mjs` |
 | `skill-render-diagram`, `skill-check-rendered-diagram` | `design-technical-diagrams/scripts/render-diagram.mjs`, `check-rendered-diagram.mjs` |
 | `codex-handoff-tmux`, `detect-handoff-surface` | `handoff/scripts/<name>` |
 | `quiet-wait`, `estimate-gh-wait` | `wait-efficiently/scripts/<name>` |
