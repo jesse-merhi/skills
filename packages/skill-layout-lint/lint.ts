@@ -11,11 +11,12 @@ const report = Effect.fn("skill-layout-lint.report")(function*(root: string) {
   const { findings, referenceCount, skillCount } = yield* lintSkillsRoot(root)
   const displayBase = path.dirname(root)
   const errors = findings.filter(isError)
-  const warnings = findings.filter((finding) => !isError(finding))
-  for (const finding of [...errors, ...warnings]) {
+  for (const finding of [...errors, ...findings.filter((finding) => !isError(finding))]) {
     yield* Console.log(formatFinding({ ...finding, path: path.relative(displayBase, finding.path) }))
   }
-  yield* Console.log(`skill-layout-lint: ${skillCount} skills, ${referenceCount} references, ${errors.length} errors, ${warnings.length} warnings`)
+  if (errors.length === 0) {
+    yield* Console.log(`skill-layout-lint: ${skillCount} skills, ${referenceCount} references, no errors`)
+  }
   return errors.length === 0 ? 0 : 1
 })
 

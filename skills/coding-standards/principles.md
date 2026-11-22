@@ -1,6 +1,6 @@
 # Coding standards principles
 
-Generated from `catalog.json`. Update the catalog and this sheet together.
+This sheet mirrors the standards in `catalog.json`. Update both files together.
 
 ## Code and CLIs explain their usage and behavior
 

@@ -25,8 +25,8 @@ Do not import the other two new Emil workflows as standalone skills:
   at decision time.
 
 Do not import Thariq Shafi's eleven new `unknowns/` HTML files. Absorb their
-reasoning ideas into a smaller repo-owned pattern library instead. See
-[`html-explanation-patterns.md`](../skills/html-explanations/references/html-explanation-patterns.md).
+reasoning ideas into a smaller repo-owned pattern library instead. That library
+was part of the retired HTML explanations skill.
 
 ## Source-by-source audit
 

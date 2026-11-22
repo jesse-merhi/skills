@@ -44,11 +44,11 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
 
 For a small follow-up or clean rebase after a council, apply the triggers to what changed since the council. Verify an unchanged patch with matching `git patch-id --stable` output or by verifying that a conflict-only merge preserved the intended patch. Review the new revision.
 
-For affected UI, set fixed criteria and gather proof before launch using the [affected UI rules](references/affected-ui.md). The implementation owner captures the UI and exercises interactions with [frontend-ui-validation](../frontend-ui-validation/SKILL.md). When the user asks for polish or names a score, follow [UI polish](references/ui-polish.md) for scoring. Apply its gating and final council rounds unless the user explicitly requested a single reviewer.
+For affected UI, set fixed criteria and gather proof before launch using the [affected UI rules](references/affected-ui.md). When the user asks for polish or names a score, follow [UI polish](references/ui-polish.md).
 
 ### Launch independent reviewers
 
-Start each reviewer fresh, even if Sol implemented the change. Exclude shared history, implementation rationale and earlier findings. Use [reviewer dispatch](references/reviewer-dispatch.md) for the brief and launch settings, and [wait-efficiently](../wait-efficiently/SKILL.md) for pending results.
+Follow [reviewer dispatch](references/reviewer-dispatch.md) to launch fresh reviewers. Use [wait-efficiently](../wait-efficiently/SKILL.md) for pending results.
 
 Count only fresh assessments from the selected models at high on that revision. Disclose context contamination and record missing models with reasons. Continue with any qualifying assessments, even one from a council. If none qualify, report the review incomplete and stop.
 

@@ -183,15 +183,13 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 4. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-5. **Simplify and review.** `code-review` gives an editing agent the goal of removing unnecessary complexity. The coordinator honors any review mode the user specified. Otherwise, it uses the [review-mode rules](skills/code-review/BASE.md#3-choose-a-review-mode) to choose one reviewer or the five-model council and runs the review without asking.
+5. **Simplify and review.** `code-review` removes unnecessary complexity, then uses one fresh GPT-6.2 Sol reviewer at high effort for routine changes, with Claude Opus 5.5 at high as fallback. The coordinator honors the user's chosen mode or runs the five-model council when a [risk trigger](skills/code-review/BASE.md#3-choose-a-review-mode) applies.
 6. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
    than they return.
 
-For example, the simplifier removes a redundant adapter while preserving its callers' behavior. Each reviewer assesses standards and correctness in the resulting diff. The coordinator confirms findings, rates them as blocking, minor or not actionable, and verifies scoped repairs. Affected UI uses fixed product criteria and comparable screenshots and interaction evidence. Another round runs after a blocking fix, an applied UI improvement or an uncontained fix. The coordinator asks the user when fixes stop converging.
-
-The final report labels the result as a single-reviewer review, full council or restricted council. It names the actual sole reviewer and effort or explains which council members are missing and why. If no reviewer qualifies, the review is incomplete. Report fixes by round and tie confidence to the revision and evidence each reviewer assessed. No findings database or native/cold pass sequence is required.
+The coordinator verifies and resolves findings, reruns review when a fix needs it, and reports the review mode, evidence and confidence for the revision reviewed. See the [round](skills/code-review/BASE.md#4-repeat-rounds-until-only-minor-findings-remain) and [reporting rules](skills/code-review/BASE.md#5-report-and-finish).
 
 None of this is sacred. Half the specific commands here will be obsolete soon
 enough. The shape is the point.
