@@ -27,7 +27,7 @@ State in brief and launch prompt: parent and new session communicate only when e
 
 Launch a full interactive session, not a subagent, ACPX or background agent. Preserve the intended checkout, dirty changes, base revision and requested settings; stop parent implementation before sharing its checkout. Verify an uncertain launch before retrying. Choose the launcher by destination app, not model provider.
 
-**T3:** `t3_thread_launch` binds `workspaceStrategy` at launch: `existing_worktree` for a continuation or `worktree` with the intended `baseRef` for new work. Inherit unspecified project/model/modes and pass brief/objective in `message`. Link `[title](t3-thread://v1/<threadId>)`.
+**T3:** `t3_thread_launch` binds `workspaceStrategy` at launch: `existing_worktree` for a continuation or `worktree` with the intended `baseRef` for new work. Inherit unspecified project/model/modes within the `AGENTS.md` effort caps and fast-mode rule, and pass brief/objective in `message`. Link `[title](t3-thread://v1/<threadId>)`.
 
 Watches and schedules don't move automatically: transfer owned monitoring once the destination owns the work, preserve stopped schedules and remove the old watch. Authorized archival follows [cleanup](../cleanup/SKILL.md#archive-the-session), retaining the continuation's runtimes.
 

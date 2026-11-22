@@ -1,6 +1,6 @@
 # Claude named workers
 
-The normal Claude Code session coordinates the work on Opus 5.5 at high by default, without an advisor, and with Opus as the default subagent model. Explicit user model and effort choices take precedence. These optional native subagents hold reusable instructions, model and effort settings, domain skill references, boundaries and report expectations.
+The normal Claude Code session coordinates the work on Opus 5.5 at high by default, without an advisor, and with Opus as the default subagent model. Explicit user model and effort choices take precedence within the [effort caps](../AGENTS.md#model-turns). These optional native subagents hold reusable instructions, model and effort settings, domain skill references, boundaries and report expectations.
 
 Select the default in Claude's normal settings or launch a normal main session explicitly:
 

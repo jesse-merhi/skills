@@ -107,7 +107,8 @@ above. Opus 5.5 at high is the default coordinator, with no advisor. Route every
 implementation edit through [GPT-6.2 Sol at `xhigh`](claude/README.md#implementation-through-codex).
 Haiku 5.5 at high handles codebase search and prepared validation. Fable 5.2 at
 high remains available as a read-only oracle.
-Preserve explicit user model and effort choices. Use the [Claude launch command](claude/README.md)
+Preserve explicit user model and effort choices within the [effort caps](AGENTS.md#model-turns).
+Use the [Claude launch command](claude/README.md)
 only when model selection is authorized; skill installation preserves
 the currently selected model and advisor.
 
