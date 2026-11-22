@@ -4,6 +4,8 @@
 
 The ids, titles, and principles express the owner's standards. Enforcement columns record available implementations, not proof that a whole principle is enforced in every target. Apply and sync establish actual coverage using the shared adoption policy loaded by the entrypoint; native mappings may be partial, custom checks are optional, and context-sensitive decisions remain local agent guidance.
 
+Read expectations uses `principles.md` beside the catalog. After editing a standard, update the sheet in catalog order with the exact title, id, scope, and principle. Separate entries with a blank line. The test suite checks the projection against the catalog.
+
 ## Structure
 
 - `version` — `1`.

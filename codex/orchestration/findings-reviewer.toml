@@ -32,19 +32,11 @@ name = "code-review"
 enabled = false
 
 [[skills.config]]
-name = "hill-climb"
-enabled = false
-
-[[skills.config]]
 name = "parallel-slice-orchestration"
 enabled = false
 
 [[skills.config]]
 name = "just-do-it"
-enabled = false
-
-[[skills.config]]
-name = "pr-burndown"
 enabled = false
 
 [[skills.config]]

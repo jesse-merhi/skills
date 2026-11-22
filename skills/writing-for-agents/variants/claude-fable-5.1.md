@@ -4,9 +4,9 @@ description: 'Use before creating or editing AGENTS.md, CLAUDE.md or any skill.'
 metadata:
   source: https://github.com/mattpocock/skills
   source-path: skills/productivity/writing-for-agents
-  source-revision: 6654f6b60cd9d5be8b54c6fafe44346dabeb3b76
+  source-revision: abeeaf95660ba9e8b7c753eb38f441ca707a8823
   sources: |
-    - Informed by [pstack evaluation guidance](https://github.com/cursor/plugins/blob/2eb7ed4613cfc8f098dfe464a23680ea44d84c5e/pstack/skills/poteto-mode/playbooks/eval.md) — independent tasks, withheld criteria and artifact-based assessment.
+    - Informed by [pstack evaluation guidance](https://github.com/cursor/plugins/blob/792440e8a560a4a3f63748cdee70491ecd412982/pstack/skills/poteto-mode/playbooks/eval.md) — independent tasks, withheld criteria and artifact-based assessment.
 ---
 
 # Writing for agents

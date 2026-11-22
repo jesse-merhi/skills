@@ -1,7 +1,7 @@
 # Coding standards catalog
 
-`catalog.json` lists the standards, preset files, and exact dependency versions.
-Use the skill's **Read expectations** mode during implementation and review.
+Use [principles.md](principles.md) in **Read expectations** mode during implementation and review.
+`catalog.json` is the authoritative source for apply, sync, and translate. It lists the standards, preset files, and exact dependency versions.
 Standards without bundled enforcement still apply as guidance. Applying or
 syncing checks requires an explicit request. For an authorized adoption,
 select the presets your project needs and install their packages alongside the

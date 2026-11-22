@@ -1,4 +1,5 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -79,6 +80,9 @@ type LivePrompt = {
 };
 
 const home = os.homedir();
+const defaultCodexHome = path.join(home, ".codex");
+const configuredCodexHome = Effect.runSync(Config.string("CODEX_HOME").pipe(Config.withDefault("")));
+const codexHome = resolveCodexHome(home);
 const args = new Set(process.argv.slice(2));
 
 function argValue(name: string, fallback: string): string {
@@ -108,8 +112,14 @@ const extraRoots = process.argv
     return arg === "--root" && value && !value.startsWith("--") ? [value] : [];
   });
 
-function expandHome(input: string): string {
-  return input.replace(/^~(?=$|\/)/, home);
+function expandHome(input: string, baseHome = home): string {
+  return input.replace(/^~(?=$|[/\\])/, () => baseHome);
+}
+
+function resolveCodexHome(baseHome: string): string {
+  return configuredCodexHome
+    ? path.resolve(expandHome(configuredCodexHome, baseHome))
+    : path.join(baseHome, ".codex");
 }
 
 function exists(input: string): boolean {
@@ -177,13 +187,13 @@ function firstModelName(value: Schema.Json): string | null {
 function codexModelName(): string {
   if (modelOverride) return modelOverride;
 
-  const config = path.join(home, ".codex/config.toml");
+  const config = path.join(codexHome, "config.toml");
   if (exists(config)) {
     const match = /^\s*model\s*=\s*["']([^"']+)["']/m.exec(fs.readFileSync(config, "utf8"));
     if (match?.[1]) return match[1];
   }
 
-  const cache = path.join(home, ".codex/models_cache.json");
+  const cache = path.join(codexHome, "models_cache.json");
   if (exists(cache)) {
     const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
     if (Option.isSome(decoded)) return firstModelName(decoded.value) ?? "current-configured-model";
@@ -200,7 +210,7 @@ function codexModelContext(modelName: string): {
   const override = numberArg(contextTokensOverride, 0);
   if (override > 0) return { tokens: override, source: "--context-tokens", effectivePercent: null };
 
-  const cache = path.join(home, ".codex/models_cache.json");
+  const cache = path.join(codexHome, "models_cache.json");
   if (exists(cache)) {
     try {
       const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
@@ -368,7 +378,11 @@ export function parseLiveSkillsPrompt(raw: string): LivePrompt {
 
 const livePrompt = Effect.fn("SkillCleaner.livePrompt")(function*() {
   if (noLive) return null;
-  return yield* checkedText("codex", ["debug", "prompt-input"], { cwd: process.cwd() }).pipe(
+  return yield* checkedText("codex", ["debug", "prompt-input"], {
+    cwd: process.cwd(),
+    env: { CODEX_HOME: codexHome },
+    extendEnv: true,
+  }).pipe(
     Effect.map(parseLiveSkillsPrompt),
     Effect.catch((error) => {
       const fallback = Effect.succeed<LivePrompt | null>(null);
@@ -459,20 +473,69 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return intersection / (a.size + b.size - intersection);
 }
 
+function comparisonPath(input: string): string {
+  const normalized = path.resolve(input).split(path.sep).join("/");
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+function comparisonPaths(input: string): string[] {
+  const lexical = comparisonPath(input);
+  try {
+    const real = comparisonPath(fs.realpathSync(input));
+    return real === lexical ? [lexical] : [lexical, real];
+  } catch {
+    return [lexical];
+  }
+}
+
+function containsPath(root: string, input: string): boolean {
+  return input === root || input.startsWith(`${root}/`);
+}
+
+const explicitRoots = extraRoots.map((root) => expandHome(root));
+const explicitComparisonPaths = explicitRoots.flatMap(comparisonPaths);
+const codexSkillRoots = ([
+  ["system", "skills/.system", /(?:^|\/)skills\/\.system(?:\/|$)/],
+  ["plugin", "plugins/cache", /(?:^|\/)plugins\/cache(?:\/|$)/],
+  ["user", "skills"],
+] as const).map(([kind, suffix, pathPattern]) => ({
+  kind,
+  pathPattern,
+  roots: [
+    ...comparisonPaths(path.join(codexHome, suffix)),
+    ...comparisonPaths(path.join(defaultCodexHome, suffix)).filter((root) =>
+      explicitComparisonPaths.some((explicit) => containsPath(root, explicit) || containsPath(explicit, root)),
+    ),
+  ],
+}));
+const homeAgentSkillRoots = comparisonPaths(path.join(home, ".agents/skills"));
+
+function codexSkillKind(input: string): "system" | "plugin" | "user" | undefined {
+  const inputs = comparisonPaths(input);
+  for (const { kind, roots, pathPattern } of codexSkillRoots) {
+    if (inputs.some((candidate) =>
+      pathPattern?.test(candidate) || roots.some((root) => containsPath(root, candidate)),
+    )) return kind;
+  }
+  return undefined;
+}
+
 function skillRootScope(root: string): string {
-  const normalized = root.split(path.sep).join("/");
-  if (normalized.includes("/.codex/plugins/cache")) return "codex-plugin";
-  if (normalized.includes("/.codex/skills")) return "codex";
-  if (normalized.includes("/.agents/skills")) return "repo";
+  const kind = codexSkillKind(root);
+  if (kind === "plugin") return "codex-plugin";
+  if (kind !== undefined) return "codex";
+  const inputs = comparisonPaths(root);
+  if (inputs.some((candidate) => homeAgentSkillRoots.some((homeRoot) => containsPath(homeRoot, candidate)))) return "user";
+  if (inputs.some((candidate) => /(?:^|\/)\.agents\/skills(?:\/|$)/.test(candidate))) return "repo";
   return "extra";
 }
 
 function deletePriority(skill: Skill): number {
-  if (skill.path.includes("/.codex/skills/.system/")) return 0;
-  if (skill.path.includes("/.codex/skills/")) return 1;
-  if (skill.path.includes("/.codex/plugins/cache/") && !skill.path.includes("/plugin-install-")) return 2;
-  if (skill.path.includes("/.codex/plugins/cache/")) return 3;
-  if (skill.realPath.includes("/.agents/skills/")) return 4;
+  const kind = codexSkillKind(skill.path);
+  if (kind === "system") return 0;
+  if (kind === "user") return 1;
+  if (kind === "plugin") return comparisonPath(skill.path).includes("/plugin-install-") ? 3 : 2;
+  if (comparisonPath(skill.realPath).includes("/.agents/skills/")) return 4;
   return 5;
 }
 
@@ -516,7 +579,7 @@ function configState(): { disabledPaths: Set<string>; disabledNames: Set<string>
   const disabledPaths = new Set<string>();
   const disabledNames = new Set<string>();
   const disabledPlugins = new Set<string>();
-  const config = path.join(home, ".codex/config.toml");
+  const config = path.join(codexHome, "config.toml");
   if (!exists(config)) return { disabledPaths, disabledNames, disabledPlugins };
   const lines = fs.readFileSync(config, "utf8").split(/\r?\n/);
   let block = "";
@@ -559,12 +622,14 @@ function configState(): { disabledPaths: Set<string>; disabledNames: Set<string>
 
 export function discoverRoots(baseHome = home, providedRoots = extraRoots, exclusive = rootOnly): string[] {
   const rootsByRealPath = new Map<string, string>();
-  const roots = providedRoots.map((root) => root.replace(/^~(?=$|\/)/, baseHome));
+  const roots = providedRoots.map((root) => expandHome(root, baseHome));
+  const activeCodexHome = resolveCodexHome(baseHome);
   const candidates = exclusive
     ? roots
     : [
-        path.join(baseHome, ".codex/skills"),
-        path.join(baseHome, ".codex/plugins/cache"),
+        path.join(activeCodexHome, "skills"),
+        path.join(activeCodexHome, "plugins/cache"),
+        path.join(baseHome, ".agents/skills"),
         path.join(baseHome, "Projects/agent-scripts/skills"),
         ...roots,
       ];
@@ -639,20 +704,20 @@ function discoverSkills(): Skill[] {
 function recentLogFiles(): string[] {
   if (noLogs) return [];
   const files = new Set<string>();
-  const roots = [path.join(home, ".codex/sessions")];
+  const roots = [path.join(codexHome, "sessions")];
+  const history = path.join(codexHome, "history.jsonl");
+  if (exists(history)) files.add(fs.realpathSync(history));
   if (deepLogs) {
     roots.push(
-      path.join(home, ".codex/archived_sessions"),
+      path.join(codexHome, "archived_sessions"),
       path.join(home, ".openclaw"),
       path.join(home, ".clawd"),
     );
   }
-  const history = path.join(home, ".codex/history.jsonl");
-  if (exists(history)) files.add(history);
   for (const root of roots) {
     for (const file of walkRecentFiles(root, (candidate) => candidate.endsWith(".jsonl") || candidate.endsWith(".log"), 8)) {
       try {
-        if (fs.statSync(file).mtimeMs >= cutoffMs) files.add(file);
+        if (fs.statSync(file).mtimeMs >= cutoffMs) files.add(fs.realpathSync(file));
       } catch {}
     }
   }
@@ -701,8 +766,29 @@ function messageText(value: unknown): string[] {
   return Object.values(value).flatMap(messageText);
 }
 
+function responseUserText(payload: Record<string, unknown>): string {
+  if (!Array.isArray(payload.content)) return "";
+  const metadata = payload.internal_chat_message_metadata_passthrough;
+  const kinds = isRecord(metadata) && Array.isArray(metadata.content_item_kinds)
+    ? metadata.content_item_kinds
+    : [];
+  return payload.content.flatMap((item: unknown, index) => {
+    const kind: unknown = kinds[index];
+    if (kind === "agents_md.instructions") return [];
+    if (!isRecord(item) || item.type !== "input_text" || typeof item.text !== "string") return [];
+    // Legacy Codex logs put injected instructions in a standalone content item.
+    if ((kind === null || kind === undefined) &&
+      /^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n(?:[ \t]*\r?\n)*<INSTRUCTIONS>[\s\S]*<\/INSTRUCTIONS>\s*$/.test(item.text)
+    ) return [];
+    return [item.text];
+  }).join("\n");
+}
+
 export function usageEvidence(record: Record<string, unknown>): { callArgs?: string; userText?: string } {
   const payload = record.payload;
+  if (typeof record.session_id === "string" && typeof record.text === "string" && typeof record.ts === "number") {
+    return { userText: record.text };
+  }
   if (record.type === "response_item" && isRecord(payload)) {
     if (payload.type === "function_call") {
       return { callArgs: typeof payload.arguments === "string" ? payload.arguments : "" };
@@ -710,15 +796,14 @@ export function usageEvidence(record: Record<string, unknown>): { callArgs?: str
     if (payload.type === "custom_tool_call") {
       return { callArgs: typeof payload.input === "string" ? payload.input : "" };
     }
+    if (payload.type === "message" && payload.role === "user") {
+      return { userText: responseUserText(payload) };
+    }
   }
-  if (typeof record.session_id === "string" && typeof record.text === "string" && typeof record.ts === "number") {
-    return { userText: record.text };
+  if (record.type === "event_msg" && isRecord(payload) && payload.type === "user_message") {
+    return { userText: typeof payload.message === "string" ? payload.message : "" };
   }
-  const isUser = isRecord(payload) && (
-    (record.type === "response_item" && payload.type === "message" && payload.role === "user") ||
-    (record.type === "event_msg" && payload.type === "user_message")
-  );
-  return isUser ? { userText: messageText(payload).join("\n") } : {};
+  return {};
 }
 
 function collectWorkingDirectories(value: unknown): string[] {
@@ -731,7 +816,7 @@ function collectWorkingDirectories(value: unknown): string[] {
 export function referencedSkillPaths(callArgs: string): string[] {
   const parsed: unknown = decodeJson(callArgs) ?? callArgs;
   const texts = typeof parsed === "string" ? [parsed] : messageText(parsed);
-  const workdirs = collectWorkingDirectories(parsed).map(expandHome);
+  const workdirs = collectWorkingDirectories(parsed).map((directory) => expandHome(directory));
   const paths = new Set<string>();
   for (const text of texts) {
     for (const match of text.matchAll(/(?:^|[\s"'`=])((?:\/|\.{1,2}\/)?[^\s"'`]*\/SKILL\.md)\b/g)) {
@@ -747,13 +832,53 @@ export function referencedSkillPaths(callArgs: string): string[] {
   return [...paths];
 }
 
+function stripCodexAgentsInstructions(text: string): string {
+  if (!text.includes("# AGENTS.md instructions")) return text;
+  const lines = text.split(/\r?\n/);
+  const kept: string[] = [];
+  let keptStart = 0;
+  let heading: number | undefined;
+  let depth = 0;
+  let fence: string | undefined;
+
+  for (const [index, line] of lines.entries()) {
+    if (depth > 0) {
+      const opening = /^[ \t]*(`{3,}|~{3,})/.exec(line)?.[1];
+      if (fence !== undefined) {
+        if (opening?.startsWith(fence) && line.trim() === opening) fence = undefined;
+        continue;
+      }
+      if (opening !== undefined && (!opening.startsWith("`") || !line.trimStart().slice(opening.length).includes("`"))) {
+        fence = opening;
+        continue;
+      }
+    }
+    const marker = line.trimEnd();
+    if (heading !== undefined && marker === "<INSTRUCTIONS>") {
+      depth++;
+    } else if (depth > 0 && marker === "</INSTRUCTIONS>") {
+      depth--;
+      if (depth === 0 && heading !== undefined) {
+        kept.push(lines.slice(keptStart, heading).join("\n"));
+        keptStart = index + 1;
+        heading = undefined;
+      }
+    } else if (depth === 0 && marker !== "") {
+      heading = /^# AGENTS\.md instructions(?: for .+)?$/.test(marker) ? index : undefined;
+    }
+  }
+  kept.push(lines.slice(keptStart).join("\n"));
+  return kept.join("\n");
+}
+
 function applyUserMentions(userText: string, aliases: Map<string, string[]>, usage: Map<string, Usage>): void {
   const dollarCounts = countTokens(
-    [...userText.matchAll(/\$([A-Za-z][A-Za-z0-9_.:-]{1,80})/g)].map((match) => (match[1] ?? "").toLowerCase()),
+    [...userText.matchAll(/\$([A-Za-z][A-Za-z0-9_.:-]{1,80})/g)]
+      .map((match) => (match[1] ?? "").replace(/[.:]+$/, "").toLowerCase()),
   );
   const textCounts = countTokens(
     [...userText.matchAll(/\b(?:use|using|load|read)\s+`?\$?([A-Za-z][A-Za-z0-9_.:-]{1,80})`?/gi)]
-      .map((match) => (match[1] ?? "").toLowerCase()),
+      .map((match) => (match[1] ?? "").replace(/[.:]+$/, "").toLowerCase()),
   );
   for (const [realPath, names] of aliases) {
     const item = usage.get(realPath);
@@ -823,10 +948,12 @@ function scanUsage(skills: Skill[], logFiles: string[]): Map<string, Usage> {
         }
         continue;
       }
-      if (evidence.userText !== undefined) applyUserMentions(evidence.userText, aliases, usage);
+      if (evidence.userText !== undefined) {
+        applyUserMentions(evidence.userText, aliases, usage);
+      }
     }
     if (plainLines.length > 0) {
-      const plainText = plainLines.join("\n");
+      const plainText = stripCodexAgentsInstructions(plainLines.join("\n"));
       applyUserMentions(plainText, aliases, usage);
       const pathCounts = countTokens(plainLogSkillReads(plainText));
       for (const [realPath, names] of aliases) {
@@ -900,8 +1027,9 @@ function tokenCost(text: string): number {
 }
 
 function skillOrderRank(skill: Skill): number {
-  if (skill.path.includes("/.codex/skills/.system/")) return 0;
-  if (skill.scope === "codex-plugin") return 1;
+  const kind = codexSkillKind(skill.path);
+  if (kind === "system") return 0;
+  if (kind === "plugin") return 1;
   if (skill.scope === "repo") return 2;
   return 3;
 }
@@ -1152,10 +1280,11 @@ function render(
     .slice(0, 30);
   const unused = considered
     .filter((skill) => {
+      const kind = codexSkillKind(skill.path);
+      if (kind === "system" || kind === "plugin") return false;
       const item = usageForSkill(usage, skill);
       return item.dollar + item.fileRead + item.text === 0;
     })
-    .filter((skill) => !["codex", "codex-plugin"].includes(skill.scope))
     .sort((a, b) => a.scope.localeCompare(b.scope) || a.name.localeCompare(b.name))
     .slice(0, 80);
   const totalLineChars = considered.reduce((sum, skill) => sum + skill.lineChars, 0);

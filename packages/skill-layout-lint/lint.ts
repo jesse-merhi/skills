@@ -6,9 +6,9 @@ import { pathToFileURL } from "node:url"
 
 import { formatFinding, isError, lintSkillsRoot } from "./SkillLayoutLint.ts"
 
-const report = Effect.fn("skill-layout-lint.report")(function*(root: string) {
+const report = Effect.fn("skill-layout-lint.report")(function*(root: string, agentsPath?: string) {
   const path = yield* Path.Path
-  const { findings, referenceCount, skillCount } = yield* lintSkillsRoot(root)
+  const { findings, referenceCount, skillCount } = yield* lintSkillsRoot(root, agentsPath)
   const displayBase = path.dirname(root)
   const errors = findings.filter(isError)
   for (const finding of [...errors, ...findings.filter((finding) => !isError(finding))]) {
@@ -23,11 +23,12 @@ const report = Effect.fn("skill-layout-lint.report")(function*(root: string) {
 const main = Effect.gen(function*() {
   const path = yield* Path.Path
   const scriptPath = yield* path.fromFileUrl(new URL(import.meta.url))
+  const repoRoot = path.resolve(path.dirname(scriptPath), "..", "..")
+  const defaultSkillsRoot = path.join(repoRoot, "skills")
   const requested = process.argv[2]
-  const root = requested === undefined
-    ? path.resolve(path.dirname(scriptPath), "..", "..", "skills")
-    : path.resolve(requested)
-  process.exitCode = yield* report(root)
+  const root = requested === undefined ? defaultSkillsRoot : path.resolve(requested)
+  const agentsPath = root === defaultSkillsRoot ? path.join(repoRoot, "AGENTS.md") : undefined
+  process.exitCode = yield* report(root, agentsPath)
 })
 
 export function run(): void {
