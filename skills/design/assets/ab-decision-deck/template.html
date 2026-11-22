@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders UI review</title>
+<link rel="stylesheet" href="./deck.css">
+<style>
+  .order-mock { border: 1px solid var(--deck-border); border-radius: var(--deck-radius); overflow: hidden; }
+  .order-mock > * { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; padding: .625rem .75rem; }
+  .order-mock > :first-child { background: var(--deck-secondary); }
+  .order-mock > * + * { border-top: 1px solid var(--deck-border); }
+  .order-mock span { color: var(--deck-muted); }
+  .order-link { color: var(--deck-primary); text-decoration: underline; }
+  .ab-deck .callout { margin-top: .75rem; color: var(--deck-muted); }
+</style>
+<main class="ab-deck" aria-label="Orders UI review">
+  <div class="ab-deck-tabs" data-deck-tabs role="tablist" aria-label="Review screens"></div>
+
+  <section id="orders" data-screen role="tabpanel" tabindex="0">
+    <h2>Orders list</h2>
+    <div class="ab-deck-pair">
+      <figure>
+        <figcaption>A · Before</figcaption>
+        <div class="order-mock">
+          <strong>Open orders</strong>
+          <p>#1042 <span>Pending</span></p>
+          <p>#1043 <span>Ready</span></p>
+        </div>
+        <p class="callout">1.1 · Order numbers are plain text. 1.2 · The status column has no heading.</p>
+      </figure>
+      <figure>
+        <figcaption>B · After</figcaption>
+        <div class="order-mock">
+          <p><strong>Open orders</strong> <span>Status</span></p>
+          <p><strong class="order-link">#1042</strong> <span>Pending</span></p>
+          <p><strong class="order-link">#1043</strong> <span>Ready</span></p>
+        </div>
+        <p class="callout">Mockup</p>
+      </figure>
+    </div>
+    <div data-item="1.1"><h3>Link each order number to its details</h3></div>
+    <div data-item="1.2"><h3>Label the status column</h3></div>
+    <div class="ab-deck-actions"><button type="button" data-approve-screen>Mark screen Approve</button></div>
+  </section>
+
+  <section id="order-details" data-screen role="tabpanel" tabindex="0" hidden>
+    <h2>Order details</h2>
+    <div class="ab-deck-pair">
+      <figure>
+        <figcaption>A · Before</figcaption>
+        <div class="order-mock">
+          <strong>Order #1042</strong>
+          <p>2 items <span>Pending</span></p>
+        </div>
+        <p class="callout">2.1 · The status sits beside the item count.</p>
+      </figure>
+      <figure>
+        <figcaption>B · After</figcaption>
+        <div class="order-mock">
+          <p><strong>Order #1042</strong> <span>Pending</span></p>
+          <p>2 items</p>
+        </div>
+        <p class="callout">Mockup · The status appears in the order header.</p>
+      </figure>
+    </div>
+    <div data-item="2.1"><h3>Show the status in the order header</h3></div>
+    <div class="ab-deck-actions"><button type="button" data-approve-screen>Mark screen Approve</button></div>
+  </section>
+
+  <div class="ab-deck-actions">
+    <button type="button" data-prev>Prev</button>
+    <button type="button" data-next>Next</button>
+    <button type="button" data-copy>Copy decisions</button>
+    <span data-copy-status role="status"></span>
+  </div>
+  <pre data-decisions tabindex="0" aria-label="Decisions to copy" hidden></pre>
+</main>
+<script type="module">
+  import { mountAbDecisionDeck } from "./deck.js";
+  mountAbDecisionDeck(document.querySelector(".ab-deck"), { deckId: "orders-ui-example" });
+</script>
+</html>

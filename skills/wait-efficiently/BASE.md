@@ -9,9 +9,11 @@ Start once and retain the completion handle. Never create a helper or thread sol
 
 ## PRs and CI
 
-Use one supported monitor. Handle existing reviews/comments first and reconcile notifications against the current head and checks. Disclose uncovered queue or combined-check events; an authorized workflow may reconcile them.
+Use one supported monitor. Handle existing reviews/comments first and reconcile notifications against the current head and checks.
 
-- **T3 PR watch:** call `watch_pull_request`, verify `watching: true`, then end the turn. Before returning work to the user, `unwatch_pull_request` and verify false. Do not add a CLI watcher beside it.
+- **T3 PR watch:** call `watch_pull_request` and verify `watching: true`. Before returning work to the user, `unwatch_pull_request` and verify false. Do not add a CLI watcher beside it.
+  - Immediately recheck PR readiness after registering the watch. Take the authorized next step if ready, otherwise end the turn.
+  - On merge queue entry, check the actual queue entry and combined run in GitHub. The watch does not wake on combined-check failures or queue ejections.
 - **Specific CI run or no native PR monitor:** use one [GitHub watch command](references/github-actions.md).
 
 ## Tasks and sessions

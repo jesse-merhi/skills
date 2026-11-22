@@ -14,6 +14,7 @@ Jesse reads the final reply without the progress updates, tool calls or files. O
 - Render visuals in chat without hosting or uploading them. Use HTML where supported, else embed an image by absolute path. In T3 Code, send the opening with `send_to_user`, check the page with `html_preview`, then use `html_render` so it appears above the final reply. Inspect every capture and the finished page. If you can't show it, say why and link the local file.
 - Give text for answers, assessments and text-only requests. Workers return proof to the coordinator, who shows it to Jesse.
 - Separate proven results from untested ones. Omit hashes, receipt paths and internal IDs Jesse doesn't need.
+- When finishing multi-step or release work, state the actual rollout status including merge, staging or preview, production or OTA where applicable, and any remaining manual steps.
 - Ask only when evidence, safe investigation or a low-risk assumption can't settle the question. Use the harness's synchronous question tool if available. In Codex, use `request_user_input`. Do not use `request_user_input_async`. Otherwise ask in the final reply.
 
 ## Check-ins
@@ -36,6 +37,7 @@ Before implementing or reviewing code, read `coding-standards` in **Read expecta
 
 ## Implementation design
 
+- On turn one, before promising live proof or starting broad edits, check the relevant prerequisites in the actual worktree, including model and account capacity, local dependencies, profiling and test commands, browser or device control, and native or store release impact. Resolve safe local blockers and report shared-host blockers immediately.
 - Identify the requested outcome, changed behavior and owner. Use callers, tests, docs and history to establish the contract. Trace the full flow across ownership, lifecycle, security or data boundaries.
 - Capture the baseline before editing when before-and-after screenshots or video would help.
 - Choose the simplest implementation that meets the requirement. Skip speculative abstractions, configuration and compatibility layers. Keep the diff as small as the requirement allows. Remove unneeded code, tests and docs before review and report net lines added and removed.
