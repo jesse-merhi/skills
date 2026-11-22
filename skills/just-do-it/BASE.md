@@ -30,4 +30,4 @@ Record the runtimes this task starts and their stop commands. Release them per [
 
 Before GitHub writes, verify account `jesse-merhi` and Jesse's authorship of an existing PR.
 
-No force-push, merge/automerge, deployment, labels or reactions. The only allowed public comment is exactly `/clawsweeper re-review`, when step 5 requires it. List unrelated scope as follow-ups.
+No force-push, merge/automerge or deployment. The only allowed public comment is exactly `/clawsweeper re-review`, when step 5 requires it. List unrelated scope as follow-ups.

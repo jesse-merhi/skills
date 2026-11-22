@@ -18,7 +18,7 @@ Jesse reads the final reply without the progress updates, tool calls or files. O
 
 ## Check-ins
 
-When something below needs Jesse's decision, check in: show what to look at (PR or file, change, proof and open concerns), your recommendation and what comes next. Keep working on independent steps. Proceed on Jesse's yes in chat or a 👍 on the PR. Never poll for or request a reaction.
+When something below needs Jesse's decision, check in: show what to look at (PR or file, change, proof and open concerns), your recommendation and what comes next. Keep working on independent steps. Proceed on Jesse's yes in chat.
 
 Check in before:
 
