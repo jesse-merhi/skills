@@ -60,7 +60,7 @@ test("restores bulk approvals and unmarked notes for the same batch", () => {
   expect(formatDecisions(items, otherBatch.get)).toBe("");
 });
 
-test("keeps votes and notes from both open decks when their edits are interleaved", () => {
+test("open decks export current decisions and toggle the latest saved vote", () => {
   const storage = memoryStorage();
   const batch = { deckId: "orders", getStorage: () => storage };
   const first = createDecisionStore(batch);
@@ -68,18 +68,68 @@ test("keeps votes and notes from both open decks when their edits are interleave
 
   first.toggleVote("1.1", "approve");
   first.setNote("1.1", "Keep the order number visible.");
-  second.toggleVote("2.1", "deny");
+
+  expect(formatDecisions(items, second.get)).toBe(
+    "APPROVE:\n1.1 Link each order number — Keep the order number visible.",
+  );
+
+  first.toggleVote("1.1", "deny");
+  second.toggleVote("1.1", "deny");
   second.setNote("2.1", "Check the narrow layout.");
-  first.setNote("1.2", "Match the heading.");
+
+  expect(formatDecisions(items, first.get)).toBe(
+    "NOTES (unmarked):\n1.1 Link each order number — Keep the order number visible.\n" +
+    "2.1 Move status to the order header — Check the narrow layout.",
+  );
+});
+
+test("overlapping writes to unrelated items preserve both decisions", () => {
+  const storage = memoryStorage();
+  const batch = { deckId: "orders", getStorage: () => storage };
+  const first = createDecisionStore(batch);
+  const second = createDecisionStore(batch);
+  first.toggleVote("1.1", "approve");
+  second.toggleVote("2.1", "deny");
+
+  const commit = storage.setItem;
+  const writtenKeys = [];
+  storage.setItem = (key, value) => {
+    writtenKeys.push(key);
+    if (writtenKeys.length === 1) second.setNote("2.1", "Check the narrow layout.");
+    commit(key, value);
+  };
+  first.setNote("1.1", "Keep the order number visible.");
 
   const reopened = createDecisionStore(batch);
+  expect(writtenKeys).toEqual(["ab-decision-deck:orders:1.1", "ab-decision-deck:orders:2.1"]);
   expect(reopened.get("1.1")).toEqual({ vote: "approve", note: "Keep the order number visible." });
   expect(reopened.get("2.1")).toEqual({ vote: "deny", note: "Check the narrow layout." });
-  expect(reopened.get("1.2")).toEqual({ vote: null, note: "Match the heading." });
+});
+
+test("keeps earlier batch drafts readable and prefers item edits on reload", () => {
+  const storage = memoryStorage();
+  storage.setItem("ab-decision-deck:orders", JSON.stringify({
+    "1.1": { vote: "deny", note: "Keep the order number visible." },
+    "2.1": { vote: null, note: "Check the narrow layout." },
+  }));
+  const batch = { deckId: "orders", getStorage: () => storage };
+  const store = createDecisionStore(batch);
+  store.toggleVote("1.1", "deny");
+
+  const reopened = createDecisionStore(batch);
+  expect(formatDecisions(items, reopened.get)).toBe(
+    "NOTES (unmarked):\n1.1 Link each order number — Keep the order number visible.\n" +
+    "2.1 Move status to the order header — Check the narrow layout.",
+  );
 });
 
 test.each([
+  ["localStorage is missing", () => undefined],
   ["the frame blocks access to localStorage", () => { throw new DOMException("Storage is blocked", "SecurityError"); }],
+  ["reading localStorage is blocked", () => ({
+    getItem: () => { throw new DOMException("Storage is blocked", "SecurityError"); },
+    setItem: () => { throw new Error("Cannot write over an unreadable draft"); },
+  })],
   ["the storage quota is exhausted", () => ({
     getItem: () => null,
     setItem: () => { throw new DOMException("Storage is full", "QuotaExceededError"); },
@@ -89,6 +139,7 @@ test.each([
   store.toggleVote("1.1", "deny");
   store.setNote("1.1", "Keep the order number visible.");
 
+  expect(store.isPersistent()).toBe(false);
   expect(formatDecisions(items, store.get)).toBe(
     "DENY:\n1.1 Link each order number — Keep the order number visible.",
   );

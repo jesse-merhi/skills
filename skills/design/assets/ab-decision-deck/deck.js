@@ -1,7 +1,12 @@
+function batchStorageKey(deckId) {
+  return `ab-decision-deck:${deckId}`;
+}
+
 export function createDecisionStore({ deckId, getStorage = () => globalThis.localStorage }) {
   if (!deckId?.trim()) throw new Error("Supply a deckId for this batch");
 
-  const key = `ab-decision-deck:${deckId}`;
+  const batchKey = batchStorageKey(deckId);
+  const keyFor = id => `${batchKey}:${id}`;
   const decisions = new Map();
   let storage;
   try {
@@ -9,63 +14,63 @@ export function createDecisionStore({ deckId, getStorage = () => globalThis.loca
   } catch {
     // Sandboxed frames can block access to the storage object itself.
   }
-  mergeSaved();
-
-  function mergeSaved() {
+  function readDraft(key) {
     let draft;
     try {
       draft = storage?.getItem(key);
     } catch {
-      // Avoid writing over a shared draft we could not read.
       storage = undefined;
       return;
     }
-    if (!draft) return;
+    if (draft == null) return draft;
 
-    let saved;
     try {
-      saved = JSON.parse(draft);
+      const saved = JSON.parse(draft);
+      if (saved && typeof saved === "object" && !Array.isArray(saved)) return saved;
     } catch {
-      // An unreadable draft can be replaced by the next edit.
-      return;
-    }
-    for (const [id, decision] of Object.entries(saved ?? {})) {
-      const vote = decision?.vote;
-      decisions.set(id, {
-        vote: vote === "approve" || vote === "deny" ? vote : null,
-        note: typeof decision?.note === "string" ? decision.note : "",
-      });
+      // Keep the last readable decision in memory.
     }
   }
 
   function get(id) {
+    let saved = readDraft(keyFor(id));
+    if (saved === null) {
+      // Older decks saved the batch together. An item key takes precedence once edited.
+      const legacy = readDraft(batchKey);
+      saved = legacy === undefined ? undefined : legacy?.[id] ?? {};
+    }
+    if (saved !== undefined) {
+      const { vote, note } = saved;
+      decisions.set(id, {
+        vote: vote === "approve" || vote === "deny" ? vote : null,
+        note: typeof note === "string" ? note : "",
+      });
+    }
     return { vote: null, note: "", ...decisions.get(id) };
   }
 
-  function update(ids, getChange) {
-    mergeSaved();
-    for (const id of ids) {
-      const previous = get(id);
-      decisions.set(id, { ...previous, ...getChange(previous) });
-    }
+  function write(id, decision) {
+    decisions.set(id, decision);
     try {
-      storage?.setItem(key, JSON.stringify(Object.fromEntries(decisions)));
+      storage?.setItem(keyFor(id), JSON.stringify(decision));
     } catch {
-      // Keep the in-memory edits if the next read would replace them with older data.
+      // Switch to an in-memory draft so later reads keep the unsaved edit.
       storage = undefined;
     }
   }
 
   return {
     get,
+    isPersistent: () => Boolean(storage),
     toggleVote(id, vote) {
-      update([id], previous => ({ vote: previous.vote === vote ? null : vote }));
+      const previous = get(id);
+      write(id, { ...previous, vote: previous.vote === vote ? null : vote });
     },
     approveScreen(ids) {
-      update(ids, () => ({ vote: "approve" }));
+      for (const id of ids) write(id, { ...get(id), vote: "approve" });
     },
     setNote(id, note) {
-      update([id], () => ({ note }));
+      write(id, { ...get(id), note });
     },
   };
 }
@@ -106,7 +111,9 @@ export function mountAbDecisionDeck(root, { deckId }) {
   const next = root.querySelector("[data-next]");
   const status = root.querySelector("[data-copy-status]");
   const output = root.querySelector("[data-decisions]");
+  const keyPrefix = `${batchStorageKey(deckId)}:`;
   let current = 0;
+  let copyMessage = "";
 
   const screens = panels.map((panel, index) => {
     const title = panel.querySelector("h2").textContent.trim();
@@ -135,7 +142,7 @@ export function mountAbDecisionDeck(root, { deckId }) {
         button.setAttribute("aria-label", `${button.textContent} ${label}`);
         listen(button, "click", () => {
           store.toggleVote(id, button.dataset.vote);
-          refresh();
+          refresh({ clearCopy: true });
         });
       }
 
@@ -143,7 +150,7 @@ export function mountAbDecisionDeck(root, { deckId }) {
       note.setAttribute("aria-label", `Note for ${label}`);
       listen(note, "input", () => {
         store.setNote(id, note.value);
-        refresh();
+        refresh({ clearCopy: true });
       });
 
       return { id, label, controls, buttons, note };
@@ -152,12 +159,13 @@ export function mountAbDecisionDeck(root, { deckId }) {
     const ids = [...new Set(items.map(item => item.id))];
     listen(panel.querySelector("[data-approve-screen]"), "click", () => {
       store.approveScreen(ids);
-      refresh();
+      refresh({ clearCopy: true });
     });
     return { panel, title, tab, items, ids };
   });
 
   const items = screens.flatMap(screen => screen.items);
+  const itemIds = [...new Set(items.map(item => item.id))];
 
   function select(index, focusTab = false) {
     current = index;
@@ -172,20 +180,31 @@ export function mountAbDecisionDeck(root, { deckId }) {
     if (focusTab) screens[current].tab.focus();
   }
 
-  function refresh() {
+  function refresh({ clearCopy = false } = {}) {
+    const decisions = new Map(itemIds.map(id => [id, store.get(id)]));
     for (const { title, tab, ids } of screens) {
-      const voted = ids.filter(id => store.get(id).vote).length;
-      tab.textContent = `${title} · ${voted}/${ids.length}`;
+      const voted = ids.filter(id => decisions.get(id).vote).length;
+      const tally = `${title} · ${voted}/${ids.length}`;
+      if (tab.textContent !== tally) tab.textContent = tally;
     }
     for (const { id, buttons, note } of items) {
-      const decision = store.get(id);
+      const decision = decisions.get(id);
       for (const button of buttons) {
         button.setAttribute("aria-pressed", String(button.dataset.vote === decision.vote));
       }
       if (note.value !== decision.note) note.value = decision.note;
     }
-    output.hidden = true;
-    status.textContent = "";
+    if (clearCopy) {
+      copyMessage = "";
+      output.hidden = true;
+    }
+    const message = copyMessage || (store.isPersistent() ? "" : "Draft is temporary here — copy decisions before leaving.");
+    if (status.textContent !== message) status.textContent = message;
+  }
+
+  function showCopyMessage(message) {
+    copyMessage = message;
+    status.textContent = message;
   }
 
   listen(prev, "click", () => select(current - 1, current === 1));
@@ -207,10 +226,15 @@ export function mountAbDecisionDeck(root, { deckId }) {
     }
   });
 
+  doc.defaultView?.addEventListener("storage", event => {
+    if (event.key === null || event.key.startsWith(keyPrefix)) refresh();
+  }, { signal: controller.signal });
+
   listen(root.querySelector("[data-copy]"), "click", async () => {
     const text = formatDecisions(items, store.get);
     if (!text) {
-      status.textContent = "No decisions or notes yet.";
+      output.hidden = true;
+      showCopyMessage("No decisions or notes yet.");
       return;
     }
 
@@ -218,7 +242,7 @@ export function mountAbDecisionDeck(root, { deckId }) {
       await doc.defaultView.navigator.clipboard.writeText(text);
       if (!controller.signal.aborted) {
         output.hidden = true;
-        status.textContent = "Decisions copied.";
+        showCopyMessage("Decisions copied.");
       }
     } catch {
       if (controller.signal.aborted) return;
@@ -230,7 +254,7 @@ export function mountAbDecisionDeck(root, { deckId }) {
       const selection = doc.getSelection();
       selection?.removeAllRanges();
       selection?.addRange(range);
-      status.textContent = "Copy the selected text with your keyboard or copy menu.";
+      showCopyMessage("Copy the selected text with your keyboard or copy menu.");
     }
   });
 
