@@ -33,6 +33,7 @@ const maximumBodyLines = 500
 const agentsLineBudget = 140
 const agentsByteBudget = 14_000
 const agentsLineCeiling = 200
+const agentsByteCeiling = 32_000
 
 const skillFileName = "SKILL.md"
 const referencesDirectoryName = "references"
@@ -102,10 +103,10 @@ const bodyFindings = (skillPath: string, content: string): Array<Finding> => {
 const agentsSizeFindings = (agentsPath: string, content: string): Array<Finding> => {
   const lines = splitLines(content).length
   const bytes = Buffer.byteLength(content, "utf8")
-  if (lines > agentsLineCeiling) {
+  if (lines > agentsLineCeiling || bytes > agentsByteCeiling) {
     return [{
       line: undefined,
-      message: `has ${lines} lines. Keep AGENTS.md at ${agentsLineCeiling} lines or fewer`,
+      message: `has ${lines} lines and ${bytes} bytes. Keep AGENTS.md at or below ${agentsLineCeiling} lines and ${agentsByteCeiling} bytes`,
       path: agentsPath,
       severity: "error"
     }]
@@ -235,7 +236,7 @@ export const formatFinding = (finding: Finding): string =>
 
 export const isError = (finding: Finding): boolean => finding.severity === "error"
 
-export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(function*(requestedRoot: string) {
+export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(function*(requestedRoot: string, requestedAgentsPath?: string) {
   const fileSystem = yield* FileSystem.FileSystem
   const path = yield* Path.Path
   const root = path.resolve(requestedRoot)
@@ -246,8 +247,8 @@ export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(functi
     .toSorted()
   const skillPaths = files.filter((file) => path.basename(file) === skillFileName)
   const findings: Array<Finding> = []
-  if (path.basename(root) === "skills") {
-    const agentsPath = path.join(path.dirname(root), "AGENTS.md")
+  if (requestedAgentsPath !== undefined) {
+    const agentsPath = path.resolve(requestedAgentsPath)
     if (yield* fileSystem.exists(agentsPath)) {
       findings.push(...agentsSizeFindings(agentsPath, yield* fileSystem.readFileString(agentsPath)))
     }

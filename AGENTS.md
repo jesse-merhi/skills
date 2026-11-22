@@ -14,7 +14,7 @@ Jesse reads the final reply without the progress updates, tool calls or files. O
 - Render visuals in chat without hosting or uploading them. Use HTML where supported, else embed an image by absolute path. In T3 Code, send the opening with `send_to_user`, check the page with `html_preview`, then use `html_render` so it appears above the final reply. Inspect every capture and the finished page. If you can't show it, say why and link the local file.
 - Give text for answers, assessments and text-only requests. Workers return proof to the coordinator, who shows it to Jesse.
 - Separate proven results from untested ones. Omit hashes, receipt paths and internal IDs Jesse doesn't need.
-- Ask only when evidence, safe investigation or a low-risk assumption can't settle the question. Use the harness's synchronous question tool if available (`request_user_input` in Codex). Otherwise ask in the final reply.
+- Ask only when evidence, safe investigation or a low-risk assumption can't settle the question. Use the harness's synchronous question tool if available. In Codex, use `request_user_input`. Do not use `request_user_input_async`. Otherwise ask in the final reply.
 
 ## Check-ins
 
@@ -38,7 +38,7 @@ Before implementing or reviewing code, read `coding-standards` in **Read expecta
 
 - Identify the requested outcome, changed behavior and owner. Use callers, tests, docs and history to establish the contract. Trace the full flow across ownership, lifecycle, security or data boundaries.
 - Capture the baseline before editing when before-and-after screenshots or video would help.
-- Choose the simplest implementation that meets the requirement. Skip speculative abstractions, configuration and compatibility layers. Remove unneeded code, tests and docs before review and report lines added and removed.
+- Choose the simplest implementation that meets the requirement. Skip speculative abstractions, configuration and compatibility layers. Keep the diff as small as the requirement allows. Remove unneeded code, tests and docs before review and report net lines added and removed.
 - Read `writing-for-agents` before creating or changing agent instructions.
 
 ## Dependency-first implementation
@@ -48,7 +48,7 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 ## Test and review design
 
 - Read `writing-good-tests` before implementing code, even with no planned test edits, before changing tests or test infrastructure, and when reviewing behavior or tests. Choose proof of caller-visible results and reachable failures. Add tests only when justified.
-- Run tests for changed behavior, a concrete failure or a required check. Reuse passing results while their inputs still apply. A commit, rebase or metadata-only edit alone doesn't justify unrelated reruns. Stop at the first error and diagnose before rerunning.
+- Run tests for changed behavior, a concrete failure or a required check. Reuse passing results while their inputs still apply. A commit, rebase or metadata-only edit alone doesn't justify unrelated reruns. Stop at the first error and diagnose before rerunning. Never rerun to see whether it passes the second time.
 - Limit test cleanup to changed behavior. Apply code-review's readability rules to the diff and proposed fixes. Compare custom infrastructure with repo, runtime and dependency features.
 - Before a review fix, meet code-review's evidence requirements. A real-app reproduction with realistic local fixtures qualifies. Type-permitted or invented unreachable states don't. Never access production or cause an incident to gather proof.
 
@@ -57,16 +57,17 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 - Default to GPT-6.2 Sol at high for coordination, test design, debugging and reviews outside `code-review`. Use GPT-6 Luna at high for established tests, lint, type checks, prepared validation and bounded retrieval such as `session-recall` and `skill-cleaner` inventories. See [Claude Code defaults](#named-workers).
 - Claude and Gemini coordinators delegate every implementation edit to GPT-6.2 Sol at `xhigh`, including small edits, tests, docs, simplification and review fixes. The coordinator plans, investigates, sequences work, reviews the diff, verifies it independently and delivers. Follow the [Codex handoff](skills/code-review/references/codex-implementation.md) for launch, account checks, briefs and follow-up edits. If Sol is unavailable or the host prevents delegation (such as T3's small review-fix rule), report the blocker and leave the edit pending.
 - Codex coordinators can implement directly or delegate within the task and skills. Use GPT-6.2 Sol at `xhigh` for the named implementer. Give workers a bounded task and completion condition. Keep sequencing, integration and delivery with the coordinator.
-- For a second opinion on an unresolved decision, prefer read-only GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for harder decisions that warrant the cost or for the native Claude `oracle` role. Give one question, revision, evidence and constraints. The oracle advises and the coordinator decides. `code-review` owns its council.
+- When delegating to Codex from any harness, including Codex on another connection, verify ChatGPT sign-in before launching and ask Jesse before using an API-key connection.
+- For a second opinion on an unresolved decision, prefer read-only GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for harder decisions that warrant the cost or for the native Claude `oracle` role. Give one question, revision, evidence and constraints. The oracle advises and the coordinator decides. `code-review` owns its review modes and council.
 - Findings-only reviewers report supported findings, evidence, open concerns and verification limits. They don't edit, manage fixes, capture new proof, publish or run handoffs. Give fresh reviewers the target, requirements and available proof without implementation rationale or prior findings. The coordinator confirms and prioritizes findings. Reading a skill can't expand an assignment.
-- Set an explicit model or effort override in the launcher for the named task only. Report an unavailable configuration without substituting.
+- Apply an explicit user model or effort override in the launcher for the named task only. Report an unavailable configuration without substituting.
 - Batch independent calls with bounded output (`Promise.allSettled` in Codex code mode). Read all required text and recover clipped sections. Keep dependent calls and writes serial.
 - Use `wait-efficiently` for agents, CI, long commands and timed delays.
 
 ## Outcome and completion
 
 - Infer the outcome from the request and later corrections. Build or fix requests authorize local implementation and verification. Questions and problem descriptions alone call for an assessment.
-- Set a concrete done condition before open-ended work. Finish all authorized work before stopping. Pause only for a real blocker or required check-in.
+- Set a concrete done condition before open-ended work. Finish all authorized work before stopping. Don't stop at a plan, diagnosis or partial patch, or end with an offer to continue. Pause only for a real blocker or required check-in.
 - Check the result against the request and corrections. Show proof and report anything unfinished with the evidence and blocker. List further polish as optional.
 
 ## Working rules
@@ -77,7 +78,7 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 - Push, open or update a PR only when requested (for example, "push", "publish", "ship", "update the PR" or an authorizing workflow such as `just-do-it`). Otherwise show a local checkpoint. Use `pr-proof-pack` after pushing finished work.
 - Use one PR per story and follow up in that PR. Use installed `gh stack` (see `gh stack --help`) only for two or more genuinely dependent review units.
 - Before marking ready or merging, get `code-review` on the current changes unless Jesse waived it. Check in with findings and fixes, proof and CI state.
-- Merge through the provider's protected flow. After check-in, submit to GitHub's merge queue with `gh pr merge <pr-url> --match-head-commit <reviewed-head>`. Confirm queue membership and eventual merge through GitHub. Never bypass protections or required checks.
+- Merge through the provider's protected flow. For a GitHub merge queue, after check-in, submit with `gh pr merge <pr-url> --match-head-commit <reviewed-head>` and confirm queue membership and eventual merge through GitHub. Never bypass protections or required checks.
 - During review, use only the requested workflow and required lenses. Run review bots such as OpenClaw `$autoreview` only with Jesse's opt-in for this task.
 - Don't post prose PR or issue comments for Jesse. A named workflow may require a machine command such as `/clawsweeper re-review` on a PR Jesse authored or substantially contributed to.
 - Never use `as any` in TypeScript. Write types or adapters. Skip decorative comment separators such as rows of equals signs or dashes. E2E and Maestro workflows stay manually triggered.
@@ -99,7 +100,7 @@ When `preview_*` is available, use it for work that doesn't need Jesse, such as 
 
 ### Browser work
 
-Follow [T3 browser rules](#browser-work-in-t3-code) in T3. Elsewhere, use Claude Chrome for websites, signed-in state, screenshots and browser validation. If unavailable, report the blocker. Keep the existing browser harness, authentication and connection consent. The UI implementer follows `frontend-ui-validation` and reviewers and proof-pack authors reuse its evidence.
+Follow [T3 browser rules](#browser-work-in-t3-code) in T3. Elsewhere, use Claude Chrome for websites, signed-in state, screenshots and browser validation. If unavailable, report the blocker. Don't install another browser harness, change authentication or bypass connection consent. The UI implementer follows `frontend-ui-validation` and reviewers and proof-pack authors reuse its evidence.
 
 ### Named workers
 

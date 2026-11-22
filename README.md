@@ -297,7 +297,7 @@ PRs are welcome.
   reference to be linked from `SKILL.md`, and warns when one reference is
   linked from both a workflow step and a `Context pointers` section, so you
   can decide whether to inline it. It also warns when root `AGENTS.md` exceeds
-  140 lines or 14,000 bytes and fails above 200 lines.
+  140 lines or 14,000 bytes and fails above 200 lines or 32,000 bytes.
 - Run the three commands above before opening a PR.
 - Third-party workflows go in [`external.md`](external.md) as a pinned install
   command, not as copied files.

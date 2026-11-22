@@ -7,7 +7,7 @@ Use the models and effort from [Step 3](../SKILL.md#3-choose-a-review-mode) in p
 - **Native Claude Code.** Use fresh native `Agent` calls only for supported models and settings.
 - **Other harnesses.** Use native subagent tools only for models and settings they support. Require a fresh context with no inherited session history.
 
-In council mode, launch every available member in parallel when supported. Skip any member you cannot launch at high effort with its named model.
+In council mode, launch every available member in parallel when supported. Skip any member you cannot launch at high effort with its named model. During intermediate UI polish gating rounds, the latest council's lowest scorer may review alone under the UI polish rules.
 
 Give each fresh reviewer the same stable commit or recorded patch, base, full diff, requirements, standards, reusable proof and both review lenses. Leave out implementation rationale, simplifier conclusions and prior findings. Never resume an implementer or an earlier reviewer or fork session history.
 

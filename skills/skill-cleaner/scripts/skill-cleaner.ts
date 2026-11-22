@@ -1,4 +1,5 @@
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -79,8 +80,11 @@ type LivePrompt = {
 };
 
 const home = os.homedir();
+const defaultCodexHome = path.join(home, ".codex");
+const configuredCodexHome = Effect.runSync(Config.string("CODEX_HOME").pipe(Config.withDefault(defaultCodexHome)));
+const codexHome = path.resolve(expandHome(configuredCodexHome));
+const codexHomes = [...new Set([codexHome, defaultCodexHome])];
 const args = new Set(process.argv.slice(2));
-const codexSystemSkills = "/.codex/skills/.system/";
 
 function argValue(name: string, fallback: string): string {
   const raw = process.argv.slice(2);
@@ -109,8 +113,8 @@ const extraRoots = process.argv
     return arg === "--root" && value && !value.startsWith("--") ? [value] : [];
   });
 
-function expandHome(input: string): string {
-  return input.replace(/^~(?=$|\/)/, home);
+function expandHome(input: string, baseHome = home): string {
+  return input.replace(/^~(?=$|[/\\])/, () => baseHome);
 }
 
 function exists(input: string): boolean {
@@ -178,13 +182,13 @@ function firstModelName(value: Schema.Json): string | null {
 function codexModelName(): string {
   if (modelOverride) return modelOverride;
 
-  const config = path.join(home, ".codex/config.toml");
+  const config = path.join(codexHome, "config.toml");
   if (exists(config)) {
     const match = /^\s*model\s*=\s*["']([^"']+)["']/m.exec(fs.readFileSync(config, "utf8"));
     if (match?.[1]) return match[1];
   }
 
-  const cache = path.join(home, ".codex/models_cache.json");
+  const cache = path.join(codexHome, "models_cache.json");
   if (exists(cache)) {
     const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
     if (Option.isSome(decoded)) return firstModelName(decoded.value) ?? "current-configured-model";
@@ -201,7 +205,7 @@ function codexModelContext(modelName: string): {
   const override = numberArg(contextTokensOverride, 0);
   if (override > 0) return { tokens: override, source: "--context-tokens", effectivePercent: null };
 
-  const cache = path.join(home, ".codex/models_cache.json");
+  const cache = path.join(codexHome, "models_cache.json");
   if (exists(cache)) {
     try {
       const decoded = Schema.decodeUnknownOption(ModelCache)(fs.readFileSync(cache, "utf8"));
@@ -460,20 +464,45 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return intersection / (a.size + b.size - intersection);
 }
 
+function comparisonPath(input: string): string {
+  const normalized = path.resolve(input).split(path.sep).join("/");
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+const explicitRoots = extraRoots.map((root) => comparisonPath(expandHome(root)));
+const codexSkillRoots = ([
+  ["system", "/skills/.system"],
+  ["plugin", "/plugins/cache"],
+  ["user", "/skills"],
+] as const).map(([kind, suffix]) => ({
+  kind,
+  roots: [
+    ...codexHomes.map((directory) => comparisonPath(path.join(directory, suffix))),
+    ...explicitRoots.filter((root) => kind !== "user" && root.endsWith(suffix)),
+  ],
+}));
+
+function codexSkillKind(input: string): "system" | "plugin" | "user" | undefined {
+  const normalized = comparisonPath(input);
+  return codexSkillRoots.find(({ roots }) =>
+    roots.some((root) => normalized === root || normalized.startsWith(`${root}/`)),
+  )?.kind;
+}
+
 function skillRootScope(root: string): string {
-  const normalized = root.split(path.sep).join("/");
-  if (normalized.includes("/.codex/plugins/cache")) return "codex-plugin";
-  if (normalized.includes("/.codex/skills")) return "codex";
-  if (normalized.includes("/.agents/skills")) return "repo";
+  const kind = codexSkillKind(root);
+  if (kind === "plugin") return "codex-plugin";
+  if (kind !== undefined) return "codex";
+  if (comparisonPath(root).includes("/.agents/skills")) return "repo";
   return "extra";
 }
 
 function deletePriority(skill: Skill): number {
-  if (skill.path.includes(codexSystemSkills)) return 0;
-  if (skill.path.includes("/.codex/skills/")) return 1;
-  if (skill.path.includes("/.codex/plugins/cache/") && !skill.path.includes("/plugin-install-")) return 2;
-  if (skill.path.includes("/.codex/plugins/cache/")) return 3;
-  if (skill.realPath.includes("/.agents/skills/")) return 4;
+  const kind = codexSkillKind(skill.path);
+  if (kind === "system") return 0;
+  if (kind === "user") return 1;
+  if (kind === "plugin") return comparisonPath(skill.path).includes("/plugin-install-") ? 3 : 2;
+  if (comparisonPath(skill.realPath).includes("/.agents/skills/")) return 4;
   return 5;
 }
 
@@ -517,7 +546,7 @@ function configState(): { disabledPaths: Set<string>; disabledNames: Set<string>
   const disabledPaths = new Set<string>();
   const disabledNames = new Set<string>();
   const disabledPlugins = new Set<string>();
-  const config = path.join(home, ".codex/config.toml");
+  const config = path.join(codexHome, "config.toml");
   if (!exists(config)) return { disabledPaths, disabledNames, disabledPlugins };
   const lines = fs.readFileSync(config, "utf8").split(/\r?\n/);
   let block = "";
@@ -560,12 +589,12 @@ function configState(): { disabledPaths: Set<string>; disabledNames: Set<string>
 
 export function discoverRoots(baseHome = home, providedRoots = extraRoots, exclusive = rootOnly): string[] {
   const rootsByRealPath = new Map<string, string>();
-  const roots = providedRoots.map((root) => root.replace(/^~(?=$|\/)/, baseHome));
+  const roots = providedRoots.map((root) => expandHome(root, baseHome));
+  const homes = baseHome === home ? codexHomes : [path.join(baseHome, ".codex")];
   const candidates = exclusive
     ? roots
     : [
-        path.join(baseHome, ".codex/skills"),
-        path.join(baseHome, ".codex/plugins/cache"),
+        ...homes.flatMap((directory) => [path.join(directory, "skills"), path.join(directory, "plugins/cache")]),
         path.join(baseHome, "Projects/agent-scripts/skills"),
         ...roots,
       ];
@@ -640,16 +669,19 @@ function discoverSkills(): Skill[] {
 function recentLogFiles(): string[] {
   if (noLogs) return [];
   const files = new Set<string>();
-  const roots = [path.join(home, ".codex/sessions")];
+  const roots: string[] = [];
+  for (const directory of codexHomes) {
+    roots.push(path.join(directory, "sessions"));
+    if (deepLogs) roots.push(path.join(directory, "archived_sessions"));
+    const history = path.join(directory, "history.jsonl");
+    if (exists(history)) files.add(history);
+  }
   if (deepLogs) {
     roots.push(
-      path.join(home, ".codex/archived_sessions"),
       path.join(home, ".openclaw"),
       path.join(home, ".clawd"),
     );
   }
-  const history = path.join(home, ".codex/history.jsonl");
-  if (exists(history)) files.add(history);
   for (const root of roots) {
     for (const file of walkRecentFiles(root, (candidate) => candidate.endsWith(".jsonl") || candidate.endsWith(".log"), 8)) {
       try {
@@ -732,7 +764,7 @@ function collectWorkingDirectories(value: unknown): string[] {
 export function referencedSkillPaths(callArgs: string): string[] {
   const parsed: unknown = decodeJson(callArgs) ?? callArgs;
   const texts = typeof parsed === "string" ? [parsed] : messageText(parsed);
-  const workdirs = collectWorkingDirectories(parsed).map(expandHome);
+  const workdirs = collectWorkingDirectories(parsed).map((directory) => expandHome(directory));
   const paths = new Set<string>();
   for (const text of texts) {
     for (const match of text.matchAll(/(?:^|[\s"'`=])((?:\/|\.{1,2}\/)?[^\s"'`]*\/SKILL\.md)\b/g)) {
@@ -746,6 +778,24 @@ export function referencedSkillPaths(callArgs: string): string[] {
     }
   }
   return [...paths];
+}
+
+function stripCodexAgentsInstructions(text: string): string {
+  const messages = text.split(/(?=^# AGENTS\.md instructions for )/m);
+  return messages.map((message) => {
+    const opening = /^# AGENTS\.md instructions for [^\r\n]+\r?\n(?:[ \t]*\r?\n)*<INSTRUCTIONS>[ \t]*\r?\n/.exec(message);
+    if (!opening) return message;
+    const body = message.slice(opening[0].length);
+    let nested = 0;
+    let envelopeEnd = 0;
+    for (const tag of body.matchAll(/^<(\/?)INSTRUCTIONS>[ \t]*\r?$/gm)) {
+      if (tag[1] === "") nested++;
+      else if (nested > 0) nested--;
+      // A bare closing tag may be an example. A later paired block belongs to its own opening tag.
+      else envelopeEnd = tag.index + tag[0].length;
+    }
+    return envelopeEnd > 0 ? body.slice(envelopeEnd) : message;
+  }).join("");
 }
 
 function applyUserMentions(userText: string, aliases: Map<string, string[]>, usage: Map<string, Usage>): void {
@@ -826,12 +876,11 @@ function scanUsage(skills: Skill[], logFiles: string[]): Map<string, Usage> {
       }
       if (evidence.userText !== undefined) {
         // Codex records injected AGENTS.md instructions as user messages.
-        const requestText = evidence.userText.replaceAll(/<INSTRUCTIONS>[\s\S]*?<\/INSTRUCTIONS>/g, " ");
-        applyUserMentions(requestText, aliases, usage);
+        applyUserMentions(stripCodexAgentsInstructions(evidence.userText), aliases, usage);
       }
     }
     if (plainLines.length > 0) {
-      const plainText = plainLines.join("\n");
+      const plainText = stripCodexAgentsInstructions(plainLines.join("\n"));
       applyUserMentions(plainText, aliases, usage);
       const pathCounts = countTokens(plainLogSkillReads(plainText));
       for (const [realPath, names] of aliases) {
@@ -905,8 +954,9 @@ function tokenCost(text: string): number {
 }
 
 function skillOrderRank(skill: Skill): number {
-  if (skill.path.includes("/.codex/skills/.system/")) return 0;
-  if (skill.scope === "codex-plugin") return 1;
+  const kind = codexSkillKind(skill.path);
+  if (kind === "system") return 0;
+  if (kind === "plugin") return 1;
   if (skill.scope === "repo") return 2;
   return 3;
 }
@@ -1157,10 +1207,11 @@ function render(
     .slice(0, 30);
   const unused = considered
     .filter((skill) => {
+      const kind = codexSkillKind(skill.path);
+      if (kind === "system" || kind === "plugin") return false;
       const item = usageForSkill(usage, skill);
       return item.dollar + item.fileRead + item.text === 0;
     })
-    .filter((skill) => skill.scope !== "codex-plugin" && !skill.path.includes(codexSystemSkills))
     .sort((a, b) => a.scope.localeCompare(b.scope) || a.name.localeCompare(b.name))
     .slice(0, 80);
   const totalLineChars = considered.reduce((sum, skill) => sum + skill.lineChars, 0);
