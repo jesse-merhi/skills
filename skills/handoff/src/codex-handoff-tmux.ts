@@ -20,7 +20,7 @@ const cli = Command.make("codex-handoff-tmux", {
   mode: Flag.choice("mode", ["new", "fork-last"] as const).pipe(Flag.withDefault("new")), windowName: Flag.string("window-name").pipe(Flag.withDefault("handoff")),
   relationship: Flag.choice("relationship", ["continuation", "aside"] as const).pipe(Flag.withDefault("continuation")),
   model: Flag.optional(Flag.string("model")),
-  reasoningEffort: Flag.choice("reasoning-effort", ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"] as const).pipe(Flag.withDefault("medium")),
+  reasoningEffort: Flag.choice("reasoning-effort", ["none", "minimal", "low", "medium", "high", "xhigh"] as const).pipe(Flag.withDefault("medium")),
   tmuxTarget: Flag.optional(Flag.string("tmux-target")), worktree: Flag.optional(Flag.string("worktree")), worktreeName: Flag.optional(Flag.string("worktree-name")),
   branch: Flag.optional(Flag.string("branch")), base: Flag.string("base").pipe(Flag.withDefault("HEAD")), dryRun: Flag.boolean("dry-run"), runCodex: Flag.boolean("run-codex")
 }, Effect.fn("Handoff.handler")(function*(args) {
