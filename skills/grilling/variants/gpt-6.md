@@ -15,13 +15,13 @@ In each round, ask the full frontier—all questions whose prerequisites are set
 Use this format, separating questions with a horizontal rule:
 
 ```markdown
-❓ **Q1**. **<question title>**: <yes/no question about the recommended option>
+❓ **Q1**. **<question title>**: <question body and choices, worded so "yes" accepts the recommendation>
 
 ➡️ <recommended answer>
 
 ---
 
-❓ **Q2**. **<question title>**: <yes/no question about the recommended option>
+❓ **Q2**. **<question title>**: <question body and choices, worded so "yes" accepts the recommendation>
 
 ➡️ <recommended answer>
 ```

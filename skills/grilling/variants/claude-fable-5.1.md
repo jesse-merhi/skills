@@ -18,13 +18,13 @@ Use `Agent` with `subagent_type: "investigator"`. Supply its objective, worktree
 3. Recommend an answer for each question and phrase it so “yes” accepts your recommendation. Use a horizontal rule between questions:
 
    ```markdown
-   ❓ **Q1**. **<question title>**: <yes/no question about the recommended option>
+   ❓ **Q1**. **<question title>**: <question body and choices, worded so "yes" accepts the recommendation>
 
    ➡️ <recommended answer>
 
    ---
 
-   ❓ **Q2**. **<question title>**: <yes/no question about the recommended option>
+   ❓ **Q2**. **<question title>**: <question body and choices, worded so "yes" accepts the recommendation>
 
    ➡️ <recommended answer>
    ```

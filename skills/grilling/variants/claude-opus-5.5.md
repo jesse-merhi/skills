@@ -13,13 +13,13 @@ Map the full decision tree and get the user's confirmation before acting. Invest
 Ask every question with settled prerequisites in one round, with a short recommendation for each. Phrase each question so “yes” accepts your recommendation. Leave dependent questions for later rounds.
 
 ```markdown
-❓ **Q1**. **<question title>**: <yes/no question about the recommended option>
+❓ **Q1**. **<question title>**: <question body and choices, worded so "yes" accepts the recommendation>
 
 ➡️ <recommended answer>
 
 ---
 
-❓ **Q2**. **<question title>**: <yes/no question about the recommended option>
+❓ **Q2**. **<question title>**: <question body and choices, worded so "yes" accepts the recommendation>
 
 ➡️ <recommended answer>
 ```

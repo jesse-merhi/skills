@@ -58,6 +58,7 @@ test("uses the alternate CODEX_HOME and home agent skills without counting defau
   current.skill("alternate-codex/skills/.system", "system-skill");
   current.skill("alternate-codex/plugins/cache/marketplace/plugin/1/skills", "bundled-skill");
   current.skill(".agents/skills", "home-agent-skill");
+  current.skill("Projects/example/.agents/skills", "project-agent-skill");
   current.skill(".codex/skills", "default-user-skill");
   current.write(".codex/history.jsonl", JSON.stringify({ session_id: "default", ts: 1, text: "Use $user-skill." }));
   current.write(".codex/sessions/rollout.log", "Use $user-skill.");
@@ -65,29 +66,51 @@ test("uses the alternate CODEX_HOME and home agent skills without counting defau
   current.link("alternate-codex/sessions", "alternate-codex/archived_sessions");
 
   const { skills, selectedSkills, usage, logFiles } = JSON.parse(current.report("--deep-logs", "--json"));
-  const expectedNames = ["home-agent-skill", "plugin:bundled-skill", "system-skill", "user-skill"];
+  const expectedNames = ["home-agent-skill", "plugin:bundled-skill", "project-agent-skill", "system-skill", "user-skill"];
   assert.deepEqual(skills.map((skill) => skill.name).sort(), expectedNames);
   assert.deepEqual(selectedSkills.map((skill) => skill.name).sort(), expectedNames);
+  assert.equal(skills.find((skill) => skill.name === "home-agent-skill")?.scope, "user");
+  assert.equal(skills.find((skill) => skill.name === "project-agent-skill")?.scope, "repo");
   assert.deepEqual(logFiles, [rollout]);
   assert.deepEqual(usage[user], { dollar: 1, fileRead: 0, text: 1 });
 });
 
-test("keeps built-in skills out of unused candidates for explicit skill roots and aliases", (t) => {
+test("keeps built-in and bundled skills out of unused candidates for explicit root aliases", (t) => {
   const current = fixture(t, "linked-codex");
   current.skill("alternate-codex/skills", "user-skill");
   current.skill("alternate-codex/skills/.system", "system-skill");
-  current.skill("alternate-codex/plugins/cache/marketplace/plugin/1/skills", "bundled-skill");
   current.skill("external/skills", "external-user-skill");
   current.skill("external/skills/.system", "external-system-skill");
+  current.skill("external/plugins/cache/marketplace/plugin/1/skills", "bundled-skill");
+  current.skill(".agents/skills", "home-agent-skill");
   current.link("alternate-codex", "linked-codex");
   current.link("alternate-codex/skills/.system", "built-ins");
+  current.link("external/skills", "linked-alt-skills");
+  current.link("external/plugins/cache", "linked-alt-cache");
+  current.link(".agents/skills", "linked-home-agents");
 
-  const report = current.report("--root", "~/linked-codex/skills", "--root", "~/built-ins", "--root", "~/external/skills", "--root-only");
-  assert.match(report, /4 discovered, 4 live, 4 considered/);
+  const report = current.report(
+    "--root", "~/linked-codex/skills", "--root", "~/built-ins", "--root", "~/linked-alt-skills",
+    "--root", "~/linked-alt-cache", "--root", "~/linked-home-agents", "--root-only",
+  );
+  assert.match(report, /6 discovered, 6 live, 6 considered/);
   const candidates = unusedCandidates(report);
   assert.match(candidates, /^- user-skill: codex;/m);
   assert.match(candidates, /^- external-user-skill: extra;/m);
+  assert.match(candidates, /^- home-agent-skill: user;/m);
   assert.doesNotMatch(candidates, /system-skill|bundled-skill/);
+});
+
+test("keeps built-in and bundled skills out of unused candidates when scanning nested roots", (t) => {
+  const current = fixture(t);
+  const systemRoot = "external/skills/.system";
+  const pluginRoot = "external/plugins/cache/marketplace/plugin/1/skills";
+  current.skill(systemRoot, "system-skill");
+  current.skill(pluginRoot, "bundled-skill");
+
+  const report = current.report("--root", `~/${systemRoot}/system-skill`, "--root", `~/${pluginRoot}`, "--root-only");
+  assert.match(report, /2 discovered, 2 live, 2 considered/);
+  assert.match(unusedCandidates(report), /^- none$/m);
 });
 
 test("counts explicit user messages and filters injected instructions per response text item", (t) => {
@@ -110,25 +133,27 @@ test("counts explicit user messages and filters injected instructions per respon
           { type: "input_text", text: "# AGENTS.md instructions\n\n<INSTRUCTIONS>\nRead coding-standards.\n</INSTRUCTIONS>" },
           {
             type: "input_text",
-            text: [
-              "# AGENTS.md instructions for /work",
-              "",
-              "<INSTRUCTIONS>",
-              "````xml",
-              "```",
-              "</INSTRUCTIONS>",
-              "# AGENTS.md instructions for /example",
-              "<INSTRUCTIONS>",
-              "````",
-              "~~~xml",
-              "</INSTRUCTIONS>",
-              "~~~",
-              "Read coding-standards.",
-              "</INSTRUCTIONS>",
-            ].join("\n"),
+            text: "# AGENTS.md instructions for /work\r\n \r\n<INSTRUCTIONS>\r\n```md\r\nUse $coding-standards.\r\n</INSTRUCTIONS>\r\n",
           },
           { type: "input_text", text: "Please use writing-good-tests." },
         ],
+      },
+    },
+    {
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "user",
+        internal_chat_message_metadata_passthrough: { content_item_kinds: ["user.text"] },
+        content: [{ type: "input_text", text: pasted }],
+      },
+    },
+    {
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: `Please follow these instructions.\n${pasted}` }],
       },
     },
     {
@@ -145,7 +170,7 @@ test("counts explicit user messages and filters injected instructions per respon
   const { usage } = JSON.parse(current.report("--json"));
   assert.deepEqual(usage[coding], { dollar: 0, fileRead: 0, text: 0 });
   assert.deepEqual(usage[testing], { dollar: 0, fileRead: 0, text: 1 });
-  assert.deepEqual(usage[quoted], { dollar: 2, fileRead: 0, text: 2 });
+  assert.deepEqual(usage[quoted], { dollar: 4, fileRead: 0, text: 4 });
 });
 
 test("skips injected AGENTS.md instructions in plain logs and keeps user mentions", (t) => {
@@ -153,12 +178,21 @@ test("skips injected AGENTS.md instructions in plain logs and keeps user mention
   const coding = current.skill(".codex/skills", "coding-standards");
   const testing = current.skill(".codex/skills", "writing-good-tests");
   current.write(".codex/sessions/rollout.log", [
+    "~~~",
     "<INSTRUCTIONS>",
     "Use `$writing-good-tests`.",
     "</INSTRUCTIONS>",
     "# AGENTS.md instructions for /work",
     "",
     "<INSTRUCTIONS>",
+    "````xml",
+    "```",
+    "</INSTRUCTIONS>",
+    "````",
+    "~~~xml",
+    "</INSTRUCTIONS>",
+    "~~~",
+    "```foo```",
     "Read `coding-standards` in skills/coding-standards/SKILL.md.",
     "</INSTRUCTIONS>",
     "<INSTRUCTIONS>",

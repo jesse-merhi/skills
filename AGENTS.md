@@ -18,7 +18,7 @@ Jesse reads the final reply without the progress updates, tool calls or files. O
 
 ## Check-ins
 
-Show Jesse what to look at (PR or file, change, proof and open concerns), your recommendation and what comes next. Keep working on independent steps. Proceed on Jesse's yes in chat or a 👍 on the PR. Never poll for or request a reaction.
+When something below needs Jesse's decision, check in: show what to look at (PR or file, change, proof and open concerns), your recommendation and what comes next. Keep working on independent steps. Proceed on Jesse's yes in chat or a 👍 on the PR. Never poll for or request a reaction.
 
 Check in before:
 
@@ -80,12 +80,12 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 - Before marking ready or merging, get `code-review` on the current changes unless Jesse waived it. Check in with findings and fixes, proof and CI state.
 - Merge through the provider's protected flow. For a GitHub merge queue, after check-in, submit with `gh pr merge <pr-url> --match-head-commit <reviewed-head>` and confirm queue membership and eventual merge through GitHub. Never bypass protections or required checks.
 - During review, use only the requested workflow and required lenses. Run review bots such as OpenClaw `$autoreview` only with Jesse's opt-in for this task.
-- Don't post prose PR or issue comments for Jesse. A named workflow may require a machine command such as `/clawsweeper re-review` on a PR Jesse authored or substantially contributed to.
+- Don't post prose PR or issue comments for Jesse. The only exception is a machine command a named workflow requires on a PR Jesse authored or substantially contributed to, such as `/clawsweeper re-review`.
 - Never use `as any` in TypeScript. Write types or adapters. Skip decorative comment separators such as rows of equals signs or dashes. E2E and Maestro workflows stay manually triggered.
 
 ## Effect code
 
-Read all of `node_modules/effect/AGENTS.md` before changing Effect code. Check APIs against installed source, including prerelease `effect/unstable/*` modules.
+Read all of `node_modules/effect/AGENTS.md` before writing or changing Effect code. Check APIs against installed source, including prerelease `effect/unstable/*` modules.
 
 ## Browser work in T3 Code
 
@@ -94,7 +94,7 @@ When `preview_*` is available, use it for work that doesn't need Jesse, such as 
 - In Dia, use the harness's browser extension. Codex uses its browser integration. Claude uses `mcp__chrome__*` under T3 and `mcp__claude-in-chrome__*` elsewhere. Read `anthropic-skills:chrome-browser` before the first Claude extension call. See [setup](claude/README.md#claude-extension-under-t3). If a site asks for permission, ask Jesse to click Allow, then retry.
 - If the extension is unavailable, use `dia` MCP tools. Dia asks Jesse to approve each new connection. Keep one server for the session without restarting, running a second or reconnecting per task.
 - Open a new Dia tab and leave his other tabs alone. At a password, passkey, two-factor or payment step, tell Jesse what to do in Dia and wait for his confirmation.
-- If both routes fail, report which failed and why. Keep the task in that browser and profile.
+- If both routes fail, report which failed and why. Keep the task in Dia and that profile.
 
 ## Claude Code
 

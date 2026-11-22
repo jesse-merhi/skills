@@ -495,31 +495,27 @@ function containsPath(root: string, input: string): boolean {
 const explicitRoots = extraRoots.map((root) => expandHome(root));
 const explicitComparisonPaths = explicitRoots.flatMap(comparisonPaths);
 const codexSkillRoots = ([
-  ["system", "skills/.system"],
-  ["plugin", "plugins/cache"],
+  ["system", "skills/.system", /(?:^|\/)skills\/\.system(?:\/|$)/],
+  ["plugin", "plugins/cache", /(?:^|\/)plugins\/cache(?:\/|$)/],
   ["user", "skills"],
-] as const).map(([kind, suffix]) => ({
+] as const).map(([kind, suffix, pathPattern]) => ({
   kind,
-  roots: new Set([
+  pathPattern,
+  roots: [
     ...comparisonPaths(path.join(codexHome, suffix)),
     ...comparisonPaths(path.join(defaultCodexHome, suffix)).filter((root) =>
       explicitComparisonPaths.some((explicit) => containsPath(root, explicit) || containsPath(explicit, root)),
     ),
-    ...explicitRoots.flatMap((root) => {
-      const normalized = comparisonPath(root);
-      if (kind !== "user" && normalized.endsWith(`/${suffix}`)) return comparisonPaths(root);
-      if (kind === "system" && normalized.endsWith("/skills")) return comparisonPaths(path.join(root, ".system"));
-      return [];
-    }),
-  ]),
+  ],
 }));
+const homeAgentSkillRoots = comparisonPaths(path.join(home, ".agents/skills"));
 
 function codexSkillKind(input: string): "system" | "plugin" | "user" | undefined {
   const inputs = comparisonPaths(input);
-  for (const { kind, roots } of codexSkillRoots) {
-    for (const root of roots) {
-      if (inputs.some((candidate) => containsPath(root, candidate))) return kind;
-    }
+  for (const { kind, roots, pathPattern } of codexSkillRoots) {
+    if (inputs.some((candidate) =>
+      pathPattern?.test(candidate) || roots.some((root) => containsPath(root, candidate)),
+    )) return kind;
   }
   return undefined;
 }
@@ -528,7 +524,9 @@ function skillRootScope(root: string): string {
   const kind = codexSkillKind(root);
   if (kind === "plugin") return "codex-plugin";
   if (kind !== undefined) return "codex";
-  if (comparisonPath(root).includes("/.agents/skills")) return "repo";
+  const inputs = comparisonPaths(root);
+  if (inputs.some((candidate) => homeAgentSkillRoots.some((homeRoot) => containsPath(homeRoot, candidate)))) return "user";
+  if (inputs.some((candidate) => /(?:^|\/)\.agents\/skills(?:\/|$)/.test(candidate))) return "repo";
   return "extra";
 }
 
@@ -775,11 +773,14 @@ function responseUserText(payload: Record<string, unknown>): string {
     ? metadata.content_item_kinds
     : [];
   return payload.content.flatMap((item: unknown, index) => {
-    if (kinds[index] === "agents_md.instructions") return [];
-    if (isRecord(item) && item.type === "input_text" && typeof item.text === "string") {
-      return [stripCodexAgentsInstructions(item.text)];
-    }
-    return [];
+    const kind: unknown = kinds[index];
+    if (kind === "agents_md.instructions") return [];
+    if (!isRecord(item) || item.type !== "input_text" || typeof item.text !== "string") return [];
+    // Legacy Codex logs put injected instructions in a standalone content item.
+    if ((kind === null || kind === undefined) &&
+      /^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n(?:[ \t]*\r?\n)*<INSTRUCTIONS>[\s\S]*<\/INSTRUCTIONS>\s*$/.test(item.text)
+    ) return [];
+    return [item.text];
   }).join("\n");
 }
 
@@ -841,15 +842,16 @@ function stripCodexAgentsInstructions(text: string): string {
   let fence: string | undefined;
 
   for (const [index, line] of lines.entries()) {
-    const opening = /^[ \t]*(`{3,}|~{3,})/.exec(line)?.[1];
-    if (fence !== undefined) {
-      if (opening?.startsWith(fence) && line.trim() === opening) fence = undefined;
-      continue;
-    }
-    if (opening !== undefined) {
-      fence = opening;
-      if (depth === 0) heading = undefined;
-      continue;
+    if (depth > 0) {
+      const opening = /^[ \t]*(`{3,}|~{3,})/.exec(line)?.[1];
+      if (fence !== undefined) {
+        if (opening?.startsWith(fence) && line.trim() === opening) fence = undefined;
+        continue;
+      }
+      if (opening !== undefined && (!opening.startsWith("`") || !line.trimStart().slice(opening.length).includes("`"))) {
+        fence = opening;
+        continue;
+      }
     }
     const marker = line.trimEnd();
     if (heading !== undefined && marker === "<INSTRUCTIONS>") {

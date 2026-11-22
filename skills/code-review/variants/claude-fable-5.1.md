@@ -18,7 +18,7 @@ Simplify the change, then have one independent reviewer or a five-model council 
 
 Identify the target and its actual or planned PR base, using a commit's parent only for a single-commit review. Review the whole intended change, preserve unrelated work, and record the base. Derive requirements from the task, docs and callers, stating the inferred contract when there is no spec.
 
-Honor narrower requests and report their limits. Findings-only permits inspection and proposals, not edits. A request for one lens (such as standards only or correctness only) limits work to that lens. Use the harness's native command for native review. Run [ClawSweeper](references/clawsweeper.md) only when separately requested.
+Honor narrower requests and report their limits. Findings-only permits inspection and proposals, not edits. A single-review request runs only that assessment. A request for one lens (such as standards only or correctness only) limits work to that lens. Use the harness's native command for native review. Run [ClawSweeper](references/clawsweeper.md) only when separately requested.
 
 ## 2. Simplify
 
@@ -54,12 +54,12 @@ Count only fresh assessments from the selected models at high on that revision. 
 
 ### Apply both lenses
 
-Each reviewer uses both lenses and reports every supported finding, including minor ones.
+Each reviewer uses both lenses unless the request narrows the lens, and reports every supported finding, including minor ones.
 
 - **Standards:** [coding-standards](../coding-standards/SKILL.md), step 2's readability rules, diff waste, unnecessary complexity, and [writing-good-tests](../writing-good-tests/SKILL.md) for test additions, keepers and deletions. Cite relevant standard IDs and exceptions. A maintenance finding shows the confusing code, its present reading or change cost, and a simpler behavior-preserving alternative.
 - **Requirements and correctness:** trace real entry points through failure and recovery to the consumer-visible result. Look for missing, incorrect or unrequested behavior. Ask what consequential defect could pass existing tests and what runtime or persisted-state evidence would expose it. Exercise every reader, including tools and UIs, with pre-change state when data formats change. Apply typescript-discipline and relevant domain lenses.
 
-For each finding, give its location, expected behavior, reachable trigger and likelihood in supported use, consequence, evidence and proposed Step 4 severity. Separate source inspection from executed proof. An empty findings list is valid and proves no coverage. State confidence in the reviewed revision, why, and what remains unverified. Supported findings take precedence over confidence.
+For each finding, give its location, expected behavior, reachable trigger and likelihood in supported use, consequence, evidence and proposed Step 4 severity. Separate source inspection from executed proof. An empty findings list is valid, but proves no coverage. State confidence in the reviewed revision, why, and what remains unverified. Supported findings take precedence over confidence.
 
 ## 4. Repeat rounds until only minor findings remain
 
