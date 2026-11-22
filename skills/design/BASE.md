@@ -36,3 +36,4 @@ Show the actual interface and briefly explain consequential choices.
 - For mobile websites, PWAs, viewport, keyboard, or touch problems, use [mobile web](references/mobile-web.md).
 - For React Native or Expo animation and gestures, use [native motion](references/native-motion.md).
 - For requested alternatives, use [prototypes](references/prototype.md) and the optional [picker](references/prototype-picker.md).
+- For multi-screen visual approvals, use the [A/B decision deck](references/ab-decision-deck.md).

@@ -5,7 +5,8 @@ import typescript from "./skills/coding-standards/eslint/presets/typescript.mjs"
 import vitest from "./skills/coding-standards/eslint/presets/vitest.mjs"
 
 const sourceFiles = ["packages/**/*.ts", "skills/**/*.ts", "vitest.config.ts"]
-const testFiles = ["**/*.test.ts"]
+const browserJavaScriptFiles = ["skills/design/assets/**/*.js", "skills/**/*.test.js"]
+const testFiles = ["**/*.test.ts", "skills/**/*.test.js"]
 const jsonParseAllowedFiles = ["**/*.test.ts", "**/*.test.mjs"]
 const runtimeJavaScriptFiles = ["skills/**/*.mjs", "packages/**/*.mjs"]
 const lintInfrastructureFiles = [
@@ -22,7 +23,7 @@ const noJsonParse = {
 
 export default [
   { ignores: ["node_modules/**"] },
-  ...base({ files: [...sourceFiles, ...lintInfrastructureFiles] }),
+  ...base({ files: [...sourceFiles, ...browserJavaScriptFiles, ...lintInfrastructureFiles] }),
   ...typescript({ files: sourceFiles, tsconfigRootDir: import.meta.dirname }),
   ...vitest({ files: testFiles }),
   {
