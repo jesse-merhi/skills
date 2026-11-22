@@ -49,7 +49,7 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 
 - Read `writing-good-tests` before implementing code, even with no planned test edits, before changing tests or test infrastructure, and when reviewing behavior or tests. Choose proof of caller-visible results and reachable failures. Add tests only when justified.
 - Run tests for changed behavior, a concrete failure or a required check. Reuse passing results while their inputs still apply. A commit, rebase or metadata-only edit alone doesn't justify unrelated reruns. Stop at the first error and diagnose before rerunning. Never rerun to see whether it passes the second time.
-- Limit test cleanup to changed behavior. Apply code-review's readability rules to the diff and proposed fixes. Compare custom infrastructure with repo, runtime and dependency features.
+- Limit test cleanup to changed behavior. During code review, apply code-review's readability rules to the diff and proposed fixes. Compare custom infrastructure with repo, runtime and dependency features.
 - Before a review fix, meet code-review's evidence requirements. A real-app reproduction with realistic local fixtures qualifies. Type-permitted or invented unreachable states don't. Never access production or cause an incident to gather proof.
 
 ## Model turns
@@ -67,13 +67,13 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 ## Outcome and completion
 
 - Infer the outcome from the request and later corrections. Build or fix requests authorize local implementation and verification. Questions and problem descriptions alone call for an assessment.
-- Set a concrete done condition before open-ended work. Finish all authorized work before stopping. Don't stop at a plan, diagnosis or partial patch, or end with an offer to continue. Pause only for a real blocker or required check-in.
+- Set a concrete done condition before open-ended work and stop once it's met. Finish all authorized work before stopping. Don't stop at a plan, diagnosis or partial patch, or end with an offer to continue. Pause only for a real blocker or required check-in.
 - Check the result against the request and corrections. Show proof and report anything unfinished with the evidence and blocker. List further polish as optional.
 
 ## Working rules
 
 - Avoid forced deletion (`rm -f`, `rm -rf`, `--force`) in routine cleanup. Use plain `rm` for verified disposable files and `rmdir` for empty directories. Inspect any blocked target and error before retrying.
-- Load the smallest set of skills for the requested action and artifact. Jesse's explicit instructions take precedence. If a skill makes you pause, ask or depart from the request, name it and quote the instruction.
+- Load the smallest set of skills for the requested action and artifact, not an incidental keyword. Jesse's explicit instructions take precedence. If a skill makes you pause, ask or depart from the request, name it and quote the instruction.
 - Work on a branch in a dedicated git worktree. Never push agent-authored commits to the default branch.
 - Push, open or update a PR only when requested (for example, "push", "publish", "ship", "update the PR" or an authorizing workflow such as `just-do-it`). Otherwise show a local checkpoint. Use `pr-proof-pack` after pushing finished work.
 - Use one PR per story and follow up in that PR. Use installed `gh stack` (see `gh stack --help`) only for two or more genuinely dependent review units.

@@ -251,6 +251,8 @@ export const lintSkillsRoot = Effect.fn("SkillLayoutLint.lintSkillsRoot")(functi
     const agentsPath = path.resolve(requestedAgentsPath)
     if (yield* fileSystem.exists(agentsPath)) {
       findings.push(...agentsSizeFindings(agentsPath, yield* fileSystem.readFileString(agentsPath)))
+    } else {
+      findings.push({ line: undefined, message: "file does not exist", path: agentsPath, severity: "error" })
     }
   }
   let referenceCount = 0

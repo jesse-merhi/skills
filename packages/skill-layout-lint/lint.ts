@@ -24,10 +24,11 @@ const main = Effect.gen(function*() {
   const path = yield* Path.Path
   const scriptPath = yield* path.fromFileUrl(new URL(import.meta.url))
   const repoRoot = path.resolve(path.dirname(scriptPath), "..", "..")
+  const defaultSkillsRoot = path.join(repoRoot, "skills")
   const requested = process.argv[2]
-  process.exitCode = requested === undefined
-    ? yield* report(path.join(repoRoot, "skills"), path.join(repoRoot, "AGENTS.md"))
-    : yield* report(path.resolve(requested))
+  const root = requested === undefined ? defaultSkillsRoot : path.resolve(requested)
+  const agentsPath = root === defaultSkillsRoot ? path.join(repoRoot, "AGENTS.md") : undefined
+  process.exitCode = yield* report(root, agentsPath)
 })
 
 export function run(): void {

@@ -18,7 +18,7 @@ Simplify the change, then have one independent reviewer or a five-model council 
 
 Identify the target and its actual or planned PR base, using a commit's parent only for a single-commit review. Review the whole intended change, preserve unrelated work, and record the base. Derive requirements from the task, docs and callers, stating the inferred contract when there is no spec.
 
-Honor narrower requests and report their limits. Findings-only permits inspection and proposals. A request for one lens (such as standards only or correctness only) limits work to that lens. Use the harness's native command for native review. Run [ClawSweeper](references/clawsweeper.md) only when separately requested.
+Honor narrower requests and report their limits. Findings-only permits inspection and proposals, not edits. A request for one lens (such as standards only or correctness only) limits work to that lens. Use the harness's native command for native review. Run [ClawSweeper](references/clawsweeper.md) only when separately requested.
 
 ## 2. Simplify
 
@@ -42,7 +42,7 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
   - **Substantial UI or UI polish.** The change adds or reworks a user-facing screen, or the user asks to polish or score the UI.
   - **Post-round escalation.** A single-reviewer round raises a severe, disputed or hard-to-diagnose blocker and a council can help verify the fix or settle the finding. Run that council before asking the user to resolve an inconclusive finding under Step 4.
 
-For a small follow-up or clean rebase after a council, apply the triggers to what changed since the council. Verify the rebased diff with whitespace preserved, for example with `git range-diff` or by inspecting conflict hunks. Use `git patch-id --stable` only to match corresponding commits. Review the new revision.
+For a new review of a small follow-up or clean rebase after a finished council, apply the triggers to what changed since the council. Verify the rebased diff with whitespace preserved, for example with `git range-diff` or by inspecting conflict hunks. Use `git patch-id --stable` only to match corresponding commits. Review the new revision.
 
 For affected UI, set fixed criteria and gather proof before launch using the [affected UI rules](references/affected-ui.md). When the user asks for polish or names a score, follow [UI polish](references/ui-polish.md).
 
@@ -75,13 +75,13 @@ The coordinator sets severity for all confirmed findings, including its own. Con
 - **Minor:** supported use reaches it, but the consequence is cosmetic, easily recovered or confined to unusual use. Fix it when the fix is small; otherwise defer it with a reason. On its own it does not justify another round.
 - **Not actionable:** a preference, a check tooling already settles, a non-blocking finding whose fix would add unrequested behavior or options, or a trigger that needs several independent unlikely conditions for a recoverable consequence. Reject it.
 
-Settle unclear triggers from callers, deployment and targeted probes. To act on a race, timing or ordering finding, show which actors run concurrently in supported deployments, the interleaving and what breaks. A rare trigger still blocks when its consequence is severe and hard to recover from, such as corrupted persisted data, a security breach or lost user work. Report other serious defects in affected behavior as non-blocking concerns with evidence.
+Settle unclear triggers from callers, deployment and targeted probes, not the worst case. To act on a race, timing or ordering finding, show which actors run concurrently in supported deployments, the interleaving and what breaks. A rare trigger still blocks when its consequence is severe and hard to recover from, such as corrupted persisted data, a security breach or lost user work. Report other serious defects in affected behavior as non-blocking concerns with evidence.
 
 ### Decide whether to repeat
 
 Route authorized fixes and selected UI improvements through Step 2's implementation policy. Verify repaired and preserved behavior and recapture changed UI. A contained fix stays within its finding, preserves other behavior, contracts, persisted data, security and permissions, and passes relevant checks.
 
-- **Run another round** after a blocking fix, a selected UI improvement or an uncontained fix. Keep the round’s review mode unless Step 3’s post-round escalation upgrades a single-reviewer review to a five-model council. Follow the UI polish gating rules when they apply. Fresh reviewers assess the full resulting change under the same criteria.
+- **Run another round** after a blocking fix, a selected UI improvement or an uncontained fix. Keep the round’s review mode unless repairs newly cross a Step 3 council trigger or Step 3’s post-round escalation upgrades a single-reviewer review to a five-model council (while honoring an explicit user mode request). Follow the UI polish gating rules when they apply. Fresh reviewers assess the full resulting change under the same criteria.
 - **Finish** when the reviewed revision has no blocking findings and no other round trigger applies. Report any contained fixes the coordinator verified by checks after the round.
 - **Stop and ask the user** if fixes keep producing new blockers in touched code, a blocker survives repeated repairs, or evidence cannot settle whether a finding blocks. Also stop if missing evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed. For read-only advice, prefer GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for a harder decision or through the native Claude `oracle` role.
 

@@ -81,9 +81,8 @@ type LivePrompt = {
 
 const home = os.homedir();
 const defaultCodexHome = path.join(home, ".codex");
-const configuredCodexHome = Effect.runSync(Config.string("CODEX_HOME").pipe(Config.withDefault(defaultCodexHome)));
-const codexHome = path.resolve(expandHome(configuredCodexHome));
-const codexHomes = [...new Set([codexHome, defaultCodexHome])];
+const configuredCodexHome = Effect.runSync(Config.string("CODEX_HOME").pipe(Config.withDefault("")));
+const codexHome = resolveCodexHome(home);
 const args = new Set(process.argv.slice(2));
 
 function argValue(name: string, fallback: string): string {
@@ -115,6 +114,12 @@ const extraRoots = process.argv
 
 function expandHome(input: string, baseHome = home): string {
   return input.replace(/^~(?=$|[/\\])/, () => baseHome);
+}
+
+function resolveCodexHome(baseHome: string): string {
+  return configuredCodexHome
+    ? path.resolve(expandHome(configuredCodexHome, baseHome))
+    : path.join(baseHome, ".codex");
 }
 
 function exists(input: string): boolean {
@@ -373,7 +378,11 @@ export function parseLiveSkillsPrompt(raw: string): LivePrompt {
 
 const livePrompt = Effect.fn("SkillCleaner.livePrompt")(function*() {
   if (noLive) return null;
-  return yield* checkedText("codex", ["debug", "prompt-input"], { cwd: process.cwd() }).pipe(
+  return yield* checkedText("codex", ["debug", "prompt-input"], {
+    cwd: process.cwd(),
+    env: { CODEX_HOME: codexHome },
+    extendEnv: true,
+  }).pipe(
     Effect.map(parseLiveSkillsPrompt),
     Effect.catch((error) => {
       const fallback = Effect.succeed<LivePrompt | null>(null);
@@ -469,24 +478,50 @@ function comparisonPath(input: string): string {
   return process.platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 
-const explicitRoots = extraRoots.map((root) => comparisonPath(expandHome(root)));
+function comparisonPaths(input: string): string[] {
+  const lexical = comparisonPath(input);
+  try {
+    const real = comparisonPath(fs.realpathSync(input));
+    return real === lexical ? [lexical] : [lexical, real];
+  } catch {
+    return [lexical];
+  }
+}
+
+function containsPath(root: string, input: string): boolean {
+  return input === root || input.startsWith(`${root}/`);
+}
+
+const explicitRoots = extraRoots.map((root) => expandHome(root));
+const explicitComparisonPaths = explicitRoots.flatMap(comparisonPaths);
 const codexSkillRoots = ([
-  ["system", "/skills/.system"],
-  ["plugin", "/plugins/cache"],
-  ["user", "/skills"],
+  ["system", "skills/.system"],
+  ["plugin", "plugins/cache"],
+  ["user", "skills"],
 ] as const).map(([kind, suffix]) => ({
   kind,
-  roots: [
-    ...codexHomes.map((directory) => comparisonPath(path.join(directory, suffix))),
-    ...explicitRoots.filter((root) => kind !== "user" && root.endsWith(suffix)),
-  ],
+  roots: new Set([
+    ...comparisonPaths(path.join(codexHome, suffix)),
+    ...comparisonPaths(path.join(defaultCodexHome, suffix)).filter((root) =>
+      explicitComparisonPaths.some((explicit) => containsPath(root, explicit) || containsPath(explicit, root)),
+    ),
+    ...explicitRoots.flatMap((root) => {
+      const normalized = comparisonPath(root);
+      if (kind !== "user" && normalized.endsWith(`/${suffix}`)) return comparisonPaths(root);
+      if (kind === "system" && normalized.endsWith("/skills")) return comparisonPaths(path.join(root, ".system"));
+      return [];
+    }),
+  ]),
 }));
 
 function codexSkillKind(input: string): "system" | "plugin" | "user" | undefined {
-  const normalized = comparisonPath(input);
-  return codexSkillRoots.find(({ roots }) =>
-    roots.some((root) => normalized === root || normalized.startsWith(`${root}/`)),
-  )?.kind;
+  const inputs = comparisonPaths(input);
+  for (const { kind, roots } of codexSkillRoots) {
+    for (const root of roots) {
+      if (inputs.some((candidate) => containsPath(root, candidate))) return kind;
+    }
+  }
+  return undefined;
 }
 
 function skillRootScope(root: string): string {
@@ -590,11 +625,13 @@ function configState(): { disabledPaths: Set<string>; disabledNames: Set<string>
 export function discoverRoots(baseHome = home, providedRoots = extraRoots, exclusive = rootOnly): string[] {
   const rootsByRealPath = new Map<string, string>();
   const roots = providedRoots.map((root) => expandHome(root, baseHome));
-  const homes = baseHome === home ? codexHomes : [path.join(baseHome, ".codex")];
+  const activeCodexHome = resolveCodexHome(baseHome);
   const candidates = exclusive
     ? roots
     : [
-        ...homes.flatMap((directory) => [path.join(directory, "skills"), path.join(directory, "plugins/cache")]),
+        path.join(activeCodexHome, "skills"),
+        path.join(activeCodexHome, "plugins/cache"),
+        path.join(baseHome, ".agents/skills"),
         path.join(baseHome, "Projects/agent-scripts/skills"),
         ...roots,
       ];
@@ -669,15 +706,12 @@ function discoverSkills(): Skill[] {
 function recentLogFiles(): string[] {
   if (noLogs) return [];
   const files = new Set<string>();
-  const roots: string[] = [];
-  for (const directory of codexHomes) {
-    roots.push(path.join(directory, "sessions"));
-    if (deepLogs) roots.push(path.join(directory, "archived_sessions"));
-    const history = path.join(directory, "history.jsonl");
-    if (exists(history)) files.add(history);
-  }
+  const roots = [path.join(codexHome, "sessions")];
+  const history = path.join(codexHome, "history.jsonl");
+  if (exists(history)) files.add(fs.realpathSync(history));
   if (deepLogs) {
     roots.push(
+      path.join(codexHome, "archived_sessions"),
       path.join(home, ".openclaw"),
       path.join(home, ".clawd"),
     );
@@ -685,7 +719,7 @@ function recentLogFiles(): string[] {
   for (const root of roots) {
     for (const file of walkRecentFiles(root, (candidate) => candidate.endsWith(".jsonl") || candidate.endsWith(".log"), 8)) {
       try {
-        if (fs.statSync(file).mtimeMs >= cutoffMs) files.add(file);
+        if (fs.statSync(file).mtimeMs >= cutoffMs) files.add(fs.realpathSync(file));
       } catch {}
     }
   }
@@ -734,8 +768,26 @@ function messageText(value: unknown): string[] {
   return Object.values(value).flatMap(messageText);
 }
 
+function responseUserText(payload: Record<string, unknown>): string {
+  if (!Array.isArray(payload.content)) return "";
+  const metadata = payload.internal_chat_message_metadata_passthrough;
+  const kinds = isRecord(metadata) && Array.isArray(metadata.content_item_kinds)
+    ? metadata.content_item_kinds
+    : [];
+  return payload.content.flatMap((item: unknown, index) => {
+    if (kinds[index] === "agents_md.instructions") return [];
+    if (isRecord(item) && item.type === "input_text" && typeof item.text === "string") {
+      return [stripCodexAgentsInstructions(item.text)];
+    }
+    return [];
+  }).join("\n");
+}
+
 export function usageEvidence(record: Record<string, unknown>): { callArgs?: string; userText?: string } {
   const payload = record.payload;
+  if (typeof record.session_id === "string" && typeof record.text === "string" && typeof record.ts === "number") {
+    return { userText: record.text };
+  }
   if (record.type === "response_item" && isRecord(payload)) {
     if (payload.type === "function_call") {
       return { callArgs: typeof payload.arguments === "string" ? payload.arguments : "" };
@@ -743,15 +795,14 @@ export function usageEvidence(record: Record<string, unknown>): { callArgs?: str
     if (payload.type === "custom_tool_call") {
       return { callArgs: typeof payload.input === "string" ? payload.input : "" };
     }
+    if (payload.type === "message" && payload.role === "user") {
+      return { userText: responseUserText(payload) };
+    }
   }
-  if (typeof record.session_id === "string" && typeof record.text === "string" && typeof record.ts === "number") {
-    return { userText: record.text };
+  if (record.type === "event_msg" && isRecord(payload) && payload.type === "user_message") {
+    return { userText: typeof payload.message === "string" ? payload.message : "" };
   }
-  const isUser = isRecord(payload) && (
-    (record.type === "response_item" && payload.type === "message" && payload.role === "user") ||
-    (record.type === "event_msg" && payload.type === "user_message")
-  );
-  return isUser ? { userText: messageText(payload).join("\n") } : {};
+  return {};
 }
 
 function collectWorkingDirectories(value: unknown): string[] {
@@ -781,30 +832,51 @@ export function referencedSkillPaths(callArgs: string): string[] {
 }
 
 function stripCodexAgentsInstructions(text: string): string {
-  const messages = text.split(/(?=^# AGENTS\.md instructions for )/m);
-  return messages.map((message) => {
-    const opening = /^# AGENTS\.md instructions for [^\r\n]+\r?\n(?:[ \t]*\r?\n)*<INSTRUCTIONS>[ \t]*\r?\n/.exec(message);
-    if (!opening) return message;
-    const body = message.slice(opening[0].length);
-    let nested = 0;
-    let envelopeEnd = 0;
-    for (const tag of body.matchAll(/^<(\/?)INSTRUCTIONS>[ \t]*\r?$/gm)) {
-      if (tag[1] === "") nested++;
-      else if (nested > 0) nested--;
-      // A bare closing tag may be an example. A later paired block belongs to its own opening tag.
-      else envelopeEnd = tag.index + tag[0].length;
+  if (!text.includes("# AGENTS.md instructions")) return text;
+  const lines = text.split(/\r?\n/);
+  const kept: string[] = [];
+  let keptStart = 0;
+  let heading: number | undefined;
+  let depth = 0;
+  let fence: string | undefined;
+
+  for (const [index, line] of lines.entries()) {
+    const opening = /^[ \t]*(`{3,}|~{3,})/.exec(line)?.[1];
+    if (fence !== undefined) {
+      if (opening?.startsWith(fence) && line.trim() === opening) fence = undefined;
+      continue;
     }
-    return envelopeEnd > 0 ? body.slice(envelopeEnd) : message;
-  }).join("");
+    if (opening !== undefined) {
+      fence = opening;
+      if (depth === 0) heading = undefined;
+      continue;
+    }
+    const marker = line.trimEnd();
+    if (heading !== undefined && marker === "<INSTRUCTIONS>") {
+      depth++;
+    } else if (depth > 0 && marker === "</INSTRUCTIONS>") {
+      depth--;
+      if (depth === 0 && heading !== undefined) {
+        kept.push(lines.slice(keptStart, heading).join("\n"));
+        keptStart = index + 1;
+        heading = undefined;
+      }
+    } else if (depth === 0 && marker !== "") {
+      heading = /^# AGENTS\.md instructions(?: for .+)?$/.test(marker) ? index : undefined;
+    }
+  }
+  kept.push(lines.slice(keptStart).join("\n"));
+  return kept.join("\n");
 }
 
 function applyUserMentions(userText: string, aliases: Map<string, string[]>, usage: Map<string, Usage>): void {
   const dollarCounts = countTokens(
-    [...userText.matchAll(/\$([A-Za-z][A-Za-z0-9_.:-]{1,80})/g)].map((match) => (match[1] ?? "").toLowerCase()),
+    [...userText.matchAll(/\$([A-Za-z][A-Za-z0-9_.:-]{1,80})/g)]
+      .map((match) => (match[1] ?? "").replace(/[.:]+$/, "").toLowerCase()),
   );
   const textCounts = countTokens(
     [...userText.matchAll(/\b(?:use|using|load|read)\s+`?\$?([A-Za-z][A-Za-z0-9_.:-]{1,80})`?/gi)]
-      .map((match) => (match[1] ?? "").toLowerCase()),
+      .map((match) => (match[1] ?? "").replace(/[.:]+$/, "").toLowerCase()),
   );
   for (const [realPath, names] of aliases) {
     const item = usage.get(realPath);
@@ -875,8 +947,7 @@ function scanUsage(skills: Skill[], logFiles: string[]): Map<string, Usage> {
         continue;
       }
       if (evidence.userText !== undefined) {
-        // Codex records injected AGENTS.md instructions as user messages.
-        applyUserMentions(stripCodexAgentsInstructions(evidence.userText), aliases, usage);
+        applyUserMentions(evidence.userText, aliases, usage);
       }
     }
     if (plainLines.length > 0) {
