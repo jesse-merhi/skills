@@ -103,7 +103,8 @@ refuses to replace hand-written local skills or links owned elsewhere.
 
 Claude Code uses its normal main session, with Opus 5.5 at high as the repository
 default, no advisor and Opus as the default subagent model. The launch command
-and optional [named workers](claude/README.md) preserve explicit user choices.
+and optional [named workers](claude/README.md) preserve explicit user choices
+within the [effort caps](AGENTS.md#model-turns).
 Claude and Gemini plan and check the work. They assign every implementation edit
 to GPT-6.2 Sol at `xhigh` through a Codex worker signed in with ChatGPT. Codex coordinators
 can implement directly or delegate. For optional read-only advice, start with
