@@ -1,6 +1,6 @@
 # Global agent instructions
 
-These instructions apply to Claude Code, Codex, opencode, Pi and Antigravity. Harness-specific rules are under their own headings. Edit shared instructions here.
+These instructions apply to Claude Code, Codex, opencode, Pi, Antigravity and Cursor. Harness-specific rules are under their own headings. Edit shared instructions here.
 
 ## Communication
 

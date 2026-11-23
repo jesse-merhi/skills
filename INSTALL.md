@@ -15,6 +15,7 @@ Figure out which harness you're running in:
 - **Codex CLI**: `~/.codex/`, `config.toml`, a `skills/` directory
 - **Antigravity**: the `agy` CLI, Antigravity app, or T3 Code's Antigravity provider
 - **Gemini CLI**: the separate `gemini` command and its `~/.gemini/GEMINI.md`
+- **Cursor**: the Cursor app, `cursor-agent`, or T3 Code's Cursor provider, with `~/.cursor/`
 - **opencode**: `~/.config/opencode/`, `AGENTS.md`, a `skills/` directory
 - **Pi**: `~/.pi/agent/`, a `skills/` directory, `settings.json`
 - **OpenClaw**: a running Gateway, the matching `openclaw` CLI, and
@@ -28,6 +29,7 @@ configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-
 skill profile; Claude Fable 5.1 and Opus 5.5 have separate profiles. A newer model in a known family
 uses its nearest preceding variant and produces an informational update notice.
 Antigravity and Gemini CLI use the shared `gemini` profile, which installs the model-neutral prompts from `BASE.md`.
+Cursor runs models from every family and accepts any profile; `--model auto` selects the same model-neutral prompts.
 Installation stops on an unknown family or a missing profile prompt.
 `--require-exact` also rejects model-version fallback.
 
@@ -222,6 +224,7 @@ Inventory the target skills directory before touching anything:
 | Codex | `~/.codex/skills` |
 | Antigravity, including T3 Code | `~/.gemini/config/skills` |
 | Gemini CLI | `${GEMINI_CLI_HOME:-$HOME}/.gemini/skills` |
+| Cursor, including T3 Code | `~/.cursor/skills` |
 | opencode | `~/.config/opencode/skills` |
 | Pi | `~/.pi/agent/skills` |
 
@@ -245,7 +248,7 @@ Authoring starts from each skill's `BASE.md`, then adapts it into complete
 installation copies the selected text into a regular `SKILL.md`. The Gemini
 profile copies `BASE.md` directly.
 
-### Codex, Claude Code, Antigravity and Gemini CLI
+### Codex, Claude Code, Antigravity, Gemini CLI and Cursor
 
 From `REPO`, use the repository's installer after the prerequisites above:
 
@@ -255,6 +258,7 @@ From `REPO`, use the repository's installer after the prerequisites above:
 ./install-skills --harness claude --model opus
 ./install-skills --harness antigravity --model gemini
 ./install-skills --harness gemini --model gemini
+./install-skills --harness cursor --model auto
 ```
 
 For Gemini in T3 Code, use the Antigravity command and start a fresh Antigravity
@@ -265,6 +269,12 @@ Antigravity CLI prioritizes `~/.gemini/antigravity-cli/skills` and
 `~/.gemini/skills` over `~/.gemini/config/skills`. Gemini CLI prioritizes
 `${GEMINI_CLI_HOME:-$HOME}/.agents/skills` over user skills in `.gemini/skills`.
 Use `/skills` in `agy` or `gemini skills list` to check the loaded path.
+
+For Cursor, including T3 Code's Cursor provider and council reviewers launched
+through it, use `--model auto` unless every Cursor session uses one model family.
+Cursor reads project `AGENTS.md`, so it needs no global instructions link. Cursor
+also loads `~/.claude/skills` and `~/.codex/skills`; a skill with the same name in
+`~/.cursor/skills` takes priority. Check the loaded skills in Cursor's `/` menu.
 
 Run the command matching the requested profile. `astra`, `sol`, `luna` and their
 full model IDs also select `gpt-6`. For Gemini CLI, `auto`, `pro`, `flash`, and
@@ -277,8 +287,8 @@ before changing installed prompts. It does not edit model settings, global
 instructions, personal agents, authentication, or third-party skills.
 
 Defaults are `CODEX_HOME` or `~/.codex` for Codex, `CLAUDE_CONFIG_DIR` or
-`~/.claude` for Claude, `~/.gemini/config` for Antigravity, and `~/.gemini` for
-Gemini CLI. If `GEMINI_CLI_HOME` is set, Gemini CLI uses the `.gemini` directory
+`~/.claude` for Claude, `~/.gemini/config` for Antigravity, `~/.cursor` for
+Cursor, and `~/.gemini` for Gemini CLI. If `GEMINI_CLI_HOME` is set, Gemini CLI uses the `.gemini` directory
 inside it. Use `--root ABSOLUTE_CONFIG_DIRECTORY` to override the install root
 that contains `skills/`. For separate Codex or Claude sessions, launch each with its matching
 `CODEX_HOME` or `CLAUDE_CONFIG_DIR`. The installer does not copy credentials or
@@ -454,7 +464,7 @@ installed, not a disposable worktree: launchers execute that clone's absolute
 entrypoints, preserving arguments, working directory, environment and exit
 status. They do not run from a generated model view.
 
-All four harness choices share one owner at
+All harness choices share one owner at
 `BIN_DIR/.jesse-merhi-skills-commands/manifest.json`. Matching installs are
 idempotent and use a shared publication lock. A different clone cannot take
 ownership unless a full install explicitly supplies the verified

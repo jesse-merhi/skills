@@ -20,6 +20,7 @@ function harnessDirectory(harness) {
     case "claude": return process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), ".claude");
     case "gemini": return path.join(process.env.GEMINI_CLI_HOME || os.homedir(), ".gemini");
     case "antigravity": return path.join(os.homedir(), ".gemini", "config");
+    case "cursor": return path.join(os.homedir(), ".cursor");
     default: throw new Error(`unsupported harness: ${harness}`);
   }
 }
@@ -79,8 +80,9 @@ function inspectLinks(skillsDirectory, viewRoot, skills, sourceRoot, previousSou
 export function installSkills({ harness, model, root, sourceRoot = sourceDefault, previousSourceRoot, requireExact = false, sessionId, dryRun = false, skillNames, binDir = path.join(os.homedir(), ".local", "bin") }) {
   const defaultRoot = harnessDirectory(harness);
   const harnessRoot = path.resolve(root ?? defaultRoot);
-  const profileModel = harness === "gemini" && ["auto", "pro", "flash", "flash-lite"].includes(model.toLowerCase())
-    ? "gemini" : model;
+  // Gemini CLI's aliases and Cursor's Auto router install the model-neutral shared prompts.
+  const neutralAliases = { gemini: ["auto", "pro", "flash", "flash-lite"], cursor: ["auto"] }[harness] ?? [];
+  const profileModel = neutralAliases.includes(model.toLowerCase()) ? "gemini" : model;
   const plan = planSkillVariants({ sourceRoot, model: profileModel, requireExact, skillNames });
   const family = plan.profile.family;
   const compatible = {
@@ -88,6 +90,8 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
     claude: family.startsWith("anthropic-"),
     gemini: family === "google-gemini",
     antigravity: family === "google-gemini",
+    // Cursor offers Claude, GPT and Gemini models, so every profile applies.
+    cursor: true,
   };
   if (!compatible[harness]) throw new Error(`${model} is not a supported ${harness} model`);
   const skillsDirectory = path.join(harnessRoot, "skills");
@@ -146,9 +150,9 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
 
 export function runInstaller() {
   const command = Command.make("install-skills", {
-    harness: Flag.choice("harness", ["codex", "claude", "gemini", "antigravity"]),
-    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, gemini, or a full model ID")),
-    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/. Defaults: CODEX_HOME or ~/.codex, CLAUDE_CONFIG_DIR or ~/.claude, GEMINI_CLI_HOME/.gemini or ~/.gemini for Gemini CLI, and ~/.gemini/config for Antigravity.")),
+    harness: Flag.choice("harness", ["codex", "claude", "gemini", "antigravity", "cursor"]),
+    model: Flag.string("model").pipe(Flag.withDescription("astra, sol, luna, fable, opus, gemini, or a full model ID. For Cursor, auto installs model-neutral prompts")),
+    root: Flag.string("root").pipe(Flag.optional, Flag.withDescription("Configuration root containing skills/. Defaults: CODEX_HOME or ~/.codex, CLAUDE_CONFIG_DIR or ~/.claude, GEMINI_CLI_HOME/.gemini or ~/.gemini for Gemini CLI, ~/.gemini/config for Antigravity, and ~/.cursor for Cursor.")),
     binDir: Flag.string("bin-dir").pipe(Flag.optional, Flag.withDescription("Shared command directory; defaults to ~/.local/bin, independently of --root")),
     previousSource: Flag.string("previous-source").pipe(Flag.optional),
     session: Flag.string("session").pipe(Flag.optional),
@@ -171,6 +175,6 @@ export function runInstaller() {
     if (result.commandCleanupWarning !== undefined) yield* Console.log(result.commandCleanupWarning);
     if (result.notice !== undefined) yield* Console.log(result.notice);
     if (!options.dryRun) yield* Console.log("This changes skills for sessions using this root, not the harness model. Already-loaded prompts remain in conversation history; start a fresh session for a clean switch.");
-  })).pipe(Command.withDescription("Install this repository's skills for the selected harness and model. Gemini uses shared prompts."));
+  })).pipe(Command.withDescription("Install this repository's skills for the selected harness and model. Gemini and Cursor's auto use shared prompts."));
   command.pipe(Command.run({ version: "1.0.0" }), Effect.provide(NodeServices.layer), NodeRuntime.runMain);
 }
