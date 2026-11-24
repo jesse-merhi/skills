@@ -22,7 +22,7 @@ Honor narrower requests and report their limits. Findings-only permits inspectio
 
 ## 2. Simplify
 
-Give one implementation agent the target, requirements, owned files, repair authority and checks. Run this pass even after implementation. Claude and Gemini coordinators use the [Codex handoff](references/codex-implementation.md) for every edit. In native Codex, select the configured `implementer` role with `spawn_agent` when available. A Codex coordinator may simplify directly when dispatch is unavailable and disclose that.
+Give one implementation agent the target, requirements, owned files, repair authority and checks. Run this pass even after implementation. Claude and Gemini coordinators use the [implementation handoff](references/codex-implementation.md) for every edit. In native Codex, select the configured `implementer` role with `spawn_agent` when available. A Codex coordinator may simplify directly when dispatch is unavailable and disclose that.
 
 - **Remove waste.** Limit the pass to changed and directly affected code, tests and fixtures, including accidental generated-file changes. Check callers before deleting guards, cleanup, error handling, public contracts or tests. Apply [writing-good-tests](../writing-good-tests/SKILL.md) and distinguish test consolidation from retirement without replacement.
 - **Name things from their uses.** Read definitions and callers together. Prefer `sendNotification` to `executeNotificationDispatch`. Keep meaningful units such as `expiresAtMs` and use domain terms when they are clearer. Update definitions and uses together. Change public contracts only when authorized.

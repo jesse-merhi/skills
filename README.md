@@ -109,7 +109,8 @@ default, no advisor and Opus as the default subagent model. The launch command
 and optional [named workers](claude/README.md) preserve explicit user choices
 within the [effort caps](AGENTS.md#model-turns).
 Claude and Gemini plan and check the work. They assign every implementation edit
-to GPT-6.2 Sol at `xhigh` through a Codex worker signed in with ChatGPT. Codex coordinators
+to the first available model in the [implementer order](AGENTS.md#model-turns),
+starting with GPT-6.2 Sol at `xhigh`, and report any fallback. Codex coordinators
 can implement directly or delegate. For optional read-only advice, start with
 Astra and use Fable for harder calls that warrant it. Shared policy lives in
 `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
