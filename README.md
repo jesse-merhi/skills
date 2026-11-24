@@ -63,10 +63,12 @@ To install or switch just this repo's skills, run one command from the clone:
 ./install-skills --harness claude --model opus
 ./install-skills --harness antigravity --model gemini
 ./install-skills --harness gemini --model gemini
+./install-skills --harness cursor --model auto
 ```
 
 Antigravity, including Antigravity in T3 Code, and Gemini CLI use this repo's
-model-neutral prompts. Run the command for the app you use.
+model-neutral prompts. Run the command for the app you use. Cursor accepts any
+profile; `auto` installs the model-neutral prompts for Cursor's mixed models.
 
 Each command installs this repo's available skills for that model. Add `--require-exact` to
 reject missing model coverage, or `--dry-run` to inspect without writing.
@@ -87,6 +89,7 @@ Where the skills land, per harness:
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | Antigravity | `~/.gemini/config/skills` | `~/.gemini/AGENTS.md` | not linked |
 | Gemini CLI | `~/.gemini/skills` | `~/.gemini/GEMINI.md` | not linked |
+| Cursor | `~/.cursor/skills` | not linked; project `AGENTS.md` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
 | OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |
@@ -122,7 +125,7 @@ See [Codex orchestration](codex/README.md) for the role settings and limits.
 
 Codex has an opt-in `findings-reviewer` profile for inspect-and-report sessions. Use `codex --profile findings-reviewer review --base main` for a specifically requested native review. The profile hides coordination and publication skills while retaining domain guidance. Reviewers report evidence; the coordinator owns decisions, repairs and delivery.
 
-The installers support Codex, Claude Code, Antigravity, Gemini CLI, opencode, Pi and a local OpenClaw Gateway. The skills have mainly been exercised on Codex and Claude Code; installation alone does not prove another harness's agent dispatch or review behavior.
+The installers support Codex, Claude Code, Antigravity, Gemini CLI, Cursor, opencode, Pi and a local OpenClaw Gateway. The skills have mainly been exercised on Codex and Claude Code; installation alone does not prove another harness's agent dispatch or review behavior.
 
 ## What a skill actually is
 

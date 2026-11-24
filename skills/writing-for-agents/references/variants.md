@@ -8,7 +8,7 @@ Change shared behaviour in the base first, then adapt every supported `variants/
 
 Keep a complete prompt at every profile path. Byte-identical variants should use relative symlinks to one regular file in the same `variants/` directory. Before a profile-specific edit, replace its link with a copy; review all consuming models when editing shared text. Keep `BASE.md` separate and root `SKILL.md` linked to `variants/gpt-6.md`.
 
-The `gemini` profile for Antigravity and Gemini CLI uses the model-neutral `BASE.md` as its complete prompt.
+The `gemini` profile for Antigravity, Gemini CLI and Cursor's `auto` install uses the model-neutral `BASE.md` as its complete prompt.
 
 The applicable `AGENTS.md` assigns execution roles. Keep shared skills available to coordinators, reviewers and workers; variants adapt wording, not ownership or authority.
 
