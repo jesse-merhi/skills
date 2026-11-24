@@ -89,7 +89,7 @@ Where the skills land, per harness:
 | Codex CLI | `~/.codex/skills` | `~/.codex/AGENTS.md` | not linked |
 | Antigravity | `~/.gemini/config/skills` | `~/.gemini/AGENTS.md` | not linked |
 | Gemini CLI | `~/.gemini/skills` | `~/.gemini/GEMINI.md` | not linked |
-| Cursor | `~/.cursor/skills` | not linked; project `AGENTS.md` | not linked |
+| Cursor | `~/.cursor/skills` | copied to a rule in `~/.cursor/plugins/local/jesse-merhi-skills` | not linked |
 | opencode | `~/.config/opencode/skills` | `~/.config/opencode/AGENTS.md` | not linked |
 | Pi | `~/.pi/agent/skills` | not linked | not linked |
 | OpenClaw | generated model view via `skills.load.extraDirs` | not linked | not linked |

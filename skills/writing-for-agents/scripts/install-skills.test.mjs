@@ -67,6 +67,20 @@ test("installs Gemini prompts and readable resources in the default and configur
   assert.equal(selected(path.join(customHome, ".gemini")), "Shared instructions\n");
 });
 
+test("installs AGENTS.md as an always-applied Cursor rule and refreshes it on reinstall", (context) => {
+  const { sourceRoot, root, binDir, temporary } = fixture(context);
+  const agents = path.join(temporary, "AGENTS.md");
+  const rule = path.join(root, "plugins", "local", "jesse-merhi-skills", "rules", "global-agents.mdc");
+  fs.writeFileSync(agents, "# Global agent instructions\nFirst rules\n");
+  installSkills({ sourceRoot, root, binDir, harness: "cursor", model: "opus" });
+  assert.match(fs.readFileSync(rule, "utf8"), /^---\n(?:.*\n)*alwaysApply: true\n---\n\n# Global agent instructions\nFirst rules\n$/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(rule, "..", "..", ".cursor-plugin", "plugin.json"), "utf8")).name, "jesse-merhi-skills");
+
+  fs.writeFileSync(agents, "# Global agent instructions\nUpdated rules\n");
+  installSkills({ sourceRoot, root, binDir, harness: "cursor", model: "opus" });
+  assert.match(fs.readFileSync(rule, "utf8"), /\n---\n\n# Global agent instructions\nUpdated rules\n$/);
+});
+
 function spawnInstaller(installer, installation, barrier, environment) {
   const script = `
     import fs from "node:fs";
