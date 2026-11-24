@@ -272,8 +272,10 @@ Use `/skills` in `agy` or `gemini skills list` to check the loaded path.
 
 For Cursor, including T3 Code's Cursor provider and council reviewers launched
 through it, use `--model auto` unless every Cursor session uses one model family.
-Cursor reads `AGENTS.md` only inside a project; this repo doesn't install Cursor
-User Rules, so its instructions don't apply in unrelated projects. Cursor also
+Cursor has no global `AGENTS.md` file, so the Cursor install also copies
+`REPO/AGENTS.md` into an always-applied rule at
+`~/.cursor/plugins/local/jesse-merhi-skills/rules/global-agents.mdc`, which loads in
+every project. Rerun the install after changing `AGENTS.md`. Cursor also
 loads `~/.claude/skills` and `~/.codex/skills` and doesn't document which copy of
 a repeated skill name wins. Check the loaded copies in Cursor's skills settings.
 
@@ -284,8 +286,9 @@ full model IDs also select `gpt-6`. For Gemini CLI, `auto`, `pro`, `flash`, and
 `--require-exact` requires an exact variant for every skill. The command
 materializes the view, installs stable per-skill links, and retires only obsolete
 links owned by that view. It refuses local-file or foreign-link collisions
-before changing installed prompts. It does not edit model settings, global
-instructions, personal agents, authentication, or third-party skills.
+before changing installed prompts. Apart from Cursor's rule above, it does not edit
+model settings, global instructions, personal agents, authentication, or
+third-party skills.
 
 Defaults are `CODEX_HOME` or `~/.codex` for Codex, `CLAUDE_CONFIG_DIR` or
 `~/.claude` for Claude, `~/.gemini/config` for Antigravity, `~/.cursor` for
