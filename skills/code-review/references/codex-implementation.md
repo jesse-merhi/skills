@@ -26,8 +26,8 @@ env -u CODEX_API_KEY -u OPENAI_API_KEY codex exec \
   -s workspace-write - < task-brief.md
 ```
 
-If no Codex connection is verified as signed in with ChatGPT, skip Sol and Astra and move to the next model in the order without asking; only ask Jesse before using an API-key connection instead of skipping.
+If no Codex connection is verified as signed in with ChatGPT, skip Sol and Astra without asking. Ask Jesse before using an API-key connection instead.
 
 ## Other models
 
-In T3 Code, follow `AGENTS.md` (`Model turns`) with `orchestrator_capabilities` and `delegate_task` (`role: "implementation"`): use Cursor for Gemini 4 Neon (`reasoning_effort: "high"`) when Antigravity is unavailable, and Cursor for Claude Opus 5.5 or Fable 5.2 (`effort: "high"`) or Claude Sonnet 5.5 (`reasoning_effort: "high"`) when a Claude provider is unavailable, with fast mode off. In Claude Code, use the `Agent` tool with per-invocation `model` (such as `opus` or `sonnet`) and effort when supported by the launcher; if the launcher can't select the model and effort, treat that model as unavailable. Elsewhere, use the harness's own launcher and skip any model whose model and effort it can't select.
+In T3 Code, follow `AGENTS.md` (`Model turns`) with `orchestrator_capabilities` and `delegate_task` (`role: "implementation"`) for provider selection (including Antigravity and Cursor fallbacks), effort option names and keeping fast mode off. In Claude Code, use the `Agent` tool with per-invocation `model` (such as `opus` or `sonnet`) and effort when supported by the launcher; if the launcher can't select the model and effort, treat that model as unavailable. Elsewhere, use the harness's own launcher and skip any model whose model and effort it can't select.
