@@ -272,9 +272,10 @@ Use `/skills` in `agy` or `gemini skills list` to check the loaded path.
 
 For Cursor, including T3 Code's Cursor provider and council reviewers launched
 through it, use `--model auto` unless every Cursor session uses one model family.
-Cursor reads project `AGENTS.md`, so it needs no global instructions link. Cursor
-also loads `~/.claude/skills` and `~/.codex/skills`; a skill with the same name in
-`~/.cursor/skills` takes priority. Check the loaded skills in Cursor's `/` menu.
+Cursor reads `AGENTS.md` only inside a project; this repo doesn't install Cursor
+User Rules, so its instructions don't apply in unrelated projects. Cursor also
+loads `~/.claude/skills` and `~/.codex/skills` and doesn't document which copy of
+a repeated skill name wins. Check the loaded copies in Cursor's skills settings.
 
 Run the command matching the requested profile. `astra`, `sol`, `luna` and their
 full model IDs also select `gpt-6`. For Gemini CLI, `auto`, `pro`, `flash`, and
