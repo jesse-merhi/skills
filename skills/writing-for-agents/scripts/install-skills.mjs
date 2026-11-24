@@ -28,11 +28,15 @@ function harnessDirectory(harness) {
 // Cursor has no global AGENTS.md. An always-applied rule in a local plugin loads in every project.
 const cursorRuleHeader = "---\ndescription: Global agent instructions from the skills repository's AGENTS.md\nalwaysApply: true\n---\n\n";
 
+function cursorRulePath(harnessRoot) {
+  return path.join(harnessRoot, "plugins", "local", "jesse-merhi-skills", "rules", "global-agents.mdc");
+}
+
 function writeCursorRule(rule, instructions) {
   const plugin = path.dirname(path.dirname(rule));
   fs.mkdirSync(path.join(plugin, ".cursor-plugin"), { recursive: true });
   fs.mkdirSync(path.dirname(rule), { recursive: true });
-  fs.writeFileSync(path.join(plugin, ".cursor-plugin", "plugin.json"), `${JSON.stringify({ name: "jesse-merhi-skills", description: "Global agent instructions" }, null, 2)}\n`);
+  fs.writeFileSync(path.join(plugin, ".cursor-plugin", "plugin.json"), `${JSON.stringify({ name: path.basename(plugin), description: "Global agent instructions" }, null, 2)}\n`);
   fs.writeFileSync(rule, cursorRuleHeader + instructions);
 }
 
@@ -113,8 +117,7 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
     return inspectLinks(skillsDirectory, viewRoot, plan.skills, plan.sourceRoot, previousSourceRoot, skillNames !== undefined);
   };
   const preview = preflight();
-  const globalRule = harness === "cursor"
-    ? path.join(harnessRoot, "plugins", "local", "jesse-merhi-skills", "rules", "global-agents.mdc") : undefined;
+  const globalRule = harness === "cursor" ? cursorRulePath(harnessRoot) : undefined;
   const commandOptions = { binDir, sourceRoot: plan.sourceRoot, previousSourceRoot, skills: plan.skills, skillNames };
   if (dryRun) {
     const commandPreview = planCommands(commandOptions);
@@ -127,7 +130,8 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
   }
   return withHarnessInstallationLock(harnessRoot, () => withInstalledCommands(commandOptions, () => {
     const { links, retired } = preflight();
-    const instructions = globalRule === undefined ? undefined : fs.readFileSync(path.join(plan.sourceRoot, "..", "AGENTS.md"), "utf8");
+    // Write the rule before publishing skills: nothing may fail after the view is published.
+    if (globalRule !== undefined) writeCursorRule(globalRule, fs.readFileSync(path.join(plan.sourceRoot, "..", "AGENTS.md"), "utf8"));
     fs.mkdirSync(skillsDirectory, { recursive: true });
     const changed = [];
     try {
@@ -151,7 +155,6 @@ export function installSkills({ harness, model, root, sourceRoot = sourceDefault
         sourceRoot: plan.sourceRoot, outputRoot: viewRoot, model: profileModel, previousSourceRoot, requireExact, skillNames,
         sessionId: sessionId ?? process.env.CODEX_THREAD_ID ?? process.env.CLAUDE_SESSION_ID,
       });
-      if (globalRule !== undefined) writeCursorRule(globalRule, instructions);
       return { ...result, model, harness, root: harnessRoot, viewRoot, globalRule, linksChanged: links.length, linksRetired: retired.length };
     } catch (error) {
       for (const link of changed.reverse()) {
@@ -188,7 +191,7 @@ export function runInstaller() {
     yield* Console.log(`Commands: ${result.commands.length} in ${result.binDir} (${result.commandsChanged} changed, ${result.commandsRetired} retired)`);
     if (!(process.env.PATH ?? "").split(path.delimiter).some(directory => path.resolve(directory) === result.binDir)) yield* Console.log(`Command directory is not on PATH: ${result.binDir}. No shell configuration was changed.`);
     if (result.commandCleanupWarning !== undefined) yield* Console.log(result.commandCleanupWarning);
-    if (result.globalRule !== undefined) yield* Console.log(`Global instructions: ${result.globalRule}`);
+    if (result.globalRule !== undefined) yield* Console.log(`Global instructions${options.dryRun ? " (would overwrite)" : ""}: ${result.globalRule}`);
     if (result.notice !== undefined) yield* Console.log(result.notice);
     if (!options.dryRun) yield* Console.log("This changes skills for sessions using this root, not the harness model. Already-loaded prompts remain in conversation history; start a fresh session for a clean switch.");
   })).pipe(Command.withDescription("Install this repository's skills for the selected harness and model. Gemini and Cursor's auto use shared prompts."));

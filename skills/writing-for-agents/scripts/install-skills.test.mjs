@@ -74,6 +74,7 @@ test("installs AGENTS.md as an always-applied Cursor rule and refreshes it on re
   fs.writeFileSync(agents, "# Global agent instructions\nFirst rules\n");
   installSkills({ sourceRoot, root, binDir, harness: "cursor", model: "opus" });
   assert.match(fs.readFileSync(rule, "utf8"), /^---\n(?:.*\n)*alwaysApply: true\n---\n\n# Global agent instructions\nFirst rules\n$/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(rule, "..", "..", ".cursor-plugin", "plugin.json"), "utf8")).name, "jesse-merhi-skills");
 
   fs.writeFileSync(agents, "# Global agent instructions\nUpdated rules\n");
   installSkills({ sourceRoot, root, binDir, harness: "cursor", model: "opus" });
