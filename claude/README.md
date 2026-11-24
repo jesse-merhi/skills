@@ -39,9 +39,9 @@ Keep the source checkout available and restart Claude after installation. Do not
 
 Claude supports native Markdown definitions and session-only `--agents` JSON. See [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) for native discovery and configuration.
 
-## Implementation through Codex
+## Implementation handoff
 
-Use the [Codex handoff instructions](../skills/code-review/references/codex-implementation.md) in T3 Code or with the standalone CLI. The installed `code-review` skill includes the same instructions.
+Use the [implementation handoff instructions](../skills/code-review/references/codex-implementation.md) for the implementer order and launch steps in T3 Code, Claude Code or the standalone Codex CLI. The installed `code-review` skill includes the same instructions.
 
 ## Assignment
 

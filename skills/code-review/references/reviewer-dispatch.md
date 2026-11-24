@@ -2,7 +2,7 @@
 
 Use the models and effort from [Step 3](../SKILL.md#3-choose-a-review-mode) in place of harness reviewer defaults. Prefer a findings-only role configured for the exact model and effort.
 
-- **T3 Code.** Use `orchestrator_capabilities` to resolve provider and model IDs and supported options. Launch with `delegate_task` and set effort in `target.options`. For Gemini 4 Neon, select an authenticated Antigravity provider with its High thinking setting, or Cursor with `reasoning_effort` set to `high`. Cursor can also run Claude Opus 5.5 and Fable 5.2 at high when no Claude provider is available; keep its fast mode off.
+- **T3 Code.** Use `orchestrator_capabilities` and launch with `delegate_task`, setting effort in `target.options`. Follow `AGENTS.md` (`Model turns`) for provider selection (including Antigravity and Cursor fallbacks), effort option names and keeping fast mode off.
 - **Native Codex.** Use `spawn_agent` with `fork_turns="none"` only for supported models and settings.
 - **Native Claude Code.** Use fresh native `Agent` calls only for supported models and settings.
 - **Other harnesses.** Use native subagent tools only for models and settings they support. Require a fresh context with no inherited session history.

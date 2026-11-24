@@ -95,9 +95,9 @@ is absent or already points to this repo.
 
 For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `${GEMINI_CLI_HOME:-$HOME}/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
 
-> Delegate every implementation edit to GPT-6.2 Sol at `xhigh` through Codex signed in with ChatGPT. Inspect the diff and verify the result yourself. If handoff is blocked, leave the edit pending and report why.
+> Delegate every implementation edit to the first implementer that can start, in this order: GPT-6.2 Sol at `xhigh`, Gemini 4 Neon at `high`, Claude Opus 5.5 at `high`, GPT-6.2 Astra at `xhigh`, Claude Sonnet 5.5 at `high`, then Claude Fable 5.2 at `high`. Launch Sol and Astra through Codex signed in with ChatGPT. Skip an unavailable model without asking, and say in the final reply which model did the work and why earlier ones were skipped. Inspect the diff and verify the result yourself. If none can start or handoff is blocked, leave the edit pending and report why.
 
-Copy the standalone CLI instructions from the [Codex handoff guide](skills/code-review/references/codex-implementation.md) into the same context file so Gemini can launch without reading outside its workspace. From an unrelated project, run `/memory show` to confirm the rule and CLI command are loaded.
+Copy the standalone CLI instructions from the [implementation handoff guide](skills/code-review/references/codex-implementation.md) into the same context file so Gemini can launch without reading outside its workspace. From an unrelated project, run `/memory show` to confirm the rule and CLI command are loaded.
 
 OpenClaw does not receive a global-instructions link from this repo. Skip this
 step when installing only into OpenClaw.
@@ -106,7 +106,7 @@ step when installing only into OpenClaw.
 
 Claude Code uses its normal main session and project instructions described
 above. Opus 5.5 at high is the default coordinator, with no advisor. Route every
-implementation edit through [GPT-6.2 Sol at `xhigh`](claude/README.md#implementation-through-codex).
+implementation edit through the [implementer order](AGENTS.md#model-turns).
 Haiku 5.5 at high handles codebase search and prepared validation. Fable 5.2 at
 high remains available as a read-only oracle.
 Preserve explicit user model and effort choices within the [effort caps](AGENTS.md#model-turns).
