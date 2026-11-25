@@ -703,31 +703,41 @@ function discoverSkills(): Skill[] {
 
 function recentLogFiles(): string[] {
   if (noLogs) return [];
-  const files = new Set<string>();
-  const roots = [path.join(codexHome, "sessions")];
+  const files = new Map<string, { tier: number; mtimeMs: number }>();
   const history = path.join(codexHome, "history.jsonl");
-  if (exists(history)) files.add(fs.realpathSync(history));
+  try {
+    files.set(fs.realpathSync(history), { tier: 0, mtimeMs: fs.statSync(history).mtimeMs });
+  } catch {}
+
+  // Collect roots in priority order so aliases retain their highest tier.
+  const roots = [{ directory: path.join(codexHome, "sessions"), tier: 1 }];
   if (deepLogs) {
     roots.push(
-      path.join(codexHome, "archived_sessions"),
-      path.join(home, ".openclaw"),
-      path.join(home, ".clawd"),
+      { directory: path.join(codexHome, "archived_sessions"), tier: 2 },
+      { directory: path.join(home, ".openclaw"), tier: 2 },
+      { directory: path.join(home, ".clawd"), tier: 2 },
     );
   }
-  for (const root of roots) {
-    for (const file of walkRecentFiles(root, (candidate) => candidate.endsWith(".jsonl") || candidate.endsWith(".log"), 8)) {
+  for (const { directory, tier } of roots) {
+    for (const { file, mtimeMs } of walkRecentFiles(directory)) {
       try {
-        if (fs.statSync(file).mtimeMs >= cutoffMs) files.add(fs.realpathSync(file));
+        const realPath = fs.realpathSync(file);
+        if (!files.has(realPath)) files.set(realPath, { tier, mtimeMs });
       } catch {}
     }
   }
-  return [...files].sort();
+  return [...files].sort(([leftPath, left], [rightPath, right]) => {
+    const byPriority = left.tier - right.tier || right.mtimeMs - left.mtimeMs;
+    if (byPriority !== 0) return byPriority;
+    if (leftPath === rightPath) return 0;
+    return leftPath < rightPath ? -1 : 1;
+  }).map(([file]) => file);
 }
 
-function walkRecentFiles(root: string, predicate: (file: string) => boolean, maxDepth = 8): string[] {
-  const out: string[] = [];
+function walkRecentFiles(root: string): { file: string; mtimeMs: number }[] {
+  const out: { file: string; mtimeMs: number }[] = [];
   function walk(dir: string, depth: number) {
-    if (depth > maxDepth) return;
+    if (depth > 8) return;
     let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -745,8 +755,8 @@ function walkRecentFiles(root: string, predicate: (file: string) => boolean, max
       if (entry.isDirectory()) {
         if (depth > 0 && stat.mtimeMs < cutoffMs) continue;
         walk(file, depth + 1);
-      } else if (entry.isFile() && stat.mtimeMs >= cutoffMs && predicate(file)) {
-        out.push(file);
+      } else if (entry.isFile() && stat.mtimeMs >= cutoffMs && (file.endsWith(".jsonl") || file.endsWith(".log"))) {
+        out.push({ file, mtimeMs: stat.mtimeMs });
       }
     }
   }
@@ -911,9 +921,9 @@ function scanUsage(skills: Skill[], logFiles: string[]): Map<string, Usage> {
     try {
       const stat = fs.statSync(file);
       if (stat.size > 150 * 1024 * 1024) continue;
-      if (consumedBytes + stat.size > maxLogBytes) break;
-      consumedBytes += stat.size;
+      if (consumedBytes + stat.size > maxLogBytes) continue;
       text = fs.readFileSync(file, "utf8");
+      consumedBytes += stat.size;
     } catch {
       continue;
     }

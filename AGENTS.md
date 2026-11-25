@@ -1,25 +1,25 @@
 # Global agent instructions
 
-These instructions apply to Claude Code, Codex, opencode, Pi, Antigravity and Cursor. Harness-specific rules are under their own headings. Edit shared instructions here.
+Edit shared instructions for Claude Code, Codex, opencode, Pi, Antigravity and Cursor here. Harness-specific rules have their own headings.
 
 ## Communication
 
-Jesse reads the final reply without the progress updates, tool calls or files. Open with the outcome in a sentence or two. Use plain words, explain necessary technical terms and use recognizable names for anything you created. Follow `speak-fking-english` for longer writing.
+Jesse reads the final reply on its own. Open with the outcome in a sentence or two. Use plain words and recognizable names. Explain necessary technical terms. Follow `speak-fking-english` for longer writing.
 
-- After the opening, show each change Jesse can see or run as **A · Before** beside **B · After** (or A above B in text). A new screen or file stands alone.
-  - Screens: Show screenshots of the same view and caption what to look for. Add a [show-video](skills/show-video/SKILL.md) recording for flow or motion.
-  - Structure: Show additions, removals or moves of components, caches, queues or services in a rendered A/B [design-technical-diagrams](skills/design-technical-diagrams/SKILL.md) diagram. Skip ASCII art.
-  - Code: Show the real lines before and after. Skip diff notation.
-  - Commands and APIs: Show the actual command or request and its output as text.
-- Render visuals in chat without hosting or uploading them. Use HTML where supported, else embed an image by absolute path. In T3 Code, send the opening with `send_to_user`, check the page with `html_preview`, then use `html_render` so it appears above the final reply. Inspect every capture and the finished page. If you can't show it, say why and link the local file.
-- Give text for answers, assessments and text-only requests. Workers return proof to the coordinator, who shows it to Jesse.
-- Separate proven results from untested ones. Omit hashes, receipt paths and internal IDs Jesse doesn't need.
-- When finishing multi-step or release work, state the actual rollout status including merge, staging or preview, production or OTA where applicable, and any remaining manual steps.
-- Ask only when evidence, safe investigation or a low-risk assumption can't settle the question. Use the harness's synchronous question tool if available. In Codex, use `request_user_input`. Do not use `request_user_input_async`. Otherwise ask in the final reply.
+- Show each visible or runnable change after the opening as **A · Before** beside **B · After**, or stacked in text. A new screen or file stands alone.
+  - For screens, show and caption screenshots of the same view. Add a [show-video](skills/show-video/SKILL.md) recording for flow or motion.
+  - For added, removed or moved components, caches, queues or services, render an A/B [diagram](skills/design-technical-diagrams/SKILL.md). Skip ASCII art.
+  - For code, show the actual lines. Skip diff notation.
+  - For commands and APIs, show the actual command or request and its output as text.
+- Render visuals in chat without hosting or uploading. Prefer HTML, else embed by absolute path. In T3 Code, send the opening with `send_to_user`, check the page with `html_preview`, then use `html_render` above the final reply. Inspect every capture and the finished page. If you can't show it, say why and link the local file.
+- Use text for answers, assessments and text-only requests. Workers give proof to the coordinator to show Jesse.
+- Separate verified and untested results. Omit hashes, receipt paths and internal IDs Jesse doesn't need.
+- For multi-step or release work, report actual merge, staging or preview, production or OTA status as applicable and any remaining manual steps.
+- Ask only when evidence, safe investigation or a low-risk assumption can't settle it. Use the harness's synchronous tool when available. In Codex, use `request_user_input`. Never use `request_user_input_async`. Otherwise ask in the final reply.
 
 ## Check-ins
 
-When something below needs Jesse's decision, check in: show what to look at (PR or file, change, proof and open concerns), your recommendation and what comes next. Keep working on independent steps. Proceed on Jesse's yes in chat.
+Show the PR or file, change, proof, open concerns, recommendation and next step. Keep working on independent steps. Proceed on Jesse's yes in chat.
 
 Check in before:
 
@@ -59,12 +59,12 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 - Cap effort at `high` for Gemini 4 Neon, Claude Fable 5.2, Claude Opus 5.5 and Claude Sonnet 5.5, and at `xhigh` for GPT-6.2 Astra and GPT-6.2 Sol. Never use `max`, `ultra` or `ultrathink`; other models stay below them. Defaults, briefs, skills and other agents can't exceed the caps.
 - Keep fast mode off (Claude and Cursor `fastMode`, Codex `priority` or `ultrafast` tiers, `/fast`) unless Jesse asks for it on that task.
 - Default to GPT-6.2 Sol at high for coordination, test design, debugging and reviews outside `code-review`. Use GPT-6 Luna at high for established tests, lint, type checks, prepared validation and bounded retrieval such as `session-recall` and `skill-cleaner` inventories. See [Claude Code defaults](#named-workers).
-- Claude and Gemini coordinators delegate every implementation edit, including small edits, tests, docs, simplification and review fixes, to the first implementer that can start: GPT-6.2 Sol at `xhigh`, Gemini 4 Neon at `high`, Claude Opus 5.5 at `high`, GPT-6.2 Astra at `xhigh`, Claude Sonnet 5.5 at `high`, then Claude Fable 5.2 at `high`. Skip one ruled out by its launcher, model, account, subscription or spend cap without asking, and name the model used and why earlier ones were skipped in the final reply. The coordinator plans, investigates, sequences work, reviews the diff, verifies it independently and delivers. Follow the [implementation handoff](skills/code-review/references/codex-implementation.md) for launch, account checks, briefs and follow-up edits. If no implementer can start or the host prevents delegation (such as T3's small review-fix rule), report the blocker and leave the edit pending.
-- Codex coordinators can implement directly or delegate within the task and skills. When delegating implementation, use the implementer order above. Give workers a bounded task and completion condition. Keep sequencing, integration and delivery with the coordinator.
+- If the host explicitly forbids delegating a small review fix, as T3 does, apply it directly and disclose it. Otherwise, Claude and Gemini coordinators delegate every implementation edit, including small edits, tests, docs, simplification and review fixes. Use the first available implementer in order: GPT-6.2 Sol (`xhigh`), Gemini 4 Neon (`high`), Claude Opus 5.5 (`high`), GPT-6.2 Astra (`xhigh`), Claude Sonnet 5.5 (`high`), Claude Fable 5.2 (`high`). Follow the [implementation handoff](skills/code-review/references/codex-implementation.md). Skip models ruled out by launcher, model, account, subscription or spend cap without asking. Report the model used and why earlier ones were skipped in the final reply. The coordinator plans, investigates, sequences, reviews the diff, verifies independently and delivers. If no implementer can start, report the blocker and leave the edit pending.
+- Codex coordinators may implement directly or delegate within task and skill limits. Follow the same implementer order. Give workers a bounded task and completion condition. The coordinator keeps sequencing, integration and delivery.
 - When delegating to Codex from any harness, including Codex on another connection, verify ChatGPT sign-in before launching and ask Jesse before using an API-key connection.
 - In T3 Code, use `orchestrator_capabilities` to pick an enabled provider, model ID and effort option (`reasoningEffort` on Codex; `effort` on Claude; High thinking on Antigravity; `reasoning_effort` for Gemini 4 Neon and Claude Sonnet 5.5, and `effort` for Claude Opus 5.5 and Fable 5.2, on Cursor). Use Cursor for Gemini 4 Neon when Antigravity is unavailable, and for Claude Opus 5.5, Sonnet 5.5 or Fable 5.2 when a Claude provider is unavailable; keep fast mode off.
-- For a second opinion on an unresolved decision, prefer read-only GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for harder decisions that warrant the cost or for the native Claude `oracle` role. Give one question, revision, evidence and constraints. The oracle advises and the coordinator decides. `code-review` owns its review modes and council.
-- Findings-only reviewers report supported findings, evidence, open concerns and verification limits. They don't edit, manage fixes, capture new proof, publish or run handoffs. Give fresh reviewers the target, requirements and available proof without implementation rationale or prior findings. The coordinator confirms and prioritizes findings. Reading a skill can't expand an assignment.
+- For an unresolved decision, prefer read-only GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for harder decisions that warrant the cost or as the native Claude `oracle`. Give one question, revision, evidence and constraints. The coordinator decides. `code-review` owns its review modes and council.
+- Findings-only reviewers report supported findings, evidence, concerns and verification limits. They don't edit, manage fixes, capture new proof, publish or run handoffs. Give fresh reviewers the target, requirements and proof without implementation rationale or prior findings. The coordinator confirms and prioritizes findings. Skills can't expand an assignment.
 - Apply Jesse's explicit model or effort override in the launcher for that task only, within the caps. Report an unavailable override without substituting.
 - Batch independent calls with bounded output (`Promise.allSettled` in Codex code mode). Read all required text and recover clipped sections. Keep dependent calls and writes serial.
 - Use `wait-efficiently` for agents, CI, long commands and timed delays.
@@ -72,15 +72,15 @@ Before writing infrastructure for parsing, validation, serialization, retries, q
 ## Outcome and completion
 
 - Infer the outcome from the request and later corrections. Build or fix requests authorize local implementation and verification. Questions and problem descriptions alone call for an assessment.
-- Set a concrete done condition before open-ended work and stop once it's met. Finish all authorized work before stopping. Don't stop at a plan, diagnosis or partial patch, or end with an offer to continue. Pause only for a real blocker or required check-in.
+- Set a concrete done condition before open-ended work. Finish all authorized steps before stopping at that condition. A plan, diagnosis, partial patch or offer to continue falls short. Pause only for a real blocker or required check-in.
 - Check the result against the request and corrections. Show proof and report anything unfinished with the evidence and blocker. List further polish as optional.
 
 ## Working rules
 
 - Avoid forced deletion (`rm -f`, `rm -rf`, `--force`) in routine cleanup. Use plain `rm` for verified disposable files and `rmdir` for empty directories. Inspect any blocked target and error before retrying.
-- Load the smallest set of skills for the requested action and artifact, not an incidental keyword. Jesse's explicit instructions take precedence. If a skill makes you pause, ask or depart from the request, name it and quote the instruction.
+- Load only skills relevant to the action and artifact. Jesse's explicit instructions take precedence. If a skill makes you pause, ask or depart from the request, name it and quote the rule.
 - Work on a branch in a dedicated git worktree. Never push agent-authored commits to the default branch.
-- Push, open or update a PR only when requested (for example, "push", "publish", "ship", "update the PR" or an authorizing workflow such as `just-do-it`). Otherwise show a local checkpoint. Use `pr-proof-pack` after pushing finished work.
+- Push, open or update a PR only when requested or authorized by a workflow such as `just-do-it`. Otherwise show a local checkpoint. Use `pr-proof-pack` after pushing finished work.
 - Use one PR per story and follow up in that PR. Use installed `gh stack` (see `gh stack --help`) only for two or more genuinely dependent review units.
 - Before marking ready or merging, get `code-review` on the current changes unless Jesse waived it. Check in with findings and fixes, proof and CI state.
 - Merge through the provider's protected flow. For a GitHub merge queue, after check-in, submit with `gh pr merge <pr-url> --match-head-commit <reviewed-head>` and confirm queue membership and eventual merge through GitHub. Never bypass protections or required checks.
@@ -109,8 +109,4 @@ Follow [T3 browser rules](#browser-work-in-t3-code) in T3. Elsewhere, use Claude
 
 ### Named workers
 
-Claude Opus 5.5 at high coordinates without an advisor. Opus 5.5 is the default subagent model. Installing instructions doesn't change live settings.
-
-When [named workers](claude/README.md) are installed, use `Agent` with the role's `subagent_type`. The `investigator` and `findings-reviewer` use Opus 5.5/high for read-only work requiring judgment. The `test-executor` and `Explore` use Haiku 5.5/high for prepared checks, searches and bounded retrieval with a checkable answer. Apply the model and effort per invocation on the matching role. The read-only `oracle` uses Fable 5.2/high under the shared model rules.
-
-Give a read-only worker a concrete check if it falls short. Use the oracle if a decision still needs judgment. Route file changes through the [implementer order](#model-turns). Give each worker the original task or exact quoted requirements and verify its result against them.
+Follow the [Claude defaults and named-worker model table](claude/README.md). For installed roles, use `Agent` with the matching `subagent_type`, model and effort per call. Give workers the original task or exact quoted requirements and verify their results. Give a read-only worker a concrete check if it falls short, and consult the oracle if a decision still needs judgment. Route edits through [Model turns](#model-turns).

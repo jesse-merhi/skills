@@ -315,6 +315,19 @@ test("switches Fable to Opus through stable links without changing other skills 
   assert.equal(fs.readFileSync(path.join(current.root, "settings.json"), "utf8"), '{"model":"claude-fable-5[1m]"}\n');
 });
 
+test("installs Fable 5.2 exactly and warns on a future Fable minor", (t) => {
+  const options = { ...fixture(t), harness: "claude" };
+  const supported = installSkills({ ...options, model: "claude-fable-5-2" });
+  assert.equal(supported.profile, "claude-fable-5.1");
+  assert.equal(supported.exact, true);
+  assert.equal(supported.notice, undefined);
+
+  const future = installSkills({ ...options, model: "claude-fable-5.3" });
+  assert.equal(future.profile, "claude-fable-5.1");
+  assert.equal(future.exact, false);
+  assert.match(future.notice, /claude-fable-5\.3/);
+});
+
 test("restores migrated and retired links when view publication fails", (t) => {
   const current = fixture(t);
   const first = installSkills({ ...current, harness: "codex", model: "sol" });

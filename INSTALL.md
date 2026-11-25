@@ -26,8 +26,7 @@ proceeding.
 
 Resolve the intended model from the user's request or the harness's actual
 configuration, not from writing style. GPT-6 Astra, Sol and Luna share the `gpt-6`
-skill profile; Claude Fable 5.1 and Opus 5.5 have separate profiles. A newer model in a known family
-uses its nearest preceding variant and produces an informational update notice.
+skill profile. Claude Fable 5.1 and 5.2 share `claude-fable-5.1`, and both match exactly without a fallback notice. Claude Opus 5.5 has its own profile. An unsupported newer model in a known family uses its nearest preceding variant and produces an informational update notice.
 Antigravity and Gemini CLI use the shared `gemini` profile, which installs the model-neutral prompts from `BASE.md`.
 Cursor runs models from every family and accepts any profile; `--model auto` selects the same model-neutral prompts.
 Installation stops on an unknown family or a missing profile prompt.
@@ -95,7 +94,7 @@ is absent or already points to this repo.
 
 For the separate Gemini CLI, add the following rule directly to its [global context file](https://geminicli.com/docs/cli/gemini-md/), normally `${GEMINI_CLI_HOME:-$HOME}/.gemini/GEMINI.md`. Preserve existing context and any custom filename.
 
-> Delegate every implementation edit to the first implementer that can start, in this order: GPT-6.2 Sol at `xhigh`, Gemini 4 Neon at `high`, Claude Opus 5.5 at `high`, GPT-6.2 Astra at `xhigh`, Claude Sonnet 5.5 at `high`, then Claude Fable 5.2 at `high`. Launch Sol and Astra through Codex signed in with ChatGPT. Skip an unavailable model without asking, and say in the final reply which model did the work and why earlier ones were skipped. Inspect the diff and verify the result yourself. If none can start or handoff is blocked, leave the edit pending and report why.
+> If the host explicitly forbids delegating a small review fix, apply it directly and disclose it. Otherwise delegate every implementation edit to the first available model. Try GPT-6.2 Sol at `xhigh`, Gemini 4 Neon at `high`, Claude Opus 5.5 at `high`, GPT-6.2 Astra at `xhigh`, Claude Sonnet 5.5 at `high` and Claude Fable 5.2 at `high`, in that order. Launch Sol and Astra through Codex signed in with ChatGPT. Skip an unavailable model without asking, and say in the final reply which model did the work and why earlier ones were skipped. Inspect the diff and verify the result yourself. If none can start or handoff is blocked, leave the edit pending and report why.
 
 Copy the standalone CLI instructions from the [implementation handoff guide](skills/code-review/references/codex-implementation.md) into the same context file so Gemini can launch without reading outside its workspace. From an unrelated project, run `/memory show` to confirm the rule and CLI command are loaded.
 
@@ -105,8 +104,9 @@ step when installing only into OpenClaw.
 ## 3. Preserve Claude's normal session
 
 Claude Code uses its normal main session and project instructions described
-above. Opus 5.5 at high is the default coordinator, with no advisor. Route every
-implementation edit through the [implementer order](AGENTS.md#model-turns).
+above. Opus 5.5 at high is the default coordinator, with no advisor. Follow the
+[implementation handoff policy](AGENTS.md#model-turns) (applying and disclosing
+small review fixes directly only when the host explicitly forbids delegating them).
 Haiku 5.5 at high handles codebase search and prepared validation. Fable 5.2 at
 high remains available as a read-only oracle.
 Preserve explicit user model and effort choices within the [effort caps](AGENTS.md#model-turns).

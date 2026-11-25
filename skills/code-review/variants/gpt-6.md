@@ -12,7 +12,7 @@ metadata:
 
 # Code review
 
-Simplify the change, then have one independent reviewer or a five-model council assess it and any affected UI. Never start a second council through another skill.
+Simplify the change, then have one independent reviewer or a four-model council assess it and any affected UI. Never start a second council through another skill.
 
 ## 1. Establish the change
 
@@ -22,7 +22,7 @@ Honor narrower requests and report their limits. Findings-only permits inspectio
 
 ## 2. Simplify
 
-Give one implementation agent the target, requirements, owned files, repair authority and checks. Run this pass even after implementation. Claude and Gemini coordinators use the [implementation handoff](references/codex-implementation.md) for every edit. In native Codex, select the configured `implementer` role with `spawn_agent` when available. A Codex coordinator may simplify directly when dispatch is unavailable and disclose that.
+Give one implementation agent the target, requirements, owned files, repair authority and checks. Run this pass even after implementation. Claude and Gemini coordinators follow the [implementation handoff](references/codex-implementation.md). In native Codex, select the configured `implementer` role with `spawn_agent` when available. A Codex coordinator may simplify directly when dispatch is unavailable and disclose that.
 
 - **Remove waste.** Limit the pass to changed and directly affected code, tests and fixtures, including accidental generated-file changes. Check callers before deleting guards, cleanup, error handling, public contracts or tests. Apply [writing-good-tests](../writing-good-tests/SKILL.md) and distinguish test consolidation from retirement without replacement.
 - **Name things from their uses.** Read definitions and callers together. Prefer `sendNotification` to `executeNotificationDispatch`. Keep meaningful units such as `expiresAtMs` and use domain terms when they are clearer. Update definitions and uses together. Change public contracts only when authorized.
@@ -33,10 +33,10 @@ The simplifier returns its patch, a concrete before/after explanation, checks an
 
 ## 3. Choose a review mode
 
-**Decide the review mode yourself. Never ask the user whether to run one reviewer or five.** Honor the mode the user explicitly requested. Otherwise, apply the rules below and proceed. State which mode ran in the report.
+**Choose the review mode without asking.** Honor the user's explicit request. Otherwise, apply the rules below and proceed. State which mode ran in the report.
 
 - **Single reviewer (default).** Use one fresh findings-only **GPT-6.2 Sol** reviewer at **high** for ordinary features, bug fixes, tests, docs, clean rebases and small follow-ups. If Sol is unavailable at high in fresh context, use **Claude Opus 5.5** at **high**.
-- **Five-model council.** Launch all five fresh findings-only reviewers at **high** when the user asks for a council or any trigger below applies. The lineup is **GPT-6.2 Sol, GPT-6.2 Astra, Claude Opus 5.5, Claude Fable 5.2 and Gemini 4 Neon**.
+- **Four-model council.** Launch fresh findings-only **GPT-6.2 Sol, GPT-6.2 Astra, Claude Opus 5.5 and Gemini 4 Neon**, all at **high**, when the user asks for a council or any trigger below applies. Claude Fable 5.2 remains available for read-only oracle advice or at the user's explicit request.
   - **High-risk boundary.** The change touches authentication, permissions, security or privacy, billing or payments, database migrations, persisted-data formats, or release or CI deployment pipelines.
   - **Broad structural change.** The change refactors multiple packages or subsystems, or changes a public API or contract.
   - **Substantial UI or UI polish.** The change adds or reworks a user-facing screen, or the user asks to polish or score the UI.
@@ -81,7 +81,10 @@ Settle unclear triggers from callers, deployment and targeted probes, not the wo
 
 Route authorized fixes and selected UI improvements through Step 2's implementation policy. Verify repaired and preserved behavior and recapture changed UI. A contained fix stays within its finding, preserves other behavior, contracts, persisted data, security and permissions, and passes relevant checks.
 
-- **Run another round** after a blocking fix, a selected UI improvement or an uncontained fix. Keep the round’s review mode unless repairs newly cross a Step 3 council trigger or Step 3’s post-round escalation upgrades a single-reviewer review to a five-model council (while honoring an explicit user mode request). Follow the UI polish gating rules when they apply. Fresh reviewers assess the full resulting change under the same criteria.
+- **Run another round** after a blocking fix, a selected UI improvement, an uncontained fix, a repair that crosses a new high-risk boundary or subsystem, an unresolved repair dispute in a targeted re-check, or when UI polish still requires a qualifying council scoring round. Fresh reviewers assess the full resulting change under the same criteria.
+  - Honor explicit mode requests, including a full council every round. Keep UI polish scoring when applicable. Use its lowest-scorer gate only for score-only visual iterations. Apply the reviewer rules below after a blocking or uncontained code fix, a repair that crosses a new high-risk boundary or subsystem, or an unresolved repair dispute.
+  - In single-reviewer mode, keep that mode unless repairs newly cross a Step 3 council trigger or Step 3’s post-round escalation applies.
+  - In a council review, return to the full four-model council if repairs cross a new high-risk boundary or subsystem, or on the same revision if a targeted re-check leaves a repair disputed (before asking the user under **Stop and ask the user**). After other blocking or uncontained fixes, use a targeted re-check in Round 2 or later. Launch fresh **GPT-6.2 Sol and GPT-6.2 Astra**, plus any other council member who raised a confirmed blocking finding in the previous round, all at **high**. For other round triggers, retain the previous round's mode unless UI polish gating applies.
 - **Finish** when the reviewed revision has no blocking findings and no other round trigger applies. Report any contained fixes the coordinator verified by checks after the round.
 - **Stop and ask the user** if fixes keep producing new blockers in touched code, a blocker survives repeated repairs, or evidence cannot settle whether a finding blocks. If Round 2 repairs keep surfacing architectural or failure-mode blockers in one subsystem, agree on a short design covering invariants, recovery behaviour and tests, or narrow scope before another implementation round. Also stop if missing evidence, tools or authority blocks further work. Report the pattern, evidence and decision needed. For read-only advice, prefer GPT-6.2 Astra at high. Use Claude Fable 5.2 at high for a harder decision or through the native Claude `oracle` role.
 
@@ -90,8 +93,9 @@ Route authorized fixes and selected UI improvements through Step 2's implementat
 Report the final round against the revision it assessed.
 
 - **Single-reviewer review** when single-reviewer mode ran. Name the actual model and effort, including the reason if it used the fallback.
-- **Full council** when all five members assessed that revision.
-- **Restricted council** when some of the five assessed it. Name each missing model and why it did not qualify, even if only one member completed the council round.
+- **Full council** when all four members assessed that revision in a council round.
+- **Restricted council** when one to three members assessed it in a council round. Name each missing model and why it did not qualify.
+- **Full or restricted council with a targeted re-check** when a council review closes on a clean targeted round. Say which round convened the council and whether it was full or restricted, with reasons for missing seats. Give the final revision, the models and effort used for the re-check, why each was selected, and why any selected reviewer was unavailable.
 
 Any of these completes `code-review` when simplification is done, the reviewed revision has no blocking issues, only contained fixes follow, applicable UI criteria have capture and interaction proof, and required checks pass. UI polish also has its own completion criteria. Report an incomplete result if any condition fails. A stop for non-convergence or missing evidence does not approve the change.
 

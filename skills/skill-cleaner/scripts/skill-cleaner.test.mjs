@@ -75,6 +75,39 @@ test("uses the alternate CODEX_HOME and home agent skills without counting defau
   assert.deepEqual(usage[user], { dollar: 1, fileRead: 0, text: 1 });
 });
 
+test("preserves history and active session usage under the default and deep log caps", (t) => {
+  const current = fixture(t);
+  const historySkill = current.skill(".codex/skills", "history-skill");
+  const sessionSkill = current.skill(".codex/skills", "session-skill");
+  const oversizedSkill = current.skill(".codex/skills", "oversized-skill");
+  const maxLogBytes = 4 * 1024;
+  const historyText = JSON.stringify({ session_id: "older", ts: 1, text: "Use $history-skill." });
+  const sessionText = "Use $session-skill.\n";
+  const remainingAfterHistory = maxLogBytes - Buffer.byteLength(historyText);
+  const history = current.write(".codex/history.jsonl", historyText);
+  const filler = current.write(".codex/sessions/a-filler.log", "A previous session.\n".padEnd(remainingAfterHistory));
+  const session = current.write(".codex/sessions/z-active.log", sessionText);
+  const archive = current.write(".codex/archived_sessions/rollout.log", "An archived session.\n".padEnd(remainingAfterHistory));
+  const oversized = current.write(".codex/sessions/rollout-oversized.log", "Use $oversized-skill.\n".padEnd(maxLogBytes + 1));
+  current.link(".codex/sessions", ".openclaw");
+  const now = Date.now() / 1000;
+  fs.utimesSync(history, now - 90, now - 90);
+  fs.utimesSync(filler, now - 60, now - 60);
+  fs.utimesSync(session, now - 30, now - 30);
+  fs.utimesSync(archive, now - 15, now - 15);
+  fs.utimesSync(oversized, now, now);
+
+  const maxLogMb = String(maxLogBytes / (1024 * 1024));
+  for (const flags of [[], ["--deep-logs"]]) {
+    const { usage } = JSON.parse(current.report("--max-log-mb", maxLogMb, "--json", ...flags));
+    assert.deepEqual(
+      [usage[historySkill].dollar, usage[sessionSkill].dollar, usage[oversizedSkill].dollar],
+      [1, 1, 0],
+      flags[0] ?? "default scan",
+    );
+  }
+});
+
 test("keeps built-in and bundled skills out of unused candidates for explicit root aliases", (t) => {
   const current = fixture(t, "linked-codex");
   current.skill("alternate-codex/skills", "user-skill");

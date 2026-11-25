@@ -32,7 +32,7 @@ export const profiles = [
     id: "claude-fable-5.1",
     family: "anthropic-fable",
     version: [5, 1],
-    matches: /^(?:(?:anthropic\/)?claude-fable-5(?:(?:[.-]1)(?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
+    matches: /^(?:(?:anthropic\/)?claude-fable-5(?:[.-][12](?:\[1m\])?|\[1m\])(?:-\d{8})?|fable(?:\[1m\])?)$/i,
   },
   {
     id: "claude-opus-5.5",
