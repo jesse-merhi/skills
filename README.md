@@ -108,9 +108,11 @@ Claude Code uses its normal main session, with Opus 5.5 at high as the repositor
 default, no advisor and Opus as the default subagent model. The launch command
 and optional [named workers](claude/README.md) preserve explicit user choices
 within the [effort caps](AGENTS.md#model-turns).
-Claude and Gemini plan and check the work. They assign every implementation edit
+Claude and Gemini plan and check the work. They assign implementation edits
 to the first available model in the [implementer order](AGENTS.md#model-turns),
-starting with GPT-6.2 Sol at `xhigh`, and report any fallback. Codex coordinators
+starting with GPT-6.2 Sol at `xhigh`, report any fallback, and apply small review
+fixes directly (with disclosure) only when the host explicitly forbids delegating
+them. Codex coordinators
 can implement directly or delegate. For optional read-only advice, start with
 Astra and use Fable for harder calls that warrant it. Shared policy lives in
 `AGENTS.md`. `wait-efficiently` handles waiting for commands, CI, and agents;
@@ -169,12 +171,9 @@ in the target repository, asking before installing dependencies. This catalog
 does not need a bundled linter for every language. Standalone `translate`
 proposes a mapping; shared-catalog changes require a separate explicit request.
 
-Every skill has three model-specific variants: GPT-6 (shared by Astra, Sol and Luna),
-Claude Fable 5.1, and Claude Opus 5.5. Selection
-happens locally before the model sees the workflow, so there is no router turn
-or unused prompt in context. Harness views expose the selected prompt directly.
-A newer model in a supported family falls back to the newest family variant and
-produces one update notice during materialization.
+Every skill has three model-specific profiles. Astra, Sol and Luna share `gpt-6`. Claude Fable 5.1 and 5.2 share `claude-fable-5.1` and match exactly without a fallback notice. Claude Opus 5.5 has its own profile.
+
+Selection happens locally before the model sees the workflow, so there is no router turn or unused prompt in context. Harness views expose the selected prompt directly. An unsupported newer model in a known family uses the nearest preceding variant and produces one update notice during materialization.
 
 ## The loop
 
@@ -188,7 +187,7 @@ The skills are not a menu. They snap into the loop I actually run:
    stack; discover commands through `gh stack --help`.
 4. **Prove it.** `writing-good-tests` for useful test proof and `frontend-ui-validation`, because
    the transcript is not evidence.
-5. **Simplify and review.** `code-review` removes unnecessary complexity, then uses one fresh GPT-6.2 Sol reviewer at high effort for routine changes, with Claude Opus 5.5 at high as fallback. The coordinator honors the user's chosen mode or runs the five-model council when a [risk trigger](skills/code-review/BASE.md#3-choose-a-review-mode) applies.
+5. **Simplify and review.** `code-review` removes unnecessary complexity, then uses one fresh GPT-6.2 Sol reviewer at high effort for routine changes, with Claude Opus 5.5 at high as fallback. The coordinator honors the user's chosen mode or runs the four-model council when a [risk trigger](skills/code-review/BASE.md#3-choose-a-review-mode) applies. Later council rounds default to a [targeted re-check](skills/code-review/BASE.md#decide-whether-to-repeat) after blocking or uncontained fixes.
 6. **Ship it.** `pr-proof-pack` for reviewer-visible evidence and
    `wait-efficiently` for CI.
 7. **Clean the loop itself.** `skill-cleaner` when the skills start costing more
@@ -210,7 +209,7 @@ The simplifier edits within scope. Independent reviewers assess the result witho
 | Skill | What it does |
 | --- | --- |
 | [`just-do-it`](skills/just-do-it/SKILL.md) | Delivers one well-defined change through review, proof, and CI; also runs ClawSweeper for `openclaw/openclaw` PRs. |
-| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then uses a single reviewer or a five-model council to assess code and affected UI. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
+| [`code-review`](skills/code-review/SKILL.md) | Simplifies changes, then uses a single reviewer or a four-model council to assess code and affected UI. In UI polish mode, reviewers score changes against a target. Reports fixes, evidence and reviewer confidence. |
 | [`pr-proof-pack`](skills/pr-proof-pack/SKILL.md) | After finished work is pushed to a PR, checks and refreshes reviewer-visible proof, with before/after tables for UI; never on local commits. |
 
 ### Code quality and correctness

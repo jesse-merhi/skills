@@ -1,7 +1,7 @@
 interface:
   display_name: "Code Review"
-  short_description: "Simplify changes, then choose one reviewer or a council."
-  default_prompt: "Use $code-review to simplify this change, choose the review mode, and review until only minor findings remain. Report fixes, evidence and each reviewer's confidence."
+  short_description: "Simplify, then review with one reviewer or a four-model council."
+  default_prompt: "Use $code-review to simplify this change, choose the review mode, and review until only minor findings remain. Report fixes, evidence, and each round's reviewers and confidence."
 
 policy:
   allow_implicit_invocation: false

@@ -1,6 +1,6 @@
 # Hand off implementation
 
-`AGENTS.md` (`Model turns`) owns effort caps, the fast-mode ban and T3 Code provider/option routing. Claude and Gemini coordinators delegate every implementation edit, including tests, documentation and review fixes, to the first implementer that can start, in this order:
+`AGENTS.md` (`Model turns`) owns delegation exceptions, effort caps, the fast-mode ban and T3 Code provider/option routing. Claude and Gemini coordinators delegate implementation edits, including tests, documentation and review fixes, to the first implementer that can start, in this order:
 
 1. GPT-6.2 Sol at `xhigh`
 2. Gemini 4 Neon at `high`
@@ -11,7 +11,7 @@
 
 If the launcher, model, account, subscription or spend cap rules one out, move to the next without asking. In the final reply, name the model that did the work and why earlier ones were skipped. If none can start, leave the edit pending and report why.
 
-Give the implementer the goal, owned files, constraints and acceptance checks. Let it choose the implementation. Inspect the returned diff and independently verify the result. Route further edits through the same implementer while it stays available. Leave any edit the host will not let you delegate pending and report why.
+Give the implementer the goal, owned files, constraints and acceptance checks. Let it choose the implementation. Inspect the returned diff and independently verify the result. Route further edits through the same implementer while it stays available. If the host explicitly forbids delegating a small review fix, apply it directly and disclose it. For other edits the host won't let you delegate, report the blocker and leave the edit pending.
 
 ## Codex models: Sol and Astra
 

@@ -32,15 +32,7 @@ name = "code-review"
 enabled = false
 
 [[skills.config]]
-name = "parallel-slice-orchestration"
-enabled = false
-
-[[skills.config]]
 name = "just-do-it"
-enabled = false
-
-[[skills.config]]
-name = "pr-review-checkout"
 enabled = false
 
 [[skills.config]]
